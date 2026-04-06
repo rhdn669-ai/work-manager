@@ -1,29 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getDepartmentOvertimeSummaries, getOvertimeWarningLevel } from '../../services/overtimeService';
-import { getUsersByDepartment } from '../../services/userService';
-import { getWeekStart, formatMinutes } from '../../utils/dateUtils';
-import { WEEKLY_OVERTIME_LIMIT } from '../../utils/constants';
+import { getDepartmentOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
+import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
 
 export default function ManageOvertimePage() {
-  const { userProfile } = useAuth();
-  const [summaries, setSummaries] = useState([]);
-  const [users, setUsers] = useState([]);
+  const { userProfile, isAdmin } = useAuth();
+  const [records, setRecords] = useState([]);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (userProfile) loadData();
-  }, [userProfile]);
+  }, [userProfile, year, month]);
 
   async function loadData() {
+    setLoading(true);
     try {
-      const weekStart = getWeekStart(new Date());
-      const [overtimeData, members] = await Promise.all([
-        getDepartmentOvertimeSummaries(userProfile.departmentId, weekStart),
-        getUsersByDepartment(userProfile.departmentId),
-      ]);
-      setSummaries(overtimeData);
-      setUsers(members);
+      const start = getMonthStart(year, month);
+      const end = getMonthEnd(year, month);
+      const data = isAdmin
+        ? await getAllOvertimeRecords(start, end)
+        : await getDepartmentOvertimeRecords(userProfile.departmentId, start, end);
+      setRecords(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -31,51 +30,99 @@ export default function ManageOvertimePage() {
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  // 직원별 합산
+  const byUser = {};
+  records.forEach((r) => {
+    if (!byUser[r.userId]) byUser[r.userId] = { name: r.userName, total: 0, count: 0 };
+    byUser[r.userId].total += r.minutes || 0;
+    byUser[r.userId].count++;
+  });
 
-  const summaryMap = {};
-  summaries.forEach((s) => { summaryMap[s.userId] = s; });
+  const totalMinutes = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
 
   return (
     <div className="manage-overtime-page">
-      <h2>부서원 초과근무 현황</h2>
-      <p className="text-sm">이번 주 ({getWeekStart(new Date())} ~)</p>
+      <h2>부서원 잔업 현황</h2>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>이름</th>
-            <th>초과근무</th>
-            <th>한도 대비</th>
-            <th>상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => {
-            const s = summaryMap[u.uid];
-            const minutes = s?.totalOvertimeMinutes || 0;
-            const pct = Math.round((minutes / WEEKLY_OVERTIME_LIMIT) * 100);
-            const level = getOvertimeWarningLevel(minutes);
-            return (
-              <tr key={u.uid}>
-                <td>{u.name}</td>
-                <td>{formatMinutes(minutes)}</td>
-                <td>
-                  <div className="overtime-bar-sm">
-                    <div className={`overtime-fill overtime-${level}`} style={{ width: `${Math.min(100, pct)}%` }} />
-                  </div>
-                  <span className="text-sm">{pct}%</span>
-                </td>
-                <td>
-                  <span className={`badge badge-${level}`}>
-                    {level === 'danger' ? '초과' : level === 'warning' ? '경고' : level === 'caution' ? '주의' : '정상'}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="filters">
+        <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          {[2024, 2025, 2026, 2027].map((y) => (
+            <option key={y} value={y}>{y}년</option>
+          ))}
+        </select>
+        <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+            <option key={m} value={m}>{m}월</option>
+          ))}
+        </select>
+      </div>
+
+      {/* 직원별 요약 */}
+      <div className="card">
+        <div className="card-header">직원별 요약</div>
+        <div className="card-body">
+          {Object.keys(byUser).length === 0 ? (
+            <p className="text-muted">해당 월의 기록이 없습니다.</p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>총 잔업</th>
+                  <th>등록 건수</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(byUser).map(([uid, data]) => (
+                  <tr key={uid}>
+                    <td>{data.name}</td>
+                    <td>{formatMinutes(data.total)}</td>
+                    <td>{data.count}건</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>합계</strong></td>
+                  <td><strong>{formatMinutes(totalMinutes)}</strong></td>
+                  <td><strong>{records.length}건</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* 상세 기록 */}
+      {records.length > 0 && (
+        <div className="card">
+          <div className="card-header">상세 기록</div>
+          <div className="card-body">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>날짜</th>
+                  <th>요일</th>
+                  <th>잔업 시간</th>
+                  <th>사유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.userName}</td>
+                    <td>{r.date}</td>
+                    <td>{getDayName(r.date)}</td>
+                    <td>{formatMinutes(r.minutes)}</td>
+                    <td>{r.reason || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

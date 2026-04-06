@@ -5,11 +5,9 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AttendancePage from './pages/attendance/AttendancePage';
 import AttendanceHistoryPage from './pages/attendance/AttendanceHistoryPage';
-import OvertimePage from './pages/overtime/OvertimePage';
 import LeaveRequestPage from './pages/leave/LeaveRequestPage';
 import LeaveHistoryPage from './pages/leave/LeaveHistoryPage';
 import LeaveBalancePage from './pages/leave/LeaveBalancePage';
-import ManageAttendancePage from './pages/manage/ManageAttendancePage';
 import ManageLeavePage from './pages/manage/ManageLeavePage';
 import ManageOvertimePage from './pages/manage/ManageOvertimePage';
 import UserManagementPage from './pages/admin/UserManagementPage';
@@ -28,7 +26,6 @@ const router = createBrowserRouter([
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/attendance', element: <AttendancePage /> },
           { path: '/attendance/history', element: <AttendanceHistoryPage /> },
-          { path: '/overtime', element: <OvertimePage /> },
           { path: '/leave', element: <LeaveRequestPage /> },
           { path: '/leave/history', element: <LeaveHistoryPage /> },
           { path: '/leave/balance', element: <LeaveBalancePage /> },
@@ -42,9 +39,8 @@ const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
-          { path: '/manage/attendance', element: <ManageAttendancePage /> },
-          { path: '/manage/leave', element: <ManageLeavePage /> },
           { path: '/manage/overtime', element: <ManageOvertimePage /> },
+          { path: '/manage/leave', element: <ManageLeavePage /> },
         ],
       },
     ],

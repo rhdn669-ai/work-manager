@@ -1,24 +1,35 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getTodayAttendance, checkIn, checkOut } from '../../services/attendanceService';
-import { updateWeeklySummary } from '../../services/overtimeService';
-import { formatTime, formatMinutes, getToday } from '../../utils/dateUtils';
+import { addOvertimeRecord, getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
+import { formatMinutes, getToday, getMonthStart, getMonthEnd } from '../../utils/dateUtils';
+import { WEEKLY_OVERTIME_LIMIT } from '../../utils/constants';
 
 export default function AttendancePage() {
   const { userProfile } = useAuth();
-  const [record, setRecord] = useState(null);
+  const [date, setDate] = useState(getToday());
+  const [hours, setHours] = useState('');
+  const [minutesInput, setMinutesInput] = useState('');
+  const [reason, setReason] = useState('');
+  const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
+  const now = new Date();
+  const [year] = useState(now.getFullYear());
+  const [month] = useState(now.getMonth() + 1);
+
   useEffect(() => {
-    if (userProfile) loadToday();
+    if (userProfile) loadRecords();
   }, [userProfile]);
 
-  async function loadToday() {
+  async function loadRecords() {
+    setLoading(true);
     try {
-      const data = await getTodayAttendance(userProfile.uid);
-      setRecord(data);
+      const start = getMonthStart(year, month);
+      const end = getMonthEnd(year, month);
+      const data = await getMyOvertimeRecords(userProfile.uid, start, end);
+      setRecords(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -26,101 +37,112 @@ export default function AttendancePage() {
     }
   }
 
-  async function handleCheckIn() {
-    setActionLoading(true);
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const totalMinutes = (parseInt(hours || 0) * 60) + parseInt(minutesInput || 0);
+    if (totalMinutes <= 0) {
+      setMessage('잔업 시간을 입력해주세요.');
+      return;
+    }
+
+    setSubmitting(true);
     setMessage('');
     try {
-      await checkIn(userProfile.uid, userProfile.departmentId);
-      await loadToday();
-      setMessage('출근이 기록되었습니다!');
+      await addOvertimeRecord({
+        userId: userProfile.uid,
+        userName: userProfile.name,
+        departmentId: userProfile.departmentId,
+        date,
+        minutes: totalMinutes,
+        reason,
+      });
+      setHours('');
+      setMinutesInput('');
+      setReason('');
+      setMessage('잔업이 등록되었습니다!');
+      await loadRecords();
     } catch (err) {
-      setMessage(err.message);
+      setMessage('등록 실패: ' + err.message);
     } finally {
-      setActionLoading(false);
+      setSubmitting(false);
     }
   }
 
-  async function handleCheckOut() {
-    if (!record) return;
-    setActionLoading(true);
-    setMessage('');
+  async function handleDelete(id) {
+    if (!confirm('삭제하시겠습니까?')) return;
     try {
-      const result = await checkOut(record.id, record.checkIn);
-      // 주간 초과근무 요약 갱신
-      await updateWeeklySummary(userProfile.uid, userProfile.departmentId, new Date());
-      await loadToday();
-      setMessage(`퇴근이 기록되었습니다! 근무시간: ${formatMinutes(result.workMinutes)}`);
+      await deleteOvertimeRecord(id);
+      await loadRecords();
     } catch (err) {
-      setMessage(err.message);
-    } finally {
-      setActionLoading(false);
+      alert('삭제 실패');
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
-
-  const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const totalMonthMinutes = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
 
   return (
     <div className="attendance-page">
-      <h2>출퇴근</h2>
-      <p className="page-date">{getToday()} ({['일','월','화','수','목','금','토'][now.getDay()]}요일)</p>
+      <h2>잔업 등록</h2>
 
-      <div className="attendance-clock">
-        <div className="current-time">{timeStr}</div>
-      </div>
-
-      {message && <div className="alert alert-info">{message}</div>}
-
-      <div className="attendance-actions">
-        {!record ? (
-          <button
-            className="btn btn-primary btn-lg"
-            onClick={handleCheckIn}
-            disabled={actionLoading}
-          >
-            {actionLoading ? '처리 중...' : '출근하기'}
-          </button>
-        ) : record.status === 'working' ? (
-          <button
-            className="btn btn-secondary btn-lg"
-            onClick={handleCheckOut}
-            disabled={actionLoading}
-          >
-            {actionLoading ? '처리 중...' : '퇴근하기'}
-          </button>
-        ) : (
-          <div className="attendance-done">오늘 근무가 완료되었습니다.</div>
-        )}
-      </div>
-
-      {record && (
-        <div className="attendance-detail card">
-          <div className="card-header">오늘 기록</div>
-          <div className="card-body">
-            <div className="stat-row">
-              <span>출근 시간</span>
-              <strong>{formatTime(record.checkIn)}</strong>
+      <form onSubmit={handleSubmit} className="card">
+        <div className="card-body">
+          {message && <div className="alert alert-info">{message}</div>}
+          <div className="form-row">
+            <div className="form-group">
+              <label>날짜</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
-            <div className="stat-row">
-              <span>퇴근 시간</span>
-              <strong>{record.checkOut ? formatTime(record.checkOut) : '-'}</strong>
+            <div className="form-group">
+              <label>시간</label>
+              <input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="시간" min="0" max="12" />
             </div>
-            {record.workMinutes != null && (
-              <>
-                <div className="stat-row">
-                  <span>근무 시간</span>
-                  <strong>{formatMinutes(record.workMinutes)}</strong>
-                </div>
-                <div className="stat-row">
-                  <span>초과근무</span>
-                  <strong>{formatMinutes(record.overtimeMinutes)}</strong>
-                </div>
-              </>
-            )}
+            <div className="form-group">
+              <label>분</label>
+              <input type="number" value={minutesInput} onChange={(e) => setMinutesInput(e.target.value)} placeholder="분" min="0" max="59" />
+            </div>
           </div>
+          <div className="form-group">
+            <label>사유</label>
+            <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="잔업 사유 (선택)" />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? '등록 중...' : '잔업 등록'}
+          </button>
         </div>
+      </form>
+
+      <div className="summary-bar">
+        <span>이번 달 총 잔업: <strong>{formatMinutes(totalMonthMinutes)}</strong></span>
+        <span>등록 건수: <strong>{records.length}건</strong></span>
+      </div>
+
+      {loading ? (
+        <div className="loading">로딩 중...</div>
+      ) : records.length === 0 ? (
+        <p className="text-muted">이번 달 잔업 기록이 없습니다.</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>잔업 시간</th>
+              <th>사유</th>
+              <th>삭제</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((r) => (
+              <tr key={r.id}>
+                <td>{r.date}</td>
+                <td>{formatMinutes(r.minutes)}</td>
+                <td>{r.reason || '-'}</td>
+                <td>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getTodayAttendance } from '../services/attendanceService';
-import { getWeeklySummary, getOvertimeWarningLevel } from '../services/overtimeService';
-import { getLeaveBalance } from '../services/leaveService';
-import { getDepartmentPendingLeaves } from '../services/leaveService';
-import { formatTime, formatMinutes } from '../utils/dateUtils';
-import { WEEKLY_OVERTIME_LIMIT } from '../utils/constants';
+import { getMyOvertimeRecords } from '../services/attendanceService';
+import { getLeaveBalance, getDepartmentPendingLeaves } from '../services/leaveService';
+import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 
 export default function DashboardPage() {
   const { userProfile, isAdmin, isManager } = useAuth();
-  const [todayRecord, setTodayRecord] = useState(null);
-  const [weeklySummary, setWeeklySummary] = useState(null);
+  const [monthlyOvertime, setMonthlyOvertime] = useState(0);
+  const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,13 +19,18 @@ export default function DashboardPage() {
 
   async function loadDashboard() {
     try {
-      const [attendance, overtime, balance] = await Promise.all([
-        getTodayAttendance(userProfile.uid),
-        getWeeklySummary(userProfile.uid, new Date()),
-        getLeaveBalance(userProfile.uid, new Date().getFullYear()),
+      const now = new Date();
+      const start = getMonthStart(now.getFullYear(), now.getMonth() + 1);
+      const end = getMonthEnd(now.getFullYear(), now.getMonth() + 1);
+
+      const [records, balance] = await Promise.all([
+        getMyOvertimeRecords(userProfile.uid, start, end),
+        getLeaveBalance(userProfile.uid, now.getFullYear()),
       ]);
-      setTodayRecord(attendance);
-      setWeeklySummary(overtime);
+
+      const total = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
+      setMonthlyOvertime(total);
+      setOvertimeCount(records.length);
       setLeaveBalance(balance);
 
       if (isAdmin || isManager) {
@@ -44,63 +46,18 @@ export default function DashboardPage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
-  const warningLevel = weeklySummary ? getOvertimeWarningLevel(weeklySummary.totalOvertimeMinutes) : 'safe';
-
   return (
     <div className="dashboard-page">
       <h2>대시보드</h2>
       <p className="welcome">안녕하세요, {userProfile?.name}님!</p>
 
       <div className="dashboard-grid">
-        {/* 오늘 출퇴근 상태 */}
+        {/* 이번 달 잔업 */}
         <div className="card">
-          <div className="card-header">오늘 출퇴근</div>
+          <div className="card-header">이번 달 잔업</div>
           <div className="card-body">
-            {todayRecord ? (
-              <>
-                <div className="stat-row">
-                  <span>출근</span>
-                  <strong>{formatTime(todayRecord.checkIn)}</strong>
-                </div>
-                <div className="stat-row">
-                  <span>퇴근</span>
-                  <strong>{todayRecord.checkOut ? formatTime(todayRecord.checkOut) : '근무 중'}</strong>
-                </div>
-                {todayRecord.workMinutes != null && (
-                  <div className="stat-row">
-                    <span>근무시간</span>
-                    <strong>{formatMinutes(todayRecord.workMinutes)}</strong>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-muted">아직 출근 기록이 없습니다.</p>
-            )}
-          </div>
-        </div>
-
-        {/* 주간 초과근무 */}
-        <div className={`card card-${warningLevel}`}>
-          <div className="card-header">이번 주 초과근무</div>
-          <div className="card-body">
-            {weeklySummary ? (
-              <>
-                <div className="stat-big">
-                  {formatMinutes(weeklySummary.totalOvertimeMinutes)}
-                </div>
-                <div className="overtime-bar">
-                  <div
-                    className={`overtime-fill overtime-${warningLevel}`}
-                    style={{ width: `${Math.min(100, (weeklySummary.totalOvertimeMinutes / WEEKLY_OVERTIME_LIMIT) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-sm">한도: {formatMinutes(WEEKLY_OVERTIME_LIMIT)}</p>
-                {warningLevel === 'danger' && <p className="text-danger">주간 연장근로 한도를 초과했습니다!</p>}
-                {warningLevel === 'warning' && <p className="text-warning">주간 연장근로 한도의 83%에 도달했습니다.</p>}
-              </>
-            ) : (
-              <p className="text-muted">초과근무 기록이 없습니다.</p>
-            )}
+            <div className="stat-big">{formatMinutes(monthlyOvertime)}</div>
+            <p className="text-sm text-center">{overtimeCount}건 등록</p>
           </div>
         </div>
 

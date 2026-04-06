@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
-import { getAttendanceByRange } from '../../services/attendanceService';
+import { getAllOvertimeRecords } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 
 export default function ReportsPage() {
@@ -27,21 +27,21 @@ export default function ReportsPage() {
     try {
       const start = getMonthStart(year, month);
       const end = getMonthEnd(year, month);
+      const records = await getAllOvertimeRecords(start, end);
 
-      const reportData = await Promise.all(
-        users.map(async (u) => {
-          const records = await getAttendanceByRange(u.uid, start, end);
-          const totalWork = records.reduce((sum, r) => sum + (r.workMinutes || 0), 0);
-          const totalOvertime = records.reduce((sum, r) => sum + (r.overtimeMinutes || 0), 0);
-          const workDays = records.filter((r) => r.status === 'completed').length;
-          return {
-            uid: u.uid, name: u.name, departmentId: u.departmentId,
-            workDays, totalWork, totalOvertime,
-          };
-        })
-      );
+      // 직원별 집계
+      const byUser = {};
+      users.forEach((u) => {
+        byUser[u.uid] = { name: u.name, departmentId: u.departmentId, total: 0, count: 0 };
+      });
+      records.forEach((r) => {
+        if (byUser[r.userId]) {
+          byUser[r.userId].total += r.minutes || 0;
+          byUser[r.userId].count++;
+        }
+      });
 
-      setReport(reportData);
+      setReport(Object.entries(byUser).map(([uid, data]) => ({ uid, ...data })));
     } catch (err) {
       console.error(err);
     } finally {
@@ -78,28 +78,25 @@ export default function ReportsPage() {
             <tr>
               <th>이름</th>
               <th>부서</th>
-              <th>근무일수</th>
-              <th>총 근무시간</th>
-              <th>총 초과근무</th>
+              <th>총 잔업</th>
+              <th>등록 건수</th>
             </tr>
           </thead>
           <tbody>
-            {report.map((r) => (
+            {report.filter((r) => r.count > 0).map((r) => (
               <tr key={r.uid}>
                 <td>{r.name}</td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>{r.workDays}일</td>
-                <td>{formatMinutes(r.totalWork)}</td>
-                <td>{formatMinutes(r.totalOvertime)}</td>
+                <td>{formatMinutes(r.total)}</td>
+                <td>{r.count}건</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
               <td colSpan={2}><strong>합계</strong></td>
-              <td><strong>{report.reduce((s, r) => s + r.workDays, 0)}일</strong></td>
-              <td><strong>{formatMinutes(report.reduce((s, r) => s + r.totalWork, 0))}</strong></td>
-              <td><strong>{formatMinutes(report.reduce((s, r) => s + r.totalOvertime, 0))}</strong></td>
+              <td><strong>{formatMinutes(report.reduce((s, r) => s + r.total, 0))}</strong></td>
+              <td><strong>{report.reduce((s, r) => s + r.count, 0)}건</strong></td>
             </tr>
           </tfoot>
         </table>
