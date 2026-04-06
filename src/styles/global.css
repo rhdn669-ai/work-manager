@@ -582,6 +582,12 @@ body {
   margin-bottom: 24px;
 }
 
+.login-version {
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* ===== 기타 ===== */
 .page-header {
   display: flex;

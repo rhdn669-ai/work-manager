@@ -122,6 +122,7 @@ export default function LoginPage() {
             </button>
           </form>
         )}
+        <p className="login-version">v1.0.0</p>
       </div>
     </div>
   );
