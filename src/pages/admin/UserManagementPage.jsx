@@ -53,6 +53,8 @@ export default function UserManagementPage() {
           name: form.name, code: form.code, role: form.role,
           departmentId: form.departmentId, joinDate: form.joinDate,
         });
+        const year = new Date().getFullYear();
+        await initLeaveBalance(editUser.uid, form.joinDate, year);
       } else {
         const userId = 'user_' + Date.now();
         await createUser(userId, {
@@ -66,16 +68,6 @@ export default function UserManagementPage() {
       await loadData();
     } catch (err) {
       alert('처리 중 오류: ' + err.message);
-    }
-  }
-
-  async function handleInitLeave(user) {
-    const year = new Date().getFullYear();
-    try {
-      const days = await initLeaveBalance(user.uid, user.joinDate, year);
-      alert(`${user.name}님의 ${year}년 연차가 ${days}일로 설정되었습니다.`);
-    } catch (err) {
-      alert('연차 초기화 오류: ' + err.message);
     }
   }
 
@@ -115,10 +107,7 @@ export default function UserManagementPage() {
               <td>{deptMap[u.departmentId] || '-'}</td>
               <td>{u.joinDate || '-'}</td>
               <td>
-                <div className="btn-group">
-                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
-                  <button className="btn btn-sm btn-secondary" onClick={() => handleInitLeave(u)}>연차설정</button>
-                </div>
+                <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
               </td>
             </tr>
           ))}
