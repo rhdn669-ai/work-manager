@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { addOvertimeRecord, getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
 import { formatMinutes, getToday, getMonthStart, getMonthEnd } from '../../utils/dateUtils';
-import { WEEKLY_OVERTIME_LIMIT } from '../../utils/constants';
+import StatusBadge from '../../components/common/StatusBadge';
+
+const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절' };
 
 export default function AttendancePage() {
   const { userProfile } = useAuth();
@@ -45,6 +47,7 @@ export default function AttendancePage() {
       return;
     }
 
+    const isPast = date < getToday();
     setSubmitting(true);
     setMessage('');
     try {
@@ -59,7 +62,10 @@ export default function AttendancePage() {
       setHours('');
       setMinutesInput('');
       setReason('');
-      setMessage('잔업이 등록되었습니다!');
+      setMessage(isPast
+        ? '지난 날짜 잔업이 등록되었습니다. 관리자 승인 후 확정됩니다.'
+        : '잔업이 등록되었습니다!'
+      );
       await loadRecords();
     } catch (err) {
       setMessage('등록 실패: ' + err.message);
@@ -78,7 +84,8 @@ export default function AttendancePage() {
     }
   }
 
-  const totalMonthMinutes = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
+  const approvedRecords = records.filter((r) => r.status === 'approved');
+  const totalMonthMinutes = approvedRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
 
   return (
     <div className="attendance-page">
@@ -105,6 +112,9 @@ export default function AttendancePage() {
             <label>사유</label>
             <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="잔업 사유 (선택)" />
           </div>
+          {date < getToday() && (
+            <div className="alert alert-warning">지난 날짜는 관리자 승인이 필요합니다.</div>
+          )}
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting ? '등록 중...' : '잔업 등록'}
           </button>
@@ -112,7 +122,7 @@ export default function AttendancePage() {
       </form>
 
       <div className="summary-bar">
-        <span>이번 달 총 잔업: <strong>{formatMinutes(totalMonthMinutes)}</strong></span>
+        <span>이번 달 승인 잔업: <strong>{formatMinutes(totalMonthMinutes)}</strong></span>
         <span>등록 건수: <strong>{records.length}건</strong></span>
       </div>
 
@@ -127,6 +137,7 @@ export default function AttendancePage() {
               <th>날짜</th>
               <th>잔업 시간</th>
               <th>사유</th>
+              <th>상태</th>
               <th>삭제</th>
             </tr>
           </thead>
@@ -136,6 +147,7 @@ export default function AttendancePage() {
                 <td>{r.date}</td>
                 <td>{formatMinutes(r.minutes)}</td>
                 <td>{r.reason || '-'}</td>
+                <td><StatusBadge status={r.status} labels={STATUS_LABELS} /></td>
                 <td>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
                 </td>
