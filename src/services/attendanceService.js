@@ -24,17 +24,17 @@ export async function deleteOvertimeRecord(id) {
   await deleteDoc(doc(db, 'overtimeRecords', id));
 }
 
-// 본인 잔업 기록 조회 (기간별)
+// 본인 잔업 기록 조회 (기간별) - 인덱스 불필요
 export async function getMyOvertimeRecords(userId, startDate, endDate) {
   const q = query(
     overtimeRef,
     where('userId', '==', userId),
-    where('date', '>=', startDate),
-    where('date', '<=', endDate),
-    orderBy('date', 'desc')
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => r.date >= startDate && r.date <= endDate)
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // 부서별 잔업 기록 조회
@@ -42,22 +42,19 @@ export async function getDepartmentOvertimeRecords(departmentId, startDate, endD
   const q = query(
     overtimeRef,
     where('departmentId', '==', departmentId),
-    where('date', '>=', startDate),
-    where('date', '<=', endDate),
-    orderBy('date', 'desc')
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => r.date >= startDate && r.date <= endDate)
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // 전체 잔업 기록 조회 (관리자)
 export async function getAllOvertimeRecords(startDate, endDate) {
-  const q = query(
-    overtimeRef,
-    where('date', '>=', startDate),
-    where('date', '<=', endDate),
-    orderBy('date', 'desc')
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const snapshot = await getDocs(overtimeRef);
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => r.date >= startDate && r.date <= endDate)
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
