@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getUsers, updateUser } from '../../services/userService';
+import { getUsers, updateUser, createUser } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance } from '../../services/leaveService';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
-import { createUserProfile } from '../../services/authService';
 import Modal from '../../components/common/Modal';
 
 export default function UserManagementPage() {
@@ -14,7 +11,7 @@ export default function UserManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
-    email: '', password: '', name: '', role: 'employee', departmentId: '', joinDate: '',
+    name: '', code: '', role: 'employee', departmentId: '', joinDate: '',
   });
 
   useEffect(() => {
@@ -35,14 +32,14 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ email: '', password: '', name: '', role: 'employee', departmentId: '', joinDate: '' });
+    setForm({ name: '', code: '', role: 'employee', departmentId: '', joinDate: '' });
     setShowModal(true);
   }
 
   function openEdit(user) {
     setEditUser(user);
     setForm({
-      email: user.email, password: '', name: user.name,
+      name: user.name, code: user.code || '',
       role: user.role, departmentId: user.departmentId || '', joinDate: user.joinDate || '',
     });
     setShowModal(true);
@@ -53,18 +50,17 @@ export default function UserManagementPage() {
     try {
       if (editUser) {
         await updateUser(editUser.uid, {
-          name: form.name, role: form.role,
+          name: form.name, code: form.code, role: form.role,
           departmentId: form.departmentId, joinDate: form.joinDate,
         });
       } else {
-        const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-        await createUserProfile(cred.user.uid, {
-          email: form.email, name: form.name, role: form.role,
+        const userId = 'user_' + Date.now();
+        await createUser(userId, {
+          uid: userId, name: form.name, code: form.code, role: form.role,
           departmentId: form.departmentId, joinDate: form.joinDate,
         });
-        // 연차 초기화
         const year = new Date().getFullYear();
-        await initLeaveBalance(cred.user.uid, form.joinDate, year);
+        await initLeaveBalance(userId, form.joinDate, year);
       }
       setShowModal(false);
       await loadData();
@@ -99,7 +95,7 @@ export default function UserManagementPage() {
         <thead>
           <tr>
             <th>이름</th>
-            <th>이메일</th>
+            <th>코드</th>
             <th>역할</th>
             <th>부서</th>
             <th>입사일</th>
@@ -110,7 +106,7 @@ export default function UserManagementPage() {
           {users.map((u) => (
             <tr key={u.uid}>
               <td>{u.name}</td>
-              <td>{u.email}</td>
+              <td><code>{u.code}</code></td>
               <td>
                 <span className={`badge badge-role-${u.role}`}>
                   {u.role === 'admin' ? '관리자' : u.role === 'manager' ? '부서장' : '직원'}
@@ -131,21 +127,13 @@ export default function UserManagementPage() {
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editUser ? '사용자 수정' : '사용자 추가'}>
         <form onSubmit={handleSubmit}>
-          {!editUser && (
-            <>
-              <div className="form-group">
-                <label>이메일</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>비밀번호</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
-              </div>
-            </>
-          )}
           <div className="form-group">
             <label>이름</label>
             <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label>로그인 코드</label>
+            <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="예: 1234" required />
           </div>
           <div className="form-group">
             <label>역할</label>

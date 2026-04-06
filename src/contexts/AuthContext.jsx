@@ -1,67 +1,58 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-} from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        // Firestore에서 사용자 프로필 조회
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setUserProfile({ uid: firebaseUser.uid, ...userDoc.data() });
-        } else {
-          setUserProfile(null);
-        }
-      } else {
-        setUser(null);
-        setUserProfile(null);
-      }
-      setLoading(false);
-    });
-    return unsubscribe;
+    // localStorage에서 로그인 상태 복원
+    const saved = localStorage.getItem('workManagerUser');
+    if (saved) {
+      setUserProfile(JSON.parse(saved));
+    }
+    setLoading(false);
   }, []);
 
-  const login = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const register = (email, password) => {
-    return createUserWithEmailAndPassword(auth, email, password);
+  const login = async (code) => {
+    // accessCodes 컬렉션에서 코드 조회
+    const q = query(collection(db, 'users'), where('code', '==', code));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+      throw new Error('잘못된 코드입니다.');
+    }
+    const userDoc = snapshot.docs[0];
+    const profile = { uid: userDoc.id, ...userDoc.data() };
+    setUserProfile(profile);
+    localStorage.setItem('workManagerUser', JSON.stringify(profile));
+    return profile;
   };
 
   const logout = () => {
-    return signOut(auth);
+    setUserProfile(null);
+    localStorage.removeItem('workManagerUser');
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        setUserProfile({ uid: user.uid, ...userDoc.data() });
+    if (userProfile) {
+      const q = query(collection(db, 'users'), where('code', '==', userProfile.code));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const updated = { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        setUserProfile(updated);
+        localStorage.setItem('workManagerUser', JSON.stringify(updated));
       }
     }
   };
 
   const value = {
-    user,
+    user: userProfile,
     userProfile,
     loading,
     login,
-    register,
     logout,
     refreshProfile,
     isAdmin: userProfile?.role === 'admin',

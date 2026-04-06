@@ -1,19 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { createUserProfile } from '../services/authService';
-import { initLeaveBalance } from '../services/leaveService';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSetup, setIsSetup] = useState(false);
-  const { login, register } = useAuth();
+  const [setupForm, setSetupForm] = useState({ name: '', code: '' });
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -21,10 +18,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(code);
       navigate('/dashboard');
     } catch (err) {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -35,25 +32,29 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      // 이미 사용자가 있는지 확인
       const snapshot = await getDocs(collection(db, 'users'));
       if (!snapshot.empty) {
-        setError('이미 관리자가 등록되어 있습니다. 로그인해주세요.');
+        setError('이미 관리자가 등록되어 있습니다.');
         setIsSetup(false);
         setLoading(false);
         return;
       }
 
-      const cred = await register(email, password);
+      const userId = 'admin_' + Date.now();
       const today = new Date().toISOString().split('T')[0];
-      await createUserProfile(cred.user.uid, {
-        email,
-        name,
+      await setDoc(doc(db, 'users', userId), {
+        uid: userId,
+        name: setupForm.name,
+        code: setupForm.code,
         role: 'admin',
         departmentId: '',
         joinDate: today,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
-      await initLeaveBalance(cred.user.uid, today, new Date().getFullYear());
+
+      await login(setupForm.code);
       navigate('/dashboard');
     } catch (err) {
       setError('등록 실패: ' + err.message);
@@ -73,69 +74,44 @@ export default function LoginPage() {
             {error && <div className="alert alert-error">{error}</div>}
             <div className="alert alert-info">최초 관리자 계정을 등록합니다.</div>
             <div className="form-group">
-              <label htmlFor="name">이름</label>
+              <label>이름</label>
               <input
-                id="name"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={setupForm.name}
+                onChange={(e) => setSetupForm({ ...setupForm, name: e.target.value })}
                 placeholder="관리자 이름"
                 required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="email">이메일</label>
+              <label>로그인 코드</label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@company.com"
+                type="text"
+                value={setupForm.code}
+                onChange={(e) => setSetupForm({ ...setupForm, code: e.target.value })}
+                placeholder="사용할 코드 (예: 1234)"
                 required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="password">비밀번호</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="6자 이상"
-                required
-                minLength={6}
               />
             </div>
             <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
               {loading ? '등록 중...' : '관리자 등록'}
             </button>
             <button type="button" className="btn btn-outline btn-full" style={{ marginTop: '8px' }} onClick={() => setIsSetup(false)}>
-              로그인으로 돌아가기
+              돌아가기
             </button>
           </form>
         ) : (
           <form onSubmit={handleLogin}>
             {error && <div className="alert alert-error">{error}</div>}
             <div className="form-group">
-              <label htmlFor="email">이메일</label>
+              <label>로그인 코드</label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@company.com"
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="코드 입력"
                 required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="password">비밀번호</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호 입력"
-                required
+                autoFocus
               />
             </div>
             <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
