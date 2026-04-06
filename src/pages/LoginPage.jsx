@@ -61,7 +61,12 @@ export default function LoginPage() {
         joinDate: today,
         isActive: true,
       };
-      await setDoc(doc(db, 'users', userId), profile);
+
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore 응답 시간 초과 (10초)')), 10000)
+      );
+      await Promise.race([setDoc(doc(db, 'users', userId), profile), timeout]);
+
       localStorage.setItem('workManagerUser', JSON.stringify(profile));
       setError('등록 완료! 이동 중...');
       window.location.href = '/dashboard';
