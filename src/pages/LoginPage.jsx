@@ -40,14 +40,16 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
+      setError('DB 연결 중...');
       const snapshot = await getDocs(collection(db, 'users'));
       if (!snapshot.empty) {
-        setError('이미 관리자가 등록되어 있습니다.');
+        setError('이미 관리자가 등록되어 있습니다. 로그인 코드를 입력하세요.');
         setIsSetup(false);
         setLoading(false);
         return;
       }
 
+      setError('관리자 등록 중...');
       const userId = 'admin_' + Date.now();
       const today = new Date().toISOString().split('T')[0];
       const profile = {
@@ -58,11 +60,10 @@ export default function LoginPage() {
         departmentId: '',
         joinDate: today,
         isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
       await setDoc(doc(db, 'users', userId), profile);
       localStorage.setItem('workManagerUser', JSON.stringify(profile));
+      setError('등록 완료! 이동 중...');
       window.location.href = '/dashboard';
     } catch (err) {
       setError('등록 실패: ' + err.message);
