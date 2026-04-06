@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export default function LoginPage() {
@@ -18,11 +18,19 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(code);
-      navigate('/dashboard');
+      const q = query(collection(db, 'users'), where('code', '==', code));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        setError('잘못된 코드입니다.');
+        setLoading(false);
+        return;
+      }
+      const userDoc = snapshot.docs[0];
+      const profile = { uid: userDoc.id, ...userDoc.data() };
+      localStorage.setItem('workManagerUser', JSON.stringify(profile));
+      window.location.href = '/dashboard';
     } catch (err) {
-      setError(err.message);
-    } finally {
+      setError('로그인 실패: ' + err.message);
       setLoading(false);
     }
   };
@@ -42,7 +50,7 @@ export default function LoginPage() {
 
       const userId = 'admin_' + Date.now();
       const today = new Date().toISOString().split('T')[0];
-      await setDoc(doc(db, 'users', userId), {
+      const profile = {
         uid: userId,
         name: setupForm.name,
         code: setupForm.code,
@@ -52,13 +60,12 @@ export default function LoginPage() {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
-
-      await login(setupForm.code);
-      navigate('/dashboard');
+      };
+      await setDoc(doc(db, 'users', userId), profile);
+      localStorage.setItem('workManagerUser', JSON.stringify(profile));
+      window.location.href = '/dashboard';
     } catch (err) {
       setError('등록 실패: ' + err.message);
-    } finally {
       setLoading(false);
     }
   };
