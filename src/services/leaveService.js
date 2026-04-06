@@ -1,6 +1,6 @@
 import {
   collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc,
-  query, where, orderBy, serverTimestamp,
+  query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { calculateAnnualLeave } from '../utils/leaveCalculator';
@@ -22,8 +22,8 @@ export async function requestLeave(data) {
     approvedBy: null,
     approvedAt: null,
     rejectedReason: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 }
 
@@ -36,8 +36,8 @@ export async function approveLeave(leaveId, approvedByUid) {
   await updateDoc(doc(db, 'leaves', leaveId), {
     status: 'approved',
     approvedBy: approvedByUid,
-    approvedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    approvedAt: new Date(),
+    updatedAt: new Date(),
   });
 
   // 잔여 연차 차감
@@ -50,7 +50,7 @@ export async function rejectLeave(leaveId, reason) {
   await updateDoc(doc(db, 'leaves', leaveId), {
     status: 'rejected',
     rejectedReason: reason || '',
-    updatedAt: serverTimestamp(),
+    updatedAt: new Date(),
   });
 }
 
@@ -62,7 +62,7 @@ export async function cancelLeave(leaveId) {
 
   await updateDoc(doc(db, 'leaves', leaveId), {
     status: 'cancelled',
-    updatedAt: serverTimestamp(),
+    updatedAt: new Date(),
   });
 
   // 승인된 연차였으면 잔여 연차 복원
@@ -116,7 +116,7 @@ async function updateLeaveBalance(userId, year, days) {
     await updateDoc(doc(db, 'leaveBalances', balanceId), {
       usedDays: data.usedDays + days,
       remainingDays: data.remainingDays - days,
-      updatedAt: serverTimestamp(),
+      updatedAt: new Date(),
     });
   }
 }
@@ -132,8 +132,8 @@ export async function initLeaveBalance(userId, joinDate, year) {
     totalDays,
     usedDays: 0,
     remainingDays: totalDays,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 
   return totalDays;

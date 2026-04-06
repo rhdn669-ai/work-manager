@@ -1,6 +1,6 @@
 import {
   collection, doc, getDocs, getDoc, setDoc, updateDoc,
-  query, where, orderBy, serverTimestamp,
+  query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -26,7 +26,7 @@ export async function getUser(uid) {
 export async function updateUser(uid, data) {
   await updateDoc(doc(db, 'users', uid), {
     ...data,
-    updatedAt: serverTimestamp(),
+    updatedAt: new Date(),
   });
 }
 
@@ -35,7 +35,7 @@ export async function createUser(uid, data) {
     uid,
     ...data,
     isActive: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 }

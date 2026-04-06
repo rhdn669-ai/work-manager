@@ -1,6 +1,6 @@
 import {
   collection, getDocs, addDoc, deleteDoc, doc,
-  query, where, orderBy, serverTimestamp,
+  query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -15,7 +15,7 @@ export async function addOvertimeRecord(data) {
     date: data.date,
     minutes: data.minutes,
     reason: data.reason || '',
-    createdAt: serverTimestamp(),
+    createdAt: new Date(),
   });
 }
 

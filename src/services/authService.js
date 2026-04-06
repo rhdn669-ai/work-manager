@@ -1,4 +1,4 @@
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // 신규 사용자 프로필 생성 (회원가입 시)
@@ -11,7 +11,7 @@ export async function createUserProfile(uid, data) {
     departmentId: data.departmentId || '',
     joinDate: data.joinDate || new Date().toISOString().split('T')[0],
     isActive: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 }

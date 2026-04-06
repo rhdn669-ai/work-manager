@@ -1,6 +1,6 @@
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, orderBy, serverTimestamp,
+  query, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -16,7 +16,7 @@ export async function addDepartment(data) {
   return addDoc(deptRef, {
     name: data.name,
     managerId: data.managerId || '',
-    createdAt: serverTimestamp(),
+    createdAt: new Date(),
   });
 }
 
