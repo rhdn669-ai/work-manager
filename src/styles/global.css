@@ -657,16 +657,67 @@ body {
   color: var(--text-light);
 }
 
+/* ===== 모바일 하단 탭 ===== */
+.bottom-nav {
+  display: none;
+}
+
 /* ===== 반응형 ===== */
 @media (max-width: 768px) {
   .sidebar {
-    width: 100%;
+    display: none !important;
   }
 
-  .sidebar.open ~ .main-content,
-  .main-content {
+  .menu-toggle {
+    display: none;
+  }
+
+  .main-content,
+  .main-content.expanded {
     margin-left: 0;
     width: 100%;
+    padding: 16px;
+    padding-bottom: 72px;
+  }
+
+  .header-title {
+    font-size: 15px;
+  }
+
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    z-index: 100;
+    justify-content: space-around;
+    padding: 4px 0;
+    padding-bottom: env(safe-area-inset-bottom, 4px);
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    min-width: 56px;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--primary);
+  }
+
+  .bottom-nav-icon {
+    font-size: 20px;
+    margin-bottom: 2px;
   }
 
   .dashboard-grid {
@@ -685,9 +736,28 @@ body {
 
   .table {
     font-size: 12px;
+    display: block;
+    overflow-x: auto;
   }
 
   .table th, .table td {
     padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .login-card {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .modal {
+    width: 95%;
+    margin: 16px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }

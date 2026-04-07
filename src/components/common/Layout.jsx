@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -15,6 +16,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <BottomNav />
     </div>
   );
 }
