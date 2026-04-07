@@ -412,7 +412,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  padding: 8px 4px;
+}
+
+.stat-row span {
+  flex-shrink: 0;
+}
+
+.stat-row strong {
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .stat-row.highlight {
