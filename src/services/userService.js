@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, getDoc, setDoc, updateDoc,
+  collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
   query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -38,4 +38,8 @@ export async function createUser(uid, data) {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+}
+
+export async function deleteUser(uid) {
+  await deleteDoc(doc(db, 'users', uid));
 }

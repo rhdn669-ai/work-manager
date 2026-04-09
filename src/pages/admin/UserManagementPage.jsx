@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUsers, updateUser, createUser } from '../../services/userService';
+import { getUsers, updateUser, createUser, deleteUser } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance } from '../../services/leaveService';
 import { POSITIONS } from '../../utils/constants';
@@ -72,6 +72,16 @@ export default function UserManagementPage() {
     }
   }
 
+  async function handleDelete(user) {
+    if (!confirm(`"${user.name}" 사용자를 삭제하시겠습니까?`)) return;
+    try {
+      await deleteUser(user.uid);
+      await loadData();
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
 
@@ -109,6 +119,7 @@ export default function UserManagementPage() {
               <td>{u.joinDate || '-'}</td>
               <td>
                 <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
+                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
               </td>
             </tr>
           ))}
