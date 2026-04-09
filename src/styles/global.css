@@ -333,6 +333,7 @@ body {
 .badge-role-manager { background: #dbeafe; color: #1e40af; }
 .badge-role-employee { background: #f1f5f9; color: #475569; }
 .badge-position { background: #f1f5f9; color: #475569; }
+.badge-position-관리자 { background: #fee2e2; color: #991b1b; }
 .badge-position-사원 { background: #f1f5f9; color: #475569; }
 .badge-position-주임 { background: #e0f2fe; color: #0c4a6e; }
 .badge-position-대리 { background: #dbeafe; color: #1e40af; }
