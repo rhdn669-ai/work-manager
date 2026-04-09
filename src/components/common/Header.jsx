@@ -20,7 +20,7 @@ export default function Header({ onToggleSidebar }) {
         {userProfile && (
           <>
             <span className="user-info">
-              {userProfile.name} ({userProfile.position || '직원'})
+              {userProfile.name} (<span className={`badge badge-position${userProfile.position ? `-${userProfile.position}` : ''}`}>{userProfile.position || '직원'}</span>)
             </span>
             <button className="btn btn-sm btn-outline" onClick={handleLogout}>로그아웃</button>
           </>

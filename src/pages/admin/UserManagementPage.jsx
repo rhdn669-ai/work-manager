@@ -111,7 +111,7 @@ export default function UserManagementPage() {
               <td>{u.name}</td>
               <td><code>{u.code}</code></td>
               <td>
-                <span className="badge badge-position">
+                <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
                   {u.position || '-'}
                 </span>
               </td>
