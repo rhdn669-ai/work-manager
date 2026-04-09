@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getUsers, updateUser, createUser } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance } from '../../services/leaveService';
+import { POSITIONS } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
 
 export default function UserManagementPage() {
@@ -11,7 +12,7 @@ export default function UserManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
-    name: '', code: '', role: 'employee', departmentId: '', joinDate: '',
+    name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '',
   });
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', role: 'employee', departmentId: '', joinDate: '' });
+    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '' });
     setShowModal(true);
   }
 
@@ -40,7 +41,7 @@ export default function UserManagementPage() {
     setEditUser(user);
     setForm({
       name: user.name, code: user.code || '',
-      role: user.role, departmentId: user.departmentId || '', joinDate: user.joinDate || '',
+      role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
     });
     setShowModal(true);
   }
@@ -51,7 +52,7 @@ export default function UserManagementPage() {
       if (editUser) {
         await updateUser(editUser.uid, {
           name: form.name, code: form.code, role: form.role,
-          departmentId: form.departmentId, joinDate: form.joinDate,
+          position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
         });
         const year = new Date().getFullYear();
         await initLeaveBalance(editUser.uid, form.joinDate, year);
@@ -59,7 +60,7 @@ export default function UserManagementPage() {
         const userId = 'user_' + Date.now();
         await createUser(userId, {
           uid: userId, name: form.name, code: form.code, role: form.role,
-          departmentId: form.departmentId, joinDate: form.joinDate,
+          position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
         });
         const year = new Date().getFullYear();
         await initLeaveBalance(userId, form.joinDate, year);
@@ -88,7 +89,7 @@ export default function UserManagementPage() {
           <tr>
             <th>이름</th>
             <th>코드</th>
-            <th>역할</th>
+            <th>직급</th>
             <th>부서</th>
             <th>입사일</th>
             <th>작업</th>
@@ -100,8 +101,8 @@ export default function UserManagementPage() {
               <td>{u.name}</td>
               <td><code>{u.code}</code></td>
               <td>
-                <span className={`badge badge-role-${u.role}`}>
-                  {u.role === 'admin' ? '관리자' : u.role === 'manager' ? '부서장' : '직원'}
+                <span className="badge badge-position">
+                  {u.position || '-'}
                 </span>
               </td>
               <td>{deptMap[u.departmentId] || '-'}</td>
@@ -125,11 +126,12 @@ export default function UserManagementPage() {
             <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="예: 1234" required />
           </div>
           <div className="form-group">
-            <label>역할</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="employee">직원</option>
-              <option value="manager">부서장</option>
-              <option value="admin">관리자</option>
+            <label>직급</label>
+            <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} required>
+              <option value="">선택</option>
+              {POSITIONS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
             </select>
           </div>
           <div className="form-group">

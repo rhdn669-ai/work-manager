@@ -10,12 +10,17 @@ export const MAX_ANNUAL_LEAVE = 25;
 export const BASE_ANNUAL_LEAVE = 15;
 export const MONTHLY_LEAVE_MAX = 11; // 1년 미만 최대
 
-// 역할
+// 역할 (권한 제어용)
 export const ROLES = {
   ADMIN: 'admin',
   MANAGER: 'manager',
   EMPLOYEE: 'employee',
 };
+
+// 직급
+export const POSITIONS = [
+  '사원', '주임', '대리', '과장', '차장', '부장', '팀장', '이사', '부사장',
+];
 
 // 출퇴근 상태
 export const ATTENDANCE_STATUS = {
