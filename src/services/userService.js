@@ -7,7 +7,7 @@ import { db } from '../config/firebase';
 const usersRef = collection(db, 'users');
 
 export async function getUsers() {
-  const q = query(usersRef, orderBy('name'));
+  const q = query(usersRef, orderBy('code'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
