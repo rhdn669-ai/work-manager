@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getLeaveBalance } from '../../services/leaveService';
+import LeaveTabs from '../../components/common/LeaveTabs';
 
 export default function LeaveBalancePage() {
   const { userProfile } = useAuth();
@@ -31,6 +32,7 @@ export default function LeaveBalancePage() {
 
   return (
     <div className="leave-balance-page">
+      <LeaveTabs />
       <h2>연차 잔여 현황</h2>
 
       {balance ? (

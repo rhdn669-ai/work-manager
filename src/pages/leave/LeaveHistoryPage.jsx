@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getMyLeaves, cancelLeave } from '../../services/leaveService';
 import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS } from '../../utils/constants';
 import StatusBadge from '../../components/common/StatusBadge';
+import LeaveTabs from '../../components/common/LeaveTabs';
 
 export default function LeaveHistoryPage() {
   const { userProfile } = useAuth();
@@ -38,6 +39,7 @@ export default function LeaveHistoryPage() {
 
   return (
     <div className="leave-history-page">
+      <LeaveTabs />
       <h2>연차 사용 이력</h2>
 
       <div className="filters">

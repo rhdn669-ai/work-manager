@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { requestLeave, getLeaveBalance } from '../../services/leaveService';
 import { LEAVE_TYPES, LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { getBusinessDays } from '../../utils/dateUtils';
+import LeaveTabs from '../../components/common/LeaveTabs';
 
 export default function LeaveRequestPage() {
   const { userProfile } = useAuth();
@@ -65,6 +66,7 @@ export default function LeaveRequestPage() {
 
   return (
     <div className="leave-request-page">
+      <LeaveTabs />
       <h2>연차 신청</h2>
 
       <form onSubmit={handleSubmit} className="card">
