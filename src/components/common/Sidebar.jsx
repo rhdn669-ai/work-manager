@@ -27,18 +27,17 @@ export default function Sidebar({ isOpen }) {
         )}
 
         {(isAdmin || isManager) && (
-          <>
-            <div className="nav-section">
-              <div className="nav-section-title">부서 관리</div>
-              <NavLink to="/manage/overtime" className="nav-link">부서원 잔업</NavLink>
-              <NavLink to="/manage/leave" end className="nav-link">연차 승인</NavLink>
-            </div>
-            <div className="nav-section">
-              <div className="nav-section-title">현장</div>
-              <NavLink to="/sites" end className="nav-link">현장 마감리스트</NavLink>
-            </div>
-          </>
+          <div className="nav-section">
+            <div className="nav-section-title">부서 관리</div>
+            <NavLink to="/manage/overtime" className="nav-link">부서원 잔업</NavLink>
+            <NavLink to="/manage/leave" end className="nav-link">연차 승인</NavLink>
+          </div>
         )}
+
+        <div className="nav-section">
+          <div className="nav-section-title">현장</div>
+          <NavLink to="/sites" end className="nav-link">현장 마감리스트</NavLink>
+        </div>
 
         {isAdmin && (
           <div className="nav-section">

@@ -33,6 +33,8 @@ const router = createBrowserRouter([
           { path: '/leave', element: <LeaveRequestPage /> },
           { path: '/leave/history', element: <LeaveHistoryPage /> },
           { path: '/leave/balance', element: <LeaveBalancePage /> },
+          { path: '/sites', element: <SiteListPage /> },
+          { path: '/sites/:siteId/:year/:month', element: <SiteClosingPage /> },
         ],
       },
     ],
@@ -45,8 +47,6 @@ const router = createBrowserRouter([
         children: [
           { path: '/manage/overtime', element: <ManageOvertimePage /> },
           { path: '/manage/leave', element: <ManageLeavePage /> },
-          { path: '/sites', element: <SiteListPage /> },
-          { path: '/sites/:siteId/:year/:month', element: <SiteClosingPage /> },
         ],
       },
     ],
