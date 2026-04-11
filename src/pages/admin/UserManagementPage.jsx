@@ -136,8 +136,8 @@ export default function UserManagementPage() {
           </div>
           <div className="form-group">
             <label>직급</label>
-            <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} required>
-              <option value="">선택</option>
+            <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })}>
+              <option value="">없음</option>
               {POSITIONS.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
