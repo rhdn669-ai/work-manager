@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -9,6 +9,8 @@ import { getUsers } from '../../services/userService';
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
 }
+
+const AUTO_SAVE_DELAY_MS = 800;
 
 export default function SiteClosingPage() {
   const { siteId, year, month } = useParams();
@@ -22,13 +24,26 @@ export default function SiteClosingPage() {
   const [items, setItems] = useState([]);
   const [editBuf, setEditBuf] = useState({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingCount, setSavingCount] = useState(0);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+
+  // 행별 디바운스 타이머 보관
+  const timersRef = useRef({});
 
   const canEdit = site && (isAdmin || (site.managerIds || []).includes(userProfile?.uid));
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
   useEffect(() => { loadAll(); }, [siteId, y, m]);
+
+  // 언마운트 시 남은 타이머 정리 (+ 대기 중인 변경사항은 즉시 저장)
+  useEffect(() => {
+    return () => {
+      Object.entries(timersRef.current).forEach(([id, t]) => clearTimeout(t));
+      timersRef.current = {};
+    };
+  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -57,6 +72,39 @@ export default function SiteClosingPage() {
     return names.length ? names.join(', ') : '-';
   }
 
+  async function persistRow(itemId, data) {
+    setSavingCount((c) => c + 1);
+    try {
+      await updateClosingItem(itemId, {
+        no: Number(data.no) || 0,
+        vendor: data.vendor || '',
+        detail: data.detail || '',
+        category: data.category || '',
+        unitPrice: Number(data.unitPrice) || 0,
+        dailyQuantities: data.dailyQuantities || {},
+        quantity: Number(data.quantity) || 0,
+        amount: Number(data.amount) || 0,
+      });
+      setLastSavedAt(new Date());
+      setSaveError(null);
+    } catch (err) {
+      console.error('자동 저장 실패', err);
+      setSaveError(err.message || '저장 실패');
+    } finally {
+      setSavingCount((c) => Math.max(0, c - 1));
+    }
+  }
+
+  function scheduleSave(itemId, data) {
+    if (timersRef.current[itemId]) {
+      clearTimeout(timersRef.current[itemId]);
+    }
+    timersRef.current[itemId] = setTimeout(() => {
+      persistRow(itemId, data);
+      delete timersRef.current[itemId];
+    }, AUTO_SAVE_DELAY_MS);
+  }
+
   async function handleAddRow() {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
@@ -74,6 +122,11 @@ export default function SiteClosingPage() {
 
   async function handleDeleteRow(itemId) {
     if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+    // 대기 중인 저장 취소
+    if (timersRef.current[itemId]) {
+      clearTimeout(timersRef.current[itemId]);
+      delete timersRef.current[itemId];
+    }
     try {
       await deleteClosingItem(itemId);
       await loadAll();
@@ -88,6 +141,7 @@ export default function SiteClosingPage() {
       if (field === 'unitPrice') {
         cur.amount = Number(cur.unitPrice || 0) * Number(cur.quantity || 0);
       }
+      scheduleSave(itemId, cur);
       return { ...b, [itemId]: cur };
     });
   }
@@ -106,33 +160,18 @@ export default function SiteClosingPage() {
       const sum = Object.values(dq).reduce((a, v) => a + (Number(v) || 0), 0);
       cur.quantity = sum;
       cur.amount = Number(cur.unitPrice || 0) * sum;
+      scheduleSave(itemId, cur);
       return { ...b, [itemId]: cur };
     });
   }
 
-  async function saveAll() {
-    setSaving(true);
-    try {
-      for (const id of Object.keys(editBuf)) {
-        const d = editBuf[id];
-        await updateClosingItem(id, {
-          no: Number(d.no) || 0,
-          vendor: d.vendor || '',
-          detail: d.detail || '',
-          category: d.category || '',
-          unitPrice: Number(d.unitPrice) || 0,
-          dailyQuantities: d.dailyQuantities || {},
-          quantity: Number(d.quantity) || 0,
-          amount: Number(d.amount) || 0,
-        });
-      }
-      await loadAll();
-      alert('저장 완료');
-    } catch (err) {
-      alert('저장 오류: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
+  // 포커스 해제 시 디바운스 기다리지 않고 즉시 저장
+  function flushRow(itemId) {
+    if (!timersRef.current[itemId]) return;
+    clearTimeout(timersRef.current[itemId]);
+    delete timersRef.current[itemId];
+    const data = editBuf[itemId];
+    if (data) persistRow(itemId, data);
   }
 
   if (loading) return <div className="loading">로딩 중...</div>;
@@ -150,28 +189,40 @@ export default function SiteClosingPage() {
 
   const totalAmount = Object.values(editBuf).reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
+  // 저장 상태 메시지
+  let saveStatus;
+  if (saveError) {
+    saveStatus = <span style={{ color: '#dc2626' }}>⚠ 저장 실패: {saveError}</span>;
+  } else if (savingCount > 0) {
+    saveStatus = <span style={{ color: '#2563eb' }}>● 저장 중...</span>;
+  } else if (lastSavedAt) {
+    const t = lastSavedAt;
+    const hh = String(t.getHours()).padStart(2, '0');
+    const mm = String(t.getMinutes()).padStart(2, '0');
+    const ss = String(t.getSeconds()).padStart(2, '0');
+    saveStatus = <span style={{ color: '#16a34a' }}>✓ {hh}:{mm}:{ss} 저장됨</span>;
+  } else {
+    saveStatus = <span style={{ color: '#94a3b8' }}>자동 저장 대기</span>;
+  }
+
   return (
     <div className="site-closing-page">
       <div className="page-header">
         <h2>{site.name} — {y}년 {m}월 마감</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
           {canEdit && (
-            <>
-              <button className="btn btn-outline" onClick={handleAddRow}>행 추가</button>
-              <button className="btn btn-primary" onClick={saveAll} disabled={saving}>
-                {saving ? '저장 중...' : '전체 저장'}
-              </button>
-            </>
+            <button className="btn btn-outline" onClick={handleAddRow}>행 추가</button>
           )}
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="card-body" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+        <div className="card-body" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>팀: <strong>{site.team || '-'}</strong></div>
           <div>담당: <strong>{managerNames()}</strong></div>
           <div>월 합계: <strong style={{ color: '#2563eb' }}>{totalAmount.toLocaleString()}원</strong></div>
+          {canEdit && <div style={{ fontSize: 13 }}>{saveStatus}</div>}
         </div>
       </div>
 
@@ -203,6 +254,7 @@ export default function SiteClosingPage() {
                       type="number"
                       value={buf.no ?? ''}
                       onChange={(e) => updateField(it.id, 'no', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
@@ -211,6 +263,7 @@ export default function SiteClosingPage() {
                       style={{ width: 100 }}
                       value={buf.vendor || ''}
                       onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
@@ -219,6 +272,7 @@ export default function SiteClosingPage() {
                       style={{ width: 100 }}
                       value={buf.detail || ''}
                       onChange={(e) => updateField(it.id, 'detail', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
@@ -230,6 +284,7 @@ export default function SiteClosingPage() {
                         step="0.25"
                         value={buf.dailyQuantities?.[d] ?? ''}
                         onChange={(e) => updateDay(it.id, d, e.target.value)}
+                        onBlur={() => flushRow(it.id)}
                         disabled={!canEdit}
                       />
                     </td>
@@ -241,6 +296,7 @@ export default function SiteClosingPage() {
                       type="number"
                       value={buf.unitPrice || 0}
                       onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
@@ -250,6 +306,7 @@ export default function SiteClosingPage() {
                       style={{ width: 100 }}
                       value={buf.category || ''}
                       onChange={(e) => updateField(it.id, 'category', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
