@@ -275,7 +275,7 @@ export default function SiteClosingPage() {
                 <input
                   className="closing-category"
                   value={buf.category || ''}
-                  placeholder="비고 (예: 프로버 로컬 작업)"
+                  placeholder="비고"
                   onChange={(e) => updateField(it.id, 'category', e.target.value)}
                   onBlur={() => flushRow(it.id)}
                   disabled={!canEdit}
