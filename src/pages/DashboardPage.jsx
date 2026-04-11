@@ -103,8 +103,8 @@ export default function DashboardPage() {
 
       {!isAdmin && (
         <div className="dashboard-tiles">
-          {/* 잔업 */}
-          <Link to="/attendance" className="dashboard-tile tile-overtime">
+          {/* 잔업 (지표 카드 - 클릭 불가) */}
+          <div className="dashboard-tile tile-overtime is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/>
@@ -116,10 +116,10 @@ export default function DashboardPage() {
               <div className="tile-value">{formatMinutes(monthlyOvertime)}</div>
               <div className="tile-sub">{overtimeCount}건 등록</div>
             </div>
-          </Link>
+          </div>
 
-          {/* 연차 */}
-          <Link to="/leave/balance" className="dashboard-tile tile-leave">
+          {/* 연차 (지표 카드 - 클릭 불가) */}
+          <div className="dashboard-tile tile-leave is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
                   : '연차 정보 없음'}
               </div>
             </div>
-          </Link>
+          </div>
 
           {canApprove && (
             <Link

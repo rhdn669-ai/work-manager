@@ -595,6 +595,17 @@ body {
   border-color: #cbd5e1;
 }
 
+/* 지표 카드 성격 — 클릭 불가, hover 효과 없음 */
+.dashboard-tile.is-static {
+  cursor: default;
+}
+
+.dashboard-tile.is-static:hover {
+  transform: none;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+  border-color: var(--border);
+}
+
 .tile-icon {
   flex-shrink: 0;
   width: 44px;
