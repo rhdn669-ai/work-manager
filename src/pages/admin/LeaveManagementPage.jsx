@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getUsers } from '../../services/userService';
-import { getLeaveBalance, initLeaveBalance, updateLeaveBalanceDirect } from '../../services/leaveService';
+import { getLeaveBalance, initLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import Modal from '../../components/common/Modal';
 
 export default function LeaveManagementPage() {
@@ -9,7 +9,7 @@ export default function LeaveManagementPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [form, setForm] = useState({ totalDays: 0, usedDays: 0 });
+  const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -37,23 +37,14 @@ export default function LeaveManagementPage() {
   function openEdit(user) {
     const bal = balances[user.uid];
     setEditTarget(user);
-    setForm({
-      totalDays: bal ? bal.totalDays : 0,
-      usedDays: bal ? bal.usedDays : 0,
-    });
+    setRemaining(bal ? bal.remainingDays : 0);
     setShowModal(true);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     try {
-      const total = Number(form.totalDays);
-      const used = Number(form.usedDays);
-      await updateLeaveBalanceDirect(editTarget.uid, {
-        totalDays: total,
-        usedDays: used,
-        remainingDays: total - used,
-      });
+      await setLeaveRemaining(editTarget.uid, Number(remaining));
       setShowModal(false);
       await loadData();
     } catch (err) {
@@ -61,8 +52,8 @@ export default function LeaveManagementPage() {
     }
   }
 
-  async function handleRecalcAll() {
-    if (!confirm('입사일 기준으로 전체 사용자의 누적 발생 연차를 재계산하시겠습니까?\n(기존 사용 일수는 유지됩니다)')) return;
+  async function handleSyncAll() {
+    if (!confirm('전체 사용자의 입사일을 연차 데이터에 동기화하시겠습니까?\n(사용 일수는 유지됩니다)')) return;
     try {
       for (const u of users) {
         if (u.joinDate) {
@@ -70,9 +61,9 @@ export default function LeaveManagementPage() {
         }
       }
       await loadData();
-      alert('재계산 완료');
+      alert('동기화 완료');
     } catch (err) {
-      alert('재계산 오류: ' + err.message);
+      alert('동기화 오류: ' + err.message);
     }
   }
 
@@ -82,11 +73,12 @@ export default function LeaveManagementPage() {
     <div className="leave-management-page">
       <div className="page-header">
         <h2>연차 관리</h2>
-        <button className="btn btn-primary" onClick={handleRecalcAll}>전체 누적 연차 재계산</button>
+        <button className="btn btn-primary" onClick={handleSyncAll}>전체 입사일 동기화</button>
       </div>
 
       <p className="text-muted text-sm">
-        ※ 미사용 연월차는 이월되며, 입사일부터 현재까지 누적 발생한 총 연월차가 표시됩니다.
+        ※ 누적 발생은 입사일 기준으로 실시간 계산됩니다. 시간이 지나면 월차/연차가 자동으로 추가됩니다.<br />
+        ※ "수정"에서 현재 잔여만 입력하면 됩니다. 이후 발생분은 시스템이 자동 반영합니다.
       </p>
 
       <table className="table">
@@ -113,7 +105,7 @@ export default function LeaveManagementPage() {
                 <td>{bal ? bal.usedDays + '일' : '-'}</td>
                 <td>{bal ? bal.remainingDays + '일' : '-'}</td>
                 <td>
-                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
+                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)} disabled={!bal}>수정</button>
                 </td>
               </tr>
             );
@@ -121,24 +113,26 @@ export default function LeaveManagementPage() {
         </tbody>
       </table>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editTarget ? `${editTarget.name} - 연차 수정` : ''}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editTarget ? `${editTarget.name} - 현재 잔여 연차 설정` : ''}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>누적 발생 (일)</label>
-            <input type="number" step="0.5" min="0" value={form.totalDays}
-              onChange={(e) => setForm({ ...form, totalDays: e.target.value })} required />
-          </div>
-          <div className="form-group">
-            <label>사용 연차 (일)</label>
-            <input type="number" step="0.5" min="0" value={form.usedDays}
-              onChange={(e) => setForm({ ...form, usedDays: e.target.value })} required />
-          </div>
-          <div className="form-group">
-            <label>잔여 연차</label>
-            <input type="text" value={`${(Number(form.totalDays) - Number(form.usedDays))}일`} disabled />
+            <label>현재 잔여 연차 (일)</label>
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              value={remaining}
+              onChange={(e) => setRemaining(e.target.value)}
+              required
+              autoFocus
+            />
+            <small className="text-muted">
+              오늘 시점의 잔여 일수를 입력하세요.<br />
+              이후 시간이 지나면 근속에 따른 발생분이 자동으로 추가됩니다.
+            </small>
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">수정</button>
+            <button type="submit" className="btn btn-primary">저장</button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
           </div>
         </form>

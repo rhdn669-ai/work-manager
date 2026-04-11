@@ -97,10 +97,24 @@ export async function getDepartmentPendingLeaves(departmentId) {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// 잔여 연차 조회 (입사일~현재 누적 발생분 기준)
+// 잔여 연차 조회 (입사일~현재 누적 발생분 동적 계산)
+// 반환 객체의 totalDays/remainingDays는 조회 시점 기준 동적 계산값
 export async function getLeaveBalance(userId) {
   const docSnap = await getDoc(doc(db, 'leaveBalances', userId));
-  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+  if (!docSnap.exists()) return null;
+  const data = docSnap.data();
+  if (!data.joinDate) return null; // 입사일 동기화 필요
+
+  const totalDays = calculateAccruedLeave(data.joinDate);
+  const usedDays = data.usedDays || 0;
+  return {
+    id: docSnap.id,
+    userId,
+    joinDate: data.joinDate,
+    totalDays,
+    usedDays,
+    remainingDays: totalDays - usedDays,
+  };
 }
 
 // 연차 잔여 갱신 (days: 양수=사용, 음수=복원)
@@ -111,39 +125,40 @@ async function updateLeaveBalance(userId, days) {
     const data = docSnap.data();
     await updateDoc(doc(db, 'leaveBalances', userId), {
       usedDays: (data.usedDays || 0) + days,
-      remainingDays: (data.remainingDays || 0) - days,
       updatedAt: new Date(),
     });
   }
 }
 
-// 연차 잔여 직접 수정 (관리자용)
-export async function updateLeaveBalanceDirect(userId, data) {
-  await setDoc(doc(db, 'leaveBalances', userId), {
-    userId,
-    totalDays: data.totalDays,
-    usedDays: data.usedDays,
-    remainingDays: data.remainingDays,
+// 관리자: 현재 시점 잔여 연차 직접 설정 (usedDays 역산)
+// 이후 시간이 지나면 자동으로 발생분이 누적되어 잔여가 증가
+export async function setLeaveRemaining(userId, remaining) {
+  const ref = doc(db, 'leaveBalances', userId);
+  const existing = await getDoc(ref);
+  if (!existing.exists() || !existing.data().joinDate) {
+    throw new Error('입사일 정보가 없습니다. 먼저 "전체 입사일 동기화"를 실행하세요.');
+  }
+  const joinDate = existing.data().joinDate;
+  const accrued = calculateAccruedLeave(joinDate);
+  const usedDays = accrued - remaining;
+  await updateDoc(ref, {
+    usedDays,
     updatedAt: new Date(),
-  }, { merge: true });
+  });
 }
 
-// 연차 잔여 초기화/재계산 (입사일~현재 누적 발생분으로 세팅)
-// 기존 사용량은 보존 (usedDays는 유지)
+// 입사일 동기화/초기화 (users.joinDate를 balance에 스냅샷 저장)
+// 기존 usedDays는 보존
 export async function initLeaveBalance(userId, joinDate) {
-  const totalDays = calculateAccruedLeave(joinDate);
   const ref = doc(db, 'leaveBalances', userId);
   const existing = await getDoc(ref);
   const usedDays = existing.exists() ? (existing.data().usedDays || 0) : 0;
 
   await setDoc(ref, {
     userId,
-    totalDays,
+    joinDate,
     usedDays,
-    remainingDays: totalDays - usedDays,
-    createdAt: existing.exists() ? existing.data().createdAt : new Date(),
+    createdAt: existing.exists() && existing.data().createdAt ? existing.data().createdAt : new Date(),
     updatedAt: new Date(),
   });
-
-  return totalDays;
 }
