@@ -85,6 +85,8 @@ export default function SiteManagementPage() {
   if (loading) return <div className="loading">로딩 중...</div>;
 
   const userMap = Object.fromEntries(users.map((u) => [u.uid, u]));
+  // 관리자는 항상 모든 현장 접근 가능하므로 후보에서 제외
+  const candidates = users.filter((u) => u.role !== 'admin');
 
   return (
     <div className="site-management-page">
@@ -133,23 +135,92 @@ export default function SiteManagementPage() {
             <input value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} placeholder="예: 전장 2팀" />
           </div>
           <div className="form-group">
-            <label>담당자 (복수 선택, 체크된 사용자가 이 현장을 조회/편집할 수 있음)</label>
-            <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #ddd', padding: 8, borderRadius: 4 }}>
-              {users.length === 0 && (
-                <p className="text-muted text-sm">등록된 사용자가 없습니다.</p>
+            <label>담당자 선택</label>
+            <p className="text-muted text-sm" style={{ marginTop: -4, marginBottom: 8 }}>
+              관리자는 항상 모든 현장에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 8,
+                maxHeight: 300,
+                overflowY: 'auto',
+                padding: 12,
+                borderRadius: 10,
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+              }}
+            >
+              {candidates.length === 0 && (
+                <p className="text-muted text-sm" style={{ gridColumn: '1 / -1', margin: 0, textAlign: 'center' }}>
+                  선택 가능한 사용자가 없습니다.
+                </p>
               )}
-              {users.map((u) => (
-                <label key={u.uid} style={{ display: 'block', padding: '4px 0' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.managerIds.includes(u.uid)}
-                    onChange={() => toggleManager(u.uid)}
-                  />
-                  {' '}{u.name} <code>({u.code})</code>
-                  {u.position && <span className="text-muted text-sm"> · {u.position}</span>}
-                </label>
-              ))}
+              {candidates.map((u) => {
+                const checked = form.managerIds.includes(u.uid);
+                return (
+                  <label
+                    key={u.uid}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      background: checked ? '#eff6ff' : '#ffffff',
+                      border: `1.5px solid ${checked ? '#3b82f6' : '#e5e7eb'}`,
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      boxShadow: checked ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+                      userSelect: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!checked) e.currentTarget.style.borderColor = '#9ca3af';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!checked) e.currentTarget.style.borderColor = '#e5e7eb';
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleManager(u.uid)}
+                      style={{ flexShrink: 0, width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 14,
+                          color: checked ? '#1e40af' : '#111827',
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {u.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: '#6b7280',
+                          marginTop: 2,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {u.code}{u.position && ` · ${u.position}`}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
+            {form.managerIds.length > 0 && (
+              <p className="text-sm" style={{ marginTop: 6, color: '#2563eb' }}>
+                선택됨: <strong>{form.managerIds.length}명</strong>
+              </p>
+            )}
           </div>
           <div className="form-group">
             <label>기본 업체 목록 (쉼표 구분)</label>
