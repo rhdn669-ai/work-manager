@@ -928,33 +928,44 @@ body {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #f3f4f6;
-  border-bottom: 2px solid #d1d5db;
-  padding: 7px 3px !important;
-  font-size: 11px;
-  font-weight: 600;
-  color: #374151;
+  background: #e5e7eb;
+  border-bottom: 2px solid #9ca3af;
+  border-right: 1px solid #d1d5db;
+  padding: 6px 2px !important;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1f2937;
   white-space: nowrap;
   text-align: center;
 }
 
+.closing-table th:last-child {
+  border-right: none;
+}
+
 .closing-table td {
-  padding: 1px 2px !important;
-  border-bottom: 1px solid #f1f5f9;
-  border-right: 1px solid #f8fafc;
+  padding: 0 !important;
+  border-bottom: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
   vertical-align: middle;
-  font-size: 11px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.closing-table td:last-child {
+  border-right: none;
 }
 
 .closing-table tbody tr:hover td {
-  background: #fafbfc;
+  background: #f3f4f6;
 }
 
 .closing-table tfoot td {
-  padding: 10px 8px !important;
-  background: #f9fafb;
-  border-top: 2px solid #d1d5db;
-  font-size: 13px;
+  padding: 8px 8px !important;
+  background: #e5e7eb;
+  border-top: 2px solid #9ca3af;
+  font-size: 12px;
+  text-align: right;
 }
 
 .closing-table input {
@@ -962,13 +973,13 @@ body {
   box-sizing: border-box;
   border: 1px solid transparent;
   background: transparent;
-  padding: 5px 4px;
-  font-size: 11px;
+  padding: 5px 2px;
+  font-size: 10px;
   font-family: inherit;
   color: #111827;
-  border-radius: 4px;
+  border-radius: 0;
   outline: none;
-  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+  transition: background 0.1s, box-shadow 0.1s;
 }
 
 .closing-table input[type="number"] {
@@ -980,9 +991,8 @@ body {
 }
 
 .closing-table input:focus {
-  background: #fff;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 2px #3b82f6;
 }
 
 .closing-table input:disabled {
@@ -1137,21 +1147,21 @@ body {
 
   /* 현장 마감리스트 편집 테이블 — 터치 입력 편의 */
   .closing-table {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .closing-table th {
-    padding: 6px 4px !important;
+    padding: 5px 2px !important;
   }
 
   .closing-table td {
-    padding: 4px 2px !important;
+    padding: 0 !important;
   }
 
   .closing-table input {
-    min-height: 34px;
-    padding: 6px 6px !important;
-    font-size: 12px;
+    min-height: 30px;
+    padding: 4px 2px !important;
+    font-size: 11px;
   }
 
   /* 담당자 선택 그리드 모바일 대응 */
