@@ -227,17 +227,17 @@ export default function SiteClosingPage() {
         <table className="table closing-table" style={{ minWidth: 'max-content' }}>
           <thead>
             <tr>
-              <th rowSpan={2} style={{ minWidth: 28 }}>NO</th>
-              <th rowSpan={2} style={{ minWidth: 68 }}>업체명</th>
-              <th rowSpan={2} style={{ minWidth: 60 }}>이름</th>
+              <th rowSpan={2} style={{ minWidth: 22 }}>NO</th>
+              <th rowSpan={2} style={{ minWidth: 52 }}>업체명</th>
+              <th rowSpan={2} style={{ minWidth: 46 }}>이름</th>
               {row1.map((d) => (
-                <th key={`r1h${d}`} style={{ minWidth: 28 }}>{d}</th>
+                <th key={`r1h${d}`} style={{ minWidth: 22 }}>{d}</th>
               ))}
-              <th rowSpan={2} style={{ minWidth: 42 }}>수량</th>
-              <th rowSpan={2} style={{ minWidth: 66 }}>단가</th>
-              <th rowSpan={2} style={{ minWidth: 78 }}>금액</th>
-              <th rowSpan={2} style={{ minWidth: 68 }}>비고</th>
-              {canEdit && <th rowSpan={2} style={{ minWidth: 28 }}>삭제</th>}
+              <th rowSpan={2} style={{ minWidth: 32 }}>수량</th>
+              <th rowSpan={2} style={{ minWidth: 54 }}>단가</th>
+              <th rowSpan={2} style={{ minWidth: 62 }}>금액</th>
+              <th rowSpan={2} style={{ minWidth: 52 }}>비고</th>
+              {canEdit && <th rowSpan={2} style={{ minWidth: 24 }}>삭제</th>}
             </tr>
             <tr>
               {row2Padded.map((d, i) => (

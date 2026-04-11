@@ -931,7 +931,7 @@ body {
   background: #e5e7eb;
   border-bottom: 2px solid #9ca3af;
   border-right: 1px solid #d1d5db;
-  padding: 6px 2px !important;
+  padding: 4px 1px !important;
   font-size: 10px;
   font-weight: 700;
   color: #1f2937;
@@ -973,7 +973,7 @@ body {
   box-sizing: border-box;
   border: 1px solid transparent;
   background: transparent;
-  padding: 5px 2px;
+  padding: 4px 1px;
   font-size: 10px;
   font-family: inherit;
   color: #111827;
@@ -1151,7 +1151,7 @@ body {
   }
 
   .closing-table th {
-    padding: 5px 2px !important;
+    padding: 4px 1px !important;
   }
 
   .closing-table td {
@@ -1159,9 +1159,9 @@ body {
   }
 
   .closing-table input {
-    min-height: 30px;
-    padding: 4px 2px !important;
-    font-size: 11px;
+    min-height: 26px;
+    padding: 3px 1px !important;
+    font-size: 10px;
   }
 
   /* 담당자 선택 그리드 모바일 대응 */
