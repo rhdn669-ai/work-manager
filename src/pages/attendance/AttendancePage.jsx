@@ -1,11 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { addOvertimeRecord, getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
-import { formatMinutes, getToday, getMonthStart, getMonthEnd } from '../../utils/dateUtils';
-import StatusBadge from '../../components/common/StatusBadge';
+import { addOvertimeRecord } from '../../services/attendanceService';
+import { getToday } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
-
-const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절' };
 
 export default function AttendancePage() {
   const { userProfile } = useAuth();
@@ -13,32 +10,8 @@ export default function AttendancePage() {
   const [hours, setHours] = useState('');
   const [minutesInput, setMinutesInput] = useState('');
   const [reason, setReason] = useState('');
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
-
-  const now = new Date();
-  const [year] = useState(now.getFullYear());
-  const [month] = useState(now.getMonth() + 1);
-
-  useEffect(() => {
-    if (userProfile) loadRecords();
-  }, [userProfile]);
-
-  async function loadRecords() {
-    setLoading(true);
-    try {
-      const start = getMonthStart(year, month);
-      const end = getMonthEnd(year, month);
-      const data = await getMyOvertimeRecords(userProfile.uid, start, end);
-      setRecords(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -67,26 +40,12 @@ export default function AttendancePage() {
         ? '지난 날짜 잔업이 등록되었습니다. 관리자 승인 후 확정됩니다.'
         : '잔업이 등록되었습니다!'
       );
-      await loadRecords();
     } catch (err) {
       setMessage('등록 실패: ' + err.message);
     } finally {
       setSubmitting(false);
     }
   }
-
-  async function handleDelete(id) {
-    if (!confirm('삭제하시겠습니까?')) return;
-    try {
-      await deleteOvertimeRecord(id);
-      await loadRecords();
-    } catch (err) {
-      alert('삭제 실패');
-    }
-  }
-
-  const approvedRecords = records.filter((r) => r.status === 'approved');
-  const totalMonthMinutes = approvedRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
 
   return (
     <div className="attendance-page">
@@ -122,42 +81,6 @@ export default function AttendancePage() {
           </button>
         </div>
       </form>
-
-      <div className="summary-bar">
-        <span>이번 달 승인 잔업: <strong>{formatMinutes(totalMonthMinutes)}</strong></span>
-        <span>등록 건수: <strong>{records.length}건</strong></span>
-      </div>
-
-      {loading ? (
-        <div className="loading">로딩 중...</div>
-      ) : records.length === 0 ? (
-        <p className="text-muted">이번 달 잔업 기록이 없습니다.</p>
-      ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>잔업 시간</th>
-              <th>사유</th>
-              <th>상태</th>
-              <th>삭제</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id}>
-                <td>{r.date}</td>
-                <td>{formatMinutes(r.minutes)}</td>
-                <td>{r.reason || '-'}</td>
-                <td><StatusBadge status={r.status} labels={STATUS_LABELS} /></td>
-                <td>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </div>
   );
 }

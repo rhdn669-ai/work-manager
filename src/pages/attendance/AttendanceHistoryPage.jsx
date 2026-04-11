@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyOvertimeRecords } from '../../services/attendanceService';
+import { getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
+import StatusBadge from '../../components/common/StatusBadge';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
+
+const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절' };
 
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
@@ -29,6 +32,18 @@ export default function AttendanceHistoryPage() {
     }
   }
 
+  async function handleDelete(id) {
+    if (!confirm('삭제하시겠습니까?')) return;
+    try {
+      await deleteOvertimeRecord(id);
+      await loadRecords();
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+    }
+  }
+
+  const approvedRecords = records.filter((r) => r.status === 'approved');
+  const approvedMinutes = approvedRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
   const totalMinutes = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
 
   return (
@@ -50,8 +65,9 @@ export default function AttendanceHistoryPage() {
       </div>
 
       <div className="summary-bar">
-        <span>총 잔업: <strong>{formatMinutes(totalMinutes)}</strong></span>
-        <span>등록 건수: <strong>{records.length}건</strong></span>
+        <span>승인 잔업 <strong>{formatMinutes(approvedMinutes)}</strong></span>
+        <span>전체 <strong>{formatMinutes(totalMinutes)}</strong></span>
+        <span>등록 건수 <strong>{records.length}건</strong></span>
       </div>
 
       {loading ? (
@@ -66,6 +82,8 @@ export default function AttendanceHistoryPage() {
               <th>요일</th>
               <th>잔업 시간</th>
               <th>사유</th>
+              <th>상태</th>
+              <th>작업</th>
             </tr>
           </thead>
           <tbody>
@@ -75,6 +93,12 @@ export default function AttendanceHistoryPage() {
                 <td>{getDayName(r.date)}</td>
                 <td>{formatMinutes(r.minutes)}</td>
                 <td>{r.reason || '-'}</td>
+                <td><StatusBadge status={r.status} labels={STATUS_LABELS} /></td>
+                <td>
+                  {r.status !== 'approved' && (
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
