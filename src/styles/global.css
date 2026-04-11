@@ -1797,6 +1797,62 @@ body {
     grid-template-columns: 1fr !important;
   }
 
+  /* 대시보드 — 모바일 압축 */
+  .dashboard-welcome {
+    margin-bottom: 12px;
+  }
+
+  .dashboard-welcome h2 {
+    font-size: 17px;
+  }
+
+  .dashboard-welcome p {
+    font-size: 12px;
+  }
+
+  .dashboard-tile {
+    padding: 14px 14px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+
+  .tile-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .tile-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tile-value {
+    font-size: 19px;
+  }
+
+  .tile-title {
+    font-size: 11px;
+  }
+
+  .admin-stats {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .admin-stat {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .admin-stat-value {
+    font-size: 22px;
+  }
+
+  .admin-stat-value span {
+    font-size: 12px;
+  }
+
   /* 바텀탭 5개 이상일 때 글자 크기 축소 */
   .bottom-nav-item {
     font-size: 9px !important;
