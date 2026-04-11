@@ -28,19 +28,23 @@ export default function SiteClosingPage() {
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
 
-  // 행별 디바운스 타이머 보관
   const timersRef = useRef({});
 
   const canEdit = site && (isAdmin || (site.managerIds || []).includes(userProfile?.uid));
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
+  // 두 줄로 쪼개기 (1~16 / 17~31)
+  const half = Math.ceil(dayCount / 2); // 31→16, 30→15, 28→14
+  const row1 = days.slice(0, half);
+  const row2 = days.slice(half);
+  const row2Padded = [...row2, ...Array(Math.max(0, half - row2.length)).fill(null)];
+
   useEffect(() => { loadAll(); }, [siteId, y, m]);
 
-  // 언마운트 시 남은 타이머 정리 (+ 대기 중인 변경사항은 즉시 저장)
   useEffect(() => {
     return () => {
-      Object.entries(timersRef.current).forEach(([id, t]) => clearTimeout(t));
+      Object.values(timersRef.current).forEach(clearTimeout);
       timersRef.current = {};
     };
   }, []);
@@ -96,9 +100,7 @@ export default function SiteClosingPage() {
   }
 
   function scheduleSave(itemId, data) {
-    if (timersRef.current[itemId]) {
-      clearTimeout(timersRef.current[itemId]);
-    }
+    if (timersRef.current[itemId]) clearTimeout(timersRef.current[itemId]);
     timersRef.current[itemId] = setTimeout(() => {
       persistRow(itemId, data);
       delete timersRef.current[itemId];
@@ -122,7 +124,6 @@ export default function SiteClosingPage() {
 
   async function handleDeleteRow(itemId) {
     if (!confirm('이 항목을 삭제하시겠습니까?')) return;
-    // 대기 중인 저장 취소
     if (timersRef.current[itemId]) {
       clearTimeout(timersRef.current[itemId]);
       delete timersRef.current[itemId];
@@ -165,7 +166,6 @@ export default function SiteClosingPage() {
     });
   }
 
-  // 포커스 해제 시 디바운스 기다리지 않고 즉시 저장
   function flushRow(itemId) {
     if (!timersRef.current[itemId]) return;
     clearTimeout(timersRef.current[itemId]);
@@ -189,7 +189,6 @@ export default function SiteClosingPage() {
 
   const totalAmount = Object.values(editBuf).reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
-  // 저장 상태 메시지
   let saveStatus;
   if (saveError) {
     saveStatus = <span style={{ color: '#dc2626' }}>⚠ 저장 실패: {saveError}</span>;
@@ -230,27 +229,31 @@ export default function SiteClosingPage() {
         <table className="table closing-table" style={{ minWidth: 'max-content', margin: 0 }}>
           <thead>
             <tr>
-              <th style={{ minWidth: 36 }}>NO</th>
-              <th style={{ minWidth: 92 }}>업체명</th>
-              <th style={{ minWidth: 80 }}>이름</th>
-              {days.map((d) => (
-                <th key={d} style={{ minWidth: 34 }}>{d}</th>
+              <th rowSpan={2} style={{ minWidth: 34 }}>NO</th>
+              <th rowSpan={2} style={{ minWidth: 80 }}>업체명</th>
+              <th rowSpan={2} style={{ minWidth: 70 }}>이름</th>
+              {row1.map((d) => (
+                <th key={`r1h${d}`} style={{ minWidth: 32 }}>{d}</th>
               ))}
-              <th style={{ minWidth: 52 }}>수량</th>
-              <th style={{ minWidth: 84 }}>단가</th>
-              <th style={{ minWidth: 96 }}>금액</th>
-              <th style={{ minWidth: 92 }}>비고</th>
-              {canEdit && <th style={{ minWidth: 36 }}>삭제</th>}
+              <th rowSpan={2} style={{ minWidth: 48 }}>수량</th>
+              <th rowSpan={2} style={{ minWidth: 74 }}>단가</th>
+              <th rowSpan={2} style={{ minWidth: 84 }}>금액</th>
+              <th rowSpan={2} style={{ minWidth: 80 }}>비고</th>
+              {canEdit && <th rowSpan={2} style={{ minWidth: 34 }}>삭제</th>}
+            </tr>
+            <tr>
+              {row2Padded.map((d, i) => (
+                <th key={`r2h${i}`}>{d ?? ''}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {items.map((it) => {
               const buf = editBuf[it.id] || it;
-              return (
-                <tr key={it.id}>
-                  <td>
+              return [
+                <tr key={it.id + '_a'}>
+                  <td rowSpan={2}>
                     <input
-                      style={{ width: 36 }}
                       type="number"
                       value={buf.no ?? ''}
                       onChange={(e) => updateField(it.id, 'no', e.target.value)}
@@ -258,28 +261,25 @@ export default function SiteClosingPage() {
                       disabled={!canEdit}
                     />
                   </td>
-                  <td>
+                  <td rowSpan={2}>
                     <input
-                      style={{ width: 100 }}
                       value={buf.vendor || ''}
                       onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
                       onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
-                  <td>
+                  <td rowSpan={2}>
                     <input
-                      style={{ width: 100 }}
                       value={buf.detail || ''}
                       onChange={(e) => updateField(it.id, 'detail', e.target.value)}
                       onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
                   </td>
-                  {days.map((d) => (
-                    <td key={d} style={{ padding: 2 }}>
+                  {row1.map((d) => (
+                    <td key={`r1${it.id}${d}`}>
                       <input
-                        style={{ width: 36, textAlign: 'center' }}
                         type="number"
                         step="0.25"
                         value={buf.dailyQuantities?.[d] ?? ''}
@@ -289,10 +289,11 @@ export default function SiteClosingPage() {
                       />
                     </td>
                   ))}
-                  <td style={{ textAlign: 'right' }}><strong>{Number(buf.quantity || 0)}</strong></td>
-                  <td>
+                  <td rowSpan={2} style={{ textAlign: 'right', paddingRight: 6 }}>
+                    <strong>{Number(buf.quantity || 0)}</strong>
+                  </td>
+                  <td rowSpan={2}>
                     <input
-                      style={{ width: 90 }}
                       type="number"
                       value={buf.unitPrice || 0}
                       onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
@@ -300,10 +301,11 @@ export default function SiteClosingPage() {
                       disabled={!canEdit}
                     />
                   </td>
-                  <td style={{ textAlign: 'right' }}>{Number(buf.amount || 0).toLocaleString()}</td>
-                  <td>
+                  <td rowSpan={2} style={{ textAlign: 'right', paddingRight: 6 }}>
+                    {Number(buf.amount || 0).toLocaleString()}
+                  </td>
+                  <td rowSpan={2}>
                     <input
-                      style={{ width: 100 }}
                       value={buf.category || ''}
                       onChange={(e) => updateField(it.id, 'category', e.target.value)}
                       onBlur={() => flushRow(it.id)}
@@ -311,16 +313,32 @@ export default function SiteClosingPage() {
                     />
                   </td>
                   {canEdit && (
-                    <td>
+                    <td rowSpan={2}>
                       <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRow(it.id)}>✕</button>
                     </td>
                   )}
-                </tr>
-              );
+                </tr>,
+                <tr key={it.id + '_b'}>
+                  {row2Padded.map((d, i) => (
+                    <td key={`r2${it.id}${i}`}>
+                      {d !== null ? (
+                        <input
+                          type="number"
+                          step="0.25"
+                          value={buf.dailyQuantities?.[d] ?? ''}
+                          onChange={(e) => updateDay(it.id, d, e.target.value)}
+                          onBlur={() => flushRow(it.id)}
+                          disabled={!canEdit}
+                        />
+                      ) : null}
+                    </td>
+                  ))}
+                </tr>,
+              ];
             })}
             {items.length === 0 && (
               <tr>
-                <td colSpan={days.length + 8 + (canEdit ? 1 : 0)}>
+                <td colSpan={7 + row1.length + (canEdit ? 1 : 0)}>
                   <div className="text-muted text-center" style={{ padding: 20 }}>
                     항목이 없습니다.{canEdit && ' "행 추가"로 시작하세요.'}
                   </div>
@@ -331,9 +349,9 @@ export default function SiteClosingPage() {
           {items.length > 0 && (
             <tfoot>
               <tr>
-                <td colSpan={days.length + 5}><strong>월 합계</strong></td>
+                <td colSpan={5 + row1.length}><strong>월 합계</strong></td>
                 <td style={{ textAlign: 'right' }}><strong>{totalAmount.toLocaleString()}원</strong></td>
-                <td colSpan={canEdit ? 2 : 1}></td>
+                <td colSpan={1 + (canEdit ? 1 : 0)}></td>
               </tr>
             </tfoot>
           )}
