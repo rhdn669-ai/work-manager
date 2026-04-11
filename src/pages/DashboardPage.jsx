@@ -9,7 +9,8 @@ import { getDepartments } from '../services/departmentService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 
 export default function DashboardPage() {
-  const { userProfile, isAdmin, isManager } = useAuth();
+  const { userProfile, isAdmin, isManager, isTeamLeader } = useAuth();
+  const canApprove = isAdmin || isTeamLeader;
   const [monthlyOvertime, setMonthlyOvertime] = useState(0);
   const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
@@ -52,7 +53,7 @@ export default function DashboardPage() {
         });
       }
 
-      if (isAdmin || isManager) {
+      if (canApprove && userProfile.departmentId) {
         const pending = await getDepartmentPendingLeaves(userProfile.departmentId);
         setPendingLeaves(pending);
       }
@@ -206,12 +207,12 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {(isAdmin || isManager) && pendingLeaves.length > 0 && (
+      {canApprove && pendingLeaves.length > 0 && (
         <Link to="/manage/leave" className="dashboard-pending">
           <div className="pending-badge">{pendingLeaves.length}</div>
           <div>
-            <strong>연차 승인 대기</strong>
-            <span>지금 바로 확인해주세요</span>
+            <strong>연차 승인 대기 {pendingLeaves.length}건</strong>
+            <span>탭하면 승인 화면으로 이동합니다</span>
           </div>
           <div className="tile-arrow">→</div>
         </Link>

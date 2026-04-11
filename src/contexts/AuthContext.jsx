@@ -50,6 +50,8 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const isTeamLeader = !!(userProfile?.isTeamLeader) || userProfile?.role === 'manager';
+
   const value = {
     user: userProfile,
     userProfile,
@@ -60,6 +62,9 @@ export function AuthProvider({ children }) {
     isAdmin: userProfile?.role === 'admin',
     isManager: userProfile?.role === 'manager',
     isEmployee: userProfile?.role === 'employee',
+    isTeamLeader,
+    // 부서 연차 승인 권한: 관리자 또는 팀장
+    canApproveLeave: userProfile?.role === 'admin' || isTeamLeader,
   };
 
   return (
