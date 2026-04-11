@@ -119,7 +119,7 @@ export default function LeaveManagementPage() {
             <label>현재 잔여 연차 (일)</label>
             <input
               type="number"
-              step="0.5"
+              step="0.25"
               min="0"
               value={remaining}
               onChange={(e) => setRemaining(e.target.value)}
