@@ -13,6 +13,7 @@ import ManageOvertimePage from './pages/manage/ManageOvertimePage';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
+import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
         children: [
           { path: '/admin/users', element: <UserManagementPage /> },
           { path: '/admin/departments', element: <DepartmentManagementPage /> },
+          { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/reports', element: <ReportsPage /> },
         ],
       },

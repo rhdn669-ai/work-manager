@@ -121,6 +121,19 @@ async function updateLeaveBalance(userId, year, days) {
   }
 }
 
+// 연차 잔여 직접 수정 (관리자용)
+export async function updateLeaveBalanceDirect(userId, year, data) {
+  const balanceId = `${userId}_${year}`;
+  await setDoc(doc(db, 'leaveBalances', balanceId), {
+    userId,
+    year,
+    totalDays: data.totalDays,
+    usedDays: data.usedDays,
+    remainingDays: data.remainingDays,
+    updatedAt: new Date(),
+  }, { merge: true });
+}
+
 // 연차 잔여 초기화 (관리자가 연초에 실행)
 export async function initLeaveBalance(userId, joinDate, year) {
   const totalDays = calculateAnnualLeave(joinDate, year);
