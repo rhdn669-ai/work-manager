@@ -181,7 +181,7 @@ export default function SiteClosingPage() {
             <tr>
               <th style={{ minWidth: 40 }}>NO</th>
               <th style={{ minWidth: 100 }}>업체명</th>
-              <th style={{ minWidth: 100 }}>상세</th>
+              <th style={{ minWidth: 100 }}>이름</th>
               {days.map((d) => (
                 <th key={d} style={{ minWidth: 36, textAlign: 'center' }}>{d}</th>
               ))}
