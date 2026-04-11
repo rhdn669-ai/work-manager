@@ -79,7 +79,6 @@ export default function AttendanceHistoryPage() {
           <thead>
             <tr>
               <th>날짜</th>
-              <th>요일</th>
               <th>잔업 시간</th>
               <th>사유</th>
               <th>상태</th>
@@ -89,8 +88,10 @@ export default function AttendanceHistoryPage() {
           <tbody>
             {records.map((r) => (
               <tr key={r.id}>
-                <td>{r.date}</td>
-                <td>{getDayName(r.date)}</td>
+                <td>
+                  {r.date}
+                  <span className="text-muted text-sm" style={{ marginLeft: 6 }}>({getDayName(r.date)})</span>
+                </td>
                 <td>{formatMinutes(r.minutes)}</td>
                 <td>{r.reason || '-'}</td>
                 <td><StatusBadge status={r.status} labels={STATUS_LABELS} /></td>
