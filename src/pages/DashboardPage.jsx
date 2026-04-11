@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
       const [records, balance] = await Promise.all([
         getMyOvertimeRecords(userProfile.uid, start, end),
-        getLeaveBalance(userProfile.uid, now.getFullYear()),
+        getLeaveBalance(userProfile.uid),
       ]);
 
       const total = records.reduce((sum, r) => sum + (r.minutes || 0), 0);

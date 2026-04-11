@@ -3,7 +3,7 @@ import {
   query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { calculateAnnualLeave } from '../utils/leaveCalculator';
+import { calculateAccruedLeave } from '../utils/leaveCalculator';
 
 const leavesRef = collection(db, 'leaves');
 const balancesRef = collection(db, 'leaveBalances');
@@ -41,8 +41,7 @@ export async function approveLeave(leaveId, approvedByUid) {
   });
 
   // 잔여 연차 차감
-  const year = new Date(leave.startDate).getFullYear();
-  await updateLeaveBalance(leave.userId, year, leave.days);
+  await updateLeaveBalance(leave.userId, leave.days);
 }
 
 // 연차 거절
@@ -67,8 +66,7 @@ export async function cancelLeave(leaveId) {
 
   // 승인된 연차였으면 잔여 연차 복원
   if (leave.status === 'approved') {
-    const year = new Date(leave.startDate).getFullYear();
-    await updateLeaveBalance(leave.userId, year, -leave.days);
+    await updateLeaveBalance(leave.userId, -leave.days);
   }
 }
 
@@ -99,34 +97,30 @@ export async function getDepartmentPendingLeaves(departmentId) {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// 잔여 연차 조회
-export async function getLeaveBalance(userId, year) {
-  const balanceId = `${userId}_${year}`;
-  const docSnap = await getDoc(doc(db, 'leaveBalances', balanceId));
+// 잔여 연차 조회 (입사일~현재 누적 발생분 기준)
+export async function getLeaveBalance(userId) {
+  const docSnap = await getDoc(doc(db, 'leaveBalances', userId));
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
 }
 
 // 연차 잔여 갱신 (days: 양수=사용, 음수=복원)
-async function updateLeaveBalance(userId, year, days) {
-  const balanceId = `${userId}_${year}`;
-  const docSnap = await getDoc(doc(db, 'leaveBalances', balanceId));
+async function updateLeaveBalance(userId, days) {
+  const docSnap = await getDoc(doc(db, 'leaveBalances', userId));
 
   if (docSnap.exists()) {
     const data = docSnap.data();
-    await updateDoc(doc(db, 'leaveBalances', balanceId), {
-      usedDays: data.usedDays + days,
-      remainingDays: data.remainingDays - days,
+    await updateDoc(doc(db, 'leaveBalances', userId), {
+      usedDays: (data.usedDays || 0) + days,
+      remainingDays: (data.remainingDays || 0) - days,
       updatedAt: new Date(),
     });
   }
 }
 
 // 연차 잔여 직접 수정 (관리자용)
-export async function updateLeaveBalanceDirect(userId, year, data) {
-  const balanceId = `${userId}_${year}`;
-  await setDoc(doc(db, 'leaveBalances', balanceId), {
+export async function updateLeaveBalanceDirect(userId, data) {
+  await setDoc(doc(db, 'leaveBalances', userId), {
     userId,
-    year,
     totalDays: data.totalDays,
     usedDays: data.usedDays,
     remainingDays: data.remainingDays,
@@ -134,18 +128,20 @@ export async function updateLeaveBalanceDirect(userId, year, data) {
   }, { merge: true });
 }
 
-// 연차 잔여 초기화 (관리자가 연초에 실행)
-export async function initLeaveBalance(userId, joinDate, year) {
-  const totalDays = calculateAnnualLeave(joinDate, year);
-  const balanceId = `${userId}_${year}`;
+// 연차 잔여 초기화/재계산 (입사일~현재 누적 발생분으로 세팅)
+// 기존 사용량은 보존 (usedDays는 유지)
+export async function initLeaveBalance(userId, joinDate) {
+  const totalDays = calculateAccruedLeave(joinDate);
+  const ref = doc(db, 'leaveBalances', userId);
+  const existing = await getDoc(ref);
+  const usedDays = existing.exists() ? (existing.data().usedDays || 0) : 0;
 
-  await setDoc(doc(db, 'leaveBalances', balanceId), {
+  await setDoc(ref, {
     userId,
-    year,
     totalDays,
-    usedDays: 0,
-    remainingDays: totalDays,
-    createdAt: new Date(),
+    usedDays,
+    remainingDays: totalDays - usedDays,
+    createdAt: existing.exists() ? existing.data().createdAt : new Date(),
     updatedAt: new Date(),
   });
 

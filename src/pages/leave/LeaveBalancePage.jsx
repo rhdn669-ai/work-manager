@@ -5,17 +5,16 @@ import { getLeaveBalance } from '../../services/leaveService';
 export default function LeaveBalancePage() {
   const { userProfile } = useAuth();
   const [balance, setBalance] = useState(null);
-  const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (userProfile) loadBalance();
-  }, [userProfile, year]);
+  }, [userProfile]);
 
   async function loadBalance() {
     setLoading(true);
     try {
-      const data = await getLeaveBalance(userProfile.uid, year);
+      const data = await getLeaveBalance(userProfile.uid);
       setBalance(data);
     } catch (err) {
       console.error(err);
@@ -26,26 +25,20 @@ export default function LeaveBalancePage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
-  const usedPercentage = balance ? Math.round((balance.usedDays / balance.totalDays) * 100) : 0;
+  const usedPercentage = balance && balance.totalDays > 0
+    ? Math.round((balance.usedDays / balance.totalDays) * 100)
+    : 0;
 
   return (
     <div className="leave-balance-page">
       <h2>연차 잔여 현황</h2>
-
-      <div className="filters">
-        <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-          {[2024, 2025, 2026, 2027].map((y) => (
-            <option key={y} value={y}>{y}년</option>
-          ))}
-        </select>
-      </div>
 
       {balance ? (
         <div className="card">
           <div className="card-body">
             <div className="balance-overview">
               <div className="balance-item">
-                <div className="balance-label">총 연차</div>
+                <div className="balance-label">누적 발생</div>
                 <div className="balance-value">{balance.totalDays}일</div>
               </div>
               <div className="balance-item">
@@ -67,7 +60,7 @@ export default function LeaveBalancePage() {
       ) : (
         <div className="card">
           <div className="card-body">
-            <p className="text-muted">해당 연도의 연차 정보가 없습니다. 관리자에게 문의해주세요.</p>
+            <p className="text-muted">연차 정보가 없습니다. 관리자에게 문의해주세요.</p>
           </div>
         </div>
       )}

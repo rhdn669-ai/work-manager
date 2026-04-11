@@ -54,16 +54,14 @@ export default function UserManagementPage() {
           name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
         });
-        const year = new Date().getFullYear();
-        await initLeaveBalance(editUser.uid, form.joinDate, year);
+        await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
         const userId = 'user_' + Date.now();
         await createUser(userId, {
           uid: userId, name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
         });
-        const year = new Date().getFullYear();
-        await initLeaveBalance(userId, form.joinDate, year);
+        await initLeaveBalance(userId, form.joinDate);
       }
       setShowModal(false);
       await loadData();

@@ -32,8 +32,7 @@ export default function LeaveRequestPage() {
     }
 
     // 잔여 연차 확인
-    const year = new Date(startDate).getFullYear();
-    const balance = await getLeaveBalance(userProfile.uid, year);
+    const balance = await getLeaveBalance(userProfile.uid);
     if (balance && balance.remainingDays < days) {
       setError(`잔여 연차가 부족합니다. (잔여: ${balance.remainingDays}일, 신청: ${days}일)`);
       return;
