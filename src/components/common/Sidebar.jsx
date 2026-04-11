@@ -27,11 +27,17 @@ export default function Sidebar({ isOpen }) {
         )}
 
         {(isAdmin || isManager) && (
-          <div className="nav-section">
-            <div className="nav-section-title">부서 관리</div>
-            <NavLink to="/manage/overtime" className="nav-link">부서원 잔업</NavLink>
-            <NavLink to="/manage/leave" end className="nav-link">연차 승인</NavLink>
-          </div>
+          <>
+            <div className="nav-section">
+              <div className="nav-section-title">부서 관리</div>
+              <NavLink to="/manage/overtime" className="nav-link">부서원 잔업</NavLink>
+              <NavLink to="/manage/leave" end className="nav-link">연차 승인</NavLink>
+            </div>
+            <div className="nav-section">
+              <div className="nav-section-title">현장</div>
+              <NavLink to="/sites" end className="nav-link">현장 마감리스트</NavLink>
+            </div>
+          </>
         )}
 
         {isAdmin && (
@@ -40,6 +46,7 @@ export default function Sidebar({ isOpen }) {
             <NavLink to="/admin/users" className="nav-link">사용자 관리</NavLink>
             <NavLink to="/admin/departments" className="nav-link">부서 관리</NavLink>
             <NavLink to="/admin/leaves" className="nav-link">연차 관리</NavLink>
+            <NavLink to="/admin/sites" className="nav-link">현장 관리</NavLink>
             <NavLink to="/admin/reports" className="nav-link">전사 리포트</NavLink>
           </div>
         )}

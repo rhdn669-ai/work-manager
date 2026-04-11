@@ -14,6 +14,9 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import LeaveManagementPage from './pages/admin/LeaveManagementPage';
+import SiteManagementPage from './pages/admin/SiteManagementPage';
+import SiteListPage from './pages/site/SiteListPage';
+import SiteClosingPage from './pages/site/SiteClosingPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -42,6 +45,8 @@ const router = createBrowserRouter([
         children: [
           { path: '/manage/overtime', element: <ManageOvertimePage /> },
           { path: '/manage/leave', element: <ManageLeavePage /> },
+          { path: '/sites', element: <SiteListPage /> },
+          { path: '/sites/:siteId/:year/:month', element: <SiteClosingPage /> },
         ],
       },
     ],
@@ -55,6 +60,7 @@ const router = createBrowserRouter([
           { path: '/admin/users', element: <UserManagementPage /> },
           { path: '/admin/departments', element: <DepartmentManagementPage /> },
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
+          { path: '/admin/sites', element: <SiteManagementPage /> },
           { path: '/admin/reports', element: <ReportsPage /> },
         ],
       },
