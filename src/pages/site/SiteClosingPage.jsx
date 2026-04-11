@@ -34,12 +34,6 @@ export default function SiteClosingPage() {
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
-  // 두 줄로 쪼개기 (1~16 / 17~31)
-  const half = Math.ceil(dayCount / 2); // 31→16, 30→15, 28→14
-  const row1 = days.slice(0, half);
-  const row2 = days.slice(half);
-  const row2Padded = [...row2, ...Array(Math.max(0, half - row2.length)).fill(null)];
-
   useEffect(() => { loadAll(); }, [siteId, y, m]);
 
   useEffect(() => {
@@ -188,18 +182,18 @@ export default function SiteClosingPage() {
   }
 
   const totalAmount = Object.values(editBuf).reduce((s, it) => s + (Number(it.amount) || 0), 0);
+  const itemCount = items.length;
 
   let saveStatus;
   if (saveError) {
-    saveStatus = <span className="save-status save-status-error">⚠ 저장 실패: {saveError}</span>;
+    saveStatus = <span className="save-status save-status-error">⚠ 저장 실패</span>;
   } else if (savingCount > 0) {
-    saveStatus = <span className="save-status save-status-saving">● 저장 중...</span>;
+    saveStatus = <span className="save-status save-status-saving">● 저장 중</span>;
   } else if (lastSavedAt) {
     const t = lastSavedAt;
     const hh = String(t.getHours()).padStart(2, '0');
     const mm = String(t.getMinutes()).padStart(2, '0');
-    const ss = String(t.getSeconds()).padStart(2, '0');
-    saveStatus = <span className="save-status save-status-saved">✓ {hh}:{mm}:{ss} 저장됨</span>;
+    saveStatus = <span className="save-status save-status-saved">✓ {hh}:{mm} 저장됨</span>;
   } else {
     saveStatus = <span className="save-status save-status-idle">자동 저장 대기</span>;
   }
@@ -207,154 +201,132 @@ export default function SiteClosingPage() {
   return (
     <div className="site-closing-page">
       <div className="page-header">
-        <h2>{site.name} — {y}년 {m}월 마감</h2>
+        <h2>{site.name} <span className="closing-period">{y}년 {m}월</span></h2>
         <div className="page-actions">
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
           {canEdit && (
-            <button className="btn btn-outline" onClick={handleAddRow}>행 추가</button>
+            <button className="btn btn-primary" onClick={handleAddRow}>+ 항목 추가</button>
           )}
         </div>
       </div>
 
-      <div className="meta-bar">
-        <div>팀 <strong>{site.team || '-'}</strong></div>
-        <div>담당 <strong>{managerNames()}</strong></div>
-        <div>월 합계 <strong className="meta-primary">{totalAmount.toLocaleString()}원</strong></div>
+      <div className="closing-summary">
+        <div className="closing-summary-item">
+          <span className="label">팀</span>
+          <strong>{site.team || '-'}</strong>
+        </div>
+        <div className="closing-summary-item">
+          <span className="label">담당</span>
+          <strong>{managerNames()}</strong>
+        </div>
+        <div className="closing-summary-item">
+          <span className="label">항목</span>
+          <strong>{itemCount}건</strong>
+        </div>
+        <div className="closing-summary-item closing-summary-total">
+          <span className="label">월 합계</span>
+          <strong>{totalAmount.toLocaleString()}원</strong>
+        </div>
         {canEdit && saveStatus}
       </div>
 
-      <div className="table-wrap">
-        <table className="table closing-table" style={{ minWidth: 'max-content' }}>
-          <thead>
-            <tr>
-              <th rowSpan={2} style={{ minWidth: 22 }}>NO</th>
-              <th rowSpan={2} style={{ minWidth: 52 }}>업체명</th>
-              <th rowSpan={2} style={{ minWidth: 46 }}>이름</th>
-              {row1.map((d) => (
-                <th key={`r1h${d}`} style={{ minWidth: 22 }}>{d}</th>
-              ))}
-              <th rowSpan={2} style={{ minWidth: 32 }}>수량</th>
-              <th rowSpan={2} style={{ minWidth: 54 }}>단가</th>
-              <th rowSpan={2} style={{ minWidth: 62 }}>금액</th>
-              <th rowSpan={2} style={{ minWidth: 52 }}>비고</th>
-              {canEdit && <th rowSpan={2} style={{ minWidth: 24 }}>삭제</th>}
-            </tr>
-            <tr>
-              {row2Padded.map((d, i) => (
-                <th key={`r2h${i}`}>{d ?? ''}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => {
-              const buf = editBuf[it.id] || it;
-              return [
-                <tr key={it.id + '_a'}>
-                  <td rowSpan={2}>
+      {items.length === 0 ? (
+        <div className="card">
+          <div className="card-body empty-state">
+            항목이 없습니다.{canEdit && ' 우측 상단 "+ 항목 추가" 버튼으로 시작하세요.'}
+          </div>
+        </div>
+      ) : (
+        <div className="closing-cards">
+          {items.map((it) => {
+            const buf = editBuf[it.id] || it;
+            return (
+              <div className="closing-card" key={it.id}>
+                <div className="closing-card-head">
+                  <span className="closing-no">#{buf.no || '-'}</span>
+                  <input
+                    className="closing-vendor"
+                    value={buf.vendor || ''}
+                    placeholder="업체명"
+                    onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
+                    onBlur={() => flushRow(it.id)}
+                    disabled={!canEdit}
+                  />
+                  <input
+                    className="closing-name"
+                    value={buf.detail || ''}
+                    placeholder="이름"
+                    onChange={(e) => updateField(it.id, 'detail', e.target.value)}
+                    onBlur={() => flushRow(it.id)}
+                    disabled={!canEdit}
+                  />
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="closing-delete"
+                      onClick={() => handleDeleteRow(it.id)}
+                      aria-label="삭제"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  className="closing-category"
+                  value={buf.category || ''}
+                  placeholder="비고 (예: 프로버 로컬 작업)"
+                  onChange={(e) => updateField(it.id, 'category', e.target.value)}
+                  onBlur={() => flushRow(it.id)}
+                  disabled={!canEdit}
+                />
+
+                <div className="day-grid">
+                  {days.map((d) => {
+                    const v = buf.dailyQuantities?.[d];
+                    const hasValue = v !== undefined && v !== null && v !== '';
+                    return (
+                      <div className={`day-cell ${hasValue ? 'has-value' : ''}`} key={d}>
+                        <label>{d}</label>
+                        <input
+                          type="number"
+                          step="0.25"
+                          value={v ?? ''}
+                          onChange={(e) => updateDay(it.id, d, e.target.value)}
+                          onBlur={() => flushRow(it.id)}
+                          disabled={!canEdit}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="closing-card-foot">
+                  <div className="foot-field">
+                    <span className="label">수량</span>
+                    <strong>{Number(buf.quantity || 0)}일</strong>
+                  </div>
+                  <div className="foot-field">
+                    <span className="label">단가</span>
                     <input
-                      type="number"
-                      value={buf.no ?? ''}
-                      onChange={(e) => updateField(it.id, 'no', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                    />
-                  </td>
-                  <td rowSpan={2}>
-                    <input
-                      value={buf.vendor || ''}
-                      onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                    />
-                  </td>
-                  <td rowSpan={2}>
-                    <input
-                      value={buf.detail || ''}
-                      onChange={(e) => updateField(it.id, 'detail', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                    />
-                  </td>
-                  {row1.map((d) => (
-                    <td key={`r1${it.id}${d}`}>
-                      <input
-                        type="number"
-                        step="0.25"
-                        value={buf.dailyQuantities?.[d] ?? ''}
-                        onChange={(e) => updateDay(it.id, d, e.target.value)}
-                        onBlur={() => flushRow(it.id)}
-                        disabled={!canEdit}
-                      />
-                    </td>
-                  ))}
-                  <td rowSpan={2} style={{ textAlign: 'right', paddingRight: 6 }}>
-                    <strong>{Number(buf.quantity || 0)}</strong>
-                  </td>
-                  <td rowSpan={2}>
-                    <input
+                      className="closing-price"
                       type="number"
                       value={buf.unitPrice || 0}
                       onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
                       onBlur={() => flushRow(it.id)}
                       disabled={!canEdit}
                     />
-                  </td>
-                  <td rowSpan={2} style={{ textAlign: 'right', paddingRight: 6 }}>
-                    {Number(buf.amount || 0).toLocaleString()}
-                  </td>
-                  <td rowSpan={2}>
-                    <input
-                      value={buf.category || ''}
-                      onChange={(e) => updateField(it.id, 'category', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                    />
-                  </td>
-                  {canEdit && (
-                    <td rowSpan={2}>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRow(it.id)}>✕</button>
-                    </td>
-                  )}
-                </tr>,
-                <tr key={it.id + '_b'}>
-                  {row2Padded.map((d, i) => (
-                    <td key={`r2${it.id}${i}`}>
-                      {d !== null ? (
-                        <input
-                          type="number"
-                          step="0.25"
-                          value={buf.dailyQuantities?.[d] ?? ''}
-                          onChange={(e) => updateDay(it.id, d, e.target.value)}
-                          onBlur={() => flushRow(it.id)}
-                          disabled={!canEdit}
-                        />
-                      ) : null}
-                    </td>
-                  ))}
-                </tr>,
-              ];
-            })}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={7 + row1.length + (canEdit ? 1 : 0)}>
-                  <div className="text-muted text-center" style={{ padding: 20 }}>
-                    항목이 없습니다.{canEdit && ' "행 추가"로 시작하세요.'}
                   </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-          {items.length > 0 && (
-            <tfoot>
-              <tr>
-                <td colSpan={5 + row1.length}><strong>월 합계</strong></td>
-                <td style={{ textAlign: 'right' }}><strong>{totalAmount.toLocaleString()}원</strong></td>
-                <td colSpan={1 + (canEdit ? 1 : 0)}></td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
+                  <div className="foot-field closing-amount">
+                    <span className="label">금액</span>
+                    <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -918,7 +918,300 @@ body {
   display: none;
 }
 
-/* ===== 현장 마감리스트 테이블 ===== */
+/* ===== 현장 마감리스트 — 카드 그리드 뷰 ===== */
+.closing-period {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+  margin-left: 6px;
+}
+
+.closing-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.closing-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closing-summary-item .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.closing-summary-item strong {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.closing-summary-total {
+  margin-left: auto;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+}
+
+.closing-summary-total strong {
+  color: var(--primary);
+  font-size: 18px;
+}
+
+.closing-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 1100px) {
+  .closing-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.closing-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.closing-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.06);
+}
+
+.closing-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.closing-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--primary-soft);
+  color: #1e40af;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.closing-vendor,
+.closing-name,
+.closing-category,
+.closing-price {
+  border: 1px solid transparent;
+  outline: none;
+  background: transparent;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+
+.closing-vendor {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+
+.closing-name {
+  flex: 0 0 90px;
+  font-size: 13px;
+  color: var(--text-light);
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+
+.closing-vendor:hover:not(:disabled),
+.closing-name:hover:not(:disabled),
+.closing-category:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+
+.closing-vendor:focus,
+.closing-name:focus,
+.closing-category:focus {
+  background: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.closing-delete {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.12s;
+}
+
+.closing-delete:hover {
+  background: #fee2e2;
+  border-color: var(--danger);
+}
+
+.closing-category {
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-light);
+  padding: 6px 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border);
+  border-radius: 4px 4px 0 0;
+}
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 520px) {
+  .day-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+.day-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.day-cell label {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.day-cell input {
+  width: 100%;
+  height: 30px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  padding: 0;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  transition: all 0.12s;
+}
+
+.day-cell input:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.day-cell input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  z-index: 1;
+}
+
+.day-cell.has-value input {
+  background: var(--primary-soft);
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.day-cell.has-value label {
+  color: var(--primary);
+}
+
+.closing-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #f3f4f6;
+  flex-wrap: wrap;
+}
+
+.foot-field {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.foot-field .label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.foot-field strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.closing-amount {
+  margin-left: auto;
+}
+
+.closing-amount strong {
+  font-size: 15px;
+  color: var(--primary);
+}
+
+.closing-price {
+  width: 100px;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-align: right;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: #fff;
+}
+
+.closing-price:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* ===== 현장 마감리스트 — 구 테이블 스타일 (폐기, 호환용) ===== */
 .closing-table {
   border-collapse: collapse;
   background: #fff;
@@ -1145,23 +1438,45 @@ body {
     gap: 6px !important;
   }
 
-  /* 현장 마감리스트 편집 테이블 — 터치 입력 편의 */
-  .closing-table {
-    font-size: 10px;
+  /* 현장 마감리스트 카드 — 모바일 조정 */
+  .closing-summary {
+    gap: 12px;
+    padding: 10px 12px;
   }
 
-  .closing-table th {
-    padding: 4px 1px !important;
+  .closing-summary-total {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    flex-basis: 100%;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
   }
 
-  .closing-table td {
-    padding: 0 !important;
+  .closing-card {
+    padding: 12px;
   }
 
-  .closing-table input {
-    min-height: 26px;
-    padding: 3px 1px !important;
-    font-size: 10px;
+  .closing-card-head {
+    flex-wrap: wrap;
+  }
+
+  .closing-name {
+    flex: 0 0 auto;
+    min-width: 70px;
+  }
+
+  .day-cell input {
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .closing-card-foot {
+    gap: 10px;
+  }
+
+  .closing-price {
+    width: 84px;
   }
 
   /* 담당자 선택 그리드 모바일 대응 */
