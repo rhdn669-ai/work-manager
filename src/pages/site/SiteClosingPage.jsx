@@ -191,24 +191,24 @@ export default function SiteClosingPage() {
 
   let saveStatus;
   if (saveError) {
-    saveStatus = <span style={{ color: '#dc2626' }}>⚠ 저장 실패: {saveError}</span>;
+    saveStatus = <span className="save-status save-status-error">⚠ 저장 실패: {saveError}</span>;
   } else if (savingCount > 0) {
-    saveStatus = <span style={{ color: '#2563eb' }}>● 저장 중...</span>;
+    saveStatus = <span className="save-status save-status-saving">● 저장 중...</span>;
   } else if (lastSavedAt) {
     const t = lastSavedAt;
     const hh = String(t.getHours()).padStart(2, '0');
     const mm = String(t.getMinutes()).padStart(2, '0');
     const ss = String(t.getSeconds()).padStart(2, '0');
-    saveStatus = <span style={{ color: '#16a34a' }}>✓ {hh}:{mm}:{ss} 저장됨</span>;
+    saveStatus = <span className="save-status save-status-saved">✓ {hh}:{mm}:{ss} 저장됨</span>;
   } else {
-    saveStatus = <span style={{ color: '#94a3b8' }}>자동 저장 대기</span>;
+    saveStatus = <span className="save-status save-status-idle">자동 저장 대기</span>;
   }
 
   return (
     <div className="site-closing-page">
       <div className="page-header">
         <h2>{site.name} — {y}년 {m}월 마감</h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="page-actions">
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
           {canEdit && (
             <button className="btn btn-outline" onClick={handleAddRow}>행 추가</button>
@@ -216,17 +216,15 @@ export default function SiteClosingPage() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 12 }}>
-        <div className="card-body" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div>팀: <strong>{site.team || '-'}</strong></div>
-          <div>담당: <strong>{managerNames()}</strong></div>
-          <div>월 합계: <strong style={{ color: '#2563eb' }}>{totalAmount.toLocaleString()}원</strong></div>
-          {canEdit && <div style={{ fontSize: 13 }}>{saveStatus}</div>}
-        </div>
+      <div className="meta-bar">
+        <div>팀 <strong>{site.team || '-'}</strong></div>
+        <div>담당 <strong>{managerNames()}</strong></div>
+        <div>월 합계 <strong className="meta-primary">{totalAmount.toLocaleString()}원</strong></div>
+        {canEdit && saveStatus}
       </div>
 
-      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff' }}>
-        <table className="table closing-table" style={{ minWidth: 'max-content', margin: 0 }}>
+      <div className="table-wrap">
+        <table className="table closing-table" style={{ minWidth: 'max-content' }}>
           <thead>
             <tr>
               <th rowSpan={2} style={{ minWidth: 34 }}>NO</th>

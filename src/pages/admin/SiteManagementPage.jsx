@@ -136,24 +136,12 @@ export default function SiteManagementPage() {
           </div>
           <div className="form-group">
             <label>담당자 선택</label>
-            <p className="text-muted text-sm" style={{ marginTop: -4, marginBottom: 8 }}>
+            <p className="field-hint">
               관리자는 항상 모든 현장에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.
             </p>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: 8,
-                maxHeight: 300,
-                overflowY: 'auto',
-                padding: 12,
-                borderRadius: 10,
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-              }}
-            >
+            <div className="manager-grid">
               {candidates.length === 0 && (
-                <p className="text-muted text-sm" style={{ gridColumn: '1 / -1', margin: 0, textAlign: 'center' }}>
+                <p className="empty-state" style={{ gridColumn: '1 / -1' }}>
                   선택 가능한 사용자가 없습니다.
                 </p>
               )}
@@ -162,53 +150,16 @@ export default function SiteManagementPage() {
                 return (
                   <label
                     key={u.uid}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '10px 12px',
-                      background: checked ? '#eff6ff' : '#ffffff',
-                      border: `1.5px solid ${checked ? '#3b82f6' : '#e5e7eb'}`,
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      boxShadow: checked ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
-                      userSelect: 'none',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!checked) e.currentTarget.style.borderColor = '#9ca3af';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!checked) e.currentTarget.style.borderColor = '#e5e7eb';
-                    }}
+                    className={`manager-card ${checked ? 'is-checked' : ''}`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleManager(u.uid)}
-                      style={{ flexShrink: 0, width: 16, height: 16, cursor: 'pointer' }}
                     />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 14,
-                          color: checked ? '#1e40af' : '#111827',
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {u.name}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: '#6b7280',
-                          marginTop: 2,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
+                    <div className="manager-card-body">
+                      <div className="name">{u.name}</div>
+                      <div className="sub">
                         {u.code}{u.position && ` · ${u.position}`}
                       </div>
                     </div>
@@ -217,8 +168,8 @@ export default function SiteManagementPage() {
               })}
             </div>
             {form.managerIds.length > 0 && (
-              <p className="text-sm" style={{ marginTop: 6, color: '#2563eb' }}>
-                선택됨: <strong>{form.managerIds.length}명</strong>
+              <p className="manager-count">
+                선택됨 <strong>{form.managerIds.length}명</strong>
               </p>
             )}
           </div>

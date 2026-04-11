@@ -74,15 +74,14 @@ export default function SiteListPage() {
           {sites.map((s) => (
             <div
               key={s.id}
-              className="card"
+              className="card site-card"
               onClick={() => openClosing(s.id)}
-              style={{ cursor: 'pointer' }}
             >
               <div className="card-header">{s.name}</div>
               <div className="card-body">
-                <p className="text-sm">팀: {s.team || '-'}</p>
-                <p className="text-sm">담당: {managerNames(s)}</p>
-                <button className="btn btn-sm btn-primary" style={{ marginTop: 8 }}>
+                <p className="text-sm">팀 <strong>{s.team || '-'}</strong></p>
+                <p className="text-sm">담당 <strong>{managerNames(s)}</strong></p>
+                <button className="btn btn-sm btn-primary site-card-btn">
                   {year}년 {month}월 마감 열기
                 </button>
               </div>
