@@ -167,6 +167,28 @@ export default function DashboardPage() {
           <div className="tile-arrow">→</div>
         </Link>
 
+        {canApprove && (
+          <Link
+            to="/manage/leave"
+            className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
+          >
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">승인 대기</div>
+              <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
+              <div className="tile-sub">
+                {pendingLeaves.length > 0 ? '탭해서 처리' : '모두 처리됨'}
+              </div>
+            </div>
+            <div className="tile-arrow">→</div>
+          </Link>
+        )}
+
         {isAdmin && (
           <>
             {/* 사용자 관리 */}
@@ -206,17 +228,6 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-
-      {canApprove && pendingLeaves.length > 0 && (
-        <Link to="/manage/leave" className="dashboard-pending">
-          <div className="pending-badge">{pendingLeaves.length}</div>
-          <div>
-            <strong>연차 승인 대기 {pendingLeaves.length}건</strong>
-            <span>탭하면 승인 화면으로 이동합니다</span>
-          </div>
-          <div className="tile-arrow">→</div>
-        </Link>
-      )}
     </div>
   );
 }

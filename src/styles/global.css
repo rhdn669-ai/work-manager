@@ -618,6 +618,35 @@ body {
   color: #9d174d;
 }
 
+.tile-pending .tile-icon {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tile-pending.is-urgent {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.18);
+}
+
+.tile-pending.is-urgent .tile-icon {
+  background: #fde68a;
+  color: #92400e;
+}
+
+.tile-pending.is-urgent .tile-title,
+.tile-pending.is-urgent .tile-sub {
+  color: #92400e;
+}
+
+.tile-pending.is-urgent .tile-value {
+  color: #78350f;
+}
+
+.tile-pending.is-urgent .tile-arrow {
+  color: #92400e;
+}
+
 .tile-body {
   flex: 1;
   min-width: 0;
