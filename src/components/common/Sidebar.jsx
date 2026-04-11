@@ -10,7 +10,6 @@ export default function Sidebar({ isOpen }) {
         <NavLink to="/dashboard" className="nav-link">대시보드</NavLink>
 
         <div className="nav-section">
-          <div className="nav-section-title">업무</div>
           <NavLink to="/attendance" end className="nav-link">잔업</NavLink>
           <NavLink to="/leave" end className="nav-link">연차</NavLink>
           <NavLink to="/sites" end className="nav-link">현장</NavLink>
