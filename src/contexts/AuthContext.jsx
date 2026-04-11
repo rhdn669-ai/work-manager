@@ -25,7 +25,8 @@ export function AuthProvider({ children }) {
       throw new Error('잘못된 코드입니다.');
     }
     const userDoc = snapshot.docs[0];
-    const profile = { uid: userDoc.id, ...userDoc.data() };
+    // uid는 항상 Firestore 문서 ID로 강제 (data.uid가 다르거나 없을 수 있음)
+    const profile = { ...userDoc.data(), uid: userDoc.id };
     setUserProfile(profile);
     localStorage.setItem('workManagerUser', JSON.stringify(profile));
     return profile;
@@ -41,7 +42,8 @@ export function AuthProvider({ children }) {
       const q = query(collection(db, 'users'), where('code', '==', userProfile.code));
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
-        const updated = { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        const doc0 = snapshot.docs[0];
+        const updated = { ...doc0.data(), uid: doc0.id };
         setUserProfile(updated);
         localStorage.setItem('workManagerUser', JSON.stringify(updated));
       }

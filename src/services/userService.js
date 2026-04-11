@@ -6,21 +6,22 @@ import { db } from '../config/firebase';
 
 const usersRef = collection(db, 'users');
 
+// uid는 항상 문서 ID로 강제 (기존 데이터 호환)
 export async function getUsers() {
   const q = query(usersRef, orderBy('code'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs.map((d) => ({ ...d.data(), id: d.id, uid: d.id }));
 }
 
 export async function getUsersByDepartment(departmentId) {
   const q = query(usersRef, where('departmentId', '==', departmentId), orderBy('name'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs.map((d) => ({ ...d.data(), id: d.id, uid: d.id }));
 }
 
 export async function getUser(uid) {
   const docSnap = await getDoc(doc(db, 'users', uid));
-  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+  return docSnap.exists() ? { ...docSnap.data(), id: docSnap.id, uid: docSnap.id } : null;
 }
 
 export async function updateUser(uid, data) {
