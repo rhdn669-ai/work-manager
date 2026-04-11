@@ -479,7 +479,7 @@ body {
 
 @media (min-width: 720px) {
   .dashboard-tiles {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 }
 
@@ -531,6 +531,16 @@ body {
 .tile-site .tile-icon {
   background: var(--primary-soft);
   color: #1e40af;
+}
+
+.tile-users .tile-icon {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.tile-reports .tile-icon {
+  background: #fce7f3;
+  color: #9d174d;
 }
 
 .tile-body {
