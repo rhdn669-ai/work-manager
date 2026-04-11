@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyOvertimeRecords } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
+import AttendanceTabs from '../../components/common/AttendanceTabs';
 
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
@@ -32,6 +33,7 @@ export default function AttendanceHistoryPage() {
 
   return (
     <div className="history-page">
+      <AttendanceTabs />
       <h2>잔업 이력</h2>
 
       <div className="filters">

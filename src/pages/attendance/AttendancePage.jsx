@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { addOvertimeRecord, getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
 import { formatMinutes, getToday, getMonthStart, getMonthEnd } from '../../utils/dateUtils';
 import StatusBadge from '../../components/common/StatusBadge';
+import AttendanceTabs from '../../components/common/AttendanceTabs';
 
 const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절' };
 
@@ -89,6 +90,7 @@ export default function AttendancePage() {
 
   return (
     <div className="attendance-page">
+      <AttendanceTabs />
       <h2>잔업 등록</h2>
 
       <form onSubmit={handleSubmit} className="card">
