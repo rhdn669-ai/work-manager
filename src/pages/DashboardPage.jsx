@@ -90,11 +90,14 @@ export default function DashboardPage() {
             <div className="admin-stat-value">{siteCount}<span>개</span></div>
             <div className="admin-stat-sub">등록 현장</div>
           </div>
-          <div className={`admin-stat ${pendingLeaves.length > 0 ? 'is-warning' : ''}`}>
+          <Link
+            to="/manage/leave"
+            className={`admin-stat admin-stat-link ${pendingLeaves.length > 0 ? 'is-warning' : ''}`}
+          >
             <div className="admin-stat-label">승인 대기</div>
             <div className="admin-stat-value">{pendingLeaves.length}<span>건</span></div>
-            <div className="admin-stat-sub">{pendingLeaves.length > 0 ? '처리 필요' : '모두 처리됨'}</div>
-          </div>
+            <div className="admin-stat-sub">{pendingLeaves.length > 0 ? '탭해서 처리' : '모두 처리됨'}</div>
+          </Link>
         </div>
       )}
 
@@ -167,7 +170,7 @@ export default function DashboardPage() {
           <div className="tile-arrow">→</div>
         </Link>
 
-        {canApprove && (
+        {canApprove && !isAdmin && (
           <Link
             to="/manage/leave"
             className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
