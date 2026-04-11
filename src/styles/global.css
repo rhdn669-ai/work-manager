@@ -694,6 +694,83 @@ body {
   display: none;
 }
 
+/* ===== 현장 마감리스트 테이블 ===== */
+.closing-table {
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.closing-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f3f4f6;
+  border-bottom: 2px solid #d1d5db;
+  padding: 10px 6px !important;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.closing-table td {
+  padding: 2px 3px !important;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f8fafc;
+  vertical-align: middle;
+  font-size: 12px;
+}
+
+.closing-table tbody tr:hover td {
+  background: #fafbfc;
+}
+
+.closing-table tfoot td {
+  padding: 10px 8px !important;
+  background: #f9fafb;
+  border-top: 2px solid #d1d5db;
+  font-size: 13px;
+}
+
+.closing-table input {
+  width: 100% !important;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 7px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #111827;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.closing-table input[type="number"] {
+  text-align: center;
+}
+
+.closing-table input:hover:not(:disabled):not(:focus) {
+  background: #f3f4f6;
+}
+
+.closing-table input:focus {
+  background: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.closing-table input:disabled {
+  color: #6b7280;
+  cursor: default;
+}
+
+/* 일별 수량 0 입력시 회색 */
+.closing-table input[type="number"]:placeholder-shown {
+  color: #9ca3af;
+}
+
 /* ===== 페이지 내부 탭바 ===== */
 .tab-nav {
   display: flex;
@@ -847,18 +924,9 @@ body {
     padding: 4px 2px !important;
   }
 
-  .closing-table input[type="number"] {
-    min-width: 44px !important;
-    width: 44px !important;
-    min-height: 32px;
-    padding: 4px !important;
-    font-size: 12px;
-  }
-
-  .closing-table input:not([type="number"]) {
-    min-width: 90px !important;
-    min-height: 32px;
-    padding: 4px 6px !important;
+  .closing-table input {
+    min-height: 34px;
+    padding: 6px 6px !important;
     font-size: 12px;
   }
 

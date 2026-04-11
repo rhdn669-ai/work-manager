@@ -226,21 +226,21 @@ export default function SiteClosingPage() {
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table className="table closing-table" style={{ fontSize: 12, minWidth: 'max-content' }}>
+      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff' }}>
+        <table className="table closing-table" style={{ minWidth: 'max-content', margin: 0 }}>
           <thead>
             <tr>
-              <th style={{ minWidth: 40 }}>NO</th>
-              <th style={{ minWidth: 100 }}>업체명</th>
-              <th style={{ minWidth: 100 }}>이름</th>
+              <th style={{ minWidth: 48 }}>NO</th>
+              <th style={{ minWidth: 120 }}>업체명</th>
+              <th style={{ minWidth: 110 }}>이름</th>
               {days.map((d) => (
-                <th key={d} style={{ minWidth: 36, textAlign: 'center' }}>{d}</th>
+                <th key={d} style={{ minWidth: 44 }}>{d}</th>
               ))}
-              <th style={{ minWidth: 60 }}>수량</th>
-              <th style={{ minWidth: 90 }}>단가</th>
-              <th style={{ minWidth: 100 }}>금액</th>
-              <th style={{ minWidth: 100 }}>비고</th>
-              {canEdit && <th>삭제</th>}
+              <th style={{ minWidth: 68 }}>수량</th>
+              <th style={{ minWidth: 110 }}>단가</th>
+              <th style={{ minWidth: 120 }}>금액</th>
+              <th style={{ minWidth: 120 }}>비고</th>
+              {canEdit && <th style={{ minWidth: 48 }}>삭제</th>}
             </tr>
           </thead>
           <tbody>
