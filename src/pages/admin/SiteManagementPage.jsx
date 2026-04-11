@@ -10,7 +10,7 @@ export default function SiteManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editSite, setEditSite] = useState(null);
   const [form, setForm] = useState({
-    name: '', team: '', managerIds: [], managerName: '', deputyName: '',
+    name: '', team: '', managerIds: [],
   });
   const [vendorText, setVendorText] = useState('');
 
@@ -30,7 +30,7 @@ export default function SiteManagementPage() {
 
   function openCreate() {
     setEditSite(null);
-    setForm({ name: '', team: '', managerIds: [], managerName: '', deputyName: '' });
+    setForm({ name: '', team: '', managerIds: [] });
     setVendorText('');
     setShowModal(true);
   }
@@ -41,8 +41,6 @@ export default function SiteManagementPage() {
       name: site.name,
       team: site.team || '',
       managerIds: site.managerIds || [],
-      managerName: site.managerName || '',
-      deputyName: site.deputyName || '',
     });
     setVendorText((site.defaultVendors || []).join(', '));
     setShowModal(true);
@@ -87,8 +85,6 @@ export default function SiteManagementPage() {
   if (loading) return <div className="loading">로딩 중...</div>;
 
   const userMap = Object.fromEntries(users.map((u) => [u.uid, u]));
-  // 전체 사용자를 후보로 노출 (role 무관). 현장 단위 담당 지정이므로 사원도 선택 가능.
-  const managerCandidates = users;
 
   return (
     <div className="site-management-page">
@@ -102,8 +98,7 @@ export default function SiteManagementPage() {
           <tr>
             <th>현장명</th>
             <th>팀</th>
-            <th>담당 팀장</th>
-            <th>표시명 (팀장/대리)</th>
+            <th>담당자</th>
             <th>작업</th>
           </tr>
         </thead>
@@ -116,16 +111,13 @@ export default function SiteManagementPage() {
                 {(s.managerIds || []).map((uid) => userMap[uid]?.name || uid).join(', ') || '-'}
               </td>
               <td>
-                {s.managerName || '-'}{s.deputyName ? ` / ${s.deputyName}` : ''}
-              </td>
-              <td>
                 <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>수정</button>
                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>삭제</button>
               </td>
             </tr>
           ))}
           {sites.length === 0 && (
-            <tr><td colSpan="5"><div className="text-muted text-center">등록된 현장이 없습니다.</div></td></tr>
+            <tr><td colSpan="4"><div className="text-muted text-center">등록된 현장이 없습니다.</div></td></tr>
           )}
         </tbody>
       </table>
@@ -141,20 +133,12 @@ export default function SiteManagementPage() {
             <input value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} placeholder="예: 전장 2팀" />
           </div>
           <div className="form-group">
-            <label>팀장 표시명</label>
-            <input value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} placeholder="예: 팀장 하성민" />
-          </div>
-          <div className="form-group">
-            <label>대리/부 표시명</label>
-            <input value={form.deputyName} onChange={(e) => setForm({ ...form, deputyName: e.target.value })} placeholder="예: 대리 윤재상" />
-          </div>
-          <div className="form-group">
             <label>담당자 (복수 선택, 체크된 사용자가 이 현장을 조회/편집할 수 있음)</label>
             <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #ddd', padding: 8, borderRadius: 4 }}>
-              {managerCandidates.length === 0 && (
+              {users.length === 0 && (
                 <p className="text-muted text-sm">등록된 사용자가 없습니다.</p>
               )}
-              {managerCandidates.map((u) => (
+              {users.map((u) => (
                 <label key={u.uid} style={{ display: 'block', padding: '4px 0' }}>
                   <input
                     type="checkbox"

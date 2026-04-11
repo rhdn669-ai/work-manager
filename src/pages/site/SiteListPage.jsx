@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getSitesByManager } from '../../services/siteService';
+import { getUsers } from '../../services/userService';
 
 export default function SiteListPage() {
   const { userProfile, isAdmin } = useAuth();
   const [sites, setSites] = useState([]);
+  const [userMap, setUserMap] = useState({});
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -13,16 +15,18 @@ export default function SiteListPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (userProfile) loadSites();
+    if (userProfile) loadData();
   }, [userProfile]);
 
-  async function loadSites() {
+  async function loadData() {
     setLoading(true);
     try {
-      const list = isAdmin
-        ? await getAllSites()
-        : await getSitesByManager(userProfile.uid);
+      const [list, users] = await Promise.all([
+        isAdmin ? getAllSites() : getSitesByManager(userProfile.uid),
+        getUsers(),
+      ]);
       setSites(list);
+      setUserMap(Object.fromEntries(users.map((u) => [u.uid, u])));
     } catch (err) {
       console.error(err);
     } finally {
@@ -32,6 +36,12 @@ export default function SiteListPage() {
 
   function openClosing(siteId) {
     navigate(`/sites/${siteId}/${year}/${month}`);
+  }
+
+  function managerNames(site) {
+    const ids = site.managerIds || [];
+    const names = ids.map((uid) => userMap[uid]?.name).filter(Boolean);
+    return names.length ? names.join(', ') : '-';
   }
 
   if (loading) return <div className="loading">로딩 중...</div>;
@@ -71,7 +81,7 @@ export default function SiteListPage() {
               <div className="card-header">{s.name}</div>
               <div className="card-body">
                 <p className="text-sm">팀: {s.team || '-'}</p>
-                <p className="text-sm">담당: {s.managerName || '-'}</p>
+                <p className="text-sm">담당: {managerNames(s)}</p>
                 <button className="btn btn-sm btn-primary" style={{ marginTop: 8 }}>
                   {year}년 {month}월 마감 열기
                 </button>

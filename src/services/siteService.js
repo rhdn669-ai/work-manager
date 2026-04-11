@@ -34,8 +34,6 @@ export async function createSite(data) {
     name: data.name,
     team: data.team || '',
     managerIds: data.managerIds || [],
-    managerName: data.managerName || '',
-    deputyName: data.deputyName || '',
     defaultVendors: data.defaultVendors || [],
     createdAt: new Date(),
     updatedAt: new Date(),

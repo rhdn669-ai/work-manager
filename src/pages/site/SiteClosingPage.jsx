@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
 } from '../../services/siteService';
+import { getUsers } from '../../services/userService';
 
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
@@ -17,6 +18,7 @@ export default function SiteClosingPage() {
   const navigate = useNavigate();
 
   const [site, setSite] = useState(null);
+  const [userMap, setUserMap] = useState({});
   const [items, setItems] = useState([]);
   const [editBuf, setEditBuf] = useState({});
   const [loading, setLoading] = useState(true);
@@ -31,10 +33,14 @@ export default function SiteClosingPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const s = await getSite(siteId);
+      const [s, its, users] = await Promise.all([
+        getSite(siteId),
+        getClosingItems(siteId, y, m),
+        getUsers(),
+      ]);
       setSite(s);
-      const its = await getClosingItems(siteId, y, m);
       setItems(its);
+      setUserMap(Object.fromEntries(users.map((u) => [u.uid, u])));
       const buf = {};
       its.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
       setEditBuf(buf);
@@ -43,6 +49,12 @@ export default function SiteClosingPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function managerNames() {
+    const ids = site?.managerIds || [];
+    const names = ids.map((uid) => userMap[uid]?.name).filter(Boolean);
+    return names.length ? names.join(', ') : '-';
   }
 
   async function handleAddRow() {
@@ -158,7 +170,7 @@ export default function SiteClosingPage() {
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div>팀: <strong>{site.team || '-'}</strong></div>
-          <div>담당: <strong>{site.managerName || '-'}</strong>{site.deputyName && ` / ${site.deputyName}`}</div>
+          <div>담당: <strong>{managerNames()}</strong></div>
           <div>월 합계: <strong style={{ color: '#2563eb' }}>{totalAmount.toLocaleString()}원</strong></div>
         </div>
       </div>
