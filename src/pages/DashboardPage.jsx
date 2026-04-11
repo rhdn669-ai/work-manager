@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { getMyOvertimeRecords } from '../services/attendanceService';
 import { getLeaveBalance, getDepartmentPendingLeaves } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
+import { getUsers } from '../services/userService';
+import { getDepartments } from '../services/departmentService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 
 export default function DashboardPage() {
@@ -13,6 +15,7 @@ export default function DashboardPage() {
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [siteCount, setSiteCount] = useState(0);
+  const [adminStats, setAdminStats] = useState({ users: 0, activeUsers: 0, departments: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,10 +29,12 @@ export default function DashboardPage() {
       const start = getMonthStart(now.getFullYear(), now.getMonth() + 1);
       const end = getMonthEnd(now.getFullYear(), now.getMonth() + 1);
 
-      const [records, balance, sites] = await Promise.all([
+      const [records, balance, sites, users, departments] = await Promise.all([
         isAdmin ? Promise.resolve([]) : getMyOvertimeRecords(userProfile.uid, start, end),
         isAdmin ? Promise.resolve(null) : getLeaveBalance(userProfile.uid),
         isAdmin ? getAllSites() : getSitesByManager(userProfile.uid),
+        isAdmin ? getUsers() : Promise.resolve([]),
+        isAdmin ? getDepartments() : Promise.resolve([]),
       ]);
 
       const total = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
@@ -37,6 +42,15 @@ export default function DashboardPage() {
       setOvertimeCount(records.length);
       setLeaveBalance(balance);
       setSiteCount(sites.length);
+
+      if (isAdmin) {
+        const activeUsers = users.filter((u) => u.isActive !== false).length;
+        setAdminStats({
+          users: users.length,
+          activeUsers,
+          departments: departments.length,
+        });
+      }
 
       if (isAdmin || isManager) {
         const pending = await getDepartmentPendingLeaves(userProfile.departmentId);
@@ -57,6 +71,31 @@ export default function DashboardPage() {
         <h2>안녕하세요, {userProfile?.name}님</h2>
         <p>오늘도 좋은 하루 되세요.</p>
       </div>
+
+      {isAdmin && (
+        <div className="admin-stats">
+          <div className="admin-stat">
+            <div className="admin-stat-label">사용자</div>
+            <div className="admin-stat-value">{adminStats.users}<span>명</span></div>
+            <div className="admin-stat-sub">활성 {adminStats.activeUsers}명</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-label">부서</div>
+            <div className="admin-stat-value">{adminStats.departments}<span>개</span></div>
+            <div className="admin-stat-sub">조직 단위</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-label">현장</div>
+            <div className="admin-stat-value">{siteCount}<span>개</span></div>
+            <div className="admin-stat-sub">등록 현장</div>
+          </div>
+          <div className={`admin-stat ${pendingLeaves.length > 0 ? 'is-warning' : ''}`}>
+            <div className="admin-stat-label">승인 대기</div>
+            <div className="admin-stat-value">{pendingLeaves.length}<span>건</span></div>
+            <div className="admin-stat-sub">{pendingLeaves.length > 0 ? '처리 필요' : '모두 처리됨'}</div>
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-tiles">
         {!isAdmin && (

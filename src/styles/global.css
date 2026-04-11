@@ -470,6 +470,81 @@ body {
   font-size: 13px;
 }
 
+/* ===== 관리자 상단 통계 카드 ===== */
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@media (min-width: 720px) {
+  .admin-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.admin-stat {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+  transition: border-color 0.15s;
+}
+
+.admin-stat.is-warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+}
+
+.admin-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-light);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.admin-stat.is-warning .admin-stat-label {
+  color: #92400e;
+}
+
+.admin-stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.admin-stat-value span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-left: 3px;
+}
+
+.admin-stat.is-warning .admin-stat-value {
+  color: #78350f;
+}
+
+.admin-stat.is-warning .admin-stat-value span {
+  color: #92400e;
+}
+
+.admin-stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.admin-stat.is-warning .admin-stat-sub {
+  color: #92400e;
+  font-weight: 600;
+}
+
 .dashboard-tiles {
   display: grid;
   grid-template-columns: 1fr;
