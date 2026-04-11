@@ -706,7 +706,7 @@ body {
   z-index: 2;
   background: #f3f4f6;
   border-bottom: 2px solid #d1d5db;
-  padding: 10px 6px !important;
+  padding: 7px 3px !important;
   font-size: 11px;
   font-weight: 600;
   color: #374151;
@@ -715,11 +715,11 @@ body {
 }
 
 .closing-table td {
-  padding: 2px 3px !important;
+  padding: 1px 2px !important;
   border-bottom: 1px solid #f1f5f9;
   border-right: 1px solid #f8fafc;
   vertical-align: middle;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .closing-table tbody tr:hover td {
@@ -738,11 +738,11 @@ body {
   box-sizing: border-box;
   border: 1px solid transparent;
   background: transparent;
-  padding: 7px 8px;
-  font-size: 12px;
+  padding: 5px 4px;
+  font-size: 11px;
   font-family: inherit;
   color: #111827;
-  border-radius: 5px;
+  border-radius: 4px;
   outline: none;
   transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
 }

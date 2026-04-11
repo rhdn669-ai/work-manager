@@ -230,17 +230,17 @@ export default function SiteClosingPage() {
         <table className="table closing-table" style={{ minWidth: 'max-content', margin: 0 }}>
           <thead>
             <tr>
-              <th style={{ minWidth: 48 }}>NO</th>
-              <th style={{ minWidth: 120 }}>업체명</th>
-              <th style={{ minWidth: 110 }}>이름</th>
+              <th style={{ minWidth: 36 }}>NO</th>
+              <th style={{ minWidth: 92 }}>업체명</th>
+              <th style={{ minWidth: 80 }}>이름</th>
               {days.map((d) => (
-                <th key={d} style={{ minWidth: 44 }}>{d}</th>
+                <th key={d} style={{ minWidth: 34 }}>{d}</th>
               ))}
-              <th style={{ minWidth: 68 }}>수량</th>
-              <th style={{ minWidth: 110 }}>단가</th>
-              <th style={{ minWidth: 120 }}>금액</th>
-              <th style={{ minWidth: 120 }}>비고</th>
-              {canEdit && <th style={{ minWidth: 48 }}>삭제</th>}
+              <th style={{ minWidth: 52 }}>수량</th>
+              <th style={{ minWidth: 84 }}>단가</th>
+              <th style={{ minWidth: 96 }}>금액</th>
+              <th style={{ minWidth: 92 }}>비고</th>
+              {canEdit && <th style={{ minWidth: 36 }}>삭제</th>}
             </tr>
           </thead>
           <tbody>
