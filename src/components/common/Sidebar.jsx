@@ -7,7 +7,7 @@ export default function Sidebar({ isOpen }) {
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <nav className="sidebar-nav">
-        <NavLink to="/dashboard" className="nav-link">대시보드</NavLink>
+        <NavLink to="/dashboard" className="nav-link">홈</NavLink>
 
         <div className="nav-section">
           <NavLink to="/attendance" end className="nav-link">잔업</NavLink>
