@@ -9,7 +9,7 @@ import { getDepartments } from '../services/departmentService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 
 export default function DashboardPage() {
-  const { userProfile, isAdmin, isManager, canApproveLeaveLeave, canApproveLeaveAll } = useAuth();
+  const { userProfile, isAdmin, isManager, canApproveLeave, canApproveAll } = useAuth();
   const [monthlyOvertime, setMonthlyOvertime] = useState(0);
   const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
@@ -52,8 +52,8 @@ export default function DashboardPage() {
         });
       }
 
-      if (canApproveLeaveLeave) {
-        const pending = canApproveLeaveAll
+      if (canApproveLeave) {
+        const pending = canApproveAll
           ? await getAllPendingLeaves()
           : userProfile.departmentId
             ? await getDepartmentPendingLeaves(userProfile.departmentId)
