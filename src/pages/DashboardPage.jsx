@@ -74,29 +74,77 @@ export default function DashboardPage() {
       </div>
 
       {isAdmin && (
-        <div className="admin-stats">
-          <div className="admin-stat">
-            <div className="admin-stat-label">사용자</div>
-            <div className="admin-stat-value">{adminStats.users}<span>명</span></div>
-            <div className="admin-stat-sub">활성 {adminStats.activeUsers}명</div>
+        <div className="dashboard-tiles">
+          <div className="dashboard-tile tile-users is-static">
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">사용자</div>
+              <div className="tile-value">{adminStats.users}<span style={{ fontSize: 13, marginLeft: 3 }}>명</span></div>
+              <div className="tile-sub">활성 {adminStats.activeUsers}명</div>
+            </div>
           </div>
-          <div className="admin-stat">
-            <div className="admin-stat-label">부서</div>
-            <div className="admin-stat-value">{adminStats.departments}<span>개</span></div>
-            <div className="admin-stat-sub">조직 단위</div>
+
+          <div className="dashboard-tile tile-departments is-static">
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 21h18"/>
+                <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+                <line x1="10" y1="8" x2="14" y2="8"/>
+                <line x1="10" y1="12" x2="14" y2="12"/>
+                <line x1="10" y1="16" x2="14" y2="16"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">부서</div>
+              <div className="tile-value">{adminStats.departments}<span style={{ fontSize: 13, marginLeft: 3 }}>개</span></div>
+              <div className="tile-sub">조직 단위</div>
+            </div>
           </div>
-          <div className="admin-stat">
-            <div className="admin-stat-label">현장</div>
-            <div className="admin-stat-value">{siteCount}<span>개</span></div>
-            <div className="admin-stat-sub">등록 현장</div>
+
+          <div className="dashboard-tile tile-site is-static">
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 21h18"/>
+                <path d="M5 21V7l7-4 7 4v14"/>
+                <path d="M9 9h.01"/>
+                <path d="M9 13h.01"/>
+                <path d="M9 17h.01"/>
+                <path d="M15 9h.01"/>
+                <path d="M15 13h.01"/>
+                <path d="M15 17h.01"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">현장</div>
+              <div className="tile-value">{siteCount}<span style={{ fontSize: 13, marginLeft: 3 }}>개</span></div>
+              <div className="tile-sub">등록 현장</div>
+            </div>
           </div>
+
           <Link
             to="/manage/leave"
-            className={`admin-stat admin-stat-link ${pendingLeaves.length > 0 ? 'is-warning' : ''}`}
+            className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
           >
-            <div className="admin-stat-label">승인 대기</div>
-            <div className="admin-stat-value">{pendingLeaves.length}<span>건</span></div>
-            <div className="admin-stat-sub">{pendingLeaves.length > 0 ? '탭해서 처리' : '모두 처리됨'}</div>
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">승인 대기</div>
+              <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
+              <div className="tile-sub">
+                {pendingLeaves.length > 0 ? '탭해서 처리' : '모두 처리됨'}
+              </div>
+            </div>
           </Link>
         </div>
       )}
