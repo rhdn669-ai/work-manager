@@ -23,8 +23,7 @@ export default function Sidebar({ isOpen }) {
         {canApprove && (
           <div className="nav-section">
             <div className="nav-section-title">부서 관리</div>
-            <NavLink to="/manage/overtime" className="nav-link">부서원 잔업</NavLink>
-            <NavLink to="/manage/leave" end className="nav-link">연차 승인</NavLink>
+            <NavLink to="/manage/leave" end className="nav-link">연차 관리</NavLink>
           </div>
         )}
 
