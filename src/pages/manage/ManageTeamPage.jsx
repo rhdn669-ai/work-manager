@@ -226,7 +226,12 @@ export default function ManageTeamPage() {
           <div className="form-group">
             <label>팀장 선택 *</label>
             <div className="manager-grid">
-              {users.filter((u) => u.role !== 'admin').map((u) => {
+              {users.filter((u) => {
+                if (u.role === 'admin') return false;
+                // 다른 팀에 이미 소속된 사용자 제외 (현재 편집 중인 팀 제외)
+                if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
+                return true;
+              }).map((u) => {
                 const selected = form.managerId === u.uid;
                 return (
                   <label key={u.uid} className={`manager-card ${selected ? 'is-checked' : ''}`}>
@@ -243,7 +248,13 @@ export default function ManageTeamPage() {
           <div className="form-group">
             <label>팀원 선택</label>
             <div className="manager-grid">
-              {users.filter((u) => u.role !== 'admin' && u.uid !== form.managerId).map((u) => {
+              {users.filter((u) => {
+                if (u.role === 'admin') return false;
+                if (u.uid === form.managerId) return false;
+                // 다른 팀에 이미 소속된 사용자 제외 (현재 편집 중인 팀 제외)
+                if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
+                return true;
+              }).map((u) => {
                 const checked = form.memberIds.includes(u.uid);
                 return (
                   <label key={u.uid} className={`manager-card ${checked ? 'is-checked' : ''}`}>
