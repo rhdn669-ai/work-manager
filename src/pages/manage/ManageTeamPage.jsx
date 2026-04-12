@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUsers, updateUser } from '../../services/userService';
 import { getDepartments, getDepartmentsByLeader, addDepartment, updateDepartment, deleteDepartment } from '../../services/departmentService';
-import { getLeaveBalance } from '../../services/leaveService';
+import { getMyOvertimeRecords } from '../../services/attendanceService';
+import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 import Modal from '../../components/common/Modal';
 
 export default function ManageTeamPage() {
   const { userProfile, isAdmin, canApproveAll } = useAuth();
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
-  const [balances, setBalances] = useState({});
+  const [overtimeMap, setOvertimeMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editTeam, setEditTeam] = useState(null);
@@ -28,18 +29,21 @@ export default function ManageTeamPage() {
       setTeams(allTeams);
       setUsers(allUsers);
 
-      // 팀원 연차 조회 (팀장 뷰에서만, 관리자는 팀 설정이 주)
+      // 팀원 잔업 조회 (팀장 뷰)
       if (!isAdmin) {
-        const bals = {};
+        const now = new Date();
+        const start = getMonthStart(now.getFullYear(), now.getMonth() + 1);
+        const end = getMonthEnd(now.getFullYear(), now.getMonth() + 1);
+        const otMap = {};
         const myTeam = allTeams[0];
         if (myTeam) {
           const members = allUsers.filter((u) => u.departmentId === myTeam.id && u.uid !== userProfile.uid);
           for (const u of members) {
-            const bal = await getLeaveBalance(u.uid);
-            if (bal) bals[u.uid] = bal;
+            const records = await getMyOvertimeRecords(u.uid, start, end);
+            otMap[u.uid] = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
           }
         }
-        setBalances(bals);
+        setOvertimeMap(otMap);
       }
     } catch (err) {
       console.error(err);
@@ -139,35 +143,34 @@ export default function ManageTeamPage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
-  // === 팀장(비관리자) 뷰: 내 팀원 목록 (읽기 전용) ===
+  // === 팀장(비관리자) 뷰: 팀원 현황 (이름 + 직급 + 이번 달 잔업) ===
   if (!isAdmin) {
     const myTeam = teams[0];
     const members = myTeam ? users.filter((u) => u.departmentId === myTeam.id && u.uid !== userProfile.uid) : [];
+    const now = new Date();
     return (
       <div className="manage-team-page">
         <div className="page-header">
-          <h2>팀 관리{myTeam && ` — ${myTeam.name}`}</h2>
+          <h2>팀원 현황{myTeam && ` — ${myTeam.name}`}</h2>
         </div>
         <p className="field-hint">
-          아래 팀원의 연차를 승인할 수 있습니다.
+          {now.getFullYear()}년 {now.getMonth() + 1}월 기준 잔업 현황
         </p>
         {members.length === 0 ? (
           <div className="card"><div className="card-body empty-state">소속 팀원이 없습니다.</div></div>
         ) : (
           <table className="table">
             <thead>
-              <tr><th>이름</th><th>코드</th><th>직급</th><th>연차 잔여</th><th>사용</th></tr>
+              <tr><th>이름</th><th>직급</th><th>이번 달 잔업</th></tr>
             </thead>
             <tbody>
               {members.map((u) => {
-                const bal = balances[u.uid];
+                const minutes = overtimeMap[u.uid] || 0;
                 return (
                   <tr key={u.uid}>
                     <td><strong>{u.name}</strong></td>
-                    <td><code>{u.code}</code></td>
                     <td>{u.position || '-'}</td>
-                    <td>{bal ? <strong style={{ color: 'var(--primary)' }}>{bal.remainingDays}일</strong> : '-'}</td>
-                    <td>{bal ? `${bal.usedDays}일 / ${bal.totalDays}일` : '-'}</td>
+                    <td>{minutes > 0 ? <strong style={{ color: 'var(--primary)' }}>{formatMinutes(minutes)}</strong> : '-'}</td>
                   </tr>
                 );
               })}
