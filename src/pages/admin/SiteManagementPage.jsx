@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { getAllSites, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import Modal from '../../components/common/Modal';
-import SiteTabs from '../../components/common/SiteTabs';
 
 export default function SiteManagementPage() {
   const [sites, setSites] = useState([]);
@@ -91,7 +90,6 @@ export default function SiteManagementPage() {
 
   return (
     <div className="site-management-page">
-      <SiteTabs />
       <div className="page-header">
         <h2>현장 관리</h2>
         <button className="btn btn-primary" onClick={openCreate}>현장 추가</button>

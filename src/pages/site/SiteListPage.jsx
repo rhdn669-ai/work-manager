@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getSitesByManager } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
-import SiteTabs from '../../components/common/SiteTabs';
 
 export default function SiteListPage() {
   const { userProfile, isAdmin } = useAuth();
@@ -44,7 +43,6 @@ export default function SiteListPage() {
 
   return (
     <div className="site-list-page">
-      <SiteTabs />
       <div className="page-header">
         <h2>현장 마감리스트</h2>
       </div>
