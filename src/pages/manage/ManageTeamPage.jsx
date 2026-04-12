@@ -14,6 +14,7 @@ export default function ManageTeamPage() {
   const [showModal, setShowModal] = useState(false);
   const [editTeam, setEditTeam] = useState(null);
   const [form, setForm] = useState({ name: '', managerId: '', memberIds: [] });
+  const [memberListOpen, setMemberListOpen] = useState(false);
 
   useEffect(() => { if (userProfile) loadData(); }, [userProfile]);
 
@@ -238,25 +239,32 @@ export default function ManageTeamPage() {
           </div>
           <div className="form-group">
             <label>팀원 선택</label>
-            <div className="select-list">
-              {users.filter((u) => {
-                if (u.role === 'admin') return false;
-                if (u.uid === form.managerId) return false;
-                if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
-                return true;
-              }).map((u) => {
-                const checked = form.memberIds.includes(u.uid);
-                return (
-                  <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
-                    <input type="checkbox" checked={checked} onChange={() => toggleMember(u.uid)} />
-                    <span className="select-list-name">{u.name}</span>
-                    <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
-                  </label>
-                );
-              })}
-            </div>
-            {form.memberIds.length > 0 && (
-              <p className="manager-count">선택됨 <strong>{form.memberIds.length}명</strong></p>
+            <button
+              type="button"
+              className="select-dropdown-toggle"
+              onClick={() => setMemberListOpen(!memberListOpen)}
+            >
+              <span>{form.memberIds.length > 0 ? `${form.memberIds.length}명 선택됨` : '팀원을 선택하세요'}</span>
+              <span className="select-dropdown-arrow">{memberListOpen ? '▲' : '▼'}</span>
+            </button>
+            {memberListOpen && (
+              <div className="select-dropdown-list">
+                {users.filter((u) => {
+                  if (u.role === 'admin') return false;
+                  if (u.uid === form.managerId) return false;
+                  if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
+                  return true;
+                }).map((u) => {
+                  const checked = form.memberIds.includes(u.uid);
+                  return (
+                    <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleMember(u.uid)} />
+                      <span className="select-list-name">{u.name}</span>
+                      <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
+                    </label>
+                  );
+                })}
+              </div>
             )}
           </div>
           <div className="modal-actions">

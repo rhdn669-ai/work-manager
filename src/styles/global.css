@@ -1269,13 +1269,46 @@ body {
   color: var(--primary);
 }
 
-/* ===== 셀렉트 리스트 (팀원 선택 등) ===== */
-.select-list {
-  max-height: 260px;
+/* ===== 셀렉트 드롭다운 (팀원 선택 등) ===== */
+.select-dropdown-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.select-dropdown-toggle:hover {
+  border-color: var(--border-strong);
+}
+
+.select-dropdown-toggle:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.select-dropdown-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.select-dropdown-list {
+  max-height: 240px;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
+  margin-top: 4px;
   background: #fff;
+  box-shadow: var(--shadow);
 }
 
 .select-list-item {
