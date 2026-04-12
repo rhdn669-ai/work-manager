@@ -28,7 +28,6 @@ export default function Sidebar({ isOpen }) {
           <div className="nav-section">
             <div className="nav-section-title">시스템 관리</div>
             <NavLink to="/admin/users" className="nav-link">사용자 관리</NavLink>
-            <NavLink to="/admin/departments" className="nav-link">부서 관리</NavLink>
             <NavLink to="/admin/leaves" className="nav-link">연차 잔여</NavLink>
             <NavLink to="/admin/sites" className="nav-link">현장 관리</NavLink>
             <NavLink to="/sites" end className="nav-link">마감 리스트</NavLink>
