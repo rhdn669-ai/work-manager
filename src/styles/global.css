@@ -1269,6 +1269,63 @@ body {
   color: var(--primary);
 }
 
+/* ===== 셀렉트 리스트 (팀원 선택 등) ===== */
+.select-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.select-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--bg-subtle);
+  user-select: none;
+}
+
+.select-list-item:last-child {
+  border-bottom: none;
+}
+
+.select-list-item:hover {
+  background: var(--bg-subtle);
+}
+
+.select-list-item.is-checked {
+  background: var(--primary-soft);
+}
+
+.select-list-item input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.select-list-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.select-list-item.is-checked .select-list-name {
+  color: #1e40af;
+}
+
+.select-list-sub {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 /* ===== 힌트/빈 상태 ===== */
 .field-hint {
   font-size: var(--font-sm);

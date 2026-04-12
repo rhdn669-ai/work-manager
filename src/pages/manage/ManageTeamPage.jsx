@@ -225,44 +225,32 @@ export default function ManageTeamPage() {
           </div>
           <div className="form-group">
             <label>팀장 선택 *</label>
-            <div className="manager-grid">
+            <select value={form.managerId} onChange={(e) => setForm({ ...form, managerId: e.target.value })} required>
+              <option value="">선택</option>
               {users.filter((u) => {
                 if (u.role === 'admin') return false;
-                // 다른 팀에 이미 소속된 사용자 제외 (현재 편집 중인 팀 제외)
                 if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
                 return true;
-              }).map((u) => {
-                const selected = form.managerId === u.uid;
-                return (
-                  <label key={u.uid} className={`manager-card ${selected ? 'is-checked' : ''}`}>
-                    <input type="radio" name="teamLeader" checked={selected} onChange={() => setForm({ ...form, managerId: u.uid })} />
-                    <div className="manager-card-body">
-                      <div className="name">{u.name}</div>
-                      <div className="sub">{u.code}{u.position && ` · ${u.position}`}</div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
+              }).map((u) => (
+                <option key={u.uid} value={u.uid}>{u.name} ({u.code}){u.position && ` · ${u.position}`}</option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
             <label>팀원 선택</label>
-            <div className="manager-grid">
+            <div className="select-list">
               {users.filter((u) => {
                 if (u.role === 'admin') return false;
                 if (u.uid === form.managerId) return false;
-                // 다른 팀에 이미 소속된 사용자 제외 (현재 편집 중인 팀 제외)
                 if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
                 return true;
               }).map((u) => {
                 const checked = form.memberIds.includes(u.uid);
                 return (
-                  <label key={u.uid} className={`manager-card ${checked ? 'is-checked' : ''}`}>
+                  <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
                     <input type="checkbox" checked={checked} onChange={() => toggleMember(u.uid)} />
-                    <div className="manager-card-body">
-                      <div className="name">{u.name}</div>
-                      <div className="sub">{u.code}{u.position && ` · ${u.position}`}</div>
-                    </div>
+                    <span className="select-list-name">{u.name}</span>
+                    <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
                   </label>
                 );
               })}
