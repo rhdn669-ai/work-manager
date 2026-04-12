@@ -224,13 +224,21 @@ export default function ManageTeamPage() {
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="예: 전장 1팀" />
           </div>
           <div className="form-group">
-            <label>팀장 *</label>
-            <select value={form.managerId} onChange={(e) => setForm({ ...form, managerId: e.target.value })} required>
-              <option value="">선택</option>
-              {users.filter((u) => u.role !== 'admin').map((u) => (
-                <option key={u.uid} value={u.uid}>{u.name} ({u.code}){u.position && ` · ${u.position}`}</option>
-              ))}
-            </select>
+            <label>팀장 선택 *</label>
+            <div className="manager-grid">
+              {users.filter((u) => u.role !== 'admin').map((u) => {
+                const selected = form.managerId === u.uid;
+                return (
+                  <label key={u.uid} className={`manager-card ${selected ? 'is-checked' : ''}`}>
+                    <input type="radio" name="teamLeader" checked={selected} onChange={() => setForm({ ...form, managerId: u.uid })} />
+                    <div className="manager-card-body">
+                      <div className="name">{u.name}</div>
+                      <div className="sub">{u.code}{u.position && ` · ${u.position}`}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
           </div>
           <div className="form-group">
             <label>팀원 선택</label>

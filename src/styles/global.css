@@ -1089,7 +1089,8 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.manager-card input[type="checkbox"] {
+.manager-card input[type="checkbox"],
+.manager-card input[type="radio"] {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
