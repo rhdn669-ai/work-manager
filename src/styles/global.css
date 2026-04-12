@@ -1129,25 +1129,143 @@ body {
   font-weight: 500;
 }
 
-/* ===== 현장 카드 (목록) ===== */
-.site-card {
+/* ===== 현장 목록 ===== */
+.site-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 900px) {
+  .site-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.site-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+  transition: all 0.15s;
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
 }
 
-.site-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+.site-row:hover {
   border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
 }
 
-.site-card .card-body p {
-  margin: 4px 0;
+.site-row-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.site-row-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.site-row:hover .site-row-icon {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.site-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.site-row-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-row-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.site-row-meta .chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-subtle);
   color: var(--text-light);
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.site-card-btn {
-  margin-top: var(--space-2);
+.site-row-meta .chip-team {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.site-row-meta .chip-manager {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.site-row-period {
+  flex-shrink: 0;
+  text-align: right;
+  padding-right: 4px;
+  line-height: 1.1;
+}
+
+.site-row-period .period-y {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.site-row-period .period-m {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 2px;
+  letter-spacing: -0.02em;
+}
+
+.site-row-arrow {
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--text-muted);
+  transition: transform 0.15s, color 0.15s;
+}
+
+.site-row:hover .site-row-arrow {
+  transform: translateX(4px);
+  color: var(--primary);
 }
 
 /* ===== 힌트/빈 상태 ===== */
@@ -1800,6 +1918,42 @@ body {
   /* 담당자 선택 그리드 모바일 대응 */
   .site-management-page .form-group > div[style*="grid"] {
     grid-template-columns: 1fr !important;
+  }
+
+  /* 현장 목록 — 모바일 압축 */
+  .site-row {
+    padding: 12px 14px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+
+  .site-row-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+  }
+
+  .site-row-icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .site-row-name {
+    font-size: 15px;
+  }
+
+  .site-row-meta .chip {
+    font-size: 10px;
+    padding: 2px 7px;
+    max-width: 140px;
+  }
+
+  .site-row-period .period-m {
+    font-size: 13px;
+  }
+
+  .site-row-arrow {
+    font-size: 18px;
   }
 
   /* 대시보드 — 모바일 압축 */

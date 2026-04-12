@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getSitesByManager } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
@@ -13,7 +13,6 @@ export default function SiteListPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (userProfile) loadData();
@@ -33,10 +32,6 @@ export default function SiteListPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function openClosing(siteId) {
-    navigate(`/sites/${siteId}/${year}/${month}`);
   }
 
   function managerNames(site) {
@@ -65,29 +60,43 @@ export default function SiteListPage() {
 
       {sites.length === 0 ? (
         <div className="card">
-          <div className="card-body">
-            <p className="text-muted">
-              {isAdmin ? '등록된 현장이 없습니다. "현장 관리"에서 추가해주세요.' : '담당 현장이 없습니다. 관리자에게 문의해주세요.'}
-            </p>
+          <div className="card-body empty-state">
+            {isAdmin ? '등록된 현장이 없습니다. "현장 관리"에서 추가해주세요.' : '담당 현장이 없습니다. 관리자에게 문의해주세요.'}
           </div>
         </div>
       ) : (
-        <div className="dashboard-grid">
+        <div className="site-list">
           {sites.map((s) => (
-            <div
+            <Link
               key={s.id}
-              className="card site-card"
-              onClick={() => openClosing(s.id)}
+              to={`/sites/${s.id}/${year}/${month}`}
+              className="site-row"
             >
-              <div className="card-header">{s.name}</div>
-              <div className="card-body">
-                <p className="text-sm">팀 <strong>{s.team || '-'}</strong></p>
-                <p className="text-sm">담당 <strong>{managerNames(s)}</strong></p>
-                <button className="btn btn-sm btn-primary site-card-btn">
-                  {year}년 {month}월 마감 열기
-                </button>
+              <div className="site-row-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 21h18"/>
+                  <path d="M5 21V7l7-4 7 4v14"/>
+                  <path d="M9 9h.01"/>
+                  <path d="M9 13h.01"/>
+                  <path d="M9 17h.01"/>
+                  <path d="M15 9h.01"/>
+                  <path d="M15 13h.01"/>
+                  <path d="M15 17h.01"/>
+                </svg>
               </div>
-            </div>
+              <div className="site-row-body">
+                <div className="site-row-name">{s.name}</div>
+                <div className="site-row-meta">
+                  <span className="chip chip-team">{s.team || '팀 미지정'}</span>
+                  <span className="chip chip-manager">담당 {managerNames(s)}</span>
+                </div>
+              </div>
+              <div className="site-row-period">
+                <div className="period-y">{year}</div>
+                <div className="period-m">{String(month).padStart(2, '0')}월</div>
+              </div>
+              <div className="site-row-arrow">→</div>
+            </Link>
           ))}
         </div>
       )}
