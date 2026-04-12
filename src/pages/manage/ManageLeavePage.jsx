@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getDepartmentPendingLeaves, approveLeave, rejectLeave } from '../../services/leaveService';
+import { getDepartmentPendingLeaves, getAllPendingLeaves, approveLeave, rejectLeave } from '../../services/leaveService';
 import { getUser } from '../../services/userService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
 
 export default function ManageLeavePage() {
-  const { userProfile } = useAuth();
+  const { userProfile, canApproveAll } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rejectModal, setRejectModal] = useState(null);
@@ -20,7 +20,9 @@ export default function ManageLeavePage() {
   async function loadPending() {
     setLoading(true);
     try {
-      const data = await getDepartmentPendingLeaves(userProfile.departmentId);
+      const data = canApproveAll
+        ? await getAllPendingLeaves()
+        : await getDepartmentPendingLeaves(userProfile.departmentId);
       setLeaves(data);
 
       // 사용자 이름 조회

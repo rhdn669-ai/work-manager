@@ -97,6 +97,17 @@ export async function getDepartmentPendingLeaves(departmentId) {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// 전사 연차 신청 목록 (승인 대기) — 대표/부사장/관리자용
+export async function getAllPendingLeaves() {
+  const q = query(
+    leavesRef,
+    where('status', '==', 'pending'),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // 잔여 연차 조회 (입사일~현재 누적 발생분 동적 계산)
 // 반환 객체의 totalDays/remainingDays는 조회 시점 기준 동적 계산값
 export async function getLeaveBalance(userId) {

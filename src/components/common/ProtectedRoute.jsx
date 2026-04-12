@@ -2,7 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function ProtectedRoute({ allowedRoles }) {
-  const { user, userProfile, loading, isTeamLeader } = useAuth();
+  const { user, userProfile, loading, canApproveLeave } = useAuth();
 
   if (loading) {
     return <div className="loading-screen">로딩 중...</div>;
@@ -18,8 +18,8 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   if (allowedRoles) {
     const effectiveRoles = [userProfile.role];
-    // 팀장 직책이 부여된 사용자는 manager 권한을 가진 것으로 취급
-    if (isTeamLeader && !effectiveRoles.includes('manager')) {
+    // 팀장/대표/부사장 등 승인 권한 보유자는 manager 라우트 접근 허용
+    if (canApproveLeave && !effectiveRoles.includes('manager')) {
       effectiveRoles.push('manager');
     }
     const allowed = allowedRoles.some((r) => effectiveRoles.includes(r));

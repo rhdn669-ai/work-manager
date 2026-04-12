@@ -51,6 +51,11 @@ export function AuthProvider({ children }) {
   };
 
   const isTeamLeader = !!(userProfile?.isTeamLeader) || userProfile?.role === 'manager';
+  const isExecutive = ['대표', '부사장'].includes(userProfile?.position);
+  // 전사 승인 (모든 부서): 관리자 + 대표/부사장
+  const canApproveAll = userProfile?.role === 'admin' || isExecutive;
+  // 부서 or 전사 승인: 관리자 + 대표/부사장 + 팀장
+  const canApproveLeave = canApproveAll || isTeamLeader;
 
   const value = {
     user: userProfile,
@@ -63,8 +68,9 @@ export function AuthProvider({ children }) {
     isManager: userProfile?.role === 'manager',
     isEmployee: userProfile?.role === 'employee',
     isTeamLeader,
-    // 부서 연차 승인 권한: 관리자 또는 팀장
-    canApproveLeave: userProfile?.role === 'admin' || isTeamLeader,
+    isExecutive,
+    canApproveAll,
+    canApproveLeave,
   };
 
   return (

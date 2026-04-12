@@ -2,8 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Sidebar({ isOpen }) {
-  const { isAdmin, isManager, isTeamLeader } = useAuth();
-  const canApprove = isAdmin || isTeamLeader;
+  const { isAdmin, canApproveLeave } = useAuth();
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -18,7 +17,7 @@ export default function Sidebar({ isOpen }) {
           </div>
         )}
 
-        {canApprove && (
+        {canApproveLeave && (
           <div className="nav-section">
             <NavLink to="/manage/leave" end className="nav-link">연차 승인</NavLink>
           </div>

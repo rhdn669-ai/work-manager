@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyOvertimeRecords } from '../services/attendanceService';
-import { getLeaveBalance, getDepartmentPendingLeaves } from '../services/leaveService';
+import { getLeaveBalance, getDepartmentPendingLeaves, getAllPendingLeaves } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 
 export default function DashboardPage() {
-  const { userProfile, isAdmin, isManager, isTeamLeader } = useAuth();
-  const canApprove = isAdmin || isTeamLeader;
+  const { userProfile, isAdmin, isManager, canApproveLeaveLeave, canApproveLeaveAll } = useAuth();
   const [monthlyOvertime, setMonthlyOvertime] = useState(0);
   const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
@@ -53,8 +52,12 @@ export default function DashboardPage() {
         });
       }
 
-      if (canApprove && userProfile.departmentId) {
-        const pending = await getDepartmentPendingLeaves(userProfile.departmentId);
+      if (canApproveLeaveLeave) {
+        const pending = canApproveLeaveAll
+          ? await getAllPendingLeaves()
+          : userProfile.departmentId
+            ? await getDepartmentPendingLeaves(userProfile.departmentId)
+            : [];
         setPendingLeaves(pending);
       }
     } catch (err) {
@@ -189,7 +192,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {canApprove && (
+          {canApproveLeave && (
             <Link
               to="/manage/leave"
               className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
