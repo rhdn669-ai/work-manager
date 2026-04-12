@@ -1,6 +1,6 @@
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, orderBy,
+  query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -8,6 +8,13 @@ const deptRef = collection(db, 'departments');
 
 export async function getDepartments() {
   const q = query(deptRef, orderBy('name'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// 내가 팀장(managerId)인 팀 목록
+export async function getDepartmentsByLeader(uid) {
+  const q = query(deptRef, where('managerId', '==', uid));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

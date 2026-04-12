@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getDepartmentPendingLeaves, getAllPendingLeaves, approveLeave, rejectLeave } from '../../services/leaveService';
+import { getDepartmentsByLeader } from '../../services/departmentService';
 import { getUser } from '../../services/userService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
@@ -20,9 +21,17 @@ export default function ManageLeavePage() {
   async function loadPending() {
     setLoading(true);
     try {
-      const data = canApproveAll
-        ? await getAllPendingLeaves()
-        : await getDepartmentPendingLeaves(userProfile.departmentId);
+      let data = [];
+      if (canApproveAll) {
+        data = await getAllPendingLeaves();
+      } else {
+        // 팀장: 내가 managerId인 팀들의 pending 합산
+        const myTeams = await getDepartmentsByLeader(userProfile.uid);
+        for (const team of myTeams) {
+          const teamPending = await getDepartmentPendingLeaves(team.id);
+          data = [...data, ...teamPending];
+        }
+      }
       setLeaves(data);
 
       // 사용자 이름 조회

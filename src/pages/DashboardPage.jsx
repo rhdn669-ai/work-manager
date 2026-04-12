@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyOvertimeRecords } from '../services/attendanceService';
 import { getLeaveBalance, getDepartmentPendingLeaves, getAllPendingLeaves } from '../services/leaveService';
+import { getDepartmentsByLeader } from '../services/departmentService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
@@ -53,11 +54,16 @@ export default function DashboardPage() {
       }
 
       if (canApproveLeave) {
-        const pending = canApproveAll
-          ? await getAllPendingLeaves()
-          : userProfile.departmentId
-            ? await getDepartmentPendingLeaves(userProfile.departmentId)
-            : [];
+        let pending = [];
+        if (canApproveAll) {
+          pending = await getAllPendingLeaves();
+        } else {
+          const myTeams = await getDepartmentsByLeader(userProfile.uid);
+          for (const team of myTeams) {
+            const teamPending = await getDepartmentPendingLeaves(team.id);
+            pending = [...pending, ...teamPending];
+          }
+        }
         setPendingLeaves(pending);
       }
     } catch (err) {
