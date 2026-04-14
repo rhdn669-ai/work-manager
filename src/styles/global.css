@@ -1685,6 +1685,123 @@ body {
 .finance-row-material { border-left: 3px solid #6366f1; }
 .finance-row-overtime { border-left: 3px solid #ef4444; }
 
+/* ===== 지출 카드 ===== */
+.expense-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left-width: 4px;
+  border-left-color: #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: box-shadow 0.15s;
+}
+.expense-card:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+
+.expense-card-meal { border-left-color: #f59e0b; background: linear-gradient(90deg, #fffbeb 0%, #fff 40%); }
+.expense-card-transport { border-left-color: #3b82f6; background: linear-gradient(90deg, #eff6ff 0%, #fff 40%); }
+.expense-card-material { border-left-color: #6366f1; background: linear-gradient(90deg, #eef2ff 0%, #fff 40%); }
+.expense-card-overtime { border-left-color: #ef4444; background: linear-gradient(90deg, #fef2f2 0%, #fff 40%); }
+
+.expense-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.expense-chip-default {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.expense-card-body {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 10px 14px;
+}
+
+.expense-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.expense-field label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.expense-field input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.expense-field input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  outline: none;
+}
+.expense-field input:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: default;
+}
+
+.expense-field-desc { grid-column: 1 / 2; grid-row: 1; }
+.expense-field-amount { grid-column: 2 / 3; grid-row: 1; }
+.expense-field-note { grid-column: 1 / -1; grid-row: 2; }
+
+.expense-field-desc input {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.expense-amount-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.expense-amount-wrap input {
+  flex: 1;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+  color: #dc2626;
+}
+.expense-won {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .expense-card-body {
+    grid-template-columns: 1fr;
+  }
+  .expense-field-desc,
+  .expense-field-amount,
+  .expense-field-note {
+    grid-column: 1 / -1;
+  }
+  .expense-field-desc { grid-row: 1; }
+  .expense-field-amount { grid-row: 2; }
+  .expense-field-note { grid-row: 3; }
+}
+
 /* ===== 홈 캘린더 ===== */
 .home-calendar {
   margin-top: 20px;

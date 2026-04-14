@@ -489,13 +489,32 @@ export default function SiteClosingPage() {
               const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '잔업': 'overtime' };
               const chipKey = chipMap[desc];
               return (
-                <div className={`finance-row ${chipKey ? `finance-row-${chipKey}` : ''}`} key={f.id}>
-                  {chipKey && <span className={`expense-tag expense-chip-${chipKey}`}>{desc}</span>}
-                  <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  <input className="finance-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  <span className="finance-won">원</span>
-                  <input className="finance-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  {canEdit && <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>}
+                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
+                  <div className="expense-card-head">
+                    <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+                      {desc || '지출'}
+                    </span>
+                    {canEdit && (
+                      <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
+                    )}
+                  </div>
+                  <div className="expense-card-body">
+                    <div className="expense-field expense-field-desc">
+                      <label>항목명</label>
+                      <input value={buf.description || ''} placeholder="예: 잔업, 식대, 자재비 등" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                    </div>
+                    <div className="expense-field expense-field-amount">
+                      <label>금액</label>
+                      <div className="expense-amount-wrap">
+                        <input type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                        <span className="expense-won">원</span>
+                      </div>
+                    </div>
+                    <div className="expense-field expense-field-note">
+                      <label>비고</label>
+                      <input value={buf.note || ''} placeholder="상세 내용 (선택)" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                    </div>
+                  </div>
                 </div>
               );
             })}
