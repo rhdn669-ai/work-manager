@@ -134,10 +134,11 @@ export default function SiteClosingPage() {
           for (const user of toAdd) {
             const monthlySalary = Number(user.fixedCost) || 0;
             const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
+            const userLeaveDays = ldByName[user.name] || new Set();
             const dq = {};
             for (let d = 1; d <= totalD; d++) {
               const dow = new Date(y, m - 1, d).getDay();
-              if (dow !== 0 && dow !== 6) dq[d] = 1;
+              if (dow !== 0 && dow !== 6 && !userLeaveDays.has(d)) dq[d] = 1;
             }
             const quantity = Object.values(dq).reduce((acc, v) => acc + v, 0);
             await addClosingItem(siteId, y, m, {
@@ -233,12 +234,13 @@ export default function SiteClosingPage() {
     const monthlySalary = Number(user.fixedCost) || 0;
     const workingDays = getWorkingDaysInMonth(y, m);
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
-    // 영업일 전체 자동 채우기
+    // 영업일 전체 자동 채우기 (연차일 제외)
+    const userLeaveDays = leaveDays[user.name] || new Set();
     const dq = {};
     const totalDays = daysInMonth(y, m);
     for (let d = 1; d <= totalDays; d++) {
       const dow = new Date(y, m - 1, d).getDay();
-      if (dow !== 0 && dow !== 6) dq[d] = 1;
+      if (dow !== 0 && dow !== 6 && !userLeaveDays.has(d)) dq[d] = 1;
     }
     const quantity = Object.values(dq).reduce((s, v) => s + v, 0);
     await addClosingItem(siteId, y, m, {
