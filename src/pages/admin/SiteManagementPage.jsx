@@ -178,7 +178,7 @@ export default function SiteManagementPage() {
               value={vendorText}
               onChange={(e) => setVendorText(e.target.value)}
               rows={2}
-              placeholder="예: 아이오피엔, 우진테크, 태산전기조명, 엔비에이"
+              placeholder="업체명을 쉼표로 구분하여 입력"
             />
           </div>
           <div className="modal-actions">
