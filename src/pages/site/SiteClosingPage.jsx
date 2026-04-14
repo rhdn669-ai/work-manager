@@ -27,6 +27,7 @@ export default function SiteClosingPage() {
   const [loading, setLoading] = useState(true);
   const [finances, setFinances] = useState([]);
   const [financeBuf, setFinanceBuf] = useState({});
+  const [showEmployeeSelect, setShowEmployeeSelect] = useState(false);
   const [savingCount, setSavingCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
@@ -121,6 +122,23 @@ export default function SiteClosingPage() {
       quantity: 0, amount: 0,
       order: nextOrder,
     });
+    await loadAll();
+  }
+
+  async function handleAddEmployee(user) {
+    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
+    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
+    await addClosingItem(siteId, y, m, {
+      no: nextNo,
+      vendor: '직원',
+      detail: user.name,
+      category: '',
+      unitPrice: Number(user.fixedCost) || 0,
+      dailyQuantities: {},
+      quantity: 0, amount: 0,
+      order: nextOrder,
+    });
+    setShowEmployeeSelect(false);
     await loadAll();
   }
 
@@ -366,8 +384,27 @@ export default function SiteClosingPage() {
       {/* 공수표 섹션 */}
       <div className="finance-section-header" style={{ marginTop: 16 }}>
         <h3 className="finance-title">공수표</h3>
-        {canEdit && <button className="btn btn-sm btn-primary" onClick={handleAddRow}>+ 항목 추가</button>}
+        {canEdit && (
+          <div className="finance-actions">
+            <button className="btn btn-sm btn-primary" onClick={handleAddRow}>+ 프리랜서</button>
+            <button className="btn btn-sm btn-outline" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
+          </div>
+        )}
       </div>
+      {showEmployeeSelect && canEdit && (
+        <div className="select-dropdown-list" style={{ marginBottom: 12 }}>
+          {Object.values(userMap).filter((u) => u.fixedCost).length === 0 ? (
+            <p className="empty-state" style={{ padding: '12px', margin: 0 }}>고정비용이 등록된 직원이 없습니다. 사용자 관리에서 설정하세요.</p>
+          ) : (
+            Object.values(userMap).filter((u) => u.fixedCost).map((u) => (
+              <label key={u.uid} className="select-list-item" onClick={() => handleAddEmployee(u)} style={{ cursor: 'pointer' }}>
+                <span className="select-list-name">{u.name}</span>
+                <span className="select-list-sub">{u.position || ''} · {Number(u.fixedCost).toLocaleString()}원/일</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="card">
