@@ -1445,6 +1445,91 @@ body {
   display: none;
 }
 
+/* ===== 매출/지출 섹션 ===== */
+.finance-section {
+  margin-bottom: 16px;
+}
+
+.finance-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.finance-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.finance-title.finance-revenue {
+  color: var(--success, #16a34a);
+}
+
+.finance-title.finance-expense {
+  color: var(--danger, #dc2626);
+}
+
+.finance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.finance-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.finance-desc {
+  flex: 2;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.finance-amount {
+  width: 120px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: right;
+  background: #fff;
+}
+
+.finance-won {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.finance-note {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.finance-desc:disabled,
+.finance-amount:disabled,
+.finance-note:disabled {
+  background: var(--bg-subtle);
+  cursor: default;
+}
+
 /* ===== 프로젝트 마감리스트 — 카드 그리드 뷰 ===== */
 .closing-period {
   font-size: 14px;

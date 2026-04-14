@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
+  getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 
@@ -24,6 +25,8 @@ export default function SiteClosingPage() {
   const [items, setItems] = useState([]);
   const [editBuf, setEditBuf] = useState({});
   const [loading, setLoading] = useState(true);
+  const [finances, setFinances] = useState([]);
+  const [financeBuf, setFinanceBuf] = useState({});
   const [savingCount, setSavingCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
@@ -46,17 +49,22 @@ export default function SiteClosingPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [s, its, users] = await Promise.all([
+      const [s, its, fins, users] = await Promise.all([
         getSite(siteId),
         getClosingItems(siteId, y, m),
+        getFinanceItems(siteId, y, m),
         getUsers(),
       ]);
       setSite(s);
       setItems(its);
+      setFinances(fins);
       setUserMap(Object.fromEntries(users.map((u) => [u.uid, u])));
       const buf = {};
       its.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
       setEditBuf(buf);
+      const fbuf = {};
+      fins.forEach((f) => { fbuf[f.id] = { ...f }; });
+      setFinanceBuf(fbuf);
     } catch (err) {
       console.error(err);
     } finally {
@@ -168,6 +176,62 @@ export default function SiteClosingPage() {
     if (data) persistRow(itemId, data);
   }
 
+  // --- 지출/매출 ---
+  async function handleAddFinance(type) {
+    const list = finances.filter((f) => f.type === type);
+    const nextOrder = list.length ? Math.max(...list.map((f) => f.order || 0)) + 1 : 1;
+    await addFinanceItem(siteId, y, m, { type, description: '', amount: 0, note: '', order: nextOrder });
+    await loadAll();
+  }
+
+  function updateFinanceField(id, field, value) {
+    setFinanceBuf((b) => {
+      const cur = { ...b[id], [field]: field === 'amount' ? Number(value) || 0 : value };
+      if (timersRef.current['fin_' + id]) clearTimeout(timersRef.current['fin_' + id]);
+      timersRef.current['fin_' + id] = setTimeout(async () => {
+        setSavingCount((c) => c + 1);
+        try {
+          await updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note });
+          setLastSavedAt(new Date());
+          setSaveError(null);
+        } catch (err) {
+          setSaveError(err.message || '저장 실패');
+        } finally {
+          setSavingCount((c) => Math.max(0, c - 1));
+        }
+        delete timersRef.current['fin_' + id];
+      }, AUTO_SAVE_DELAY_MS);
+      return { ...b, [id]: cur };
+    });
+  }
+
+  function flushFinance(id) {
+    const key = 'fin_' + id;
+    if (!timersRef.current[key]) return;
+    clearTimeout(timersRef.current[key]);
+    delete timersRef.current[key];
+    const cur = financeBuf[id];
+    if (cur) {
+      setSavingCount((c) => c + 1);
+      updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note })
+        .then(() => { setLastSavedAt(new Date()); setSaveError(null); })
+        .catch((err) => setSaveError(err.message))
+        .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
+    }
+  }
+
+  async function handleDeleteFinance(id) {
+    if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+    const key = 'fin_' + id;
+    if (timersRef.current[key]) { clearTimeout(timersRef.current[key]); delete timersRef.current[key]; }
+    try {
+      await deleteFinanceItem(id);
+      await loadAll();
+    } catch (err) {
+      alert('삭제 오류: ' + err.message);
+    }
+  }
+
   if (loading) return <div className="loading">로딩 중...</div>;
   if (!site) return <div>프로젝트을 찾을 수 없습니다.</div>;
   if (!isAdmin && !(site.managerIds || []).includes(userProfile?.uid)) {
@@ -183,6 +247,11 @@ export default function SiteClosingPage() {
 
   const totalAmount = Object.values(editBuf).reduce((s, it) => s + (Number(it.amount) || 0), 0);
   const itemCount = items.length;
+
+  const revenueItems = finances.filter((f) => f.type === 'revenue');
+  const expenseItems = finances.filter((f) => f.type === 'expense');
+  const totalRevenue = revenueItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
+  const totalExpense = expenseItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
 
   let saveStatus;
   if (saveError) {
@@ -204,9 +273,6 @@ export default function SiteClosingPage() {
         <h2>{site.name} <span className="closing-period">{y}년 {m}월</span></h2>
         <div className="page-actions">
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
-          {canEdit && (
-            <button className="btn btn-primary" onClick={handleAddRow}>+ 항목 추가</button>
-          )}
         </div>
       </div>
 
@@ -223,11 +289,77 @@ export default function SiteClosingPage() {
           <span className="label">항목</span>
           <strong>{itemCount}건</strong>
         </div>
+        <div className="closing-summary-item">
+          <span className="label">매출</span>
+          <strong style={{ color: 'var(--success, #16a34a)' }}>{totalRevenue.toLocaleString()}원</strong>
+        </div>
+        <div className="closing-summary-item">
+          <span className="label">지출</span>
+          <strong style={{ color: 'var(--danger, #dc2626)' }}>{totalExpense.toLocaleString()}원</strong>
+        </div>
         <div className="closing-summary-item closing-summary-total">
-          <span className="label">월 합계</span>
+          <span className="label">공수 합계</span>
           <strong>{totalAmount.toLocaleString()}원</strong>
         </div>
         {canEdit && saveStatus}
+      </div>
+
+      {/* 매출 섹션 */}
+      <div className="finance-section">
+        <div className="finance-section-header">
+          <h3 className="finance-title finance-revenue">매출</h3>
+          {canEdit && <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('revenue')}>+ 추가</button>}
+        </div>
+        {revenueItems.length === 0 ? (
+          <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
+        ) : (
+          <div className="finance-list">
+            {revenueItems.map((f) => {
+              const buf = financeBuf[f.id] || f;
+              return (
+                <div className="finance-row" key={f.id}>
+                  <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  <input className="finance-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  <span className="finance-won">원</span>
+                  <input className="finance-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  {canEdit && <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 지출 섹션 */}
+      <div className="finance-section">
+        <div className="finance-section-header">
+          <h3 className="finance-title finance-expense">지출</h3>
+          {canEdit && <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>}
+        </div>
+        {expenseItems.length === 0 ? (
+          <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 지출 항목이 없습니다.</p>
+        ) : (
+          <div className="finance-list">
+            {expenseItems.map((f) => {
+              const buf = financeBuf[f.id] || f;
+              return (
+                <div className="finance-row" key={f.id}>
+                  <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  <input className="finance-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  <span className="finance-won">원</span>
+                  <input className="finance-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  {canEdit && <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 공수표 섹션 */}
+      <div className="finance-section-header" style={{ marginTop: 16 }}>
+        <h3 className="finance-title">공수표</h3>
+        {canEdit && <button className="btn btn-sm btn-primary" onClick={handleAddRow}>+ 항목 추가</button>}
       </div>
 
       {items.length === 0 ? (

@@ -6,6 +6,7 @@ import { db } from '../config/firebase';
 
 const sitesRef = collection(db, 'sites');
 const itemsRef = collection(db, 'siteClosingItems');
+const financesRef = collection(db, 'siteFinances');
 
 // ---------- 프로젝트(sites) ----------
 
@@ -116,4 +117,40 @@ export async function updateClosingItem(itemId, data) {
 
 export async function deleteClosingItem(itemId) {
   await deleteDoc(doc(db, 'siteClosingItems', itemId));
+}
+
+// ---------- 지출/매출(siteFinances) ----------
+
+export async function getFinanceItems(siteId, year, month) {
+  const cid = closingId(siteId, year, month);
+  const q = query(financesRef, where('closingId', '==', cid), orderBy('order'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function addFinanceItem(siteId, year, month, data) {
+  const cid = closingId(siteId, year, month);
+  const docRef = await addDoc(financesRef, {
+    closingId: cid,
+    siteId, year, month,
+    type: data.type, // 'expense' | 'revenue'
+    description: data.description || '',
+    amount: data.amount || 0,
+    note: data.note || '',
+    order: data.order || 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  return docRef.id;
+}
+
+export async function updateFinanceItem(itemId, data) {
+  await updateDoc(doc(db, 'siteFinances', itemId), {
+    ...data,
+    updatedAt: new Date(),
+  });
+}
+
+export async function deleteFinanceItem(itemId) {
+  await deleteDoc(doc(db, 'siteFinances', itemId));
 }
