@@ -1235,6 +1235,26 @@ body {
   color: #1e40af;
 }
 
+.site-row-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.site-row-stats .stat-revenue {
+  color: var(--success, #16a34a);
+}
+
+.site-row-stats .stat-expense {
+  color: var(--danger, #dc2626);
+}
+
+.site-row-stats .stat-labor {
+  color: var(--primary, #2563eb);
+}
+
 .site-row-period {
   flex-shrink: 0;
   text-align: right;
