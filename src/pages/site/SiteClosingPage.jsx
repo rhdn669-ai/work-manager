@@ -472,9 +472,10 @@ export default function SiteClosingPage() {
           {canEdit && (
             <div className="finance-actions">
               <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
+              <button className="expense-chip expense-chip-meal" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
+              <button className="expense-chip expense-chip-transport" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
+              <button className="expense-chip expense-chip-material" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
+              <button className="expense-chip expense-chip-overtime" onClick={() => handleAddFinance('expense', '잔업')}>잔업</button>
             </div>
           )}
         </div>
@@ -484,8 +485,12 @@ export default function SiteClosingPage() {
           <div className="finance-list">
             {expenseItems.map((f) => {
               const buf = financeBuf[f.id] || f;
+              const desc = (buf.description || '').trim();
+              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '잔업': 'overtime' };
+              const chipKey = chipMap[desc];
               return (
-                <div className="finance-row" key={f.id}>
+                <div className={`finance-row ${chipKey ? `finance-row-${chipKey}` : ''}`} key={f.id}>
+                  {chipKey && <span className={`expense-tag expense-chip-${chipKey}`}>{desc}</span>}
                   <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   <input className="finance-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   <span className="finance-won">원</span>
