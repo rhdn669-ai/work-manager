@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { addOvertimeRecord } from '../../services/attendanceService';
-import { getAllSites, getSitesByManager } from '../../services/siteService';
+import { getAllSites } from '../../services/siteService';
 import { getToday } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
 
@@ -19,7 +19,7 @@ export default function AttendancePage() {
   useEffect(() => {
     (async () => {
       try {
-        const list = isAdmin ? await getAllSites() : await getSitesByManager(userProfile.uid);
+        const list = await getAllSites();
         setSites(list);
       } catch (err) { console.error(err); }
     })();
