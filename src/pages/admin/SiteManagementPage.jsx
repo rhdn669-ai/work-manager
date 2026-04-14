@@ -13,6 +13,7 @@ export default function SiteManagementPage() {
     name: '', team: '', managerIds: [],
   });
   const [vendorText, setVendorText] = useState('');
+  const [managerListOpen, setManagerListOpen] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -32,6 +33,7 @@ export default function SiteManagementPage() {
     setEditSite(null);
     setForm({ name: '', team: '', managerIds: [] });
     setVendorText('');
+    setManagerListOpen(false);
     setShowModal(true);
   }
 
@@ -43,6 +45,7 @@ export default function SiteManagementPage() {
       managerIds: site.managerIds || [],
     });
     setVendorText((site.defaultVendors || []).join(', '));
+    setManagerListOpen(false);
     setShowModal(true);
   }
 
@@ -139,38 +142,34 @@ export default function SiteManagementPage() {
             <p className="field-hint">
               관리자는 항상 모든 현장에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.
             </p>
-            <div className="manager-grid">
-              {candidates.length === 0 && (
-                <p className="empty-state" style={{ gridColumn: '1 / -1' }}>
-                  선택 가능한 사용자가 없습니다.
-                </p>
-              )}
-              {candidates.map((u) => {
-                const checked = form.managerIds.includes(u.uid);
-                return (
-                  <label
-                    key={u.uid}
-                    className={`manager-card ${checked ? 'is-checked' : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleManager(u.uid)}
-                    />
-                    <div className="manager-card-body">
-                      <div className="name">{u.name}</div>
-                      <div className="sub">
-                        {u.code}{u.position && ` · ${u.position}`}
-                      </div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-            {form.managerIds.length > 0 && (
-              <p className="manager-count">
-                선택됨 <strong>{form.managerIds.length}명</strong>
-              </p>
+            <button
+              type="button"
+              className="select-dropdown-toggle"
+              onClick={() => setManagerListOpen(!managerListOpen)}
+            >
+              <span>{form.managerIds.length > 0 ? `${form.managerIds.length}명 선택됨` : '담당자를 선택하세요'}</span>
+              <span className="select-dropdown-arrow">{managerListOpen ? '▲' : '▼'}</span>
+            </button>
+            {managerListOpen && (
+              <div className="select-dropdown-list">
+                {candidates.length === 0 && (
+                  <p className="empty-state" style={{ padding: '12px', margin: 0 }}>선택 가능한 사용자가 없습니다.</p>
+                )}
+                {candidates.map((u) => {
+                  const checked = form.managerIds.includes(u.uid);
+                  return (
+                    <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleManager(u.uid)}
+                      />
+                      <span className="select-list-name">{u.name}</span>
+                      <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
+                    </label>
+                  );
+                })}
+              </div>
             )}
           </div>
           <div className="form-group">
