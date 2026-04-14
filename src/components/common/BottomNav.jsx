@@ -25,10 +25,12 @@ export default function BottomNav() {
         </>
       )}
 
-      <NavLink to="/sites" end className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-        <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></svg>
-        <span>프로젝트</span>
-      </NavLink>
+      {(isAdmin || canApproveLeave) && (
+        <NavLink to="/sites" end className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></svg>
+          <span>프로젝트</span>
+        </NavLink>
+      )}
 
       {canApproveLeave && (
         <NavLink to="/manage/leave" end className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>

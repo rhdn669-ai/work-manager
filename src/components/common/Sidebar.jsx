@@ -13,7 +13,6 @@ export default function Sidebar({ isOpen }) {
           <div className="nav-section">
             <NavLink to="/attendance" end className="nav-link">잔업</NavLink>
             <NavLink to="/leave" end className="nav-link">연차</NavLink>
-            <NavLink to="/sites" end className="nav-link">프로젝트</NavLink>
           </div>
         )}
 
