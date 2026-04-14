@@ -6,6 +6,7 @@ import {
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
+import { getDepartments } from '../../services/departmentService';
 
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
@@ -44,7 +45,10 @@ export default function SiteClosingPage() {
 
   const timersRef = useRef({});
 
-  const canEdit = site && (isAdmin || (site.managerIds || []).includes(userProfile?.uid));
+  function canEditSite(s) {
+    return s && (isAdmin || (s.managerIds || []).includes(userProfile?.uid));
+  }
+  const canEdit = canEditSite(site);
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
@@ -60,18 +64,75 @@ export default function SiteClosingPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [s, its, fins, users] = await Promise.all([
+      const [s, its, fins, users, depts] = await Promise.all([
         getSite(siteId),
         getClosingItems(siteId, y, m),
         getFinanceItems(siteId, y, m),
         getUsers(),
+        getDepartments(),
       ]);
       setSite(s);
-      setItems(its);
       setFinances(fins);
-      setUserMap(Object.fromEntries(users.map((u) => [u.uid, u])));
+      const uMap = Object.fromEntries(users.map((u) => [u.uid, u]));
+      setUserMap(uMap);
+
+      // 담당자(팀장)의 팀원 자동 추가
+      let updatedItems = its;
+      if (s && canEditSite(s)) {
+        const managerIds = s.managerIds || [];
+        // 담당자가 팀장인 부서의 팀원 + 담당자 본인
+        const teamMemberIds = new Set();
+        for (const mid of managerIds) {
+          teamMemberIds.add(mid);
+          const dept = depts.find((d) => d.managerId === mid);
+          if (dept) {
+            users.filter((u) => u.departmentId === dept.id).forEach((u) => teamMemberIds.add(u.uid));
+          }
+        }
+        // 이미 공수표에 있는 직원 이름 수집
+        const existingNames = new Set(its.filter((it) => it.itemType === 'employee').map((it) => it.detail));
+        const toAdd = [];
+        for (const uid of teamMemberIds) {
+          const user = uMap[uid];
+          if (!user || !user.fixedCost) continue;
+          if (existingNames.has(user.name)) continue;
+          toAdd.push(user);
+        }
+        if (toAdd.length > 0) {
+          let nextOrder = its.length ? Math.max(...its.map((i) => i.order || 0)) + 1 : 1;
+          let nextNo = its.length ? Math.max(...its.map((i) => i.no || 0)) + 1 : 1;
+          const workingDays = getWorkingDaysInMonth(y, m);
+          const totalD = daysInMonth(y, m);
+          for (const user of toAdd) {
+            const monthlySalary = Number(user.fixedCost) || 0;
+            const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
+            const dq = {};
+            for (let d = 1; d <= totalD; d++) {
+              const dow = new Date(y, m - 1, d).getDay();
+              if (dow !== 0 && dow !== 6) dq[d] = 1;
+            }
+            const quantity = Object.values(dq).reduce((acc, v) => acc + v, 0);
+            await addClosingItem(siteId, y, m, {
+              no: nextNo++,
+              vendor: '직원',
+              detail: user.name,
+              category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
+              itemType: 'employee',
+              unitPrice: dailyRate,
+              dailyQuantities: dq,
+              quantity,
+              amount: dailyRate * quantity,
+              order: nextOrder++,
+            });
+          }
+          // 새로 추가했으니 다시 로드
+          updatedItems = await getClosingItems(siteId, y, m);
+        }
+      }
+
+      setItems(updatedItems);
       const buf = {};
-      its.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
+      updatedItems.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
       setEditBuf(buf);
       const fbuf = {};
       fins.forEach((f) => { fbuf[f.id] = { ...f }; });
