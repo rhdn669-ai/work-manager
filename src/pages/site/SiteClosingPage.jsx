@@ -570,17 +570,6 @@ export default function SiteClosingPage() {
                   )}
                 </div>
 
-                {(isAdmin || cardType !== 'employee') && (
-                  <input
-                    className="closing-category"
-                    value={buf.category || ''}
-                    placeholder="비고"
-                    onChange={(e) => updateField(it.id, 'category', e.target.value)}
-                    onBlur={() => flushRow(it.id)}
-                    disabled={!canEdit}
-                  />
-                )}
-
                 {(() => {
                   // 캘린더 형식 생성
                   const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
