@@ -2168,8 +2168,8 @@ body {
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
     z-index: 100;
     justify-content: space-around;
-    padding: 6px 8px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding: 4px 4px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
   }
 
   .bottom-nav-item {
@@ -2179,11 +2179,12 @@ body {
     justify-content: center;
     text-decoration: none;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 500;
-    padding: 6px 12px;
-    border-radius: 12px;
-    min-width: 60px;
+    padding: 5px 6px;
+    border-radius: 10px;
+    min-width: 0;
+    flex: 1;
     transition: all 0.15s;
   }
 

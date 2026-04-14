@@ -30,13 +30,10 @@ export function AuthProvider({ children }) {
         getDepartmentsByLeader(uid),
         getAllSites(),
       ]);
-      const isLeader = teams.length > 0;
-      const isMgr = sites.some((s) => (s.managerIds || []).includes(uid));
-      console.log('[Auth] uid:', uid, 'teams:', teams.length, 'siteManager:', isMgr, 'managerIds:', sites.map(s => ({ name: s.name, ids: s.managerIds })));
-      setIsLeaderOfTeam(isLeader);
-      setIsSiteManager(isMgr);
+      setIsLeaderOfTeam(teams.length > 0);
+      setIsSiteManager(sites.some((s) => (s.managerIds || []).includes(uid)));
     } catch (err) {
-      console.error('[Auth] checkTeamLeader error:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
