@@ -1235,6 +1235,35 @@ body {
   color: #1e40af;
 }
 
+.total-summary-bar {
+  display: flex;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.total-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.total-summary-item .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.total-summary-item strong {
+  font-size: 15px;
+}
+
 .site-row-stats {
   display: flex;
   gap: 10px;

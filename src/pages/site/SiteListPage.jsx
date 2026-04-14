@@ -70,6 +70,28 @@ export default function SiteListPage() {
         </select>
       </div>
 
+      {isAdmin && sites.length > 0 && (() => {
+        const allRevenue = Object.values(siteStats).reduce((s, v) => s + (v.revenue || 0), 0);
+        const allExpense = Object.values(siteStats).reduce((s, v) => s + (v.expense || 0) + (v.labor || 0), 0);
+        const allBalance = allRevenue - allExpense;
+        return (
+          <div className="total-summary-bar">
+            <div className="total-summary-item">
+              <span className="label">전체 매출</span>
+              <strong className="stat-revenue">{allRevenue.toLocaleString()}원</strong>
+            </div>
+            <div className="total-summary-item">
+              <span className="label">전체 지출</span>
+              <strong className="stat-expense">{allExpense.toLocaleString()}원</strong>
+            </div>
+            <div className="total-summary-item">
+              <span className="label">합계</span>
+              <strong className={allBalance >= 0 ? 'stat-balance positive' : 'stat-balance negative'}>{allBalance.toLocaleString()}원</strong>
+            </div>
+          </div>
+        );
+      })()}
+
       {sites.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
