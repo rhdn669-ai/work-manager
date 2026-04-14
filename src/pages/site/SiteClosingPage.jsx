@@ -198,6 +198,8 @@ export default function SiteClosingPage() {
   }
 
   async function handleAddEmployee(user) {
+    const alreadyExists = items.some((it) => it.itemType === 'employee' && it.detail === user.name);
+    if (alreadyExists) { alert(`${user.name}은(는) 이미 추가되어 있습니다.`); return; }
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     const monthlySalary = Number(user.fixedCost) || 0;
