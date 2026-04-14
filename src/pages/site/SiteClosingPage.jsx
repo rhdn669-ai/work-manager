@@ -600,11 +600,26 @@ export default function SiteClosingPage() {
                             const isSunday = di === 0;
                             const isSaturday = di === 6;
                             const isOnLeave = cardType === 'employee' && leaveDays[buf.detail]?.has(d);
+                            const isEmployee = cardType === 'employee';
+                            const isPresent = Number(v) === 1;
                             return (
                               <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''}`} key={di}>
                                 <label>{d}</label>
                                 {isOnLeave ? (
                                   <div className="leave-badge">연차</div>
+                                ) : isEmployee ? (
+                                  <button
+                                    type="button"
+                                    className={`attendance-badge ${isPresent ? 'active' : ''}`}
+                                    onClick={() => {
+                                      if (!canEdit) return;
+                                      updateDay(it.id, d, isPresent ? '' : 1);
+                                      flushRow(it.id);
+                                    }}
+                                    disabled={!canEdit}
+                                  >
+                                    {isPresent ? '출근' : ''}
+                                  </button>
                                 ) : (
                                   <input
                                     type="number"
