@@ -2,12 +2,14 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getDepartmentsByLeader } from '../services/departmentService';
+import { getAllSites } from '../services/siteService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [isLeaderOfTeam, setIsLeaderOfTeam] = useState(false);
+  const [isSiteManager, setIsSiteManager] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,8 +26,12 @@ export function AuthProvider({ children }) {
 
   async function checkTeamLeader(uid) {
     try {
-      const teams = await getDepartmentsByLeader(uid);
+      const [teams, sites] = await Promise.all([
+        getDepartmentsByLeader(uid),
+        getAllSites(),
+      ]);
       setIsLeaderOfTeam(teams.length > 0);
+      setIsSiteManager(sites.some((s) => (s.managerIds || []).includes(uid)));
     } catch (err) {
       console.error(err);
     } finally {
@@ -67,7 +73,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const isTeamLeader = isLeaderOfTeam || userProfile?.role === 'manager';
+  const isTeamLeader = isLeaderOfTeam || isSiteManager || userProfile?.role === 'manager';
   const isExecutive = ['대표', '부사장'].includes(userProfile?.position);
   // 전사 승인 (모든 부서): 관리자 + 대표/부사장
   const canApproveAll = userProfile?.role === 'admin' || isExecutive;
