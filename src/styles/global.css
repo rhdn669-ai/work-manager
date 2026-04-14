@@ -1251,8 +1251,12 @@ body {
   color: var(--danger, #dc2626);
 }
 
-.site-row-stats .stat-labor {
-  color: var(--primary, #2563eb);
+.site-row-stats .stat-balance.positive {
+  color: var(--success, #16a34a);
+}
+
+.site-row-stats .stat-balance.negative {
+  color: var(--danger, #dc2626);
 }
 
 .site-row-period {

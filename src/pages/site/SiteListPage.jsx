@@ -79,7 +79,9 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {sites.map((s) => {
-            const stat = siteStats[s.id] || { revenue: 0, expense: 0, labor: 0 };
+            const raw = siteStats[s.id] || { revenue: 0, expense: 0, labor: 0 };
+            const totalExpense = raw.expense + raw.labor;
+            const balance = raw.revenue - totalExpense;
             return (
               <Link
                 key={s.id}
@@ -105,9 +107,9 @@ export default function SiteListPage() {
                     <span className="chip chip-manager">담당 {managerNames(s)}</span>
                   </div>
                   <div className="site-row-stats">
-                    <span className="stat-revenue">매출 {stat.revenue.toLocaleString()}</span>
-                    <span className="stat-expense">지출 {stat.expense.toLocaleString()}</span>
-                    <span className="stat-labor">공수 {stat.labor.toLocaleString()}</span>
+                    <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
+                    <span className="stat-expense">지출 {totalExpense.toLocaleString()}</span>
+                    <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="site-row-period">
