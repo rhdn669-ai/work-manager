@@ -543,25 +543,54 @@ export default function SiteClosingPage() {
                   disabled={!canEdit}
                 />
 
-                <div className="day-grid">
-                  {days.map((d) => {
-                    const v = buf.dailyQuantities?.[d];
-                    const hasValue = v !== undefined && v !== null && v !== '';
-                    return (
-                      <div className={`day-cell ${hasValue ? 'has-value' : ''}`} key={d}>
-                        <label>{d}</label>
-                        <input
-                          type="number"
-                          step="0.25"
-                          value={v ?? ''}
-                          onChange={(e) => updateDay(it.id, d, e.target.value)}
-                          onBlur={() => flushRow(it.id)}
-                          disabled={!canEdit}
-                        />
+                {(() => {
+                  // 캘린더 형식 생성
+                  const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
+                  const totalDays = daysInMonth(y, m);
+                  const weeks = [];
+                  let week = new Array(firstDow).fill(null);
+                  for (let d = 1; d <= totalDays; d++) {
+                    week.push(d);
+                    if (week.length === 7) { weeks.push(week); week = []; }
+                  }
+                  if (week.length > 0) {
+                    while (week.length < 7) week.push(null);
+                    weeks.push(week);
+                  }
+                  return (
+                    <div className="day-calendar">
+                      <div className="day-calendar-header">
+                        {['일','월','화','수','목','금','토'].map((dn, i) => (
+                          <div key={dn} className={`day-calendar-dow ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}>{dn}</div>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
+                      {weeks.map((wk, wi) => (
+                        <div className="day-calendar-row" key={wi}>
+                          {wk.map((d, di) => {
+                            if (d === null) return <div className="day-cal-cell day-cal-empty" key={di} />;
+                            const v = buf.dailyQuantities?.[d];
+                            const hasValue = v !== undefined && v !== null && v !== '';
+                            const isSunday = di === 0;
+                            const isSaturday = di === 6;
+                            return (
+                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''}`} key={di}>
+                                <label>{d}</label>
+                                <input
+                                  type="number"
+                                  step="0.25"
+                                  value={v ?? ''}
+                                  onChange={(e) => updateDay(it.id, d, e.target.value)}
+                                  onBlur={() => flushRow(it.id)}
+                                  disabled={!canEdit}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 <div className="closing-card-foot">
                   <div className="foot-field">
