@@ -53,6 +53,7 @@ export const LEAVE_STATUS = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
   CANCELLED: 'cancelled',
+  CONFIRMED: 'confirmed',
 };
 
 export const LEAVE_STATUS_LABELS = {
@@ -60,4 +61,5 @@ export const LEAVE_STATUS_LABELS = {
   approved: '승인',
   rejected: '거절',
   cancelled: '취소',
+  confirmed: '사용',
 };

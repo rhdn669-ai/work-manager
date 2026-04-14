@@ -9,9 +9,9 @@ import { getUser } from './userService';
 const leavesRef = collection(db, 'leaves');
 const balancesRef = collection(db, 'leaveBalances');
 
-// 연차 신청
+// 연차 신청 (바로 사용 확정 + 잔여 차감)
 export async function requestLeave(data) {
-  return addDoc(leavesRef, {
+  const docRef = await addDoc(leavesRef, {
     userId: data.userId,
     departmentId: data.departmentId,
     type: data.type,
@@ -19,13 +19,13 @@ export async function requestLeave(data) {
     endDate: data.endDate,
     days: data.days,
     reason: data.reason || '',
-    status: 'pending',
-    approvedBy: null,
-    approvedAt: null,
-    rejectedReason: null,
+    status: 'confirmed',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  // 잔여 연차 차감
+  await updateLeaveBalance(data.userId, data.days);
+  return docRef;
 }
 
 // 연차 승인
@@ -65,25 +65,21 @@ export async function cancelLeave(leaveId) {
     updatedAt: new Date(),
   });
 
-  // 승인된 연차였으면 잔여 연차 복원
-  if (leave.status === 'approved') {
+  // 사용/승인된 연차였으면 잔여 연차 복원
+  if (leave.status === 'confirmed' || leave.status === 'approved') {
     await updateLeaveBalance(leave.userId, -leave.days);
   }
 }
 
-// 승인된 연차 목록 (월 기준, 전체 사용자)
+// 사용 중인 연차 목록 (월 기준, 전체 사용자)
 export async function getApprovedLeavesByMonth(year, month) {
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-  const q = query(
-    leavesRef,
-    where('status', '==', 'approved'),
-  );
-  const snapshot = await getDocs(q);
+  const snapshot = await getDocs(leavesRef);
   return snapshot.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((l) => l.endDate >= monthStart && l.startDate <= monthEnd);
+    .filter((l) => (l.status === 'confirmed' || l.status === 'approved') && l.endDate >= monthStart && l.startDate <= monthEnd);
 }
 
 // 본인 연차 신청 목록

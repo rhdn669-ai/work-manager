@@ -50,7 +50,7 @@ export default function LeaveRequestPage() {
         days,
         reason,
       });
-      setMessage('연차 신청이 완료되었습니다. 승인을 기다려주세요.');
+      setMessage('연차가 등록되었습니다.');
       setStartDate('');
       setEndDate('');
       setReason('');
