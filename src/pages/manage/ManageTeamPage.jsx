@@ -143,7 +143,7 @@ export default function ManageTeamPage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
-  // === 팀장(비관리자) 뷰: 팀원 현황 (이름 + 직급 + 이번 달 잔업) ===
+  // === 팀장(비관리자) 뷰: 팀 구성 현황 (이름 + 직급 + 이번 달 잔업) ===
   if (!isAdmin) {
     const myTeam = teams[0];
     const members = myTeam ? users.filter((u) => u.departmentId === myTeam.id && u.uid !== userProfile.uid) : [];
@@ -151,7 +151,7 @@ export default function ManageTeamPage() {
     return (
       <div className="manage-team-page">
         <div className="page-header">
-          <h2>팀원 현황{myTeam && ` — ${myTeam.name}`}</h2>
+          <h2>팀 구성 현황{myTeam && ` — ${myTeam.name}`}</h2>
         </div>
         <p className="field-hint">
           {now.getFullYear()}년 {now.getMonth() + 1}월 기준 잔업 현황
