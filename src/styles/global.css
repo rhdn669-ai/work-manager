@@ -1685,6 +1685,291 @@ body {
 .finance-row-material { border-left: 3px solid #6366f1; }
 .finance-row-overtime { border-left: 3px solid #ef4444; }
 
+/* ===== 홈 캘린더 ===== */
+.home-calendar {
+  margin-top: 20px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.home-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.home-calendar-title h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.home-calendar-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.home-calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  padding: 4px;
+  border-radius: 999px;
+}
+.cal-nav-btn, .cal-today-btn {
+  height: 30px;
+  min-width: 30px;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-nav-btn:hover, .cal-today-btn:hover {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.cal-today-btn {
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+.home-calendar-loading {
+  padding: 40px 0;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.home-calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.home-cal-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.home-cal-dow-cell {
+  padding: 6px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.home-cal-dow-cell.sunday { color: #ef4444; }
+.home-cal-dow-cell.saturday { color: #3b82f6; }
+
+.home-cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 54px;
+  padding: 6px 4px;
+  background: #fafbfc;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.home-cal-cell:hover:not(.empty) {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+.home-cal-cell.empty {
+  background: transparent;
+  cursor: default;
+}
+.home-cal-cell.today {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.home-cal-cell.selected {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+.home-cal-cell.selected .home-cal-date { color: #fff; }
+.home-cal-cell.selected .home-cal-dot { background: #fff !important; }
+.home-cal-cell.selected .home-cal-more { color: #fff; }
+
+.home-cal-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.home-cal-cell.sunday .home-cal-date { color: #ef4444; }
+.home-cal-cell.saturday .home-cal-date { color: #3b82f6; }
+.home-cal-cell.today .home-cal-date { color: #2563eb; }
+
+.home-cal-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  min-height: 6px;
+}
+.home-cal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.home-cal-dot.type-event { background: #3b82f6; }
+.home-cal-dot.type-notice { background: #f59e0b; }
+.home-cal-dot.type-holiday { background: #ef4444; }
+.home-cal-more {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.home-calendar-list {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.home-cal-list-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 2px;
+}
+.home-cal-list-empty {
+  padding: 14px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.home-cal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fafbfc;
+  border: 1px solid #eef2f6;
+  border-left-width: 3px;
+  border-radius: 8px;
+}
+.home-cal-item.type-event { border-left-color: #3b82f6; }
+.home-cal-item.type-notice { border-left-color: #f59e0b; }
+.home-cal-item.type-holiday { border-left-color: #ef4444; }
+
+.home-cal-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.home-cal-item.type-event .home-cal-badge { background: #dbeafe; color: #1e40af; }
+.home-cal-item.type-notice .home-cal-badge { background: #fef3c7; color: #92400e; }
+.home-cal-item.type-holiday .home-cal-badge { background: #fee2e2; color: #991b1b; }
+
+.home-cal-item-body { flex: 1; min-width: 0; }
+.home-cal-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+}
+.home-cal-item-desc {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.home-cal-item-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* ===== 이벤트 관리 페이지 ===== */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.event-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left-width: 4px;
+  border-radius: 10px;
+}
+.event-row.event-type-event { border-left-color: #3b82f6; }
+.event-row.event-type-notice { border-left-color: #f59e0b; }
+.event-row.event-type-holiday { border-left-color: #ef4444; }
+
+.event-type-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.event-row.event-type-event .event-type-badge { background: #dbeafe; color: #1e40af; }
+.event-row.event-type-notice .event-type-badge { background: #fef3c7; color: #92400e; }
+.event-row.event-type-holiday .event-type-badge { background: #fee2e2; color: #991b1b; }
+
+.event-info { flex: 1; min-width: 0; }
+.event-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.event-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #64748b;
+}
+.event-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.event-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .home-cal-cell { min-height: 46px; }
+  .home-cal-date { font-size: 12px; }
+  .event-row { flex-wrap: wrap; }
+  .event-actions { width: 100%; justify-content: flex-end; }
+}
+
 .finance-desc:disabled,
 .finance-amount:disabled,
 .finance-note:disabled {

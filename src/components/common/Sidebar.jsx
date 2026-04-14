@@ -16,6 +16,7 @@ export default function Sidebar({ isOpen }) {
         {isAdmin && <NavLink to="/admin/users" className="nav-link">직원 관리</NavLink>}
         {isAdmin && <NavLink to="/admin/leaves" className="nav-link">연차 잔여</NavLink>}
         {isAdmin && <NavLink to="/admin/reports" className="nav-link">직원 현황</NavLink>}
+        {isAdmin && <NavLink to="/admin/events" className="nav-link">이벤트 · 공지</NavLink>}
       </nav>
     </aside>
   );

@@ -8,6 +8,7 @@ import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
+import HomeCalendar from '../components/common/HomeCalendar';
 
 export default function DashboardPage() {
   const { userProfile, isAdmin, isManager, canApproveLeave, canApproveAll } = useAuth();
@@ -220,6 +221,8 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      <HomeCalendar />
     </div>
   );
 }
