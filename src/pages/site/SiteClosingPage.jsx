@@ -7,6 +7,7 @@ import {
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
+import { getApprovedLeavesByMonth } from '../../services/leaveService';
 
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
@@ -38,6 +39,7 @@ export default function SiteClosingPage() {
   const [loading, setLoading] = useState(true);
   const [finances, setFinances] = useState([]);
   const [financeBuf, setFinanceBuf] = useState({});
+  const [leaveDays, setLeaveDays] = useState({}); // { userId: Set of day numbers }
   const [showEmployeeSelect, setShowEmployeeSelect] = useState(false);
   const [savingCount, setSavingCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState(null);
@@ -64,17 +66,43 @@ export default function SiteClosingPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [s, its, fins, users, depts] = await Promise.all([
+      const [s, its, fins, users, depts, approvedLeaves] = await Promise.all([
         getSite(siteId),
         getClosingItems(siteId, y, m),
         getFinanceItems(siteId, y, m),
         getUsers(),
         getDepartments(),
+        getApprovedLeavesByMonth(y, m),
       ]);
       setSite(s);
       setFinances(fins);
       const uMap = Object.fromEntries(users.map((u) => [u.uid, u]));
       setUserMap(uMap);
+
+      // 연차 날짜 매핑: userId → Set of day numbers
+      const ldMap = {};
+      for (const leave of approvedLeaves) {
+        const start = new Date(leave.startDate);
+        const end = new Date(leave.endDate);
+        const cur = new Date(start);
+        while (cur <= end) {
+          if (cur.getFullYear() === y && cur.getMonth() + 1 === m) {
+            const uid = leave.userId;
+            if (!ldMap[uid]) ldMap[uid] = new Set();
+            ldMap[uid].add(cur.getDate());
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+      // 이름 → userId 매핑 (공수표 detail이 이름이므로)
+      const nameToUid = {};
+      users.forEach((u) => { nameToUid[u.name] = u.uid; });
+      const ldByName = {};
+      for (const [uid, days] of Object.entries(ldMap)) {
+        const user = uMap[uid];
+        if (user) ldByName[user.name] = days;
+      }
+      setLeaveDays(ldByName);
 
       // 담당자(팀장)의 팀원 자동 추가
       let updatedItems = its;
@@ -580,17 +608,22 @@ export default function SiteClosingPage() {
                             const hasValue = v !== undefined && v !== null && v !== '';
                             const isSunday = di === 0;
                             const isSaturday = di === 6;
+                            const isOnLeave = cardType === 'employee' && leaveDays[buf.detail]?.has(d);
                             return (
-                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''}`} key={di}>
+                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''}`} key={di}>
                                 <label>{d}</label>
-                                <input
-                                  type="number"
-                                  step="0.25"
-                                  value={v ?? ''}
-                                  onChange={(e) => updateDay(it.id, d, e.target.value)}
-                                  onBlur={() => flushRow(it.id)}
-                                  disabled={!canEdit}
-                                />
+                                {isOnLeave ? (
+                                  <div className="leave-badge">연차</div>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    step="0.25"
+                                    value={v ?? ''}
+                                    onChange={(e) => updateDay(it.id, d, e.target.value)}
+                                    onBlur={() => flushRow(it.id)}
+                                    disabled={!canEdit}
+                                  />
+                                )}
                               </div>
                             );
                           })}

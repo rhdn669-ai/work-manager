@@ -1945,6 +1945,22 @@ body {
   color: #dc2626;
 }
 
+.day-cal-cell.on-leave label {
+  color: #dc2626;
+}
+
+.leave-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: #f87171;
+  border-radius: 6px;
+}
+
 .closing-card-foot {
   display: flex;
   align-items: center;
