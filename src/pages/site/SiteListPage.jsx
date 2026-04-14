@@ -20,7 +20,6 @@ export default function SiteListPage() {
   const [showModal, setShowModal] = useState(false);
   const [editSite, setEditSite] = useState(null);
   const [form, setForm] = useState({ name: '', team: '', managerIds: [] });
-  const [vendorText, setVendorText] = useState('');
   const [managerListOpen, setManagerListOpen] = useState(false);
 
   useEffect(() => {
@@ -76,19 +75,17 @@ export default function SiteListPage() {
   function openEdit(site) {
     setEditSite(site);
     setForm({ name: site.name, team: site.team || '', managerIds: site.managerIds || [] });
-    setVendorText((site.defaultVendors || []).join(', '));
     setManagerListOpen(false);
     setShowModal(true);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const defaultVendors = vendorText.split(',').map((s) => s.trim()).filter(Boolean);
     try {
       if (editSite) {
-        await updateSite(editSite.id, { ...form, defaultVendors });
+        await updateSite(editSite.id, { ...form });
       } else {
-        await createSite({ ...form, defaultVendors });
+        await createSite({ ...form });
       }
       setShowModal(false);
       await loadData();
@@ -242,10 +239,6 @@ export default function SiteListPage() {
                 })}
               </div>
             )}
-          </div>
-          <div className="form-group">
-            <label>기본 업체 목록 (쉼표 구분)</label>
-            <textarea value={vendorText} onChange={(e) => setVendorText(e.target.value)} rows={2} placeholder="업체명을 쉼표로 구분하여 입력" />
           </div>
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary">{editSite ? '수정' : '추가'}</button>
