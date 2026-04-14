@@ -1714,8 +1714,9 @@ body {
 
 .closing-name {
   flex: 0 0 90px;
-  font-size: 13px;
-  color: var(--text-light);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
   padding: 5px 8px;
   border-radius: 6px;
 }
