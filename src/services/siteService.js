@@ -97,6 +97,7 @@ export async function addClosingItem(siteId, year, month, data) {
     vendor: data.vendor || '',
     detail: data.detail || '',
     category: data.category || '',
+    itemType: data.itemType || 'freelancer',
     unitPrice: data.unitPrice || 0,
     dailyQuantities: data.dailyQuantities || {},
     quantity: data.quantity || 0,

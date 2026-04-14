@@ -97,6 +97,7 @@ export default function SiteClosingPage() {
         vendor: data.vendor || '',
         detail: data.detail || '',
         category: data.category || '',
+        itemType: data.itemType || 'freelancer',
         unitPrice: Number(data.unitPrice) || 0,
         dailyQuantities: data.dailyQuantities || {},
         quantity: Number(data.quantity) || 0,
@@ -138,18 +139,27 @@ export default function SiteClosingPage() {
   async function handleAddEmployee(user) {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
-    // 월급 ÷ 해당 월 영업일수 = 일당
     const monthlySalary = Number(user.fixedCost) || 0;
     const workingDays = getWorkingDaysInMonth(y, m);
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
+    // 영업일 전체 자동 채우기
+    const dq = {};
+    const totalDays = daysInMonth(y, m);
+    for (let d = 1; d <= totalDays; d++) {
+      const dow = new Date(y, m - 1, d).getDay();
+      if (dow !== 0 && dow !== 6) dq[d] = 1;
+    }
+    const quantity = Object.values(dq).reduce((s, v) => s + v, 0);
     await addClosingItem(siteId, y, m, {
       no: nextNo,
       vendor: '직원',
       detail: user.name,
       category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
+      itemType: 'employee',
       unitPrice: dailyRate,
-      dailyQuantities: {},
-      quantity: 0, amount: 0,
+      dailyQuantities: dq,
+      quantity,
+      amount: dailyRate * quantity,
       order: nextOrder,
     });
     setShowEmployeeSelect(false);
@@ -430,8 +440,9 @@ export default function SiteClosingPage() {
         <div className="closing-cards">
           {items.map((it) => {
             const buf = editBuf[it.id] || it;
+            const cardType = it.itemType || buf.itemType || 'freelancer';
             return (
-              <div className="closing-card" key={it.id}>
+              <div className={`closing-card closing-card-${cardType}`} key={it.id}>
                 <div className="closing-card-head">
                   <span className="closing-no">#{buf.no || '-'}</span>
                   <input
