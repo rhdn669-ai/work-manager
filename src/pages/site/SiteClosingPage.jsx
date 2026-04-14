@@ -177,10 +177,10 @@ export default function SiteClosingPage() {
   }
 
   // --- 지출/매출 ---
-  async function handleAddFinance(type) {
+  async function handleAddFinance(type, description = '') {
     const list = finances.filter((f) => f.type === type);
     const nextOrder = list.length ? Math.max(...list.map((f) => f.order || 0)) + 1 : 1;
-    await addFinanceItem(siteId, y, m, { type, description: '', amount: 0, note: '', order: nextOrder });
+    await addFinanceItem(siteId, y, m, { type, description, amount: 0, note: '', order: nextOrder });
     await loadAll();
   }
 
@@ -334,7 +334,14 @@ export default function SiteClosingPage() {
       <div className="finance-section">
         <div className="finance-section-header">
           <h3 className="finance-title finance-expense">지출</h3>
-          {canEdit && <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>}
+          {canEdit && (
+            <div className="finance-actions">
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
+            </div>
+          )}
         </div>
         {expenseItems.length === 0 ? (
           <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 지출 항목이 없습니다.</p>
