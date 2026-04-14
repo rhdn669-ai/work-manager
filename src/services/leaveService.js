@@ -107,10 +107,11 @@ export async function getDepartmentPendingLeaves(departmentId) {
     leavesRef,
     where('departmentId', '==', departmentId),
     where('status', '==', 'pending'),
-    orderBy('createdAt', 'desc')
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
 
 // 전사 연차 신청 목록 (승인 대기) — 대표/부사장/관리자용
@@ -118,10 +119,11 @@ export async function getAllPendingLeaves() {
   const q = query(
     leavesRef,
     where('status', '==', 'pending'),
-    orderBy('createdAt', 'desc')
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
 
 // 잔여 연차 조회 (users 컬렉션의 입사일 기준 실시간 계산)
