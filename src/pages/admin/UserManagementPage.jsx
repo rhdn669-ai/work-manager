@@ -12,7 +12,7 @@ export default function UserManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
-    name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '',
+    name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
   });
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '' });
+    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '' });
     setShowModal(true);
   }
 
@@ -42,7 +42,7 @@ export default function UserManagementPage() {
     setForm({
       name: user.name, code: user.code || '',
       role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
-      fixedCost: user.fixedCost || '',
+      fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
     });
     setShowModal(true);
   }
@@ -55,6 +55,7 @@ export default function UserManagementPage() {
           name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
           fixedCost: Number(form.fixedCost) || 0,
+          hourlyRate: Number(form.hourlyRate) || 0,
         });
         await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
@@ -63,6 +64,7 @@ export default function UserManagementPage() {
           uid: userId, name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
           fixedCost: Number(form.fixedCost) || 0,
+          hourlyRate: Number(form.hourlyRate) || 0,
         });
         await initLeaveBalance(userId, form.joinDate);
       }
@@ -103,6 +105,7 @@ export default function UserManagementPage() {
             <th>직급</th>
             <th>부서</th>
             <th>고정비용</th>
+            <th>시급</th>
             <th>입사일</th>
             <th>작업</th>
           </tr>
@@ -119,6 +122,7 @@ export default function UserManagementPage() {
               </td>
               <td>{deptMap[u.departmentId] || '-'}</td>
               <td>{u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}</td>
+              <td>{u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}</td>
               <td>{u.joinDate || '-'}</td>
               <td>
                 <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
@@ -160,6 +164,10 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>고정비용 (월급, 원)</label>
             <input type="number" value={form.fixedCost} onChange={(e) => setForm({ ...form, fixedCost: e.target.value })} placeholder="예: 3000000" />
+          </div>
+          <div className="form-group">
+            <label>시급 (잔업 단가, 원)</label>
+            <input type="number" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} placeholder="예: 15000" />
           </div>
           <div className="form-group">
             <label>입사일</label>

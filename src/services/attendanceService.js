@@ -1,9 +1,11 @@
 import {
-  collection, getDocs, addDoc, deleteDoc, updateDoc, doc,
+  collection, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc,
   query, where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
+import { getUser } from './userService';
+import { addFinanceItem } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
@@ -11,16 +13,23 @@ const overtimeRef = collection(db, 'overtimeRecords');
 export async function addOvertimeRecord(data) {
   const today = getToday();
   const isPast = data.date < today;
-  return addDoc(overtimeRef, {
+  const status = isPast ? 'pending' : 'approved';
+  const docRef = await addDoc(overtimeRef, {
     userId: data.userId,
     userName: data.userName,
     departmentId: data.departmentId,
+    siteId: data.siteId || '',
     date: data.date,
     minutes: data.minutes,
     reason: data.reason || '',
-    status: isPast ? 'pending' : 'approved',
+    status,
     createdAt: new Date(),
   });
+  // 당일/미래 잔업은 바로 승인이므로 프로젝트 지출 반영
+  if (status === 'approved' && data.siteId) {
+    await addOvertimeExpense(data.userId, data.userName, data.siteId, data.date, data.minutes);
+  }
+  return docRef;
 }
 
 // 잔업 삭제
@@ -31,6 +40,14 @@ export async function deleteOvertimeRecord(id) {
 // 잔업 승인
 export async function approveOvertimeRecord(id) {
   await updateDoc(doc(db, 'overtimeRecords', id), { status: 'approved' });
+  // 프로젝트 지출 반영
+  const snap = await getDoc(doc(db, 'overtimeRecords', id));
+  if (snap.exists()) {
+    const rec = snap.data();
+    if (rec.siteId) {
+      await addOvertimeExpense(rec.userId, rec.userName, rec.siteId, rec.date, rec.minutes);
+    }
+  }
 }
 
 // 잔업 거절
@@ -74,4 +91,23 @@ export async function getAllOvertimeRecords(startDate, endDate) {
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((r) => r.date >= startDate && r.date <= endDate)
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// 잔업 비용을 프로젝트 지출에 추가
+async function addOvertimeExpense(userId, userName, siteId, date, minutes) {
+  const user = await getUser(userId);
+  const hourlyRate = Number(user?.hourlyRate) || 0;
+  if (hourlyRate <= 0) return;
+  const hours = minutes / 60;
+  const amount = Math.round(hourlyRate * hours);
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  await addFinanceItem(siteId, year, month, {
+    type: 'expense',
+    description: `잔업 - ${userName} (${date}, ${Math.floor(hours)}h${minutes % 60 > 0 ? ` ${minutes % 60}m` : ''})`,
+    amount,
+    note: `시급 ${hourlyRate.toLocaleString()}원`,
+    order: 0,
+  });
 }

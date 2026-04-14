@@ -1,17 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { addOvertimeRecord } from '../../services/attendanceService';
+import { getAllSites, getSitesByManager } from '../../services/siteService';
 import { getToday } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
 
 export default function AttendancePage() {
-  const { userProfile } = useAuth();
+  const { userProfile, isAdmin } = useAuth();
   const [date, setDate] = useState(getToday());
   const [hours, setHours] = useState('');
   const [minutesInput, setMinutesInput] = useState('');
   const [reason, setReason] = useState('');
+  const [siteId, setSiteId] = useState('');
+  const [sites, setSites] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = isAdmin ? await getAllSites() : await getSitesByManager(userProfile.uid);
+        setSites(list);
+      } catch (err) { console.error(err); }
+    })();
+  }, [userProfile]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -32,6 +44,7 @@ export default function AttendancePage() {
         date,
         minutes: totalMinutes,
         reason,
+        siteId: siteId || '',
       });
       setHours('');
       setMinutesInput('');
@@ -68,6 +81,13 @@ export default function AttendancePage() {
               <label>분</label>
               <input type="number" value={minutesInput} onChange={(e) => setMinutesInput(e.target.value)} placeholder="분" min="0" max="59" />
             </div>
+          </div>
+          <div className="form-group">
+            <label>프로젝트</label>
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+              <option value="">선택 안 함</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
           </div>
           <div className="form-group">
             <label>사유</label>
