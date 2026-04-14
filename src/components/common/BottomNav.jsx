@@ -2,7 +2,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function BottomNav() {
-  const { isAdmin, canApproveLeave } = useAuth();
+  const { isAdmin, canApproveLeave, isTeamLeader } = useAuth();
+  console.log('[BottomNav] isAdmin:', isAdmin, 'canApproveLeave:', canApproveLeave, 'isTeamLeader:', isTeamLeader);
 
   return (
     <nav className="bottom-nav">
