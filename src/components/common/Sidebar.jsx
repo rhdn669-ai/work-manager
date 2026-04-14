@@ -9,10 +9,12 @@ export default function Sidebar({ isOpen }) {
       <nav className="sidebar-nav">
         <NavLink to="/dashboard" className="nav-link">홈</NavLink>
 
-        <div className="nav-section">
-          <NavLink to="/attendance" end className="nav-link">잔업</NavLink>
-          <NavLink to="/leave" end className="nav-link">연차</NavLink>
-        </div>
+        {!isAdmin && (
+          <div className="nav-section">
+            <NavLink to="/attendance" end className="nav-link">잔업</NavLink>
+            <NavLink to="/leave" end className="nav-link">연차</NavLink>
+          </div>
+        )}
 
         {(isAdmin || canApproveLeave) && (
           <div className="nav-section">
