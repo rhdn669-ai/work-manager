@@ -499,7 +499,11 @@ export default function SiteClosingPage() {
         </div>
       ) : (
         <div className="closing-cards">
-          {items.map((it) => {
+          {[...items].sort((a, b) => {
+            const aType = a.itemType === 'employee' ? 0 : 1;
+            const bType = b.itemType === 'employee' ? 0 : 1;
+            return aType !== bType ? aType - bType : (a.order || 0) - (b.order || 0);
+          }).map((it) => {
             const buf = editBuf[it.id] || it;
             const cardType = it.itemType || buf.itemType || 'freelancer';
             return (
