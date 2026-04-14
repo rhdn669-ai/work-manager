@@ -74,7 +74,7 @@ export default function UserManagementPage() {
   }
 
   async function handleDelete(user) {
-    if (!confirm(`"${user.name}" 사용자를 삭제하시겠습니까?`)) return;
+    if (!confirm(`"${user.name}" 직원을 삭제하시겠습니까?`)) return;
     try {
       await deleteUser(user.uid);
       await loadData();
@@ -91,8 +91,8 @@ export default function UserManagementPage() {
   return (
     <div className="user-management-page">
       <div className="page-header">
-        <h2>사용자 관리</h2>
-        <button className="btn btn-primary" onClick={openCreate}>사용자 추가</button>
+        <h2>직원 관리</h2>
+        <button className="btn btn-primary" onClick={openCreate}>직원 추가</button>
       </div>
 
       <table className="table">
@@ -129,7 +129,7 @@ export default function UserManagementPage() {
         </tbody>
       </table>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editUser ? '사용자 수정' : '사용자 추가'}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editUser ? '사용자 수정' : '직원 추가'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>이름</label>

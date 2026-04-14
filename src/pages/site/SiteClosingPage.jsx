@@ -408,7 +408,7 @@ export default function SiteClosingPage() {
       {showEmployeeSelect && canEdit && (
         <div className="select-dropdown-list" style={{ marginBottom: 12 }}>
           {Object.values(userMap).filter((u) => u.fixedCost).length === 0 ? (
-            <p className="empty-state" style={{ padding: '12px', margin: 0 }}>고정비용이 등록된 직원이 없습니다. 사용자 관리에서 설정하세요.</p>
+            <p className="empty-state" style={{ padding: '12px', margin: 0 }}>고정비용이 등록된 직원이 없습니다. 직원 관리에서 설정하세요.</p>
           ) : (
             Object.values(userMap).filter((u) => u.fixedCost).map((u) => (
               <label key={u.uid} className="select-list-item" onClick={() => handleAddEmployee(u)} style={{ cursor: 'pointer' }}>
