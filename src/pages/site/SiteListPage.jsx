@@ -1,18 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getFinanceItems, getClosingItems } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
+import Modal from '../../components/common/Modal';
 
 export default function SiteListPage() {
   const { userProfile, isAdmin } = useAuth();
   const [sites, setSites] = useState([]);
+  const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
   const [siteStats, setSiteStats] = useState({});
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+
+  // 프로젝트 추가/수정 모달
+  const [showModal, setShowModal] = useState(false);
+  const [editSite, setEditSite] = useState(null);
+  const [form, setForm] = useState({ name: '', team: '', managerIds: [] });
+  const [vendorText, setVendorText] = useState('');
+  const [managerListOpen, setManagerListOpen] = useState(false);
 
   useEffect(() => {
     if (userProfile) loadData();
@@ -21,12 +30,14 @@ export default function SiteListPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [list, users] = await Promise.all([
+      const [list, userList] = await Promise.all([
         isAdmin ? getAllSites() : getSitesByManager(userProfile.uid),
         getUsers(),
       ]);
       setSites(list);
-      setUserMap(Object.fromEntries(users.map((u) => [u.uid, u])));
+      setUsers(userList);
+      const uMap = Object.fromEntries(userList.map((u) => [u.uid, u]));
+      setUserMap(uMap);
 
       const stats = {};
       await Promise.all(list.map(async (s) => {
@@ -53,12 +64,69 @@ export default function SiteListPage() {
     return names.length ? names.join(', ') : '-';
   }
 
+  // --- 프로젝트 CRUD ---
+  function openCreate() {
+    setEditSite(null);
+    setForm({ name: '', team: '', managerIds: [] });
+    setVendorText('');
+    setManagerListOpen(false);
+    setShowModal(true);
+  }
+
+  function openEdit(site) {
+    setEditSite(site);
+    setForm({ name: site.name, team: site.team || '', managerIds: site.managerIds || [] });
+    setVendorText((site.defaultVendors || []).join(', '));
+    setManagerListOpen(false);
+    setShowModal(true);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const defaultVendors = vendorText.split(',').map((s) => s.trim()).filter(Boolean);
+    try {
+      if (editSite) {
+        await updateSite(editSite.id, { ...form, defaultVendors });
+      } else {
+        await createSite({ ...form, defaultVendors });
+      }
+      setShowModal(false);
+      await loadData();
+    } catch (err) {
+      alert('처리 중 오류: ' + err.message);
+    }
+  }
+
+  async function handleDelete(site, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
+    try {
+      await deleteSite(site.id);
+      await loadData();
+    } catch (err) {
+      alert('삭제 오류: ' + err.message);
+    }
+  }
+
+  function toggleManager(uid) {
+    setForm((f) => ({
+      ...f,
+      managerIds: f.managerIds.includes(uid)
+        ? f.managerIds.filter((x) => x !== uid)
+        : [...f.managerIds, uid],
+    }));
+  }
+
+  const candidates = users.filter((u) => u.role !== 'admin');
+
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
     <div className="site-list-page">
       <div className="page-header">
-        <h2>프로젝트 마감리스트</h2>
+        <h2>프로젝트</h2>
+        {isAdmin && <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>}
       </div>
 
       <div className="filters">
@@ -95,7 +163,7 @@ export default function SiteListPage() {
       {sites.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
-            {isAdmin ? '등록된 프로젝트가 없습니다. "프로젝트 관리"에서 추가해주세요.' : '담당 프로젝트가 없습니다. 관리자에게 문의해주세요.'}
+            {isAdmin ? '등록된 프로젝트가 없습니다. 상단 "프로젝트 추가" 버튼으로 추가하세요.' : '담당 프로젝트가 없습니다. 관리자에게 문의해주세요.'}
           </div>
         </div>
       ) : (
@@ -105,45 +173,86 @@ export default function SiteListPage() {
             const totalExpense = raw.expense + raw.labor;
             const balance = raw.revenue - totalExpense;
             return (
-              <Link
-                key={s.id}
-                to={`/sites/${s.id}/${year}/${month}`}
-                className="site-row"
-              >
-                <div className="site-row-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 21h18"/>
-                    <path d="M5 21V7l7-4 7 4v14"/>
-                    <path d="M9 9h.01"/>
-                    <path d="M9 13h.01"/>
-                    <path d="M9 17h.01"/>
-                    <path d="M15 9h.01"/>
-                    <path d="M15 13h.01"/>
-                    <path d="M15 17h.01"/>
-                  </svg>
-                </div>
-                <div className="site-row-body">
-                  <div className="site-row-name">{s.name}</div>
-                  <div className="site-row-meta">
-                    <span className="chip chip-team">{s.team || '팀 미지정'}</span>
-                    <span className="chip chip-manager">담당 {managerNames(s)}</span>
+              <div key={s.id} className="site-row-wrapper">
+                <Link to={`/sites/${s.id}/${year}/${month}`} className="site-row">
+                  <div className="site-row-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/>
+                      <path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/>
+                      <path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/>
+                    </svg>
                   </div>
-                  <div className="site-row-stats">
-                    <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
-                    <span className="stat-expense">지출 {totalExpense.toLocaleString()}</span>
-                    <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
+                  <div className="site-row-body">
+                    <div className="site-row-name">{s.name}</div>
+                    <div className="site-row-meta">
+                      <span className="chip chip-team">{s.team || '팀 미지정'}</span>
+                      <span className="chip chip-manager">담당 {managerNames(s)}</span>
+                    </div>
+                    <div className="site-row-stats">
+                      <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
+                      <span className="stat-expense">지출 {totalExpense.toLocaleString()}</span>
+                      <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="site-row-period">
-                  <div className="period-y">{year}</div>
-                  <div className="period-m">{String(month).padStart(2, '0')}월</div>
-                </div>
-                <div className="site-row-arrow">→</div>
-              </Link>
+                  <div className="site-row-period">
+                    <div className="period-y">{year}</div>
+                    <div className="period-m">{String(month).padStart(2, '0')}월</div>
+                  </div>
+                  <div className="site-row-arrow">→</div>
+                </Link>
+                {isAdmin && (
+                  <div className="site-row-actions">
+                    <button className="btn btn-sm btn-outline" onClick={(e) => { e.preventDefault(); openEdit(s); }}>수정</button>
+                    <button className="btn btn-sm btn-danger" onClick={(e) => handleDelete(s, e)}>삭제</button>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
       )}
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editSite ? '프로젝트 수정' : '프로젝트 추가'}>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>프로젝트명 *</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label>팀</label>
+            <input value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} placeholder="예: 전장 2팀" />
+          </div>
+          <div className="form-group">
+            <label>담당자 선택</label>
+            <button type="button" className="select-dropdown-toggle" onClick={() => setManagerListOpen(!managerListOpen)}>
+              <span>{form.managerIds.length > 0 ? `${form.managerIds.length}명 선택됨` : '담당자를 선택하세요'}</span>
+              <span className="select-dropdown-arrow">{managerListOpen ? '▲' : '▼'}</span>
+            </button>
+            {managerListOpen && (
+              <div className="select-dropdown-list">
+                {candidates.map((u) => {
+                  const checked = form.managerIds.includes(u.uid);
+                  return (
+                    <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleManager(u.uid)} />
+                      <span className="select-list-name">{u.name}</span>
+                      <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="form-group">
+            <label>기본 업체 목록 (쉼표 구분)</label>
+            <textarea value={vendorText} onChange={(e) => setVendorText(e.target.value)} rows={2} placeholder="업체명을 쉼표로 구분하여 입력" />
+          </div>
+          <div className="modal-actions">
+            <button type="submit" className="btn btn-primary">{editSite ? '수정' : '추가'}</button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
