@@ -540,14 +540,16 @@ export default function SiteClosingPage() {
                   )}
                 </div>
 
-                <input
-                  className="closing-category"
-                  value={buf.category || ''}
-                  placeholder="비고"
-                  onChange={(e) => updateField(it.id, 'category', e.target.value)}
-                  onBlur={() => flushRow(it.id)}
-                  disabled={!canEdit}
-                />
+                {(isAdmin || cardType !== 'employee') && (
+                  <input
+                    className="closing-category"
+                    value={buf.category || ''}
+                    placeholder="비고"
+                    onChange={(e) => updateField(it.id, 'category', e.target.value)}
+                    onBlur={() => flushRow(it.id)}
+                    disabled={!canEdit}
+                  />
+                )}
 
                 {(() => {
                   // 캘린더 형식 생성
@@ -603,21 +605,25 @@ export default function SiteClosingPage() {
                     <span className="label">수량</span>
                     <strong>{Number(buf.quantity || 0)}일</strong>
                   </div>
-                  <div className="foot-field">
-                    <span className="label">단가</span>
-                    <input
-                      className="closing-price"
-                      type="number"
-                      value={buf.unitPrice || 0}
-                      onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit || cardType === 'employee'}
-                    />
-                  </div>
-                  <div className="foot-field closing-amount">
-                    <span className="label">금액</span>
-                    <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
-                  </div>
+                  {(isAdmin || cardType !== 'employee') && (
+                    <>
+                      <div className="foot-field">
+                        <span className="label">단가</span>
+                        <input
+                          className="closing-price"
+                          type="number"
+                          value={buf.unitPrice || 0}
+                          onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
+                          onBlur={() => flushRow(it.id)}
+                          disabled={!canEdit || cardType === 'employee'}
+                        />
+                      </div>
+                      <div className="foot-field closing-amount">
+                        <span className="label">금액</span>
+                        <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             );
