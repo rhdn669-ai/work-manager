@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { calculateAccruedLeave } from '../utils/leaveCalculator';
+import { getUser } from './userService';
 
 const leavesRef = collection(db, 'leaves');
 const balancesRef = collection(db, 'leaveBalances');
@@ -108,20 +109,33 @@ export async function getAllPendingLeaves() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// 잔여 연차 조회 (입사일~현재 누적 발생분 동적 계산)
-// 반환 객체의 totalDays/remainingDays는 조회 시점 기준 동적 계산값
+// 잔여 연차 조회 (users 컬렉션의 입사일 기준 실시간 계산)
 export async function getLeaveBalance(userId) {
-  const docSnap = await getDoc(doc(db, 'leaveBalances', userId));
-  if (!docSnap.exists()) return null;
-  const data = docSnap.data();
-  if (!data.joinDate) return null; // 입사일 동기화 필요
+  // users 컬렉션에서 최신 입사일을 직접 가져옴
+  const user = await getUser(userId);
+  if (!user || !user.joinDate) return null;
 
-  const totalDays = calculateAccruedLeave(data.joinDate);
-  const usedDays = data.usedDays || 0;
+  const joinDate = user.joinDate;
+  const totalDays = calculateAccruedLeave(joinDate);
+
+  const docSnap = await getDoc(doc(db, 'leaveBalances', userId));
+  const usedDays = docSnap.exists() ? (docSnap.data().usedDays || 0) : 0;
+
+  // leaveBalances 문서가 없으면 자동 생성
+  if (!docSnap.exists()) {
+    await setDoc(doc(db, 'leaveBalances', userId), {
+      userId,
+      joinDate,
+      usedDays: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
   return {
-    id: docSnap.id,
+    id: userId,
     userId,
-    joinDate: data.joinDate,
+    joinDate,
     totalDays,
     usedDays,
     remainingDays: totalDays - usedDays,
@@ -144,18 +158,19 @@ async function updateLeaveBalance(userId, days) {
 // 관리자: 현재 시점 잔여 연차 직접 설정 (usedDays 역산)
 // 이후 시간이 지나면 자동으로 발생분이 누적되어 잔여가 증가
 export async function setLeaveRemaining(userId, remaining) {
+  const user = await getUser(userId);
+  if (!user || !user.joinDate) {
+    throw new Error('입사일 정보가 없습니다. 직원 관리에서 입사일을 등록하세요.');
+  }
+  const accrued = calculateAccruedLeave(user.joinDate);
+  const usedDays = accrued - remaining;
   const ref = doc(db, 'leaveBalances', userId);
   const existing = await getDoc(ref);
-  if (!existing.exists() || !existing.data().joinDate) {
-    throw new Error('입사일 정보가 없습니다. 먼저 "전체 입사일 동기화"를 실행하세요.');
+  if (existing.exists()) {
+    await updateDoc(ref, { usedDays, updatedAt: new Date() });
+  } else {
+    await setDoc(ref, { userId, joinDate: user.joinDate, usedDays, createdAt: new Date(), updatedAt: new Date() });
   }
-  const joinDate = existing.data().joinDate;
-  const accrued = calculateAccruedLeave(joinDate);
-  const usedDays = accrued - remaining;
-  await updateDoc(ref, {
-    usedDays,
-    updatedAt: new Date(),
-  });
 }
 
 // 입사일 동기화/초기화 (users.joinDate를 balance에 스냅샷 저장)
