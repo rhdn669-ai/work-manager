@@ -1,21 +1,37 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getDepartmentsByLeader } from '../services/departmentService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
+  const [isLeaderOfTeam, setIsLeaderOfTeam] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // localStorage에서 로그인 상태 복원
     const saved = localStorage.getItem('workManagerUser');
     if (saved) {
-      setUserProfile(JSON.parse(saved));
+      const profile = JSON.parse(saved);
+      setUserProfile(profile);
+      checkTeamLeader(profile.uid);
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
+
+  async function checkTeamLeader(uid) {
+    try {
+      const teams = await getDepartmentsByLeader(uid);
+      setIsLeaderOfTeam(teams.length > 0);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const login = async (code) => {
     // accessCodes 컬렉션에서 코드 조회
@@ -29,6 +45,7 @@ export function AuthProvider({ children }) {
     const profile = { ...userDoc.data(), uid: userDoc.id };
     setUserProfile(profile);
     localStorage.setItem('workManagerUser', JSON.stringify(profile));
+    await checkTeamLeader(profile.uid);
     return profile;
   };
 
@@ -50,7 +67,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const isTeamLeader = !!(userProfile?.isTeamLeader) || userProfile?.role === 'manager';
+  const isTeamLeader = isLeaderOfTeam || userProfile?.role === 'manager';
   const isExecutive = ['대표', '부사장'].includes(userProfile?.position);
   // 전사 승인 (모든 부서): 관리자 + 대표/부사장
   const canApproveAll = userProfile?.role === 'admin' || isExecutive;
