@@ -12,7 +12,7 @@ export default function UserManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
-    name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', isTeamLeader: false,
+    name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '',
   });
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', isTeamLeader: false });
+    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '' });
     setShowModal(true);
   }
 
@@ -42,7 +42,6 @@ export default function UserManagementPage() {
     setForm({
       name: user.name, code: user.code || '',
       role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
-      isTeamLeader: !!user.isTeamLeader,
     });
     setShowModal(true);
   }
@@ -54,7 +53,6 @@ export default function UserManagementPage() {
         await updateUser(editUser.uid, {
           name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
-          isTeamLeader: form.isTeamLeader,
         });
         await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
@@ -62,7 +60,6 @@ export default function UserManagementPage() {
         await createUser(userId, {
           uid: userId, name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
-          isTeamLeader: form.isTeamLeader,
         });
         await initLeaveBalance(userId, form.joinDate);
       }
@@ -101,7 +98,6 @@ export default function UserManagementPage() {
             <th>이름</th>
             <th>코드</th>
             <th>직급</th>
-            <th>직책</th>
             <th>부서</th>
             <th>입사일</th>
             <th>작업</th>
@@ -116,9 +112,6 @@ export default function UserManagementPage() {
                 <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
                   {u.position || '-'}
                 </span>
-              </td>
-              <td>
-                {u.isTeamLeader ? <span className="badge badge-role-manager">팀장</span> : '-'}
               </td>
               <td>{deptMap[u.departmentId] || '-'}</td>
               <td>{u.joinDate || '-'}</td>
@@ -162,17 +155,6 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>입사일</label>
             <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} required />
-          </div>
-          <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={form.isTeamLeader}
-                onChange={(e) => setForm({ ...form, isTeamLeader: e.target.checked })}
-                style={{ width: 16, height: 16, accentColor: 'var(--primary)' }}
-              />
-              <span>팀장 직책 (부서 팀원 연차 승인 권한 부여)</span>
-            </label>
           </div>
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary">{editUser ? '수정' : '추가'}</button>
