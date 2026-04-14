@@ -123,9 +123,11 @@ export async function deleteClosingItem(itemId) {
 
 export async function getFinanceItems(siteId, year, month) {
   const cid = closingId(siteId, year, month);
-  const q = query(financesRef, where('closingId', '==', cid), orderBy('order'));
+  const q = query(financesRef, where('closingId', '==', cid));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 export async function addFinanceItem(siteId, year, month, data) {
