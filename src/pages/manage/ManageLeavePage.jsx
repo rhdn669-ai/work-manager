@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getDepartmentPendingLeaves, getAllPendingLeaves, approveLeave, rejectLeave } from '../../services/leaveService';
+import { getDepartmentPendingLeaves, getAllPendingLeaves, getRecentProcessedLeaves, approveLeave, rejectLeave } from '../../services/leaveService';
 import { getDepartmentsByLeader } from '../../services/departmentService';
-import { getUser } from '../../services/userService';
-import { LEAVE_TYPE_LABELS } from '../../utils/constants';
+import { getUser, getUsers } from '../../services/userService';
+import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS } from '../../utils/constants';
+import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 
 export default function ManageLeavePage() {
   const { userProfile, canApproveAll } = useAuth();
   const [leaves, setLeaves] = useState([]);
+  const [processed, setProcessed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -34,14 +36,15 @@ export default function ManageLeavePage() {
       }
       setLeaves(data);
 
-      // 사용자 이름 조회
-      const names = {};
-      for (const l of data) {
-        if (!names[l.userId]) {
-          const u = await getUser(l.userId);
-          names[l.userId] = u?.name || '알 수 없음';
-        }
+      // 처리 이력 조회 (관리자만)
+      if (canApproveAll) {
+        const proc = await getRecentProcessedLeaves(20);
+        setProcessed(proc);
       }
+
+      // 사용자 이름 조회
+      const users = await getUsers();
+      const names = Object.fromEntries(users.map((u) => [u.uid, u.name]));
       setUserNames(names);
     } catch (err) {
       console.error(err);
@@ -110,6 +113,38 @@ export default function ManageLeavePage() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {canApproveAll && processed.length > 0 && (
+        <>
+          <h3 style={{ marginTop: 32 }}>최근 처리 이력</h3>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>신청자</th>
+                <th>종류</th>
+                <th>기간</th>
+                <th>일수</th>
+                <th>상태</th>
+                <th>처리자</th>
+                <th>사유</th>
+              </tr>
+            </thead>
+            <tbody>
+              {processed.map((l) => (
+                <tr key={l.id}>
+                  <td>{userNames[l.userId] || l.userId}</td>
+                  <td>{LEAVE_TYPE_LABELS[l.type]}</td>
+                  <td>{l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`}</td>
+                  <td>{l.days}일</td>
+                  <td><StatusBadge status={l.status} labels={LEAVE_STATUS_LABELS} /></td>
+                  <td>{l.approvedBy ? (userNames[l.approvedBy] || '-') : '-'}</td>
+                  <td>{l.rejectedReason || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
 
       <Modal isOpen={!!rejectModal} onClose={() => setRejectModal(null)} title="연차 거절">

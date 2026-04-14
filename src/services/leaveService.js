@@ -126,6 +126,16 @@ export async function getAllPendingLeaves() {
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
 
+// 최근 처리된 연차 목록 (승인/거절)
+export async function getRecentProcessedLeaves(limit = 20) {
+  const snapshot = await getDocs(leavesRef);
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((l) => l.status === 'approved' || l.status === 'rejected')
+    .sort((a, b) => (b.approvedAt?.seconds || b.createdAt?.seconds || 0) - (a.approvedAt?.seconds || a.createdAt?.seconds || 0))
+    .slice(0, limit);
+}
+
 // 잔여 연차 조회 (users 컬렉션의 입사일 기준 실시간 계산)
 export async function getLeaveBalance(userId) {
   // users 컬렉션에서 최신 입사일을 직접 가져옴
