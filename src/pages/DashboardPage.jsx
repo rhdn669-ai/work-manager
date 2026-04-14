@@ -131,9 +131,9 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="tile-body">
-              <div className="tile-title">현장</div>
+              <div className="tile-title">프로젝트</div>
               <div className="tile-value">{siteCount}<span style={{ fontSize: 13, marginLeft: 3 }}>개</span></div>
-              <div className="tile-sub">등록 현장</div>
+              <div className="tile-sub">등록 프로젝트</div>
             </div>
           </div>
 

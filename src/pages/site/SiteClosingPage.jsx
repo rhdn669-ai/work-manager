@@ -169,12 +169,12 @@ export default function SiteClosingPage() {
   }
 
   if (loading) return <div className="loading">로딩 중...</div>;
-  if (!site) return <div>현장을 찾을 수 없습니다.</div>;
+  if (!site) return <div>프로젝트을 찾을 수 없습니다.</div>;
   if (!isAdmin && !(site.managerIds || []).includes(userProfile?.uid)) {
     return (
       <div className="card">
         <div className="card-body">
-          <p>이 현장에 접근 권한이 없습니다.</p>
+          <p>이 프로젝트에 접근 권한이 없습니다.</p>
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록으로</button>
         </div>
       </div>

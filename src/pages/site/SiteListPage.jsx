@@ -44,7 +44,7 @@ export default function SiteListPage() {
   return (
     <div className="site-list-page">
       <div className="page-header">
-        <h2>현장 마감리스트</h2>
+        <h2>프로젝트 마감리스트</h2>
       </div>
 
       <div className="filters">
@@ -59,7 +59,7 @@ export default function SiteListPage() {
       {sites.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
-            {isAdmin ? '등록된 현장이 없습니다. "현장 관리"에서 추가해주세요.' : '담당 현장이 없습니다. 관리자에게 문의해주세요.'}
+            {isAdmin ? '등록된 프로젝트이 없습니다. "프로젝트 관리"에서 추가해주세요.' : '담당 프로젝트이 없습니다. 관리자에게 문의해주세요.'}
           </div>
         </div>
       ) : (

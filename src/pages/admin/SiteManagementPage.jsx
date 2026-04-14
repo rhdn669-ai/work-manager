@@ -67,7 +67,7 @@ export default function SiteManagementPage() {
   }
 
   async function handleDelete(site) {
-    if (!confirm(`"${site.name}" 현장을 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
+    if (!confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
     try {
       await deleteSite(site.id);
       await loadData();
@@ -88,20 +88,20 @@ export default function SiteManagementPage() {
   if (loading) return <div className="loading">로딩 중...</div>;
 
   const userMap = Object.fromEntries(users.map((u) => [u.uid, u]));
-  // 관리자는 항상 모든 현장 접근 가능하므로 후보에서 제외
+  // 관리자는 항상 모든 프로젝트 접근 가능하므로 후보에서 제외
   const candidates = users.filter((u) => u.role !== 'admin');
 
   return (
     <div className="site-management-page">
       <div className="page-header">
-        <h2>현장 관리</h2>
-        <button className="btn btn-primary" onClick={openCreate}>현장 추가</button>
+        <h2>프로젝트 관리</h2>
+        <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>
       </div>
 
       <table className="table">
         <thead>
           <tr>
-            <th>현장명</th>
+            <th>프로젝트명</th>
             <th>팀</th>
             <th>담당자</th>
             <th>작업</th>
@@ -122,15 +122,15 @@ export default function SiteManagementPage() {
             </tr>
           ))}
           {sites.length === 0 && (
-            <tr><td colSpan="4"><div className="text-muted text-center">등록된 현장이 없습니다.</div></td></tr>
+            <tr><td colSpan="4"><div className="text-muted text-center">등록된 프로젝트이 없습니다.</div></td></tr>
           )}
         </tbody>
       </table>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editSite ? '현장 수정' : '현장 추가'}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editSite ? '프로젝트 수정' : '프로젝트 추가'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>현장명 *</label>
+            <label>프로젝트명 *</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="예: 메티스 프로버" />
           </div>
           <div className="form-group">
@@ -140,7 +140,7 @@ export default function SiteManagementPage() {
           <div className="form-group">
             <label>담당자 선택</label>
             <p className="field-hint">
-              관리자는 항상 모든 현장에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.
+              관리자는 항상 모든 프로젝트에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.
             </p>
             <button
               type="button"

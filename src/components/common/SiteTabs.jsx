@@ -10,7 +10,7 @@ export default function SiteTabs() {
       </NavLink>
       {isAdmin && (
         <NavLink to="/admin/sites" className={({ isActive }) => `tab-nav-item ${isActive ? 'active' : ''}`}>
-          현장 관리
+          프로젝트 관리
         </NavLink>
       )}
     </div>

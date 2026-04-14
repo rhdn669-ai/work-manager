@@ -7,7 +7,7 @@ import { db } from '../config/firebase';
 const sitesRef = collection(db, 'sites');
 const itemsRef = collection(db, 'siteClosingItems');
 
-// ---------- 현장(sites) ----------
+// ---------- 프로젝트(sites) ----------
 
 export async function getAllSites() {
   const q = query(sitesRef, orderBy('name'));
@@ -15,7 +15,7 @@ export async function getAllSites() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// 팀장이 담당하는 현장만 조회
+// 팀장이 담당하는 프로젝트만 조회
 export async function getSitesByManager(uid) {
   const q = query(sitesRef, where('managerIds', 'array-contains', uid));
   const snapshot = await getDocs(q);
