@@ -73,17 +73,17 @@ export async function cancelLeave(leaveId) {
 
 // 승인된 연차 목록 (월 기준, 전체 사용자)
 export async function getApprovedLeavesByMonth(year, month) {
-  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
-  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
   const q = query(
     leavesRef,
     where('status', '==', 'approved'),
-    where('startDate', '<=', endDate),
-    where('startDate', '>=', startDate),
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((l) => l.endDate >= monthStart && l.startDate <= monthEnd);
 }
 
 // 본인 연차 신청 목록
