@@ -158,8 +158,8 @@ export default function UserManagementPage() {
             </select>
           </div>
           <div className="form-group">
-            <label>고정비용 (일당, 원)</label>
-            <input type="number" value={form.fixedCost} onChange={(e) => setForm({ ...form, fixedCost: e.target.value })} placeholder="예: 150000" />
+            <label>고정비용 (월급, 원)</label>
+            <input type="number" value={form.fixedCost} onChange={(e) => setForm({ ...form, fixedCost: e.target.value })} placeholder="예: 3000000" />
           </div>
           <div className="form-group">
             <label>입사일</label>

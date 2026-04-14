@@ -11,6 +11,16 @@ function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
 }
 
+function getWorkingDaysInMonth(yr, mo) {
+  const total = daysInMonth(yr, mo);
+  let count = 0;
+  for (let d = 1; d <= total; d++) {
+    const day = new Date(yr, mo - 1, d).getDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
 const AUTO_SAVE_DELAY_MS = 800;
 
 export default function SiteClosingPage() {
@@ -128,12 +138,16 @@ export default function SiteClosingPage() {
   async function handleAddEmployee(user) {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
+    // 월급 ÷ 해당 월 영업일수 = 일당
+    const monthlySalary = Number(user.fixedCost) || 0;
+    const workingDays = getWorkingDaysInMonth(y, m);
+    const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
     await addClosingItem(siteId, y, m, {
       no: nextNo,
       vendor: '직원',
       detail: user.name,
-      category: '',
-      unitPrice: Number(user.fixedCost) || 0,
+      category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
+      unitPrice: dailyRate,
       dailyQuantities: {},
       quantity: 0, amount: 0,
       order: nextOrder,
@@ -399,7 +413,7 @@ export default function SiteClosingPage() {
             Object.values(userMap).filter((u) => u.fixedCost).map((u) => (
               <label key={u.uid} className="select-list-item" onClick={() => handleAddEmployee(u)} style={{ cursor: 'pointer' }}>
                 <span className="select-list-name">{u.name}</span>
-                <span className="select-list-sub">{u.position || ''} · {Number(u.fixedCost).toLocaleString()}원/일</span>
+                <span className="select-list-sub">{u.position || ''} · 월 {Number(u.fixedCost).toLocaleString()}원</span>
               </label>
             ))
           )}
