@@ -609,7 +609,7 @@ export default function SiteClosingPage() {
                       value={buf.unitPrice || 0}
                       onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
                       onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
+                      disabled={!canEdit || cardType === 'employee'}
                     />
                   </div>
                   <div className="foot-field closing-amount">
