@@ -1,34 +1,60 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { getEvents } from '../../services/eventService';
+import { getMyOvertimeRecords } from '../../services/attendanceService';
+import { getMyLeaves } from '../../services/leaveService';
 
-const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무' };
+const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차' };
+const LEAVE_TYPE_LABEL = { annual: '연차', half: '반차', sick: '병가', special: '경조사' };
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function formatMinutes(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+}
 
 export default function HomeCalendar() {
+  const { userProfile } = useAuth();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() + 1 };
   });
   const [events, setEvents] = useState([]);
+  const [overtimes, setOvertimes] = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
+    if (!userProfile?.uid) return;
     let active = true;
     (async () => {
       try {
-        const list = await getEvents();
-        if (active) setEvents(list);
+        const year = cursor.y;
+        const month = cursor.m;
+        const startISO = `${year}-${pad(month)}-01`;
+        const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
+        const [evs, ots, lvs] = await Promise.all([
+          getEvents(),
+          getMyOvertimeRecords(userProfile.uid, startISO, endISO),
+          getMyLeaves(userProfile.uid, year),
+        ]);
+        if (!active) return;
+        setEvents(evs);
+        setOvertimes(ots);
+        setLeaves(lvs);
       } catch (err) {
-        console.error('이벤트 로드 실패', err);
+        console.error('캘린더 로드 실패', err);
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [userProfile?.uid, cursor.y, cursor.m]);
 
   const { weeks, eventsByDay, monthEvents } = useMemo(() => {
     const y = cursor.y, m = cursor.m;
@@ -47,25 +73,33 @@ export default function HomeCalendar() {
     }
     const monthStart = `${y}-${pad(m)}-01`;
     const monthEnd = `${y}-${pad(m)}-${pad(totalDays)}`;
-    const inMonth = events.filter((e) => {
-      const s = e.startDate;
-      const en = e.endDate || e.startDate;
-      return en >= monthStart && s <= monthEnd;
-    });
+
+    const inMonthEvents = events
+      .filter((e) => (e.endDate || e.startDate) >= monthStart && e.startDate <= monthEnd)
+      .map((e) => ({ ...e, _kind: 'event', type: e.type || 'event', _start: e.startDate, _end: e.endDate || e.startDate }));
+
+    const inMonthOvertimes = overtimes
+      .filter((o) => o.status !== 'rejected' && o.date >= monthStart && o.date <= monthEnd)
+      .map((o) => ({ ...o, _kind: 'overtime', type: 'overtime', _start: o.date, _end: o.date, title: `잔업 ${formatMinutes(o.minutes || 0)}` }));
+
+    const inMonthLeaves = leaves
+      .filter((l) => (l.status === 'approved' || l.status === 'confirmed') && (l.endDate || l.startDate) >= monthStart && l.startDate <= monthEnd)
+      .map((l) => ({ ...l, _kind: 'leave', type: 'leave', _start: l.startDate, _end: l.endDate || l.startDate, title: LEAVE_TYPE_LABEL[l.type] || '연차' }));
+
+    const all = [...inMonthEvents, ...inMonthLeaves, ...inMonthOvertimes];
+
     const byDay = {};
-    inMonth.forEach((e) => {
-      const s = e.startDate;
-      const en = e.endDate || e.startDate;
+    all.forEach((e) => {
       for (let d = 1; d <= totalDays; d++) {
         const iso = `${y}-${pad(m)}-${pad(d)}`;
-        if (iso >= s && iso <= en) {
+        if (iso >= e._start && iso <= e._end) {
           if (!byDay[d]) byDay[d] = [];
           byDay[d].push(e);
         }
       }
     });
-    return { weeks: ws, eventsByDay: byDay, monthEvents: inMonth };
-  }, [cursor, events]);
+    return { weeks: ws, eventsByDay: byDay, monthEvents: all };
+  }, [cursor, events, overtimes, leaves]);
 
   function prev() {
     setSelectedDate(null);
@@ -83,11 +117,7 @@ export default function HomeCalendar() {
 
   const today = toISO(new Date());
   const selectedEvents = selectedDate
-    ? events.filter((e) => {
-        const s = e.startDate;
-        const en = e.endDate || e.startDate;
-        return selectedDate >= s && selectedDate <= en;
-      })
+    ? monthEvents.filter((e) => selectedDate >= e._start && selectedDate <= e._end)
     : [];
 
   return (
@@ -151,11 +181,17 @@ export default function HomeCalendar() {
                   <div className="home-cal-list-empty">이 날짜의 일정이 없습니다.</div>
                 ) : (
                   selectedEvents.map((e) => (
-                    <div className={`home-cal-item type-${e.type || 'event'}`} key={e.id}>
-                      <span className="home-cal-badge">{TYPE_LABEL[e.type] || '이벤트'}</span>
+                    <div className={`home-cal-item type-${e.type}`} key={`${e._kind}-${e.id}`}>
+                      <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
                       <div className="home-cal-item-body">
                         <div className="home-cal-item-title">{e.title}</div>
-                        {e.description && <div className="home-cal-item-desc">{e.description}</div>}
+                        {e._kind === 'event' && e.description && <div className="home-cal-item-desc">{e.description}</div>}
+                        {e._kind === 'leave' && (
+                          <div className="home-cal-item-meta">
+                            {e._start}{e._end && e._end !== e._start ? ` ~ ${e._end}` : ''} · {e.days}일
+                          </div>
+                        )}
+                        {e._kind === 'overtime' && e.reason && <div className="home-cal-item-desc">{e.reason}</div>}
                       </div>
                     </div>
                   ))
@@ -164,13 +200,13 @@ export default function HomeCalendar() {
             ) : monthEvents.length > 0 ? (
               <>
                 <div className="home-cal-list-head">이번 달 일정 ({monthEvents.length})</div>
-                {monthEvents.slice(0, 5).map((e) => (
-                  <div className={`home-cal-item type-${e.type || 'event'}`} key={e.id}>
-                    <span className="home-cal-badge">{TYPE_LABEL[e.type] || '이벤트'}</span>
+                {monthEvents.slice(0, 6).map((e) => (
+                  <div className={`home-cal-item type-${e.type}`} key={`${e._kind}-${e.id}`}>
+                    <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
                     <div className="home-cal-item-body">
                       <div className="home-cal-item-title">{e.title}</div>
                       <div className="home-cal-item-meta">
-                        {e.startDate}{e.endDate && e.endDate !== e.startDate ? ` ~ ${e.endDate}` : ''}
+                        {e._start}{e._end && e._end !== e._start ? ` ~ ${e._end}` : ''}
                       </div>
                     </div>
                   </div>
