@@ -380,7 +380,8 @@ export default function SiteClosingPage() {
     );
   }
 
-  const totalAmount = Object.values(editBuf).reduce((s, it) => s + (Number(it.amount) || 0), 0);
+  const employeeTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType === 'employee' ? (Number(it.amount) || 0) : 0), 0);
+  const freelancerTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType !== 'employee' ? (Number(it.amount) || 0) : 0), 0);
   const itemCount = items.length;
 
   const revenueItems = finances.filter((f) => f.type === 'revenue');
@@ -434,7 +435,11 @@ export default function SiteClosingPage() {
         </div>
         <div className="closing-summary-item closing-summary-total">
           <span className="label">공수 합계</span>
-          <strong>{totalAmount.toLocaleString()}원</strong>
+          <strong>{freelancerTotal.toLocaleString()}원</strong>
+        </div>
+        <div className="closing-summary-item closing-summary-total">
+          <span className="label">직원 합계</span>
+          <strong>{employeeTotal.toLocaleString()}원</strong>
         </div>
         {canEdit && saveStatus}
       </div>
