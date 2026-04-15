@@ -30,28 +30,27 @@ export default function HomeCalendar() {
   const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
-    if (!userProfile?.uid) return;
     let active = true;
     (async () => {
-      try {
-        const year = cursor.y;
-        const month = cursor.m;
-        const startISO = `${year}-${pad(month)}-01`;
-        const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
-        const [evs, ots, lvs] = await Promise.all([
-          getEvents(),
-          getMyOvertimeRecords(userProfile.uid, startISO, endISO),
-          getMyLeaves(userProfile.uid, year),
-        ]);
-        if (!active) return;
-        setEvents(evs);
-        setOvertimes(ots);
-        setLeaves(lvs);
-      } catch (err) {
-        console.error('캘린더 로드 실패', err);
-      } finally {
-        if (active) setLoading(false);
-      }
+      const year = cursor.y;
+      const month = cursor.m;
+      const startISO = `${year}-${pad(month)}-01`;
+      const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
+
+      const evsP = getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; });
+      const otsP = userProfile?.uid
+        ? getMyOvertimeRecords(userProfile.uid, startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; })
+        : Promise.resolve([]);
+      const lvsP = userProfile?.uid
+        ? getMyLeaves(userProfile.uid, year).catch((err) => { console.error('연차 로드 실패', err); return []; })
+        : Promise.resolve([]);
+
+      const [evs, ots, lvs] = await Promise.all([evsP, otsP, lvsP]);
+      if (!active) return;
+      setEvents(evs);
+      setOvertimes(ots);
+      setLeaves(lvs);
+      setLoading(false);
     })();
     return () => { active = false; };
   }, [userProfile?.uid, cursor.y, cursor.m]);
