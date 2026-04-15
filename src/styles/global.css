@@ -1707,6 +1707,35 @@ body {
 .expense-card-material { border-left-color: #6366f1; }
 .expense-card-overtime { border-left-color: #ef4444; }
 
+.expense-card-readonly {
+  background: #fafbfc;
+}
+.expense-card-readonly .expense-input-amount,
+.expense-card-readonly .expense-input-note {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+.expense-readonly-text {
+  flex: 1.4;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.expense-readonly-badge {
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 0 6px;
+  cursor: help;
+  flex-shrink: 0;
+}
+
 .expense-chip-default {
   background: #f1f5f9;
   color: #64748b;

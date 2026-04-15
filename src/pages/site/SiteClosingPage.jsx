@@ -480,7 +480,6 @@ export default function SiteClosingPage() {
               <button className="expense-chip expense-chip-meal" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
               <button className="expense-chip expense-chip-transport" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
               <button className="expense-chip expense-chip-material" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
-              <button className="expense-chip expense-chip-overtime" onClick={() => handleAddFinance('expense', '잔업')}>잔업</button>
             </div>
           )}
         </div>
@@ -491,22 +490,27 @@ export default function SiteClosingPage() {
             {expenseItems.map((f) => {
               const buf = financeBuf[f.id] || f;
               const desc = (buf.description || '').trim();
-              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '잔업': 'overtime' };
-              const chipKey = chipMap[desc];
+              const isOvertime = desc === '잔업' || desc.startsWith('잔업 -') || desc.startsWith('잔업-');
+              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material' };
+              const chipKey = isOvertime ? 'overtime' : chipMap[desc];
+              const readOnly = isOvertime;
               return (
-                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
+                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''} ${readOnly ? 'expense-card-readonly' : ''}`} key={f.id}>
                   <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
-                    {desc || '지출'}
+                    {isOvertime ? '잔업' : (desc || '지출')}
                   </span>
-                  {!chipKey && (
+                  {readOnly ? (
+                    <span className="expense-input-desc expense-readonly-text" title={desc}>{desc.replace(/^잔업\s*-\s*/, '')}</span>
+                  ) : !chipKey ? (
                     <input className="expense-input-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  )}
-                  <input className="expense-input-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  ) : null}
+                  <input className="expense-input-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || readOnly} />
                   <span className="expense-won">원</span>
-                  <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  {canEdit && (
+                  <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || readOnly} />
+                  {canEdit && !readOnly && (
                     <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
                   )}
+                  {readOnly && <span className="expense-readonly-badge" title="잔업 내역은 팀원 잔업 등록에서 자동 반영됩니다">🔒</span>}
                 </div>
               );
             })}
