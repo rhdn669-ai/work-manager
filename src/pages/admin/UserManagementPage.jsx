@@ -14,10 +14,8 @@ export default function UserManagementPage() {
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
     name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
+    leaveRemaining: '',
   });
-  const [leaveModal, setLeaveModal] = useState(false);
-  const [leaveTarget, setLeaveTarget] = useState(null);
-  const [leaveRemainingInput, setLeaveRemainingInput] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -42,24 +40,6 @@ export default function UserManagementPage() {
     }
   }
 
-  function openLeaveEdit(user) {
-    const bal = balances[user.uid];
-    setLeaveTarget(user);
-    setLeaveRemainingInput(bal ? bal.remainingDays : 0);
-    setLeaveModal(true);
-  }
-
-  async function handleLeaveSubmit(e) {
-    e.preventDefault();
-    try {
-      await setLeaveRemaining(leaveTarget.uid, Number(leaveRemainingInput));
-      setLeaveModal(false);
-      await loadData();
-    } catch (err) {
-      alert('연차 수정 오류: ' + err.message);
-    }
-  }
-
   async function handleSyncAll() {
     if (!confirm('전체 사용자의 입사일을 연차 데이터에 동기화하시겠습니까?\n(사용 일수는 유지됩니다)')) return;
     try {
@@ -75,16 +55,18 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '' });
+    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '' });
     setShowModal(true);
   }
 
   function openEdit(user) {
+    const bal = balances[user.uid];
     setEditUser(user);
     setForm({
       name: user.name, code: user.code || '',
       role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
       fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
+      leaveRemaining: bal ? String(bal.remainingDays) : '',
     });
     setShowModal(true);
   }
@@ -92,7 +74,9 @@ export default function UserManagementPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
+      let targetUid;
       if (editUser) {
+        targetUid = editUser.uid;
         await updateUser(editUser.uid, {
           name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
@@ -102,6 +86,7 @@ export default function UserManagementPage() {
         await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
         const userId = 'user_' + Date.now();
+        targetUid = userId;
         await createUser(userId, {
           uid: userId, name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
@@ -110,6 +95,16 @@ export default function UserManagementPage() {
         });
         await initLeaveBalance(userId, form.joinDate);
       }
+
+      // 연차 잔여 조정: 편집 중 현재 잔여와 다르면 업데이트
+      if (form.leaveRemaining !== '' && !isNaN(Number(form.leaveRemaining))) {
+        const currentBal = editUser ? balances[editUser.uid] : null;
+        const newRemaining = Number(form.leaveRemaining);
+        if (!currentBal || currentBal.remainingDays !== newRemaining) {
+          await setLeaveRemaining(targetUid, newRemaining);
+        }
+      }
+
       setShowModal(false);
       await loadData();
     } catch (err) {
@@ -190,7 +185,6 @@ export default function UserManagementPage() {
                 <td>
                   <div className="btn-group">
                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
-                    <button className="btn btn-sm btn-outline" onClick={() => openLeaveEdit(u)} disabled={!bal}>연차</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
                   </div>
                 </td>
@@ -199,22 +193,6 @@ export default function UserManagementPage() {
           })}
         </tbody>
       </table>
-
-      <Modal isOpen={leaveModal} onClose={() => setLeaveModal(false)} title={leaveTarget ? `${leaveTarget.name} - 현재 잔여 연차 설정` : ''}>
-        <form onSubmit={handleLeaveSubmit}>
-          <div className="form-group">
-            <label>현재 잔여 연차 (일)</label>
-            <input type="number" step="0.25" min="0" value={leaveRemainingInput} onChange={(e) => setLeaveRemainingInput(e.target.value)} required autoFocus />
-            <small className="text-muted">
-              오늘 시점의 잔여 일수를 입력하세요. 이후 발생분은 시스템이 자동 반영합니다.
-            </small>
-          </div>
-          <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">저장</button>
-            <button type="button" className="btn btn-outline" onClick={() => setLeaveModal(false)}>취소</button>
-          </div>
-        </form>
-      </Modal>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editUser ? '사용자 수정' : '직원 추가'}>
         <form onSubmit={handleSubmit}>
@@ -256,6 +234,20 @@ export default function UserManagementPage() {
             <label>입사일</label>
             <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} required />
           </div>
+          {editUser && balances[editUser.uid] && (
+            <div className="form-group">
+              <label>
+                잔여 연차 조정 (일)
+                <span className="text-muted text-sm" style={{ marginLeft: 8, fontWeight: 400 }}>
+                  누적 {balances[editUser.uid].totalDays}일 · 사용 {balances[editUser.uid].usedDays}일
+                </span>
+              </label>
+              <input type="number" step="0.25" min="0" value={form.leaveRemaining} onChange={(e) => setForm({ ...form, leaveRemaining: e.target.value })} placeholder="현재 잔여 일수" />
+              <small className="text-muted">
+                현재 잔여 일수를 입력하면 반영됩니다. 이후 발생분은 자동 계산됩니다.
+              </small>
+            </div>
+          )}
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary">{editUser ? '수정' : '추가'}</button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
