@@ -506,7 +506,9 @@ export default function SiteClosingPage() {
                   ) : null}
                   <input className="expense-input-amount" type="number" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || readOnly} />
                   <span className="expense-won">원</span>
-                  <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || readOnly} />
+                  {!readOnly && (
+                    <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  )}
                   {canEdit && !readOnly && (
                     <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
                   )}

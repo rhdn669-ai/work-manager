@@ -107,7 +107,7 @@ async function addOvertimeExpense(userId, userName, siteId, date, minutes) {
     type: 'expense',
     description: `잔업 - ${userName} (${date}, ${Math.floor(hours)}h${minutes % 60 > 0 ? ` ${minutes % 60}m` : ''})`,
     amount,
-    note: `시급 ${hourlyRate.toLocaleString()}원`,
+    note: '',
     order: 0,
   });
 }
