@@ -141,9 +141,10 @@ export default function UserManagementPage() {
         ※ 누적 연차는 입사일 기준 자동 계산됩니다. "연차 수정"은 현재 잔여만 입력하면 이후 발생분은 자동 반영됩니다.
       </p>
 
-      <table className="table">
+      <table className="table user-management-table">
         <thead>
           <tr>
+            <th>작업</th>
             <th>이름</th>
             <th>코드</th>
             <th>직급</th>
@@ -152,7 +153,6 @@ export default function UserManagementPage() {
             <th>시급</th>
             <th>입사일</th>
             <th>연차 (누적/사용/잔여)</th>
-            <th>작업</th>
           </tr>
         </thead>
         <tbody>
@@ -160,6 +160,12 @@ export default function UserManagementPage() {
             const bal = balances[u.uid];
             return (
               <tr key={u.uid}>
+                <td>
+                  <div className="btn-group">
+                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
+                  </div>
+                </td>
                 <td>{u.name}</td>
                 <td><code>{u.code}</code></td>
                 <td>
@@ -181,12 +187,6 @@ export default function UserManagementPage() {
                       <strong className="leave-remaining">{bal.remainingDays}</strong>
                     </span>
                   ) : '-'}
-                </td>
-                <td>
-                  <div className="btn-group">
-                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
-                  </div>
                 </td>
               </tr>
             );

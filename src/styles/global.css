@@ -2017,16 +2017,49 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 13px;
+  font-size: 15px;
 }
 .leave-total { color: #64748b; }
 .leave-used { color: #94a3b8; }
 .leave-remaining {
   color: #0ea5e9;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16px;
 }
 .leave-sep { color: #cbd5e1; margin: 0 1px; }
+
+/* 직원 관리 페이지 폰트 증가 */
+.user-management-page h2 {
+  font-size: 22px;
+}
+.user-management-page .text-sm {
+  font-size: 14px;
+}
+.user-management-table {
+  font-size: 15px;
+}
+.user-management-table th {
+  font-size: 14px;
+  padding: 12px 10px;
+  white-space: nowrap;
+}
+.user-management-table td {
+  font-size: 15px;
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+.user-management-table td code {
+  font-size: 14px;
+  padding: 3px 7px;
+}
+.user-management-table .btn-sm {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.user-management-table .badge {
+  font-size: 13px;
+  padding: 4px 10px;
+}
 
 .home-cal-item-body { flex: 1; min-width: 0; }
 .home-cal-item-title {
