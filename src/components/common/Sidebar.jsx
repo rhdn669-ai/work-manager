@@ -14,7 +14,6 @@ export default function Sidebar({ isOpen }) {
         {canApproveLeave && <NavLink to="/manage/team" end className="nav-link">팀 구성 현황</NavLink>}
         {canApproveLeave && <NavLink to="/manage/leave" end className="nav-link">연차 신청 현황</NavLink>}
         {isAdmin && <NavLink to="/admin/users" className="nav-link">직원 관리</NavLink>}
-        {isAdmin && <NavLink to="/admin/leaves" className="nav-link">연차 잔여</NavLink>}
         {isAdmin && <NavLink to="/admin/reports" className="nav-link">직원 현황</NavLink>}
         {isAdmin && <NavLink to="/admin/events" className="nav-link">이벤트 · 공지</NavLink>}
       </nav>

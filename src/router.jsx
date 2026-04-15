@@ -14,7 +14,6 @@ import ManageTeamPage from './pages/manage/ManageTeamPage';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
-import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import SiteManagementPage from './pages/admin/SiteManagementPage';
 import EventManagementPage from './pages/admin/EventManagementPage';
 import SiteListPage from './pages/site/SiteListPage';
@@ -62,7 +61,6 @@ const router = createBrowserRouter([
         children: [
           { path: '/admin/users', element: <UserManagementPage /> },
           { path: '/admin/departments', element: <DepartmentManagementPage /> },
-          { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/sites', element: <SiteManagementPage /> },
           { path: '/admin/reports', element: <ReportsPage /> },
           { path: '/admin/events', element: <EventManagementPage /> },

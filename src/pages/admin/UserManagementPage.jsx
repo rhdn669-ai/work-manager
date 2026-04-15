@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
 import { getUsers, updateUser, createUser, deleteUser } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
-import { initLeaveBalance } from '../../services/leaveService';
+import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { POSITIONS } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [balances, setBalances] = useState({});
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
     name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
   });
+  const [leaveModal, setLeaveModal] = useState(false);
+  const [leaveTarget, setLeaveTarget] = useState(null);
+  const [leaveRemainingInput, setLeaveRemainingInput] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -24,10 +28,48 @@ export default function UserManagementPage() {
       const [u, d] = await Promise.all([getUsers(), getDepartments()]);
       setUsers(u);
       setDepartments(d);
+
+      const balMap = {};
+      await Promise.all(u.map(async (usr) => {
+        const bal = await getLeaveBalance(usr.uid).catch(() => null);
+        if (bal) balMap[usr.uid] = bal;
+      }));
+      setBalances(balMap);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openLeaveEdit(user) {
+    const bal = balances[user.uid];
+    setLeaveTarget(user);
+    setLeaveRemainingInput(bal ? bal.remainingDays : 0);
+    setLeaveModal(true);
+  }
+
+  async function handleLeaveSubmit(e) {
+    e.preventDefault();
+    try {
+      await setLeaveRemaining(leaveTarget.uid, Number(leaveRemainingInput));
+      setLeaveModal(false);
+      await loadData();
+    } catch (err) {
+      alert('연차 수정 오류: ' + err.message);
+    }
+  }
+
+  async function handleSyncAll() {
+    if (!confirm('전체 사용자의 입사일을 연차 데이터에 동기화하시겠습니까?\n(사용 일수는 유지됩니다)')) return;
+    try {
+      for (const u of users) {
+        if (u.joinDate) await initLeaveBalance(u.uid, u.joinDate);
+      }
+      await loadData();
+      alert('동기화 완료');
+    } catch (err) {
+      alert('동기화 오류: ' + err.message);
     }
   }
 
@@ -94,8 +136,15 @@ export default function UserManagementPage() {
     <div className="user-management-page">
       <div className="page-header">
         <h2>직원 관리</h2>
-        <button className="btn btn-primary" onClick={openCreate}>직원 추가</button>
+        <div className="btn-group">
+          <button className="btn btn-outline" onClick={handleSyncAll}>연차 동기화</button>
+          <button className="btn btn-primary" onClick={openCreate}>직원 추가</button>
+        </div>
       </div>
+
+      <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
+        ※ 누적 연차는 입사일 기준 자동 계산됩니다. "연차 수정"은 현재 잔여만 입력하면 이후 발생분은 자동 반영됩니다.
+      </p>
 
       <table className="table">
         <thead>
@@ -107,31 +156,65 @@ export default function UserManagementPage() {
             <th>고정비용</th>
             <th>시급</th>
             <th>입사일</th>
+            <th>연차 (누적/사용/잔여)</th>
             <th>작업</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((u) => (
-            <tr key={u.uid}>
-              <td>{u.name}</td>
-              <td><code>{u.code}</code></td>
-              <td>
-                <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
-                  {u.position || '-'}
-                </span>
-              </td>
-              <td>{deptMap[u.departmentId] || '-'}</td>
-              <td>{u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}</td>
-              <td>{u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}</td>
-              <td>{u.joinDate || '-'}</td>
-              <td>
-                <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
-                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
-              </td>
-            </tr>
-          ))}
+          {users.map((u) => {
+            const bal = balances[u.uid];
+            return (
+              <tr key={u.uid}>
+                <td>{u.name}</td>
+                <td><code>{u.code}</code></td>
+                <td>
+                  <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
+                    {u.position || '-'}
+                  </span>
+                </td>
+                <td>{deptMap[u.departmentId] || '-'}</td>
+                <td>{u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}</td>
+                <td>{u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}</td>
+                <td>{u.joinDate || '-'}</td>
+                <td>
+                  {bal ? (
+                    <span className="leave-balance-cell">
+                      <span className="leave-total">{bal.totalDays}</span>
+                      <span className="leave-sep">/</span>
+                      <span className="leave-used">{bal.usedDays}</span>
+                      <span className="leave-sep">/</span>
+                      <strong className="leave-remaining">{bal.remainingDays}</strong>
+                    </span>
+                  ) : '-'}
+                </td>
+                <td>
+                  <div className="btn-group">
+                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => openLeaveEdit(u)} disabled={!bal}>연차</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+
+      <Modal isOpen={leaveModal} onClose={() => setLeaveModal(false)} title={leaveTarget ? `${leaveTarget.name} - 현재 잔여 연차 설정` : ''}>
+        <form onSubmit={handleLeaveSubmit}>
+          <div className="form-group">
+            <label>현재 잔여 연차 (일)</label>
+            <input type="number" step="0.25" min="0" value={leaveRemainingInput} onChange={(e) => setLeaveRemainingInput(e.target.value)} required autoFocus />
+            <small className="text-muted">
+              오늘 시점의 잔여 일수를 입력하세요. 이후 발생분은 시스템이 자동 반영합니다.
+            </small>
+          </div>
+          <div className="modal-actions">
+            <button type="submit" className="btn btn-primary">저장</button>
+            <button type="button" className="btn btn-outline" onClick={() => setLeaveModal(false)}>취소</button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editUser ? '사용자 수정' : '직원 추가'}>
         <form onSubmit={handleSubmit}>

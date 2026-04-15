@@ -2012,6 +2012,22 @@ body {
 .home-cal-item.type-overtime .home-cal-badge { background: #ede9fe; color: #5b21b6; }
 .home-cal-item.type-leave .home-cal-badge { background: #d1fae5; color: #065f46; }
 
+/* 연차 잔여 테이블 셀 */
+.leave-balance-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+}
+.leave-total { color: #64748b; }
+.leave-used { color: #94a3b8; }
+.leave-remaining {
+  color: #0ea5e9;
+  font-weight: 700;
+  font-size: 14px;
+}
+.leave-sep { color: #cbd5e1; margin: 0 1px; }
+
 .home-cal-item-body { flex: 1; min-width: 0; }
 .home-cal-item-title {
   font-size: 13px;
