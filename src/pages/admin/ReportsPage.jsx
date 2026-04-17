@@ -81,7 +81,7 @@ export default function ReportsPage() {
 
   return (
     <div className="reports-page">
-      <h2>직원 현황</h2>
+      <h2>직원 잔업·연차</h2>
 
       <div className="filters">
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
