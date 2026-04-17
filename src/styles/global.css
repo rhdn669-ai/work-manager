@@ -1,17 +1,27 @@
 /* ===== 애니메이션 ===== */
 @keyframes badge-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); transform: scale(1); }
-  40%  { transform: scale(1.15); }
-  60%  { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); transform: scale(1); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  0%, 100% { transform: scale(1); }
+  30%      { transform: scale(1.25); }
+  60%      { transform: scale(0.95); }
+}
+@-webkit-keyframes badge-pulse {
+  0%, 100% { -webkit-transform: scale(1); }
+  30%      { -webkit-transform: scale(1.25); }
+  60%      { -webkit-transform: scale(0.95); }
 }
 @keyframes icon-wiggle {
-  0%, 55%, 100% { transform: rotate(0deg); }
-  10%  { transform: rotate(-18deg); }
-  20%  { transform: rotate(15deg); }
-  30%  { transform: rotate(-12deg); }
-  40%  { transform: rotate(10deg); }
-  50%  { transform: rotate(-5deg); }
+  0%, 50%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-20deg); }
+  20% { transform: rotate(18deg); }
+  30% { transform: rotate(-14deg); }
+  40% { transform: rotate(10deg); }
+}
+@-webkit-keyframes icon-wiggle {
+  0%, 50%, 100% { -webkit-transform: rotate(0deg); }
+  10% { -webkit-transform: rotate(-20deg); }
+  20% { -webkit-transform: rotate(18deg); }
+  30% { -webkit-transform: rotate(-14deg); }
+  40% { -webkit-transform: rotate(10deg); }
 }
 
 /* ===== CSS 변수 ===== */
@@ -215,7 +225,9 @@ body {
   height: 20px;
   border-radius: 10px;
   border: 2px solid rgba(255,255,255,0.3);
-  animation: badge-pulse 2s ease-out infinite;
+  will-change: transform;
+  -webkit-animation: badge-pulse 1.2s ease-in-out infinite;
+  animation: badge-pulse 1.2s ease-in-out infinite;
 }
 
 .nav-link:hover {
@@ -3146,12 +3158,17 @@ body {
     line-height: 1;
     pointer-events: none;
     border: 2px solid #fff;
-    animation: badge-pulse 2s ease-out infinite;
+    will-change: transform;
+    -webkit-animation: badge-pulse 1.2s ease-in-out infinite;
+    animation: badge-pulse 1.2s ease-in-out infinite;
   }
 
   .bottom-nav-icon-wrap.has-badge {
-    animation: icon-wiggle 2.4s ease-in-out infinite;
-    transform-origin: center bottom;
+    will-change: transform;
+    transform-origin: 50% 90%;
+    -webkit-transform-origin: 50% 90%;
+    -webkit-animation: icon-wiggle 2s ease-in-out infinite;
+    animation: icon-wiggle 2s ease-in-out infinite;
   }
 
   .dashboard-grid {
