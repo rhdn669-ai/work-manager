@@ -252,8 +252,10 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
   }
 
   async function removeRow(row) {
-    const label = tab === 'overtime' ? '이 잔업 기록' : '이 연차 기록';
-    if (!confirm(`${label}을(를) 삭제할까요?\n(연차 삭제 시 사용일수가 자동 복원됩니다)`)) return;
+    const msg = tab === 'overtime'
+      ? '이 잔업 기록을 삭제할까요?'
+      : '이 연차 기록을 삭제할까요?\n(사용일수가 자동 복원됩니다)';
+    if (!confirm(msg)) return;
     setBusy(true);
     try {
       if (tab === 'overtime') {
