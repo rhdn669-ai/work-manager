@@ -972,12 +972,12 @@ body {
 .login-logo {
   display: block;
   width: 100%;
-  height: 160px;
-  margin: 0 auto 20px;
+  height: 240px;
+  margin: 0 auto 16px;
   background-image: url('/iopn-logo.png');
   background-repeat: no-repeat;
   background-size: 240%;
-  background-position: 42% 55%;
+  background-position: 42% 46%;
   user-select: none;
   -webkit-user-drag: none;
 }
