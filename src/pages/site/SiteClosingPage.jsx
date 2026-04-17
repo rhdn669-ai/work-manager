@@ -6,7 +6,6 @@ import {
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
-import { getDepartments } from '../../services/departmentService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
 
 function daysInMonth(yr, mo) {
@@ -67,12 +66,11 @@ export default function SiteClosingPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [s, its, fins, users, depts, approvedLeaves] = await Promise.all([
+      const [s, its, fins, users, approvedLeaves] = await Promise.all([
         getSite(siteId),
         getClosingItems(siteId, y, m),
         getFinanceItems(siteId, y, m),
         getUsers(),
-        getDepartments(),
         getApprovedLeavesByMonth(y, m),
       ]);
       setSite(s);
@@ -105,59 +103,7 @@ export default function SiteClosingPage() {
       }
       setLeaveDays(ldByName);
 
-      // 담당자(팀장)의 팀원 자동 추가 — 직원 항목이 하나도 없을 때(최초 세팅)만 실행
-      let updatedItems = its;
-      const hasAnyEmployee = its.some((it) => it.itemType === 'employee');
-      if (s && canEditSite(s) && !hasAnyEmployee) {
-        const managerIds = s.managerIds || [];
-        const teamMemberIds = new Set();
-        for (const mid of managerIds) {
-          teamMemberIds.add(mid);
-          const dept = depts.find((d) => d.managerId === mid);
-          if (dept) {
-            users.filter((u) => u.departmentId === dept.id).forEach((u) => teamMemberIds.add(u.uid));
-          }
-        }
-        const toAdd = [];
-        for (const uid of teamMemberIds) {
-          const user = uMap[uid];
-          if (!user || !user.fixedCost) continue;
-          toAdd.push(user);
-        }
-        if (toAdd.length > 0) {
-          let nextOrder = its.length ? Math.max(...its.map((i) => i.order || 0)) + 1 : 1;
-          let nextNo = its.length ? Math.max(...its.map((i) => i.no || 0)) + 1 : 1;
-          const workingDays = getWorkingDaysInMonth(y, m);
-          const totalD = daysInMonth(y, m);
-          for (const user of toAdd) {
-            const monthlySalary = Number(user.fixedCost) || 0;
-            const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
-            const userLeaveDays = ldByName[user.name] || new Set();
-            const dq = {};
-            for (let d = 1; d <= totalD; d++) {
-              const dow = new Date(y, m - 1, d).getDay();
-              if (dow !== 0 && dow !== 6 && !userLeaveDays.has(d)) dq[d] = 1;
-            }
-            const quantity = Object.values(dq).reduce((acc, v) => acc + v, 0);
-            await addClosingItem(siteId, y, m, {
-              no: nextNo++,
-              vendor: '직원',
-              detail: user.name,
-              category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
-              itemType: 'employee',
-              unitPrice: dailyRate,
-              dailyQuantities: dq,
-              quantity,
-              amount: dailyRate * quantity,
-              order: nextOrder++,
-            });
-          }
-          // 새로 추가했으니 다시 로드
-          updatedItems = await getClosingItems(siteId, y, m);
-        }
-      }
-
-      setItems(updatedItems);
+      setItems(its);
       const buf = {};
       updatedItems.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
       setEditBuf(buf);
