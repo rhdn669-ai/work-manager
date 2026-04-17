@@ -965,16 +965,16 @@ body {
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
   text-align: center;
 }
 
 .login-logo {
   display: block;
-  width: 320px;
+  width: 420px;
   max-width: 100%;
   height: auto;
-  margin: -48px auto -12px;
+  margin: -80px auto -28px;
   user-select: none;
   -webkit-user-drag: none;
 }
