@@ -82,19 +82,16 @@ export async function getApprovedLeavesByMonth(year, month) {
     .filter((l) => (l.status === 'confirmed' || l.status === 'approved') && l.endDate >= monthStart && l.startDate <= monthEnd);
 }
 
-// 본인 연차 신청 목록
+// 본인 연차 신청 목록 (복합 인덱스 회피: 클라이언트 필터/정렬)
 export async function getMyLeaves(userId, year) {
   const startDate = `${year}-01-01`;
   const endDate = `${year}-12-31`;
-  const q = query(
-    leavesRef,
-    where('userId', '==', userId),
-    where('startDate', '>=', startDate),
-    where('startDate', '<=', endDate),
-    orderBy('startDate', 'desc')
-  );
+  const q = query(leavesRef, where('userId', '==', userId));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((l) => l.startDate >= startDate && l.startDate <= endDate)
+    .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
 }
 
 // 부서별 연차 신청 목록 (승인 대기)
