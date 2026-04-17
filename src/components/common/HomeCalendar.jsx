@@ -183,9 +183,9 @@ export default function HomeCalendar() {
           <span className="home-calendar-sub">사내 캘린더</span>
         </div>
         <div className="home-calendar-nav">
-          <button type="button" className="cal-nav-btn" onClick={prev} aria-label="이전 달">‹</button>
-          <button type="button" className="cal-today-btn" onClick={goToday}>오늘</button>
-          <button type="button" className="cal-nav-btn" onClick={next} aria-label="다음 달">›</button>
+          <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); prev(); }} aria-label="이전 달">‹</button>
+          <button type="button" className="cal-today-btn" onPointerDown={(e) => { e.preventDefault(); goToday(); }}>오늘</button>
+          <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); next(); }} aria-label="다음 달">›</button>
         </div>
       </div>
 
@@ -212,7 +212,7 @@ export default function HomeCalendar() {
                       type="button"
                       key={di}
                       className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''}`}
-                      onClick={() => setSelectedDate(iso)}
+                      onPointerDown={(e) => { e.preventDefault(); setSelectedDate(iso); }}
                     >
                       <span className="home-cal-date">{d}</span>
                       <span className="home-cal-dots">
