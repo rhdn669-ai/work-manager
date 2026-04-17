@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getUsers, updateUser, createUser, deleteUser } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
-import { initLeaveBalance, getLeaveBalance, setLeaveRemaining, resetAllLeaves } from '../../services/leaveService';
-import { resetAllOvertimes } from '../../services/attendanceService';
+import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { POSITIONS } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
 
@@ -38,21 +37,6 @@ export default function UserManagementPage() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleResetAll() {
-    const ok = confirm('⚠ 모든 연차 신청 기록과 잔업 기록을 삭제합니다.\n(연차 사용일수 0으로 초기화, 자동 생성된 잔업 지출도 삭제)\n\n계속하시겠습니까?');
-    if (!ok) return;
-    const confirm2 = prompt('정말 초기화하려면 "초기화" 를 입력하세요:');
-    if (confirm2 !== '초기화') { alert('취소되었습니다.'); return; }
-    try {
-      const r1 = await resetAllLeaves();
-      const r2 = await resetAllOvertimes();
-      alert(`초기화 완료\n- 연차 신청 ${r1.leavesDeleted}건 삭제\n- 잔여 ${r1.balancesReset}명 재계산\n- 잔업 ${r2.overtimesDeleted}건 삭제\n- 잔업 지출 ${r2.expensesDeleted}건 삭제`);
-      await loadData();
-    } catch (err) {
-      alert('초기화 오류: ' + err.message);
     }
   }
 
@@ -153,10 +137,6 @@ export default function UserManagementPage() {
           <button className="btn btn-outline" onClick={handleSyncAll}>연차 동기화</button>
         </div>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={handleResetAll}>연차·잔업 초기화</button>
-      </div>
-
       <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
         ※ 누적 연차는 입사일 기준 자동 계산됩니다. "연차 수정"은 현재 잔여만 입력하면 이후 발생분은 자동 반영됩니다.
       </p>

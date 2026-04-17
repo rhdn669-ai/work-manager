@@ -213,20 +213,6 @@ export async function updateLeaveReason(id, reason) {
   });
 }
 
-// 전체 연차 신청 기록 삭제 + 모든 leaveBalances.usedDays = 0 초기화
-export async function resetAllLeaves() {
-  const leavesSnap = await getDocs(leavesRef);
-  await Promise.all(leavesSnap.docs.map((d) => deleteDoc(doc(db, 'leaves', d.id))));
-
-  const balSnap = await getDocs(balancesRef);
-  await Promise.all(balSnap.docs.map((d) => updateDoc(doc(db, 'leaveBalances', d.id), {
-    usedDays: 0,
-    updatedAt: new Date(),
-  })));
-
-  return { leavesDeleted: leavesSnap.size, balancesReset: balSnap.size };
-}
-
 // 입사일 동기화/초기화 (users.joinDate를 balance에 스냅샷 저장)
 // 기존 usedDays는 보존
 export async function initLeaveBalance(userId, joinDate) {

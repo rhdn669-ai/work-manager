@@ -102,21 +102,6 @@ export async function getAllOvertimeRecords(startDate, endDate) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// 전체 잔업 기록 + 자동 생성된 지출 항목(잔업) 삭제
-export async function resetAllOvertimes() {
-  const otSnap = await getDocs(overtimeRef);
-  await Promise.all(otSnap.docs.map((d) => deleteDoc(doc(db, 'overtimeRecords', d.id))));
-
-  const finSnap = await getDocs(collection(db, 'siteFinances'));
-  const targets = finSnap.docs.filter((f) => {
-    const desc = (f.data().description || '').trim();
-    return desc === '잔업' || desc.startsWith('잔업 -') || desc.startsWith('잔업-');
-  });
-  await Promise.all(targets.map((f) => deleteDoc(doc(db, 'siteFinances', f.id))));
-
-  return { overtimesDeleted: otSnap.size, expensesDeleted: targets.length };
-}
-
 // 잔업 비용을 프로젝트 지출에 추가
 async function addOvertimeExpense(userId, userName, siteId, date, minutes) {
   const user = await getUser(userId);
