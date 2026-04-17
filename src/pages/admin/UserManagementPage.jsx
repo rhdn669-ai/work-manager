@@ -132,6 +132,7 @@ export default function UserManagementPage() {
     if (!confirm(`"${user.name}" 직원을 삭제하시겠습니까?`)) return;
     try {
       await deleteUser(user.uid);
+      setShowModal(false);
       await loadData();
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
@@ -160,10 +161,9 @@ export default function UserManagementPage() {
         ※ 누적 연차는 입사일 기준 자동 계산됩니다. "연차 수정"은 현재 잔여만 입력하면 이후 발생분은 자동 반영됩니다.
       </p>
 
-      <table className="table user-management-table">
+      <table className="table user-management-table table-clickable">
         <thead>
           <tr>
-            <th>작업</th>
             <th>이름</th>
             <th>코드</th>
             <th>직급</th>
@@ -178,13 +178,7 @@ export default function UserManagementPage() {
           {users.map((u) => {
             const bal = balances[u.uid];
             return (
-              <tr key={u.uid}>
-                <td>
-                  <div className="btn-group">
-                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>수정</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>삭제</button>
-                  </div>
-                </td>
+              <tr key={u.uid} onClick={() => openEdit(u)} style={{ cursor: 'pointer' }}>
                 <td>{u.name}</td>
                 <td><code>{u.code}</code></td>
                 <td>
@@ -267,9 +261,14 @@ export default function UserManagementPage() {
               </small>
             </div>
           )}
-          <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editUser ? '수정' : '추가'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+          <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+            {editUser ? (
+              <button type="button" className="btn btn-danger" onClick={() => handleDelete(editUser)}>삭제</button>
+            ) : <span />}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+              <button type="submit" className="btn btn-primary">{editUser ? '수정' : '추가'}</button>
+            </div>
           </div>
         </form>
       </Modal>
