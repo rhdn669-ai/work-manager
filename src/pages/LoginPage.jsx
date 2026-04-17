@@ -79,7 +79,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <img src="/iopn-logo.png" alt="IOPN" className="login-logo" />
+        <div className="login-logo" role="img" aria-label="IOPN" />
         <h1>근태관리 시스템</h1>
         <p className="login-subtitle">Work Manager</p>
 
