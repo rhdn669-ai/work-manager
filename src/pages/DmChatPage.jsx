@@ -1,0 +1,211 @@
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  subscribeDmMessages, sendDmMessage, sendDmImage,
+  deleteDmMessage, toggleDmReaction,
+} from '../services/chatService';
+
+const EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
+
+function formatTime(ts) {
+  if (!ts?.seconds) return '';
+  const d = new Date(ts.seconds * 1000);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function formatDate(ts) {
+  if (!ts?.seconds) return '';
+  return new Date(ts.seconds * 1000).toLocaleDateString('ko-KR', { month:'long', day:'numeric', weekday:'short' });
+}
+
+export default function DmChatPage({ room, onBack }) {
+  const { userProfile } = useAuth();
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
+  const [menuMsg, setMenuMsg] = useState(null);
+  const [imageViewer, setImageViewer] = useState(null);
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const unsub = subscribeDmMessages(room.roomId, setMessages);
+    return () => unsub();
+  }, [room.roomId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function handleSend(e) {
+    e?.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+    setSending(true);
+    try {
+      await sendDmMessage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', text: trimmed, replyTo });
+      setText(''); setReplyTo(null);
+    } catch (err) { alert('전송 실패: ' + err.message); }
+    finally { setSending(false); }
+  }
+
+  async function handleImageSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSending(true);
+    try {
+      await sendDmImage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo });
+      setReplyTo(null);
+    } catch (err) { alert('이미지 전송 실패: ' + err.message); }
+    finally { setSending(false); e.target.value = ''; }
+  }
+
+  async function handleDelete(msg) {
+    if (!window.confirm('메시지를 삭제할까요?')) return;
+    await deleteDmMessage(room.roomId, msg.id);
+    setMenuMsg(null);
+  }
+
+  async function handleReaction(msg, emoji) {
+    await toggleDmReaction(room.roomId, msg.id, emoji, userProfile.uid);
+    setMenuMsg(null);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  }
+
+  let lastDate = '';
+
+  return (
+    <div className="chat-page dm-chat-page">
+      <div className="dm-chat-header">
+        <button className="dm-back-btn" onClick={onBack}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <span className="dm-chat-title">{room.otherName}</span>
+      </div>
+
+      <div className="chat-messages" onClick={() => setMenuMsg(null)}>
+        {messages.map((msg) => {
+          const dateStr = formatDate(msg.createdAt);
+          const showDate = dateStr && dateStr !== lastDate;
+          if (showDate) lastDate = dateStr;
+          const mine = msg.userId === userProfile?.uid;
+          const isDeleted = !!msg.deletedAt;
+          const readerCount = msg.readBy ? Object.keys(msg.readBy).length - 1 : 0;
+
+          return (
+            <div key={msg.id}>
+              {showDate && <div className="chat-date-divider"><span>{dateStr}</span></div>}
+              <div
+                className={`chat-bubble-wrap ${mine ? 'mine' : 'theirs'}`}
+                onContextMenu={(e) => { e.preventDefault(); if (!isDeleted) setMenuMsg(msg); }}
+                onPointerDown={(e) => {
+                  if (e.pointerType !== 'touch') return;
+                  const t = setTimeout(() => { if (!isDeleted) setMenuMsg(msg); }, 500);
+                  const cancel = () => { clearTimeout(t); e.target.removeEventListener('pointerup', cancel); };
+                  e.target.addEventListener('pointerup', cancel);
+                }}
+              >
+                {msg.replyTo && (
+                  <div className="chat-reply-preview">
+                    <span className="chat-reply-name">{msg.replyTo.userName}</span>
+                    <span>{msg.replyTo.type === 'image' ? '사진' : msg.replyTo.text}</span>
+                  </div>
+                )}
+                <div className="chat-row">
+                  {mine && (
+                    <div className="chat-meta-left">
+                      {readerCount > 0 && <span className="chat-read-count">{readerCount}</span>}
+                      <span className="chat-time">{formatTime(msg.createdAt)}</span>
+                    </div>
+                  )}
+                  <div className={`chat-bubble ${isDeleted ? 'deleted' : ''}`}>
+                    {isDeleted ? <span className="chat-deleted-text">삭제된 메시지입니다.</span> : (
+                      msg.type === 'image' && msg.imageUrl
+                        ? <img src={msg.imageUrl} className="chat-image" alt="사진" onClick={() => setImageViewer(msg.imageUrl)} />
+                        : msg.text
+                    )}
+                  </div>
+                  {!mine && (
+                    <div className="chat-meta-right">
+                      <span className="chat-time">{formatTime(msg.createdAt)}</span>
+                      {readerCount > 0 && <span className="chat-read-count">{readerCount}</span>}
+                    </div>
+                  )}
+                </div>
+                {msg.reactions && Object.keys(msg.reactions).filter((e) => msg.reactions[e]?.length > 0).length > 0 && (
+                  <div className={`chat-reactions ${mine ? 'mine' : ''}`}>
+                    {Object.entries(msg.reactions).filter(([, u]) => u?.length > 0).map(([emoji, reactUsers]) => (
+                      <button key={emoji} className={`chat-reaction-chip ${reactUsers.includes(userProfile?.uid) ? 'active' : ''}`}
+                        onClick={() => handleReaction(msg, emoji)}>
+                        {emoji} {reactUsers.length}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {menuMsg && (
+        <div className="chat-menu-overlay" onClick={() => setMenuMsg(null)}>
+          <div className="chat-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="chat-menu-emojis">
+              {EMOJIS.map((em) => (
+                <button key={em} className="chat-menu-emoji" onClick={() => handleReaction(menuMsg, em)}>{em}</button>
+              ))}
+            </div>
+            <button className="chat-menu-item" onClick={() => { setReplyTo({ id: menuMsg.id, userName: menuMsg.userName, text: menuMsg.text, type: menuMsg.type }); setMenuMsg(null); inputRef.current?.focus(); }}>답장</button>
+            {menuMsg.userId === userProfile?.uid && (
+              <button className="chat-menu-item danger" onClick={() => handleDelete(menuMsg)}>삭제</button>
+            )}
+            <button className="chat-menu-item cancel" onClick={() => setMenuMsg(null)}>취소</button>
+          </div>
+        </div>
+      )}
+
+      {imageViewer && (
+        <div className="chat-image-viewer" onClick={() => setImageViewer(null)}>
+          <img src={imageViewer} alt="사진" />
+          <button className="chat-viewer-close" onClick={() => setImageViewer(null)}>✕</button>
+        </div>
+      )}
+
+      <div className="chat-input-area">
+        {replyTo && (
+          <div className="chat-reply-bar">
+            <div className="chat-reply-bar-content">
+              <span className="chat-reply-bar-name">{replyTo.userName}에게 답장</span>
+              <span className="chat-reply-bar-text">{replyTo.type === 'image' ? '사진' : replyTo.text}</span>
+            </div>
+            <button className="chat-reply-bar-close" onClick={() => setReplyTo(null)}>✕</button>
+          </div>
+        )}
+        <form className="chat-input-bar" onSubmit={handleSend}>
+          <label className="chat-attach-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <input type="file" accept="image/*" style={{display:'none'}} onChange={handleImageSelect} />
+          </label>
+          <input ref={inputRef} type="text" className="chat-input" placeholder="메시지 입력..." value={text}
+            onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} autoComplete="off" />
+          <button type="submit" className="chat-send-btn" disabled={!text.trim() || sending}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
