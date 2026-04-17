@@ -91,6 +91,7 @@ export default function AttendancePage() {
             <select value={siteId} onChange={(e) => setSiteId(e.target.value)} required>
               <option value="">프로젝트 선택</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="etc">기타</option>
             </select>
           </div>
           <div className="form-group">

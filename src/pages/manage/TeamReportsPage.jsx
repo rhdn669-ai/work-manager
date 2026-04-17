@@ -96,7 +96,7 @@ export default function TeamReportsPage() {
 
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
-  const siteMap = {};
+  const siteMap = { etc: '기타' };
   sites.forEach((s) => { siteMap[s.id] = s.name; });
 
   const rows = report;

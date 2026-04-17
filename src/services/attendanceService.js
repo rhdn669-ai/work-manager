@@ -25,8 +25,8 @@ export async function addOvertimeRecord(data) {
     status,
     createdAt: new Date(),
   });
-  // 당일/미래 잔업은 바로 승인이므로 프로젝트 지출 반영
-  if (status === 'approved' && data.siteId) {
+  // 당일/미래 잔업은 바로 승인이므로 프로젝트 지출 반영 ('기타'는 지출 생성 안 함)
+  if (status === 'approved' && data.siteId && data.siteId !== 'etc') {
     await addOvertimeExpense(data.userId, data.userName, data.siteId, data.date, data.minutes);
   }
   return docRef;
@@ -53,7 +53,7 @@ export async function approveOvertimeRecord(id) {
   const snap = await getDoc(doc(db, 'overtimeRecords', id));
   if (snap.exists()) {
     const rec = snap.data();
-    if (rec.siteId) {
+    if (rec.siteId && rec.siteId !== 'etc') {
       await addOvertimeExpense(rec.userId, rec.userName, rec.siteId, rec.date, rec.minutes);
     }
   }
