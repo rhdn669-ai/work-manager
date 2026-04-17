@@ -7,6 +7,9 @@ import {
   getAllOvertimeRecords,
   deleteOvertimeRecord,
   updateOvertimeRecord,
+  getPendingOvertimeRecords,
+  approveOvertimeRecord,
+  rejectOvertimeRecord,
 } from '../../services/attendanceService';
 import {
   getApprovedLeavesByMonth,
@@ -28,9 +31,12 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overtime');
   const [detailUser, setDetailUser] = useState(null);
+  const [pendingList, setPendingList] = useState([]);
+  const [pendingBusy, setPendingBusy] = useState(null);
 
   useEffect(() => {
     loadBase();
+    loadPending();
   }, []);
 
   useEffect(() => {
@@ -42,6 +48,36 @@ export default function ReportsPage() {
     setUsers(u);
     setDepartments(d);
     setSites(s);
+  }
+
+  async function loadPending() {
+    const list = await getPendingOvertimeRecords();
+    setPendingList(list);
+  }
+
+  async function handleApprove(id) {
+    setPendingBusy(id);
+    try {
+      await approveOvertimeRecord(id);
+      await Promise.all([loadPending(), generateReport()]);
+    } catch (err) {
+      alert('승인 실패: ' + err.message);
+    } finally {
+      setPendingBusy(null);
+    }
+  }
+
+  async function handleReject(id) {
+    if (!confirm('이 잔업 신청을 거절할까요?')) return;
+    setPendingBusy(id);
+    try {
+      await rejectOvertimeRecord(id);
+      await loadPending();
+    } catch (err) {
+      alert('거절 실패: ' + err.message);
+    } finally {
+      setPendingBusy(null);
+    }
   }
 
   async function generateReport() {
@@ -102,6 +138,50 @@ export default function ReportsPage() {
   return (
     <div className="reports-page">
       <h2>잔업 · 연차</h2>
+
+      {pendingList.length > 0 && (
+        <div className="pending-section">
+          <div className="pending-section-title">
+            승인 대기 <span className="pending-count">{pendingList.length}</span>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>직원</th>
+                <th>시간</th>
+                <th>사유</th>
+                <th style={{ width: 140 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingList.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ whiteSpace: 'nowrap' }}>{r.date}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{r.userName}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{formatMinutes(r.minutes)}</td>
+                  <td>{r.reason || '-'}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="btn btn-sm btn-primary"
+                        disabled={pendingBusy === r.id}
+                        onClick={() => handleApprove(r.id)}
+                      >승인</button>
+                      <button
+                        className="btn btn-sm btn-outline"
+                        style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                        disabled={pendingBusy === r.id}
+                        onClick={() => handleReject(r.id)}
+                      >거절</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="filters">
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>

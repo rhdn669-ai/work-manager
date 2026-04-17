@@ -1062,6 +1062,34 @@ body {
   text-transform: uppercase;
 }
 
+/* ===== 승인 대기 섹션 ===== */
+.pending-section {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.pending-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400E;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pending-count {
+  background: #F59E0B;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
 /* ===== 기타 ===== */
 .page-header {
   display: flex;

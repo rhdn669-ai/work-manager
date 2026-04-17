@@ -1,15 +1,19 @@
 import {
-  collection, getDocs, addDoc, deleteDoc, updateDoc, doc,
+  collection, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc,
   query, where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
 import { addFinanceItem } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
-// 잔업 등록 (즉시 확정, 프로젝트 지출 바로 반영)
+// 잔업 등록 (당일/미래: 즉시 확정, 지난 날짜: 관리자 승인 대기)
 export async function addOvertimeRecord(data) {
+  const today = getToday();
+  const isPast = data.date < today;
+  const status = isPast ? 'pending' : 'approved';
   const docRef = await addDoc(overtimeRef, {
     userId: data.userId,
     userName: data.userName,
@@ -18,13 +22,38 @@ export async function addOvertimeRecord(data) {
     date: data.date,
     minutes: data.minutes,
     reason: data.reason || '',
-    status: 'approved',
+    status,
     createdAt: new Date(),
   });
-  if (data.siteId && data.siteId !== 'etc') {
+  if (status === 'approved' && data.siteId && data.siteId !== 'etc') {
     await addOvertimeExpense(data.userId, data.userName, data.siteId, data.date, data.minutes);
   }
   return docRef;
+}
+
+// 잔업 승인 (관리자) - 지출 반영
+export async function approveOvertimeRecord(id) {
+  const snap = await getDoc(doc(db, 'overtimeRecords', id));
+  if (!snap.exists()) return;
+  const rec = snap.data();
+  await updateDoc(doc(db, 'overtimeRecords', id), { status: 'approved', updatedAt: new Date() });
+  if (rec.siteId && rec.siteId !== 'etc') {
+    await addOvertimeExpense(rec.userId, rec.userName, rec.siteId, rec.date, rec.minutes);
+  }
+}
+
+// 잔업 거절 (관리자)
+export async function rejectOvertimeRecord(id) {
+  await updateDoc(doc(db, 'overtimeRecords', id), { status: 'rejected', updatedAt: new Date() });
+}
+
+// 승인 대기 잔업 전체 조회 (관리자용)
+export async function getPendingOvertimeRecords() {
+  const q = query(overtimeRef, where('status', '==', 'pending'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
 
 // 잔업 삭제

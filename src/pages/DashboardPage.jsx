@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getMyOvertimeRecords } from '../services/attendanceService';
+import { getMyOvertimeRecords, getPendingOvertimeRecords } from '../services/attendanceService';
 import { getLeaveBalance } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [siteCount, setSiteCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
   const [adminStats, setAdminStats] = useState({ users: 0, activeUsers: 0, departments: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +51,8 @@ export default function DashboardPage() {
           activeUsers,
           departments: departments.length,
         });
+        const pending = await getPendingOvertimeRecords();
+        setPendingCount(pending.length);
       }
 
     } catch (err) {
@@ -123,20 +126,22 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {canApproveLeave && (
-            <Link to="/manage/leave" className="dashboard-tile tile-pending">
-              <div className="tile-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-              </div>
-              <div className="tile-body">
-                <div className="tile-title">팀원 잔업 · 연차</div>
-                <div className="tile-sub">탭해서 확인</div>
-              </div>
-            </Link>
-          )}
+          <Link
+            to="/admin/reports"
+            className={`dashboard-tile tile-pending ${pendingCount > 0 ? 'is-urgent' : ''}`}
+          >
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">잔업 승인 대기</div>
+              <div className="tile-value">{pendingCount}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
+              <div className="tile-sub">{pendingCount > 0 ? '탭해서 승인' : '대기 없음'}</div>
+            </div>
+          </Link>
         </div>
       )}
 
