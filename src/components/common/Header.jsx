@@ -14,7 +14,7 @@ export default function Header({ onToggleSidebar }) {
     <header className="header">
       <div className="header-left">
         <button className="menu-toggle" onClick={onToggleSidebar}>☰</button>
-        <h1 className="header-title">근태관리 시스템</h1>
+        <div className="header-logo" role="img" aria-label="IOPN" />
       </div>
       <div className="header-right">
         {userProfile && (

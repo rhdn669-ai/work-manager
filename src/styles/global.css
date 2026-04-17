@@ -107,6 +107,17 @@ body {
   color: var(--primary);
 }
 
+.header-logo {
+  width: 160px;
+  height: 42px;
+  background-image: url('/iopn-logo.png');
+  background-repeat: no-repeat;
+  background-size: 400%;
+  background-position: 46% 51%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .header-right {
   display: flex;
   align-items: center;
