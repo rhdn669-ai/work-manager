@@ -147,11 +147,13 @@ export default function UserManagementPage() {
     <div className="user-management-page">
       <div className="page-header">
         <h2>직원 관리</h2>
-        <div className="btn-group">
+        <div className="btn-group" style={{ flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={openCreate}>직원 추가</button>
           <button className="btn btn-outline" onClick={handleSyncAll}>연차 동기화</button>
-          <button className="btn btn-outline" style={{ color: 'var(--danger, #dc2626)', borderColor: 'var(--danger, #dc2626)' }} onClick={handleResetAll}>연차·잔업 초기화</button>
         </div>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={handleResetAll}>연차·잔업 초기화</button>
       </div>
 
       <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
