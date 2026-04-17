@@ -1,8 +1,8 @@
 /* ===== CSS 변수 ===== */
 :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-soft: #eff6ff;
+  --primary: #F59E0B;
+  --primary-hover: #D97706;
+  --primary-soft: #FFFBEB;
   --secondary: #64748b;
   --success: #16a34a;
   --warning: #f59e0b;
@@ -368,13 +368,13 @@ body {
 .badge-warning { background: #fef3c7; color: #92400e; }
 .badge-danger { background: #fee2e2; color: #991b1b; }
 .badge-role-admin { background: #ede9fe; color: #5b21b6; }
-.badge-role-manager { background: #dbeafe; color: #1e40af; }
+.badge-role-manager { background: #FDE68A; color: #92400E; }
 .badge-role-employee { background: #f1f5f9; color: #475569; }
 .badge-position { background: #f1f5f9; color: #475569; }
 .badge-position-관리자 { background: #fee2e2; color: #991b1b; }
 .badge-position-사원 { background: #f1f5f9; color: #475569; }
 .badge-position-주임 { background: #e0f2fe; color: #0c4a6e; }
-.badge-position-대리 { background: #dbeafe; color: #1e40af; }
+.badge-position-대리 { background: #FDE68A; color: #92400E; }
 .badge-position-과장 { background: #e0e7ff; color: #3730a3; }
 .badge-position-차장 { background: #ede9fe; color: #5b21b6; }
 .badge-position-부장 { background: #fae8ff; color: #86198f; }
@@ -394,7 +394,7 @@ body {
 .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-.alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.alert-info { background: #FDE68A; color: #92400E; border: 1px solid #FCD34D; }
 
 /* ===== 모달 ===== */
 .modal-overlay {
@@ -633,7 +633,7 @@ body {
 
 .tile-site .tile-icon {
   background: var(--primary-soft);
-  color: #1e40af;
+  color: #92400E;
 }
 
 .tile-departments .tile-icon {
@@ -1120,7 +1120,7 @@ body {
 }
 
 .manager-card.is-checked .name {
-  color: #1e40af;
+  color: #92400E;
 }
 
 .manager-card .sub {
@@ -1178,8 +1178,8 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  color: #1e40af;
+  background: linear-gradient(135deg, #FFFBEB 0%, #FDE68A 100%);
+  color: #92400E;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1192,7 +1192,7 @@ body {
 }
 
 .site-row:hover .site-row-icon {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  background: linear-gradient(135deg, #FDE68A 0%, #FCD34D 100%);
 }
 
 .site-row-body {
@@ -1240,8 +1240,8 @@ body {
 }
 
 .site-row-meta .chip-manager {
-  background: #eff6ff;
-  color: #1e40af;
+  background: #FFFBEB;
+  color: #92400E;
 }
 
 .total-summary-bar {
@@ -1426,7 +1426,7 @@ body {
 }
 
 .select-list-item.is-checked .select-list-name {
-  color: #1e40af;
+  color: #92400E;
 }
 
 .select-list-sub {
@@ -1639,9 +1639,9 @@ body {
 }
 
 .expense-chip-transport {
-  background: #dbeafe;
-  color: #1e40af;
-  border-color: #bfdbfe;
+  background: #FDE68A;
+  color: #92400E;
+  border-color: #FCD34D;
 }
 
 .expense-chip-material {
@@ -1674,9 +1674,9 @@ body {
   border-color: #fde68a;
 }
 .expense-tag.expense-chip-transport {
-  background: #dbeafe;
-  color: #1e40af;
-  border-color: #bfdbfe;
+  background: #FDE68A;
+  color: #92400E;
+  border-color: #FCD34D;
 }
 .expense-tag.expense-chip-material {
   background: #e0e7ff;
@@ -1929,12 +1929,12 @@ body {
   cursor: default;
 }
 .home-cal-cell.today {
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  background: #FFFBEB;
+  border-color: #FCD34D;
 }
 .home-cal-cell.selected {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #F59E0B;
+  border-color: #F59E0B;
 }
 .home-cal-cell.selected .home-cal-date { color: #fff; }
 .home-cal-cell.selected .home-cal-dot { background: #fff !important; }
@@ -1947,7 +1947,7 @@ body {
 }
 .home-cal-cell.sunday .home-cal-date { color: #ef4444; }
 .home-cal-cell.saturday .home-cal-date { color: #3b82f6; }
-.home-cal-cell.today .home-cal-date { color: #2563eb; }
+.home-cal-cell.today .home-cal-date { color: #F59E0B; }
 
 .home-cal-dots {
   display: inline-flex;
@@ -2015,7 +2015,7 @@ body {
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
-.home-cal-item.type-event .home-cal-badge { background: #dbeafe; color: #1e40af; }
+.home-cal-item.type-event .home-cal-badge { background: #FDE68A; color: #92400E; }
 .home-cal-item.type-notice .home-cal-badge { background: #fef3c7; color: #92400e; }
 .home-cal-item.type-holiday .home-cal-badge { background: #fee2e2; color: #991b1b; }
 .home-cal-item.type-overtime .home-cal-badge { background: #ede9fe; color: #5b21b6; }
@@ -2118,7 +2118,7 @@ body {
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
-.event-row.event-type-event .event-type-badge { background: #dbeafe; color: #1e40af; }
+.event-row.event-type-event .event-type-badge { background: #FDE68A; color: #92400E; }
 .event-row.event-type-notice .event-type-badge { background: #fef3c7; color: #92400e; }
 .event-row.event-type-holiday .event-type-badge { background: #fee2e2; color: #991b1b; }
 
@@ -2255,7 +2255,7 @@ body {
   height: 26px;
   padding: 0 8px;
   background: var(--primary-soft);
-  color: #1e40af;
+  color: #92400E;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
@@ -2391,8 +2391,8 @@ body {
 
 .day-cell.has-value input {
   background: var(--primary-soft);
-  border-color: #bfdbfe;
-  color: #1e40af;
+  border-color: #FCD34D;
+  color: #92400E;
 }
 
 .day-cell.has-value label {
@@ -2428,7 +2428,7 @@ body {
 }
 
 .day-calendar-dow.saturday {
-  color: #2563eb;
+  color: #F59E0B;
 }
 
 .day-calendar-row {
@@ -2463,7 +2463,7 @@ body {
 }
 
 .day-cal-cell.saturday label {
-  color: #2563eb;
+  color: #F59E0B;
 }
 
 .day-cal-cell input {
@@ -2493,13 +2493,13 @@ body {
 }
 
 .day-cal-cell.has-value input {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1e40af;
+  background: #FFFBEB;
+  border-color: #FCD34D;
+  color: #92400E;
 }
 
 .day-cal-cell.has-value label {
-  color: #2563eb;
+  color: #F59E0B;
 }
 
 .day-cal-cell.sunday input {
@@ -2552,13 +2552,13 @@ body {
 
 .attendance-badge.active {
   color: #fff;
-  background: #3b82f6;
-  border: 1px solid #3b82f6;
+  background: #F59E0B;
+  border: 1px solid #F59E0B;
 }
 
 .attendance-badge.active:hover:not(:disabled) {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #D97706;
+  border-color: #D97706;
 }
 
 .attendance-badge:disabled {
@@ -2694,8 +2694,8 @@ body {
 }
 
 .closing-table input:focus {
-  background: #eff6ff;
-  box-shadow: inset 0 0 0 2px #3b82f6;
+  background: #FFFBEB;
+  box-shadow: inset 0 0 0 2px #F59E0B;
 }
 
 .closing-table input:disabled {
