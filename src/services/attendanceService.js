@@ -1,19 +1,15 @@
 import {
-  collection, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc,
+  collection, getDocs, addDoc, deleteDoc, updateDoc, doc,
   query, where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
 import { addFinanceItem } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
-// 잔업 등록 (지난 날짜면 승인 필요)
+// 잔업 등록 (즉시 확정, 프로젝트 지출 바로 반영)
 export async function addOvertimeRecord(data) {
-  const today = getToday();
-  const isPast = data.date < today;
-  const status = isPast ? 'pending' : 'approved';
   const docRef = await addDoc(overtimeRef, {
     userId: data.userId,
     userName: data.userName,
@@ -22,11 +18,10 @@ export async function addOvertimeRecord(data) {
     date: data.date,
     minutes: data.minutes,
     reason: data.reason || '',
-    status,
+    status: 'approved',
     createdAt: new Date(),
   });
-  // 당일/미래 잔업은 바로 승인이므로 프로젝트 지출 반영 ('기타'는 지출 생성 안 함)
-  if (status === 'approved' && data.siteId && data.siteId !== 'etc') {
+  if (data.siteId && data.siteId !== 'etc') {
     await addOvertimeExpense(data.userId, data.userName, data.siteId, data.date, data.minutes);
   }
   return docRef;
@@ -46,32 +41,6 @@ export async function updateOvertimeRecord(id, data) {
   });
 }
 
-// 잔업 승인
-export async function approveOvertimeRecord(id) {
-  await updateDoc(doc(db, 'overtimeRecords', id), { status: 'approved' });
-  // 프로젝트 지출 반영
-  const snap = await getDoc(doc(db, 'overtimeRecords', id));
-  if (snap.exists()) {
-    const rec = snap.data();
-    if (rec.siteId && rec.siteId !== 'etc') {
-      await addOvertimeExpense(rec.userId, rec.userName, rec.siteId, rec.date, rec.minutes);
-    }
-  }
-}
-
-// 잔업 거절
-export async function rejectOvertimeRecord(id) {
-  await updateDoc(doc(db, 'overtimeRecords', id), { status: 'rejected' });
-}
-
-// 승인 대기 잔업 조회 (부서별)
-export async function getPendingOvertimeRecords(departmentId) {
-  const q = query(overtimeRef, where('status', '==', 'pending'));
-  const snapshot = await getDocs(q);
-  const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  if (departmentId) return all.filter((r) => r.departmentId === departmentId);
-  return all;
-}
 
 // 본인 잔업 기록 조회 (기간별)
 export async function getMyOvertimeRecords(userId, startDate, endDate) {

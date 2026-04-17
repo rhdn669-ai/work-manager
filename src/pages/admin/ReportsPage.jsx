@@ -295,7 +295,6 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                     <th style={{ whiteSpace: 'nowrap' }}>프로젝트</th>
                     <th style={{ width: 100, whiteSpace: 'nowrap' }}>시간</th>
                     <th style={{ whiteSpace: 'nowrap' }}>비고</th>
-                    <th style={{ width: 100, whiteSpace: 'nowrap' }}>상태</th>
                     {canEdit && <th style={{ width: 130, whiteSpace: 'nowrap' }}></th>}
                   </tr>
                 </thead>
@@ -326,9 +325,6 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                               style={{ width: '100%' }}
                             />
                           ) : (r.reason || '-')}
-                        </td>
-                        <td>
-                          <span className={`badge badge-${r.status}`}>{statusLabel(r.status)}</span>
                         </td>
                         {canEdit && (
                           <td>
@@ -426,15 +422,6 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
       </div>
     </div>
   );
-}
-
-function statusLabel(status) {
-  switch (status) {
-    case 'approved': return '승인';
-    case 'pending': return '대기';
-    case 'rejected': return '거절';
-    default: return status || '-';
-  }
 }
 
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';

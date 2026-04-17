@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyLeaves, cancelLeave } from '../../services/leaveService';
-import { getUsers } from '../../services/userService';
-import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS } from '../../utils/constants';
-import StatusBadge from '../../components/common/StatusBadge';
+import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import LeaveTabs from '../../components/common/LeaveTabs';
 
 export default function LeaveHistoryPage() {
   const { userProfile } = useAuth();
   const [leaves, setLeaves] = useState([]);
-  const [userMap, setUserMap] = useState({});
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
 
@@ -20,12 +17,8 @@ export default function LeaveHistoryPage() {
   async function loadLeaves() {
     setLoading(true);
     try {
-      const [data, users] = await Promise.all([
-        getMyLeaves(userProfile.uid, year),
-        getUsers(),
-      ]);
+      const data = await getMyLeaves(userProfile.uid, year);
       setLeaves(data);
-      setUserMap(Object.fromEntries(users.map((u) => [u.uid, u.name])));
     } catch (err) {
       console.error(err);
     } finally {
@@ -68,8 +61,6 @@ export default function LeaveHistoryPage() {
               <th>기간</th>
               <th>일수</th>
               <th>사유</th>
-              <th>상태</th>
-              <th>처리</th>
               <th>작업</th>
             </tr>
           </thead>
@@ -80,21 +71,11 @@ export default function LeaveHistoryPage() {
                 <td>{l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`}</td>
                 <td>{l.days}일</td>
                 <td>{l.reason || '-'}</td>
-                <td><StatusBadge status={l.status} labels={LEAVE_STATUS_LABELS} /></td>
                 <td>
-                  {l.status === 'approved' && l.approvedBy && (
-                    <span className="text-sm text-muted">{userMap[l.approvedBy] || '-'} 승인</span>
-                  )}
-                  {l.status === 'rejected' && (
-                    <span className="text-sm" style={{ color: 'var(--danger, #dc2626)' }}>{l.rejectedReason || '사유 없음'}</span>
-                  )}
-                  {l.status === 'pending' && <span className="text-sm text-muted">대기 중</span>}
-                  {l.status === 'cancelled' && <span className="text-sm text-muted">-</span>}
-                </td>
-                <td>
-                  {(l.status === 'pending' || l.status === 'approved') && (
+                  {l.status === 'confirmed' && (
                     <button className="btn btn-sm btn-danger" onClick={() => handleCancel(l.id)}>취소</button>
                   )}
+                  {l.status === 'cancelled' && <span className="text-sm text-muted">취소됨</span>}
                 </td>
               </tr>
             ))}

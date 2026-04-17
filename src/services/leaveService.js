@@ -28,31 +28,6 @@ export async function requestLeave(data) {
   return docRef;
 }
 
-// 연차 승인
-export async function approveLeave(leaveId, approvedByUid) {
-  const leaveDoc = await getDoc(doc(db, 'leaves', leaveId));
-  if (!leaveDoc.exists()) throw new Error('신청을 찾을 수 없습니다');
-  const leave = leaveDoc.data();
-
-  await updateDoc(doc(db, 'leaves', leaveId), {
-    status: 'approved',
-    approvedBy: approvedByUid,
-    approvedAt: new Date(),
-    updatedAt: new Date(),
-  });
-
-  // 잔여 연차 차감
-  await updateLeaveBalance(leave.userId, leave.days);
-}
-
-// 연차 거절
-export async function rejectLeave(leaveId, reason) {
-  await updateDoc(doc(db, 'leaves', leaveId), {
-    status: 'rejected',
-    rejectedReason: reason || '',
-    updatedAt: new Date(),
-  });
-}
 
 // 연차 취소
 export async function cancelLeave(leaveId) {
@@ -65,8 +40,7 @@ export async function cancelLeave(leaveId) {
     updatedAt: new Date(),
   });
 
-  // 사용/승인된 연차였으면 잔여 연차 복원
-  if (leave.status === 'confirmed' || leave.status === 'approved') {
+  if (leave.status === 'confirmed') {
     await updateLeaveBalance(leave.userId, -leave.days);
   }
 }
@@ -79,7 +53,7 @@ export async function getApprovedLeavesByMonth(year, month) {
   const snapshot = await getDocs(leavesRef);
   return snapshot.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((l) => (l.status === 'confirmed' || l.status === 'approved') && l.endDate >= monthStart && l.startDate <= monthEnd);
+    .filter((l) => l.status === 'confirmed' && l.endDate >= monthStart && l.startDate <= monthEnd);
 }
 
 // 본인 연차 신청 목록 (복합 인덱스 회피: 클라이언트 필터/정렬)
@@ -94,40 +68,6 @@ export async function getMyLeaves(userId, year) {
     .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
 }
 
-// 부서별 연차 신청 목록 (승인 대기)
-export async function getDepartmentPendingLeaves(departmentId) {
-  const q = query(
-    leavesRef,
-    where('departmentId', '==', departmentId),
-    where('status', '==', 'pending'),
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-}
-
-// 전사 연차 신청 목록 (승인 대기) — 대표/부사장/관리자용
-export async function getAllPendingLeaves() {
-  const q = query(
-    leavesRef,
-    where('status', '==', 'pending'),
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-}
-
-// 최근 처리된 연차 목록 (승인/거절)
-export async function getRecentProcessedLeaves(limit = 20) {
-  const snapshot = await getDocs(leavesRef);
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((l) => l.status === 'approved' || l.status === 'rejected')
-    .sort((a, b) => (b.approvedAt?.seconds || b.createdAt?.seconds || 0) - (a.approvedAt?.seconds || a.createdAt?.seconds || 0))
-    .slice(0, limit);
-}
 
 // 잔여 연차 조회 (users 컬렉션의 입사일 기준 실시간 계산)
 export async function getLeaveBalance(userId) {
@@ -199,7 +139,7 @@ export async function deleteLeaveById(id) {
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
   const leave = snap.data();
-  if (leave.status === 'confirmed' || leave.status === 'approved') {
+  if (leave.status === 'confirmed') {
     await updateLeaveBalance(leave.userId, -(leave.days || 0));
   }
   await deleteDoc(ref);

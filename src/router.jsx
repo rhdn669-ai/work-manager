@@ -9,7 +9,6 @@ import LeaveRequestPage from './pages/leave/LeaveRequestPage';
 import LeaveHistoryPage from './pages/leave/LeaveHistoryPage';
 import LeaveBalancePage from './pages/leave/LeaveBalancePage';
 import TeamReportsPage from './pages/manage/TeamReportsPage';
-import ManageOvertimePage from './pages/manage/ManageOvertimePage';
 import ManageTeamPage from './pages/manage/ManageTeamPage';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
@@ -46,8 +45,7 @@ const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
-          { path: '/manage/overtime', element: <ManageOvertimePage /> },
-          { path: '/manage/leave', element: <TeamReportsPage /> },
+{ path: '/manage/leave', element: <TeamReportsPage /> },
           { path: '/manage/team', element: <ManageTeamPage /> },
         ],
       },

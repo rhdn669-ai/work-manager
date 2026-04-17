@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyOvertimeRecords } from '../services/attendanceService';
-import { getLeaveBalance, getDepartmentPendingLeaves, getAllPendingLeaves } from '../services/leaveService';
-import { getDepartmentsByLeader } from '../services/departmentService';
+import { getLeaveBalance } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
@@ -11,11 +10,10 @@ import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
 
 export default function DashboardPage() {
-  const { userProfile, isAdmin, isManager, canApproveLeave, canApproveAll } = useAuth();
+  const { userProfile, isAdmin, isManager, canApproveLeave } = useAuth();
   const [monthlyOvertime, setMonthlyOvertime] = useState(0);
   const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
-  const [pendingLeaves, setPendingLeaves] = useState([]);
   const [siteCount, setSiteCount] = useState(0);
   const [adminStats, setAdminStats] = useState({ users: 0, activeUsers: 0, departments: 0 });
   const [loading, setLoading] = useState(true);
@@ -54,19 +52,6 @@ export default function DashboardPage() {
         });
       }
 
-      if (canApproveLeave) {
-        let pending = [];
-        if (canApproveAll) {
-          pending = await getAllPendingLeaves();
-        } else {
-          const myTeams = await getDepartmentsByLeader(userProfile.uid);
-          for (const team of myTeams) {
-            const teamPending = await getDepartmentPendingLeaves(team.id);
-            pending = [...pending, ...teamPending];
-          }
-        }
-        setPendingLeaves(pending);
-      }
     } catch (err) {
       console.error('대시보드 로드 실패:', err);
     } finally {
@@ -139,10 +124,7 @@ export default function DashboardPage() {
           </div>
 
           {canApproveLeave && (
-            <Link
-              to="/manage/leave"
-              className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
-            >
+            <Link to="/manage/leave" className="dashboard-tile tile-pending">
               <div className="tile-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 11l3 3L22 4"/>
@@ -151,10 +133,7 @@ export default function DashboardPage() {
               </div>
               <div className="tile-body">
                 <div className="tile-title">팀원 잔업 · 연차</div>
-                <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
-                <div className="tile-sub">
-                  {pendingLeaves.length > 0 ? '탭해서 확인' : '모두 처리됨'}
-                </div>
+                <div className="tile-sub">탭해서 확인</div>
               </div>
             </Link>
           )}
