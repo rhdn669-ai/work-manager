@@ -3,6 +3,7 @@ import Layout from './components/common/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import ChatPage from './pages/ChatPage';
 import AttendancePage from './pages/attendance/AttendancePage';
 import AttendanceHistoryPage from './pages/attendance/AttendanceHistoryPage';
 import LeaveRequestPage from './pages/leave/LeaveRequestPage';
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
           { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/chat', element: <ChatPage /> },
           { path: '/attendance', element: <AttendancePage /> },
           { path: '/attendance/history', element: <AttendanceHistoryPage /> },
           { path: '/leave', element: <LeaveRequestPage /> },

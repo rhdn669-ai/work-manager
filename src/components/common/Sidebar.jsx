@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen }) {
         {(isAdmin || canApproveLeave) && <NavLink to="/sites" end className="nav-link">프로젝트</NavLink>}
         {isAdmin && <NavLink to="/manage/team" end className="nav-link">팀구성 관리</NavLink>}
 {canApproveLeave && !isAdmin && <NavLink to="/manage/leave" end className="nav-link">팀원 잔업 · 연차</NavLink>}
+        <NavLink to="/chat" end className="nav-link">채팅</NavLink>
         {isAdmin && <NavLink to="/admin/events" className="nav-link">이벤트 · 공지</NavLink>}
       </nav>
     </aside>
