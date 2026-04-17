@@ -32,6 +32,13 @@ export default function BottomNav() {
         </NavLink>
       )}
 
+      {canApproveLeave && !isAdmin && (
+        <NavLink to="/manage/team" end className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>팀 현황</span>
+        </NavLink>
+      )}
+
       {isAdmin && (
         <NavLink to="/admin/users" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
           <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15C8.7 15 6 12.3 6 9V6a6 6 0 0 1 12 0v3c0 3.3-2.7 6-6 6z"/><path d="M2 21c0-3.3 4.5-6 10-6s10 2.7 10 6"/></svg>
