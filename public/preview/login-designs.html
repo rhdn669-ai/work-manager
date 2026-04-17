@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로그인 디자인 프리뷰 — IOPN Work Manager</title>
+  <style>
+    :root {
+      --primary: #F59E0B;
+      --primary-hover: #D97706;
+      --primary-soft: #FFFBEB;
+      --text: #111827;
+      --text-light: #4b5563;
+      --border: #e5e7eb;
+      --bg-card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', Roboto, sans-serif; color: var(--text); }
+    body { background: #f3f4f6; min-height: 100vh; }
+
+    .nav-header {
+      position: sticky; top: 0; z-index: 100;
+      background: #1f2937; color: #fff;
+      padding: 14px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .nav-title { font-size: 13px; color: #9ca3af; margin-bottom: 6px; }
+    .nav-title strong { color: #fff; font-size: 15px; }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tabs button {
+      background: transparent; border: 1px solid #4b5563; color: #d1d5db;
+      padding: 8px 14px; border-radius: 999px;
+      font-size: 13px; cursor: pointer; transition: all 0.15s;
+      font-family: inherit;
+    }
+    .tabs button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .tabs button.active {
+      background: var(--primary); border-color: var(--primary); color: #1C1917; font-weight: 600;
+    }
+
+    .design-frame { min-height: calc(100vh - 80px); }
+    .design { display: none; min-height: calc(100vh - 80px); }
+    .design.active { display: block; }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text-light); }
+    .btn-primary {
+      display: block; width: 100%;
+      background: var(--primary); color: #1C1917;
+      border: 0; border-radius: 8px;
+      padding: 14px; font-size: 15px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--primary-hover); color: #fff; }
+
+    .iopn-logo {
+      background-image: url('/iopn-logo.png');
+      background-repeat: no-repeat;
+      background-size: 210%;
+      background-position: 46% 46%;
+    }
+
+    /* ============ 1. SPLIT ============ */
+    #d1 { display: flex; min-height: calc(100vh - 80px); }
+    #d1 .brand-panel {
+      flex: 1.1;
+      background: linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #7C2D12 100%);
+      color: #fff;
+      padding: 60px 50px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      position: relative; overflow: hidden;
+    }
+    #d1 .brand-panel::before {
+      content: '';
+      position: absolute; inset: -50px;
+      background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.15), transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1), transparent 60%);
+      pointer-events: none;
+    }
+    #d1 .brand-logo {
+      width: 280px; height: 210px;
+      background-color: #fff;
+      border-radius: 20px;
+      position: relative; z-index: 1;
+    }
+    #d1 .brand-slogan {
+      position: relative; z-index: 1;
+    }
+    #d1 .brand-slogan h2 { font-size: 32px; margin: 0 0 12px; font-weight: 700; letter-spacing: -0.02em; }
+    #d1 .brand-slogan p { font-size: 15px; opacity: 0.9; line-height: 1.6; margin: 0; }
+    #d1 .login-panel {
+      flex: 1;
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px;
+    }
+    #d1 .login-form { width: 100%; max-width: 340px; }
+    #d1 .login-form h3 { font-size: 24px; margin: 0 0 8px; font-weight: 700; }
+    #d1 .login-form .hint { color: var(--text-light); font-size: 14px; margin: 0 0 32px; }
+    #d1 .login-form .form-group { margin-bottom: 18px; }
+
+    /* ============ 2. GLASS ============ */
+    #d2 {
+      min-height: calc(100vh - 80px);
+      background: linear-gradient(135deg, #7C2D12 0%, #F59E0B 50%, #FCD34D 100%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      position: relative; overflow: hidden;
+    }
+    #d2::before, #d2::after {
+      content: ''; position: absolute;
+      width: 420px; height: 420px;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+    }
+    #d2::before { background: #FDE68A; top: -120px; left: -120px; }
+    #d2::after { background: #C2410C; bottom: -120px; right: -120px; }
+    #d2 .glass-card {
+      position: relative; z-index: 1;
+      background: rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(22px) saturate(140%);
+      -webkit-backdrop-filter: blur(22px) saturate(140%);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      color: #1C1917;
+    }
+    #d2 .glass-logo {
+      width: 100%; height: 180px;
+      margin-bottom: 24px;
+    }
+    #d2 input {
+      background: rgba(255,255,255,0.55);
+      border-color: rgba(255,255,255,0.6);
+    }
+    #d2 label { color: rgba(28, 25, 23, 0.85); }
+    #d2 .btn-primary { background: #1C1917; color: #fff; }
+    #d2 .btn-primary:hover { background: #000; }
+
+    /* ============ 3. MINIMAL ============ */
+    #d3 {
+      min-height: calc(100vh - 80px);
+      background: #fafafa;
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px;
+    }
+    #d3 .minimal-wrap {
+      width: 100%; max-width: 340px;
+      text-align: center;
+    }
+    #d3 .minimal-logo {
+      width: 100%; height: 160px; margin-bottom: 36px;
+    }
+    #d3 .form-group { text-align: left; margin-bottom: 20px; }
+    #d3 input {
+      border: 0; border-bottom: 1.5px solid var(--border);
+      border-radius: 0;
+      padding: 12px 0;
+      background: transparent;
+    }
+    #d3 input:focus { border-bottom-color: var(--primary); box-shadow: none; }
+    #d3 .btn-primary {
+      background: #1C1917; color: #fff;
+      border-radius: 999px; padding: 16px;
+      margin-top: 10px;
+    }
+    #d3 .btn-primary:hover { background: var(--primary); color: #1C1917; }
+    #d3 .tag {
+      margin-top: 24px; font-size: 12px; color: var(--text-light);
+      letter-spacing: 0.04em;
+    }
+
+    /* ============ 4. AMBER BLOB ============ */
+    #d4 {
+      min-height: calc(100vh - 80px);
+      background: #FFF7ED;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      position: relative; overflow: hidden;
+    }
+    #d4 .blob-a, #d4 .blob-b {
+      position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.45;
+    }
+    #d4 .blob-a { width: 480px; height: 480px; background: #FDE68A; top: -160px; right: -120px; }
+    #d4 .blob-b { width: 360px; height: 360px; background: #FCD34D; bottom: -100px; left: -100px; }
+    #d4 .card-4 {
+      position: relative; z-index: 1;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(120, 53, 15, 0.12), 0 4px 12px rgba(0,0,0,0.05);
+      padding: 44px 40px;
+      width: 100%; max-width: 420px;
+    }
+    #d4 .card-4 .brand-tag {
+      display: inline-block;
+      background: var(--primary-soft);
+      color: var(--primary-hover);
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 4px 10px; border-radius: 999px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    #d4 .card-4 h3 { font-size: 24px; margin: 0 0 6px; }
+    #d4 .card-4 .hint { font-size: 14px; color: var(--text-light); margin: 0 0 28px; }
+    #d4 .card-4 .card-logo { width: 100%; height: 100px; margin-bottom: 20px; background-size: 180%; }
+    #d4 .form-group { margin-bottom: 18px; }
+
+    /* ============ 5. KIOSK ============ */
+    #d5 {
+      min-height: calc(100vh - 80px);
+      background: linear-gradient(180deg, #F59E0B 0%, #F59E0B 45%, #fff 45%, #fff 100%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #d5 .kiosk-card {
+      width: 100%; max-width: 440px;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    #d5 .kiosk-head {
+      background: #1C1917;
+      color: #fff;
+      padding: 34px 30px 26px;
+      text-align: center;
+    }
+    #d5 .kiosk-logo {
+      width: 100%; height: 160px;
+      background-color: rgba(245, 158, 11, 0.1);
+      border-radius: 12px;
+      margin-bottom: 14px;
+    }
+    #d5 .kiosk-head p { margin: 0; font-size: 13px; color: #d1d5db; letter-spacing: 0.04em; }
+    #d5 .kiosk-body { padding: 30px 30px 34px; }
+    #d5 .kiosk-body h3 { margin: 0 0 6px; font-size: 20px; }
+    #d5 .kiosk-body .hint { color: var(--text-light); font-size: 14px; margin: 0 0 24px; }
+    #d5 input { padding: 16px; font-size: 17px; text-align: center; letter-spacing: 0.3em; }
+    #d5 .btn-primary { padding: 18px; font-size: 17px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+  <header class="nav-header">
+    <div class="nav-title"><strong>로그인 디자인 프리뷰</strong> — 실제 앱에는 반영 X, 느낌만 확인용</div>
+    <nav class="tabs" id="tabs">
+      <button class="active" data-target="d1">1. 스플릿</button>
+      <button data-target="d2">2. 글래스모피즘</button>
+      <button data-target="d3">3. 미니멀</button>
+      <button data-target="d4">4. 앰버 블롭</button>
+      <button data-target="d5">5. 키오스크</button>
+    </nav>
+  </header>
+
+  <div class="design-frame">
+
+    <!-- 1. 스플릿 -->
+    <section id="d1" class="design active">
+      <div class="brand-panel">
+        <div class="iopn-logo brand-logo"></div>
+        <div class="brand-slogan">
+          <h2>Basics of<br/>Factory Automation</h2>
+          <p>IOPN Work Manager로 근태, 연차, 프로젝트 원가까지<br/>한 번에 관리하세요.</p>
+        </div>
+      </div>
+      <div class="login-panel">
+        <div class="login-form">
+          <h3>로그인</h3>
+          <p class="hint">관리자에게 발급받은 코드를 입력하세요.</p>
+          <div class="form-group">
+            <label>로그인 코드</label>
+            <input type="text" placeholder="코드 입력" />
+          </div>
+          <button class="btn-primary">로그인</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 글래스 -->
+    <section id="d2" class="design">
+      <div class="glass-card">
+        <div class="iopn-logo glass-logo"></div>
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label>로그인 코드</label>
+          <input type="text" placeholder="코드 입력" />
+        </div>
+        <button class="btn-primary">로그인</button>
+      </div>
+    </section>
+
+    <!-- 3. 미니멀 -->
+    <section id="d3" class="design">
+      <div class="minimal-wrap">
+        <div class="iopn-logo minimal-logo"></div>
+        <div class="form-group">
+          <input type="text" placeholder="로그인 코드" />
+        </div>
+        <button class="btn-primary">로그인</button>
+        <div class="tag">IOPN · Work Manager</div>
+      </div>
+    </section>
+
+    <!-- 4. 앰버 블롭 -->
+    <section id="d4" class="design">
+      <div class="blob-a"></div>
+      <div class="blob-b"></div>
+      <div class="card-4">
+        <span class="brand-tag">IOPN Work Manager</span>
+        <h3>안녕하세요 👋</h3>
+        <p class="hint">코드를 입력해 로그인하세요.</p>
+        <div class="iopn-logo card-logo"></div>
+        <div class="form-group">
+          <label>로그인 코드</label>
+          <input type="text" placeholder="예: 1234" />
+        </div>
+        <button class="btn-primary">로그인</button>
+      </div>
+    </section>
+
+    <!-- 5. 키오스크 -->
+    <section id="d5" class="design">
+      <div class="kiosk-card">
+        <div class="kiosk-head">
+          <div class="iopn-logo kiosk-logo"></div>
+          <p>IOPN · Work Manager</p>
+        </div>
+        <div class="kiosk-body">
+          <h3>근태 시스템 로그인</h3>
+          <p class="hint">관리자에게 발급받은 코드를 입력해주세요.</p>
+          <div class="form-group">
+            <input type="text" placeholder="• • • •" />
+          </div>
+          <button class="btn-primary">로그인</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const tabs = document.getElementById('tabs');
+    const designs = document.querySelectorAll('.design');
+    tabs.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-target]');
+      if (!btn) return;
+      [...tabs.children].forEach(b => b.classList.toggle('active', b === btn));
+      designs.forEach(d => d.classList.toggle('active', d.id === btn.dataset.target));
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  </script>
+</body>
+</html>
