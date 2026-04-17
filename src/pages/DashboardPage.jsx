@@ -149,10 +149,10 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="tile-body">
-              <div className="tile-title">승인 대기</div>
+              <div className="tile-title">연차 신청</div>
               <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
               <div className="tile-sub">
-                {pendingLeaves.length > 0 ? '탭해서 처리' : '모두 처리됨'}
+                {pendingLeaves.length > 0 ? '탭해서 확인' : '신청 없음'}
               </div>
             </div>
           </Link>
