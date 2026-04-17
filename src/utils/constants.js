@@ -35,17 +35,28 @@ export const LEAVE_TYPES = {
   ANNUAL: 'annual',
   HALF_AM: 'half_am',
   HALF_PM: 'half_pm',
+  QUARTER_1: 'quarter_1',
+  QUARTER_2: 'quarter_2',
+  QUARTER_3: 'quarter_3',
+  QUARTER_4: 'quarter_4',
   SICK: 'sick',
-  SPECIAL: 'special',
 };
 
 export const LEAVE_TYPE_LABELS = {
   annual: '연차',
   half_am: '오전 반차',
   half_pm: '오후 반차',
+  quarter_1: '반반차 1',
+  quarter_2: '반반차 2',
+  quarter_3: '반반차 3',
+  quarter_4: '반반차 4',
   sick: '병가',
-  special: '특별휴가',
 };
+
+// 반반차(0.25일) 타입 판별용 집합
+export const QUARTER_LEAVE_TYPES = [
+  'quarter_1', 'quarter_2', 'quarter_3', 'quarter_4',
+];
 
 // 연차 신청 상태
 export const LEAVE_STATUS = {

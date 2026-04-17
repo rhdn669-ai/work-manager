@@ -435,12 +435,8 @@ function statusLabel(status) {
   }
 }
 
+import { LEAVE_TYPE_LABELS } from '../../utils/constants';
+
 function leaveTypeLabel(type) {
-  switch (type) {
-    case 'annual': return '연차';
-    case 'half-am': return '오전반차';
-    case 'half-pm': return '오후반차';
-    case 'sick': return '병가';
-    default: return type || '-';
-  }
+  return LEAVE_TYPE_LABELS[type] || type || '-';
 }

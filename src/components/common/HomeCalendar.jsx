@@ -4,9 +4,9 @@ import { getEvents } from '../../services/eventService';
 import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getUsers } from '../../services/userService';
+import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 
 const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차' };
-const LEAVE_TYPE_LABEL = { annual: '연차', half: '반차', sick: '병가', special: '경조사' };
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -109,7 +109,7 @@ export default function HomeCalendar() {
       .filter((l) => (l.status === 'approved' || l.status === 'confirmed') && (l.endDate || l.startDate) >= monthStart && l.startDate <= monthEnd)
       .map((l) => {
         const who = isAdmin ? (userNameMap[l.userId] || '') : '';
-        const leaveLabel = LEAVE_TYPE_LABEL[l.type] || '연차';
+        const leaveLabel = LEAVE_TYPE_LABELS[l.type] || '연차';
         return {
           ...l,
           _kind: 'leave',

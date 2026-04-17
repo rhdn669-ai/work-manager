@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { requestLeave, getLeaveBalance } from '../../services/leaveService';
-import { LEAVE_TYPES, LEAVE_TYPE_LABELS } from '../../utils/constants';
+import { LEAVE_TYPES, LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDays } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
 
@@ -16,8 +16,10 @@ export default function LeaveRequestPage() {
   const [error, setError] = useState('');
 
   function calculateDays() {
-    if (!startDate || !endDate) return 0;
+    if (!startDate) return 0;
     if (type === LEAVE_TYPES.HALF_AM || type === LEAVE_TYPES.HALF_PM) return 0.5;
+    if (QUARTER_LEAVE_TYPES.includes(type)) return 0.25;
+    if (!endDate) return 0;
     return getBusinessDays(startDate, endDate);
   }
 
@@ -46,7 +48,7 @@ export default function LeaveRequestPage() {
         departmentId: userProfile.departmentId,
         type,
         startDate,
-        endDate: type === LEAVE_TYPES.HALF_AM || type === LEAVE_TYPES.HALF_PM ? startDate : endDate,
+        endDate: isSingleDay ? startDate : endDate,
         days,
         reason,
       });
@@ -61,7 +63,10 @@ export default function LeaveRequestPage() {
     }
   }
 
-  const isHalf = type === LEAVE_TYPES.HALF_AM || type === LEAVE_TYPES.HALF_PM;
+  const isSingleDay =
+    type === LEAVE_TYPES.HALF_AM ||
+    type === LEAVE_TYPES.HALF_PM ||
+    QUARTER_LEAVE_TYPES.includes(type);
   const days = calculateDays();
 
   return (
@@ -88,7 +93,7 @@ export default function LeaveRequestPage() {
               <label>시작일</label>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
             </div>
-            {!isHalf && (
+            {!isSingleDay && (
               <div className="form-group">
                 <label>종료일</label>
                 <input
