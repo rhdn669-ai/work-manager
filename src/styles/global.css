@@ -3009,6 +3009,27 @@ body {
     padding-bottom: 72px;
   }
 
+  .table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .table thead,
+  .table tbody,
+  .table tfoot,
+  .table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .table td,
+  .table th {
+    white-space: nowrap;
+  }
+
   .chat-page {
     margin: -16px -16px;
     margin-bottom: -72px;
