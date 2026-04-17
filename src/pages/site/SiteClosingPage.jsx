@@ -29,7 +29,8 @@ export default function SiteClosingPage() {
   const { siteId, year, month } = useParams();
   const y = Number(year);
   const m = Number(month);
-  const { isAdmin, userProfile } = useAuth();
+  const { isAdmin, isExecutive, userProfile } = useAuth();
+  const canViewSalary = isAdmin || isExecutive;
   const navigate = useNavigate();
 
   const [site, setSite] = useState(null);
@@ -437,10 +438,12 @@ export default function SiteClosingPage() {
           <span className="label">공수 합계</span>
           <strong>{freelancerTotal.toLocaleString()}원</strong>
         </div>
-        <div className="closing-summary-item closing-summary-total">
-          <span className="label">직원 합계</span>
-          <strong>{employeeTotal.toLocaleString()}원</strong>
-        </div>
+        {canViewSalary && (
+          <div className="closing-summary-item closing-summary-total">
+            <span className="label">직원 합계</span>
+            <strong>{employeeTotal.toLocaleString()}원</strong>
+          </div>
+        )}
         {canEdit && saveStatus}
       </div>
 
@@ -538,7 +541,7 @@ export default function SiteClosingPage() {
             Object.values(userMap).filter((u) => u.fixedCost).map((u) => (
               <label key={u.uid} className="select-list-item" onClick={() => handleAddEmployee(u)} style={{ cursor: 'pointer' }}>
                 <span className="select-list-name">{u.name}</span>
-                <span className="select-list-sub">{u.position || ''} · 월 {Number(u.fixedCost).toLocaleString()}원</span>
+                <span className="select-list-sub">{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
               </label>
             ))
           )}
@@ -666,7 +669,7 @@ export default function SiteClosingPage() {
                     <span className="label">수량</span>
                     <strong>{Number(buf.quantity || 0)}일</strong>
                   </div>
-                  {(isAdmin || cardType !== 'employee') && (
+                  {(canViewSalary || cardType !== 'employee') && (
                     <>
                       <div className="foot-field">
                         <span className="label">단가</span>
