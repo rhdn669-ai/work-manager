@@ -12,6 +12,7 @@ export default function ReportsPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('overtime');
 
   useEffect(() => {
     loadBase();
@@ -37,14 +38,12 @@ export default function ReportsPage() {
         getApprovedLeavesByMonth(year, month),
       ]);
 
-      // 직원별 연차 집계
       const leaveByUser = {};
       for (const l of approvedLeaves) {
         if (!leaveByUser[l.userId]) leaveByUser[l.userId] = 0;
         leaveByUser[l.userId] += l.days || 0;
       }
 
-      // 직원별 잔업 집계
       const byUser = {};
       users.forEach((u) => {
         byUser[u.uid] = {
@@ -62,10 +61,7 @@ export default function ReportsPage() {
         }
       });
 
-      setReport(Object.entries(byUser)
-        .map(([uid, data]) => ({ uid, ...data }))
-        .filter((r) => r.overtimeCount > 0 || r.leaveDays > 0)
-      );
+      setReport(Object.entries(byUser).map(([uid, data]) => ({ uid, ...data })));
     } catch (err) {
       console.error(err);
     } finally {
@@ -75,6 +71,13 @@ export default function ReportsPage() {
 
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
+
+  const overtimeRows = report.filter((r) => r.overtimeCount > 0);
+  const leaveRows = report.filter((r) => r.leaveDays > 0);
+
+  const totalOvertimeMinutes = overtimeRows.reduce((s, r) => s + r.overtimeMinutes, 0);
+  const totalOvertimeCount = overtimeRows.reduce((s, r) => s + r.overtimeCount, 0);
+  const totalLeaveDays = leaveRows.reduce((s, r) => s + r.leaveDays, 0);
 
   return (
     <div className="reports-page">
@@ -93,41 +96,86 @@ export default function ReportsPage() {
         </select>
       </div>
 
+      <div className="tab-nav">
+        <button
+          type="button"
+          className={`tab-nav-item ${activeTab === 'overtime' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overtime')}
+        >
+          잔업 ({overtimeRows.length}명)
+        </button>
+        <button
+          type="button"
+          className={`tab-nav-item ${activeTab === 'leave' ? 'active' : ''}`}
+          onClick={() => setActiveTab('leave')}
+        >
+          연차 ({leaveRows.length}명)
+        </button>
+      </div>
+
       {loading ? (
         <div className="loading">로딩 중...</div>
-      ) : report.length === 0 ? (
-        <p className="text-muted">해당 월의 기록이 없습니다.</p>
-      ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>이름</th>
-              <th>부서</th>
-              <th>잔업</th>
-              <th>잔업 건수</th>
-              <th>연차 사용</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.map((r) => (
-              <tr key={r.uid}>
-                <td>{r.name}</td>
-                <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>{r.overtimeMinutes > 0 ? formatMinutes(r.overtimeMinutes) : '-'}</td>
-                <td>{r.overtimeCount > 0 ? `${r.overtimeCount}건` : '-'}</td>
-                <td>{r.leaveDays > 0 ? `${r.leaveDays}일` : '-'}</td>
+      ) : activeTab === 'overtime' ? (
+        overtimeRows.length === 0 ? (
+          <p className="text-muted">해당 월의 잔업 기록이 없습니다.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>부서</th>
+                <th>총 잔업</th>
+                <th>건수</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={2}><strong>합계</strong></td>
-              <td><strong>{formatMinutes(report.reduce((s, r) => s + r.overtimeMinutes, 0))}</strong></td>
-              <td><strong>{report.reduce((s, r) => s + r.overtimeCount, 0)}건</strong></td>
-              <td><strong>{report.reduce((s, r) => s + r.leaveDays, 0)}일</strong></td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody>
+              {overtimeRows.map((r) => (
+                <tr key={r.uid}>
+                  <td>{r.name}</td>
+                  <td>{deptMap[r.departmentId] || '-'}</td>
+                  <td>{formatMinutes(r.overtimeMinutes)}</td>
+                  <td>{r.overtimeCount}건</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={2}><strong>합계</strong></td>
+                <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
+                <td><strong>{totalOvertimeCount}건</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        )
+      ) : (
+        leaveRows.length === 0 ? (
+          <p className="text-muted">해당 월의 연차 사용 기록이 없습니다.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>부서</th>
+                <th>연차 사용</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaveRows.map((r) => (
+                <tr key={r.uid}>
+                  <td>{r.name}</td>
+                  <td>{deptMap[r.departmentId] || '-'}</td>
+                  <td>{r.leaveDays}일</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={2}><strong>합계</strong></td>
+                <td><strong>{totalLeaveDays}일</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        )
       )}
     </div>
   );
