@@ -138,24 +138,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <Link
-            to="/manage/leave"
-            className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
-          >
-            <div className="tile-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-            </div>
-            <div className="tile-body">
-              <div className="tile-title">연차 신청</div>
-              <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
-              <div className="tile-sub">
-                {pendingLeaves.length > 0 ? '탭해서 확인' : '신청 없음'}
-              </div>
-            </div>
-          </Link>
         </div>
       )}
 
@@ -211,10 +193,10 @@ export default function DashboardPage() {
                 </svg>
               </div>
               <div className="tile-body">
-                <div className="tile-title">승인 대기</div>
+                <div className="tile-title">연차 신청</div>
                 <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
                 <div className="tile-sub">
-                  {pendingLeaves.length > 0 ? '탭해서 처리' : '모두 처리됨'}
+                  {pendingLeaves.length > 0 ? '탭해서 확인' : '신청 없음'}
                 </div>
               </div>
             </Link>
