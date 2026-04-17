@@ -2171,8 +2171,16 @@ body {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: all 0.15s;
+  transition: background 0.05s, border-color 0.05s;
 }
+.home-cal-cell:active:not(.empty) {
+  background: #F59E0B;
+  border-color: #F59E0B;
+  transition: none;
+}
+.home-cal-cell:active:not(.empty) .home-cal-date { color: #fff; }
+.home-cal-cell:active:not(.empty) .home-cal-dot { background: #fff !important; }
+.home-cal-cell:active:not(.empty) .home-cal-more { color: #fff; }
 .home-cal-cell:hover:not(.empty) {
   background: #f1f5f9;
   border-color: #e2e8f0;
