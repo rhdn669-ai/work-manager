@@ -1,13 +1,11 @@
 /* ===== 애니메이션 ===== */
 @keyframes badge-pulse {
-  0%, 100% { transform: scale(1); }
-  30%      { transform: scale(1.25); }
-  60%      { transform: scale(0.95); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
 }
 @-webkit-keyframes badge-pulse {
-  0%, 100% { -webkit-transform: scale(1); }
-  30%      { -webkit-transform: scale(1.25); }
-  60%      { -webkit-transform: scale(0.95); }
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
 }
 @keyframes icon-wiggle {
   0%, 50%, 100% { transform: rotate(0deg); }
@@ -217,17 +215,20 @@ body {
 }
 
 .sidebar-badge {
-  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: 8px;
+  padding: 0 5px;
   font-size: 11px;
   font-weight: 800;
   min-width: 20px;
   height: 20px;
   border-radius: 10px;
-  border: 2px solid rgba(255,255,255,0.3);
-  will-change: transform;
-  -webkit-animation: badge-pulse 1.2s ease-in-out infinite;
-  animation: badge-pulse 1.2s ease-in-out infinite;
+  background: #ef4444;
+  color: #fff;
+  -webkit-animation: badge-pulse 1s ease-in-out infinite;
+  animation: badge-pulse 1s ease-in-out infinite;
 }
 
 .nav-link:hover {
@@ -3158,9 +3159,8 @@ body {
     line-height: 1;
     pointer-events: none;
     border: 2px solid #fff;
-    will-change: transform;
-    -webkit-animation: badge-pulse 1.2s ease-in-out infinite;
-    animation: badge-pulse 1.2s ease-in-out infinite;
+    -webkit-animation: badge-pulse 1s ease-in-out infinite;
+    animation: badge-pulse 1s ease-in-out infinite;
   }
 
   .bottom-nav-icon-wrap.has-badge {
