@@ -105,7 +105,7 @@ export default function SiteClosingPage() {
 
       setItems(its);
       const buf = {};
-      updatedItems.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
+      its.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
       setEditBuf(buf);
       const fbuf = {};
       fins.forEach((f) => { fbuf[f.id] = { ...f }; });

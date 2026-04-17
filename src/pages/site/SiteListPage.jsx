@@ -67,7 +67,6 @@ export default function SiteListPage() {
   function openCreate() {
     setEditSite(null);
     setForm({ name: '', team: '', managerIds: [] });
-    setVendorText('');
     setManagerListOpen(false);
     setShowModal(true);
   }
