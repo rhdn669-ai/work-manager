@@ -186,10 +186,7 @@ export default function DashboardPage() {
           </div>
 
           {canApproveLeave && (
-            <Link
-              to="/manage/leave"
-              className={`dashboard-tile tile-pending ${pendingLeaves.length > 0 ? 'is-urgent' : ''}`}
-            >
+            <Link to="/manage/leave" className="dashboard-tile tile-pending">
               <div className="tile-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 11l3 3L22 4"/>
@@ -198,10 +195,7 @@ export default function DashboardPage() {
               </div>
               <div className="tile-body">
                 <div className="tile-title">팀원 잔업 · 연차</div>
-                <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
-                <div className="tile-sub">
-                  {pendingLeaves.length > 0 ? '탭해서 확인' : '신청 없음'}
-                </div>
+                <div className="tile-sub">탭해서 확인</div>
               </div>
             </Link>
           )}
