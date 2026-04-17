@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc,
+  collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc,
   query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -194,6 +194,20 @@ export async function setLeaveRemaining(userId, remaining) {
   } else {
     await setDoc(ref, { userId, joinDate: user.joinDate, usedDays, createdAt: new Date(), updatedAt: new Date() });
   }
+}
+
+// 전체 연차 신청 기록 삭제 + 모든 leaveBalances.usedDays = 0 초기화
+export async function resetAllLeaves() {
+  const leavesSnap = await getDocs(leavesRef);
+  await Promise.all(leavesSnap.docs.map((d) => deleteDoc(doc(db, 'leaves', d.id))));
+
+  const balSnap = await getDocs(balancesRef);
+  await Promise.all(balSnap.docs.map((d) => updateDoc(doc(db, 'leaveBalances', d.id), {
+    usedDays: 0,
+    updatedAt: new Date(),
+  })));
+
+  return { leavesDeleted: leavesSnap.size, balancesReset: balSnap.size };
 }
 
 // 입사일 동기화/초기화 (users.joinDate를 balance에 스냅샷 저장)
