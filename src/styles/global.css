@@ -950,6 +950,15 @@ body {
   text-align: center;
 }
 
+.login-logo {
+  display: block;
+  width: 200px;
+  height: auto;
+  margin: -28px auto 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .login-card h1 {
   font-size: 24px;
   margin-bottom: 4px;
