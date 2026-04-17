@@ -196,6 +196,26 @@ export async function setLeaveRemaining(userId, remaining) {
   }
 }
 
+// 연차 개별 삭제 (관리자용) - 삭제 시 usedDays 자동 복원
+export async function deleteLeaveById(id) {
+  const ref = doc(db, 'leaves', id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const leave = snap.data();
+  if (leave.status === 'confirmed' || leave.status === 'approved') {
+    await updateLeaveBalance(leave.userId, -(leave.days || 0));
+  }
+  await deleteDoc(ref);
+}
+
+// 연차 비고 수정 (관리자용)
+export async function updateLeaveReason(id, reason) {
+  await updateDoc(doc(db, 'leaves', id), {
+    reason: reason || '',
+    updatedAt: new Date(),
+  });
+}
+
 // 전체 연차 신청 기록 삭제 + 모든 leaveBalances.usedDays = 0 초기화
 export async function resetAllLeaves() {
   const leavesSnap = await getDocs(leavesRef);

@@ -1,18 +1,33 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
-import { getAllOvertimeRecords } from '../../services/attendanceService';
-import { getApprovedLeavesByMonth } from '../../services/leaveService';
+import { getAllSites } from '../../services/siteService';
+import {
+  getAllOvertimeRecords,
+  deleteOvertimeRecord,
+  updateOvertimeRecord,
+} from '../../services/attendanceService';
+import {
+  getApprovedLeavesByMonth,
+  deleteLeaveById,
+  updateLeaveReason,
+} from '../../services/leaveService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 
 export default function ReportsPage() {
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [sites, setSites] = useState([]);
   const [report, setReport] = useState([]);
+  const [rawRecords, setRawRecords] = useState([]);
+  const [rawLeaves, setRawLeaves] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overtime');
+  const [detailUser, setDetailUser] = useState(null);
 
   useEffect(() => {
     loadBase();
@@ -23,9 +38,10 @@ export default function ReportsPage() {
   }, [users, year, month]);
 
   async function loadBase() {
-    const [u, d] = await Promise.all([getUsers(), getDepartments()]);
+    const [u, d, s] = await Promise.all([getUsers(), getDepartments(), getAllSites()]);
     setUsers(u);
     setDepartments(d);
+    setSites(s);
   }
 
   async function generateReport() {
@@ -37,6 +53,8 @@ export default function ReportsPage() {
         getAllOvertimeRecords(start, end),
         getApprovedLeavesByMonth(year, month),
       ]);
+      setRawRecords(records);
+      setRawLeaves(approvedLeaves);
 
       const leaveByUser = {};
       for (const l of approvedLeaves) {
@@ -73,6 +91,8 @@ export default function ReportsPage() {
 
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
+  const siteMap = {};
+  sites.forEach((s) => { siteMap[s.id] = s.name; });
 
   const rows = report;
   const totalOvertimeMinutes = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
@@ -118,7 +138,7 @@ export default function ReportsPage() {
       ) : rows.length === 0 ? (
         <p className="text-muted">직원 정보가 없습니다.</p>
       ) : activeTab === 'overtime' ? (
-        <table className="table">
+        <table className="table table-clickable">
           <thead>
             <tr>
               <th style={{ width: 48 }}>#</th>
@@ -130,7 +150,7 @@ export default function ReportsPage() {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.uid}>
+              <tr key={r.uid} onClick={() => setDetailUser(r)} style={{ cursor: 'pointer' }}>
                 <td>{i + 1}</td>
                 <td>{r.name}</td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
@@ -148,7 +168,7 @@ export default function ReportsPage() {
           </tfoot>
         </table>
       ) : (
-        <table className="table">
+        <table className="table table-clickable">
           <thead>
             <tr>
               <th style={{ width: 48 }}>#</th>
@@ -159,7 +179,7 @@ export default function ReportsPage() {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.uid}>
+              <tr key={r.uid} onClick={() => setDetailUser(r)} style={{ cursor: 'pointer' }}>
                 <td>{i + 1}</td>
                 <td>{r.name}</td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
@@ -175,6 +195,252 @@ export default function ReportsPage() {
           </tfoot>
         </table>
       )}
+
+      {detailUser && (
+        <EmployeeDetailModal
+          user={detailUser}
+          tab={activeTab}
+          year={year}
+          month={month}
+          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid)}
+          leaves={rawLeaves.filter((l) => l.userId === detailUser.uid)}
+          siteMap={siteMap}
+          canEdit={isAdmin}
+          onClose={() => setDetailUser(null)}
+          onChanged={generateReport}
+        />
+      )}
     </div>
   );
+}
+
+function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves, siteMap, canEdit, onClose, onChanged }) {
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  function startEdit(row) {
+    setEditingId(row.id);
+    if (tab === 'overtime') {
+      setEditForm({ minutes: row.minutes || 0, reason: row.reason || '' });
+    } else {
+      setEditForm({ reason: row.reason || '' });
+    }
+  }
+
+  async function saveEdit(row) {
+    setBusy(true);
+    try {
+      if (tab === 'overtime') {
+        const minutes = Number(editForm.minutes);
+        if (!Number.isFinite(minutes) || minutes < 0) {
+          alert('유효한 분(minutes)을 입력하세요.');
+          setBusy(false);
+          return;
+        }
+        await updateOvertimeRecord(row.id, { minutes, reason: editForm.reason });
+      } else {
+        await updateLeaveReason(row.id, editForm.reason);
+      }
+      setEditingId(null);
+      await onChanged();
+    } catch (err) {
+      alert('수정 실패: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeRow(row) {
+    const label = tab === 'overtime' ? '이 잔업 기록' : '이 연차 기록';
+    if (!confirm(`${label}을(를) 삭제할까요?\n(연차 삭제 시 사용일수가 자동 복원됩니다)`)) return;
+    setBusy(true);
+    try {
+      if (tab === 'overtime') {
+        await deleteOvertimeRecord(row.id);
+      } else {
+        await deleteLeaveById(row.id);
+      }
+      await onChanged();
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const overtimesSorted = [...overtimes].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const leavesSorted = [...leaves].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>
+            {user.name} · {year}년 {month}월 {tab === 'overtime' ? '잔업' : '연차'} 내역
+          </h3>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          {tab === 'overtime' ? (
+            overtimesSorted.length === 0 ? (
+              <p className="text-muted">등록된 잔업이 없습니다.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 96 }}>날짜</th>
+                    <th>프로젝트</th>
+                    <th style={{ width: 100 }}>시간</th>
+                    <th>비고</th>
+                    <th style={{ width: 120 }}>상태</th>
+                    {canEdit && <th style={{ width: 120 }}></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {overtimesSorted.map((r) => {
+                    const isEditing = editingId === r.id;
+                    return (
+                      <tr key={r.id}>
+                        <td>{r.date}</td>
+                        <td>{siteMap[r.siteId] || '-'}</td>
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min={0}
+                              value={editForm.minutes}
+                              onChange={(e) => setEditForm({ ...editForm, minutes: e.target.value })}
+                              style={{ width: 80 }}
+                            />
+                          ) : formatMinutes(r.minutes || 0)}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editForm.reason}
+                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                              style={{ width: '100%' }}
+                            />
+                          ) : (r.reason || '-')}
+                        </td>
+                        <td>
+                          <span className={`badge badge-${r.status}`}>{statusLabel(r.status)}</span>
+                        </td>
+                        {canEdit && (
+                          <td>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>저장</button>
+                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>취소</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>수정</button>
+                                <button
+                                  className="btn btn-sm btn-outline"
+                                  style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                                  disabled={busy}
+                                  onClick={() => removeRow(r)}
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )
+          ) : (
+            leavesSorted.length === 0 ? (
+              <p className="text-muted">등록된 연차가 없습니다.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 160 }}>기간</th>
+                    <th style={{ width: 64 }}>일수</th>
+                    <th style={{ width: 80 }}>종류</th>
+                    <th>사유</th>
+                    {canEdit && <th style={{ width: 120 }}></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {leavesSorted.map((l) => {
+                    const isEditing = editingId === l.id;
+                    const period = l.startDate === l.endDate
+                      ? l.startDate
+                      : `${l.startDate} ~ ${l.endDate}`;
+                    return (
+                      <tr key={l.id}>
+                        <td>{period}</td>
+                        <td>{l.days}일</td>
+                        <td>{leaveTypeLabel(l.type)}</td>
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editForm.reason}
+                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                              style={{ width: '100%' }}
+                            />
+                          ) : (l.reason || '-')}
+                        </td>
+                        {canEdit && (
+                          <td>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>저장</button>
+                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>취소</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
+                                <button
+                                  className="btn btn-sm btn-outline"
+                                  style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                                  disabled={busy}
+                                  onClick={() => removeRow(l)}
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function statusLabel(status) {
+  switch (status) {
+    case 'approved': return '승인';
+    case 'pending': return '대기';
+    case 'rejected': return '거절';
+    default: return status || '-';
+  }
+}
+
+function leaveTypeLabel(type) {
+  switch (type) {
+    case 'annual': return '연차';
+    case 'half-am': return '오전반차';
+    case 'half-pm': return '오후반차';
+    case 'sick': return '병가';
+    default: return type || '-';
+  }
 }

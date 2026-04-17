@@ -37,6 +37,15 @@ export async function deleteOvertimeRecord(id) {
   await deleteDoc(doc(db, 'overtimeRecords', id));
 }
 
+// 잔업 개별 수정 (관리자용) - 분/비고만 편집 (지출 재계산은 하지 않음)
+export async function updateOvertimeRecord(id, data) {
+  await updateDoc(doc(db, 'overtimeRecords', id), {
+    minutes: data.minutes,
+    reason: data.reason || '',
+    updatedAt: new Date(),
+  });
+}
+
 // 잔업 승인
 export async function approveOvertimeRecord(id) {
   await updateDoc(doc(db, 'overtimeRecords', id), { status: 'approved' });
