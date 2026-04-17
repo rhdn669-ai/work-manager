@@ -1066,8 +1066,9 @@ body {
 .chat-page {
   display: flex;
   flex-direction: column;
+  /* main-content padding 상쇄 후 뷰포트 꽉 채우기 */
+  margin: -18px -22px;
   height: calc(100vh - var(--header-height));
-  padding: 0;
   overflow: hidden;
 }
 
@@ -1124,7 +1125,7 @@ body {
 }
 
 .chat-bubble {
-  max-width: 280px;
+  max-width: min(280px, 72vw);
   padding: 10px 14px;
   border-radius: 18px;
   font-size: 14px;
@@ -3006,6 +3007,12 @@ body {
     width: 100%;
     padding: 16px;
     padding-bottom: 72px;
+  }
+
+  .chat-page {
+    margin: -16px -16px;
+    margin-bottom: -72px;
+    height: calc(100vh - var(--header-height));
   }
 
   .header-title {
