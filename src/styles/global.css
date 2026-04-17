@@ -18,7 +18,7 @@
   --text: #111827;
   --text-light: #4b5563;
   --text-muted: #9ca3af;
-  --text-sidebar: #cbd5e1;
+  --text-sidebar: #f8fafc;
 
   --border: #e5e7eb;
   --border-strong: #d1d5db;
@@ -173,6 +173,7 @@ body {
   color: var(--text-sidebar);
   text-decoration: none;
   font-size: 15px;
+  font-weight: 500;
   transition: background 0.15s;
 }
 
