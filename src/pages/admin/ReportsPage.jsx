@@ -46,7 +46,7 @@ export default function ReportsPage() {
 
       const byUser = {};
       users
-        .filter((u) => u.isActive !== false)
+        .filter((u) => u.isActive !== false && u.role !== 'admin')
         .forEach((u) => {
           byUser[u.uid] = {
             name: u.name,
@@ -121,6 +121,7 @@ export default function ReportsPage() {
         <table className="table">
           <thead>
             <tr>
+              <th style={{ width: 48 }}>#</th>
               <th>이름</th>
               <th>부서</th>
               <th>총 잔업</th>
@@ -128,8 +129,9 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.map((r, i) => (
               <tr key={r.uid}>
+                <td>{i + 1}</td>
                 <td>{r.name}</td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
                 <td>{r.overtimeMinutes > 0 ? formatMinutes(r.overtimeMinutes) : '-'}</td>
@@ -139,7 +141,7 @@ export default function ReportsPage() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}><strong>합계</strong></td>
+              <td colSpan={3}><strong>합계</strong></td>
               <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
               <td><strong>{totalOvertimeCount}건</strong></td>
             </tr>
@@ -149,14 +151,16 @@ export default function ReportsPage() {
         <table className="table">
           <thead>
             <tr>
+              <th style={{ width: 48 }}>#</th>
               <th>이름</th>
               <th>부서</th>
               <th>연차 사용</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.map((r, i) => (
               <tr key={r.uid}>
+                <td>{i + 1}</td>
                 <td>{r.name}</td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
                 <td>{r.leaveDays > 0 ? `${r.leaveDays}일` : '-'}</td>
@@ -165,7 +169,7 @@ export default function ReportsPage() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}><strong>합계</strong></td>
+              <td colSpan={3}><strong>합계</strong></td>
               <td><strong>{totalLeaveDays}일</strong></td>
             </tr>
           </tfoot>
