@@ -1,15 +1,20 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useChat } from '../../contexts/ChatContext';
 
-const Item = ({ to, end, label, children }) => (
+const Item = ({ to, end, label, badge, children }) => (
   <NavLink to={to} end={end} className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-    <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{children}</svg>
+    <div className="bottom-nav-icon-wrap">
+      <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{children}</svg>
+      {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
+    </div>
     <span>{label}</span>
   </NavLink>
 );
 
 export default function BottomNav() {
   const { isAdmin, canApproveLeave } = useAuth();
+  const { unreadCount } = useChat();
 
   return (
     <nav className="bottom-nav">
@@ -73,7 +78,7 @@ export default function BottomNav() {
       )}
 
       {/* 6. 채팅 (전체) */}
-      <Item to="/chat" end label="채팅">
+      <Item to="/chat" end label="채팅" badge={unreadCount}>
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </Item>
 

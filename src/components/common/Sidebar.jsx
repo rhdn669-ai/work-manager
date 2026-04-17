@@ -1,8 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useChat } from '../../contexts/ChatContext';
 
 export default function Sidebar({ isOpen }) {
   const { isAdmin, canApproveLeave } = useAuth();
+  const { unreadCount } = useChat();
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -15,7 +17,10 @@ export default function Sidebar({ isOpen }) {
         {(isAdmin || canApproveLeave) && <NavLink to="/sites" end className="nav-link">프로젝트</NavLink>}
         {isAdmin && <NavLink to="/manage/team" end className="nav-link">팀구성 관리</NavLink>}
 {canApproveLeave && !isAdmin && <NavLink to="/manage/leave" end className="nav-link">팀원 잔업 · 연차</NavLink>}
-        <NavLink to="/chat" end className="nav-link">채팅</NavLink>
+        <NavLink to="/chat" end className="nav-link">
+          채팅
+          {unreadCount > 0 && <span className="nav-badge sidebar-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+        </NavLink>
         {isAdmin && <NavLink to="/admin/events" className="nav-link">이벤트 · 공지</NavLink>}
       </nav>
     </aside>

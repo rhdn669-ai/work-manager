@@ -2,15 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useChat } from '../contexts/ChatContext';
 
 const messagesRef = collection(db, 'chatMessages');
 
 export default function ChatPage() {
   const { userProfile } = useAuth();
+  const { markAsRead } = useChat();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
+
+  useEffect(() => {
+    markAsRead();
+  }, [markAsRead]);
 
   useEffect(() => {
     const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(200));
