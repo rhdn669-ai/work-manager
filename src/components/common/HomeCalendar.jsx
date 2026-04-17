@@ -4,6 +4,7 @@ import { getEvents } from '../../services/eventService';
 import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getUsers } from '../../services/userService';
+import { getDepartmentsByLeader } from '../../services/departmentService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 
 const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차' };
@@ -19,7 +20,7 @@ function formatMinutes(min) {
 }
 
 export default function HomeCalendar() {
-  const { userProfile, isAdmin } = useAuth();
+  const { userProfile, isAdmin, canApproveAll, canApproveLeave } = useAuth();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() + 1 };
@@ -39,23 +40,40 @@ export default function HomeCalendar() {
       const startISO = `${year}-${pad(month)}-01`;
       const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
 
-      const evsP = getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; });
-      let otsP, lvsP, usersP;
-      if (isAdmin) {
-        otsP = getAllOvertimeRecords(startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; });
-        lvsP = getApprovedLeavesByMonth(year, month).catch((err) => { console.error('연차 로드 실패', err); return []; });
-        usersP = getUsers().catch((err) => { console.error('사용자 로드 실패', err); return []; });
+      const evs = await getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; });
+
+      let ots = [];
+      let lvs = [];
+      let users = [];
+
+      if (canApproveAll) {
+        [ots, lvs, users] = await Promise.all([
+          getAllOvertimeRecords(startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; }),
+          getApprovedLeavesByMonth(year, month).catch((err) => { console.error('연차 로드 실패', err); return []; }),
+          getUsers().catch((err) => { console.error('사용자 로드 실패', err); return []; }),
+        ]);
+      } else if (canApproveLeave && userProfile?.uid) {
+        const allUsers = await getUsers().catch(() => []);
+        const myDepts = await getDepartmentsByLeader(userProfile.uid).catch(() => []);
+        const myDeptIds = new Set(myDepts.map((d) => d.id));
+        const teamIds = new Set(
+          allUsers.filter((u) => myDeptIds.has(u.departmentId)).map((u) => u.uid)
+        );
+        teamIds.add(userProfile.uid);
+        const [allOts, allLvs] = await Promise.all([
+          getAllOvertimeRecords(startISO, endISO).catch(() => []),
+          getApprovedLeavesByMonth(year, month).catch(() => []),
+        ]);
+        ots = allOts.filter((o) => teamIds.has(o.userId));
+        lvs = allLvs.filter((l) => teamIds.has(l.userId));
+        users = allUsers;
       } else if (userProfile?.uid) {
-        otsP = getMyOvertimeRecords(userProfile.uid, startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; });
-        lvsP = getMyLeaves(userProfile.uid, year).catch((err) => { console.error('연차 로드 실패', err); return []; });
-        usersP = Promise.resolve([]);
-      } else {
-        otsP = Promise.resolve([]);
-        lvsP = Promise.resolve([]);
-        usersP = Promise.resolve([]);
+        [ots, lvs] = await Promise.all([
+          getMyOvertimeRecords(userProfile.uid, startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; }),
+          getMyLeaves(userProfile.uid, year).catch((err) => { console.error('연차 로드 실패', err); return []; }),
+        ]);
       }
 
-      const [evs, ots, lvs, users] = await Promise.all([evsP, otsP, lvsP, usersP]);
       if (!active) return;
       setEvents(evs);
       setOvertimes(ots);
@@ -66,7 +84,7 @@ export default function HomeCalendar() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [userProfile?.uid, isAdmin, cursor.y, cursor.m]);
+  }, [userProfile?.uid, isAdmin, canApproveAll, canApproveLeave, cursor.y, cursor.m]);
 
   const { weeks, eventsByDay, monthEvents } = useMemo(() => {
     const y = cursor.y, m = cursor.m;
@@ -93,7 +111,8 @@ export default function HomeCalendar() {
     const inMonthOvertimes = overtimes
       .filter((o) => o.status !== 'rejected' && o.date >= monthStart && o.date <= monthEnd)
       .map((o) => {
-        const who = isAdmin ? (o.userName || userNameMap[o.userId] || '') : '';
+        const showName = (canApproveLeave) && o.userId !== userProfile?.uid;
+        const who = showName ? (o.userName || userNameMap[o.userId] || '') : '';
         return {
           ...o,
           _kind: 'overtime',
@@ -108,7 +127,8 @@ export default function HomeCalendar() {
     const inMonthLeaves = leaves
       .filter((l) => (l.status === 'approved' || l.status === 'confirmed') && (l.endDate || l.startDate) >= monthStart && l.startDate <= monthEnd)
       .map((l) => {
-        const who = isAdmin ? (userNameMap[l.userId] || '') : '';
+        const showName = (canApproveLeave) && l.userId !== userProfile?.uid;
+        const who = showName ? (userNameMap[l.userId] || '') : '';
         const leaveLabel = LEAVE_TYPE_LABELS[l.type] || '연차';
         return {
           ...l,
@@ -134,7 +154,7 @@ export default function HomeCalendar() {
       }
     });
     return { weeks: ws, eventsByDay: byDay, monthEvents: all };
-  }, [cursor, events, overtimes, leaves, isAdmin, userNameMap]);
+  }, [cursor, events, overtimes, leaves, canApproveLeave, userNameMap, userProfile?.uid]);
 
   function prev() {
     setSelectedDate(null);
