@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="18" fill="#FF9800"/>
-  <text x="50" y="66" font-family="Arial Black, Arial" font-weight="900" font-size="46" fill="white" text-anchor="middle" letter-spacing="-1">IOPN</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 180">
+  <text x="4" y="148" font-family="Arial Black, Arial" font-weight="900" font-size="140" fill="#FF9800">IO</text>
+  <rect x="152" y="10" width="184" height="160" rx="24" fill="#FF9800"/>
+  <text x="244" y="148" font-family="Arial Black, Arial" font-weight="900" font-size="140" fill="white" text-anchor="middle">PN</text>
 </svg>
