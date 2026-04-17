@@ -105,11 +105,11 @@ export default function SiteClosingPage() {
       }
       setLeaveDays(ldByName);
 
-      // 담당자(팀장)의 팀원 자동 추가
+      // 담당자(팀장)의 팀원 자동 추가 — 직원 항목이 하나도 없을 때(최초 세팅)만 실행
       let updatedItems = its;
-      if (s && canEditSite(s)) {
+      const hasAnyEmployee = its.some((it) => it.itemType === 'employee');
+      if (s && canEditSite(s) && !hasAnyEmployee) {
         const managerIds = s.managerIds || [];
-        // 담당자가 팀장인 부서의 팀원 + 담당자 본인
         const teamMemberIds = new Set();
         for (const mid of managerIds) {
           teamMemberIds.add(mid);
@@ -118,13 +118,10 @@ export default function SiteClosingPage() {
             users.filter((u) => u.departmentId === dept.id).forEach((u) => teamMemberIds.add(u.uid));
           }
         }
-        // 이미 공수표에 있는 직원 이름 수집
-        const existingNames = new Set(its.filter((it) => it.itemType === 'employee').map((it) => it.detail));
         const toAdd = [];
         for (const uid of teamMemberIds) {
           const user = uMap[uid];
           if (!user || !user.fixedCost) continue;
-          if (existingNames.has(user.name)) continue;
           toAdd.push(user);
         }
         if (toAdd.length > 0) {
