@@ -193,7 +193,7 @@ export default function DashboardPage() {
                 </svg>
               </div>
               <div className="tile-body">
-                <div className="tile-title">연차 신청</div>
+                <div className="tile-title">연차신청 현황</div>
                 <div className="tile-value">{pendingLeaves.length}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
                 <div className="tile-sub">
                   {pendingLeaves.length > 0 ? '탭해서 확인' : '신청 없음'}
