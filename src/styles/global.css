@@ -2158,6 +2158,8 @@ body {
   border-radius: 8px;
   font-family: inherit;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: all 0.15s;
 }
 .home-cal-cell:hover:not(.empty) {
