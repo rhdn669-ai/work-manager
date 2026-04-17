@@ -11,14 +11,14 @@
 
   --bg: #f8fafc;
   --bg-card: #ffffff;
-  --bg-sidebar: #9A3412;
+  --bg-sidebar: #F59E0B;
   --bg-header: #ffffff;
   --bg-subtle: #f9fafb;
 
   --text: #111827;
   --text-light: #4b5563;
   --text-muted: #9ca3af;
-  --text-sidebar: #f8fafc;
+  --text-sidebar: #1C1917;
 
   --border: #e5e7eb;
   --border-strong: #d1d5db;
@@ -178,14 +178,14 @@ body {
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .nav-link.active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  font-weight: 600;
-  border-left: 3px solid var(--primary);
+  background: rgba(0, 0, 0, 0.18);
+  color: #1C1917;
+  font-weight: 700;
+  border-left: 3px solid #7C2D12;
 }
 
 /* ===== 메인 콘텐츠 ===== */
@@ -938,7 +938,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #9A3412 0%, #C2410C 100%);
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
 }
 
 .login-card {
