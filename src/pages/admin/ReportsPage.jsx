@@ -45,15 +45,17 @@ export default function ReportsPage() {
       }
 
       const byUser = {};
-      users.forEach((u) => {
-        byUser[u.uid] = {
-          name: u.name,
-          departmentId: u.departmentId,
-          overtimeMinutes: 0,
-          overtimeCount: 0,
-          leaveDays: leaveByUser[u.uid] || 0,
-        };
-      });
+      users
+        .filter((u) => u.isActive !== false)
+        .forEach((u) => {
+          byUser[u.uid] = {
+            name: u.name,
+            departmentId: u.departmentId,
+            overtimeMinutes: 0,
+            overtimeCount: 0,
+            leaveDays: leaveByUser[u.uid] || 0,
+          };
+        });
       records.forEach((r) => {
         if (byUser[r.userId]) {
           byUser[r.userId].overtimeMinutes += r.minutes || 0;
@@ -72,12 +74,10 @@ export default function ReportsPage() {
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
 
-  const overtimeRows = report.filter((r) => r.overtimeCount > 0);
-  const leaveRows = report.filter((r) => r.leaveDays > 0);
-
-  const totalOvertimeMinutes = overtimeRows.reduce((s, r) => s + r.overtimeMinutes, 0);
-  const totalOvertimeCount = overtimeRows.reduce((s, r) => s + r.overtimeCount, 0);
-  const totalLeaveDays = leaveRows.reduce((s, r) => s + r.leaveDays, 0);
+  const rows = report;
+  const totalOvertimeMinutes = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
+  const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
+  const totalLeaveDays = rows.reduce((s, r) => s + r.leaveDays, 0);
 
   return (
     <div className="reports-page">
@@ -102,80 +102,74 @@ export default function ReportsPage() {
           className={`tab-nav-item ${activeTab === 'overtime' ? 'active' : ''}`}
           onClick={() => setActiveTab('overtime')}
         >
-          잔업 ({overtimeRows.length}명)
+          잔업
         </button>
         <button
           type="button"
           className={`tab-nav-item ${activeTab === 'leave' ? 'active' : ''}`}
           onClick={() => setActiveTab('leave')}
         >
-          연차 ({leaveRows.length}명)
+          연차
         </button>
       </div>
 
       {loading ? (
         <div className="loading">로딩 중...</div>
+      ) : rows.length === 0 ? (
+        <p className="text-muted">직원 정보가 없습니다.</p>
       ) : activeTab === 'overtime' ? (
-        overtimeRows.length === 0 ? (
-          <p className="text-muted">해당 월의 잔업 기록이 없습니다.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>부서</th>
-                <th>총 잔업</th>
-                <th>건수</th>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>부서</th>
+              <th>총 잔업</th>
+              <th>건수</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.uid}>
+                <td>{r.name}</td>
+                <td>{deptMap[r.departmentId] || '-'}</td>
+                <td>{r.overtimeMinutes > 0 ? formatMinutes(r.overtimeMinutes) : '-'}</td>
+                <td>{r.overtimeCount > 0 ? `${r.overtimeCount}건` : '-'}</td>
               </tr>
-            </thead>
-            <tbody>
-              {overtimeRows.map((r) => (
-                <tr key={r.uid}>
-                  <td>{r.name}</td>
-                  <td>{deptMap[r.departmentId] || '-'}</td>
-                  <td>{formatMinutes(r.overtimeMinutes)}</td>
-                  <td>{r.overtimeCount}건</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={2}><strong>합계</strong></td>
-                <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
-                <td><strong>{totalOvertimeCount}건</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-        )
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={2}><strong>합계</strong></td>
+              <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
+              <td><strong>{totalOvertimeCount}건</strong></td>
+            </tr>
+          </tfoot>
+        </table>
       ) : (
-        leaveRows.length === 0 ? (
-          <p className="text-muted">해당 월의 연차 사용 기록이 없습니다.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>부서</th>
-                <th>연차 사용</th>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>부서</th>
+              <th>연차 사용</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.uid}>
+                <td>{r.name}</td>
+                <td>{deptMap[r.departmentId] || '-'}</td>
+                <td>{r.leaveDays > 0 ? `${r.leaveDays}일` : '-'}</td>
               </tr>
-            </thead>
-            <tbody>
-              {leaveRows.map((r) => (
-                <tr key={r.uid}>
-                  <td>{r.name}</td>
-                  <td>{deptMap[r.departmentId] || '-'}</td>
-                  <td>{r.leaveDays}일</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={2}><strong>합계</strong></td>
-                <td><strong>{totalLeaveDays}일</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-        )
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={2}><strong>합계</strong></td>
+              <td><strong>{totalLeaveDays}일</strong></td>
+            </tr>
+          </tfoot>
+        </table>
       )}
     </div>
   );
