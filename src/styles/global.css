@@ -11,7 +11,7 @@
 
   --bg: #f8fafc;
   --bg-card: #ffffff;
-  --bg-sidebar: #1e293b;
+  --bg-sidebar: #3A1C08;
   --bg-header: #ffffff;
   --bg-subtle: #f9fafb;
 
@@ -937,7 +937,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  background: linear-gradient(135deg, #2A1608 0%, #5A2E0C 100%);
 }
 
 .login-card {
