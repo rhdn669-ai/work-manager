@@ -2716,7 +2716,12 @@ body {
   color: var(--text-light);
   font-size: 14px;
   font-weight: 500;
+  background: transparent;
+  border: 0;
   border-bottom: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: inherit;
   transition: all 0.15s;
   white-space: nowrap;
 }
