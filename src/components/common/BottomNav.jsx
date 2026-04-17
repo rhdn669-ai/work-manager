@@ -4,7 +4,7 @@ import { useChat } from '../../contexts/ChatContext';
 
 const Item = ({ to, end, label, badge, children }) => (
   <NavLink to={to} end={end} className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-    <div className="bottom-nav-icon-wrap">
+    <div className={`bottom-nav-icon-wrap ${badge > 0 ? 'has-badge' : ''}`}>
       <svg className="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{children}</svg>
       {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
     </div>

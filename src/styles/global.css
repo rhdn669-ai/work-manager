@@ -1,3 +1,17 @@
+/* ===== 애니메이션 ===== */
+@keyframes badge-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  60%  { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+@keyframes icon-wiggle {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-14deg); }
+  25% { transform: rotate(12deg); }
+  40% { transform: rotate(-8deg); }
+  50% { transform: rotate(6deg); }
+}
+
 /* ===== CSS 변수 ===== */
 :root {
   --primary: #F59E0B;
@@ -194,9 +208,12 @@ body {
   position: static;
   margin-left: 8px;
   font-size: 11px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  font-weight: 800;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.3);
+  animation: badge-pulse 2s ease-out infinite;
 }
 
 .nav-link:hover {
@@ -3111,21 +3128,28 @@ body {
 
   .nav-badge {
     position: absolute;
-    top: -5px;
-    right: -7px;
+    top: -6px;
+    right: -8px;
     background: #ef4444;
     color: #fff;
     font-size: 9px;
-    font-weight: 700;
-    min-width: 16px;
-    height: 16px;
-    border-radius: 8px;
+    font-weight: 800;
+    min-width: 17px;
+    height: 17px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 3px;
+    padding: 0 4px;
     line-height: 1;
     pointer-events: none;
+    border: 2px solid #fff;
+    animation: badge-pulse 2s ease-out infinite;
+  }
+
+  .bottom-nav-icon-wrap.has-badge .bottom-nav-icon {
+    animation: icon-wiggle 2.4s ease-in-out infinite;
+    transform-origin: top center;
   }
 
   .dashboard-grid {
