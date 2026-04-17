@@ -32,6 +32,10 @@ export default function AttendancePage() {
       setMessage('잔업 시간을 입력해주세요.');
       return;
     }
+    if (!siteId) {
+      setMessage('프로젝트를 선택해주세요.');
+      return;
+    }
 
     const isPast = date < getToday();
     setSubmitting(true);
@@ -83,9 +87,9 @@ export default function AttendancePage() {
             </div>
           </div>
           <div className="form-group">
-            <label>프로젝트</label>
-            <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-              <option value="">선택 안 함</option>
+            <label>프로젝트 <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value)} required>
+              <option value="">프로젝트 선택</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
