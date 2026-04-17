@@ -274,7 +274,7 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ maxWidth: 900, width: '95vw' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>
             {user.name} · {year}년 {month}월 {tab === 'overtime' ? '잔업' : '연차'} 내역
@@ -286,15 +286,15 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
             overtimesSorted.length === 0 ? (
               <p className="text-muted">등록된 잔업이 없습니다.</p>
             ) : (
-              <table className="table">
+              <table className="table" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 96 }}>날짜</th>
-                    <th>프로젝트</th>
-                    <th style={{ width: 100 }}>시간</th>
-                    <th>비고</th>
-                    <th style={{ width: 120 }}>상태</th>
-                    {canEdit && <th style={{ width: 120 }}></th>}
+                    <th style={{ width: 96, whiteSpace: 'nowrap' }}>날짜</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>프로젝트</th>
+                    <th style={{ width: 100, whiteSpace: 'nowrap' }}>시간</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>비고</th>
+                    <th style={{ width: 100, whiteSpace: 'nowrap' }}>상태</th>
+                    {canEdit && <th style={{ width: 130, whiteSpace: 'nowrap' }}></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -360,14 +360,14 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
             leavesSorted.length === 0 ? (
               <p className="text-muted">등록된 연차가 없습니다.</p>
             ) : (
-              <table className="table">
+              <table className="table" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 160 }}>기간</th>
-                    <th style={{ width: 64 }}>일수</th>
-                    <th style={{ width: 80 }}>종류</th>
-                    <th>사유</th>
-                    {canEdit && <th style={{ width: 120 }}></th>}
+                    <th style={{ width: 190, whiteSpace: 'nowrap' }}>기간</th>
+                    <th style={{ width: 64, whiteSpace: 'nowrap' }}>일수</th>
+                    <th style={{ width: 90, whiteSpace: 'nowrap' }}>종류</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>사유</th>
+                    {canEdit && <th style={{ width: 130, whiteSpace: 'nowrap' }}></th>}
                   </tr>
                 </thead>
                 <tbody>
