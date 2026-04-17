@@ -152,6 +152,16 @@ body {
   -webkit-user-drag: none;
 }
 
+.header-version {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 0.6;
+  margin-left: 4px;
+  align-self: flex-end;
+  padding-bottom: 4px;
+}
+
 .header-right {
   display: flex;
   align-items: center;

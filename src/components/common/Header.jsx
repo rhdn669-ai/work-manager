@@ -15,6 +15,7 @@ export default function Header({ onToggleSidebar }) {
       <div className="header-left">
         <button className="menu-toggle" onClick={onToggleSidebar}>☰</button>
         <div className="header-logo" role="img" aria-label="IOPN" />
+        <span className="header-version">v{__APP_VERSION__}</span>
       </div>
       <div className="header-right">
         {userProfile && (
