@@ -952,9 +952,10 @@ body {
 
 .login-logo {
   display: block;
-  width: 200px;
+  width: 320px;
+  max-width: 100%;
   height: auto;
-  margin: -28px auto 0;
+  margin: -48px auto -12px;
   user-select: none;
   -webkit-user-drag: none;
 }
