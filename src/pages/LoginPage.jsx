@@ -80,8 +80,6 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo" role="img" aria-label="IOPN" />
-        <h1>근태관리 시스템</h1>
-        <p className="login-subtitle">Work Manager</p>
 
         {isSetup ? (
           <form onSubmit={handleSetup}>
