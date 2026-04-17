@@ -956,24 +956,23 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+  background: #ffffff;
+  padding: 40px 24px;
 }
 
 .login-card {
-  background: var(--bg-card);
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
   width: 100%;
-  max-width: 400px;
-  text-align: center;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .login-logo {
   display: block;
   width: 100%;
-  height: 270px;
-  margin: 0 auto 16px;
+  height: 150px;
+  margin: 0 auto 52px;
   background-image: url('/iopn-logo.png');
   background-repeat: no-repeat;
   background-size: 210%;
@@ -982,21 +981,74 @@ body {
   -webkit-user-drag: none;
 }
 
-.login-card h1 {
-  font-size: 24px;
-  margin-bottom: 4px;
-  color: var(--primary);
+.login-field {
+  width: 100%;
+  margin-bottom: 0;
 }
 
-.login-subtitle {
+.login-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-light);
-  margin-bottom: 24px;
+  margin-bottom: 10px;
+}
+
+.login-field input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid var(--border-strong);
+  border-radius: 0;
+  padding: 10px 0;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.login-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.login-field input:focus {
+  border-bottom-color: var(--primary);
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 36px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  background: #111827;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: var(--primary);
+  color: #111827;
+}
+
+.login-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .login-version {
-  margin-top: 20px;
+  margin-top: 40px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--border-strong);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* ===== 기타 ===== */
@@ -2864,8 +2916,7 @@ body {
   }
 
   .login-card {
-    padding: 24px;
-    margin: 16px;
+    max-width: 280px;
   }
 
   .modal {
