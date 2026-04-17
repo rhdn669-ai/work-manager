@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { getAllOvertimeRecords } from '../../services/attendanceService';
-import { getMyLeaves } from '../../services/leaveService';
+import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 
 export default function ReportsPage() {
@@ -32,18 +32,17 @@ export default function ReportsPage() {
     try {
       const start = getMonthStart(year, month);
       const end = getMonthEnd(year, month);
-      const records = await getAllOvertimeRecords(start, end);
+      const [records, approvedLeaves] = await Promise.all([
+        getAllOvertimeRecords(start, end),
+        getApprovedLeavesByMonth(year, month),
+      ]);
 
-      // 직원별 연차 조회
+      // 직원별 연차 집계
       const leaveByUser = {};
-      await Promise.all(users.map(async (u) => {
-        const leaves = await getMyLeaves(u.uid, year);
-        const monthLeaves = leaves.filter((l) =>
-          (l.status === 'confirmed' || l.status === 'approved') &&
-          l.startDate <= end && l.endDate >= start
-        );
-        leaveByUser[u.uid] = monthLeaves.reduce((sum, l) => sum + (l.days || 0), 0);
-      }));
+      for (const l of approvedLeaves) {
+        if (!leaveByUser[l.userId]) leaveByUser[l.userId] = 0;
+        leaveByUser[l.userId] += l.days || 0;
+      }
 
       // 직원별 잔업 집계
       const byUser = {};
