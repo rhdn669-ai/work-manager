@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import {
-  subscribeMessages, sendMessage, sendImage, deleteMessage,
+  subscribeMessages, sendMessage, sendImage, sendFile, deleteMessage,
   toggleReaction, pinMessage, getPinnedMessage, markRead,
   setTyping, subscribeTyping,
 } from '../services/chatService';
@@ -10,6 +10,13 @@ import { getUsers } from '../services/userService';
 import DmListPage from './DmListPage';
 
 const EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
+
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
 
 function formatTime(ts) {
   if (!ts?.seconds) return '';
@@ -137,6 +144,18 @@ export default function ChatPage() {
     finally { setSending(false); e.target.value = ''; }
   }
 
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { alert('파일 크기는 20MB 이하만 가능합니다.'); e.target.value = ''; return; }
+    setSending(true);
+    try {
+      await sendFile({ userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo });
+      setReplyTo(null);
+    } catch (err) { alert('파일 전송 실패: ' + err.message); }
+    finally { setSending(false); e.target.value = ''; }
+  }
+
   async function handleDelete(msg) {
     if (!window.confirm('메시지를 삭제할까요?')) return;
     await deleteMessage(msg.id);
@@ -234,7 +253,7 @@ export default function ChatPage() {
                 {msg.replyTo && (
                   <div className="chat-reply-preview">
                     <span className="chat-reply-name">{msg.replyTo.userName}</span>
-                    <span>{msg.replyTo.type === 'image' ? '사진' : msg.replyTo.text}</span>
+                    <span>{msg.replyTo.type === 'image' ? '사진' : msg.replyTo.type === 'file' ? `📎 ${msg.replyTo.fileName || '파일'}` : msg.replyTo.text}</span>
                   </div>
                 )}
                 <div className="chat-row">
@@ -248,7 +267,15 @@ export default function ChatPage() {
                     {isDeleted ? <span className="chat-deleted-text">삭제된 메시지입니다.</span> : (
                       msg.type === 'image' && msg.imageUrl
                         ? <img src={msg.imageUrl} className="chat-image" alt="사진" onClick={() => setImageViewer(msg.imageUrl)} />
-                        : <span>{searchKeyword ? highlight(msg.text, searchKeyword) : msg.text}</span>
+                        : msg.type === 'file' && msg.fileUrl
+                          ? <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="chat-file-bubble">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" className="chat-file-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              <div className="chat-file-info">
+                                <span className="chat-file-name">{msg.fileName}</span>
+                                <span className="chat-file-size">{formatFileSize(msg.fileSize)}</span>
+                              </div>
+                            </a>
+                          : <span>{searchKeyword ? highlight(msg.text, searchKeyword) : msg.text}</span>
                     )}
                   </div>
                   {!mine && (
@@ -321,7 +348,7 @@ export default function ChatPage() {
           <div className="chat-reply-bar">
             <div className="chat-reply-bar-content">
               <span className="chat-reply-bar-name">{replyTo.userName}에게 답장</span>
-              <span className="chat-reply-bar-text">{replyTo.type === 'image' ? '사진' : replyTo.text}</span>
+              <span className="chat-reply-bar-text">{replyTo.type === 'image' ? '사진' : replyTo.type === 'file' ? `📎 ${replyTo.fileName || '파일'}` : replyTo.text}</span>
             </div>
             <button className="chat-reply-bar-close" onClick={() => setReplyTo(null)}>✕</button>
           </div>
@@ -344,6 +371,12 @@ export default function ChatPage() {
               <polyline points="21 15 16 10 5 21"/>
             </svg>
             <input type="file" accept="image/*" style={{display:'none'}} onChange={handleImageSelect} />
+          </label>
+          <label className="chat-attach-btn" title="파일 첨부">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+            <input type="file" accept="*/*" style={{display:'none'}} onChange={handleFileSelect} />
           </label>
           <input
             ref={inputRef}

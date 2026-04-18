@@ -44,8 +44,24 @@ export async function sendImage({ userId, userName, position, file, replyTo = nu
   });
 }
 
+export async function sendFile({ userId, userName, position, file, replyTo = null }) {
+  const storageRef = ref(storage, `chat/files/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  const fileUrl = await getDownloadURL(storageRef);
+  return addDoc(MSG, {
+    userId, userName, position,
+    text: '', type: 'file', fileUrl, fileName: file.name, fileSize: file.size,
+    replyTo,
+    reactions: {},
+    readBy: { [userId]: Date.now() },
+    isPinned: false,
+    deletedAt: null,
+    createdAt: serverTimestamp(),
+  });
+}
+
 export async function deleteMessage(msgId) {
-  await updateDoc(doc(MSG, msgId), { deletedAt: serverTimestamp(), text: '삭제된 메시지입니다.', imageUrl: null });
+  await updateDoc(doc(MSG, msgId), { deletedAt: serverTimestamp(), text: '삭제된 메시지입니다.', imageUrl: null, fileUrl: null, fileName: null });
 }
 
 export async function toggleReaction(msgId, emoji, userId) {
@@ -152,9 +168,26 @@ export async function sendDmImage({ roomId, userId, userName, position, file, re
   await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '사진', lastMessageAt: serverTimestamp() });
 }
 
+export async function sendDmFile({ roomId, userId, userName, position, file, replyTo = null }) {
+  const storageRef = ref(storage, `dm/${roomId}/files/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  const fileUrl = await getDownloadURL(storageRef);
+  const msgRef = collection(db, 'dmRooms', roomId, 'messages');
+  await addDoc(msgRef, {
+    userId, userName, position,
+    text: '', type: 'file', fileUrl, fileName: file.name, fileSize: file.size,
+    replyTo,
+    reactions: {},
+    readBy: { [userId]: Date.now() },
+    deletedAt: null,
+    createdAt: serverTimestamp(),
+  });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp() });
+}
+
 export async function deleteDmMessage(roomId, msgId) {
   const msgRef = doc(db, 'dmRooms', roomId, 'messages', msgId);
-  await updateDoc(msgRef, { deletedAt: serverTimestamp(), text: '삭제된 메시지입니다.', imageUrl: null });
+  await updateDoc(msgRef, { deletedAt: serverTimestamp(), text: '삭제된 메시지입니다.', imageUrl: null, fileUrl: null, fileName: null });
 }
 
 export async function toggleDmReaction(roomId, msgId, emoji, userId) {

@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  subscribeDmMessages, sendDmMessage, sendDmImage,
+  subscribeDmMessages, sendDmMessage, sendDmImage, sendDmFile,
   deleteDmMessage, toggleDmReaction,
 } from '../services/chatService';
 
 const EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
+
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
 
 function formatTime(ts) {
   if (!ts?.seconds) return '';
@@ -57,6 +64,18 @@ export default function DmChatPage({ room, onBack }) {
       await sendDmImage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo });
       setReplyTo(null);
     } catch (err) { alert('이미지 전송 실패: ' + err.message); }
+    finally { setSending(false); e.target.value = ''; }
+  }
+
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { alert('파일 크기는 20MB 이하만 가능합니다.'); e.target.value = ''; return; }
+    setSending(true);
+    try {
+      await sendDmFile({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo });
+      setReplyTo(null);
+    } catch (err) { alert('파일 전송 실패: ' + err.message); }
     finally { setSending(false); e.target.value = ''; }
   }
 
@@ -113,7 +132,7 @@ export default function DmChatPage({ room, onBack }) {
                 {msg.replyTo && (
                   <div className="chat-reply-preview">
                     <span className="chat-reply-name">{msg.replyTo.userName}</span>
-                    <span>{msg.replyTo.type === 'image' ? '사진' : msg.replyTo.text}</span>
+                    <span>{msg.replyTo.type === 'image' ? '사진' : msg.replyTo.type === 'file' ? `📎 ${msg.replyTo.fileName || '파일'}` : msg.replyTo.text}</span>
                   </div>
                 )}
                 <div className="chat-row">
@@ -127,7 +146,15 @@ export default function DmChatPage({ room, onBack }) {
                     {isDeleted ? <span className="chat-deleted-text">삭제된 메시지입니다.</span> : (
                       msg.type === 'image' && msg.imageUrl
                         ? <img src={msg.imageUrl} className="chat-image" alt="사진" onClick={() => setImageViewer(msg.imageUrl)} />
-                        : msg.text
+                        : msg.type === 'file' && msg.fileUrl
+                          ? <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="chat-file-bubble">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" className="chat-file-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              <div className="chat-file-info">
+                                <span className="chat-file-name">{msg.fileName}</span>
+                                <span className="chat-file-size">{formatFileSize(msg.fileSize)}</span>
+                              </div>
+                            </a>
+                          : msg.text
                     )}
                   </div>
                   {!mine && (
@@ -189,12 +216,18 @@ export default function DmChatPage({ room, onBack }) {
           </div>
         )}
         <form className="chat-input-bar" onSubmit={handleSend}>
-          <label className="chat-attach-btn">
+          <label className="chat-attach-btn" title="사진 첨부">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
               <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
               <polyline points="21 15 16 10 5 21"/>
             </svg>
             <input type="file" accept="image/*" style={{display:'none'}} onChange={handleImageSelect} />
+          </label>
+          <label className="chat-attach-btn" title="파일 첨부">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+            <input type="file" accept="*/*" style={{display:'none'}} onChange={handleFileSelect} />
           </label>
           <input ref={inputRef} type="text" className="chat-input" placeholder="메시지 입력..." value={text}
             onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} autoComplete="off" />
