@@ -1,22 +1,27 @@
 import { useState } from 'react';
 import ChannelListPage from './ChannelListPage';
 import ChannelChatPage from './ChannelChatPage';
-import DmListPage from './DmListPage';
+import DmChatPage from './DmChatPage';
 
 export default function ChatPage() {
-  const [tab, setTab] = useState('group');
   const [activeChannel, setActiveChannel] = useState(null);
-
-  if (tab === 'dm') {
-    return <DmListPage onGoToGroup={() => { setTab('group'); setActiveChannel(null); }} />;
-  }
+  const [activeDm, setActiveDm] = useState(null);
 
   if (activeChannel) {
     return (
       <ChannelChatPage
         channel={activeChannel}
         onBack={() => setActiveChannel(null)}
-        onGoToDm={() => setTab('dm')}
+      />
+    );
+  }
+
+  if (activeDm) {
+    return (
+      <DmChatPage
+        room={activeDm}
+        onBack={() => setActiveDm(null)}
+        onGoToGroup={() => setActiveDm(null)}
       />
     );
   }
@@ -24,7 +29,7 @@ export default function ChatPage() {
   return (
     <ChannelListPage
       onSelectChannel={setActiveChannel}
-      onGoToDm={() => setTab('dm')}
+      onSelectDm={setActiveDm}
     />
   );
 }

@@ -4,7 +4,7 @@ import { getUsers } from '../services/userService';
 import { subscribeDmRooms, getOrCreateDmRoom } from '../services/chatService';
 import DmChatPage from './DmChatPage';
 
-export default function DmListPage({ onGoToGroup }) {
+export default function DmListPage({ onGoToGroup, onGoToDm }) {
   const { userProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [rooms, setRooms] = useState([]);

@@ -24,7 +24,7 @@ function formatDate(ts) {
   return new Date(ts.seconds * 1000).toLocaleDateString('ko-KR', { month:'long', day:'numeric', weekday:'short' });
 }
 
-export default function DmChatPage({ room, onBack, onGoToGroup }) {
+export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   const { userProfile } = useAuth();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -112,8 +112,8 @@ export default function DmChatPage({ room, onBack, onGoToGroup }) {
           </svg>
         </button>
         <span className="dm-chat-title">{room.otherName}</span>
-        {onGoToGroup && (
-          <button className="dm-group-btn" onClick={onGoToGroup} title="전체 채팅으로">
+        {(onGoToGroup || onGoToDm) && (
+          <button className="dm-group-btn" onClick={onGoToGroup || onGoToDm} title="채팅 목록으로">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
