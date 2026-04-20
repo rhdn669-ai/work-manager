@@ -171,6 +171,26 @@ body {
 .user-info {
   color: var(--text-light);
   font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+@media (max-width: 480px) {
+  .header-logo {
+    width: 110px;
+  }
+  .header-version {
+    display: none;
+  }
+  .user-info {
+    max-width: 80px;
+    font-size: 12px;
+  }
+  .user-info .badge {
+    display: none;
+  }
 }
 
 .menu-toggle {
