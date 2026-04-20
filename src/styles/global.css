@@ -1290,6 +1290,19 @@ body {
   cursor: pointer;
 }
 
+.chat-delete-all-btn {
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.chat-delete-all-btn:hover {
+  opacity: 1;
+}
+
 /* 검색 */
 .chat-search-bar {
   display: flex;

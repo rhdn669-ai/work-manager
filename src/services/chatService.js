@@ -64,6 +64,11 @@ export async function deleteMessage(msgId) {
   await updateDoc(doc(MSG, msgId), { deletedAt: serverTimestamp(), text: '삭제된 메시지입니다.', imageUrl: null, fileUrl: null, fileName: null });
 }
 
+export async function deleteAllMessages() {
+  const snap = await getDocs(MSG);
+  await Promise.all(snap.docs.map((d) => deleteDoc(doc(MSG, d.id))));
+}
+
 export async function toggleReaction(msgId, emoji, userId) {
   const msgRef = doc(MSG, msgId);
   const snap = await getDoc(msgRef);

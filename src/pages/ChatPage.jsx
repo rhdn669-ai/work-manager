@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import {
-  subscribeMessages, sendMessage, sendImage, sendFile, deleteMessage,
+  subscribeMessages, sendMessage, sendImage, sendFile, deleteMessage, deleteAllMessages,
   toggleReaction, pinMessage, getPinnedMessage, markRead,
   setTyping, subscribeTyping,
 } from '../services/chatService';
@@ -162,6 +162,12 @@ export default function ChatPage() {
     setMenuMsg(null);
   }
 
+  async function handleDeleteAll() {
+    if (!window.confirm('전체 채팅 내역을 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) return;
+    await deleteAllMessages();
+    setPinnedMsg(null);
+  }
+
   async function handlePin(msg) {
     const pin = !msg.isPinned;
     await pinMessage(msg.id, pin);
@@ -205,6 +211,14 @@ export default function ChatPage() {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </button>
+        {isAdmin && tab === 'group' && (
+          <button className="chat-delete-all-btn" onClick={handleDeleteAll} title="채팅 내역 전체 삭제">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* 검색 바 */}
