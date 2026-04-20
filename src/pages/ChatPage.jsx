@@ -198,7 +198,7 @@ export default function ChatPage() {
 
   let lastDate = '';
 
-  if (tab === 'dm') return <DmListPage />;
+  if (tab === 'dm') return <DmListPage onGoToGroup={() => setTab('group')} />;
 
   return (
     <div className="chat-page">

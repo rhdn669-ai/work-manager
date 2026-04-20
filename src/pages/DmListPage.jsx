@@ -4,7 +4,7 @@ import { getUsers } from '../services/userService';
 import { subscribeDmRooms, getOrCreateDmRoom } from '../services/chatService';
 import DmChatPage from './DmChatPage';
 
-export default function DmListPage() {
+export default function DmListPage({ onGoToGroup }) {
   const { userProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -27,13 +27,21 @@ export default function DmListPage() {
   }
 
   if (activeRoom) {
-    return <DmChatPage room={activeRoom} onBack={() => setActiveRoom(null)} />;
+    return <DmChatPage room={activeRoom} onBack={() => setActiveRoom(null)} onGoToGroup={onGoToGroup} />;
   }
 
   const filteredUsers = users.filter((u) => u.name?.includes(searchUser));
 
   return (
     <div className="dm-list-page">
+      <div className="dm-list-header">
+        <button className="dm-back-btn" onClick={onGoToGroup}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <span className="dm-list-title">1:1 채팅</span>
+      </div>
       <div className="dm-section-title">대화 상대 선택</div>
       <input
         className="dm-search-input"
