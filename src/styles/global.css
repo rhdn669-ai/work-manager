@@ -2653,6 +2653,7 @@ body {
 .home-cal-cell.sunday .home-cal-date { color: #ef4444; }
 .home-cal-cell.saturday .home-cal-date { color: #3b82f6; }
 .home-cal-cell.today .home-cal-date { color: #F59E0B; }
+.home-cal-cell.today.selected .home-cal-date { color: #fff; }
 
 .home-cal-dots {
   display: inline-flex;
