@@ -235,9 +235,9 @@ export default function UserManagementPage() {
                   누적 {balances[editUser.uid].totalDays}일 · 사용 {balances[editUser.uid].usedDays}일
                 </span>
               </label>
-              <input type="number" step="0.25" min="0" value={form.leaveRemaining} onChange={(e) => setForm({ ...form, leaveRemaining: e.target.value })} placeholder="현재 잔여 일수" />
+              <input type="number" step="0.25" value={form.leaveRemaining} onChange={(e) => setForm({ ...form, leaveRemaining: e.target.value })} placeholder="현재 잔여 일수 (음수 입력 가능)" />
               <small className="text-muted">
-                현재 잔여 일수를 입력하면 반영됩니다. 이후 발생분은 자동 계산됩니다.
+                현재 잔여 일수를 입력하면 반영됩니다. 초과 사용 시 음수(-) 입력 가능. 이후 발생분은 자동 계산됩니다.
               </small>
             </div>
           )}
