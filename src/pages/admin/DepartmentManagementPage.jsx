@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getDepartments, addDepartment, updateDepartment, deleteDepartment } from '../../services/departmentService';
 import { getUsers } from '../../services/userService';
+import { ensureDeptChannel, deleteDeptChannel } from '../../services/channelService';
 import Modal from '../../components/common/Modal';
 
 export default function DepartmentManagementPage() {
@@ -44,8 +45,10 @@ export default function DepartmentManagementPage() {
     try {
       if (editDept) {
         await updateDepartment(editDept.id, form);
+        await ensureDeptChannel(editDept.id, form.name);
       } else {
-        await addDepartment(form);
+        const ref = await addDepartment(form);
+        await ensureDeptChannel(ref.id, form.name);
       }
       setShowModal(false);
       await loadData();
@@ -58,6 +61,7 @@ export default function DepartmentManagementPage() {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     try {
       await deleteDepartment(id);
+      await deleteDeptChannel(id);
       await loadData();
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
