@@ -69,6 +69,14 @@ export async function deleteAllMessages() {
   await Promise.all(snap.docs.map((d) => deleteDoc(doc(MSG, d.id))));
 }
 
+export async function editMessage(msgId, newText) {
+  await updateDoc(doc(MSG, msgId), { text: newText, editedAt: serverTimestamp() });
+}
+
+export async function editDmMessage(roomId, msgId, newText) {
+  await updateDoc(doc(db, 'dmRooms', roomId, 'messages', msgId), { text: newText, editedAt: serverTimestamp() });
+}
+
 export async function toggleReaction(msgId, emoji, userId) {
   const msgRef = doc(MSG, msgId);
   const snap = await getDoc(msgRef);

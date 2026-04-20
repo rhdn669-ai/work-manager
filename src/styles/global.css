@@ -1457,6 +1457,21 @@ body {
 .chat-reply-bar-text { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .chat-reply-bar-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; }
 
+.chat-edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fffbeb;
+  border-top: 1px solid var(--border);
+  border-left: 3px solid #f59e0b;
+}
+.chat-edit-bar-content { flex: 1; min-width: 0; }
+.chat-edit-bar-label { font-size: 12px; font-weight: 700; color: #f59e0b; display: block; }
+.chat-edit-bar-text { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.chat-edit-bar-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; }
+.chat-edited-mark { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+
 /* 리액션 */
 .chat-reactions {
   display: flex;

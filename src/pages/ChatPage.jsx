@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
 import {
-  subscribeMessages, sendMessage, sendImage, sendFile, deleteMessage, deleteAllMessages,
+  subscribeMessages, sendMessage, sendImage, sendFile, deleteMessage, deleteAllMessages, editMessage,
   toggleReaction, pinMessage, getPinnedMessage, markRead,
   setTyping, subscribeTyping,
 } from '../services/chatService';
@@ -52,6 +52,7 @@ export default function ChatPage() {
   const [users, setUsers] = useState([]);
   const [mentionQuery, setMentionQuery] = useState('');
   const [showMention, setShowMention] = useState(false);
+  const [editingMsg, setEditingMsg] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimer = useRef(null);
@@ -125,9 +126,14 @@ export default function ChatPage() {
     clearTimeout(typingTimer.current);
     setTyping(userProfile.uid, userProfile.name, false);
     try {
-      await sendMessage({ userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', text: trimmed, replyTo });
+      if (editingMsg) {
+        await editMessage(editingMsg.id, trimmed);
+        setEditingMsg(null);
+      } else {
+        await sendMessage({ userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', text: trimmed, replyTo });
+        setReplyTo(null);
+      }
       setText('');
-      setReplyTo(null);
       setShowMention(false);
     } catch (err) { alert('전송 실패: ' + err.message); }
     finally { setSending(false); }
@@ -289,7 +295,7 @@ export default function ChatPage() {
                                 <span className="chat-file-size">{formatFileSize(msg.fileSize)}</span>
                               </div>
                             </a>
-                          : <span>{searchKeyword ? highlight(msg.text, searchKeyword) : msg.text}</span>
+                          : <><span>{searchKeyword ? highlight(msg.text, searchKeyword) : msg.text}</span>{msg.editedAt && <span className="chat-edited-mark">수정됨</span>}</>
                     )}
                   </div>
                   {!mine && (
@@ -340,6 +346,9 @@ export default function ChatPage() {
                 {menuMsg.isPinned ? '고정 해제' : '공지 고정'}
               </button>
             )}
+            {menuMsg.userId === userProfile?.uid && menuMsg.type === 'text' && !menuMsg.deletedAt && (
+              <button className="chat-menu-item" onClick={() => { setEditingMsg(menuMsg); setText(menuMsg.text); setReplyTo(null); setMenuMsg(null); setTimeout(() => inputRef.current?.focus(), 50); }}>수정</button>
+            )}
             {menuMsg.userId === userProfile?.uid && (
               <button className="chat-menu-item danger" onClick={() => handleDelete(menuMsg)}>삭제</button>
             )}
@@ -358,7 +367,16 @@ export default function ChatPage() {
 
       {/* 입력 영역 */}
       <div className="chat-input-area">
-        {replyTo && (
+        {editingMsg && (
+          <div className="chat-edit-bar">
+            <div className="chat-edit-bar-content">
+              <span className="chat-edit-bar-label">메시지 수정 중</span>
+              <span className="chat-edit-bar-text">{editingMsg.text}</span>
+            </div>
+            <button className="chat-edit-bar-close" onClick={() => { setEditingMsg(null); setText(''); }}>✕</button>
+          </div>
+        )}
+        {!editingMsg && replyTo && (
           <div className="chat-reply-bar">
             <div className="chat-reply-bar-content">
               <span className="chat-reply-bar-name">{replyTo.userName}에게 답장</span>

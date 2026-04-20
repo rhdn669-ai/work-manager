@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   subscribeDmMessages, sendDmMessage, sendDmImage, sendDmFile,
-  deleteDmMessage, toggleDmReaction,
+  deleteDmMessage, toggleDmReaction, editDmMessage,
 } from '../services/chatService';
 
 const EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
@@ -32,6 +32,7 @@ export default function DmChatPage({ room, onBack, onGoToGroup }) {
   const [replyTo, setReplyTo] = useState(null);
   const [menuMsg, setMenuMsg] = useState(null);
   const [imageViewer, setImageViewer] = useState(null);
+  const [editingMsg, setEditingMsg] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -50,8 +51,14 @@ export default function DmChatPage({ room, onBack, onGoToGroup }) {
     if (!trimmed || sending) return;
     setSending(true);
     try {
-      await sendDmMessage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', text: trimmed, replyTo });
-      setText(''); setReplyTo(null);
+      if (editingMsg) {
+        await editDmMessage(room.roomId, editingMsg.id, trimmed);
+        setEditingMsg(null);
+      } else {
+        await sendDmMessage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', text: trimmed, replyTo });
+        setReplyTo(null);
+      }
+      setText('');
     } catch (err) { alert('전송 실패: ' + err.message); }
     finally { setSending(false); }
   }
@@ -164,7 +171,7 @@ export default function DmChatPage({ room, onBack, onGoToGroup }) {
                                 <span className="chat-file-size">{formatFileSize(msg.fileSize)}</span>
                               </div>
                             </a>
-                          : msg.text
+                          : <><span>{msg.text}</span>{msg.editedAt && <span className="chat-edited-mark">수정됨</span>}</>
                     )}
                   </div>
                   {!mine && (
@@ -200,6 +207,9 @@ export default function DmChatPage({ room, onBack, onGoToGroup }) {
               ))}
             </div>
             <button className="chat-menu-item" onClick={() => { setReplyTo({ id: menuMsg.id, userName: menuMsg.userName, text: menuMsg.text, type: menuMsg.type }); setMenuMsg(null); inputRef.current?.focus(); }}>답장</button>
+            {menuMsg.userId === userProfile?.uid && menuMsg.type === 'text' && !menuMsg.deletedAt && (
+              <button className="chat-menu-item" onClick={() => { setEditingMsg(menuMsg); setText(menuMsg.text); setReplyTo(null); setMenuMsg(null); setTimeout(() => inputRef.current?.focus(), 50); }}>수정</button>
+            )}
             {menuMsg.userId === userProfile?.uid && (
               <button className="chat-menu-item danger" onClick={() => handleDelete(menuMsg)}>삭제</button>
             )}
@@ -216,7 +226,16 @@ export default function DmChatPage({ room, onBack, onGoToGroup }) {
       )}
 
       <div className="chat-input-area">
-        {replyTo && (
+        {editingMsg && (
+          <div className="chat-edit-bar">
+            <div className="chat-edit-bar-content">
+              <span className="chat-edit-bar-label">메시지 수정 중</span>
+              <span className="chat-edit-bar-text">{editingMsg.text}</span>
+            </div>
+            <button className="chat-edit-bar-close" onClick={() => { setEditingMsg(null); setText(''); }}>✕</button>
+          </div>
+        )}
+        {!editingMsg && replyTo && (
           <div className="chat-reply-bar">
             <div className="chat-reply-bar-content">
               <span className="chat-reply-bar-name">{replyTo.userName}에게 답장</span>
