@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyLeaves, cancelLeave } from '../../services/leaveService';
+import { getMyLeaves } from '../../services/leaveService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import LeaveTabs from '../../components/common/LeaveTabs';
 
@@ -23,16 +23,6 @@ export default function LeaveHistoryPage() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleCancel(leaveId) {
-    if (!confirm('정말 취소하시겠습니까?')) return;
-    try {
-      await cancelLeave(leaveId);
-      await loadLeaves();
-    } catch (err) {
-      alert('취소 중 오류가 발생했습니다.');
     }
   }
 
@@ -61,7 +51,7 @@ export default function LeaveHistoryPage() {
               <th>기간</th>
               <th>일수</th>
               <th>사유</th>
-              <th>작업</th>
+              <th>상태</th>
             </tr>
           </thead>
           <tbody>
@@ -72,10 +62,10 @@ export default function LeaveHistoryPage() {
                 <td>{l.days}일</td>
                 <td>{l.reason || '-'}</td>
                 <td>
-                  {l.status === 'confirmed' && (
-                    <button className="btn btn-sm btn-danger" onClick={() => handleCancel(l.id)}>취소</button>
-                  )}
+                  {l.status === 'pending' && <span className="text-sm text-muted">대기중</span>}
+                  {l.status === 'confirmed' && <span className="text-sm" style={{ color: '#16a34a' }}>승인됨</span>}
                   {l.status === 'cancelled' && <span className="text-sm text-muted">취소됨</span>}
+                  {l.status === 'rejected' && <span className="text-sm" style={{ color: '#dc2626' }}>반려됨</span>}
                 </td>
               </tr>
             ))}
