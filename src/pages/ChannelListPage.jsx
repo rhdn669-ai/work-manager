@@ -68,11 +68,11 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
         {channels.map((ch) => (
           <button key={ch.id} className="channel-item" onClick={() => onSelectChannel(ch)}>
             <div className={`channel-icon-wrap ${ch.type === 'company' ? 'company' : 'dept'}`}>
-              {ch.type === 'company' ? '전사' : '#'}
+              {ch.type === 'company' ? '전체' : '#'}
             </div>
             <div className="channel-info">
               <span className="channel-name">{ch.name}</span>
-              <span className="channel-type-label">{ch.type === 'company' ? '전체 공지·대화' : '부서 채팅'}</span>
+              <span className="channel-type-label">{ch.type === 'company' ? '전체 공지 · 대화' : '부서 채팅'}</span>
             </div>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="channel-arrow">
               <polyline points="9 18 15 12 9 6"/>

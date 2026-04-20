@@ -203,7 +203,7 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
         </button>
         <div className="channel-chat-title-wrap">
           <span className="channel-chat-title">{channel.name}</span>
-          <span className="channel-chat-sub">{channel.type === 'company' ? '전사' : '부서'}</span>
+          <span className="channel-chat-sub">{channel.type === 'company' ? '전체' : '부서'}</span>
         </div>
         <button className="chat-search-btn" onClick={() => { setSearchOpen(!searchOpen); setSearchKeyword(''); }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">

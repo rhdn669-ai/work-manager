@@ -10,7 +10,9 @@ export async function ensureCompanyChannel() {
   const r = doc(db, 'channels', 'company');
   const snap = await getDoc(r);
   if (!snap.exists()) {
-    await setDoc(r, { name: '전사 채팅', type: 'company', createdAt: serverTimestamp() });
+    await setDoc(r, { name: '전체 채팅', type: 'company', createdAt: serverTimestamp() });
+  } else if (snap.data().name !== '전체 채팅') {
+    await updateDoc(r, { name: '전체 채팅' });
   }
 }
 
