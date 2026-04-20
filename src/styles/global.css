@@ -2629,10 +2629,6 @@ body {
 .home-cal-cell:active:not(.empty) .home-cal-date { color: #fff; }
 .home-cal-cell:active:not(.empty) .home-cal-dot { background: #fff !important; }
 .home-cal-cell:active:not(.empty) .home-cal-more { color: #fff; }
-.home-cal-cell:hover:not(.empty) {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-}
 .home-cal-cell.empty {
   background: transparent;
   cursor: default;
