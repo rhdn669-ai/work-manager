@@ -178,19 +178,24 @@ body {
 }
 
 @media (max-width: 480px) {
-  .header-logo {
-    width: 110px;
-  }
-  .header-version {
-    display: none;
-  }
-  .user-info {
-    max-width: 80px;
-    font-size: 12px;
-  }
-  .user-info .badge {
-    display: none;
-  }
+  .header { padding: 0 12px; }
+  .header-left { gap: 8px; }
+  .header-right { gap: 8px; }
+  .header-logo { width: 110px; }
+  .header-version { font-size: 9px; }
+  .user-info { max-width: 90px; font-size: 12px; }
+}
+
+/* 폴드 접힌 화면 (~280px) */
+@media (max-width: 340px) {
+  .header { padding: 0 8px; }
+  .header-left { gap: 4px; }
+  .header-right { gap: 4px; }
+  .header-logo { width: 72px; }
+  .header-version { font-size: 8px; margin-left: 0; }
+  .user-info { max-width: 52px; font-size: 11px; }
+  .user-info .badge { font-size: 9px; padding: 1px 3px; }
+  .header-right .btn-sm { font-size: 10px; padding: 3px 6px; }
 }
 
 .menu-toggle {
