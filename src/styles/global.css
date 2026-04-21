@@ -3462,13 +3462,26 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
-  font-size: 10px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 9px;
   font-weight: 700;
   color: #fff;
   background: #f87171;
-  border-radius: 6px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
 }
+
+/* 연차 종류별 색상 */
+.leave-badge-annual { background: #ef4444; }
+.leave-badge-sick { background: #7c3aed; }
+.leave-badge-half_am,
+.leave-badge-half_pm { background: #f59e0b; }
+.leave-badge-quarter_1,
+.leave-badge-quarter_2,
+.leave-badge-quarter_3,
+.leave-badge-quarter_4 { background: #f97316; }
 
 .attendance-badge {
   display: flex;

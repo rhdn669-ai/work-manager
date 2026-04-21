@@ -8,6 +8,7 @@ import {
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
+import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
 
 function daysInMonth(yr, mo) {
@@ -22,6 +23,22 @@ function getWorkingDaysInMonth(yr, mo) {
     if (day !== 0 && day !== 6) count++;
   }
   return count;
+}
+
+// 연차 유형별 실제 근무 비율 (공수 계산용)
+function leaveWorkFraction(type) {
+  if (!type) return 1;
+  if (type === 'half_am' || type === 'half_pm') return 0.5;
+  if (QUARTER_LEAVE_TYPES.includes(type)) return 0.75;
+  return 0; // annual, sick 등 전일 휴가
+}
+
+function leaveBadgeLabel(type) {
+  if (type === 'half_am') return '오전반차';
+  if (type === 'half_pm') return '오후반차';
+  if (QUARTER_LEAVE_TYPES.includes(type)) return '반반차';
+  if (type === 'sick') return '병가';
+  return '연차';
 }
 
 const AUTO_SAVE_DELAY_MS = 800;
@@ -86,8 +103,15 @@ export default function SiteClosingPage() {
       const uMap = Object.fromEntries(users.map((u) => [u.uid, u]));
       setUserMap(uMap);
 
-      // 연차 날짜 매핑: userId → Set of day numbers
+      // 연차 날짜 매핑: userId → { [day]: leaveType }
+      // 같은 날 복수 신청이 있으면 더 긴 휴가 타입(연차 > 반차 > 반반차)을 유지
       const ldMap = {};
+      const typeRank = (t) => {
+        if (!t || t === 'annual' || t === 'sick') return 3;
+        if (t === 'half_am' || t === 'half_pm') return 2;
+        if (QUARTER_LEAVE_TYPES.includes(t)) return 1;
+        return 0;
+      };
       for (const leave of approvedLeaves) {
         const start = new Date(leave.startDate);
         const end = new Date(leave.endDate);
@@ -95,19 +119,21 @@ export default function SiteClosingPage() {
         while (cur <= end) {
           if (cur.getFullYear() === y && cur.getMonth() + 1 === m) {
             const uid = leave.userId;
-            if (!ldMap[uid]) ldMap[uid] = new Set();
-            ldMap[uid].add(cur.getDate());
+            const day = cur.getDate();
+            if (!ldMap[uid]) ldMap[uid] = {};
+            const prev = ldMap[uid][day];
+            if (!prev || typeRank(leave.type) > typeRank(prev)) {
+              ldMap[uid][day] = leave.type || 'annual';
+            }
           }
           cur.setDate(cur.getDate() + 1);
         }
       }
-      // 이름 → userId 매핑 (공수표 detail이 이름이므로)
-      const nameToUid = {};
-      users.forEach((u) => { nameToUid[u.name] = u.uid; });
+      // 이름 → 날짜별 타입 매핑 (공수표 detail이 이름이므로)
       const ldByName = {};
-      for (const [uid, days] of Object.entries(ldMap)) {
+      for (const [uid, map] of Object.entries(ldMap)) {
         const user = uMap[uid];
-        if (user) ldByName[user.name] = days;
+        if (user) ldByName[user.name] = map;
       }
       setLeaveDays(ldByName);
 
@@ -210,13 +236,15 @@ export default function SiteClosingPage() {
     const monthlySalary = Number(user.fixedCost) || 0;
     const workingDays = getWorkingDaysInMonth(y, m);
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
-    // 영업일 전체 자동 채우기 (연차일 제외)
-    const userLeaveDays = leaveDays[user.name] || new Set();
+    // 영업일 전체 자동 채우기 (연차 유형별 비율 적용: 연차/병가 0, 반차 0.5, 반반차 0.75)
+    const userLeaveDays = leaveDays[user.name] || {};
     const dq = {};
     const totalDays = daysInMonth(y, m);
     for (let d = 1; d <= totalDays; d++) {
       const dow = new Date(y, m - 1, d).getDay();
-      if (dow !== 0 && dow !== 6 && !userLeaveDays.has(d)) dq[d] = 1;
+      if (dow === 0 || dow === 6) continue;
+      const frac = leaveWorkFraction(userLeaveDays[d]);
+      if (frac > 0) dq[d] = frac;
     }
     const quantity = Object.values(dq).reduce((s, v) => s + v, 0);
     await addClosingItem(siteId, y, m, {
@@ -679,26 +707,33 @@ export default function SiteClosingPage() {
                             const hasValue = v !== undefined && v !== null && v !== '';
                             const isSunday = di === 0;
                             const isSaturday = di === 6;
-                            const isOnLeave = cardType === 'employee' && leaveDays[buf.detail]?.has(d);
                             const isEmployee = cardType === 'employee';
-                            const isPresent = Number(v) === 1;
+                            const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
+                            const isOnLeave = !!leaveType;
+                            const workFraction = leaveWorkFraction(leaveType);
+                            const isFullLeave = isOnLeave && workFraction === 0;
+                            const numV = Number(v) || 0;
+                            const isPresent = numV > 0;
+                            const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
                             return (
-                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''}`} key={di}>
+                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls}`} key={di}>
                                 <label>{d}</label>
-                                {isOnLeave ? (
-                                  <div className="leave-badge">연차</div>
-                                ) : isEmployee ? (
+                                {isOnLeave && (
+                                  <div className={`leave-badge leave-badge-${leaveType}`}>{leaveBadgeLabel(leaveType)}</div>
+                                )}
+                                {isFullLeave ? null : isEmployee ? (
                                   <button
                                     type="button"
                                     className={`attendance-badge ${isPresent ? 'active' : ''}`}
                                     onClick={() => {
                                       if (!canEdit) return;
-                                      updateDay(it.id, d, isPresent ? '' : 1);
+                                      updateDay(it.id, d, isPresent ? '' : workFraction);
                                       flushRow(it.id);
                                     }}
                                     disabled={!canEdit}
+                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : ''}
                                   >
-                                    {isPresent ? '출근' : ''}
+                                    {isPresent ? (numV === 1 ? '출근' : String(numV)) : ''}
                                   </button>
                                 ) : (
                                   <input
