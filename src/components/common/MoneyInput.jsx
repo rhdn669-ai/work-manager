@@ -13,8 +13,9 @@ export default function MoneyInput({ value, onChange, onBlur, className, disable
   const ref = useRef(null);
   const cursorRef = useRef(null);
 
-  // 콤마 포맷 적용된 표시값
-  const display = formatNumber(value);
+  // 콤마 포맷 적용된 표시값 (0이면 빈칸)
+  const num = Number(value) || 0;
+  const display = num === 0 ? '' : num.toLocaleString();
 
   // 커서 위치 복원
   useLayoutEffect(() => {
@@ -39,7 +40,7 @@ export default function MoneyInput({ value, onChange, onBlur, className, disable
     const numValue = digits === '' || digits === '-' ? 0 : Number(digits) || 0;
 
     // 새 포맷된 값에서 커서 위치 계산
-    const newFormatted = numValue.toLocaleString();
+    const newFormatted = numValue === 0 ? '' : numValue.toLocaleString();
     const digitPos = rawCursor - commasBefore; // 커서의 순수 숫자 위치
     let newCursor = 0;
     let digitCount = 0;
