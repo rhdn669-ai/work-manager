@@ -5,7 +5,7 @@ import {
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
-import { addFinanceItem } from './siteService';
+import { addFinanceItem, getFinanceItems, deleteFinanceItem } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
@@ -61,14 +61,52 @@ export async function deleteOvertimeRecord(id) {
   await deleteDoc(doc(db, 'overtimeRecords', id));
 }
 
-// 잔업 개별 수정 (관리자용)
+// 잔업 개별 수정 (관리자용) - 프로젝트 지출도 함께 갱신
 export async function updateOvertimeRecord(id, data) {
+  const snap = await getDoc(doc(db, 'overtimeRecords', id));
+  if (!snap.exists()) return;
+  const prev = snap.data();
+
   const update = { updatedAt: new Date() };
   if (data.minutes !== undefined) update.minutes = data.minutes;
   if (data.reason !== undefined) update.reason = data.reason;
   if (data.date !== undefined) update.date = data.date;
   if (data.siteId !== undefined) update.siteId = data.siteId;
   await updateDoc(doc(db, 'overtimeRecords', id), update);
+
+  // 프로젝트 지출 동기화
+  const newSiteId = data.siteId !== undefined ? data.siteId : prev.siteId;
+  const newDate = data.date !== undefined ? data.date : prev.date;
+  const newMinutes = data.minutes !== undefined ? data.minutes : prev.minutes;
+  const userName = prev.userName;
+
+  // 기존 지출 항목 삭제 (이전 프로젝트에서)
+  if (prev.siteId && prev.siteId !== 'etc') {
+    const oldD = new Date(prev.date);
+    const oldYear = oldD.getFullYear();
+    const oldMonth = oldD.getMonth() + 1;
+    const oldFinances = await getFinanceItems(prev.siteId, oldYear, oldMonth);
+    const oldItem = oldFinances.find((f) => f.description && f.description.includes(`잔업`) && f.description.includes(userName) && f.description.includes(prev.date));
+    if (oldItem) await deleteFinanceItem(oldItem.id);
+  }
+
+  // 새 지출 항목 생성 (새 프로젝트에)
+  if (newSiteId && newSiteId !== 'etc') {
+    const user = await getUser(prev.userId);
+    const hourlyRate = Number(user?.hourlyRate) || 0;
+    if (hourlyRate > 0) {
+      const hours = newMinutes / 60;
+      const amount = Math.round(hourlyRate * hours);
+      const nd = new Date(newDate);
+      await addFinanceItem(newSiteId, nd.getFullYear(), nd.getMonth() + 1, {
+        type: 'expense',
+        description: `잔업 - ${userName} (${newDate}, ${Math.floor(hours)}h${newMinutes % 60 > 0 ? ` ${newMinutes % 60}m` : ''})`,
+        amount,
+        note: '',
+        order: 0,
+      });
+    }
+  }
 }
 
 
