@@ -356,183 +356,141 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 900, width: '95vw' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>
-            {user.name} · {year}년 {month}월 {tab === 'overtime' ? '잔업' : '연차'} 내역
-          </h3>
+          <h3>{user.name} · {year}년 {month}월 {tab === 'overtime' ? '잔업' : '연차'}</h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {tab === 'overtime' ? (
             overtimesSorted.length === 0 ? (
-              <p className="text-muted">등록된 잔업이 없습니다.</p>
-            ) : (
-              <table className="table" style={{ tableLayout: 'fixed', width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: 96, whiteSpace: 'nowrap' }}>날짜</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>프로젝트</th>
-                    <th style={{ width: 100, whiteSpace: 'nowrap' }}>시간</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>비고</th>
-                    {canEdit && <th style={{ width: 130, whiteSpace: 'nowrap' }}></th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {overtimesSorted.map((r) => {
-                    const isEditing = editingId === r.id;
-                    return (
-                      <tr key={r.id}>
-                        <td>
-                          {isEditing ? (
-                            <input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} style={{ width: 130 }} />
-                          ) : r.date}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <select value={editForm.siteId} onChange={(e) => setEditForm({ ...editForm, siteId: e.target.value })} style={{ width: '100%' }}>
-                              <option value="">-</option>
-                              <option value="etc">기타</option>
-                              {Object.entries(siteMap).filter(([k]) => k !== 'etc').map(([id, name]) => (
-                                <option key={id} value={id}>{name}</option>
-                              ))}
-                            </select>
-                          ) : (siteMap[r.siteId] || '-')}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              min={0}
-                              value={editForm.minutes}
-                              onChange={(e) => setEditForm({ ...editForm, minutes: e.target.value })}
-                              style={{ width: 80 }}
-                            />
-                          ) : formatMinutes(r.minutes || 0)}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.reason}
-                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
-                              style={{ width: '100%' }}
-                            />
-                          ) : (r.reason || '-')}
-                        </td>
+              <p className="text-muted text-center">등록된 잔업이 없습니다.</p>
+            ) : overtimesSorted.map((r) => {
+              const isEditing = editingId === r.id;
+              return (
+                <div key={r.id} className={`card ${isEditing ? 'card-warning' : ''}`} style={{ marginBottom: 0 }}>
+                  <div className="card-body" style={{ padding: '12px 14px' }}>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="form-row">
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>날짜</label>
+                            <input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>시간 (분)</label>
+                            <input type="number" min={0} value={editForm.minutes} onChange={(e) => setEditForm({ ...editForm, minutes: e.target.value })} />
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>프로젝트</label>
+                          <select value={editForm.siteId} onChange={(e) => setEditForm({ ...editForm, siteId: e.target.value })}>
+                            <option value="">-</option>
+                            <option value="etc">기타</option>
+                            {Object.entries(siteMap).filter(([k]) => k !== 'etc').map(([id, name]) => (
+                              <option key={id} value={id}>{name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>사유</label>
+                          <input type="text" value={editForm.reason} onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} />
+                        </div>
+                        <div className="btn-group">
+                          <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>저장</button>
+                          <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>취소</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{r.date}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-light)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <span>{siteMap[r.siteId] || '프로젝트 미지정'}</span>
+                            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{formatMinutes(r.minutes || 0)}</span>
+                            {r.reason && <span>{r.reason}</span>}
+                          </div>
+                        </div>
                         {canEdit && (
-                          <td>
-                            {isEditing ? (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>저장</button>
-                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>취소</button>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>수정</button>
-                                <button
-                                  className="btn btn-sm btn-outline"
-                                  style={{ color: '#dc2626', borderColor: '#dc2626' }}
-                                  disabled={busy}
-                                  onClick={() => removeRow(r)}
-                                >
-                                  삭제
-                                </button>
-                              </div>
-                            )}
-                          </td>
+                          <div className="btn-group" style={{ flexShrink: 0 }}>
+                            <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>수정</button>
+                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(r)}>삭제</button>
+                          </div>
                         )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           ) : (
             leavesSorted.length === 0 ? (
-              <p className="text-muted">등록된 연차가 없습니다.</p>
-            ) : (
-              <table className="table" style={{ tableLayout: 'fixed', width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: 190, whiteSpace: 'nowrap' }}>기간</th>
-                    <th style={{ width: 64, whiteSpace: 'nowrap' }}>일수</th>
-                    <th style={{ width: 90, whiteSpace: 'nowrap' }}>종류</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>사유</th>
-                    {canEdit && <th style={{ width: 130, whiteSpace: 'nowrap' }}></th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {leavesSorted.map((l) => {
-                    const isEditing = editingId === l.id;
-                    const period = l.startDate === l.endDate
-                      ? l.startDate
-                      : `${l.startDate} ~ ${l.endDate}`;
-                    return (
-                      <tr key={l.id}>
-                        <td>
-                          {isEditing ? (
-                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                              <input type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} style={{ width: 130 }} />
-                              <span>~</span>
-                              <input type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} style={{ width: 130 }} />
-                            </div>
-                          ) : period}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input type="number" min={0} step={0.5} value={editForm.days} onChange={(e) => setEditForm({ ...editForm, days: e.target.value })} style={{ width: 50 }} />
-                          ) : `${l.days}일`}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} style={{ width: 80 }}>
+              <p className="text-muted text-center">등록된 연차가 없습니다.</p>
+            ) : leavesSorted.map((l) => {
+              const isEditing = editingId === l.id;
+              const period = l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`;
+              return (
+                <div key={l.id} className={`card ${isEditing ? 'card-warning' : ''}`} style={{ marginBottom: 0 }}>
+                  <div className="card-body" style={{ padding: '12px 14px' }}>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="form-row">
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>시작일</label>
+                            <input type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>종료일</label>
+                            <input type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} />
+                          </div>
+                        </div>
+                        <div className="form-row">
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>일수</label>
+                            <input type="number" min={0} step={0.5} value={editForm.days} onChange={(e) => setEditForm({ ...editForm, days: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>종류</label>
+                            <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}>
                               <option value="annual">연차</option>
                               <option value="half_am">오전반차</option>
                               <option value="half_pm">오후반차</option>
                               <option value="sick">병가</option>
                               <option value="special">특별휴가</option>
                             </select>
-                          ) : leaveTypeLabel(l.type)}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editForm.reason}
-                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
-                              style={{ width: '100%' }}
-                            />
-                          ) : (l.reason || '-')}
-                        </td>
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>사유</label>
+                          <input type="text" value={editForm.reason} onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })} />
+                        </div>
+                        <div className="btn-group">
+                          <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>저장</button>
+                          <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>취소</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{period}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-light)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="badge badge-leave">{leaveTypeLabel(l.type)}</span>
+                            <span style={{ color: 'var(--success)', fontWeight: 700 }}>{l.days}일</span>
+                            {l.reason && <span>{l.reason}</span>}
+                          </div>
+                        </div>
                         {canEdit && (
-                          <td>
-                            {isEditing ? (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>저장</button>
-                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>취소</button>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
-                                <button
-                                  className="btn btn-sm btn-outline"
-                                  style={{ color: '#dc2626', borderColor: '#dc2626' }}
-                                  disabled={busy}
-                                  onClick={() => removeRow(l)}
-                                >
-                                  삭제
-                                </button>
-                              </div>
-                            )}
-                          </td>
+                          <div className="btn-group" style={{ flexShrink: 0 }}>
+                            <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
+                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(l)}>삭제</button>
+                          </div>
                         )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>
