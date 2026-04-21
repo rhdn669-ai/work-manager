@@ -145,12 +145,20 @@ export async function deleteLeaveById(id) {
   await deleteDoc(ref);
 }
 
-// 연차 비고 수정 (관리자용)
+// 연차 수정 (관리자용)
+export async function updateLeaveRecord(id, data) {
+  const update = { updatedAt: new Date() };
+  if (data.reason !== undefined) update.reason = data.reason;
+  if (data.startDate !== undefined) update.startDate = data.startDate;
+  if (data.endDate !== undefined) update.endDate = data.endDate;
+  if (data.days !== undefined) update.days = data.days;
+  if (data.type !== undefined) update.type = data.type;
+  await updateDoc(doc(db, 'leaves', id), update);
+}
+
+// 하위 호환
 export async function updateLeaveReason(id, reason) {
-  await updateDoc(doc(db, 'leaves', id), {
-    reason: reason || '',
-    updatedAt: new Date(),
-  });
+  await updateLeaveRecord(id, { reason });
 }
 
 // 입사일 동기화/초기화 (users.joinDate를 balance에 스냅샷 저장)

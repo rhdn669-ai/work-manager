@@ -61,13 +61,14 @@ export async function deleteOvertimeRecord(id) {
   await deleteDoc(doc(db, 'overtimeRecords', id));
 }
 
-// 잔업 개별 수정 (관리자용) - 분/비고만 편집 (지출 재계산은 하지 않음)
+// 잔업 개별 수정 (관리자용)
 export async function updateOvertimeRecord(id, data) {
-  await updateDoc(doc(db, 'overtimeRecords', id), {
-    minutes: data.minutes,
-    reason: data.reason || '',
-    updatedAt: new Date(),
-  });
+  const update = { updatedAt: new Date() };
+  if (data.minutes !== undefined) update.minutes = data.minutes;
+  if (data.reason !== undefined) update.reason = data.reason;
+  if (data.date !== undefined) update.date = data.date;
+  if (data.siteId !== undefined) update.siteId = data.siteId;
+  await updateDoc(doc(db, 'overtimeRecords', id), update);
 }
 
 

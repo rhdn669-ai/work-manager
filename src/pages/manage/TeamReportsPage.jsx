@@ -9,7 +9,7 @@ import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils
 import { EmployeeDetailModal } from '../admin/ReportsPage';
 
 export default function TeamReportsPage() {
-  const { userProfile, canApproveAll } = useAuth();
+  const { userProfile, isAdmin, canApproveAll } = useAuth();
   const [allUsers, setAllUsers] = useState([]);
   const [scopedUsers, setScopedUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -194,7 +194,7 @@ export default function TeamReportsPage() {
           overtimes={rawRecords.filter((r) => r.userId === detailUser.uid)}
           leaves={rawLeaves.filter((l) => l.userId === detailUser.uid)}
           siteMap={siteMap}
-          canEdit={false}
+          canEdit={isAdmin}
           onClose={() => setDetailUser(null)}
           onChanged={loadMonthData}
         />

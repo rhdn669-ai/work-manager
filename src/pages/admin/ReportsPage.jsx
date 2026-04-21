@@ -14,7 +14,7 @@ import {
 import {
   getApprovedLeavesByMonth,
   deleteLeaveById,
-  updateLeaveReason,
+  updateLeaveRecord,
 } from '../../services/leaveService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 
@@ -302,9 +302,9 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
   function startEdit(row) {
     setEditingId(row.id);
     if (tab === 'overtime') {
-      setEditForm({ minutes: row.minutes || 0, reason: row.reason || '' });
+      setEditForm({ date: row.date || '', siteId: row.siteId || '', minutes: row.minutes || 0, reason: row.reason || '' });
     } else {
-      setEditForm({ reason: row.reason || '' });
+      setEditForm({ startDate: row.startDate || '', endDate: row.endDate || '', days: row.days || 0, type: row.type || 'annual', reason: row.reason || '' });
     }
   }
 
@@ -318,9 +318,9 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
           setBusy(false);
           return;
         }
-        await updateOvertimeRecord(row.id, { minutes, reason: editForm.reason });
+        await updateOvertimeRecord(row.id, { date: editForm.date, siteId: editForm.siteId, minutes, reason: editForm.reason });
       } else {
-        await updateLeaveReason(row.id, editForm.reason);
+        await updateLeaveRecord(row.id, { startDate: editForm.startDate, endDate: editForm.endDate, days: Number(editForm.days) || 0, type: editForm.type, reason: editForm.reason });
       }
       setEditingId(null);
       await onChanged();
@@ -383,8 +383,22 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                     const isEditing = editingId === r.id;
                     return (
                       <tr key={r.id}>
-                        <td>{r.date}</td>
-                        <td>{siteMap[r.siteId] || '-'}</td>
+                        <td>
+                          {isEditing ? (
+                            <input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} style={{ width: 130 }} />
+                          ) : r.date}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <select value={editForm.siteId} onChange={(e) => setEditForm({ ...editForm, siteId: e.target.value })} style={{ width: '100%' }}>
+                              <option value="">-</option>
+                              <option value="etc">기타</option>
+                              {Object.entries(siteMap).filter(([k]) => k !== 'etc').map(([id, name]) => (
+                                <option key={id} value={id}>{name}</option>
+                              ))}
+                            </select>
+                          ) : (siteMap[r.siteId] || '-')}
+                        </td>
                         <td>
                           {isEditing ? (
                             <input
@@ -456,9 +470,31 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                       : `${l.startDate} ~ ${l.endDate}`;
                     return (
                       <tr key={l.id}>
-                        <td>{period}</td>
-                        <td>{l.days}일</td>
-                        <td>{leaveTypeLabel(l.type)}</td>
+                        <td>
+                          {isEditing ? (
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              <input type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} style={{ width: 130 }} />
+                              <span>~</span>
+                              <input type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} style={{ width: 130 }} />
+                            </div>
+                          ) : period}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <input type="number" min={0} step={0.5} value={editForm.days} onChange={(e) => setEditForm({ ...editForm, days: e.target.value })} style={{ width: 50 }} />
+                          ) : `${l.days}일`}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} style={{ width: 80 }}>
+                              <option value="annual">연차</option>
+                              <option value="half_am">오전반차</option>
+                              <option value="half_pm">오후반차</option>
+                              <option value="sick">병가</option>
+                              <option value="special">특별휴가</option>
+                            </select>
+                          ) : leaveTypeLabel(l.type)}
+                        </td>
                         <td>
                           {isEditing ? (
                             <input
