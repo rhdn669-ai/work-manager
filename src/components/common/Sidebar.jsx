@@ -16,9 +16,8 @@ export default function Sidebar({ isOpen }) {
         {!isAdmin && <NavLink to="/leave" end className="nav-link">연차</NavLink>}
         {(isAdmin || canApproveLeave) && <NavLink to="/sites" end className="nav-link">프로젝트</NavLink>}
         {isAdmin && <NavLink to="/manage/team" end className="nav-link">팀구성 관리</NavLink>}
-        {!isAdmin && canApproveLeave && <NavLink to="/manage/team" end className="nav-link">팀 구성 현황</NavLink>}
         {!isAdmin && !canApproveLeave && <NavLink to="/manage/team" end className="nav-link">우리 팀</NavLink>}
-        {canApproveLeave && !isAdmin && <NavLink to="/manage/leave" end className="nav-link">팀원 잔업 · 연차</NavLink>}
+        {canApproveLeave && !isAdmin && <NavLink to="/manage/leave" end className="nav-link">우리 팀</NavLink>}
         <NavLink to="/chat" end className={`nav-link ${unreadCount > 0 ? 'has-unread' : ''}`}>
           채팅
           {unreadCount > 0 && <span className="nav-badge sidebar-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
