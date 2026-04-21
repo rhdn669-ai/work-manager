@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
+  copyPreviousMonth,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -50,7 +51,9 @@ export default function SiteClosingPage() {
   function canEditSite(s) {
     return s && (isAdmin || (s.managerIds || []).includes(userProfile?.uid));
   }
-  const canEdit = canEditSite(site);
+  const isCompleted = site?.status === 'completed';
+  const canEdit = canEditSite(site) && !isCompleted;
+  const [copying, setCopying] = useState(false);
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
@@ -114,6 +117,20 @@ export default function SiteClosingPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCopyPrevMonth() {
+    if (!confirm('전월 공수표 · 매출/지출 항목을 이번 달로 복사합니다.\n(수량/금액은 초기화됩니다)\n\n계속하시겠습니까?')) return;
+    setCopying(true);
+    try {
+      const result = await copyPreviousMonth(siteId, y, m);
+      alert(`복사 완료: 공수표 ${result.items}건, 매출/지출 ${result.finances}건`);
+      await loadAll();
+    } catch (err) {
+      alert(err.message || '복사 실패');
+    } finally {
+      setCopying(false);
     }
   }
 
@@ -353,9 +370,20 @@ export default function SiteClosingPage() {
       <div className="page-header">
         <h2>{site.name} <span className="closing-period">{y}년 {m}월</span></h2>
         <div className="page-actions">
+          {canEdit && items.length === 0 && (
+            <button className="btn btn-outline" onClick={handleCopyPrevMonth} disabled={copying}>
+              {copying ? '복사 중...' : '전월 복사'}
+            </button>
+          )}
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
         </div>
       </div>
+
+      {isCompleted && (
+        <div className="alert alert-warning" style={{ marginBottom: 12 }}>
+          완료된 프로젝트입니다. 수정이 불가합니다.
+        </div>
+      )}
 
       <div className="closing-summary">
         <div className="closing-summary-item">

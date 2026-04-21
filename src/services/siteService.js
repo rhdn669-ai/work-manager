@@ -36,6 +36,12 @@ export async function createSite(data) {
     team: data.team || '',
     managerIds: data.managerIds || [],
     defaultVendors: data.defaultVendors || [],
+    projectType: data.projectType || 'recurring',   // 'recurring' | 'once'
+    status: data.status || 'active',                 // 'active' | 'completed'
+    startYear: data.startYear || null,
+    startMonth: data.startMonth || null,
+    endYear: data.endYear || null,
+    endMonth: data.endMonth || null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -156,4 +162,57 @@ export async function updateFinanceItem(itemId, data) {
 
 export async function deleteFinanceItem(itemId) {
   await deleteDoc(doc(db, 'siteFinances', itemId));
+}
+
+// ---------- 전월 데이터 복사 ----------
+
+export async function copyPreviousMonth(siteId, year, month) {
+  let prevYear = year;
+  let prevMonth = month - 1;
+  if (prevMonth < 1) { prevYear -= 1; prevMonth = 12; }
+
+  const [prevItems, prevFinances] = await Promise.all([
+    getClosingItems(siteId, prevYear, prevMonth),
+    getFinanceItems(siteId, prevYear, prevMonth),
+  ]);
+
+  if (prevItems.length === 0 && prevFinances.length === 0) {
+    throw new Error('전월 데이터가 없습니다.');
+  }
+
+  const added = { items: 0, finances: 0 };
+
+  // 공수표 항목 복사 (수량/금액 초기화)
+  for (const item of prevItems) {
+    await addClosingItem(siteId, year, month, {
+      no: item.no,
+      vendor: item.vendor,
+      detail: item.detail,
+      category: item.category,
+      itemType: item.itemType || 'freelancer',
+      unitPrice: item.unitPrice || 0,
+      dailyQuantities: {},
+      quantity: 0,
+      amount: 0,
+      order: item.order || 0,
+    });
+    added.items++;
+  }
+
+  // 매출/지출 항목 복사 (금액 초기화, 잔업은 제외)
+  for (const fin of prevFinances) {
+    const desc = (fin.description || '').trim();
+    const isOvertime = desc === '잔업' || desc.startsWith('잔업 -') || desc.startsWith('잔업-');
+    if (isOvertime) continue;
+    await addFinanceItem(siteId, year, month, {
+      type: fin.type,
+      description: fin.description,
+      amount: 0,
+      note: '',
+      order: fin.order || 0,
+    });
+    added.finances++;
+  }
+
+  return added;
 }

@@ -2069,6 +2069,47 @@ body {
   text-overflow: ellipsis;
 }
 
+/* 프로젝트 유형/상태 뱃지 */
+.site-type-badge, .site-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+
+.site-type-recurring {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.site-type-once {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.site-status-completed {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.site-row-completed {
+  opacity: 0.6;
+}
+
+.site-row-completed:hover {
+  opacity: 0.8;
+}
+
+.chip-period {
+  background: #f0f9ff !important;
+  color: #0369a1 !important;
+  font-variant-numeric: tabular-nums;
+}
+
 .site-row-meta {
   display: flex;
   gap: 6px;

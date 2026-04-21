@@ -5,6 +5,9 @@ import { getAllSites, getSitesByManager, getFinanceItems, getClosingItems, creat
 import { getUsers } from '../../services/userService';
 import Modal from '../../components/common/Modal';
 
+const TYPE_LABELS = { recurring: '양산', once: '단발' };
+const STATUS_LABELS = { active: '진행 중', completed: '완료' };
+
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive } = useAuth();
   const canViewSalary = isAdmin || isExecutive;
@@ -16,11 +19,16 @@ export default function SiteListPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [filter, setFilter] = useState('all'); // all | recurring | once | completed
 
   // 프로젝트 추가/수정 모달
   const [showModal, setShowModal] = useState(false);
   const [editSite, setEditSite] = useState(null);
-  const [form, setForm] = useState({ name: '', team: '', managerIds: [] });
+  const [form, setForm] = useState({
+    name: '', team: '', managerIds: [],
+    projectType: 'recurring', status: 'active',
+    startYear: null, startMonth: null, endYear: null, endMonth: null,
+  });
   const [managerListOpen, setManagerListOpen] = useState(false);
 
   useEffect(() => {
@@ -60,23 +68,58 @@ export default function SiteListPage() {
     }
   }
 
+  // 필터링된 프로젝트
+  const filtered = sites.filter((s) => {
+    const st = s.status || 'active';
+    const pt = s.projectType || 'recurring';
+    if (filter === 'completed') return st === 'completed';
+    if (filter === 'recurring') return pt === 'recurring' && st === 'active';
+    if (filter === 'once') return pt === 'once' && st === 'active';
+    return st === 'active'; // 'all' = 활성 프로젝트 전체
+  });
+
+  const filterCounts = {
+    all: sites.filter((s) => (s.status || 'active') === 'active').length,
+    recurring: sites.filter((s) => (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
+    once: sites.filter((s) => s.projectType === 'once' && (s.status || 'active') === 'active').length,
+    completed: sites.filter((s) => s.status === 'completed').length,
+  };
+
   function managerNames(site) {
     const ids = site.managerIds || [];
     const names = ids.map((uid) => userMap[uid]?.name).filter(Boolean);
     return names.length ? names.join(', ') : '-';
   }
 
+  function periodLabel(site) {
+    const sy = site.startYear; const sm = site.startMonth;
+    const ey = site.endYear; const em = site.endMonth;
+    if (!sy) return '';
+    let label = `${sy}.${String(sm).padStart(2, '0')}~`;
+    if (ey) label += `${ey}.${String(em).padStart(2, '0')}`;
+    return label;
+  }
+
   // --- 프로젝트 CRUD ---
   function openCreate() {
     setEditSite(null);
-    setForm({ name: '', team: '', managerIds: [] });
+    setForm({
+      name: '', team: '', managerIds: [],
+      projectType: 'recurring', status: 'active',
+      startYear: year, startMonth: month, endYear: null, endMonth: null,
+    });
     setManagerListOpen(false);
     setShowModal(true);
   }
 
   function openEdit(site) {
     setEditSite(site);
-    setForm({ name: site.name, team: site.team || '', managerIds: site.managerIds || [] });
+    setForm({
+      name: site.name, team: site.team || '', managerIds: site.managerIds || [],
+      projectType: site.projectType || 'recurring', status: site.status || 'active',
+      startYear: site.startYear || null, startMonth: site.startMonth || null,
+      endYear: site.endYear || null, endMonth: site.endMonth || null,
+    });
     setManagerListOpen(false);
     setShowModal(true);
   }
@@ -108,6 +151,20 @@ export default function SiteListPage() {
     }
   }
 
+  async function handleToggleStatus(site, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = (site.status || 'active') === 'active' ? 'completed' : 'active';
+    const msg = next === 'completed' ? `"${site.name}" 프로젝트를 완료 처리하시겠습니까?` : `"${site.name}" 프로젝트를 다시 활성화하시겠습니까?`;
+    if (!confirm(msg)) return;
+    try {
+      await updateSite(site.id, { status: next });
+      await loadData();
+    } catch (err) {
+      alert('상태 변경 오류: ' + err.message);
+    }
+  }
+
   function toggleManager(uid) {
     setForm((f) => ({
       ...f,
@@ -128,6 +185,24 @@ export default function SiteListPage() {
         {isAdmin && <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>}
       </div>
 
+      {/* 필터 탭 */}
+      <div className="tab-nav" style={{ marginBottom: 12 }}>
+        {[
+          { key: 'all', label: '전체' },
+          { key: 'recurring', label: '양산' },
+          { key: 'once', label: '단발' },
+          { key: 'completed', label: '완료' },
+        ].map((t) => (
+          <button
+            key={t.key}
+            className={`tab-nav-item ${filter === t.key ? 'active' : ''}`}
+            onClick={() => setFilter(t.key)}
+          >
+            {t.label} {filterCounts[t.key] > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{filterCounts[t.key]}</span>}
+          </button>
+        ))}
+      </div>
+
       <div className="filters">
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
           {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
@@ -137,9 +212,12 @@ export default function SiteListPage() {
         </select>
       </div>
 
-      {isAdmin && sites.length > 0 && (() => {
-        const allRevenue = Object.values(siteStats).reduce((s, v) => s + (v.revenue || 0), 0);
-        const allExpense = Object.values(siteStats).reduce((s, v) => s + (v.expense || 0) + (v.overtime || 0) + (v.labor || 0), 0);
+      {isAdmin && filtered.length > 0 && filter !== 'completed' && (() => {
+        const allRevenue = filtered.reduce((s, site) => s + ((siteStats[site.id] || {}).revenue || 0), 0);
+        const allExpense = filtered.reduce((s, site) => {
+          const v = siteStats[site.id] || {};
+          return s + (v.expense || 0) + (v.overtime || 0) + (v.labor || 0);
+        }, 0);
         const allBalance = allRevenue - allExpense;
         return (
           <div className="total-summary-bar">
@@ -159,49 +237,65 @@ export default function SiteListPage() {
         );
       })()}
 
-      {sites.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
-            {isAdmin ? '등록된 프로젝트가 없습니다. 상단 "프로젝트 추가" 버튼으로 추가하세요.' : '담당 프로젝트가 없습니다. 관리자에게 문의해주세요.'}
+            {filter === 'completed' ? '완료된 프로젝트가 없습니다.' :
+             isAdmin ? '등록된 프로젝트가 없습니다. 상단 "프로젝트 추가" 버튼으로 추가하세요.' : '담당 프로젝트가 없습니다. 관리자에게 문의해주세요.'}
           </div>
         </div>
       ) : (
         <div className="site-list">
-          {sites.map((s) => {
+          {filtered.map((s) => {
             const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
             const totalExpense = canViewSalary ? raw.expense + raw.overtime + raw.labor : raw.expense;
             const balance = raw.revenue - totalExpense;
+            const pt = s.projectType || 'recurring';
+            const st = s.status || 'active';
+            const period = periodLabel(s);
             return (
               <div key={s.id} className="site-row-wrapper">
-                <Link to={`/sites/${s.id}/${year}/${month}`} className="site-row">
+                <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
                   <div className="site-row-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/>
-                      <path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/>
-                      <path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/>
+                      {pt === 'once' ? (
+                        <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>
+                      ) : (
+                        <><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></>
+                      )}
                     </svg>
                   </div>
                   <div className="site-row-body">
-                    <div className="site-row-name">{s.name}</div>
+                    <div className="site-row-name">
+                      {s.name}
+                      <span className={`site-type-badge site-type-${pt}`}>{TYPE_LABELS[pt]}</span>
+                      {st === 'completed' && <span className="site-status-badge site-status-completed">{STATUS_LABELS[st]}</span>}
+                    </div>
                     <div className="site-row-meta">
                       <span className="chip chip-team">{s.team || '팀 미지정'}</span>
                       <span className="chip chip-manager">담당 {managerNames(s)}</span>
+                      {period && <span className="chip chip-period">{period}</span>}
                     </div>
-                    <div className="site-row-stats">
-                      <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
-                      <span className="stat-expense">지출 {totalExpense.toLocaleString()}</span>
-                      <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
-                    </div>
+                    {st !== 'completed' && (
+                      <div className="site-row-stats">
+                        <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
+                        <span className="stat-expense">지출 {totalExpense.toLocaleString()}</span>
+                        <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="site-row-period">
                     <div className="period-y">{year}</div>
                     <div className="period-m">{String(month).padStart(2, '0')}월</div>
                   </div>
-                  <div className="site-row-arrow">→</div>
+                  <div className="site-row-arrow">&rarr;</div>
                 </Link>
                 {isAdmin && (
                   <div className="site-row-actions">
                     <button className="btn btn-sm btn-outline" onClick={(e) => { e.preventDefault(); openEdit(s); }}>수정</button>
+                    <button className="btn btn-sm btn-outline" onClick={(e) => handleToggleStatus(s, e)}>
+                      {st === 'completed' ? '재활성' : '완료'}
+                    </button>
                     <button className="btn btn-sm btn-danger" onClick={(e) => handleDelete(s, e)}>삭제</button>
                   </div>
                 )}
@@ -220,6 +314,41 @@ export default function SiteListPage() {
           <div className="form-group">
             <label>팀</label>
             <input value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} placeholder="예: 전장 2팀" />
+          </div>
+          <div className="form-group">
+            <label>프로젝트 유형</label>
+            <div className="btn-group">
+              <button type="button" className={`btn btn-sm ${form.projectType === 'recurring' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'recurring' })}>양산형</button>
+              <button type="button" className={`btn btn-sm ${form.projectType === 'once' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'once' })}>단발성</button>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>시작 년/월</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select value={form.startYear || ''} onChange={(e) => setForm({ ...form, startYear: e.target.value ? Number(e.target.value) : null })}>
+                  <option value="">-</option>
+                  {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={form.startMonth || ''} onChange={(e) => setForm({ ...form, startMonth: e.target.value ? Number(e.target.value) : null })}>
+                  <option value="">-</option>
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => <option key={m} value={m}>{m}월</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>종료 년/월 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select value={form.endYear || ''} onChange={(e) => setForm({ ...form, endYear: e.target.value ? Number(e.target.value) : null })}>
+                  <option value="">미정</option>
+                  {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={form.endMonth || ''} onChange={(e) => setForm({ ...form, endMonth: e.target.value ? Number(e.target.value) : null })}>
+                  <option value="">-</option>
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => <option key={m} value={m}>{m}월</option>)}
+                </select>
+              </div>
+            </div>
           </div>
           <div className="form-group">
             <label>담당자 선택</label>
