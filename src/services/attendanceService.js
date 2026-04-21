@@ -5,7 +5,7 @@ import {
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
-import { addFinanceItem, deleteFinanceItem, findFinanceByOvertimeId } from './siteService';
+import { addFinanceItem, deleteFinanceItem, findFinanceByOvertimeId, getFinanceItems } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
@@ -79,8 +79,14 @@ export async function updateOvertimeRecord(id, data) {
   const newDate = data.date !== undefined ? data.date : prev.date;
   const newMinutes = data.minutes !== undefined ? data.minutes : prev.minutes;
 
-  // 기존 지출 항목 삭제 (overtimeRecordId로 정확히 찾기)
-  const oldFinances = await findFinanceByOvertimeId(id);
+  // 기존 지출 항목 삭제 (overtimeRecordId → description 폴백)
+  let oldFinances = await findFinanceByOvertimeId(id);
+  if (oldFinances.length === 0 && prev.siteId && prev.siteId !== 'etc') {
+    const d = new Date(prev.date);
+    const all = await getFinanceItems(prev.siteId, d.getFullYear(), d.getMonth() + 1);
+    const match = all.filter((f) => f.description && f.description.includes('잔업') && f.description.includes(prev.userName) && f.description.includes(prev.date));
+    oldFinances = match;
+  }
   for (const f of oldFinances) {
     await deleteFinanceItem(f.id);
   }
