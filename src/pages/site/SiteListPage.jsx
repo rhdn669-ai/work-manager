@@ -45,10 +45,12 @@ export default function SiteListPage() {
           getFinanceItems(s.id, year, month),
           getClosingItems(s.id, year, month),
         ]);
+        const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
         const revenue = fins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-        const expense = fins.filter((f) => f.type === 'expense').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+        const expense = fins.filter((f) => f.type === 'expense' && !isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+        const overtime = fins.filter((f) => f.type === 'expense' && isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const labor = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
-        stats[s.id] = { revenue, expense, labor };
+        stats[s.id] = { revenue, expense, overtime, labor };
       }));
       setSiteStats(stats);
     } catch (err) {
@@ -137,7 +139,7 @@ export default function SiteListPage() {
 
       {isAdmin && sites.length > 0 && (() => {
         const allRevenue = Object.values(siteStats).reduce((s, v) => s + (v.revenue || 0), 0);
-        const allExpense = Object.values(siteStats).reduce((s, v) => s + (v.expense || 0) + (v.labor || 0), 0);
+        const allExpense = Object.values(siteStats).reduce((s, v) => s + (v.expense || 0) + (v.overtime || 0) + (v.labor || 0), 0);
         const allBalance = allRevenue - allExpense;
         return (
           <div className="total-summary-bar">
@@ -166,8 +168,8 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {sites.map((s) => {
-            const raw = siteStats[s.id] || { revenue: 0, expense: 0, labor: 0 };
-            const totalExpense = canViewSalary ? raw.expense + raw.labor : raw.expense;
+            const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+            const totalExpense = canViewSalary ? raw.expense + raw.overtime + raw.labor : raw.expense;
             const balance = raw.revenue - totalExpense;
             return (
               <div key={s.id} className="site-row-wrapper">

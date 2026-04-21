@@ -330,8 +330,9 @@ export default function SiteClosingPage() {
 
   const revenueItems = finances.filter((f) => f.type === 'revenue');
   const expenseItems = finances.filter((f) => f.type === 'expense');
+  const isOvertimeFinance = (f) => { const d = ((financeBuf[f.id]?.description ?? f.description) || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
   const totalRevenue = revenueItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
-  const totalExpense = expenseItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
+  const totalExpense = expenseItems.filter((f) => canViewSalary || !isOvertimeFinance(f)).reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
 
   let saveStatus;
   if (saveError) {
