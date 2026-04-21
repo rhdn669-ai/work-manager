@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
-  copyPreviousMonth,
+  copyPreviousMonth, updateSite,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -132,6 +132,16 @@ export default function SiteClosingPage() {
       alert(err.message || '복사 실패');
     } finally {
       setCopying(false);
+    }
+  }
+
+  async function handleCloseProject() {
+    if (!confirm(`"${site.name}" 프로젝트를 마감 처리하시겠습니까?\n\n마감 후 수정이 불가하며, 프로젝트 목록에서 재활성할 수 있습니다.`)) return;
+    try {
+      await updateSite(siteId, { status: 'completed' });
+      await loadAll();
+    } catch (err) {
+      alert('마감 처리 오류: ' + err.message);
     }
   }
 
@@ -375,6 +385,9 @@ export default function SiteClosingPage() {
             <button className="btn btn-outline" onClick={handleCopyPrevMonth} disabled={copying}>
               {copying ? '복사 중...' : '전월 복사'}
             </button>
+          )}
+          {canEditSite(site) && !isCompleted && (
+            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
           )}
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
         </div>
