@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyOvertimeRecords, deleteOvertimeRecord, updateOvertimeRecord } from '../../services/attendanceService';
 import { getAllSites } from '../../services/siteService';
-import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
+import { getMonthStart, getMonthEnd, formatMinutes, getDayName, getToday } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
 
 export default function AttendanceHistoryPage() {
@@ -14,8 +14,10 @@ export default function AttendanceHistoryPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
-  const [editSiteId, setEditSiteId] = useState('');
+  const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
+
+  const today = getToday();
 
   useEffect(() => {
     getAllSites().then((s) => {
@@ -56,22 +58,32 @@ export default function AttendanceHistoryPage() {
 
   function startEdit(r) {
     setEditingId(r.id);
-    setEditSiteId(r.siteId || 'etc');
+    setEditForm({
+      hours: String(Math.floor((r.minutes || 0) / 60)),
+      mins: String((r.minutes || 0) % 60),
+      siteId: r.siteId || 'etc',
+      reason: r.reason || '',
+    });
   }
 
   function cancelEdit() {
     setEditingId(null);
-    setEditSiteId('');
+    setEditForm({});
   }
 
   async function saveEdit(r) {
-    if (editSiteId === (r.siteId || 'etc')) {
-      cancelEdit();
+    const totalMinutes = (parseInt(editForm.hours || 0) * 60) + parseInt(editForm.mins || 0);
+    if (totalMinutes <= 0) {
+      alert('잔업 시간을 입력해주세요.');
       return;
     }
     setBusy(true);
     try {
-      await updateOvertimeRecord(r.id, { siteId: editSiteId });
+      await updateOvertimeRecord(r.id, {
+        minutes: totalMinutes,
+        siteId: editForm.siteId,
+        reason: editForm.reason,
+      });
       setEditingId(null);
       await loadRecords();
     } catch (err) {
@@ -116,30 +128,58 @@ export default function AttendanceHistoryPage() {
         <div className="record-list">
           {records.map((r) => {
             const isEditing = editingId === r.id;
+            const isToday = r.date === today;
             return (
               <div key={r.id} className="card" style={{ marginBottom: 8 }}>
                 <div className="card-body" style={{ padding: '12px 16px' }}>
                   {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                          {r.date} ({getDayName(r.date)})
-                        </span>
-                        <span style={{ fontSize: 12, color: 'var(--text-light)', marginLeft: 'auto' }}>
-                          {formatMinutes(r.minutes)}
-                        </span>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        {r.date} ({getDayName(r.date)})
+                      </div>
+                      <div className="form-row" style={{ gap: 8 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: 12 }}>시간</label>
+                          <input
+                            type="number"
+                            min={0} max={12}
+                            value={editForm.hours}
+                            onChange={(e) => setEditForm({ ...editForm, hours: e.target.value })}
+                            placeholder="시간"
+                            style={{ width: 70 }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: 12 }}>분</label>
+                          <input
+                            type="number"
+                            min={0} max={59}
+                            value={editForm.mins}
+                            onChange={(e) => setEditForm({ ...editForm, mins: e.target.value })}
+                            placeholder="분"
+                            style={{ width: 70 }}
+                          />
+                        </div>
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label style={{ fontSize: 12, marginBottom: 4 }}>프로젝트</label>
+                        <label style={{ fontSize: 12 }}>프로젝트</label>
                         <select
-                          value={editSiteId}
-                          onChange={(e) => setEditSiteId(e.target.value)}
-                          autoFocus
+                          value={editForm.siteId}
+                          onChange={(e) => setEditForm({ ...editForm, siteId: e.target.value })}
                         >
                           {sites.map((s) => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
                         </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: 12 }}>사유</label>
+                        <input
+                          type="text"
+                          value={editForm.reason}
+                          onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                          placeholder="잔업 사유 (선택)"
+                        />
                       </div>
                       <div className="btn-group">
                         <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>저장</button>
@@ -161,21 +201,16 @@ export default function AttendanceHistoryPage() {
                           {r.reason && <span style={{ color: 'var(--text-muted)' }}>{r.reason}</span>}
                         </div>
                       </div>
-                      <div className="btn-group" style={{ flexShrink: 0 }}>
-                        <button
-                          className="btn btn-sm btn-outline"
-                          onClick={() => startEdit(r)}
-                        >
-                          수정
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline"
-                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                          onClick={() => handleDelete(r.id)}
-                        >
-                          삭제
-                        </button>
-                      </div>
+                      {isToday && (
+                        <div className="btn-group" style={{ flexShrink: 0 }}>
+                          <button className="btn btn-sm btn-outline" onClick={() => startEdit(r)}>수정</button>
+                          <button
+                            className="btn btn-sm btn-outline"
+                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            onClick={() => handleDelete(r.id)}
+                          >삭제</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

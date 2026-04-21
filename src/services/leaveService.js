@@ -161,6 +161,13 @@ export async function updateLeaveReason(id, reason) {
   await updateLeaveRecord(id, { reason });
 }
 
+// 직원 당일 수정 (일수 변경 시 잔여 연차 자동 조정)
+export async function editLeaveWithBalance(id, userId, data, oldDays) {
+  await updateLeaveRecord(id, data);
+  const diff = (data.days ?? oldDays) - oldDays;
+  if (diff !== 0) await updateLeaveBalance(userId, diff);
+}
+
 // 입사일 동기화/초기화 (users.joinDate를 balance에 스냅샷 저장)
 // 기존 usedDays는 보존
 export async function initLeaveBalance(userId, joinDate) {
