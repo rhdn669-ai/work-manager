@@ -4,6 +4,7 @@ import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { POSITIONS } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
+import MoneyInput from '../../components/common/MoneyInput';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
@@ -217,11 +218,11 @@ export default function UserManagementPage() {
           </div>
           <div className="form-group">
             <label>고정비용 (월급, 원)</label>
-            <input type="number" value={form.fixedCost} onChange={(e) => setForm({ ...form, fixedCost: e.target.value })} placeholder="예: 3000000" />
+            <MoneyInput value={form.fixedCost} onChange={(e) => setForm({ ...form, fixedCost: e.target.value })} placeholder="예: 3,000,000" />
           </div>
           <div className="form-group">
             <label>시급 (잔업 단가, 원)</label>
-            <input type="number" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} placeholder="예: 15000" />
+            <MoneyInput value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} placeholder="예: 15,000" />
           </div>
           <div className="form-group">
             <label>입사일</label>
