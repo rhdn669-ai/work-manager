@@ -297,9 +297,9 @@ export default function SiteListPage() {
                 {isAdmin && (
                   <div className="site-row-actions">
                     <button className="btn btn-sm btn-outline" onClick={(e) => { e.preventDefault(); openEdit(s); }}>수정</button>
-                    <button className="btn btn-sm btn-outline" onClick={(e) => handleToggleStatus(s, e)}>
-                      {st === 'completed' ? '재활성' : '완료'}
-                    </button>
+                    {st === 'completed' && (
+                      <button className="btn btn-sm btn-outline" onClick={(e) => handleToggleStatus(s, e)}>재활성</button>
+                    )}
                     <button className="btn btn-sm btn-danger" onClick={(e) => handleDelete(s, e)}>삭제</button>
                   </div>
                 )}
