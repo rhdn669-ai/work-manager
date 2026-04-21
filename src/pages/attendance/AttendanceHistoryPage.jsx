@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
+import { getAllSites } from '../../services/siteService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
 
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
   const [records, setRecords] = useState([]);
+  const [siteMap, setSiteMap] = useState({});
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAllSites().then((sites) => {
+      const m = { etc: '기타' };
+      sites.forEach((s) => { m[s.id] = s.name; });
+      setSiteMap(m);
+    });
+  }, []);
 
   useEffect(() => {
     if (userProfile) loadRecords();
@@ -73,6 +83,7 @@ export default function AttendanceHistoryPage() {
           <thead>
             <tr>
               <th>날짜</th>
+              <th>프로젝트</th>
               <th>잔업 시간</th>
               <th>사유</th>
               <th>작업</th>
@@ -85,6 +96,7 @@ export default function AttendanceHistoryPage() {
                   {r.date}
                   <span className="text-muted text-sm" style={{ marginLeft: 6 }}>({getDayName(r.date)})</span>
                 </td>
+                <td>{siteMap[r.siteId] || '-'}</td>
                 <td>{formatMinutes(r.minutes)}</td>
                 <td>{r.reason || '-'}</td>
                 <td>
