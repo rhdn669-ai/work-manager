@@ -331,8 +331,11 @@ export default function SiteClosingPage() {
     }
   }
 
-  async function handleDeleteFinance(id) {
-    if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+  async function handleDeleteFinance(id, isOvertime = false) {
+    const msg = isOvertime
+      ? '잔업 지출 항목을 삭제합니다.\n(원본 잔업 기록은 남아있을 수 있으니, 필요 시 잔업 관리에서도 정리하세요.)\n\n계속하시겠습니까?'
+      : '이 항목을 삭제하시겠습니까?';
+    if (!confirm(msg)) return;
     const key = 'fin_' + id;
     if (timersRef.current[key]) { clearTimeout(timersRef.current[key]); delete timersRef.current[key]; }
     try {
@@ -506,8 +509,8 @@ export default function SiteClosingPage() {
                   {!readOnly && (
                     <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   )}
-                  {canEdit && !readOnly && (
-                    <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
+                  {canEdit && (
+                    <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id, isOvertime)} aria-label="삭제" title={isOvertime ? '잔업 지출 삭제 (고아 데이터 정리용)' : '삭제'}>✕</button>
                   )}
                 </div>
               );
