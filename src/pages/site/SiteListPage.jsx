@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getSitesByManager, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
+import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
@@ -14,6 +15,7 @@ export default function SiteListPage() {
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
+  const [departments, setDepartments] = useState([]);
   const [siteStats, setSiteStats] = useState({});
   const [loading, setLoading] = useState(true);
   const now = new Date();
@@ -38,12 +40,14 @@ export default function SiteListPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [list, userList] = await Promise.all([
+      const [list, userList, deptList] = await Promise.all([
         isAdmin ? getAllSites() : getSitesByManager(userProfile.uid),
         getUsers(),
+        getDepartments(),
       ]);
       setSites(list);
       setUsers(userList);
+      setDepartments(deptList);
       const uMap = Object.fromEntries(userList.map((u) => [u.uid, u]));
       setUserMap(uMap);
 
@@ -313,7 +317,10 @@ export default function SiteListPage() {
           </div>
           <div className="form-group">
             <label>팀</label>
-            <input value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} placeholder="예: 전장 2팀" />
+            <select value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
+              <option value="">팀 선택</option>
+              {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+            </select>
           </div>
           <div className="form-group">
             <label>프로젝트 유형</label>
