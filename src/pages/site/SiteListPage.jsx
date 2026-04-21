@@ -6,7 +6,8 @@ import { getUsers } from '../../services/userService';
 import Modal from '../../components/common/Modal';
 
 export default function SiteListPage() {
-  const { userProfile, isAdmin } = useAuth();
+  const { userProfile, isAdmin, isExecutive } = useAuth();
+  const canViewSalary = isAdmin || isExecutive;
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
@@ -166,7 +167,7 @@ export default function SiteListPage() {
         <div className="site-list">
           {sites.map((s) => {
             const raw = siteStats[s.id] || { revenue: 0, expense: 0, labor: 0 };
-            const totalExpense = raw.expense + raw.labor;
+            const totalExpense = canViewSalary ? raw.expense + raw.labor : raw.expense;
             const balance = raw.revenue - totalExpense;
             return (
               <div key={s.id} className="site-row-wrapper">
