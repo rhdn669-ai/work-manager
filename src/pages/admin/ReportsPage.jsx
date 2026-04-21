@@ -482,7 +482,6 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                         {canEdit && (
                           <div className="btn-group" style={{ flexShrink: 0 }}>
                             <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
-                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(l)}>삭제</button>
                           </div>
                         )}
                       </div>
