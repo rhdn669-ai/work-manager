@@ -22,7 +22,7 @@ export default function AttendanceHistoryPage() {
       const m = { etc: '기타' };
       s.forEach((site) => { m[site.id] = site.name; });
       setSiteMap(m);
-      setSites([{ id: 'etc', name: '기타' }, ...s]);
+      setSites([...s, { id: 'etc', name: '기타' }]);
     });
   }, []);
 
@@ -45,7 +45,7 @@ export default function AttendanceHistoryPage() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('삭제하시겠습니까?')) return;
+    if (!confirm('이 잔업 기록을 삭제하시겠습니까?')) return;
     try {
       await deleteOvertimeRecord(id);
       await loadRecords();
@@ -65,6 +65,10 @@ export default function AttendanceHistoryPage() {
   }
 
   async function saveEdit(r) {
+    if (editSiteId === (r.siteId || 'etc')) {
+      cancelEdit();
+      return;
+    }
     setBusy(true);
     try {
       await updateOvertimeRecord(r.id, { siteId: editSiteId });
@@ -97,70 +101,88 @@ export default function AttendanceHistoryPage() {
         </select>
       </div>
 
-      <div className="summary-bar">
-        <span>총 잔업 <strong>{formatMinutes(totalMinutes)}</strong></span>
-        <span>등록 건수 <strong>{records.length}건</strong></span>
-      </div>
+      {totalMinutes > 0 && (
+        <div className="summary-bar">
+          <span>총 잔업 <strong>{formatMinutes(totalMinutes)}</strong></span>
+          <span>등록 건수 <strong>{records.length}건</strong></span>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">로딩 중...</div>
       ) : records.length === 0 ? (
         <p className="text-muted">해당 월의 기록이 없습니다.</p>
       ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>프로젝트</th>
-              <th>잔업 시간</th>
-              <th>사유</th>
-              <th>작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => {
-              const isEditing = editingId === r.id;
-              return (
-                <tr key={r.id}>
-                  <td>
-                    {r.date}
-                    <span className="text-muted text-sm" style={{ marginLeft: 6 }}>({getDayName(r.date)})</span>
-                  </td>
-                  <td>
-                    {isEditing ? (
-                      <select
-                        value={editSiteId}
-                        onChange={(e) => setEditSiteId(e.target.value)}
-                        style={{ width: '100%' }}
-                      >
-                        {sites.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      siteMap[r.siteId] || '-'
-                    )}
-                  </td>
-                  <td>{formatMinutes(r.minutes)}</td>
-                  <td>{r.reason || '-'}</td>
-                  <td>
-                    {isEditing ? (
-                      <div style={{ display: 'flex', gap: 4 }}>
+        <div className="record-list">
+          {records.map((r) => {
+            const isEditing = editingId === r.id;
+            return (
+              <div key={r.id} className="card" style={{ marginBottom: 8 }}>
+                <div className="card-body" style={{ padding: '12px 16px' }}>
+                  {isEditing ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                          {r.date} ({getDayName(r.date)})
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--text-light)', marginLeft: 'auto' }}>
+                          {formatMinutes(r.minutes)}
+                        </span>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: 12, marginBottom: 4 }}>프로젝트</label>
+                        <select
+                          value={editSiteId}
+                          onChange={(e) => setEditSiteId(e.target.value)}
+                          autoFocus
+                        >
+                          {sites.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="btn-group">
                         <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>저장</button>
                         <button className="btn btn-sm btn-outline" disabled={busy} onClick={cancelEdit}>취소</button>
                       </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn btn-sm btn-outline" onClick={() => startEdit(r)}>수정</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>
+                          {r.date}
+                          <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>
+                            ({getDayName(r.date)})
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-light)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{formatMinutes(r.minutes)}</span>
+                          <span>{siteMap[r.siteId] || '기타'}</span>
+                          {r.reason && <span style={{ color: 'var(--text-muted)' }}>{r.reason}</span>}
+                        </div>
                       </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      <div className="btn-group" style={{ flexShrink: 0 }}>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={() => startEdit(r)}
+                        >
+                          수정
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                          onClick={() => handleDelete(r.id)}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
