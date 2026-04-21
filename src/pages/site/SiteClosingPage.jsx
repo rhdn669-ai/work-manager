@@ -288,10 +288,10 @@ export default function SiteClosingPage() {
   }
 
   // --- 지출/매출 ---
-  async function handleAddFinance(type, description = '') {
+  async function handleAddFinance(type, description = '', amount = 0) {
     const list = finances.filter((f) => f.type === type);
     const nextOrder = list.length ? Math.max(...list.map((f) => f.order || 0)) + 1 : 1;
-    await addFinanceItem(siteId, y, m, { type, description, amount: 0, note: '', order: nextOrder });
+    await addFinanceItem(siteId, y, m, { type, description, amount, note: '', order: nextOrder });
     await loadAll();
   }
 
@@ -470,8 +470,8 @@ export default function SiteClosingPage() {
           {canEdit && (
             <div className="finance-actions">
               <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
-              <button className="expense-chip expense-chip-meal" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
-              <button className="expense-chip expense-chip-transport" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
+              <button className="expense-chip expense-chip-meal" onClick={() => handleAddFinance('expense', '식대', 10000)}>식대 1만</button>
+              <button className="expense-chip expense-chip-transport" onClick={() => handleAddFinance('expense', '교통비', 5000)}>교통비 5천</button>
               <button className="expense-chip expense-chip-material" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
             </div>
           )}
