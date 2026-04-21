@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { requestLeave, getLeaveBalance } from '../../services/leaveService';
+import { requestLeave } from '../../services/leaveService';
 import { LEAVE_TYPES, LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDays } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
@@ -31,13 +31,6 @@ export default function LeaveRequestPage() {
 
     if (days <= 0) {
       setError('올바른 날짜를 선택해주세요.');
-      return;
-    }
-
-    // 잔여 연차 확인
-    const balance = await getLeaveBalance(userProfile.uid);
-    if (balance && balance.remainingDays < days) {
-      setError(`잔여 연차가 부족합니다. (잔여: ${balance.remainingDays}일, 신청: ${days}일)`);
       return;
     }
 
