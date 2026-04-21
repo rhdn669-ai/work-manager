@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyOvertimeRecords, deleteOvertimeRecord } from '../../services/attendanceService';
+import { getMyOvertimeRecords, deleteOvertimeRecord, updateOvertimeRecord } from '../../services/attendanceService';
 import { getAllSites } from '../../services/siteService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
@@ -8,16 +8,21 @@ import AttendanceTabs from '../../components/common/AttendanceTabs';
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
   const [records, setRecords] = useState([]);
+  const [sites, setSites] = useState([]);
   const [siteMap, setSiteMap] = useState({});
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editSiteId, setEditSiteId] = useState('');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    getAllSites().then((sites) => {
+    getAllSites().then((s) => {
       const m = { etc: '기타' };
-      sites.forEach((s) => { m[s.id] = s.name; });
+      s.forEach((site) => { m[site.id] = site.name; });
       setSiteMap(m);
+      setSites([{ id: 'etc', name: '기타' }, ...s]);
     });
   }, []);
 
@@ -46,6 +51,29 @@ export default function AttendanceHistoryPage() {
       await loadRecords();
     } catch (err) {
       alert('삭제 실패: ' + err.message);
+    }
+  }
+
+  function startEdit(r) {
+    setEditingId(r.id);
+    setEditSiteId(r.siteId || 'etc');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditSiteId('');
+  }
+
+  async function saveEdit(r) {
+    setBusy(true);
+    try {
+      await updateOvertimeRecord(r.id, { siteId: editSiteId });
+      setEditingId(null);
+      await loadRecords();
+    } catch (err) {
+      alert('수정 실패: ' + err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -90,20 +118,47 @@ export default function AttendanceHistoryPage() {
             </tr>
           </thead>
           <tbody>
-            {records.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  {r.date}
-                  <span className="text-muted text-sm" style={{ marginLeft: 6 }}>({getDayName(r.date)})</span>
-                </td>
-                <td>{siteMap[r.siteId] || '-'}</td>
-                <td>{formatMinutes(r.minutes)}</td>
-                <td>{r.reason || '-'}</td>
-                <td>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
-                </td>
-              </tr>
-            ))}
+            {records.map((r) => {
+              const isEditing = editingId === r.id;
+              return (
+                <tr key={r.id}>
+                  <td>
+                    {r.date}
+                    <span className="text-muted text-sm" style={{ marginLeft: 6 }}>({getDayName(r.date)})</span>
+                  </td>
+                  <td>
+                    {isEditing ? (
+                      <select
+                        value={editSiteId}
+                        onChange={(e) => setEditSiteId(e.target.value)}
+                        style={{ width: '100%' }}
+                      >
+                        {sites.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      siteMap[r.siteId] || '-'
+                    )}
+                  </td>
+                  <td>{formatMinutes(r.minutes)}</td>
+                  <td>{r.reason || '-'}</td>
+                  <td>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>저장</button>
+                        <button className="btn btn-sm btn-outline" disabled={busy} onClick={cancelEdit}>취소</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn btn-sm btn-outline" onClick={() => startEdit(r)}>수정</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>삭제</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
