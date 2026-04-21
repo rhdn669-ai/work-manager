@@ -164,6 +164,19 @@ export async function deleteFinanceItem(itemId) {
   await deleteDoc(doc(db, 'siteFinances', itemId));
 }
 
+// ---------- 월별 전체 프로젝트 직원 배정 조회 ----------
+
+export async function getAssignedEmployeeIds(year, month) {
+  const q = query(itemsRef, where('year', '==', year), where('month', '==', month), where('itemType', '==', 'employee'));
+  const snapshot = await getDocs(q);
+  const ids = new Set();
+  snapshot.docs.forEach((d) => {
+    const data = d.data();
+    if (data.detail) ids.add(data.detail); // detail = 직원 이름
+  });
+  return ids;
+}
+
 // ---------- 전월 데이터 복사 ----------
 
 export async function copyPreviousMonth(siteId, year, month) {
