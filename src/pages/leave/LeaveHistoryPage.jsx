@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyLeaves, editLeaveWithBalance } from '../../services/leaveService';
+import { getMyLeaves, editLeaveWithBalance, cancelLeave } from '../../services/leaveService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDays, getToday } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
@@ -73,6 +73,19 @@ export default function LeaveHistoryPage() {
       type,
       endDate: single ? f.startDate : f.endDate,
     }));
+  }
+
+  async function handleCancel(l) {
+    if (!confirm('이 연차를 취소하시겠습니까?')) return;
+    setBusy(true);
+    try {
+      await cancelLeave(l.id);
+      await loadLeaves();
+    } catch (err) {
+      alert('취소 실패: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveEdit(l) {
@@ -204,9 +217,15 @@ export default function LeaveHistoryPage() {
                           <span style={{ color: statusStyle.color, fontWeight: 500 }}>{statusStyle.label}</span>
                         </div>
                       </div>
-                      {isToday && (
+                      {isToday && l.status !== 'cancelled' && (
                         <div className="btn-group" style={{ flexShrink: 0 }}>
-                          <button className="btn btn-sm btn-outline" onClick={() => startEdit(l)}>수정</button>
+                          <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
+                          <button
+                            className="btn btn-sm btn-outline"
+                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            disabled={busy}
+                            onClick={() => handleCancel(l)}
+                          >취소</button>
                         </div>
                       )}
                     </div>
