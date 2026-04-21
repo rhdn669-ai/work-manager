@@ -492,7 +492,6 @@ export default function SiteClosingPage() {
                   {canEdit && !readOnly && (
                     <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
                   )}
-                  {readOnly && <span className="expense-readonly-badge" title="잔업 내역은 팀원 잔업 등록에서 자동 반영됩니다">🔒</span>}
                 </div>
               );
             })}
