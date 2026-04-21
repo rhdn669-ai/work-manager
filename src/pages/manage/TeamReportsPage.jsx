@@ -149,7 +149,6 @@ export default function TeamReportsPage() {
                 <th>이름</th>
                 <th>직급</th>
                 <th>잔업</th>
-                <th>건수</th>
                 <th>연차</th>
               </tr>
             </thead>
@@ -162,23 +161,15 @@ export default function TeamReportsPage() {
                     {r.isMe && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
                   </td>
                   <td>{r.position || '-'}</td>
-                  <td
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => openDetail(r, 'overtime')}
-                  >
-                    {r.overtimeMinutes > 0 ? <strong style={{ color: 'var(--primary)' }}>{formatMinutes(r.overtimeMinutes)}</strong> : '-'}
+                  <td>
+                    <button className="team-detail-btn" onClick={() => openDetail(r, 'overtime')}>
+                      {r.overtimeMinutes > 0 ? <><strong>{formatMinutes(r.overtimeMinutes)}</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
+                    </button>
                   </td>
-                  <td
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => openDetail(r, 'overtime')}
-                  >
-                    {r.overtimeCount > 0 ? `${r.overtimeCount}건` : '-'}
-                  </td>
-                  <td
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => openDetail(r, 'leave')}
-                  >
-                    {r.leaveDays > 0 ? <strong style={{ color: 'var(--success)' }}>{r.leaveDays}일</strong> : '-'}
+                  <td>
+                    <button className="team-detail-btn" onClick={() => openDetail(r, 'leave')}>
+                      {r.leaveDays > 0 ? <><strong>{r.leaveDays}일</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -187,7 +178,6 @@ export default function TeamReportsPage() {
               <tr>
                 <td colSpan={2}><strong>합계 ({rows.length}명)</strong></td>
                 <td><strong>{formatMinutes(totalOT)}</strong></td>
-                <td><strong>{totalOTCount}건</strong></td>
                 <td><strong>{totalLeave}일</strong></td>
               </tr>
             </tfoot>

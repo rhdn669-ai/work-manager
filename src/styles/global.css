@@ -2975,6 +2975,43 @@ body {
   padding: 4px 10px;
 }
 
+/* ===== 우리 팀 상세 버튼 ===== */
+.team-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.team-detail-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.team-detail-btn strong {
+  color: var(--primary);
+}
+
+.team-detail-arrow {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: transform 0.15s, color 0.15s;
+}
+
+.team-detail-btn:hover .team-detail-arrow {
+  transform: translateX(2px);
+  color: var(--primary);
+}
+
 .home-cal-item-body { flex: 1; min-width: 0; }
 .home-cal-item-title {
   font-size: 13px;
