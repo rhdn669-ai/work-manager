@@ -7,7 +7,7 @@ import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils
 import Modal from '../../components/common/Modal';
 
 export default function ManageTeamPage() {
-  const { userProfile, isAdmin, canApproveAll } = useAuth();
+  const { userProfile, isAdmin, canApproveLeave } = useAuth();
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [overtimeMap, setOvertimeMap] = useState({});
@@ -23,14 +23,18 @@ export default function ManageTeamPage() {
     setLoading(true);
     try {
       const [allTeams, allUsers] = await Promise.all([
-        isAdmin ? getDepartments() : getDepartmentsByLeader(userProfile.uid),
+        isAdmin ? getDepartments() : (canApproveLeave ? getDepartmentsByLeader(userProfile.uid) : getDepartments()),
         getUsers(),
       ]);
-      setTeams(allTeams);
+      // 일반 직원은 자기 소속 팀만 필터
+      const visibleTeams = (!isAdmin && !canApproveLeave && userProfile.departmentId)
+        ? allTeams.filter((t) => t.id === userProfile.departmentId)
+        : allTeams;
+      setTeams(visibleTeams);
       setUsers(allUsers);
 
       // 팀원 잔업 조회 (팀장 뷰)
-      if (!isAdmin) {
+      if (!isAdmin && canApproveLeave) {
         const now = new Date();
         const start = getMonthStart(now.getFullYear(), now.getMonth() + 1);
         const end = getMonthEnd(now.getFullYear(), now.getMonth() + 1);
@@ -143,7 +147,53 @@ export default function ManageTeamPage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
-  // === 팀장(비관리자) 뷰: 팀 구성 현황 (이름 + 직급 + 이번 달 잔업) ===
+  // === 일반 직원 뷰: 소속 팀 + 팀원 이름/직급만 ===
+  if (!isAdmin && !canApproveLeave) {
+    const myTeam = teams[0];
+    const members = myTeam ? users.filter((u) => u.departmentId === myTeam.id).sort((a, b) => {
+      if (myTeam.managerId === a.uid) return -1;
+      if (myTeam.managerId === b.uid) return 1;
+      return 0;
+    }) : [];
+    const leader = myTeam ? userMap[myTeam.managerId] : null;
+    return (
+      <div className="manage-team-page">
+        <div className="page-header">
+          <h2>우리 팀{myTeam && ` — ${myTeam.name}`}</h2>
+        </div>
+        {!myTeam ? (
+          <div className="card"><div className="card-body empty-state">소속된 팀이 없습니다. 관리자에게 문의해주세요.</div></div>
+        ) : (
+          <>
+            {leader && (
+              <div className="meta-bar" style={{ marginBottom: 12 }}>
+                <span>팀장: <strong>{leader.name}</strong> {leader.position && `(${leader.position})`}</span>
+              </div>
+            )}
+            <table className="table">
+              <thead>
+                <tr><th>이름</th><th>직급</th></tr>
+              </thead>
+              <tbody>
+                {members.map((u) => (
+                  <tr key={u.uid}>
+                    <td>
+                      <strong>{u.name}</strong>
+                      {u.uid === myTeam.managerId && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>팀장</span>}
+                      {u.uid === userProfile.uid && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
+                    </td>
+                    <td>{u.position || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // === 팀장 뷰: 팀 구성 현황 (이름 + 직급 + 이번 달 잔업) ===
   if (!isAdmin) {
     const myTeam = teams[0];
     const members = myTeam ? users.filter((u) => u.departmentId === myTeam.id && u.uid !== userProfile.uid) : [];
