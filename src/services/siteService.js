@@ -147,6 +147,7 @@ export async function addFinanceItem(siteId, year, month, data) {
     amount: data.amount || 0,
     note: data.note || '',
     order: data.order || 0,
+    overtimeRecordId: data.overtimeRecordId || '',
     createdAt: new Date(),
     updatedAt: new Date(),
   });

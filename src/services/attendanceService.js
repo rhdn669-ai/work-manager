@@ -42,9 +42,12 @@ export async function approveOvertimeRecord(id) {
   }
 }
 
-// 잔업 거절 (관리자)
+// 잔업 거절 (관리자) - 기존 지출 제거
 export async function rejectOvertimeRecord(id) {
+  const snap = await getDoc(doc(db, 'overtimeRecords', id));
+  const prev = snap.exists() ? snap.data() : null;
   await updateDoc(doc(db, 'overtimeRecords', id), { status: 'rejected', updatedAt: new Date() });
+  await removeOvertimeExpense(id, prev);
 }
 
 // 승인 대기 잔업 전체 조회 (관리자용)
@@ -56,8 +59,11 @@ export async function getPendingOvertimeRecords() {
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
 
-// 잔업 삭제
+// 잔업 삭제 - 연관된 프로젝트 지출도 함께 제거
 export async function deleteOvertimeRecord(id) {
+  const snap = await getDoc(doc(db, 'overtimeRecords', id));
+  const prev = snap.exists() ? snap.data() : null;
+  await removeOvertimeExpense(id, prev);
   await deleteDoc(doc(db, 'overtimeRecords', id));
 }
 
@@ -79,21 +85,24 @@ export async function updateOvertimeRecord(id, data) {
   const newDate = data.date !== undefined ? data.date : prev.date;
   const newMinutes = data.minutes !== undefined ? data.minutes : prev.minutes;
 
-  // 기존 지출 항목 삭제 (overtimeRecordId → description 폴백)
-  let oldFinances = await findFinanceByOvertimeId(id);
-  if (oldFinances.length === 0 && prev.siteId && prev.siteId !== 'etc') {
-    const d = new Date(prev.date);
-    const all = await getFinanceItems(prev.siteId, d.getFullYear(), d.getMonth() + 1);
-    const match = all.filter((f) => f.description && f.description.includes('잔업') && f.description.includes(prev.userName) && f.description.includes(prev.date));
-    oldFinances = match;
-  }
-  for (const f of oldFinances) {
-    await deleteFinanceItem(f.id);
-  }
+  await removeOvertimeExpense(id, prev);
 
   // 새 지출 항목 생성 (새 프로젝트에)
   if (newSiteId && newSiteId !== 'etc') {
     await addOvertimeExpense(prev.userId, prev.userName, newSiteId, newDate, newMinutes, id);
+  }
+}
+
+// 잔업 record id / 폴백(description 매칭)으로 지출 항목 제거
+async function removeOvertimeExpense(overtimeId, record) {
+  let finances = await findFinanceByOvertimeId(overtimeId);
+  if (finances.length === 0 && record?.siteId && record.siteId !== 'etc' && record.date) {
+    const d = new Date(record.date);
+    const all = await getFinanceItems(record.siteId, d.getFullYear(), d.getMonth() + 1);
+    finances = all.filter((f) => f.description && f.description.includes('잔업') && f.description.includes(record.userName) && f.description.includes(record.date));
+  }
+  for (const f of finances) {
+    await deleteFinanceItem(f.id);
   }
 }
 
