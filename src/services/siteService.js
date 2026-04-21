@@ -164,6 +164,13 @@ export async function deleteFinanceItem(itemId) {
   await deleteDoc(doc(db, 'siteFinances', itemId));
 }
 
+// overtimeRecordId로 지출 항목 찾기
+export async function findFinanceByOvertimeId(overtimeRecordId) {
+  const q = query(financesRef, where('overtimeRecordId', '==', overtimeRecordId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // ---------- 월별 전체 프로젝트 직원 배정 조회 ----------
 
 export async function getAssignedEmployeeIds(year, month) {

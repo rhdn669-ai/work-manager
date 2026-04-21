@@ -5,7 +5,7 @@ import {
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
-import { addFinanceItem, getFinanceItems, deleteFinanceItem } from './siteService';
+import { addFinanceItem, deleteFinanceItem, findFinanceByOvertimeId } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
@@ -26,7 +26,7 @@ export async function addOvertimeRecord(data) {
     createdAt: new Date(),
   });
   if (status === 'approved' && data.siteId && data.siteId !== 'etc') {
-    await addOvertimeExpense(data.userId, data.userName, data.siteId, data.date, data.minutes);
+    await addOvertimeExpense(data.userId, data.userName, data.siteId, data.date, data.minutes, docRef.id);
   }
   return docRef;
 }
@@ -38,7 +38,7 @@ export async function approveOvertimeRecord(id) {
   const rec = snap.data();
   await updateDoc(doc(db, 'overtimeRecords', id), { status: 'approved', updatedAt: new Date() });
   if (rec.siteId && rec.siteId !== 'etc') {
-    await addOvertimeExpense(rec.userId, rec.userName, rec.siteId, rec.date, rec.minutes);
+    await addOvertimeExpense(rec.userId, rec.userName, rec.siteId, rec.date, rec.minutes, id);
   }
 }
 
@@ -78,34 +78,16 @@ export async function updateOvertimeRecord(id, data) {
   const newSiteId = data.siteId !== undefined ? data.siteId : prev.siteId;
   const newDate = data.date !== undefined ? data.date : prev.date;
   const newMinutes = data.minutes !== undefined ? data.minutes : prev.minutes;
-  const userName = prev.userName;
 
-  // 기존 지출 항목 삭제 (이전 프로젝트에서)
-  if (prev.siteId && prev.siteId !== 'etc') {
-    const oldD = new Date(prev.date);
-    const oldYear = oldD.getFullYear();
-    const oldMonth = oldD.getMonth() + 1;
-    const oldFinances = await getFinanceItems(prev.siteId, oldYear, oldMonth);
-    const oldItem = oldFinances.find((f) => f.description && f.description.includes(`잔업`) && f.description.includes(userName) && f.description.includes(prev.date));
-    if (oldItem) await deleteFinanceItem(oldItem.id);
+  // 기존 지출 항목 삭제 (overtimeRecordId로 정확히 찾기)
+  const oldFinances = await findFinanceByOvertimeId(id);
+  for (const f of oldFinances) {
+    await deleteFinanceItem(f.id);
   }
 
   // 새 지출 항목 생성 (새 프로젝트에)
   if (newSiteId && newSiteId !== 'etc') {
-    const user = await getUser(prev.userId);
-    const hourlyRate = Number(user?.hourlyRate) || 0;
-    if (hourlyRate > 0) {
-      const hours = newMinutes / 60;
-      const amount = Math.round(hourlyRate * hours);
-      const nd = new Date(newDate);
-      await addFinanceItem(newSiteId, nd.getFullYear(), nd.getMonth() + 1, {
-        type: 'expense',
-        description: `잔업 - ${userName} (${newDate}, ${Math.floor(hours)}h${newMinutes % 60 > 0 ? ` ${newMinutes % 60}m` : ''})`,
-        amount,
-        note: '',
-        order: 0,
-      });
-    }
+    await addOvertimeExpense(prev.userId, prev.userName, newSiteId, newDate, newMinutes, id);
   }
 }
 
@@ -140,7 +122,7 @@ export async function getAllOvertimeRecords(startDate, endDate) {
 }
 
 // 잔업 비용을 프로젝트 지출에 추가
-async function addOvertimeExpense(userId, userName, siteId, date, minutes) {
+async function addOvertimeExpense(userId, userName, siteId, date, minutes, overtimeRecordId) {
   const user = await getUser(userId);
   const hourlyRate = Number(user?.hourlyRate) || 0;
   if (hourlyRate <= 0) return;
@@ -155,5 +137,6 @@ async function addOvertimeExpense(userId, userName, siteId, date, minutes) {
     amount,
     note: '',
     order: 0,
+    overtimeRecordId: overtimeRecordId || '',
   });
 }
