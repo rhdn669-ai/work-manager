@@ -5,9 +5,85 @@ import {
 import { db } from '../config/firebase';
 import { calculateAccruedLeave } from '../utils/leaveCalculator';
 import { getUser } from './userService';
+import { syncEmployeeLeaveDaysForMonth } from './siteService';
+import { QUARTER_LEAVE_TYPES } from '../utils/constants';
 
 const leavesRef = collection(db, 'leaves');
 const balancesRef = collection(db, 'leaveBalances');
+
+// 같은 날 복수 연차 시 더 강한 유형 우선 (annual/sick > 반차 > 반반차)
+function _typeRank(t) {
+  if (!t || t === 'annual' || t === 'sick') return 3;
+  if (t === 'half_am' || t === 'half_pm') return 2;
+  if (QUARTER_LEAVE_TYPES.includes(t)) return 1;
+  return 0;
+}
+
+// 날짜 범위가 걸치는 모든 (year, month) 조합
+function _getAffectedMonths(startDate, endDate) {
+  if (!startDate || !endDate) return [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const months = new Map();
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (cur <= end) {
+    const key = `${cur.getFullYear()}-${cur.getMonth() + 1}`;
+    months.set(key, { year: cur.getFullYear(), month: cur.getMonth() + 1 });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return [...months.values()];
+}
+
+// 유저의 해당 월 (day → leaveType) 맵 구성 (confirmed 상태만)
+async function _buildUserLeaveDaysMap(userId, year, month) {
+  const q = query(leavesRef, where('userId', '==', userId));
+  const snapshot = await getDocs(q);
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const userLeaves = snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((l) => l.status === 'confirmed' && l.endDate >= monthStart && l.startDate <= monthEnd);
+
+  const map = {};
+  for (const leave of userLeaves) {
+    const start = new Date(leave.startDate);
+    const end = new Date(leave.endDate);
+    const cur = new Date(start);
+    while (cur <= end) {
+      if (cur.getFullYear() === year && cur.getMonth() + 1 === month) {
+        const day = cur.getDate();
+        if (!map[day] || _typeRank(leave.type) > _typeRank(map[day])) {
+          map[day] = leave.type || 'annual';
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return map;
+}
+
+// 연차 변경 후 공수표 dailyQuantities를 자동 동기화
+// ranges: [{ startDate, endDate }, ...] — 이전 기간과 새 기간 둘 다 전달 가능
+async function _reconcileLeaveToSiteClosings(userId, ranges) {
+  try {
+    const user = await getUser(userId);
+    if (!user?.name) return;
+    const monthKeys = new Set();
+    for (const r of ranges) {
+      for (const { year, month } of _getAffectedMonths(r.startDate, r.endDate)) {
+        monthKeys.add(`${year}-${month}`);
+      }
+    }
+    for (const key of monthKeys) {
+      const [y, mo] = key.split('-').map(Number);
+      const leaveMap = await _buildUserLeaveDaysMap(userId, y, mo);
+      await syncEmployeeLeaveDaysForMonth(user.name, y, mo, leaveMap);
+    }
+  } catch (err) {
+    console.error('연차→공수표 동기화 실패:', err);
+  }
+}
 
 // 연차 신청 (바로 사용 확정 + 잔여 차감)
 export async function requestLeave(data) {
@@ -25,6 +101,8 @@ export async function requestLeave(data) {
   });
   // 잔여 연차 차감
   await updateLeaveBalance(data.userId, data.days);
+  // 공수표 자동 동기화
+  await _reconcileLeaveToSiteClosings(data.userId, [{ startDate: data.startDate, endDate: data.endDate }]);
   return docRef;
 }
 
@@ -43,6 +121,8 @@ export async function cancelLeave(leaveId) {
   if (leave.status === 'confirmed') {
     await updateLeaveBalance(leave.userId, -leave.days);
   }
+  // 공수표 자동 동기화 (출근 복원)
+  await _reconcileLeaveToSiteClosings(leave.userId, [{ startDate: leave.startDate, endDate: leave.endDate }]);
 }
 
 // 사용 중인 연차 목록 (월 기준, 전체 사용자)
@@ -143,10 +223,14 @@ export async function deleteLeaveById(id) {
     await updateLeaveBalance(leave.userId, -(leave.days || 0));
   }
   await deleteDoc(ref);
+  // 공수표 자동 동기화 (출근 복원)
+  await _reconcileLeaveToSiteClosings(leave.userId, [{ startDate: leave.startDate, endDate: leave.endDate }]);
 }
 
 // 연차 수정 (관리자용)
 export async function updateLeaveRecord(id, data) {
+  const prevSnap = await getDoc(doc(db, 'leaves', id));
+  const prev = prevSnap.exists() ? prevSnap.data() : null;
   const update = { updatedAt: new Date() };
   if (data.reason !== undefined) update.reason = data.reason;
   if (data.startDate !== undefined) update.startDate = data.startDate;
@@ -154,6 +238,17 @@ export async function updateLeaveRecord(id, data) {
   if (data.days !== undefined) update.days = data.days;
   if (data.type !== undefined) update.type = data.type;
   await updateDoc(doc(db, 'leaves', id), update);
+
+  if (prev?.userId) {
+    const oldStart = prev.startDate;
+    const oldEnd = prev.endDate;
+    const newStart = data.startDate !== undefined ? data.startDate : prev.startDate;
+    const newEnd = data.endDate !== undefined ? data.endDate : prev.endDate;
+    await _reconcileLeaveToSiteClosings(prev.userId, [
+      { startDate: oldStart, endDate: oldEnd },
+      { startDate: newStart, endDate: newEnd },
+    ]);
+  }
 }
 
 // 하위 호환
