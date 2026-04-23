@@ -158,18 +158,19 @@ export default function ReportsPage() {
   const rows = report;
   const totalOvertimeMinutes = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
 
-  // 잔업 Top 5 (시간·금액)
+  // 잔업 Top 5 (시간·금액) + 전체 합계 금액
   const userById = Object.fromEntries(users.map((u) => [u.uid, u]));
+  const calcAmount = (uid, mins) => {
+    const hourlyRate = Number(userById[uid]?.hourlyRate) || 0;
+    const hours = (mins || 0) / 60;
+    return Math.round(hourlyRate * OVERTIME_MULTIPLIER * hours);
+  };
   const topOvertime = [...rows]
     .filter((r) => r.overtimeMinutes > 0)
     .sort((a, b) => b.overtimeMinutes - a.overtimeMinutes)
     .slice(0, 5)
-    .map((r) => {
-      const hourlyRate = Number(userById[r.uid]?.hourlyRate) || 0;
-      const hours = r.overtimeMinutes / 60;
-      const amount = Math.round(hourlyRate * OVERTIME_MULTIPLIER * hours);
-      return { uid: r.uid, name: r.name, minutes: r.overtimeMinutes, amount };
-    });
+    .map((r) => ({ uid: r.uid, name: r.name, minutes: r.overtimeMinutes, amount: calcAmount(r.uid, r.overtimeMinutes) }));
+  const totalOvertimeAmount = rows.reduce((s, r) => s + calcAmount(r.uid, r.overtimeMinutes), 0);
   const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
   const totalLeaveDays = rows.reduce((s, r) => s + r.leaveDays, 0);
 
@@ -198,14 +199,20 @@ export default function ReportsPage() {
         {topOvertime.length === 0 ? (
           <p className="ua-summary-empty">해당 월 잔업 기록 없음</p>
         ) : (
-          <ul className="ua-summary-list">
-            {topOvertime.map((r) => (
-              <li key={r.uid}>
-                <span>{r.name}</span>
-                <strong>{formatMinutes(r.minutes)} · {r.amount.toLocaleString()}원</strong>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="ua-summary-list">
+              {topOvertime.map((r) => (
+                <li key={r.uid}>
+                  <span>{r.name}</span>
+                  <strong>{formatMinutes(r.minutes)} · {r.amount.toLocaleString()}원</strong>
+                </li>
+              ))}
+            </ul>
+            <div className="ua-summary-total">
+              <span>전체 합계</span>
+              <strong>{formatMinutes(totalOvertimeMinutes)} · {totalOvertimeAmount.toLocaleString()}원</strong>
+            </div>
+          </>
         )}
       </div>
 
