@@ -448,8 +448,15 @@ export default function OutsourceManagementPage() {
                   <ul className="vendor-detail-list">
                     {detailVendor.freelancers.map((f) => {
                       const isEditing = editRateFor === f.id;
-                      const [fy, fm] = (f.dailyRateFrom || '').split('-');
-                      const fromLabel = fy && fm ? `${fy}년 ${Number(fm)}월부터` : '';
+                      const fmtYM = (s) => {
+                        if (!s) return '';
+                        const [yy, mm] = s.split('-');
+                        return yy && mm ? `${yy}년 ${Number(mm)}월` : s;
+                      };
+                      const fromLabel = f.dailyRateFrom ? `${fmtYM(f.dailyRateFrom)}부터` : '';
+                      const hasPrev = Number(f.previousDailyRate) > 0;
+                      const prevFromLabel = fmtYM(f.previousDailyRateFrom);
+                      const prevToLabel = fmtYM(f.previousDailyRateTo);
                       return (
                         <li key={f.id} className="vendor-detail-item">
                           <div className="vendor-detail-row-main">
@@ -467,6 +474,12 @@ export default function OutsourceManagementPage() {
                               {isEditing ? '취소' : '단가 변경'}
                             </button>
                           </div>
+                          {hasPrev && (
+                            <div className="previous-rate-info">
+                              이전: {Number(f.previousDailyRate).toLocaleString()}원
+                              {(prevFromLabel || prevToLabel) && ` (${prevFromLabel || '이전'} ~ ${prevToLabel || '이전'})`}
+                            </div>
+                          )}
                           {isEditing && (
                             <div className="rate-edit-panel">
                               <div className="rate-edit-row">

@@ -65,15 +65,42 @@ export function getRateForDate(freelancer, dateStr) {
   return Number(freelancer.dailyRate) || 0;
 }
 
+// 'YYYY-MM-01' 문자열의 직전 월 'YYYY-MM-01' 반환
+function prevMonthOf(fromStr) {
+  if (!fromStr) return '';
+  const [ys, ms] = fromStr.split('-');
+  const y = Number(ys); const m = Number(ms);
+  if (!y || !m) return '';
+  let py = y; let pm = m - 1;
+  if (pm <= 0) { py -= 1; pm = 12; }
+  return `${py}-${String(pm).padStart(2, '0')}-01`;
+}
+
 // 프리랜서 단가 변경 — 새 단가 + 적용 시작 월 지정
+// 기존 단가가 있었다면 previousDailyRate*에 1건 기록
 export async function setFreelancerRate(freelancerId, { dailyRate, effectiveFromMonth }) {
   if (!freelancerId) return;
-  const effectiveFrom = effectiveFromMonth || '';
-  await updateDoc(doc(db, 'freelancers', freelancerId), {
-    dailyRate: Number(dailyRate) || 0,
-    dailyRateFrom: effectiveFrom,
+  const snap = await getDoc(doc(db, 'freelancers', freelancerId));
+  const prev = snap.exists() ? snap.data() : {};
+  const prevRate = Number(prev.dailyRate) || 0;
+  const prevFrom = prev.dailyRateFrom || '';
+  const newRate = Number(dailyRate) || 0;
+  const newFrom = effectiveFromMonth || '';
+
+  const update = {
+    dailyRate: newRate,
+    dailyRateFrom: newFrom,
     updatedAt: new Date(),
-  });
+  };
+
+  // 이전 단가가 실제로 있었고, 변경 사항이 있을 때만 previous로 기록
+  if (prevRate > 0 && (prevRate !== newRate || prevFrom !== newFrom)) {
+    update.previousDailyRate = prevRate;
+    update.previousDailyRateFrom = prevFrom;
+    update.previousDailyRateTo = prevMonthOf(newFrom);
+  }
+
+  await updateDoc(doc(db, 'freelancers', freelancerId), update);
 }
 
 // 단가 이력 항목 추가 (중복 방지: 같은 effectiveFrom+rate는 skip)

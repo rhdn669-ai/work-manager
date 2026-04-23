@@ -1051,6 +1051,15 @@ body {
   justify-content: flex-end;
 }
 
+.previous-rate-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--border-strong);
+}
+
 /* 업체 상세 모달 내 '추가' 폼 (직원 / 프로젝트) */
 .vendor-add-form {
   display: flex;
