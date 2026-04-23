@@ -15,7 +15,7 @@ export default function UserManagementPage() {
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
     name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
-    leaveRemaining: '',
+    leaveRemaining: '', canViewSalary: false,
   });
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '' });
+    setForm({ name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false });
     setShowModal(true);
   }
 
@@ -68,6 +68,7 @@ export default function UserManagementPage() {
       role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
       fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
       leaveRemaining: bal ? String(bal.remainingDays) : '',
+      canViewSalary: !!user.canViewSalary,
     });
     setShowModal(true);
   }
@@ -83,6 +84,7 @@ export default function UserManagementPage() {
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
+          canViewSalary: !!form.canViewSalary,
         });
         await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
@@ -93,6 +95,7 @@ export default function UserManagementPage() {
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
+          canViewSalary: !!form.canViewSalary,
         });
         await initLeaveBalance(userId, form.joinDate);
       }
@@ -127,6 +130,17 @@ export default function UserManagementPage() {
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
 
+  const EXECUTIVE_POSITIONS = ['대표', '부사장'];
+  function getSalaryPermissionReason(u) {
+    if (u.role === 'admin') return '관리자';
+    if (EXECUTIVE_POSITIONS.includes(u.position)) return u.position;
+    if (u.canViewSalary) return '권한 부여';
+    return null;
+  }
+  const salaryViewers = users
+    .map((u) => ({ user: u, reason: getSalaryPermissionReason(u) }))
+    .filter((x) => x.reason);
+
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
@@ -141,6 +155,37 @@ export default function UserManagementPage() {
       <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
         ※ 누적 연차는 입사일 기준 자동 계산됩니다. "연차 수정"은 현재 잔여만 입력하면 이후 발생분은 자동 반영됩니다.
       </p>
+
+      <div className="card" style={{ padding: 14, marginBottom: 16, background: 'var(--pastel-amber-bg, #fff8e7)', border: '1px solid var(--pastel-amber-border, #f2d48a)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <strong style={{ fontSize: 14 }}>금액 열람 권한자 ({salaryViewers.length}명)</strong>
+          <span className="text-muted text-sm">관리자·대표·부사장은 자동 포함. 그 외 직원은 아래에서 권한 부여 가능.</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {salaryViewers.length === 0 ? (
+            <span className="text-muted text-sm">권한자가 없습니다.</span>
+          ) : (
+            salaryViewers.map(({ user, reason }) => (
+              <span
+                key={user.uid}
+                className="badge"
+                onClick={() => openEdit(user)}
+                style={{
+                  cursor: 'pointer',
+                  background: reason === '권한 부여' ? '#e0f2fe' : '#fef3c7',
+                  color: '#374151',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  fontSize: 13,
+                }}
+              >
+                {user.name} <span style={{ opacity: 0.6, marginLeft: 4 }}>({reason})</span>
+              </span>
+            ))
+          )}
+        </div>
+      </div>
 
       <table className="table user-management-table table-clickable">
         <thead>
@@ -227,6 +272,22 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>입사일</label>
             <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: (form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)) ? 'not-allowed' : 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.canViewSalary || form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)}
+                disabled={form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)}
+                onChange={(e) => setForm({ ...form, canViewSalary: e.target.checked })}
+              />
+              <span>금액 열람 권한</span>
+            </label>
+            <small className="text-muted">
+              {form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)
+                ? '관리자/대표/부사장은 자동으로 열람 권한이 부여됩니다.'
+                : '체크 시 프로젝트 단가·고정비용 등 금액 정보를 열람할 수 있습니다.'}
+            </small>
           </div>
           {editUser && balances[editUser.uid] && (
             <div className="form-group">
