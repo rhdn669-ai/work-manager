@@ -47,8 +47,7 @@ export default function SiteClosingPage() {
   const { siteId, year, month } = useParams();
   const y = Number(year);
   const m = Number(month);
-  const { isAdmin, isExecutive, userProfile } = useAuth();
-  const canViewSalary = isAdmin || isExecutive;
+  const { isAdmin, isExecutive, canViewSalary, userProfile } = useAuth();
   const navigate = useNavigate();
 
   const [site, setSite] = useState(null);

@@ -79,6 +79,8 @@ export function AuthProvider({ children }) {
   const canApproveAll = userProfile?.role === 'admin' || isExecutive;
   // 부서 or 전사 승인: 관리자 + 대표/부사장 + 팀장
   const canApproveLeave = canApproveAll || isTeamLeader;
+  // 급여/직원 비용 열람: 관리자 + 대표/부사장 + canViewSalary 플래그
+  const canViewSalary = userProfile?.role === 'admin' || isExecutive || !!userProfile?.canViewSalary;
 
   const value = {
     user: userProfile,
@@ -94,6 +96,7 @@ export function AuthProvider({ children }) {
     isExecutive,
     canApproveAll,
     canApproveLeave,
+    canViewSalary,
   };
 
   return (

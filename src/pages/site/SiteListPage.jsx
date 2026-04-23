@@ -10,8 +10,7 @@ const TYPE_LABELS = { recurring: '양산', once: '단발' };
 const STATUS_LABELS = { active: '진행 중', completed: '완료' };
 
 export default function SiteListPage() {
-  const { userProfile, isAdmin, isExecutive } = useAuth();
-  const canViewSalary = isAdmin || isExecutive;
+  const { userProfile, isAdmin, isExecutive, canViewSalary } = useAuth();
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
