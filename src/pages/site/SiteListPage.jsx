@@ -342,7 +342,7 @@ export default function SiteListPage() {
                         {!hideRev && <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>}
                         <span className="stat-expense">지출 {expenseOnly.toLocaleString()}</span>
                         {canViewSalary && <span className="stat-expense">공수 {raw.labor.toLocaleString()}</span>}
-                        <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
+                        {!hideRev && <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>}
                       </div>
                     )}
                   </div>
