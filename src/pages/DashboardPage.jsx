@@ -38,9 +38,10 @@ export default function DashboardPage() {
         isAdmin ? getDepartments() : Promise.resolve([]),
       ]);
 
-      const total = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
+      const activeRecords = records.filter((r) => r.status !== 'rejected');
+      const total = activeRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
       setMonthlyOvertime(total);
-      setOvertimeCount(records.length);
+      setOvertimeCount(activeRecords.length);
       setLeaveBalance(balance);
       setSiteCount(sites.length);
 

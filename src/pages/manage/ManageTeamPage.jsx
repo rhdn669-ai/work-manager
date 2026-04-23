@@ -44,7 +44,9 @@ export default function ManageTeamPage() {
           const members = allUsers.filter((u) => u.departmentId === myTeam.id && u.uid !== userProfile.uid);
           for (const u of members) {
             const records = await getMyOvertimeRecords(u.uid, start, end);
-            otMap[u.uid] = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
+            otMap[u.uid] = records
+              .filter((r) => r.status !== 'rejected')
+              .reduce((sum, r) => sum + (r.minutes || 0), 0);
           }
         }
         setOvertimeMap(otMap);

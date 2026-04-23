@@ -111,6 +111,7 @@ export default function ReportsPage() {
           };
         });
       records.forEach((r) => {
+        if (r.status === 'rejected') return;
         if (byUser[r.userId]) {
           byUser[r.userId].overtimeMinutes += r.minutes || 0;
           byUser[r.userId].overtimeCount++;
@@ -282,7 +283,7 @@ export default function ReportsPage() {
           tab={activeTab}
           year={year}
           month={month}
-          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid)}
+          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid && r.status !== 'rejected')}
           leaves={rawLeaves.filter((l) => l.userId === detailUser.uid)}
           siteMap={siteMap}
           canEdit={isAdmin}
