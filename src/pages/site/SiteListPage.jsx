@@ -87,6 +87,13 @@ export default function SiteListPage() {
     }
   }
 
+  // 해당 월에 실적(매출/지출/공수) 데이터가 있는지 판별
+  const hasMonthData = (s) => {
+    const v = siteStats[s.id];
+    if (!v) return false;
+    return (v.revenue || 0) > 0 || (v.expense || 0) > 0 || (v.overtime || 0) > 0 || (v.labor || 0) > 0;
+  };
+
   // 필터링된 프로젝트
   const filtered = sites.filter((s) => {
     const st = s.status || 'active';
@@ -94,11 +101,17 @@ export default function SiteListPage() {
     if (filter === 'completed') return st === 'completed';
     if (filter === 'recurring') return pt === 'recurring' && st === 'active';
     if (filter === 'once') return pt === 'once' && st === 'active';
-    return st === 'active'; // 'all' = 활성 프로젝트 전체
+    // 'all' = 활성 프로젝트 + 해당 월에 데이터가 있는 완료 프로젝트
+    if (st === 'active') return true;
+    return hasMonthData(s);
   });
 
   const filterCounts = {
-    all: sites.filter((s) => (s.status || 'active') === 'active').length,
+    all: sites.filter((s) => {
+      const st = s.status || 'active';
+      if (st === 'active') return true;
+      return hasMonthData(s);
+    }).length,
     recurring: sites.filter((s) => (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
     once: sites.filter((s) => s.projectType === 'once' && (s.status || 'active') === 'active').length,
     completed: sites.filter((s) => s.status === 'completed').length,
@@ -309,7 +322,7 @@ export default function SiteListPage() {
                       <span className="chip chip-manager">담당 {managerNames(s)}</span>
                       {period && <span className="chip chip-period">{period}</span>}
                     </div>
-                    {st !== 'completed' && (
+                    {(st !== 'completed' || hasMonthData(s)) && (
                       <div className="site-row-stats">
                         <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
                         <span className="stat-expense">지출 {expenseOnly.toLocaleString()}</span>
