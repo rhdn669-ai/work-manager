@@ -3116,6 +3116,11 @@ body {
   font-size: 15px;
 }
 
+.total-summary-item .stat-revenue { color: var(--success, #16a34a); }
+.total-summary-item .stat-expense { color: var(--danger, #dc2626); }
+.total-summary-item .stat-balance.positive { color: var(--success, #16a34a); }
+.total-summary-item .stat-balance.negative { color: var(--danger, #dc2626); }
+
 .site-row-stats {
   display: flex;
   gap: 10px;
