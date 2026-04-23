@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getFreelancers, addFreelancer, updateFreelancer, deleteFreelancer,
   getVendors, addVendor, updateVendor, deleteVendor,
+  importFromSiteClosings,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -16,6 +17,25 @@ export default function OutsourceManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({});
+  const [importing, setImporting] = useState(false);
+
+  async function handleImport() {
+    if (!confirm('모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?')) return;
+    setImporting(true);
+    try {
+      const stats = await importFromSiteClosings();
+      alert(
+        `가져오기 완료\n\n` +
+        `프리랜서 추가: ${stats.freelancersAdded}명 (기존 유지 ${stats.freelancersSkipped}명)\n` +
+        `업체 추가: ${stats.vendorsAdded}개 (기존 유지 ${stats.vendorsSkipped}개)`
+      );
+      await loadAll();
+    } catch (err) {
+      alert('가져오기 실패: ' + err.message);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   useEffect(() => {
     if (isAdmin) loadAll();
@@ -82,6 +102,14 @@ export default function OutsourceManagementPage() {
       <div className="page-header">
         <h2>외주 관리</h2>
         <div className="page-actions">
+          <button
+            className="btn btn-sm btn-outline"
+            onClick={handleImport}
+            disabled={importing}
+            title="모든 프로젝트 공수표에서 프리랜서·업체 정보 일괄 가져오기"
+          >
+            {importing ? '가져오는 중...' : '공수표에서 가져오기'}
+          </button>
           <button className="btn btn-primary" onClick={openCreate}>
             {tab === 'freelancer' ? '+ 프리랜서' : '+ 업체'} 추가
           </button>
