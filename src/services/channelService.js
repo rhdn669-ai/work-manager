@@ -3,7 +3,7 @@ import {
   query, orderBy, limit, where, onSnapshot, serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db, storage, ensureAnonymousAuth } from '../config/firebase';
 
 // ── 채널 관리 ──────────────────────────────────────────
 export async function ensureCompanyChannel() {
@@ -92,6 +92,7 @@ export async function sendChannelMessage({ channelId, userId, userName, position
 }
 
 export async function sendChannelImage({ channelId, userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `channels/${channelId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const imageUrl = await getDownloadURL(storageRef);
@@ -104,6 +105,7 @@ export async function sendChannelImage({ channelId, userId, userName, position, 
 }
 
 export async function sendChannelFile({ channelId, userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `channels/${channelId}/files/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const fileUrl = await getDownloadURL(storageRef);
