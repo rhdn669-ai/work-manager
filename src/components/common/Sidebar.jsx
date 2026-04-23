@@ -107,19 +107,26 @@ export default function Sidebar({ isOpen }) {
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <nav className="sidebar-nav">
         <div className="sidebar-edit-header">
-          <button
-            type="button"
-            className="sidebar-edit-btn"
-            onClick={() => setEditing((e) => !e)}
-            title={editing ? '편집 완료' : '순서 수정'}
-          >
-            {editing ? '완료' : '순서 수정'}
-          </button>
           {editing && (
-            <button type="button" className="sidebar-edit-btn ghost" onClick={resetOrder} title="기본값 복원">
-              초기화
+            <button
+              type="button"
+              className="sidebar-edit-icon ghost"
+              onClick={resetOrder}
+              title="기본값 복원"
+              aria-label="기본값 복원"
+            >
+              ↻
             </button>
           )}
+          <button
+            type="button"
+            className={`sidebar-edit-icon ${editing ? 'is-editing' : ''}`}
+            onClick={() => setEditing((e) => !e)}
+            title={editing ? '편집 완료' : '순서 수정'}
+            aria-label={editing ? '편집 완료' : '순서 수정'}
+          >
+            {editing ? '✓' : '✎'}
+          </button>
         </div>
 
         {visibleItems.map((item) => {
