@@ -10,7 +10,6 @@ import {
   getPendingOvertimeRecords,
   approveOvertimeRecord,
   rejectOvertimeRecord,
-  recomputeAllOvertimeExpenses,
   OVERTIME_MULTIPLIER,
 } from '../../services/attendanceService';
 import {
@@ -35,28 +34,6 @@ export default function ReportsPage() {
   const [detailUser, setDetailUser] = useState(null);
   const [pendingList, setPendingList] = useState([]);
   const [pendingBusy, setPendingBusy] = useState(null);
-  const [recomputeBusy, setRecomputeBusy] = useState(false);
-
-  async function handleRecomputeOvertime() {
-    if (!confirm('모든 승인된 잔업의 지출 금액을 시급 × 1.5 × 시간으로 재계산합니다.\n계속하시겠습니까?')) return;
-    setRecomputeBusy(true);
-    try {
-      const { total, updated, skipped } = await recomputeAllOvertimeExpenses();
-      let msg = `재계산 완료\n\n대상: ${total}건\n업데이트: ${updated}건\n건너뜀: ${skipped.length}건`;
-      if (skipped.length > 0) {
-        msg += '\n\n[건너뜀 상세]';
-        const lines = skipped.slice(0, 20).map((s) => `- ${s.userName} (${s.date}) · ${s.reason}`);
-        msg += '\n' + lines.join('\n');
-        if (skipped.length > 20) msg += `\n... 외 ${skipped.length - 20}건`;
-      }
-      alert(msg);
-      await generateReport();
-    } catch (err) {
-      alert('재계산 실패: ' + err.message);
-    } finally {
-      setRecomputeBusy(false);
-    }
-  }
 
   useEffect(() => {
     loadBase();
@@ -169,8 +146,9 @@ export default function ReportsPage() {
     .filter((r) => r.overtimeMinutes > 0)
     .sort((a, b) => b.overtimeMinutes - a.overtimeMinutes)
     .slice(0, 5)
-    .map((r) => ({ uid: r.uid, name: r.name, minutes: r.overtimeMinutes, amount: calcAmount(r.uid, r.overtimeMinutes) }));
+    .map((r) => ({ uid: r.uid, name: r.name, minutes: r.overtimeMinutes, count: r.overtimeCount, amount: calcAmount(r.uid, r.overtimeMinutes) }));
   const totalOvertimeAmount = rows.reduce((s, r) => s + calcAmount(r.uid, r.overtimeMinutes), 0);
+  const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
   const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
   const totalLeaveDays = rows.reduce((s, r) => s + r.leaveDays, 0);
 
@@ -178,17 +156,6 @@ export default function ReportsPage() {
     <div className="reports-page">
       <div className="page-header">
         <h2>잔업 · 연차</h2>
-        <div className="page-actions">
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            onClick={handleRecomputeOvertime}
-            disabled={recomputeBusy}
-            title="모든 승인된 잔업의 지출 금액을 시급 × 1.5 × 시간으로 재계산"
-          >
-            {recomputeBusy ? '재계산 중...' : '잔업 금액 재계산'}
-          </button>
-        </div>
       </div>
 
       <div className="ua-summary-card" style={{ marginBottom: 16 }}>
@@ -204,13 +171,21 @@ export default function ReportsPage() {
               {topOvertime.map((r) => (
                 <li key={r.uid}>
                   <span>{r.name}</span>
-                  <strong>{formatMinutes(r.minutes)} · {r.amount.toLocaleString()}원</strong>
+                  <strong className="ua-summary-metrics">
+                    <em>{r.count}건</em>
+                    <em>{formatMinutes(r.minutes)}</em>
+                    <em>{r.amount.toLocaleString()}원</em>
+                  </strong>
                 </li>
               ))}
             </ul>
             <div className="ua-summary-total">
               <span>전체 합계</span>
-              <strong>{formatMinutes(totalOvertimeMinutes)} · {totalOvertimeAmount.toLocaleString()}원</strong>
+              <strong className="ua-summary-metrics">
+                <em>{totalOvertimeCount}건</em>
+                <em>{formatMinutes(totalOvertimeMinutes)}</em>
+                <em>{totalOvertimeAmount.toLocaleString()}원</em>
+              </strong>
             </div>
           </>
         )}
