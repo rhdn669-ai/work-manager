@@ -3282,12 +3282,13 @@ body {
   color: var(--danger, #dc2626);
 }
 
-/* 우측 stats 패널 — 항목 수에 따라 균등 분배 */
+/* 우측 세로 stats 패널 */
 .site-row-stats-panel {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
-  gap: 0;
+  gap: 3px;
+  min-width: 160px;
   padding: 4px 10px 4px 12px;
   border-left: 1px solid var(--border);
   font-size: 11px;
@@ -3295,35 +3296,31 @@ body {
 }
 .site-row-stats-panel .stat-row {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  flex: 1;
-  padding: 0 8px;
-  border-right: 1px solid var(--border);
-}
-.site-row-stats-panel .stat-row:last-child {
-  border-right: none;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
 }
 .site-row-stats-panel .stat-row > span {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 10px;
-  white-space: nowrap;
+  font-size: 11px;
+  flex-shrink: 0;
+  width: 30px;
 }
 .site-row-stats-panel .stat-row > strong {
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 12px;
   color: var(--text);
-  white-space: nowrap;
+  text-align: right;
+  flex: 1;
 }
 .site-row-stats-panel .stat-row > .stat-revenue { color: var(--success); }
 .site-row-stats-panel .stat-row > .stat-expense { color: var(--danger); }
 .site-row-stats-panel .stat-balance-row {
-  background: var(--bg-secondary, #f8f9fa);
-  border-radius: 6px;
+  margin-top: 3px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--border);
 }
 .site-row-stats-panel .stat-balance-row > strong {
   font-size: 13px;
@@ -3343,13 +3340,20 @@ body {
     margin-top: 8px;
     border-left: none;
     border-top: 1px solid var(--border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 14px;
   }
   .site-row-stats-panel .stat-row {
-    border-right: 1px solid var(--border);
-    padding: 4px 6px;
+    justify-content: flex-start;
+    gap: 6px;
   }
-  .site-row-stats-panel .stat-row:last-child {
-    border-right: none;
+  .site-row-stats-panel .stat-balance-row {
+    margin-top: 0;
+    padding-top: 4px;
+    border-top: 1px dashed var(--border);
+    flex-basis: 100%;
+    justify-content: space-between;
   }
 }
 
