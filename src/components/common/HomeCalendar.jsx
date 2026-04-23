@@ -104,8 +104,8 @@ export default function HomeCalendar() {
     setPersonalEvents(list);
   }
 
-  function openAddPersonal() {
-    const d = selectedDate || toISO(new Date());
+  function openAddPersonal(dateISO) {
+    const d = dateISO || selectedDate || toISO(new Date());
     setPersonalForm({ title: '', startDate: d, endDate: d, note: '' });
     setShowPersonalModal(true);
   }
@@ -252,9 +252,6 @@ export default function HomeCalendar() {
           <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); prev(); }} aria-label="이전 달">‹</button>
           <button type="button" className="cal-today-btn" onPointerDown={(e) => { e.preventDefault(); goToday(); }}>오늘</button>
           <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); next(); }} aria-label="다음 달">›</button>
-          {userProfile?.uid && (
-            <button type="button" className="cal-add-personal-btn" onClick={openAddPersonal} title="내 일정 추가">+ 내 일정</button>
-          )}
         </div>
       </div>
 
@@ -281,7 +278,14 @@ export default function HomeCalendar() {
                       type="button"
                       key={di}
                       className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''}`}
-                      onPointerDown={(e) => { e.preventDefault(); setSelectedDate(iso); }}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        if (iso === selectedDate && userProfile?.uid) {
+                          openAddPersonal(iso);
+                        } else {
+                          setSelectedDate(iso);
+                        }
+                      }}
                     >
                       <span className="home-cal-date">{d}</span>
                       <span className="home-cal-dots">
@@ -300,7 +304,12 @@ export default function HomeCalendar() {
           <div className="home-calendar-list">
             {selectedDate ? (
               <>
-                <div className="home-cal-list-head">{selectedDate}</div>
+                <div className="home-cal-list-head">
+                  {selectedDate}
+                  {userProfile?.uid && (
+                    <span className="home-cal-list-hint"> · 한 번 더 누르면 내 일정 추가</span>
+                  )}
+                </div>
                 {selectedEvents.length === 0 ? (
                   <div className="home-cal-list-empty">이 날짜의 일정이 없습니다.</div>
                 ) : (

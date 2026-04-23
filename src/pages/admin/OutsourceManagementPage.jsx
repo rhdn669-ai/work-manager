@@ -454,9 +454,25 @@ export default function OutsourceManagementPage() {
                         return yy && mm ? `${yy}년 ${Number(mm)}월` : s;
                       };
                       const fromLabel = f.dailyRateFrom ? `${fmtYM(f.dailyRateFrom)}부터` : '';
-                      const hasPrev = Number(f.previousDailyRate) > 0;
-                      const prevFromLabel = fmtYM(f.previousDailyRateFrom);
-                      const prevToLabel = fmtYM(f.previousDailyRateTo);
+                      // rateHistory(신규) + previousDailyRate*(레거시)를 모두 모아 내림차순 표시
+                      const historyList = [];
+                      if (Array.isArray(f.rateHistory)) {
+                        f.rateHistory.forEach((h) => {
+                          if (!h || !(Number(h.rate) > 0)) return;
+                          historyList.push({
+                            rate: Number(h.rate),
+                            from: h.effectiveFrom || '',
+                            to: h.effectiveTo || '',
+                          });
+                        });
+                      }
+                      if (Number(f.previousDailyRate) > 0) {
+                        const legacyFrom = f.previousDailyRateFrom || '';
+                        const legacyTo = f.previousDailyRateTo || '';
+                        const dup = historyList.some((h) => h.rate === Number(f.previousDailyRate) && h.from === legacyFrom && h.to === legacyTo);
+                        if (!dup) historyList.push({ rate: Number(f.previousDailyRate), from: legacyFrom, to: legacyTo });
+                      }
+                      historyList.sort((a, b) => (b.from || '').localeCompare(a.from || ''));
                       return (
                         <li key={f.id} className="vendor-detail-item">
                           <div className="vendor-detail-row-main">
@@ -474,10 +490,19 @@ export default function OutsourceManagementPage() {
                               {isEditing ? '취소' : '단가 변경'}
                             </button>
                           </div>
-                          {hasPrev && (
-                            <div className="previous-rate-info">
-                              이전: {Number(f.previousDailyRate).toLocaleString()}원
-                              {(prevFromLabel || prevToLabel) && ` (${prevFromLabel || '이전'} ~ ${prevToLabel || '이전'})`}
+                          {historyList.length > 0 && (
+                            <div className="rate-history-list">
+                              <div className="rate-history-title">단가 이력</div>
+                              {historyList.map((h, idx) => {
+                                const hf = fmtYM(h.from);
+                                const ht = fmtYM(h.to);
+                                const period = hf || ht ? `(${hf || '이전'} ~ ${ht || '이전'})` : '';
+                                return (
+                                  <div className="previous-rate-info" key={`${h.rate}-${h.from}-${h.to}-${idx}`}>
+                                    {h.rate.toLocaleString()}원 {period}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           {isEditing && (

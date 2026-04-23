@@ -1059,6 +1059,18 @@ body {
   border-radius: var(--radius-sm);
   border-left: 2px solid var(--border-strong);
 }
+.rate-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+.rate-history-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
 
 /* 업체 상세 모달 내 '추가' 폼 (직원 / 프로젝트) */
 .vendor-add-form {
@@ -4107,22 +4119,11 @@ body {
 .home-cal-dot.type-leave { background: #10b981; }
 .home-cal-dot.type-personal { background: #ec4899; }
 
-/* 내 일정 추가 버튼 */
-.cal-add-personal-btn {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--primary-soft);
-  color: var(--primary-hover);
+.home-cal-list-hint {
   font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: 4px;
-  transition: background-color 0.12s, border-color 0.12s;
-}
-.cal-add-personal-btn:hover {
-  background: var(--primary-softer);
-  border-color: var(--primary);
+  font-weight: 500;
+  color: #94a3b8;
+  margin-left: 6px;
 }
 
 .home-cal-item.type-personal {

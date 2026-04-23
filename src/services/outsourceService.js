@@ -44,23 +44,20 @@ export async function deleteFreelancer(id) {
 }
 
 // 특정 날짜(YYYY-MM-DD)에 적용되는 단가 반환
-// 정책: dailyRateFrom 지정 시 해당 월 이후만 적용, 이전이면 dailyRate fallback
-// 레거시 rateHistory가 있으면 기존 로직 사용 (호환)
+// 우선순위: 현재 단가(dailyRateFrom 이후) > rateHistory 매칭(effectiveFrom~effectiveTo) > fallback dailyRate
 export function getRateForDate(freelancer, dateStr) {
   if (!freelancer) return 0;
-  // 레거시 호환: rateHistory가 있으면 기존 방식
+  const currentFrom = freelancer.dailyRateFrom;
+  if (currentFrom && dateStr >= currentFrom) {
+    return Number(freelancer.dailyRate) || 0;
+  }
   const history = Array.isArray(freelancer.rateHistory) ? freelancer.rateHistory : [];
   if (history.length > 0) {
-    const applicable = history
-      .filter((h) => h && h.effectiveFrom && h.effectiveFrom <= dateStr)
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
-    if (applicable.length > 0) return Number(applicable[0].rate) || 0;
-  }
-  // 신규 정책: dailyRate + dailyRateFrom
-  const from = freelancer.dailyRateFrom; // 'YYYY-MM-01' 또는 없음
-  if (from && dateStr < from) {
-    // 적용 시작 월 이전 → 과거엔 이 단가 기록 없음, fallback
-    return Number(freelancer.dailyRate) || 0;
+    // effectiveFrom <= dateStr <= effectiveTo (effectiveTo 없으면 무제한)
+    const match = history
+      .filter((h) => h && h.effectiveFrom && h.effectiveFrom <= dateStr && (!h.effectiveTo || h.effectiveTo >= dateStr))
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+    if (match) return Number(match.rate) || 0;
   }
   return Number(freelancer.dailyRate) || 0;
 }
@@ -77,7 +74,7 @@ function prevMonthOf(fromStr) {
 }
 
 // 프리랜서 단가 변경 — 새 단가 + 적용 시작 월 지정
-// 기존 단가가 있었다면 previousDailyRate*에 1건 기록
+// 기존 단가가 있었다면 rateHistory에 누적 기록 (과거 기록을 모두 보존)
 export async function setFreelancerRate(freelancerId, { dailyRate, effectiveFromMonth }) {
   if (!freelancerId) return;
   const snap = await getDoc(doc(db, 'freelancers', freelancerId));
@@ -93,11 +90,37 @@ export async function setFreelancerRate(freelancerId, { dailyRate, effectiveFrom
     updatedAt: new Date(),
   };
 
-  // 이전 단가가 실제로 있었고, 변경 사항이 있을 때만 previous로 기록
+  // 이전 단가가 실제로 있었고, 변경 사항이 있을 때만 rateHistory에 항목 추가
   if (prevRate > 0 && (prevRate !== newRate || prevFrom !== newFrom)) {
-    update.previousDailyRate = prevRate;
-    update.previousDailyRateFrom = prevFrom;
-    update.previousDailyRateTo = prevMonthOf(newFrom);
+    const existing = Array.isArray(prev.rateHistory) ? prev.rateHistory : [];
+    // 레거시 previousDailyRate가 있고 rateHistory에 아직 병합되지 않았다면 선반영
+    const migrated = [];
+    if (
+      Number(prev.previousDailyRate) > 0
+      && !existing.some((h) => h && h.rate === Number(prev.previousDailyRate) && (h.effectiveFrom || '') === (prev.previousDailyRateFrom || ''))
+    ) {
+      migrated.push({
+        rate: Number(prev.previousDailyRate) || 0,
+        effectiveFrom: prev.previousDailyRateFrom || '',
+        effectiveTo: prev.previousDailyRateTo || prevMonthOf(prevFrom),
+      });
+    }
+    const newEntry = {
+      rate: prevRate,
+      effectiveFrom: prevFrom,
+      effectiveTo: prevMonthOf(newFrom),
+    };
+    // 중복 방지
+    const merged = [...existing, ...migrated];
+    const dupKey = (h) => `${h.rate}|${h.effectiveFrom || ''}|${h.effectiveTo || ''}`;
+    if (!merged.some((h) => dupKey(h) === dupKey(newEntry))) {
+      merged.push(newEntry);
+    }
+    update.rateHistory = merged;
+    // 레거시 필드 정리 (이미 rateHistory로 옮김)
+    update.previousDailyRate = 0;
+    update.previousDailyRateFrom = '';
+    update.previousDailyRateTo = '';
   }
 
   await updateDoc(doc(db, 'freelancers', freelancerId), update);
