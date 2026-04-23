@@ -33,10 +33,20 @@ export default function SiteListPage() {
   });
   const [managerListOpen, setManagerListOpen] = useState(false);
   const [mirrorListOpen, setMirrorListOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
     if (userProfile) loadData();
   }, [userProfile, year, month]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = (e) => {
+      if (!e.target.closest('.site-row-actions')) setOpenMenuId(null);
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
 
   async function loadData() {
     setLoading(true);
@@ -354,11 +364,31 @@ export default function SiteListPage() {
                 </Link>
                 {isAdmin && (
                   <div className="site-row-actions">
-                    <button className="btn btn-sm btn-outline" onClick={(e) => { e.preventDefault(); openEdit(s); }}>수정</button>
-                    {st === 'completed' && (
-                      <button className="btn btn-sm btn-outline" onClick={(e) => handleToggleStatus(s, e)}>재활성</button>
+                    <button
+                      type="button"
+                      className="site-row-menu-btn"
+                      aria-label="관리 메뉴"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === s.id ? null : s.id);
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="5" r="1.8" />
+                        <circle cx="12" cy="12" r="1.8" />
+                        <circle cx="12" cy="19" r="1.8" />
+                      </svg>
+                    </button>
+                    {openMenuId === s.id && (
+                      <div className="site-row-menu" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <button type="button" className="site-row-menu-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMenuId(null); openEdit(s); }}>수정</button>
+                        {st === 'completed' && (
+                          <button type="button" className="site-row-menu-item" onClick={(e) => { setOpenMenuId(null); handleToggleStatus(s, e); }}>재활성</button>
+                        )}
+                        <button type="button" className="site-row-menu-item site-row-menu-danger" onClick={(e) => { setOpenMenuId(null); handleDelete(s, e); }}>삭제</button>
+                      </div>
                     )}
-                    <button className="btn btn-sm btn-danger" onClick={(e) => handleDelete(s, e)}>삭제</button>
                   </div>
                 )}
               </div>

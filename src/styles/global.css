@@ -2382,12 +2382,7 @@ body {
   position: absolute;
   top: 10px;
   right: 12px;
-  display: flex;
-  gap: 6px;
-  z-index: 2;
-  background: transparent;
-  border: none;
-  padding: 0;
+  z-index: 3;
 }
 
 @media (max-width: 480px) {
@@ -2396,6 +2391,66 @@ body {
     right: 8px;
   }
 }
+
+.site-row-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.site-row-menu-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-hover);
+}
+
+.site-row-menu {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+  animation: site-row-menu-in 0.12s ease-out;
+}
+@keyframes site-row-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.site-row-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+.site-row-menu-item:hover {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
+.site-row-menu-danger { color: var(--danger); }
+.site-row-menu-danger:hover { background: #fef2f2; color: #b91c1c; }
 
 /* ===== 셀렉트 드롭다운 (팀원 선택 등) ===== */
 .select-dropdown-toggle {
