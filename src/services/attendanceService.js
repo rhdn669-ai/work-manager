@@ -161,13 +161,17 @@ async function addOvertimeExpense(userId, userName, siteId, date, minutes, overt
 // 시급이 변경되었거나 OVERTIME_MULTIPLIER가 바뀌었을 때 사용
 export async function recomputeAllOvertimeExpenses() {
   const snap = await getDocs(overtimeRef);
-  const approved = snap.docs
+  const approvedAll = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((r) => r.status === 'approved' && r.siteId && r.siteId !== 'etc');
+    .filter((r) => r.status === 'approved');
 
-  const stats = { total: approved.length, updated: 0, skipped: [] };
-  for (const rec of approved) {
+  const stats = { total: approvedAll.length, updated: 0, skipped: [] };
+  for (const rec of approvedAll) {
     try {
+      if (!rec.siteId || rec.siteId === 'etc') {
+        stats.skipped.push({ userName: rec.userName || '(이름없음)', date: rec.date, reason: '프로젝트 미지정(기타)' });
+        continue;
+      }
       const user = await getUser(rec.userId);
       const hourlyRate = Number(user?.hourlyRate) || 0;
       if (hourlyRate <= 0) {
@@ -182,12 +186,15 @@ export async function recomputeAllOvertimeExpenses() {
         stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '연결된 지출 항목 없음' });
         continue;
       }
+      let rowUpdated = false;
       for (const f of fins) {
         if (Number(f.amount) !== newAmount) {
           await updateFinanceItem(f.id, { amount: newAmount });
-          stats.updated++;
+          rowUpdated = true;
         }
       }
+      if (rowUpdated) stats.updated++;
+      else stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '이미 최신 금액' });
     } catch (err) {
       console.error('잔업 재계산 실패:', rec.id, err);
       stats.skipped.push({ userName: rec.userName || '(이름없음)', date: rec.date, reason: `에러: ${err.message}` });
