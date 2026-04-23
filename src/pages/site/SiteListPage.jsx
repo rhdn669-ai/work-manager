@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
@@ -11,6 +11,7 @@ const STATUS_LABELS = { active: '진행 중', completed: '완료' };
 
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive, canViewSalary } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
@@ -20,7 +21,8 @@ export default function SiteListPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [filter, setFilter] = useState('all'); // all | recurring | once | completed
+  const filter = searchParams.get('filter') || 'all';
+  const setFilter = (val) => setSearchParams(val === 'all' ? {} : { filter: val }, { replace: false });
 
   // 프로젝트 추가/수정 모달
   const [showModal, setShowModal] = useState(false);
