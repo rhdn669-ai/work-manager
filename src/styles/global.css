@@ -4474,46 +4474,70 @@ body {
 
 .closing-summary {
   display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 12px 16px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 10px;
   margin-bottom: 14px;
-  flex-wrap: wrap;
   font-size: 12px;
+  overflow: hidden;
 }
 
 .closing-summary-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+.closing-summary-item:last-child {
+  border-right: none;
 }
 
 .closing-summary-item .label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   font-weight: 500;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .closing-summary-item strong {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .closing-summary-total {
-  margin-left: auto;
-  padding-left: 18px;
-  border-left: 1px solid var(--border);
+  flex: 1.5;
+  background: var(--bg-secondary, #f8f9fa);
 }
 
 .closing-summary-total strong {
   color: var(--primary);
-  font-size: 18px;
+  font-size: 15px;
+}
+
+.closing-summary-net strong {
+  font-size: 15px;
+}
+
+.closing-save-status {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+  margin-bottom: 6px;
+  font-size: 11px;
 }
 
 .total-closing-summary {

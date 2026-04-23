@@ -681,19 +681,15 @@ export default function SiteClosingPage() {
           </div>
         )}
         {!hideRevenue && (
-          <div className="closing-summary-item closing-summary-net" style={{
-            borderLeft: '2px solid var(--border-strong)',
-            paddingLeft: 16,
-            marginLeft: 4,
-          }}>
+          <div className="closing-summary-item closing-summary-net">
             <span className="label">합계</span>
-            <strong style={{ color: netTotal >= 0 ? 'var(--success)' : 'var(--danger)', fontSize: 15 }}>
+            <strong style={{ color: netTotal >= 0 ? 'var(--success)' : 'var(--danger)' }}>
               {netTotal >= 0 ? '+' : ''}{netTotal.toLocaleString()}원
             </strong>
           </div>
         )}
-        {canEdit && saveStatus}
       </div>
+      {canEdit && <div className="closing-save-status">{saveStatus}</div>}
 
       {/* 매출 섹션 (hideRevenue 프로젝트는 숨김) */}
       {!hideRevenue && (
