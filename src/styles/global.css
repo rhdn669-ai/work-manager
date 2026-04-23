@@ -3390,6 +3390,45 @@ body {
   position: relative;
 }
 
+.once-total-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 16px;
+  background: var(--bg-secondary, #f8f9fa);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  font-size: 11px;
+  margin-top: -4px;
+}
+
+.once-total-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.once-total-items {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.once-total-items strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.once-total-net {
+  margin-left: auto;
+}
+
 .site-row-actions {
   position: absolute;
   top: 6px;

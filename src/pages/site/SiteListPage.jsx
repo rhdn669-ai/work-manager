@@ -365,10 +365,7 @@ export default function SiteListPage() {
             const isOnce = pt === 'once';
 
             // 단발성: 전체 누적 통계 / 양산: 선택 월 통계
-            const raw = isOnce
-              ? (onceTotals[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 })
-              : (siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 });
-
+            const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
             const overtimeShown = canViewSalary ? (raw.overtime || 0) : 0;
             const laborShown = canViewSalary ? raw.labor : 0;
             const expenseOnly = raw.expense + overtimeShown;
@@ -376,7 +373,11 @@ export default function SiteListPage() {
             const revenueShown = hideRev ? 0 : raw.revenue;
             const balance = revenueShown - totalExpense;
 
-            const hasData = raw.revenue > 0 || raw.expense > 0 || (raw.overtime || 0) > 0 || raw.labor > 0;
+            // 단발성 누적
+            const allRaw = isOnce ? (onceTotals[s.id] || null) : null;
+            const allExpenseOnly = allRaw ? (allRaw.expense + (canViewSalary ? (allRaw.overtime || 0) : 0)) : 0;
+            const allLaborShown = allRaw && canViewSalary ? allRaw.labor : 0;
+            const allBalance = allRaw ? ((hideRev ? 0 : allRaw.revenue) - allExpenseOnly - allLaborShown) : 0;
             return (
               <div key={s.id} className="site-row-wrapper">
                 <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
@@ -401,7 +402,7 @@ export default function SiteListPage() {
                       {period && <span className="chip chip-period">{period}</span>}
                     </div>
                   </div>
-                  {(isOnce ? hasData : (st !== 'completed' || hasMonthData(s))) && (
+                  {(st !== 'completed' || hasMonthData(s)) && (
                     <div className="site-row-stats-panel">
                       {!hideRev && (
                         <div className="stat-row">
@@ -464,6 +465,19 @@ export default function SiteListPage() {
                         <button type="button" className="site-row-menu-item site-row-menu-danger" onClick={(e) => { setOpenMenuId(null); handleDelete(s, e); }}>삭제</button>
                       </div>
                     )}
+                  </div>
+                )}
+                {isOnce && allRaw && !hideRev && (
+                  <div className="once-total-bar">
+                    <span className="once-total-label">총마감</span>
+                    <div className="once-total-items">
+                      <span>매출 <strong style={{ color: 'var(--success)' }}>{allRaw.revenue.toLocaleString()}원</strong></span>
+                      <span>지출 <strong style={{ color: 'var(--danger)' }}>{allExpenseOnly.toLocaleString()}원</strong></span>
+                      {canViewSalary && allRaw.labor > 0 && (
+                        <span>인건비 <strong style={{ color: 'var(--danger)' }}>{allLaborShown.toLocaleString()}원</strong></span>
+                      )}
+                      <span className="once-total-net">합계 <strong style={{ color: allBalance >= 0 ? 'var(--success)' : 'var(--danger)' }}>{allBalance >= 0 ? '+' : ''}{allBalance.toLocaleString()}원</strong></span>
+                    </div>
                   </div>
                 )}
               </div>
