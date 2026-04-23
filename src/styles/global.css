@@ -940,11 +940,14 @@ body {
   border: none;
   padding: 0;
   color: var(--text);
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   cursor: pointer;
   text-align: left;
   transition: color 0.1s;
 }
+.vendor-name-link strong { font-size: inherit; font-weight: inherit; }
 .vendor-name-link:hover { color: var(--primary-hover); text-decoration: underline; }
 
 /* 업체 상세 리스트 (소속 직원 / 참여 프로젝트) */
