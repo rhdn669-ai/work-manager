@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, getAllClosingItemsBySite, getAllFinanceItemsBySite, createSite, updateSite, deleteSite } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
@@ -16,7 +16,6 @@ export default function SiteListPage() {
   const [userMap, setUserMap] = useState({});
   const [departments, setDepartments] = useState([]);
   const [siteStats, setSiteStats] = useState({});
-  const [onceTotals, setOnceTotals] = useState({}); // 단발성 전체 누적
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -104,25 +103,6 @@ export default function SiteListPage() {
         stats[s.id] = { ...own, expense: own.expense + mirroredExpense };
       }
       setSiteStats(stats);
-
-      // 단발성 프로젝트: 전체 월 누적 합계
-      const onceSites = list.filter((s) => s.projectType === 'once');
-      if (onceSites.length > 0) {
-        const totals = {};
-        await Promise.all(onceSites.map(async (s) => {
-          const [allItems, allFins] = await Promise.all([
-            getAllClosingItemsBySite(s.id),
-            getAllFinanceItemsBySite(s.id),
-          ]);
-          totals[s.id] = {
-            revenue: allFins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
-            expense: allFins.filter((f) => f.type === 'expense' && !isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
-            overtime: allFins.filter((f) => f.type === 'expense' && isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
-            labor: allItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0),
-          };
-        }));
-        setOnceTotals(totals);
-      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -373,11 +353,6 @@ export default function SiteListPage() {
             const revenueShown = hideRev ? 0 : raw.revenue;
             const balance = revenueShown - totalExpense;
 
-            // 단발성 누적
-            const allRaw = isOnce ? (onceTotals[s.id] || null) : null;
-            const allExpenseOnly = allRaw ? (allRaw.expense + (canViewSalary ? (allRaw.overtime || 0) : 0)) : 0;
-            const allLaborShown = allRaw && canViewSalary ? allRaw.labor : 0;
-            const allBalance = allRaw ? ((hideRev ? 0 : allRaw.revenue) - allExpenseOnly - allLaborShown) : 0;
             return (
               <div key={s.id} className="site-row-wrapper">
                 <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
@@ -430,12 +405,10 @@ export default function SiteListPage() {
                       )}
                     </div>
                   )}
-                  {!isOnce && (
-                    <div className="site-row-period">
-                      <div className="period-y">{year}</div>
-                      <div className="period-m">{String(month).padStart(2, '0')}월</div>
-                    </div>
-                  )}
+                  <div className="site-row-period">
+                    <div className="period-y">{year}</div>
+                    <div className="period-m">{String(month).padStart(2, '0')}월</div>
+                  </div>
                   <div className="site-row-arrow">&rarr;</div>
                 </Link>
                 {isAdmin && (
@@ -465,19 +438,6 @@ export default function SiteListPage() {
                         <button type="button" className="site-row-menu-item site-row-menu-danger" onClick={(e) => { setOpenMenuId(null); handleDelete(s, e); }}>삭제</button>
                       </div>
                     )}
-                  </div>
-                )}
-                {isOnce && allRaw && !hideRev && (
-                  <div className="once-total-bar">
-                    <span className="once-total-label">총마감</span>
-                    <div className="once-total-items">
-                      <span>매출 <strong style={{ color: 'var(--success)' }}>{allRaw.revenue.toLocaleString()}원</strong></span>
-                      <span>지출 <strong style={{ color: 'var(--danger)' }}>{allExpenseOnly.toLocaleString()}원</strong></span>
-                      {canViewSalary && allRaw.labor > 0 && (
-                        <span>인건비 <strong style={{ color: 'var(--danger)' }}>{allLaborShown.toLocaleString()}원</strong></span>
-                      )}
-                      <span className="once-total-net">합계 <strong style={{ color: allBalance >= 0 ? 'var(--success)' : 'var(--danger)' }}>{allBalance >= 0 ? '+' : ''}{allBalance.toLocaleString()}원</strong></span>
-                    </div>
                   </div>
                 )}
               </div>
