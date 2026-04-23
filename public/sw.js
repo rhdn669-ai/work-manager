@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iopn-v1';
+const CACHE_NAME = 'iopn-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -30,6 +30,11 @@ self.addEventListener('activate', (e) => {
 // Fetch: Network-first (API/Firebase), Cache-first (정적 자산)
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
+
+  // http(s) 스킴만 처리 (chrome-extension, data, blob 등 제외)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
 
   // Firebase/API 요청은 항상 네트워크 우선
   if (
