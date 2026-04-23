@@ -345,7 +345,7 @@ body {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.005em;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.08s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .nav-link:hover {
@@ -358,7 +358,11 @@ body {
   background: #ffffff;
   color: #9A3412;
   font-weight: 700;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.10),
+    0 6px 16px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
 }
 
 .nav-link.has-unread {
