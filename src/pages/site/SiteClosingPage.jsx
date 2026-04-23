@@ -723,8 +723,6 @@ export default function SiteClosingPage() {
                             const isOnLeave = !!leaveType;
                             const workFraction = leaveWorkFraction(leaveType);
                             const isFullLeave = isOnLeave && workFraction === 0;
-                            const numV = Number(v) || 0;
-                            const isPresent = numV > 0;
                             const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
                             return (
                               <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls}`} key={di}>
@@ -732,28 +730,17 @@ export default function SiteClosingPage() {
                                 {isOnLeave && (
                                   <div className={`leave-badge leave-badge-${leaveType}`}>{leaveBadgeLabel(leaveType)}</div>
                                 )}
-                                {isFullLeave ? null : isEmployee ? (
-                                  <button
-                                    type="button"
-                                    className={`attendance-badge ${isPresent ? 'active' : ''}`}
-                                    onClick={() => {
-                                      if (!canEdit) return;
-                                      updateDay(it.id, d, isPresent ? '' : workFraction);
-                                      flushRow(it.id);
-                                    }}
-                                    disabled={!canEdit}
-                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : ''}
-                                  >
-                                    {isPresent ? (numV === 1 ? '출근' : String(numV)) : ''}
-                                  </button>
-                                ) : (
+                                {isFullLeave ? null : (
                                   <input
                                     type="number"
                                     step="0.25"
+                                    min="0"
+                                    max="1"
                                     value={v ?? ''}
                                     onChange={(e) => updateDay(it.id, d, e.target.value)}
                                     onBlur={() => flushRow(it.id)}
                                     disabled={!canEdit}
+                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : ''}
                                   />
                                 )}
                               </div>
