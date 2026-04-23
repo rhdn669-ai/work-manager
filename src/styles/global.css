@@ -4531,7 +4531,6 @@ body {
 
 .closing-summary-total {
   flex: 1;
-  background: var(--bg-secondary, #f8f9fa);
 }
 
 .closing-summary-total strong {
