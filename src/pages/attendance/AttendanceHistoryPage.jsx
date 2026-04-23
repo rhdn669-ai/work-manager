@@ -38,7 +38,7 @@ export default function AttendanceHistoryPage() {
       const start = getMonthStart(year, month);
       const end = getMonthEnd(year, month);
       const data = await getMyOvertimeRecords(userProfile.uid, start, end);
-      setRecords(data.filter((r) => r.status !== 'rejected'));
+      setRecords(data.filter((r) => r.status === 'approved'));
     } catch (err) {
       console.error(err);
     } finally {

@@ -38,7 +38,7 @@ export default function DashboardPage() {
         isAdmin ? getDepartments() : Promise.resolve([]),
       ]);
 
-      const activeRecords = records.filter((r) => r.status !== 'rejected');
+      const activeRecords = records.filter((r) => r.status === 'approved');
       const total = activeRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
       setMonthlyOvertime(total);
       setOvertimeCount(activeRecords.length);

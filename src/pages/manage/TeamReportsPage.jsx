@@ -85,7 +85,7 @@ export default function TeamReportsPage() {
 
   const overtimeByUser = {};
   rawRecords.forEach((r) => {
-    if (r.status === 'rejected') return;
+    if (r.status !== 'approved') return;
     if (!overtimeByUser[r.userId]) overtimeByUser[r.userId] = { minutes: 0, count: 0 };
     overtimeByUser[r.userId].minutes += r.minutes || 0;
     overtimeByUser[r.userId].count++;
@@ -191,7 +191,7 @@ export default function TeamReportsPage() {
           tab={detailTab}
           year={year}
           month={month}
-          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid && r.status !== 'rejected')}
+          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid && r.status === 'approved')}
           leaves={rawLeaves.filter((l) => l.userId === detailUser.uid)}
           siteMap={siteMap}
           canEdit={isAdmin}

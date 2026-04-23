@@ -45,7 +45,7 @@ export default function ManageTeamPage() {
           for (const u of members) {
             const records = await getMyOvertimeRecords(u.uid, start, end);
             otMap[u.uid] = records
-              .filter((r) => r.status !== 'rejected')
+              .filter((r) => r.status === 'approved')
               .reduce((sum, r) => sum + (r.minutes || 0), 0);
           }
         }
