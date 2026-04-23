@@ -283,20 +283,7 @@ export default function SiteClosingPage() {
     const monthlySalary = Number(user.fixedCost) || 0;
     const workingDays = getWorkingDaysInMonth(y, m);
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
-    const userLeaveDays = leaveDays[user.name] || {};
-    const dq = {};
-    // 단발성 프로젝트는 출근일자를 비워두고 사용자가 직접 입력
-    const isOnceProject = site?.projectType === 'once';
-    if (!isOnceProject) {
-      const totalDays = daysInMonth(y, m);
-      for (let d = 1; d <= totalDays; d++) {
-        const dow = new Date(y, m - 1, d).getDay();
-        if (dow === 0 || dow === 6) continue;
-        const frac = leaveWorkFraction(userLeaveDays[d]);
-        if (frac > 0) dq[d] = frac;
-      }
-    }
-    const quantity = Object.values(dq).reduce((s, v) => s + v, 0);
+    // 출근일자는 비운 상태로 생성 — 사용자가 날짜별로 직접 기록
     await addClosingItem(siteId, y, m, {
       no: nextNo,
       vendor: '직원',
@@ -304,9 +291,9 @@ export default function SiteClosingPage() {
       category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
       itemType: resolvedType,
       unitPrice: dailyRate,
-      dailyQuantities: dq,
-      quantity,
-      amount: dailyRate * quantity,
+      dailyQuantities: {},
+      quantity: 0,
+      amount: 0,
       order: nextOrder,
     });
     setShowEmployeeSelect(false);
