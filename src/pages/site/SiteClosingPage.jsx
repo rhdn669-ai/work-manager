@@ -783,7 +783,7 @@ export default function SiteClosingPage() {
             <button className="btn btn-sm btn-pastel-sky" onClick={handleAddRow}>+ 프리랜서</button>
             <button className="btn btn-sm btn-pastel-peach" onClick={handleAddDailyWorker}>+ 일용직</button>
             <button className="btn btn-sm btn-pastel-teal" onClick={handleAddVendorDay}>+ 업체(공수)</button>
-            <button className="btn btn-sm btn-pastel-amber" onClick={handleAddVendorCase}>+ 업체(건당)</button>
+            <button className="btn btn-sm btn-pastel-amber" onClick={handleAddVendorCase}>+ 프로젝트</button>
             <button className="btn btn-sm btn-pastel-lavender" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
           </div>
         )}
@@ -946,20 +946,7 @@ export default function SiteClosingPage() {
                   )}
                 </div>
 
-                {isVendorCase ? (
-                  <div className="closing-case-input">
-                    <label>건수</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={buf.quantity || 0}
-                      onChange={(e) => updateField(it.id, 'quantity', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                    />
-                  </div>
-                ) : (() => {
+                {(() => {
                   // 캘린더 형식 생성
                   const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
                   const totalDays = daysInMonth(y, m);
@@ -1003,14 +990,14 @@ export default function SiteClosingPage() {
                                 {isFullLeave ? null : (
                                   <input
                                     type="number"
-                                    step={isDaily ? '0.5' : '0.25'}
+                                    step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
                                     min="0"
-                                    max={isDaily ? '24' : '1'}
+                                    max={isDaily ? '24' : isVendorCase ? '99' : '1'}
                                     value={v ?? ''}
                                     onChange={(e) => updateDay(it.id, d, e.target.value)}
                                     onBlur={() => flushRow(it.id)}
                                     disabled={!canEdit}
-                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : (isDaily ? '시간 입력' : '')}
+                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : (isDaily ? '시간 입력' : isVendorCase ? '납품 건수' : '')}
                                   />
                                 )}
                               </div>
