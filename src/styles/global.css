@@ -44,11 +44,11 @@
   --danger: #dc2626;
   --caution: #ea580c;
 
-  --bg: #FFF9F3;
+  --bg: #F6F7F9;
   --bg-card: #ffffff;
   --bg-sidebar: #F59E0B;
   --bg-header: #ffffff;
-  --bg-subtle: #FFFBF5;
+  --bg-subtle: #FAFAFA;
 
   --text: #111827;
   --text-light: #4b5563;
@@ -65,10 +65,10 @@
   --radius-xl: 24px;
   --border-radius: var(--radius-md); /* 기존 호환 */
 
-  /* 그림자 체계 (확산형 소프트 그림자) */
-  --shadow-sm: 0 1px 2px rgba(245, 158, 11, 0.04);
-  --shadow: 0 4px 12px rgba(245, 158, 11, 0.06), 0 1px 3px rgba(17, 24, 39, 0.04);
-  --shadow-lg: 0 16px 40px rgba(245, 158, 11, 0.08), 0 4px 12px rgba(17, 24, 39, 0.05);
+  /* 그림자 체계 (중립 확산 그림자) */
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow: 0 2px 8px rgba(17, 24, 39, 0.06), 0 1px 3px rgba(17, 24, 39, 0.04);
+  --shadow-lg: 0 12px 28px rgba(17, 24, 39, 0.1), 0 4px 10px rgba(17, 24, 39, 0.04);
   --shadow-primary: 0 6px 16px rgba(245, 158, 11, 0.28);
   --ring-primary: 0 0 0 3px rgba(245, 158, 11, 0.22);
   --ring-danger: 0 0 0 3px rgba(220, 38, 38, 0.18);
@@ -857,7 +857,7 @@ body {
 .dashboard-tile:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(245, 158, 11, 0.3);
+  border-color: var(--primary);
 }
 
 /* 지표 카드 성격 — 클릭 불가, hover 효과 없음 */
