@@ -490,7 +490,10 @@ body {
 }
 .ua-legend-swatch.assigned { background: #bbf7d0; }
 .ua-legend-swatch.overlap { background: linear-gradient(135deg, #c4b5fd 0%, #ddd6fe 100%); }
-.ua-legend-swatch.leave { background: #c7d2fe; }
+.ua-legend-swatch.leave-annual { background: #a5b4fc; }
+.ua-legend-swatch.leave-half { background: linear-gradient(to right, #a5b4fc 50%, #eef2ff 50%); }
+.ua-legend-swatch.leave-quarter { background: linear-gradient(to right, #a5b4fc 25%, #eef2ff 25%); }
+.ua-legend-swatch.leave-sick { background: #fca5a5; }
 .ua-legend-swatch.weekend { background: #e5e7eb; }
 .ua-legend-swatch.unassigned { background: #fecaca; }
 .ua-legend-dot {
@@ -604,7 +607,10 @@ body {
 .unassigned-table td.unassigned-cell:hover { filter: brightness(0.9); }
 .unassigned-cell.assigned { background: #bbf7d0; }
 .unassigned-cell.overlap { background: linear-gradient(135deg, #c4b5fd 0%, #ddd6fe 100%); }
-.unassigned-cell.leave { background: #c7d2fe; }
+.unassigned-cell.leave-annual { background: #a5b4fc; }
+.unassigned-cell.leave-half { background: linear-gradient(to right, #a5b4fc 50%, #eef2ff 50%); }
+.unassigned-cell.leave-quarter { background: linear-gradient(to right, #a5b4fc 25%, #eef2ff 25%); }
+.unassigned-cell.leave-sick { background: #fca5a5; }
 .unassigned-cell.weekend { background: #e5e7eb; }
 .unassigned-cell.unassigned { background: #fecaca; }
 .unassigned-cell.has-overtime::after {

@@ -115,6 +115,14 @@ export default function UnassignedReportPage() {
       nameToOvertime[name][day] = (nameToOvertime[name][day] || 0) + (o.minutes || 0);
     }
 
+    const leaveTypeToClass = (t) => {
+      if (!t) return null;
+      if (t === 'half_am' || t === 'half_pm') return 'leave-half';
+      if (QUARTER_LEAVE_TYPES.includes(t)) return 'leave-quarter';
+      if (t === 'sick') return 'leave-sick';
+      return 'leave-annual';
+    };
+
     const out = users.map((u) => {
       const days = [];
       let unassignedCount = 0;
@@ -128,7 +136,7 @@ export default function UnassignedReportPage() {
         let type;
         if (projects.length > 1) type = 'overlap';
         else if (projects.length === 1) type = 'assigned';
-        else if (leaveType) type = 'leave';
+        else if (leaveType) type = leaveTypeToClass(leaveType);
         else if (isWeekend) type = 'weekend';
         else type = 'unassigned';
         days.push({ d, type, projects, leaveType, overtimeMin });
@@ -202,7 +210,10 @@ export default function UnassignedReportPage() {
       <div className="ua-legend">
         <span><span className="ua-legend-swatch assigned" />배정</span>
         <span><span className="ua-legend-swatch overlap" />중복배정</span>
-        <span><span className="ua-legend-swatch leave" />연차</span>
+        <span><span className="ua-legend-swatch leave-annual" />연차</span>
+        <span><span className="ua-legend-swatch leave-half" />반차</span>
+        <span><span className="ua-legend-swatch leave-quarter" />반반차</span>
+        <span><span className="ua-legend-swatch leave-sick" />병가</span>
         <span><span className="ua-legend-swatch weekend" />주말</span>
         <span><span className="ua-legend-swatch unassigned" />미배정</span>
         <span><span className="ua-legend-dot" />잔업</span>
@@ -235,10 +246,11 @@ export default function UnassignedReportPage() {
                   </td>
                   {r.days.map((c) => {
                     const hasOT = c.overtimeMin > 0;
+                    const isLeave = c.type.startsWith('leave-');
                     const baseTitle =
                       c.type === 'overlap' ? `중복배정: ${c.projects.join(', ')}` :
                       c.type === 'assigned' ? c.projects.join(', ') :
-                      c.type === 'leave' ? leaveLabel(c.leaveType) :
+                      isLeave ? leaveLabel(c.leaveType) :
                       c.type === 'weekend' ? '주말' : '미배정';
                     const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}` : baseTitle;
                     return (
