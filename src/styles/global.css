@@ -488,14 +488,14 @@ body {
   height: 14px;
   border-radius: 4px;
 }
-.ua-legend-swatch.assigned { background: #bbf7d0; }
-.ua-legend-swatch.overlap { background: linear-gradient(135deg, #c4b5fd 0%, #ddd6fe 100%); }
-.ua-legend-swatch.leave-annual { background: #a5b4fc; }
-.ua-legend-swatch.leave-half { background: linear-gradient(to right, #a5b4fc 50%, #eef2ff 50%); }
-.ua-legend-swatch.leave-quarter { background: linear-gradient(to right, #a5b4fc 25%, #eef2ff 25%); }
+.ua-legend-swatch.assigned { background: #86efac; }
+.ua-legend-swatch.overlap { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); }
+.ua-legend-swatch.leave-annual { background: #818cf8; }
+.ua-legend-swatch.leave-half { background: linear-gradient(to right, #818cf8 50%, #eef2ff 50%); }
+.ua-legend-swatch.leave-quarter { background: linear-gradient(to right, #818cf8 25%, #eef2ff 25%); }
 .ua-legend-swatch.leave-sick { background: #fca5a5; }
-.ua-legend-swatch.weekend { background: #e5e7eb; }
-.ua-legend-swatch.unassigned { background: #fecaca; }
+.ua-legend-swatch.weekend { background: #ebedf0; }
+.ua-legend-swatch.unassigned { background: #fca5a5; }
 .ua-legend-dot {
   display: inline-block;
   width: 6px;
@@ -504,24 +504,25 @@ body {
   background: var(--primary);
 }
 
+/* GitHub 잔디 스타일 */
 .unassigned-table-wrap {
-  background: #fff;
+  background: #fcfcfd;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: auto;
   max-height: 72vh;
+  padding: 6px;
   box-shadow: var(--shadow-sm);
   -webkit-overflow-scrolling: touch;
 }
 .unassigned-table {
   border-collapse: separate;
-  border-spacing: 0;
+  border-spacing: 3px 3px;
   font-size: 11px;
 }
 .unassigned-table th,
 .unassigned-table td {
-  border-right: 1px solid rgba(229, 231, 235, 0.6);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  border: none;
   padding: 0;
   text-align: center;
   white-space: nowrap;
@@ -529,55 +530,44 @@ body {
 .unassigned-table thead th {
   position: sticky;
   top: 0;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  background: #fcfcfd;
   z-index: 5;
-  padding: 8px 4px;
-  font-weight: 700;
-  color: var(--text-light);
+  padding: 4px 0 6px;
+  font-weight: 600;
+  font-size: 10px;
+  color: var(--text-muted);
   letter-spacing: -0.005em;
-  border-bottom: 1px solid var(--border-strong);
 }
 .unassigned-table .day-col {
-  min-width: 26px;
-  width: 26px;
-  font-size: 11px;
+  min-width: 16px;
+  width: 16px;
+  font-variant-numeric: tabular-nums;
 }
 .unassigned-table .day-col.sun { color: var(--danger); }
 .unassigned-table .day-col.sat { color: #2563eb; }
 .unassigned-table .sticky-col {
   position: sticky;
   left: 0;
-  background: #fff;
+  background: #fcfcfd;
   z-index: 4;
-  padding: 8px 14px;
+  padding: 8px 14px 8px 6px;
   text-align: left;
   min-width: 130px;
-  border-right: 1px solid var(--border-strong);
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.03);
+  box-shadow: 6px 0 6px -4px rgba(0, 0, 0, 0.04);
 }
-.unassigned-table thead .sticky-col {
-  z-index: 7;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.03);
-}
+.unassigned-table thead .sticky-col { z-index: 7; }
 .unassigned-table .sticky-col-right {
   position: sticky;
   right: 0;
-  background: #fff;
+  background: #fcfcfd;
   z-index: 4;
-  padding: 8px 12px;
-  min-width: 56px;
-  border-left: 1px solid var(--border-strong);
+  padding: 8px 6px 8px 10px;
+  min-width: 48px;
+  box-shadow: -6px 0 6px -4px rgba(0, 0, 0, 0.04);
 }
-.unassigned-table thead .sticky-col-right {
-  z-index: 7;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
-}
+.unassigned-table thead .sticky-col-right { z-index: 7; }
 .unassigned-table tbody tr:hover .sticky-col,
-.unassigned-table tbody tr:hover .sticky-col-right {
-  background: var(--primary-softer);
-}
-.unassigned-table tbody tr:hover td { background-color: rgba(245, 158, 11, 0.04); }
+.unassigned-table tbody tr:hover .sticky-col-right { background: var(--primary-softer); }
 .unassigned-table .name-col strong {
   font-size: 13px;
   color: var(--text);
@@ -597,32 +587,38 @@ body {
 .unassigned-table .count-col .neg { color: var(--danger); }
 .unassigned-table .count-col .warn { color: #7c3aed; }
 
+/* 잔디 셀: 정사각형, 라운드, 보더 없음, gap으로 숨 쉬는 느낌 */
 .unassigned-table td.unassigned-cell {
   position: relative;
-  width: 26px;
-  height: 30px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
   cursor: default;
-  transition: filter 0.1s;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
-.unassigned-table td.unassigned-cell:hover { filter: brightness(0.9); }
-.unassigned-cell.assigned { background: #bbf7d0; }
-.unassigned-cell.overlap { background: linear-gradient(135deg, #c4b5fd 0%, #ddd6fe 100%); }
-.unassigned-cell.leave-annual { background: #a5b4fc; }
-.unassigned-cell.leave-half { background: linear-gradient(to right, #a5b4fc 50%, #eef2ff 50%); }
-.unassigned-cell.leave-quarter { background: linear-gradient(to right, #a5b4fc 25%, #eef2ff 25%); }
+.unassigned-table td.unassigned-cell:hover {
+  transform: scale(1.25);
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.15);
+  z-index: 2;
+}
+.unassigned-cell.assigned { background: #86efac; }
+.unassigned-cell.overlap { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); }
+.unassigned-cell.leave-annual { background: #818cf8; }
+.unassigned-cell.leave-half { background: linear-gradient(to right, #818cf8 50%, #eef2ff 50%); }
+.unassigned-cell.leave-quarter { background: linear-gradient(to right, #818cf8 25%, #eef2ff 25%); }
 .unassigned-cell.leave-sick { background: #fca5a5; }
-.unassigned-cell.weekend { background: #e5e7eb; }
-.unassigned-cell.unassigned { background: #fecaca; }
+.unassigned-cell.weekend { background: #ebedf0; }
+.unassigned-cell.unassigned { background: #fca5a5; }
 .unassigned-cell.has-overtime::after {
   content: '';
   position: absolute;
-  top: 3px;
-  right: 3px;
+  top: -2px;
+  right: -2px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--primary);
-  box-shadow: 0 0 0 1.5px #fff;
+  box-shadow: 0 0 0 1.5px #fcfcfd;
 }
 
 /* 잔업 상세 모달 리스트 */

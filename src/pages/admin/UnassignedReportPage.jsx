@@ -103,7 +103,8 @@ export default function UnassignedReportPage() {
       }
     }
 
-    // 잔업: userName → day → totalMinutes
+    // 잔업: userName → day → { minutes, siteNames: Set<string> }
+    const siteIdToName = Object.fromEntries(sites.map((s) => [s.id, s.name]));
     const nameToOvertime = {};
     for (const o of overtimes) {
       const name = o.userName || userIdToName[o.userId];
@@ -112,7 +113,12 @@ export default function UnassignedReportPage() {
       if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
       const day = d.getDate();
       if (!nameToOvertime[name]) nameToOvertime[name] = {};
-      nameToOvertime[name][day] = (nameToOvertime[name][day] || 0) + (o.minutes || 0);
+      if (!nameToOvertime[name][day]) nameToOvertime[name][day] = { minutes: 0, siteNames: new Set() };
+      nameToOvertime[name][day].minutes += (o.minutes || 0);
+      if (o.siteId) {
+        const sn = o.siteId === 'etc' ? '기타' : siteIdToName[o.siteId];
+        if (sn) nameToOvertime[name][day].siteNames.add(sn);
+      }
     }
 
     const leaveTypeToClass = (t) => {
@@ -132,14 +138,17 @@ export default function UnassignedReportPage() {
         const isWeekend = dow === 0 || dow === 6;
         const leaveType = nameToLeaveDay[u.name]?.[d];
         const projects = assigned[u.name]?.[d] || [];
-        const overtimeMin = nameToOvertime[u.name]?.[d] || 0;
+        const otInfo = nameToOvertime[u.name]?.[d];
+        const overtimeMin = otInfo?.minutes || 0;
+        const otSiteNames = otInfo ? [...otInfo.siteNames] : [];
         let type;
         if (projects.length > 1) type = 'overlap';
         else if (projects.length === 1) type = 'assigned';
         else if (leaveType) type = leaveTypeToClass(leaveType);
         else if (isWeekend) type = 'weekend';
+        else if (overtimeMin > 0) type = 'assigned';
         else type = 'unassigned';
-        days.push({ d, type, projects, leaveType, overtimeMin });
+        days.push({ d, type, projects, leaveType, overtimeMin, otSiteNames });
         if (type === 'unassigned') unassignedCount++;
         if (type === 'overlap') overlapCount++;
       }
@@ -247,11 +256,15 @@ export default function UnassignedReportPage() {
                   {r.days.map((c) => {
                     const hasOT = c.overtimeMin > 0;
                     const isLeave = c.type.startsWith('leave-');
-                    const baseTitle =
-                      c.type === 'overlap' ? `중복배정: ${c.projects.join(', ')}` :
-                      c.type === 'assigned' ? c.projects.join(', ') :
-                      isLeave ? leaveLabel(c.leaveType) :
-                      c.type === 'weekend' ? '주말' : '미배정';
+                    let baseTitle;
+                    if (c.type === 'overlap') baseTitle = `중복배정: ${c.projects.join(', ')}`;
+                    else if (c.type === 'assigned') {
+                      if (c.projects.length > 0) baseTitle = c.projects.join(', ');
+                      else if (c.otSiteNames.length > 0) baseTitle = `잔업: ${c.otSiteNames.join(', ')}`;
+                      else baseTitle = '잔업';
+                    } else if (isLeave) baseTitle = leaveLabel(c.leaveType);
+                    else if (c.type === 'weekend') baseTitle = '주말';
+                    else baseTitle = '미배정';
                     const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}` : baseTitle;
                     return (
                       <td
