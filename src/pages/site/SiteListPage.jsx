@@ -309,7 +309,7 @@ export default function SiteListPage() {
         </select>
       </div>
 
-      {isAdmin && filtered.length > 0 && filter !== 'completed' && (() => {
+      {isAdmin && filtered.length > 0 && (() => {
         const allRevenue = filtered.reduce((s, site) => {
           if (site.hideRevenue) return s;
           return s + ((siteStats[site.id] || {}).revenue || 0);
@@ -324,11 +324,11 @@ export default function SiteListPage() {
         return (
           <div className="total-summary-bar">
             <div className="total-summary-item">
-              <span className="label">전체 매출</span>
+              <span className="label">{filter === 'completed' ? '누적 매출' : '전체 매출'}</span>
               <strong className="stat-revenue">{allRevenue.toLocaleString()}원</strong>
             </div>
             <div className="total-summary-item">
-              <span className="label">전체 지출</span>
+              <span className="label">{filter === 'completed' ? '누적 지출' : '전체 지출'}</span>
               <strong className="stat-expense">{allExpense.toLocaleString()}원</strong>
             </div>
             <div className="total-summary-item">
