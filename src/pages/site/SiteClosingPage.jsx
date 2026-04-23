@@ -389,7 +389,6 @@ export default function SiteClosingPage() {
 
   const employeeTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType === 'employee' ? (Number(it.amount) || 0) : 0), 0);
   const freelancerTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType !== 'employee' ? (Number(it.amount) || 0) : 0), 0);
-  const netTotal = totalRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
   const itemCount = items.length;
 
   const revenueItems = finances.filter((f) => f.type === 'revenue');
@@ -397,6 +396,7 @@ export default function SiteClosingPage() {
   const isOvertimeFinance = (f) => { const d = ((financeBuf[f.id]?.description ?? f.description) || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
   const totalRevenue = revenueItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
   const totalExpense = expenseItems.filter((f) => canViewSalary || !isOvertimeFinance(f)).reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
+  const netTotal = totalRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
 
   let saveStatus;
   if (saveError) {
