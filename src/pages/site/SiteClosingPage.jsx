@@ -667,10 +667,12 @@ export default function SiteClosingPage() {
           <span className="label">지출</span>
           <strong style={{ color: 'var(--danger, #dc2626)' }}>{totalExpense.toLocaleString()}원</strong>
         </div>
-        <div className="closing-summary-item closing-summary-total">
-          <span className="label">공수 합계</span>
-          <strong>{freelancerTotal.toLocaleString()}원</strong>
-        </div>
+        {canViewSalary && (
+          <div className="closing-summary-item closing-summary-total">
+            <span className="label">공수 합계</span>
+            <strong>{freelancerTotal.toLocaleString()}원</strong>
+          </div>
+        )}
         {canViewSalary && (
           <div className="closing-summary-item closing-summary-total">
             <span className="label">직원 합계</span>
@@ -928,7 +930,7 @@ export default function SiteClosingPage() {
       <datalist id="closing-freelancer-list">
         {freelancers.map((f) => (
           <option key={f.id} value={f.name}>
-            {f.vendor ? `${f.vendor} · ` : ''}{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : ''}
+            {f.vendor ? `${f.vendor}` : ''}{canViewSalary && f.dailyRate ? `${f.vendor ? ' · ' : ''}${Number(f.dailyRate).toLocaleString()}원` : ''}
           </option>
         ))}
       </datalist>
@@ -940,7 +942,7 @@ export default function SiteClosingPage() {
       <datalist id="closing-vendor-project-list">
         {vendors.flatMap((v) => (v.projects || []).map((p) => (
           <option key={`${v.id}-${p.name}`} value={p.name}>
-            {v.name}{p.unitPrice > 0 ? ` · 건당 ${Number(p.unitPrice).toLocaleString()}원` : ''}
+            {v.name}{canViewSalary && p.unitPrice > 0 ? ` · 건당 ${Number(p.unitPrice).toLocaleString()}원` : ''}
           </option>
         )))}
       </datalist>
@@ -1076,7 +1078,7 @@ export default function SiteClosingPage() {
                     <span className="label">수량</span>
                     <strong>{Number(buf.quantity || 0)}{unitLabel}</strong>
                   </div>
-                  {(canViewSalary || cardType !== 'employee') && (
+                  {canViewSalary && (
                     <>
                       <div className="foot-field">
                         <span className="label">{priceLabel}</span>
@@ -1164,9 +1166,9 @@ export default function SiteClosingPage() {
                       <button type="button" onClick={() => handlePickVendor(v)}>
                         <strong>{v.name}</strong>
                         <span>
-                          {vendorPickerMode === 'vendor' && v.dailyRate > 0 && `공수 ${Number(v.dailyRate).toLocaleString()}원`}
-                          {vendorPickerMode === 'vendor_case' && v.caseRate > 0 && `건당 ${Number(v.caseRate).toLocaleString()}원`}
-                          {v.representative && ` · ${v.representative}`}
+                          {canViewSalary && vendorPickerMode === 'vendor' && v.dailyRate > 0 && `공수 ${Number(v.dailyRate).toLocaleString()}원`}
+                          {canViewSalary && vendorPickerMode === 'vendor_case' && v.caseRate > 0 && `건당 ${Number(v.caseRate).toLocaleString()}원`}
+                          {v.representative && `${canViewSalary && (v.dailyRate > 0 || v.caseRate > 0) ? ' · ' : ''}${v.representative}`}
                         </span>
                       </button>
                     </li>
@@ -1193,7 +1195,7 @@ export default function SiteClosingPage() {
                         <li key={f.id}>
                           <button type="button" onClick={() => handlePickMember(f)}>
                             <strong>{f.name}</strong>
-                            <span>{rate > 0 ? `공수 ${rate.toLocaleString()}원` : '단가 미입력'}</span>
+                            <span>{canViewSalary ? (rate > 0 ? `공수 ${rate.toLocaleString()}원` : '단가 미입력') : ''}</span>
                           </button>
                         </li>
                       );
@@ -1223,7 +1225,7 @@ export default function SiteClosingPage() {
                       <li key={p.name}>
                         <button type="button" onClick={() => handlePickProject(p)}>
                           <strong>{p.name}</strong>
-                          <span>{p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}</span>
+                          <span>{canViewSalary ? (p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력') : ''}</span>
                         </button>
                       </li>
                     ))}
