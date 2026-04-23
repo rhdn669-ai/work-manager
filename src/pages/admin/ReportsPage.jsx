@@ -10,6 +10,7 @@ import {
   getPendingOvertimeRecords,
   approveOvertimeRecord,
   rejectOvertimeRecord,
+  recomputeAllOvertimeExpenses,
 } from '../../services/attendanceService';
 import {
   getApprovedLeavesByMonth,
@@ -33,6 +34,21 @@ export default function ReportsPage() {
   const [detailUser, setDetailUser] = useState(null);
   const [pendingList, setPendingList] = useState([]);
   const [pendingBusy, setPendingBusy] = useState(null);
+  const [recomputeBusy, setRecomputeBusy] = useState(false);
+
+  async function handleRecomputeOvertime() {
+    if (!confirm('모든 승인된 잔업의 지출 금액을 시급 × 1.5 × 시간으로 재계산합니다.\n계속하시겠습니까?')) return;
+    setRecomputeBusy(true);
+    try {
+      const { total, updated, skipped } = await recomputeAllOvertimeExpenses();
+      alert(`재계산 완료\n\n대상: ${total}건\n업데이트: ${updated}건\n건너뜀: ${skipped}건`);
+      await generateReport();
+    } catch (err) {
+      alert('재계산 실패: ' + err.message);
+    } finally {
+      setRecomputeBusy(false);
+    }
+  }
 
   useEffect(() => {
     loadBase();
@@ -138,7 +154,20 @@ export default function ReportsPage() {
 
   return (
     <div className="reports-page">
-      <h2>잔업 · 연차</h2>
+      <div className="page-header">
+        <h2>잔업 · 연차</h2>
+        <div className="page-actions">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={handleRecomputeOvertime}
+            disabled={recomputeBusy}
+            title="모든 승인된 잔업의 지출 금액을 시급 × 1.5 × 시간으로 재계산"
+          >
+            {recomputeBusy ? '재계산 중...' : '잔업 금액 재계산'}
+          </button>
+        </div>
+      </div>
 
       {pendingList.length > 0 && (
         <div className="pending-section">

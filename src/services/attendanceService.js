@@ -5,7 +5,7 @@ import {
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
-import { addFinanceItem, deleteFinanceItem, findFinanceByOvertimeId, getFinanceItems } from './siteService';
+import { addFinanceItem, deleteFinanceItem, findFinanceByOvertimeId, getFinanceItems, updateFinanceItem } from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
@@ -137,7 +137,7 @@ export async function getAllOvertimeRecords(startDate, endDate) {
 }
 
 // 잔업 비용을 프로젝트 지출에 추가 (시급의 1.5배 적용)
-const OVERTIME_MULTIPLIER = 1.5;
+export const OVERTIME_MULTIPLIER = 1.5;
 async function addOvertimeExpense(userId, userName, siteId, date, minutes, overtimeRecordId) {
   const user = await getUser(userId);
   const hourlyRate = Number(user?.hourlyRate) || 0;
@@ -155,4 +155,37 @@ async function addOvertimeExpense(userId, userName, siteId, date, minutes, overt
     order: 0,
     overtimeRecordId: overtimeRecordId || '',
   });
+}
+
+// 관리자: 승인된 모든 잔업의 지출 금액을 시급×1.5×시간 로직으로 일괄 재계산
+// 시급이 변경되었거나 OVERTIME_MULTIPLIER가 바뀌었을 때 사용
+export async function recomputeAllOvertimeExpenses() {
+  const snap = await getDocs(overtimeRef);
+  const approved = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => r.status === 'approved' && r.siteId && r.siteId !== 'etc');
+
+  const stats = { total: approved.length, updated: 0, skipped: 0 };
+  for (const rec of approved) {
+    try {
+      const user = await getUser(rec.userId);
+      const hourlyRate = Number(user?.hourlyRate) || 0;
+      if (hourlyRate <= 0) { stats.skipped++; continue; }
+      const hours = (rec.minutes || 0) / 60;
+      const newAmount = Math.round(hourlyRate * OVERTIME_MULTIPLIER * hours);
+
+      const fins = await findFinanceByOvertimeId(rec.id);
+      if (fins.length === 0) { stats.skipped++; continue; }
+      for (const f of fins) {
+        if (Number(f.amount) !== newAmount) {
+          await updateFinanceItem(f.id, { amount: newAmount });
+          stats.updated++;
+        }
+      }
+    } catch (err) {
+      console.error('잔업 재계산 실패:', rec.id, err);
+      stats.skipped++;
+    }
+  }
+  return stats;
 }
