@@ -223,7 +223,7 @@ export default function UserManagementPage() {
                       <span className="leave-sep">/</span>
                       <span className="leave-used">{bal.usedDays}</span>
                       <span className="leave-sep">/</span>
-                      <strong className="leave-remaining">{bal.remainingDays}</strong>
+                      <strong className="leave-remaining" style={bal.remainingDays < 0 ? { color: 'var(--danger, #dc2626)' } : undefined}>{bal.remainingDays}</strong>
                     </span>
                   ) : '-'}
                 </td>
