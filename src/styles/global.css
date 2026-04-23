@@ -398,6 +398,9 @@ body {
 .btn-danger:focus-visible { box-shadow: var(--ring-danger); }
 .btn-outline { background: #fff; border-color: var(--border); color: var(--text); }
 .btn-outline:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-hover); }
+.btn-danger-outline { background: #fff; border-color: var(--danger); color: var(--danger); }
+.btn-danger-outline:hover:not(:disabled) { background: #fef2f2; border-color: #b91c1c; color: #b91c1c; }
+.btn-danger-outline:focus-visible { box-shadow: var(--ring-danger); }
 
 /* 잔업 상세 모달 리스트 */
 .overtime-detail-list {

@@ -221,8 +221,7 @@ export default function LeaveHistoryPage() {
                         <div className="btn-group" style={{ flexShrink: 0 }}>
                           <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
                           <button
-                            className="btn btn-sm btn-outline"
-                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            className="btn btn-sm btn-danger-outline"
                             disabled={busy}
                             onClick={() => handleCancel(l)}
                           >취소</button>

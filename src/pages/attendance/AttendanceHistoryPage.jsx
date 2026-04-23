@@ -205,8 +205,7 @@ export default function AttendanceHistoryPage() {
                         <div className="btn-group" style={{ flexShrink: 0 }}>
                           <button className="btn btn-sm btn-outline" onClick={() => startEdit(r)}>수정</button>
                           <button
-                            className="btn btn-sm btn-outline"
-                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            className="btn btn-sm btn-danger-outline"
                             onClick={() => handleDelete(r.id)}
                           >삭제</button>
                         </div>

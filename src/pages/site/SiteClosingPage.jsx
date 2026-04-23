@@ -949,8 +949,7 @@ export default function SiteClosingPage() {
                       {canEdit && (
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline"
-                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                          className="btn btn-sm btn-danger-outline"
                           onClick={async () => {
                             if (!confirm('이 잔업 항목을 삭제하시겠습니까?\n(원본 잔업 기록은 남아있을 수 있으니, 필요 시 잔업 관리에서도 정리하세요.)')) return;
                             await handleDeleteFinance(f.id, true);

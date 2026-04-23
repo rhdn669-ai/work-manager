@@ -170,8 +170,7 @@ export default function ReportsPage() {
                         onClick={() => handleApprove(r.id)}
                       >승인</button>
                       <button
-                        className="btn btn-sm btn-outline"
-                        style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                        className="btn btn-sm btn-danger-outline"
                         disabled={pendingBusy === r.id}
                         onClick={() => handleReject(r.id)}
                       >거절</button>
@@ -415,7 +414,7 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                         {canEdit && (
                           <div className="btn-group" style={{ flexShrink: 0 }}>
                             <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>수정</button>
-                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(r)}>삭제</button>
+                            <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => removeRow(r)}>삭제</button>
                           </div>
                         )}
                       </div>
@@ -483,7 +482,7 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                         {canEdit && (
                           <div className="btn-group" style={{ flexShrink: 0 }}>
                             <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
-                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(l)}>삭제</button>
+                            <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => removeRow(l)}>삭제</button>
                           </div>
                         )}
                       </div>
