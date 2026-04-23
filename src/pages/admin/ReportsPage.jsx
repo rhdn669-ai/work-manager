@@ -149,7 +149,6 @@ export default function ReportsPage() {
     .map((r) => ({ uid: r.uid, name: r.name, minutes: r.overtimeMinutes, count: r.overtimeCount, amount: calcAmount(r.uid, r.overtimeMinutes) }));
   const totalOvertimeAmount = rows.reduce((s, r) => s + calcAmount(r.uid, r.overtimeMinutes), 0);
   const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
-  const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
   const totalLeaveDays = rows.reduce((s, r) => s + r.leaveDays, 0);
 
   return (
@@ -247,80 +246,44 @@ export default function ReportsPage() {
         </select>
       </div>
 
-      <div className="tab-nav">
-        <button
-          type="button"
-          className={`tab-nav-item ${activeTab === 'overtime' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overtime')}
-        >
-          잔업
-        </button>
-        <button
-          type="button"
-          className={`tab-nav-item ${activeTab === 'leave' ? 'active' : ''}`}
-          onClick={() => setActiveTab('leave')}
-        >
-          연차
-        </button>
-      </div>
-
       {loading ? (
         <div className="loading">로딩 중...</div>
       ) : rows.length === 0 ? (
         <p className="text-muted">직원 정보가 없습니다.</p>
-      ) : activeTab === 'overtime' ? (
-        <table className="table table-clickable">
-          <thead>
-            <tr>
-              <th style={{ width: 48 }}>#</th>
-              <th>이름</th>
-              <th>부서</th>
-              <th>총 잔업</th>
-              <th>건수</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.uid} onClick={() => setDetailUser(r)} style={{ cursor: 'pointer' }}>
-                <td>{i + 1}</td>
-                <td>{r.name}</td>
-                <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>{r.overtimeMinutes > 0 ? formatMinutes(r.overtimeMinutes) : '-'}</td>
-                <td>{r.overtimeCount > 0 ? `${r.overtimeCount}건` : '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={3}><strong>합계</strong></td>
-              <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
-              <td><strong>{totalOvertimeCount}건</strong></td>
-            </tr>
-          </tfoot>
-        </table>
       ) : (
-        <table className="table table-clickable">
+        <table className="table">
           <thead>
             <tr>
               <th style={{ width: 48 }}>#</th>
               <th>이름</th>
               <th>부서</th>
-              <th>연차 사용</th>
+              <th>잔업</th>
+              <th>연차</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.uid} onClick={() => setDetailUser(r)} style={{ cursor: 'pointer' }}>
+              <tr key={r.uid}>
                 <td>{i + 1}</td>
-                <td>{r.name}</td>
+                <td><strong>{r.name}</strong></td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>{r.leaveDays > 0 ? `${r.leaveDays}일` : '-'}</td>
+                <td>
+                  <button className="team-detail-btn" onClick={() => { setActiveTab('overtime'); setDetailUser(r); }}>
+                    {r.overtimeMinutes > 0 ? <><strong>{formatMinutes(r.overtimeMinutes)}</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
+                  </button>
+                </td>
+                <td>
+                  <button className="team-detail-btn" onClick={() => { setActiveTab('leave'); setDetailUser(r); }}>
+                    {r.leaveDays > 0 ? <><strong>{r.leaveDays}일</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={3}><strong>합계</strong></td>
+              <td colSpan={3}><strong>합계 ({rows.length}명)</strong></td>
+              <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
               <td><strong>{totalLeaveDays}일</strong></td>
             </tr>
           </tfoot>
