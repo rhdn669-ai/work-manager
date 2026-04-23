@@ -3405,6 +3405,25 @@ body {
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
 }
 
+/* 타입별 카드 배경 (파스텔 버튼색보다 더 연한 톤) */
+.closing-card-freelancer {
+  background: #f0f9ff; /* sky-50 */
+  border-color: #e0f2fe;
+}
+.closing-card-freelancer:hover { border-color: #bae6fd; }
+
+.closing-card-daily {
+  background: #fff7ed; /* orange-50 */
+  border-color: #ffedd5;
+}
+.closing-card-daily:hover { border-color: #fed7aa; }
+
+.closing-card-employee {
+  background: #f5f3ff; /* violet-50 */
+  border-color: #ede9fe;
+}
+.closing-card-employee:hover { border-color: #ddd6fe; }
+
 .closing-card-head {
   display: flex;
   align-items: center;
