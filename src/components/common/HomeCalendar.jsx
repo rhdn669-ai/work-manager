@@ -109,7 +109,7 @@ export default function HomeCalendar() {
       .map((e) => ({ ...e, _kind: 'event', type: e.type || 'event', _start: e.startDate, _end: e.endDate || e.startDate }));
 
     const inMonthOvertimes = overtimes
-      .filter((o) => o.status !== 'rejected' && o.date >= monthStart && o.date <= monthEnd)
+      .filter((o) => o.status === 'approved' && o.date >= monthStart && o.date <= monthEnd)
       .map((o) => {
         const showName = (canApproveLeave) && o.userId !== userProfile?.uid;
         const who = showName ? (o.userName || userNameMap[o.userId] || '') : '';
