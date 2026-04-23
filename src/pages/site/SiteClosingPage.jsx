@@ -70,6 +70,16 @@ export default function SiteClosingPage() {
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [showOvertimeDetail, setShowOvertimeDetail] = useState(false);
+  // 업체(공수/프로젝트) 추가 모달 — 업체 → 프로젝트 2단계 선택
+  const [vendorPickerMode, setVendorPickerMode] = useState(null); // 'vendor' | 'vendor_case' | null
+  const [vendorPickerStep, setVendorPickerStep] = useState('vendor'); // 'vendor' | 'project'
+  const [pickedVendor, setPickedVendor] = useState(null);
+
+  function resetVendorPicker() {
+    setVendorPickerMode(null);
+    setVendorPickerStep('vendor');
+    setPickedVendor(null);
+  }
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
 
@@ -308,28 +318,65 @@ export default function SiteClosingPage() {
     await loadAll();
   }
 
-  async function handleAddVendorDay() {
+  function openVendorPicker(mode) {
+    setVendorPickerMode(mode);
+    setVendorPickerStep('vendor');
+    setPickedVendor(null);
+  }
+
+  async function addVendorRow({ itemType, vendorName, projectName = '', unitPrice = 0 }) {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     await addClosingItem(siteId, y, m, {
-      no: nextNo, vendor: '', detail: '', category: '',
-      itemType: 'vendor',
-      unitPrice: 0, dailyQuantities: {}, quantity: 0, amount: 0,
+      no: nextNo,
+      vendor: vendorName || '',
+      detail: projectName || '',
+      category: '',
+      itemType,
+      unitPrice: Number(unitPrice) || 0,
+      dailyQuantities: {},
+      quantity: 0,
+      amount: 0,
       order: nextOrder,
     });
     await loadAll();
   }
 
-  async function handleAddVendorCase() {
-    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
-    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
-    await addClosingItem(siteId, y, m, {
-      no: nextNo, vendor: '', detail: '', category: '',
+  async function handlePickVendor(v) {
+    if (vendorPickerMode === 'vendor') {
+      // 업체(공수): 업체 선택 즉시 행 생성
+      await addVendorRow({
+        itemType: 'vendor',
+        vendorName: v.name,
+        unitPrice: Number(v.dailyRate) || 0,
+      });
+      resetVendorPicker();
+    } else {
+      // 업체(프로젝트): 프로젝트 단계로
+      setPickedVendor(v);
+      setVendorPickerStep('project');
+    }
+  }
+
+  async function handlePickProject(p) {
+    await addVendorRow({
       itemType: 'vendor_case',
-      unitPrice: 0, dailyQuantities: {}, quantity: 0, amount: 0,
-      order: nextOrder,
+      vendorName: pickedVendor?.name || '',
+      projectName: p?.name || '',
+      unitPrice: Number(p?.unitPrice) || Number(pickedVendor?.caseRate) || 0,
     });
-    await loadAll();
+    resetVendorPicker();
+  }
+
+  async function handlePickProjectBlank() {
+    // 프로젝트 없는 업체 — 업체만 지정하고 행 생성
+    await addVendorRow({
+      itemType: 'vendor_case',
+      vendorName: pickedVendor?.name || '',
+      projectName: '',
+      unitPrice: Number(pickedVendor?.caseRate) || 0,
+    });
+    resetVendorPicker();
   }
 
   async function handleAddEmployee(user) {
@@ -782,8 +829,8 @@ export default function SiteClosingPage() {
           <div className="finance-actions">
             <button className="btn btn-sm btn-pastel-sky" onClick={handleAddRow}>+ 프리랜서</button>
             <button className="btn btn-sm btn-pastel-peach" onClick={handleAddDailyWorker}>+ 일용직</button>
-            <button className="btn btn-sm btn-pastel-teal" onClick={handleAddVendorDay}>+ 업체(공수)</button>
-            <button className="btn btn-sm btn-pastel-amber" onClick={handleAddVendorCase}>+ 업체(프로젝트)</button>
+            <button className="btn btn-sm btn-pastel-teal" onClick={() => openVendorPicker('vendor')}>+ 업체(공수)</button>
+            <button className="btn btn-sm btn-pastel-amber" onClick={() => openVendorPicker('vendor_case')}>+ 업체(프로젝트)</button>
             <button className="btn btn-sm btn-pastel-lavender" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
           </div>
         )}
@@ -1077,6 +1124,69 @@ export default function SiteClosingPage() {
           </Modal>
         );
       })()}
+
+      {/* 업체(공수/프로젝트) 추가 — 업체 → 프로젝트 2단계 선택 모달 */}
+      {vendorPickerMode && (
+        <Modal
+          isOpen={!!vendorPickerMode}
+          onClose={resetVendorPicker}
+          title={
+            vendorPickerMode === 'vendor'
+              ? '업체 선택 (공수)'
+              : vendorPickerStep === 'vendor'
+                ? '업체 선택'
+                : `프로젝트 선택 — ${pickedVendor?.name || ''}`
+          }
+        >
+          {vendorPickerStep === 'vendor' ? (
+            vendors.length === 0 ? (
+              <p className="empty-state">등록된 업체가 없습니다. 먼저 외주관리에 업체를 등록해주세요.</p>
+            ) : (
+              <ul className="vendor-picker-list">
+                {vendors.map((v) => (
+                  <li key={v.id}>
+                    <button type="button" onClick={() => handlePickVendor(v)}>
+                      <strong>{v.name}</strong>
+                      <span>
+                        {vendorPickerMode === 'vendor' && v.dailyRate > 0 && `공수 ${Number(v.dailyRate).toLocaleString()}원`}
+                        {vendorPickerMode === 'vendor_case' && v.caseRate > 0 && `건당 ${Number(v.caseRate).toLocaleString()}원`}
+                        {v.representative && ` · ${v.representative}`}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : (
+            (pickedVendor?.projects || []).length === 0 ? (
+              <>
+                <p className="empty-state">이 업체에 등록된 프로젝트가 없습니다.</p>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
+                  <button type="button" className="btn btn-primary" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <ul className="vendor-picker-list">
+                  {pickedVendor.projects.map((p) => (
+                    <li key={p.name}>
+                      <button type="button" onClick={() => handlePickProject(p)}>
+                        <strong>{p.name}</strong>
+                        <span>{p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
+                  <button type="button" className="btn btn-outline" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
+                </div>
+              </>
+            )
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
