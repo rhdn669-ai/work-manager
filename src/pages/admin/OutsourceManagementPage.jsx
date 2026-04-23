@@ -4,9 +4,9 @@ import {
   getFreelancers, addFreelancer, updateFreelancer, deleteFreelancer,
   getVendors, addVendor, updateVendor, deleteVendor,
   importFromSiteClosings, getVendorDetail,
-  addFreelancerToVendor, addVendorToProject,
+  addFreelancerToVendor,
+  addVendorProjectName, removeVendorProjectName,
 } from '../../services/outsourceService';
-import { getAllSites } from '../../services/siteService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 
@@ -23,21 +23,19 @@ export default function OutsourceManagementPage() {
   const [detailVendor, setDetailVendor] = useState(null);
   const [detailTab, setDetailTab] = useState('freelancers');
   const [detailLoading, setDetailLoading] = useState(false);
-  const [allSites, setAllSites] = useState([]);
   const [newFreelancer, setNewFreelancer] = useState({ name: '', dailyRate: 0 });
-  const [newProject, setNewProject] = useState({ siteId: '', year: new Date().getFullYear(), month: new Date().getMonth() + 1, unitPrice: 0 });
+  const [newProjectName, setNewProjectName] = useState('');
   const [detailBusy, setDetailBusy] = useState(false);
 
   async function openVendorDetail(v) {
-    setDetailVendor({ ...v, freelancers: [], projects: [] });
+    setDetailVendor({ ...v, freelancers: [], projectNames: [] });
     setDetailTab('freelancers');
     setNewFreelancer({ name: '', dailyRate: v.dailyRate || 0 });
-    setNewProject({ siteId: '', year: new Date().getFullYear(), month: new Date().getMonth() + 1, unitPrice: v.dailyRate || 0 });
+    setNewProjectName('');
     setDetailLoading(true);
     try {
-      const [detail, sites] = await Promise.all([getVendorDetail(v.name), getAllSites()]);
-      setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null);
-      setAllSites(sites);
+      const detail = await getVendorDetail(v.id, v.name);
+      setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projectNames: detail.projectNames } : null);
     } catch (err) {
       alert('상세 조회 실패: ' + err.message);
     } finally {
@@ -47,8 +45,8 @@ export default function OutsourceManagementPage() {
 
   async function reloadDetail() {
     if (!detailVendor) return;
-    const { freelancers: fl, projects } = await getVendorDetail(detailVendor.name);
-    setDetailVendor((prev) => prev ? { ...prev, freelancers: fl, projects } : null);
+    const detail = await getVendorDetail(detailVendor.id, detailVendor.name);
+    setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projectNames: detail.projectNames } : null);
     await loadAll();
   }
 
@@ -70,22 +68,31 @@ export default function OutsourceManagementPage() {
     }
   }
 
-  async function handleAddProjectToVendor(e) {
+  async function handleAddProjectName(e) {
     e.preventDefault();
-    if (!newProject.siteId) { alert('프로젝트를 선택해주세요.'); return; }
+    const name = newProjectName.trim();
+    if (!name) { alert('프로젝트명을 입력해주세요.'); return; }
+    if ((detailVendor.projectNames || []).includes(name)) { alert('이미 등록된 프로젝트명입니다.'); return; }
     setDetailBusy(true);
     try {
-      await addVendorToProject({
-        vendorName: detailVendor.name,
-        siteId: newProject.siteId,
-        year: Number(newProject.year),
-        month: Number(newProject.month),
-        unitPrice: Number(newProject.unitPrice) || 0,
-      });
-      setNewProject((p) => ({ ...p, siteId: '' }));
+      await addVendorProjectName(detailVendor.id, name);
+      setNewProjectName('');
       await reloadDetail();
     } catch (err) {
-      alert('프로젝트 추가 실패: ' + err.message);
+      alert('프로젝트명 추가 실패: ' + err.message);
+    } finally {
+      setDetailBusy(false);
+    }
+  }
+
+  async function handleRemoveProjectName(name) {
+    if (!confirm(`"${name}"을(를) 삭제하시겠습니까?`)) return;
+    setDetailBusy(true);
+    try {
+      await removeVendorProjectName(detailVendor.id, name);
+      await reloadDetail();
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
     } finally {
       setDetailBusy(false);
     }
@@ -395,7 +402,7 @@ export default function OutsourceManagementPage() {
                 className={`tab-nav-item ${detailTab === 'projects' ? 'active' : ''}`}
                 onClick={() => setDetailTab('projects')}
               >
-                참여 프로젝트 {detailVendor.projects.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projects.length}</span>}
+                프로젝트명 {(detailVendor.projectNames || []).length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projectNames.length}</span>}
               </button>
             </div>
 
@@ -436,41 +443,29 @@ export default function OutsourceManagementPage() {
               </>
             ) : (
               <>
-                {detailVendor.projects.length === 0 ? (
-                  <p className="empty-state">참여 프로젝트 이력이 없습니다.</p>
+                {(detailVendor.projectNames || []).length === 0 ? (
+                  <p className="empty-state">등록된 프로젝트명이 없습니다.</p>
                 ) : (
                   <ul className="vendor-detail-list">
-                    {detailVendor.projects.map((p) => (
-                      <li key={p.id}>
-                        <strong>{p.name}</strong>
-                        <span>
-                          {p.months.join(', ')} · {p.entryCount}건
-                          {p.totalAmount > 0 && ` · ${p.totalAmount.toLocaleString()}원`}
-                        </span>
+                    {detailVendor.projectNames.map((name) => (
+                      <li key={name}>
+                        <strong>{name}</strong>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger-outline"
+                          onClick={() => handleRemoveProjectName(name)}
+                          disabled={detailBusy}
+                        >삭제</button>
                       </li>
                     ))}
                   </ul>
                 )}
-                <form className="vendor-add-form" onSubmit={handleAddProjectToVendor}>
-                  <select
-                    value={newProject.siteId}
-                    onChange={(e) => setNewProject({ ...newProject, siteId: e.target.value })}
-                  >
-                    <option value="">프로젝트 선택</option>
-                    {allSites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                  <select
-                    value={newProject.year}
-                    onChange={(e) => setNewProject({ ...newProject, year: Number(e.target.value) })}
-                  >
-                    {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
-                  </select>
-                  <select
-                    value={newProject.month}
-                    onChange={(e) => setNewProject({ ...newProject, month: Number(e.target.value) })}
-                  >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
-                  </select>
+                <form className="vendor-add-form" onSubmit={handleAddProjectName}>
+                  <input
+                    placeholder="프로젝트명 입력"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                  />
                   <button type="submit" className="btn btn-sm btn-primary" disabled={detailBusy}>
                     {detailBusy ? '…' : '+ 추가'}
                   </button>

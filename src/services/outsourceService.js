@@ -1,5 +1,6 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, where,
+  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
+  query, orderBy, where, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -115,40 +116,42 @@ export async function addVendorToProject({ vendorName, siteId, year, month, unit
   });
 }
 
-// 업체 상세: 소속 프리랜서(직원) + 참여 프로젝트 조회
-export async function getVendorDetail(vendorName) {
-  if (!vendorName) return { freelancers: [], projects: [] };
-
+// 업체 상세: 소속 프리랜서(직원) + 수기 입력된 프로젝트명 목록
+export async function getVendorDetail(vendorId, vendorName) {
   // 포함 직원(프리랜서 중 소속 업체가 일치하는 사람)
   const fSnap = await getDocs(freelancersRef);
   const freelancerList = fSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((f) => (f.vendor || '').trim() === vendorName.trim())
+    .filter((f) => (f.vendor || '').trim() === (vendorName || '').trim())
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  // 참여 프로젝트: siteClosingItems에서 해당 업체 등록 건 추출 → siteId·연월 집계
-  const itemSnap = await getDocs(closingItemsRef);
-  const items = itemSnap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((it) => (it.vendor || '').trim() === vendorName.trim());
-
-  const siteIds = [...new Set(items.map((it) => it.siteId).filter(Boolean))];
-  let siteList = [];
-  if (siteIds.length > 0) {
-    const siteSnap = await getDocs(collection(db, 'sites'));
-    siteList = siteSnap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((s) => siteIds.includes(s.id));
+  // 업체 문서의 projectNames 배열 (수기 입력)
+  let projectNames = [];
+  if (vendorId) {
+    const snap = await getDoc(doc(db, 'vendors', vendorId));
+    if (snap.exists()) {
+      projectNames = Array.isArray(snap.data().projectNames) ? snap.data().projectNames : [];
+    }
   }
+  return { freelancers: freelancerList, projectNames };
+}
 
-  const projects = siteList.map((s) => {
-    const siteItems = items.filter((it) => it.siteId === s.id);
-    const months = [...new Set(siteItems.map((it) => `${it.year}-${String(it.month).padStart(2, '0')}`))].sort();
-    const totalAmount = siteItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
-    return { id: s.id, name: s.name, months, totalAmount, entryCount: siteItems.length };
-  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+// 수기 프로젝트명 추가
+export async function addVendorProjectName(vendorId, name) {
+  if (!vendorId || !name?.trim()) return;
+  await updateDoc(doc(db, 'vendors', vendorId), {
+    projectNames: arrayUnion(name.trim()),
+    updatedAt: new Date(),
+  });
+}
 
-  return { freelancers: freelancerList, projects };
+// 수기 프로젝트명 제거
+export async function removeVendorProjectName(vendorId, name) {
+  if (!vendorId || !name) return;
+  await updateDoc(doc(db, 'vendors', vendorId), {
+    projectNames: arrayRemove(name),
+    updatedAt: new Date(),
+  });
 }
 
 // ── 기존 공수표에서 프리랜서·업체 일괄 가져오기 ──────
