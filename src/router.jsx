@@ -14,6 +14,7 @@ import ManageTeamPage from './pages/manage/ManageTeamPage';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
+import UnassignedReportPage from './pages/admin/UnassignedReportPage';
 import SiteManagementPage from './pages/admin/SiteManagementPage';
 import EventManagementPage from './pages/admin/EventManagementPage';
 import SiteListPage from './pages/site/SiteListPage';
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
           { path: '/admin/departments', element: <DepartmentManagementPage /> },
           { path: '/admin/sites', element: <SiteManagementPage /> },
           { path: '/admin/reports', element: <ReportsPage /> },
+          { path: '/admin/unassigned', element: <UnassignedReportPage /> },
           { path: '/admin/events', element: <EventManagementPage /> },
         ],
       },

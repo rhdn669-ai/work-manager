@@ -402,6 +402,82 @@ body {
 .btn-danger-outline:hover:not(:disabled) { background: #fef2f2; border-color: #b91c1c; color: #b91c1c; }
 .btn-danger-outline:focus-visible { box-shadow: var(--ring-danger); }
 
+/* 미배정 현황 히트맵 */
+.unassigned-report-page { }
+.unassigned-table-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: auto;
+  max-height: 75vh;
+  box-shadow: var(--shadow-sm);
+  -webkit-overflow-scrolling: touch;
+}
+.unassigned-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11px;
+}
+.unassigned-table th,
+.unassigned-table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+.unassigned-table thead th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%);
+  z-index: 5;
+  padding: 6px 4px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+.unassigned-table .day-col {
+  min-width: 22px;
+  width: 22px;
+}
+.unassigned-table .day-col.sun { color: var(--danger); }
+.unassigned-table .day-col.sat { color: #2563eb; }
+.unassigned-table .sticky-col {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 4;
+  padding: 6px 10px;
+  text-align: left;
+  min-width: 120px;
+  border-right: 1px solid var(--border-strong);
+}
+.unassigned-table thead .sticky-col { z-index: 7; background: #f3f4f6; }
+.unassigned-table .sticky-col-right {
+  position: sticky;
+  right: 0;
+  background: #fff;
+  z-index: 4;
+  padding: 6px 10px;
+  min-width: 64px;
+  border-left: 1px solid var(--border-strong);
+}
+.unassigned-table thead .sticky-col-right { z-index: 7; background: #f3f4f6; }
+.unassigned-table .name-col .position-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.unassigned-table .count-col .neg { color: var(--danger); }
+.unassigned-table td.unassigned-cell {
+  width: 22px;
+  height: 26px;
+  cursor: default;
+}
+.unassigned-cell.assigned { background: #dcfce7; }
+.unassigned-cell.leave { background: #e0e7ff; }
+.unassigned-cell.weekend { background: #f3f4f6; }
+.unassigned-cell.unassigned { background: #fee2e2; }
+
 /* 잔업 상세 모달 리스트 */
 .overtime-detail-list {
   display: flex;
