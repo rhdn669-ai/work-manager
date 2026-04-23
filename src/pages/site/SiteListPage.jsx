@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
@@ -64,9 +64,22 @@ export default function SiteListPage() {
 
       const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
 
-      // 1단계: 각 사이트의 자체 finance/공수 집계
+      // 미러 소스 중 list에 없는 사이트들도 통계용으로 추가 조회 (팀장이 담당하지 않는 합산 대상 포함)
+      const listIds = new Set(list.map((x) => x.id));
+      const missingMirrorIds = new Set();
+      for (const s of list) {
+        for (const srcId of s.mirrorFromSiteIds || []) {
+          if (!listIds.has(srcId)) missingMirrorIds.add(srcId);
+        }
+      }
+      const extraMirrorSites = missingMirrorIds.size > 0
+        ? (await Promise.all([...missingMirrorIds].map((id) => getSite(id).catch(() => null)))).filter(Boolean)
+        : [];
+      const statsList = [...list, ...extraMirrorSites];
+
+      // 1단계: 모든 대상 사이트(담당 + 미러 소스) 자체 finance/공수 집계
       const rawStats = {};
-      await Promise.all(list.map(async (s) => {
+      await Promise.all(statsList.map(async (s) => {
         const [fins, items] = await Promise.all([
           getFinanceItems(s.id, year, month),
           getClosingItems(s.id, year, month),
