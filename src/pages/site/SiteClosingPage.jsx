@@ -285,12 +285,16 @@ export default function SiteClosingPage() {
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
     const userLeaveDays = leaveDays[user.name] || {};
     const dq = {};
-    const totalDays = daysInMonth(y, m);
-    for (let d = 1; d <= totalDays; d++) {
-      const dow = new Date(y, m - 1, d).getDay();
-      if (dow === 0 || dow === 6) continue;
-      const frac = leaveWorkFraction(userLeaveDays[d]);
-      if (frac > 0) dq[d] = frac;
+    // 단발성 프로젝트는 출근일자를 비워두고 사용자가 직접 입력
+    const isOnceProject = site?.projectType === 'once';
+    if (!isOnceProject) {
+      const totalDays = daysInMonth(y, m);
+      for (let d = 1; d <= totalDays; d++) {
+        const dow = new Date(y, m - 1, d).getDay();
+        if (dow === 0 || dow === 6) continue;
+        const frac = leaveWorkFraction(userLeaveDays[d]);
+        if (frac > 0) dq[d] = frac;
+      }
     }
     const quantity = Object.values(dq).reduce((s, v) => s + v, 0);
     await addClosingItem(siteId, y, m, {
