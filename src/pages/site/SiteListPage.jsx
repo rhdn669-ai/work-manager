@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, getAllClosingItemsBySite, getAllFinanceItemsBySite, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
@@ -16,6 +16,7 @@ export default function SiteListPage() {
   const [userMap, setUserMap] = useState({});
   const [departments, setDepartments] = useState([]);
   const [siteStats, setSiteStats] = useState({});
+  const [onceTotals, setOnceTotals] = useState({}); // 단발성 전체 누적
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -103,6 +104,25 @@ export default function SiteListPage() {
         stats[s.id] = { ...own, expense: own.expense + mirroredExpense };
       }
       setSiteStats(stats);
+
+      // 단발성 프로젝트: 전체 월 누적 합계
+      const onceSites = list.filter((s) => s.projectType === 'once');
+      if (onceSites.length > 0) {
+        const totals = {};
+        await Promise.all(onceSites.map(async (s) => {
+          const [allItems, allFins] = await Promise.all([
+            getAllClosingItemsBySite(s.id),
+            getAllFinanceItemsBySite(s.id),
+          ]);
+          totals[s.id] = {
+            revenue: allFins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
+            expense: allFins.filter((f) => f.type === 'expense' && !isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
+            overtime: allFins.filter((f) => f.type === 'expense' && isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
+            labor: allItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0),
+          };
+        }));
+        setOnceTotals(totals);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -130,9 +150,11 @@ export default function SiteListPage() {
     const st = s.status || 'active';
     const pt = s.projectType || 'recurring';
     if (filter === 'completed') return st === 'completed';
-    if (isBeforeStart(s)) return false; // 시작 월 이전은 모든 탭에서 숨김
+    // 단발성은 월 필터 무관하게 항상 표시
+    if (pt === 'once') return st === 'active';
+    if (isBeforeStart(s)) return false;
     if (filter === 'recurring') return pt === 'recurring' && st === 'active';
-    if (filter === 'once') return pt === 'once' && st === 'active';
+    if (filter === 'once') return false; // 위에서 처리됨
     // 'all' = 활성 프로젝트 + 해당 월에 데이터가 있는 완료 프로젝트
     if (st === 'active') return true;
     return hasMonthData(s);
@@ -140,13 +162,15 @@ export default function SiteListPage() {
 
   const filterCounts = {
     all: sites.filter((s) => {
-      if (isBeforeStart(s)) return false;
       const st = s.status || 'active';
+      const pt = s.projectType || 'recurring';
+      if (pt === 'once') return st === 'active';
+      if (isBeforeStart(s)) return false;
       if (st === 'active') return true;
       return hasMonthData(s);
     }).length,
     recurring: sites.filter((s) => !isBeforeStart(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
-    once: sites.filter((s) => !isBeforeStart(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
+    once: sites.filter((s) => s.projectType === 'once' && (s.status || 'active') === 'active').length,
     completed: sites.filter((s) => s.status === 'completed').length,
   };
 
@@ -330,18 +354,25 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {filtered.map((s) => {
-            const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+            const pt = s.projectType || 'recurring';
+            const st = s.status || 'active';
             const hideRev = !!s.hideRevenue;
-            const revenueShown = hideRev ? 0 : raw.revenue;
-            // 급여 열람 권한자만 잔업/공수 금액 포함
-            const overtimeShown = canViewSalary ? raw.overtime : 0;
+            const period = periodLabel(s);
+            const isOnce = pt === 'once';
+
+            // 단발성: 전체 누적 통계 / 양산: 선택 월 통계
+            const raw = isOnce
+              ? (onceTotals[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 })
+              : (siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 });
+
+            const overtimeShown = canViewSalary ? (raw.overtime || 0) : 0;
             const laborShown = canViewSalary ? raw.labor : 0;
             const expenseOnly = raw.expense + overtimeShown;
             const totalExpense = expenseOnly + laborShown;
+            const revenueShown = hideRev ? 0 : raw.revenue;
             const balance = revenueShown - totalExpense;
-            const pt = s.projectType || 'recurring';
-            const st = s.status || 'active';
-            const period = periodLabel(s);
+
+            const hasData = raw.revenue > 0 || raw.expense > 0 || (raw.overtime || 0) > 0 || raw.labor > 0;
             return (
               <div key={s.id} className="site-row-wrapper">
                 <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
@@ -366,7 +397,7 @@ export default function SiteListPage() {
                       {period && <span className="chip chip-period">{period}</span>}
                     </div>
                   </div>
-                  {(st !== 'completed' || hasMonthData(s)) && (
+                  {(isOnce ? hasData : (st !== 'completed' || hasMonthData(s))) && (
                     <div className="site-row-stats-panel">
                       {!hideRev && (
                         <div className="stat-row">
@@ -394,10 +425,12 @@ export default function SiteListPage() {
                       )}
                     </div>
                   )}
-                  <div className="site-row-period">
-                    <div className="period-y">{year}</div>
-                    <div className="period-m">{String(month).padStart(2, '0')}월</div>
-                  </div>
+                  {!isOnce && (
+                    <div className="site-row-period">
+                      <div className="period-y">{year}</div>
+                      <div className="period-m">{String(month).padStart(2, '0')}월</div>
+                    </div>
+                  )}
                   <div className="site-row-arrow">&rarr;</div>
                 </Link>
                 {isAdmin && (
