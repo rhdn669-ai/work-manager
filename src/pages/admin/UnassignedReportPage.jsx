@@ -233,26 +233,26 @@ export default function UnassignedReportPage() {
       ) : rows.length === 0 ? (
         <div className="card"><div className="card-body empty-state">표시할 직원이 없습니다.</div></div>
       ) : (
-        <div className="unassigned-table-wrap">
-          <table className="unassigned-table">
-            <thead>
-              <tr>
-                <th className="sticky-col">직원</th>
-                {dayHeaders.map((d) => {
-                  const dow = new Date(year, month - 1, d).getDay();
-                  return <th key={d} className={`day-col ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''}`}>{d}</th>;
-                })}
-                <th className="sticky-col-right">미배정</th>
-                <th className="sticky-col-right">중복</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.uid}>
-                  <td className="sticky-col name-col">
-                    <strong>{r.name}</strong>
-                    {r.position && <span className="position-tag">{r.position}</span>}
-                  </td>
+        <div className="ua-timeline">
+          <div className="ua-timeline-header">
+            <div className="ua-timeline-name-col">직원</div>
+            <div className="ua-timeline-days" style={{ gridTemplateColumns: `repeat(${totalDays}, 1fr)` }}>
+              {dayHeaders.map((d) => {
+                const dow = new Date(year, month - 1, d).getDay();
+                return <span key={d} className={`day-label ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''}`}>{d}</span>;
+              })}
+            </div>
+            <div className="ua-timeline-stats-col">현황</div>
+          </div>
+
+          <div className="ua-timeline-list">
+            {rows.map((r) => (
+              <div className="ua-timeline-row" key={r.uid}>
+                <div className="ua-timeline-name-col">
+                  <strong>{r.name}</strong>
+                  {r.position && <span className="position-tag">{r.position}</span>}
+                </div>
+                <div className="ua-timeline-bar" style={{ gridTemplateColumns: `repeat(${totalDays}, 1fr)` }}>
                   {r.days.map((c) => {
                     const hasOT = c.overtimeMin > 0;
                     const isLeave = c.type.startsWith('leave-');
@@ -267,23 +267,27 @@ export default function UnassignedReportPage() {
                     else baseTitle = '미배정';
                     const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}` : baseTitle;
                     return (
-                      <td
+                      <div
                         key={c.d}
-                        className={`unassigned-cell ${c.type} ${hasOT ? 'has-overtime' : ''}`}
-                        title={title}
+                        className={`ua-timeline-seg ${c.type} ${hasOT ? 'has-overtime' : ''}`}
+                        title={`${c.d}일 · ${title}`}
                       />
                     );
                   })}
-                  <td className="sticky-col-right count-col">
+                </div>
+                <div className="ua-timeline-stats-col">
+                  <div className="ua-timeline-stat">
+                    <span>미배정</span>
                     <strong className={r.unassignedCount > 0 ? 'neg' : ''}>{r.unassignedCount}</strong>
-                  </td>
-                  <td className="sticky-col-right count-col">
+                  </div>
+                  <div className="ua-timeline-stat">
+                    <span>중복</span>
                     <strong className={r.overlapCount > 0 ? 'warn' : ''}>{r.overlapCount}</strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

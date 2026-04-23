@@ -504,7 +504,152 @@ body {
   background: var(--primary);
 }
 
-/* GitHub 잔디 스타일 */
+/* ===== 타임라인 바 스타일 ===== */
+.ua-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ua-timeline-header,
+.ua-timeline-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 140px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.ua-timeline-header {
+  padding: 4px 14px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.ua-timeline-row {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.ua-timeline-row:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.ua-timeline-name-col {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+.ua-timeline-name-col strong {
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ua-timeline-name-col .position-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.ua-timeline-days {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ua-timeline-days .day-label {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ua-timeline-days .day-label.sun { color: var(--danger); }
+.ua-timeline-days .day-label.sat { color: #2563eb; }
+
+.ua-timeline-bar {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ua-timeline-seg {
+  position: relative;
+  height: 26px;
+  border-radius: 3px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  cursor: default;
+}
+.ua-timeline-seg:hover {
+  transform: scaleY(1.15);
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.15);
+  z-index: 2;
+}
+.ua-timeline-seg.assigned { background: #86efac; }
+.ua-timeline-seg.overlap { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); }
+.ua-timeline-seg.leave-annual { background: #818cf8; }
+.ua-timeline-seg.leave-half { background: linear-gradient(to right, #818cf8 50%, #eef2ff 50%); }
+.ua-timeline-seg.leave-quarter { background: linear-gradient(to right, #818cf8 25%, #eef2ff 25%); }
+.ua-timeline-seg.leave-sick { background: #fca5a5; }
+.ua-timeline-seg.weekend { background: #ebedf0; }
+.ua-timeline-seg.unassigned { background: #fca5a5; }
+.ua-timeline-seg.has-overtime::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+.ua-timeline-stats-col {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.ua-timeline-stat {
+  text-align: center;
+  min-width: 44px;
+}
+.ua-timeline-stat span {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.ua-timeline-stat strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ua-timeline-stat .neg { color: var(--danger); }
+.ua-timeline-stat .warn { color: #7c3aed; }
+
+@media (max-width: 768px) {
+  .ua-timeline-header,
+  .ua-timeline-row {
+    grid-template-columns: 100px 1fr 110px;
+    gap: 8px;
+    padding: 10px;
+  }
+  .ua-timeline-days .day-label { font-size: 9px; }
+  .ua-timeline-seg { height: 22px; }
+}
+
+/* GitHub 잔디 스타일 (기존 테이블 — 현재 미사용) */
 .unassigned-table-wrap {
   background: #fcfcfd;
   border: 1px solid var(--border);
