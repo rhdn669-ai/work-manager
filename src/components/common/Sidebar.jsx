@@ -63,14 +63,29 @@ export default function Sidebar({ isOpen }) {
     }
   }, [editing, order]);
 
-  function move(key, dir) {
+  const [draggedKey, setDraggedKey] = useState(null);
+
+  function handleDragStart(e, key) {
+    setDraggedKey(key);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', key); } catch {}
+  }
+
+  function handleDragOver(e, overKey) {
+    e.preventDefault();
+    if (!draggedKey || draggedKey === overKey) return;
     const keys = visibleItems.map((x) => x.key);
-    const idx = keys.indexOf(key);
-    const next = idx + dir;
-    if (idx < 0 || next < 0 || next >= keys.length) return;
-    const reordered = [...keys];
-    [reordered[idx], reordered[next]] = [reordered[next], reordered[idx]];
-    setOrder(reordered);
+    const from = keys.indexOf(draggedKey);
+    const to = keys.indexOf(overKey);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...keys];
+    next.splice(from, 1);
+    next.splice(to, 0, draggedKey);
+    setOrder(next);
+  }
+
+  function handleDragEnd() {
+    setDraggedKey(null);
   }
 
   function resetOrder() {
@@ -98,17 +113,21 @@ export default function Sidebar({ isOpen }) {
           )}
         </div>
 
-        {visibleItems.map((item, idx) => {
-          const isFirst = idx === 0;
-          const isLast = idx === visibleItems.length - 1;
+        {visibleItems.map((item) => {
           if (editing) {
             return (
-              <div className="nav-link nav-edit-row" key={item.key}>
+              <div
+                className={`nav-link nav-edit-row ${draggedKey === item.key ? 'is-dragging' : ''}`}
+                key={item.key}
+                draggable
+                onDragStart={(e) => handleDragStart(e, item.key)}
+                onDragOver={(e) => handleDragOver(e, item.key)}
+                onDrop={(e) => e.preventDefault()}
+                onDragEnd={handleDragEnd}
+                title="드래그해서 순서 변경"
+              >
+                <span className="nav-drag-handle">⋮⋮</span>
                 <span className="nav-edit-label">{item.label}</span>
-                <span className="nav-edit-actions">
-                  <button type="button" disabled={isFirst} onClick={() => move(item.key, -1)} aria-label="위로">▲</button>
-                  <button type="button" disabled={isLast} onClick={() => move(item.key, 1)} aria-label="아래로">▼</button>
-                </span>
               </div>
             );
           }
