@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, getAllClosingItemsBySite, getAllFinanceItemsBySite, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
@@ -16,6 +16,7 @@ export default function SiteListPage() {
   const [userMap, setUserMap] = useState({});
   const [departments, setDepartments] = useState([]);
   const [siteStats, setSiteStats] = useState({});
+  const [allSiteStats, setAllSiteStats] = useState({}); // 단발성 전체 누적
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -103,6 +104,24 @@ export default function SiteListPage() {
         stats[s.id] = { ...own, expense: own.expense + mirroredExpense };
       }
       setSiteStats(stats);
+
+      // 단발성 프로젝트 전체 누적 합계
+      const onceSites = list.filter((s) => s.projectType === 'once');
+      if (onceSites.length > 0) {
+        const allStats = {};
+        await Promise.all(onceSites.map(async (s) => {
+          const [allItems, allFins] = await Promise.all([
+            getAllClosingItemsBySite(s.id),
+            getAllFinanceItemsBySite(s.id),
+          ]);
+          allStats[s.id] = {
+            revenue: allFins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
+            expense: allFins.filter((f) => f.type === 'expense').reduce((sum, f) => sum + (Number(f.amount) || 0), 0),
+            labor: allItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0),
+          };
+        }));
+        setAllSiteStats(allStats);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -392,6 +411,18 @@ export default function SiteListPage() {
                           </strong>
                         </div>
                       )}
+                      {pt === 'once' && allSiteStats[s.id] && !hideRev && (() => {
+                        const all = allSiteStats[s.id];
+                        const allNet = all.revenue - all.expense - (canViewSalary ? all.labor : 0);
+                        return (
+                          <div className="stat-row stat-all-total-row">
+                            <span>누적</span>
+                            <strong className={`stat-balance ${allNet >= 0 ? 'positive' : 'negative'}`}>
+                              {allNet >= 0 ? '+' : ''}{allNet.toLocaleString()}원
+                            </strong>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                   <div className="site-row-period">
