@@ -13,6 +13,7 @@ export default function Sidebar({ isOpen }) {
         {isAdmin && <NavLink to="/admin/users" className="nav-link">직원 관리</NavLink>}
         {isAdmin && <NavLink to="/admin/reports" className="nav-link">잔업 · 연차</NavLink>}
         {isAdmin && <NavLink to="/admin/unassigned" className="nav-link">미배정 현황</NavLink>}
+        {isAdmin && <NavLink to="/admin/outsource" className="nav-link">외주 관리</NavLink>}
         {!isAdmin && <NavLink to="/attendance" end className="nav-link">잔업</NavLink>}
         {!isAdmin && <NavLink to="/leave" end className="nav-link">연차</NavLink>}
         {(isAdmin || canApproveLeave) && <NavLink to="/sites" end className="nav-link">프로젝트</NavLink>}
