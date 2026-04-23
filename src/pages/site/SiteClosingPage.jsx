@@ -5,6 +5,7 @@ import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
   initRosterFromPreviousMonth, updateSite, getAssignedEmployeeIds,
+  getAllSites,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -57,6 +58,8 @@ export default function SiteClosingPage() {
   const [loading, setLoading] = useState(true);
   const [finances, setFinances] = useState([]);
   const [financeBuf, setFinanceBuf] = useState({});
+  const [mirroredFinances, setMirroredFinances] = useState([]); // 합산 대상 프로젝트의 지출 (읽기 전용)
+  const [mirroredLabor, setMirroredLabor] = useState(0); // 합산 대상 프로젝트의 공수비 총액
   const [leaveDays, setLeaveDays] = useState({}); // { userId: Set of day numbers }
   const [showEmployeeSelect, setShowEmployeeSelect] = useState(false);
   const [assignedNames, setAssignedNames] = useState(new Set());
@@ -100,6 +103,30 @@ export default function SiteClosingPage() {
       setSite(s);
       setAssignedNames(assigned);
       setFinances(fins);
+
+      // 합산 대상 프로젝트들의 지출/공수를 읽기 전용으로 가져오기
+      const mirrorIds = s?.mirrorFromSiteIds || [];
+      if (mirrorIds.length > 0) {
+        const allSitesList = await getAllSites();
+        const siteNameMap = Object.fromEntries(allSitesList.map((x) => [x.id, x.name]));
+        const results = await Promise.all(mirrorIds.map(async (srcId) => {
+          const [srcFins, srcItems] = await Promise.all([
+            getFinanceItems(srcId, y, m),
+            getClosingItems(srcId, y, m),
+          ]);
+          const srcName = siteNameMap[srcId] || '(삭제된 프로젝트)';
+          const expenseFins = srcFins
+            .filter((f) => f.type === 'expense')
+            .map((f) => ({ ...f, _mirrored: true, _sourceName: srcName, _sourceSiteId: srcId }));
+          const labor = srcItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+          return { expenseFins, labor };
+        }));
+        setMirroredFinances(results.flatMap((r) => r.expenseFins));
+        setMirroredLabor(results.reduce((sum, r) => sum + r.labor, 0));
+      } else {
+        setMirroredFinances([]);
+        setMirroredLabor(0);
+      }
       const uMap = Object.fromEntries(users.map((u) => [u.uid, u]));
       setUserMap(uMap);
 
@@ -412,9 +439,13 @@ export default function SiteClosingPage() {
 
   const revenueItems = finances.filter((f) => f.type === 'revenue');
   const expenseItems = finances.filter((f) => f.type === 'expense');
-  const isOvertimeFinance = (f) => { const d = ((financeBuf[f.id]?.description ?? f.description) || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
+  const isOvertimeDesc = (desc) => { const d = (desc || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
+  const isOvertimeFinance = (f) => isOvertimeDesc(financeBuf[f.id]?.description ?? f.description);
   const totalRevenue = revenueItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
-  const totalExpense = expenseItems.filter((f) => canViewSalary || !isOvertimeFinance(f)).reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
+  const ownExpense = expenseItems.filter((f) => canViewSalary || !isOvertimeFinance(f)).reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
+  const mirroredExpenseSum = mirroredFinances.filter((f) => canViewSalary || !isOvertimeDesc(f.description)).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+  const mirroredLaborSum = canViewSalary ? mirroredLabor : 0;
+  const totalExpense = ownExpense + mirroredExpenseSum + mirroredLaborSum;
   const netTotal = totalRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
 
   let saveStatus;
@@ -542,7 +573,7 @@ export default function SiteClosingPage() {
             </div>
           )}
         </div>
-        {expenseItems.length === 0 ? (
+        {expenseItems.length === 0 && mirroredFinances.length === 0 && mirroredLaborSum === 0 ? (
           <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 지출 항목이 없습니다.</p>
         ) : (
           <div className="finance-list">
@@ -578,6 +609,36 @@ export default function SiteClosingPage() {
                 </div>
               );
             })}
+            {/* 합산 대상 프로젝트의 지출 (읽기 전용) */}
+            {mirroredFinances.filter((f) => canViewSalary || !isOvertimeDesc(f.description)).map((f) => {
+              const desc = (f.description || '').trim();
+              const isOvertime = isOvertimeDesc(desc);
+              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material' };
+              const chipKey = isOvertime ? 'overtime' : chipMap[desc];
+              return (
+                <div className={`expense-card expense-card-readonly ${chipKey ? `expense-card-${chipKey}` : ''}`} key={`mirror-${f.id}`}>
+                  <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+                    {isOvertime ? '잔업' : (desc || '지출')}
+                  </span>
+                  <span className="expense-input-desc expense-readonly-text" title={desc}>
+                    {isOvertime ? desc.replace(/^잔업\s*-\s*/, '') : desc}
+                  </span>
+                  <MoneyInput className="expense-input-amount" value={f.amount || 0} onChange={() => {}} disabled />
+                  <span className="expense-won">원</span>
+                  <span className="expense-readonly-badge" title={`${f._sourceName} 프로젝트의 지출`}>↗ {f._sourceName}</span>
+                </div>
+              );
+            })}
+            {/* 합산 대상 프로젝트의 공수비 (읽기 전용, 급여 열람 권한자만) */}
+            {canViewSalary && mirroredLaborSum > 0 && (
+              <div className="expense-card expense-card-readonly" key="mirror-labor-total">
+                <span className="expense-tag expense-chip-default">공수</span>
+                <span className="expense-input-desc expense-readonly-text">합산 프로젝트 공수비 합계</span>
+                <MoneyInput className="expense-input-amount" value={mirroredLaborSum} onChange={() => {}} disabled />
+                <span className="expense-won">원</span>
+                <span className="expense-readonly-badge">↗ 합산 합계</span>
+              </div>
+            )}
           </div>
         )}
       </div>

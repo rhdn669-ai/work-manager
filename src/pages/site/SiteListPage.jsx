@@ -29,8 +29,10 @@ export default function SiteListPage() {
     name: '', team: '', managerIds: [],
     projectType: 'recurring', status: 'active',
     startYear: null, startMonth: null, endYear: null, endMonth: null,
+    mirrorFromSiteIds: [],
   });
   const [managerListOpen, setManagerListOpen] = useState(false);
+  const [mirrorListOpen, setMirrorListOpen] = useState(false);
 
   useEffect(() => {
     if (userProfile) loadData();
@@ -50,19 +52,33 @@ export default function SiteListPage() {
       const uMap = Object.fromEntries(userList.map((u) => [u.uid, u]));
       setUserMap(uMap);
 
-      const stats = {};
+      const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
+
+      // 1단계: 각 사이트의 자체 finance/공수 집계
+      const rawStats = {};
       await Promise.all(list.map(async (s) => {
         const [fins, items] = await Promise.all([
           getFinanceItems(s.id, year, month),
           getClosingItems(s.id, year, month),
         ]);
-        const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
         const revenue = fins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const expense = fins.filter((f) => f.type === 'expense' && !isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const overtime = fins.filter((f) => f.type === 'expense' && isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const labor = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
-        stats[s.id] = { revenue, expense, overtime, labor };
+        rawStats[s.id] = { revenue, expense, overtime, labor };
       }));
+
+      // 2단계: mirrorFromSiteIds로 지출 합산 (미러 소스의 expense + overtime + labor 을 타겟의 expense에 추가)
+      const stats = {};
+      for (const s of list) {
+        const own = rawStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+        let mirroredExpense = 0;
+        for (const srcId of s.mirrorFromSiteIds || []) {
+          const src = rawStats[srcId];
+          if (src) mirroredExpense += (src.expense || 0) + (src.overtime || 0) + (src.labor || 0);
+        }
+        stats[s.id] = { ...own, expense: own.expense + mirroredExpense };
+      }
       setSiteStats(stats);
     } catch (err) {
       console.error(err);
@@ -110,8 +126,10 @@ export default function SiteListPage() {
       name: '', team: '', managerIds: [],
       projectType: 'recurring', status: 'active',
       startYear: year, startMonth: month, endYear: null, endMonth: null,
+      mirrorFromSiteIds: [],
     });
     setManagerListOpen(false);
+    setMirrorListOpen(false);
     setShowModal(true);
   }
 
@@ -122,8 +140,10 @@ export default function SiteListPage() {
       projectType: site.projectType || 'recurring', status: site.status || 'active',
       startYear: site.startYear || null, startMonth: site.startMonth || null,
       endYear: site.endYear || null, endMonth: site.endMonth || null,
+      mirrorFromSiteIds: site.mirrorFromSiteIds || [],
     });
     setManagerListOpen(false);
+    setMirrorListOpen(false);
     setShowModal(true);
   }
 
@@ -174,6 +194,15 @@ export default function SiteListPage() {
       managerIds: f.managerIds.includes(uid)
         ? f.managerIds.filter((x) => x !== uid)
         : [...f.managerIds, uid],
+    }));
+  }
+
+  function toggleMirrorSite(sid) {
+    setForm((f) => ({
+      ...f,
+      mirrorFromSiteIds: f.mirrorFromSiteIds.includes(sid)
+        ? f.mirrorFromSiteIds.filter((x) => x !== sid)
+        : [...f.mirrorFromSiteIds, sid],
     }));
   }
 
@@ -376,6 +405,33 @@ export default function SiteListPage() {
                     </label>
                   );
                 })}
+              </div>
+            )}
+          </div>
+          <div className="form-group">
+            <label>지출 합산 대상 프로젝트 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+            <p className="field-hint" style={{ marginTop: 0, marginBottom: 6 }}>
+              선택한 프로젝트의 지출이 이 프로젝트 화면에 읽기 전용으로 표시되고 합계에 포함됩니다.
+            </p>
+            <button type="button" className="select-dropdown-toggle" onClick={() => setMirrorListOpen(!mirrorListOpen)}>
+              <span>{form.mirrorFromSiteIds.length > 0 ? `${form.mirrorFromSiteIds.length}개 선택됨` : '합산할 프로젝트를 선택하세요'}</span>
+              <span className="select-dropdown-arrow">{mirrorListOpen ? '▲' : '▼'}</span>
+            </button>
+            {mirrorListOpen && (
+              <div className="select-dropdown-list">
+                {sites.filter((s) => s.id !== editSite?.id).map((s) => {
+                  const checked = form.mirrorFromSiteIds.includes(s.id);
+                  return (
+                    <label key={s.id} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleMirrorSite(s.id)} />
+                      <span className="select-list-name">{s.name}</span>
+                      <span className="select-list-sub">{s.team || '팀 미지정'}</span>
+                    </label>
+                  );
+                })}
+                {sites.filter((s) => s.id !== editSite?.id).length === 0 && (
+                  <div className="select-list-item" style={{ color: '#9ca3af' }}>선택할 다른 프로젝트가 없습니다.</div>
+                )}
               </div>
             )}
           </div>

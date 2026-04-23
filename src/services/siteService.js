@@ -42,6 +42,7 @@ export async function createSite(data) {
     startMonth: data.startMonth || null,
     endYear: data.endYear || null,
     endMonth: data.endMonth || null,
+    mirrorFromSiteIds: data.mirrorFromSiteIds || [], // 지출 합산 대상 프로젝트 ID 목록
     createdAt: new Date(),
     updatedAt: new Date(),
   });
