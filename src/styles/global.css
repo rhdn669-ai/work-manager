@@ -542,7 +542,7 @@ body {
 .ua-legend-swatch.leave-annual { background: #818cf8; }
 .ua-legend-swatch.leave-half { background: linear-gradient(to right, #818cf8 50%, #eef2ff 50%); }
 .ua-legend-swatch.leave-quarter { background: linear-gradient(to right, #818cf8 25%, #eef2ff 25%); }
-.ua-legend-swatch.leave-sick { background: #fca5a5; }
+.ua-legend-swatch.leave-sick { background: #fde68a; }
 .ua-legend-swatch.weekend { background: #ebedf0; }
 .ua-legend-swatch.unassigned { background: #fca5a5; }
 .ua-legend-dot {
@@ -859,7 +859,7 @@ body {
 .unassigned-cell.leave-annual { background: #818cf8; }
 .unassigned-cell.leave-half { background: linear-gradient(to right, #818cf8 50%, #eef2ff 50%); }
 .unassigned-cell.leave-quarter { background: linear-gradient(to right, #818cf8 25%, #eef2ff 25%); }
-.unassigned-cell.leave-sick { background: #fca5a5; }
+.unassigned-cell.leave-sick { background: #fde68a; }
 .unassigned-cell.weekend { background: #f3f4f6; box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.02); }
 .unassigned-cell.unassigned { background: #fca5a5; }
 

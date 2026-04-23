@@ -194,21 +194,6 @@ export default function UnassignedReportPage() {
         </select>
       </div>
 
-      <div className="ua-summary-card" style={{ marginBottom: 16 }}>
-        <div className="ua-summary-title">
-          <span className="ua-dot ua-dot-unassigned" />
-          미배정 Top
-        </div>
-        {topUnassigned.length === 0 ? (
-          <p className="ua-summary-empty">미배정 직원 없음</p>
-        ) : (
-          <ul className="ua-summary-list">
-            {topUnassigned.map((r) => (
-              <li key={r.uid}><span>{r.name}</span><strong>{r.unassignedCount}일</strong></li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       <div className="ua-legend">
         <span><span className="ua-legend-swatch assigned" />배정</span>
