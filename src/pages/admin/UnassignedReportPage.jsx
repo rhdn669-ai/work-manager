@@ -23,6 +23,7 @@ export default function UnassignedReportPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [hoverDay, setHoverDay] = useState(null);
   const [users, setUsers] = useState([]);
   const [sites, setSites] = useState([]);
   const [allItems, setAllItems] = useState([]);
@@ -253,7 +254,7 @@ export default function UnassignedReportPage() {
                 <th className="sticky-col">직원</th>
                 {dayHeaders.map((d) => {
                   const dow = new Date(year, month - 1, d).getDay();
-                  return <th key={d} className={`day-col ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''}`}>{d}</th>;
+                  return <th key={d} className={`day-col ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''} ${hoverDay === d ? 'col-hover' : ''}`}>{d}</th>;
                 })}
                 <th className="sticky-col-right">미배정</th>
                 <th className="sticky-col-right">중복</th>
@@ -282,8 +283,10 @@ export default function UnassignedReportPage() {
                     return (
                       <td
                         key={c.d}
-                        className={`unassigned-cell ${c.type} ${hasOT ? 'has-overtime' : ''}`}
+                        className={`unassigned-cell ${c.type} ${hasOT ? 'has-overtime' : ''} ${hoverDay === c.d ? 'col-hover' : ''}`}
                         title={`${c.d}일 · ${title}`}
+                        onMouseEnter={() => setHoverDay(c.d)}
+                        onMouseLeave={() => setHoverDay((prev) => (prev === c.d ? null : prev))}
                       />
                     );
                   })}
