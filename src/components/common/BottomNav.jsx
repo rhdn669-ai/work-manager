@@ -67,6 +67,16 @@ export default function BottomNav() {
         </Item>
       )}
 
+      {/* 4-1. 팀구성 관리 (관리자) */}
+      {isAdmin && (
+        <Item to="/manage/team" end label="팀구성">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </Item>
+      )}
+
       {/* 5. 우리 팀 (팀장 → 잔업·연차, 일반 → 팀 구성) */}
       {canApproveLeave && !isAdmin && (
         <Item to="/manage/leave" end label="우리 팀">
