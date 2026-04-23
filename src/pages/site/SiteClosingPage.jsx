@@ -783,7 +783,7 @@ export default function SiteClosingPage() {
             <button className="btn btn-sm btn-pastel-sky" onClick={handleAddRow}>+ 프리랜서</button>
             <button className="btn btn-sm btn-pastel-peach" onClick={handleAddDailyWorker}>+ 일용직</button>
             <button className="btn btn-sm btn-pastel-teal" onClick={handleAddVendorDay}>+ 업체(공수)</button>
-            <button className="btn btn-sm btn-pastel-amber" onClick={handleAddVendorCase}>+ 프로젝트</button>
+            <button className="btn btn-sm btn-pastel-amber" onClick={handleAddVendorCase}>+ 업체(프로젝트)</button>
             <button className="btn btn-sm btn-pastel-lavender" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
           </div>
         )}
