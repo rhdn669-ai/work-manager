@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChat } from '../../contexts/ChatContext';
 
-const LS_KEY = 'sidebar-order-v1';
+const LS_KEY_PREFIX = 'sidebar-order-v1:';
+const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 
 // 기본 순서대로 모든 메뉴 정의
 function buildAllItems({ isAdmin, canApproveLeave, unreadCount }) {
@@ -25,15 +26,21 @@ function buildAllItems({ isAdmin, canApproveLeave, unreadCount }) {
 }
 
 export default function Sidebar({ isOpen }) {
-  const { isAdmin, canApproveLeave } = useAuth();
+  const { userProfile, isAdmin, canApproveLeave } = useAuth();
   const { unreadCount } = useChat();
   const [editing, setEditing] = useState(false);
-  const [order, setOrder] = useState(() => {
+  const [order, setOrder] = useState(null);
+
+  // 로그인 계정(uid)이 바뀔 때마다 해당 계정의 순서 로드
+  useEffect(() => {
+    const key = lsKeyFor(userProfile?.uid);
+    if (!key) { setOrder(null); return; }
     try {
-      const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-      return Array.isArray(saved) ? saved : null;
-    } catch { return null; }
-  });
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      setOrder(Array.isArray(saved) ? saved : null);
+    } catch { setOrder(null); }
+    setEditing(false);
+  }, [userProfile?.uid]);
 
   const allItems = useMemo(
     () => buildAllItems({ isAdmin, canApproveLeave, unreadCount }),
@@ -57,11 +64,12 @@ export default function Sidebar({ isOpen }) {
   }, [allItems, order]);
 
   useEffect(() => {
-    // 편집 종료 시 localStorage 저장
-    if (!editing && order) {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(order)); } catch {}
+    // 편집 종료 시 현재 계정 키로 저장
+    const key = lsKeyFor(userProfile?.uid);
+    if (!editing && order && key) {
+      try { localStorage.setItem(key, JSON.stringify(order)); } catch {}
     }
-  }, [editing, order]);
+  }, [editing, order, userProfile?.uid]);
 
   const [draggedKey, setDraggedKey] = useState(null);
 
@@ -90,7 +98,8 @@ export default function Sidebar({ isOpen }) {
 
   function resetOrder() {
     if (!confirm('사이드바 순서를 기본으로 초기화하시겠습니까?')) return;
-    localStorage.removeItem(LS_KEY);
+    const key = lsKeyFor(userProfile?.uid);
+    if (key) localStorage.removeItem(key);
     setOrder(null);
   }
 
