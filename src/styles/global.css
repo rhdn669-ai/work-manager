@@ -479,16 +479,18 @@ body {
 }
 .ua-summary-list li > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 지표 간격 (건수 · 시간 · 금액 등) */
+/* 지표 세로열 정렬 (건수 · 시간 · 금액) */
 .ua-summary-metrics {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: 50px 80px 100px;
+  gap: 14px;
   align-items: baseline;
-  gap: 18px;
 }
 .ua-summary-metrics em {
   font-style: normal;
   font-variant-numeric: tabular-nums;
-  min-width: fit-content;
+  text-align: right;
+  white-space: nowrap;
 }
 .ua-summary-empty {
   font-size: 12px;
