@@ -3324,17 +3324,6 @@ body {
 .site-row-stats-panel .stat-balance-row > .stat-balance.positive { color: var(--success); }
 .site-row-stats-panel .stat-balance-row > .stat-balance.negative { color: var(--danger); }
 
-.site-row-stats-panel .stat-all-total-row {
-  margin-top: 2px;
-  padding-top: 4px;
-  border-top: 1px dashed var(--border);
-  opacity: 0.7;
-}
-.site-row-stats-panel .stat-all-total-row > span {
-  font-size: 10px;
-  letter-spacing: 0.02em;
-}
-
 @media (max-width: 640px) {
   .site-row { flex-wrap: wrap; }
   .site-row-stats-panel {
