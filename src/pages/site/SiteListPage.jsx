@@ -145,16 +145,22 @@ export default function SiteListPage() {
     return false;
   };
 
+  // 선택한 년/월이 프로젝트 마감 월 이후인지
+  const isAfterEnd = (s) => {
+    if (!s.endYear || !s.endMonth) return false;
+    if (year > s.endYear) return true;
+    if (year === s.endYear && month > s.endMonth) return true;
+    return false;
+  };
+
   // 필터링된 프로젝트
   const filtered = sites.filter((s) => {
     const st = s.status || 'active';
     const pt = s.projectType || 'recurring';
     if (filter === 'completed') return st === 'completed';
-    // 단발성은 월 필터 무관하게 항상 표시
+    if (isBeforeStart(s) || isAfterEnd(s)) return false;
     if (pt === 'once') return st === 'active';
-    if (isBeforeStart(s)) return false;
     if (filter === 'recurring') return pt === 'recurring' && st === 'active';
-    if (filter === 'once') return false; // 위에서 처리됨
     // 'all' = 활성 프로젝트 + 해당 월에 데이터가 있는 완료 프로젝트
     if (st === 'active') return true;
     return hasMonthData(s);
@@ -162,15 +168,13 @@ export default function SiteListPage() {
 
   const filterCounts = {
     all: sites.filter((s) => {
+      if (isBeforeStart(s) || isAfterEnd(s)) return false;
       const st = s.status || 'active';
-      const pt = s.projectType || 'recurring';
-      if (pt === 'once') return st === 'active';
-      if (isBeforeStart(s)) return false;
       if (st === 'active') return true;
       return hasMonthData(s);
     }).length,
-    recurring: sites.filter((s) => !isBeforeStart(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
-    once: sites.filter((s) => s.projectType === 'once' && (s.status || 'active') === 'active').length,
+    recurring: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
+    once: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
     completed: sites.filter((s) => s.status === 'completed').length,
   };
 
