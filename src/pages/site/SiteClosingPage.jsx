@@ -389,6 +389,7 @@ export default function SiteClosingPage() {
 
   const employeeTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType === 'employee' ? (Number(it.amount) || 0) : 0), 0);
   const freelancerTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType !== 'employee' ? (Number(it.amount) || 0) : 0), 0);
+  const netTotal = totalRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
   const itemCount = items.length;
 
   const revenueItems = finances.filter((f) => f.type === 'revenue');
@@ -465,6 +466,16 @@ export default function SiteClosingPage() {
             <strong>{employeeTotal.toLocaleString()}원</strong>
           </div>
         )}
+        <div className="closing-summary-item closing-summary-net" style={{
+          borderLeft: '2px solid var(--border-strong)',
+          paddingLeft: 16,
+          marginLeft: 4,
+        }}>
+          <span className="label">합계</span>
+          <strong style={{ color: netTotal >= 0 ? 'var(--success)' : 'var(--danger)', fontSize: 15 }}>
+            {netTotal >= 0 ? '+' : ''}{netTotal.toLocaleString()}원
+          </strong>
+        </div>
         {canEdit && saveStatus}
       </div>
 
