@@ -561,7 +561,7 @@ export default function SiteClosingPage() {
         <div className="finance-section">
           <div className="finance-section-header">
             <h3 className="finance-title finance-revenue">매출</h3>
-            {canEdit && <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('revenue')}>+ 추가</button>}
+            {canEdit && <button className="btn btn-sm btn-pastel-green" onClick={() => handleAddFinance('revenue')}>+ 추가</button>}
           </div>
           {revenueItems.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
@@ -590,7 +590,7 @@ export default function SiteClosingPage() {
           <h3 className="finance-title finance-expense">지출</h3>
           {canEdit && (
             <div className="finance-actions">
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
+              <button className="btn btn-sm btn-pastel-rose" onClick={() => handleAddFinance('expense')}>+ 추가</button>
               <button className="expense-chip expense-chip-meal" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
               <button className="expense-chip expense-chip-transport" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
               <button className="expense-chip expense-chip-material" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>

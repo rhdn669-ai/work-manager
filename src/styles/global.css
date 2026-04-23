@@ -514,13 +514,17 @@ body {
   color: var(--danger);
 }
 
-/* 파스텔 구분용 (공수표 추가 버튼 등) */
+/* 파스텔 구분용 (공수표·매출·지출 추가 버튼 등) */
 .btn-pastel-sky { background: #e0f2fe; color: #0c4a6e; border-color: #bae6fd; }
 .btn-pastel-sky:hover:not(:disabled) { background: #bae6fd; border-color: #7dd3fc; }
 .btn-pastel-peach { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
 .btn-pastel-peach:hover:not(:disabled) { background: #fed7aa; border-color: #fdba74; }
 .btn-pastel-lavender { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
 .btn-pastel-lavender:hover:not(:disabled) { background: #ddd6fe; border-color: #c4b5fd; }
+.btn-pastel-green { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.btn-pastel-green:hover:not(:disabled) { background: #bbf7d0; border-color: #86efac; }
+.btn-pastel-rose { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
+.btn-pastel-rose:hover:not(:disabled) { background: #fecdd3; border-color: #fda4af; }
 
 .btn-sm {
   padding: 4px 12px;
@@ -2880,14 +2884,17 @@ body {
 .expense-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 4px 12px;
+  min-height: var(--btn-h-sm);
   font-size: 12px;
   font-weight: 600;
-  border-radius: 999px;
+  line-height: 1.2;
+  border-radius: 7px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
   white-space: nowrap;
 }
 
@@ -2897,9 +2904,8 @@ body {
   opacity: 0.7;
 }
 
-.expense-chip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+.expense-chip:hover:not(:disabled) {
+  filter: brightness(0.95);
 }
 
 .expense-chip-meal {
