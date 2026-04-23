@@ -981,6 +981,10 @@ body {
 .btn-pastel-green:hover:not(:disabled) { background: #bbf7d0; border-color: #86efac; }
 .btn-pastel-rose { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
 .btn-pastel-rose:hover:not(:disabled) { background: #fecdd3; border-color: #fda4af; }
+.btn-pastel-teal { background: #ccfbf1; color: #115e59; border-color: #99f6e4; }
+.btn-pastel-teal:hover:not(:disabled) { background: #99f6e4; border-color: #5eead4; }
+.btn-pastel-amber { background: #fef3c7; color: #854d0e; border-color: #fde68a; }
+.btn-pastel-amber:hover:not(:disabled) { background: #fde68a; border-color: #fcd34d; }
 
 .btn-sm {
   padding: 4px 12px;
@@ -4097,6 +4101,52 @@ body {
   border-color: #ede9fe;
 }
 .closing-card-employee:hover { border-color: #ddd6fe; }
+
+.closing-card-vendor {
+  background: #f0fdfa; /* teal-50 */
+  border-color: #ccfbf1;
+}
+.closing-card-vendor:hover { border-color: #99f6e4; }
+
+.closing-card-vendor_case {
+  background: #fffbeb; /* amber-50 */
+  border-color: #fef3c7;
+}
+.closing-card-vendor_case:hover { border-color: #fde68a; }
+
+/* 업체(건당) 건수 입력 */
+.closing-case-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 8px 0;
+}
+.closing-case-input label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  min-width: 40px;
+}
+.closing-case-input input {
+  flex: 1;
+  max-width: 140px;
+  padding: 8px 12px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.closing-case-input input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
 
 .closing-card-head {
   display: flex;

@@ -53,13 +53,18 @@ export async function addVendor(data) {
     representative: data.representative || '',
     contact: data.contact || '',
     note: data.note || '',
+    dailyRate: Number(data.dailyRate) || 0, // 공수(일) 단가
+    caseRate: Number(data.caseRate) || 0,   // 건당 단가
     createdAt: new Date(),
     updatedAt: new Date(),
   });
 }
 
 export async function updateVendor(id, data) {
-  await updateDoc(doc(db, 'vendors', id), { ...data, updatedAt: new Date() });
+  const update = { ...data, updatedAt: new Date() };
+  if (data.dailyRate !== undefined) update.dailyRate = Number(data.dailyRate) || 0;
+  if (data.caseRate !== undefined) update.caseRate = Number(data.caseRate) || 0;
+  await updateDoc(doc(db, 'vendors', id), update);
 }
 
 export async function deleteVendor(id) {

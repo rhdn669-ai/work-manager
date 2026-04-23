@@ -55,7 +55,7 @@ export default function OutsourceManagementPage() {
     setEditItem(null);
     setForm(tab === 'freelancer'
       ? { name: '', vendor: '', dailyRate: 0, contact: '', note: '' }
-      : { name: '', representative: '', contact: '', note: '' });
+      : { name: '', representative: '', contact: '', note: '', dailyRate: 0, caseRate: 0 });
     setShowModal(true);
   }
 
@@ -178,8 +178,9 @@ export default function OutsourceManagementPage() {
               <tr>
                 <th>업체명</th>
                 <th>대표자</th>
+                <th>공수 단가</th>
+                <th>건당 단가</th>
                 <th>연락처</th>
-                <th>비고</th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -188,8 +189,9 @@ export default function OutsourceManagementPage() {
                 <tr key={v.id}>
                   <td><strong>{v.name}</strong></td>
                   <td>{v.representative || '-'}</td>
+                  <td>{v.dailyRate > 0 ? `${Number(v.dailyRate).toLocaleString()}원` : '-'}</td>
+                  <td>{v.caseRate > 0 ? `${Number(v.caseRate).toLocaleString()}원` : '-'}</td>
                   <td>{v.contact || '-'}</td>
-                  <td style={{ maxWidth: 240, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.note || '-'}</td>
                   <td>
                     <div className="btn-group">
                       <button className="btn btn-sm btn-outline" onClick={() => openEdit(v)}>수정</button>
@@ -237,14 +239,32 @@ export default function OutsourceManagementPage() {
               </div>
             </>
           ) : (
-            <div className="form-group">
-              <label>대표자</label>
-              <input
-                value={form.representative || ''}
-                onChange={(e) => setForm({ ...form, representative: e.target.value })}
-                placeholder="선택 사항"
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label>대표자</label>
+                <input
+                  value={form.representative || ''}
+                  onChange={(e) => setForm({ ...form, representative: e.target.value })}
+                  placeholder="선택 사항"
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>공수(일) 단가</label>
+                  <MoneyInput
+                    value={form.dailyRate || 0}
+                    onChange={(e) => setForm({ ...form, dailyRate: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>건당 단가</label>
+                  <MoneyInput
+                    value={form.caseRate || 0}
+                    onChange={(e) => setForm({ ...form, caseRate: e.target.value })}
+                  />
+                </div>
+              </div>
+            </>
           )}
           <div className="form-group">
             <label>연락처</label>

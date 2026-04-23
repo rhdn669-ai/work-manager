@@ -308,6 +308,30 @@ export default function SiteClosingPage() {
     await loadAll();
   }
 
+  async function handleAddVendorDay() {
+    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
+    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
+    await addClosingItem(siteId, y, m, {
+      no: nextNo, vendor: '', detail: '', category: '',
+      itemType: 'vendor',
+      unitPrice: 0, dailyQuantities: {}, quantity: 0, amount: 0,
+      order: nextOrder,
+    });
+    await loadAll();
+  }
+
+  async function handleAddVendorCase() {
+    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
+    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
+    await addClosingItem(siteId, y, m, {
+      no: nextNo, vendor: '', detail: '', category: '',
+      itemType: 'vendor_case',
+      unitPrice: 0, dailyQuantities: {}, quantity: 0, amount: 0,
+      order: nextOrder,
+    });
+    await loadAll();
+  }
+
   async function handleAddEmployee(user) {
     const resolvedType = 'employee';
     const alreadyExists = items.some((it) => it.itemType === resolvedType && it.detail === user.name);
@@ -351,17 +375,29 @@ export default function SiteClosingPage() {
   function updateField(itemId, field, value) {
     setEditBuf((b) => {
       const cur = { ...b[itemId], [field]: value };
-      if (field === 'unitPrice') {
-        cur.amount = Number(cur.unitPrice || 0) * Number(cur.quantity || 0);
+      if (field === 'unitPrice' || field === 'quantity') {
+        const q = Number(cur.quantity || 0);
+        cur.quantity = q;
+        cur.amount = Number(cur.unitPrice || 0) * q;
       }
-      // 외주관리 연동: 프리랜서/일용직 행에서 이름을 등록된 프리랜서로 바꾸면
-      // 소속 업체·일당 자동 채움 (일용직은 dailyRate가 시급이 아닌 하루 단가라 일당만 반영)
-      if (field === 'detail' && cur.itemType !== 'employee' && value) {
+      // 외주관리 연동: 프리랜서/일용직 행에서 이름을 등록된 프리랜서로 바꾸면 업체·단가 자동 채움
+      if (field === 'detail' && (cur.itemType === 'freelancer' || cur.itemType === 'daily' || !cur.itemType) && value) {
         const match = freelancers.find((f) => f.name === value);
         if (match) {
           if (match.vendor) cur.vendor = match.vendor;
           if (match.dailyRate > 0) {
             cur.unitPrice = Number(match.dailyRate) || 0;
+            cur.amount = cur.unitPrice * Number(cur.quantity || 0);
+          }
+        }
+      }
+      // 외주관리 연동: 업체(공수/건당) 행에서 업체명 선택 시 단가 자동 채움
+      if (field === 'vendor' && (cur.itemType === 'vendor' || cur.itemType === 'vendor_case') && value) {
+        const match = vendors.find((v) => v.name === value);
+        if (match) {
+          const rate = cur.itemType === 'vendor_case' ? match.caseRate : match.dailyRate;
+          if (rate > 0) {
+            cur.unitPrice = Number(rate) || 0;
             cur.amount = cur.unitPrice * Number(cur.quantity || 0);
           }
         }
@@ -733,6 +769,8 @@ export default function SiteClosingPage() {
           <div className="finance-actions">
             <button className="btn btn-sm btn-pastel-sky" onClick={handleAddRow}>+ 프리랜서</button>
             <button className="btn btn-sm btn-pastel-peach" onClick={handleAddDailyWorker}>+ 일용직</button>
+            <button className="btn btn-sm btn-pastel-teal" onClick={handleAddVendorDay}>+ 업체(공수)</button>
+            <button className="btn btn-sm btn-pastel-amber" onClick={handleAddVendorCase}>+ 업체(건당)</button>
             <button className="btn btn-sm btn-pastel-lavender" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
           </div>
         )}
@@ -834,7 +872,13 @@ export default function SiteClosingPage() {
       ) : (
         <div className="closing-cards">
           {[...items].sort((a, b) => {
-            const rank = (t) => (t === 'employee' ? 0 : t === 'daily' ? 1 : 2);
+            const rank = (t) => {
+              if (t === 'employee') return 0;
+              if (t === 'daily') return 1;
+              if (t === 'vendor') return 2;
+              if (t === 'vendor_case') return 3;
+              return 4;
+            };
             const aR = rank(a.itemType);
             const bR = rank(b.itemType);
             return aR !== bR ? aR - bR : (a.order || 0) - (b.order || 0);
@@ -842,8 +886,9 @@ export default function SiteClosingPage() {
             const buf = editBuf[it.id] || it;
             const cardType = it.itemType || buf.itemType || 'freelancer';
             const isDaily = cardType === 'daily';
-            const unitLabel = isDaily ? '시간' : '일';
-            const priceLabel = isDaily ? '시급' : '단가';
+            const isVendorCase = cardType === 'vendor_case';
+            const unitLabel = isDaily ? '시간' : isVendorCase ? '건' : '일';
+            const priceLabel = isDaily ? '시급' : isVendorCase ? '건당' : '단가';
             return (
               <div className={`closing-card closing-card-${cardType}`} key={it.id}>
                 <div className="closing-card-head">
@@ -878,7 +923,20 @@ export default function SiteClosingPage() {
                   )}
                 </div>
 
-                {(() => {
+                {isVendorCase ? (
+                  <div className="closing-case-input">
+                    <label>건수</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={buf.quantity || 0}
+                      onChange={(e) => updateField(it.id, 'quantity', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
+                      disabled={!canEdit}
+                    />
+                  </div>
+                ) : (() => {
                   // 캘린더 형식 생성
                   const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
                   const totalDays = daysInMonth(y, m);
