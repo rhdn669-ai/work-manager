@@ -194,40 +194,20 @@ export default function UnassignedReportPage() {
         </select>
       </div>
 
-      <div className="ua-top-grid">
-        <div className="ua-summary-card">
-          <div className="ua-summary-title">
-            <span className="ua-dot ua-dot-unassigned" />
-            미배정 Top
-          </div>
-          {topUnassigned.length === 0 ? (
-            <p className="ua-summary-empty">미배정 직원 없음</p>
-          ) : (
-            <ul className="ua-summary-list">
-              {topUnassigned.map((r) => (
-                <li key={r.uid}><span>{r.name}</span><strong>{r.unassignedCount}일</strong></li>
-              ))}
-            </ul>
-          )}
+      <div className="ua-summary-card" style={{ marginBottom: 16 }}>
+        <div className="ua-summary-title">
+          <span className="ua-dot ua-dot-unassigned" />
+          미배정 Top
         </div>
-        <div className="ua-summary-card">
-          <div className="ua-summary-title">
-            <span className="ua-dot ua-dot-overtime" />
-            잔업 Top
-          </div>
-          {topOvertime.length === 0 ? (
-            <p className="ua-summary-empty">잔업 기록 없음</p>
-          ) : (
-            <ul className="ua-summary-list">
-              {topOvertime.map((r) => (
-                <li key={r.uid}>
-                  <span>{r.name}</span>
-                  <strong>{formatMinutes(r.minutes)} · {r.amount.toLocaleString()}원</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {topUnassigned.length === 0 ? (
+          <p className="ua-summary-empty">미배정 직원 없음</p>
+        ) : (
+          <ul className="ua-summary-list">
+            {topUnassigned.map((r) => (
+              <li key={r.uid}><span>{r.name}</span><strong>{r.unassignedCount}일</strong></li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="ua-legend">
