@@ -267,8 +267,27 @@ export default function SiteClosingPage() {
       no: nextNo,
       vendor: vendorSuggestion,
       detail: '', category: '', unitPrice: 0,
+      itemType: 'freelancer',
       dailyQuantities: {},
       quantity: 0, amount: 0,
+      order: nextOrder,
+    });
+    await loadAll();
+  }
+
+  async function handleAddDailyWorker() {
+    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
+    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
+    await addClosingItem(siteId, y, m, {
+      no: nextNo,
+      vendor: '',
+      detail: '',
+      category: '',
+      itemType: 'daily',
+      unitPrice: 0, // 시급
+      dailyQuantities: {},
+      quantity: 0,
+      amount: 0,
       order: nextOrder,
     });
     await loadAll();
@@ -676,6 +695,7 @@ export default function SiteClosingPage() {
         {canEdit && (
           <div className="finance-actions">
             <button className="btn btn-sm btn-primary" onClick={handleAddRow}>+ 프리랜서</button>
+            <button className="btn btn-sm btn-outline" onClick={handleAddDailyWorker}>+ 일용직</button>
             <button className="btn btn-sm btn-outline" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
           </div>
         )}
@@ -763,12 +783,16 @@ export default function SiteClosingPage() {
       ) : (
         <div className="closing-cards">
           {[...items].sort((a, b) => {
-            const aType = a.itemType === 'employee' ? 0 : 1;
-            const bType = b.itemType === 'employee' ? 0 : 1;
-            return aType !== bType ? aType - bType : (a.order || 0) - (b.order || 0);
+            const rank = (t) => (t === 'employee' ? 0 : t === 'daily' ? 1 : 2);
+            const aR = rank(a.itemType);
+            const bR = rank(b.itemType);
+            return aR !== bR ? aR - bR : (a.order || 0) - (b.order || 0);
           }).map((it) => {
             const buf = editBuf[it.id] || it;
             const cardType = it.itemType || buf.itemType || 'freelancer';
+            const isDaily = cardType === 'daily';
+            const unitLabel = isDaily ? '시간' : '일';
+            const priceLabel = isDaily ? '시급' : '단가';
             return (
               <div className={`closing-card closing-card-${cardType}`} key={it.id}>
                 <div className="closing-card-head">
@@ -845,14 +869,14 @@ export default function SiteClosingPage() {
                                 {isFullLeave ? null : (
                                   <input
                                     type="number"
-                                    step="0.25"
+                                    step={isDaily ? '0.5' : '0.25'}
                                     min="0"
-                                    max="1"
+                                    max={isDaily ? '24' : '1'}
                                     value={v ?? ''}
                                     onChange={(e) => updateDay(it.id, d, e.target.value)}
                                     onBlur={() => flushRow(it.id)}
                                     disabled={!canEdit}
-                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : ''}
+                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : (isDaily ? '시간 입력' : '')}
                                   />
                                 )}
                               </div>
@@ -867,12 +891,12 @@ export default function SiteClosingPage() {
                 <div className="closing-card-foot">
                   <div className="foot-field">
                     <span className="label">수량</span>
-                    <strong>{Number(buf.quantity || 0)}일</strong>
+                    <strong>{Number(buf.quantity || 0)}{unitLabel}</strong>
                   </div>
                   {(canViewSalary || cardType !== 'employee') && (
                     <>
                       <div className="foot-field">
-                        <span className="label">단가</span>
+                        <span className="label">{priceLabel}</span>
                         <MoneyInput
                           className="closing-price"
                           value={buf.unitPrice || 0}
