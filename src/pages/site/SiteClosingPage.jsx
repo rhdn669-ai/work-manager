@@ -353,8 +353,12 @@ export default function SiteClosingPage() {
       if (value === '' || value === null) {
         delete dq[day];
       } else {
-        const num = Number(value);
-        if (!isNaN(num)) dq[day] = num;
+        let num = Number(value);
+        if (!isNaN(num)) {
+          // 직원 공수는 일 단위 최대 1 (하루 이상 근무 불가)
+          if (cur.itemType === 'employee') num = Math.max(0, Math.min(1, num));
+          dq[day] = num;
+        }
       }
       cur.dailyQuantities = dq;
       const sum = Object.values(dq).reduce((a, v) => a + (Number(v) || 0), 0);
