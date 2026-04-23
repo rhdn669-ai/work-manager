@@ -3034,6 +3034,7 @@ body {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
+  min-height: 90px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 14px;
