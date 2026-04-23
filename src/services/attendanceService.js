@@ -136,13 +136,14 @@ export async function getAllOvertimeRecords(startDate, endDate) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// 잔업 비용을 프로젝트 지출에 추가
+// 잔업 비용을 프로젝트 지출에 추가 (시급의 1.5배 적용)
+const OVERTIME_MULTIPLIER = 1.5;
 async function addOvertimeExpense(userId, userName, siteId, date, minutes, overtimeRecordId) {
   const user = await getUser(userId);
   const hourlyRate = Number(user?.hourlyRate) || 0;
   if (hourlyRate <= 0) return;
   const hours = minutes / 60;
-  const amount = Math.round(hourlyRate * hours);
+  const amount = Math.round(hourlyRate * OVERTIME_MULTIPLIER * hours);
   const d = new Date(date);
   const year = d.getFullYear();
   const month = d.getMonth() + 1;
