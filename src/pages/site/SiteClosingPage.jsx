@@ -613,26 +613,39 @@ export default function SiteClosingPage() {
                 </div>
               );
             })}
-            {/* 합산 대상 프로젝트의 지출 (읽기 전용) */}
-            {mirroredFinances.filter((f) => canViewSalary || !isOvertimeDesc(f.description)).map((f) => {
+            {/* 합산 대상 프로젝트의 비잔업 지출 (읽기 전용, 개별 표시) */}
+            {mirroredFinances.filter((f) => !isOvertimeDesc(f.description)).map((f) => {
               const desc = (f.description || '').trim();
-              const isOvertime = isOvertimeDesc(desc);
               const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material' };
-              const chipKey = isOvertime ? 'overtime' : chipMap[desc];
+              const chipKey = chipMap[desc];
               return (
                 <div className={`expense-card expense-card-readonly ${chipKey ? `expense-card-${chipKey}` : ''}`} key={`mirror-${f.id}`}>
                   <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
-                    {isOvertime ? '잔업' : (desc || '지출')}
+                    {desc || '지출'}
                   </span>
-                  <span className="expense-input-desc expense-readonly-text" title={desc}>
-                    {isOvertime ? desc.replace(/^잔업\s*-\s*/, '') : desc}
-                  </span>
+                  <span className="expense-input-desc expense-readonly-text" title={desc}>{desc}</span>
                   <MoneyInput className="expense-input-amount" value={f.amount || 0} onChange={() => {}} disabled />
                   <span className="expense-won">원</span>
                   <span className="expense-readonly-badge" title={`${f._sourceName} 프로젝트의 지출`}>↗ {f._sourceName}</span>
                 </div>
               );
             })}
+            {/* 합산 대상 프로젝트의 잔업 내역 합산 (읽기 전용, 급여 열람 권한자만) */}
+            {canViewSalary && (() => {
+              const overtimeItems = mirroredFinances.filter((f) => isOvertimeDesc(f.description));
+              if (overtimeItems.length === 0) return null;
+              const sum = overtimeItems.reduce((s, f) => s + (Number(f.amount) || 0), 0);
+              const sourceNames = [...new Set(overtimeItems.map((f) => f._sourceName))].join(', ');
+              return (
+                <div className="expense-card expense-card-readonly expense-card-overtime" key="mirror-overtime-total">
+                  <span className="expense-tag expense-chip-overtime">잔업</span>
+                  <span className="expense-input-desc expense-readonly-text">합산 프로젝트 잔업 합계 ({overtimeItems.length}건)</span>
+                  <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
+                  <span className="expense-won">원</span>
+                  <span className="expense-readonly-badge" title={`${sourceNames} 프로젝트의 잔업`}>↗ {sourceNames}</span>
+                </div>
+              );
+            })()}
             {/* 합산 대상 프로젝트의 공수비 (읽기 전용, 급여 열람 권한자만) */}
             {canViewSalary && mirroredLaborSum > 0 && (
               <div className="expense-card expense-card-readonly" key="mirror-labor-total">
