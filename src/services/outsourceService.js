@@ -149,6 +149,27 @@ export async function removeRateHistoryEntry(freelancerId, entry) {
   });
 }
 
+// 모든 프리랜서의 단가 이력 일괄 초기화 (rateHistory + 레거시 previousDailyRate*)
+export async function clearAllRateHistories() {
+  const snap = await getDocs(freelancersRef);
+  let count = 0;
+  for (const d of snap.docs) {
+    const data = d.data() || {};
+    const hasHistory = Array.isArray(data.rateHistory) && data.rateHistory.length > 0;
+    const hasLegacy = Number(data.previousDailyRate) > 0 || data.previousDailyRateFrom || data.previousDailyRateTo;
+    if (!hasHistory && !hasLegacy) continue;
+    await updateDoc(doc(db, 'freelancers', d.id), {
+      rateHistory: [],
+      previousDailyRate: 0,
+      previousDailyRateFrom: '',
+      previousDailyRateTo: '',
+      updatedAt: new Date(),
+    });
+    count += 1;
+  }
+  return count;
+}
+
 // ── 업체(vendor) ──────────────────────────────────────
 const vendorsRef = collection(db, 'vendors');
 

@@ -6,7 +6,7 @@ import {
   importFromSiteClosings, getVendorDetail,
   addFreelancerToVendor,
   addVendorProject, removeVendorProject,
-  setFreelancerRate,
+  setFreelancerRate, clearAllRateHistories,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -21,6 +21,7 @@ export default function OutsourceManagementPage() {
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({});
   const [importing, setImporting] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [detailVendor, setDetailVendor] = useState(null);
   const [detailTab, setDetailTab] = useState('freelancers');
   const [detailLoading, setDetailLoading] = useState(false);
@@ -155,6 +156,20 @@ export default function OutsourceManagementPage() {
     }
   }
 
+  async function handleClearHistories() {
+    if (!confirm('모든 프리랜서의 단가 변경 이력을 초기화합니다.\n현재 단가는 유지되고, 이전 단가 기록만 전부 삭제됩니다.\n되돌릴 수 없습니다.\n\n계속하시겠습니까?')) return;
+    setClearing(true);
+    try {
+      const count = await clearAllRateHistories();
+      alert(`단가 이력 초기화 완료 (${count}명)`);
+      await loadAll();
+    } catch (err) {
+      alert('초기화 실패: ' + err.message);
+    } finally {
+      setClearing(false);
+    }
+  }
+
   useEffect(() => {
     if (isAdmin) loadAll();
   }, [isAdmin]);
@@ -230,6 +245,14 @@ export default function OutsourceManagementPage() {
             title="모든 프로젝트 공수표에서 프리랜서·업체 정보 일괄 가져오기"
           >
             {importing ? '가져오는 중...' : '공수표에서 가져오기'}
+          </button>
+          <button
+            className="btn btn-sm btn-danger-outline"
+            onClick={handleClearHistories}
+            disabled={clearing}
+            title="모든 프리랜서의 단가 변경 이력을 한 번에 초기화"
+          >
+            {clearing ? '초기화 중...' : '단가 이력 초기화'}
           </button>
           <button className="btn btn-primary" onClick={openCreate}>
             {tab === 'freelancer' ? '+ 프리랜서' : '+ 업체'} 추가
