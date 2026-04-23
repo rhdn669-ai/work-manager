@@ -187,6 +187,34 @@ export async function getAssignedEmployeeIds(year, month) {
 
 // ---------- 전월 데이터 복사 ----------
 
+// 명단만 초기화 (매출/지출 제외, 수량 초기화)
+export async function initRosterFromPreviousMonth(siteId, year, month) {
+  let prevYear = year;
+  let prevMonth = month - 1;
+  if (prevMonth < 1) { prevYear -= 1; prevMonth = 12; }
+
+  const prevItems = await getClosingItems(siteId, prevYear, prevMonth);
+  if (prevItems.length === 0) throw new Error('전월 공수표 데이터가 없습니다.');
+
+  let count = 0;
+  for (const item of prevItems) {
+    await addClosingItem(siteId, year, month, {
+      no: item.no,
+      vendor: item.vendor,
+      detail: item.detail,
+      category: item.category,
+      itemType: item.itemType || 'freelancer',
+      unitPrice: item.unitPrice || 0,
+      dailyQuantities: {},
+      quantity: 0,
+      amount: 0,
+      order: item.order || 0,
+    });
+    count++;
+  }
+  return count;
+}
+
 export async function copyPreviousMonth(siteId, year, month) {
   let prevYear = year;
   let prevMonth = month - 1;
