@@ -44,11 +44,11 @@
   --danger: #dc2626;
   --caution: #ea580c;
 
-  --bg: #f7f8fa;
+  --bg: #FFF9F3;
   --bg-card: #ffffff;
   --bg-sidebar: #F59E0B;
   --bg-header: #ffffff;
-  --bg-subtle: #f9fafb;
+  --bg-subtle: #FFFBF5;
 
   --text: #111827;
   --text-light: #4b5563;
@@ -58,18 +58,18 @@
   --border: #e5e7eb;
   --border-strong: #d1d5db;
 
-  /* 모서리 반경 체계 */
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  /* 모서리 반경 체계 (B 컨셉: 더 둥글게) */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
   --border-radius: var(--radius-md); /* 기존 호환 */
 
-  /* 그림자 체계 */
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
-  --shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 2px 6px rgba(17, 24, 39, 0.06);
-  --shadow-lg: 0 8px 24px rgba(17, 24, 39, 0.08);
-  --shadow-primary: 0 4px 12px rgba(245, 158, 11, 0.25);
+  /* 그림자 체계 (확산형 소프트 그림자) */
+  --shadow-sm: 0 1px 2px rgba(245, 158, 11, 0.04);
+  --shadow: 0 4px 12px rgba(245, 158, 11, 0.06), 0 1px 3px rgba(17, 24, 39, 0.04);
+  --shadow-lg: 0 16px 40px rgba(245, 158, 11, 0.08), 0 4px 12px rgba(17, 24, 39, 0.05);
+  --shadow-primary: 0 6px 16px rgba(245, 158, 11, 0.28);
   --ring-primary: 0 0 0 3px rgba(245, 158, 11, 0.22);
   --ring-danger: 0 0 0 3px rgba(220, 38, 38, 0.18);
 
@@ -681,14 +681,14 @@ body {
 /* ===== 대시보드 ===== */
 .dashboard-welcome {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #fff 0%, var(--primary-softer) 100%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  gap: 16px;
+  padding: 24px 28px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, #fff 0%, #FFF3E0 100%);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
 }
 
@@ -698,46 +698,29 @@ body {
 }
 
 .dashboard-welcome h2 {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.015em;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.welcome-emoji {
-  font-size: 20px;
-  display: inline-block;
-  animation: wave-hand 2.4s ease-in-out infinite;
-  transform-origin: 70% 70%;
-}
-
-@keyframes wave-hand {
-  0%, 60%, 100% { transform: rotate(0deg); }
-  10% { transform: rotate(14deg); }
-  20% { transform: rotate(-8deg); }
-  30% { transform: rotate(14deg); }
-  40% { transform: rotate(-4deg); }
-  50% { transform: rotate(10deg); }
+  letter-spacing: -0.022em;
+  line-height: 1.1;
 }
 
 .dashboard-welcome p {
-  margin-top: 2px;
+  margin-top: 4px;
   color: var(--text-light);
   font-size: 13px;
+  font-weight: 500;
 }
 
 .dashboard-welcome-date {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-light);
+  color: var(--primary-hover);
   background: #fff;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(245, 158, 11, 0.2);
   white-space: nowrap;
 }
 
@@ -768,11 +751,11 @@ body {
 .admin-stat {
   display: block;
   background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
-  transition: all 0.15s;
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   color: inherit;
   text-decoration: none;
 }
@@ -782,9 +765,9 @@ body {
 }
 
 .admin-stat-link:hover {
-  transform: translateY(-1px);
-  border-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.08);
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .admin-stat.is-warning.admin-stat-link:hover {
@@ -797,11 +780,10 @@ body {
 }
 
 .admin-stat-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-light);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: -0.005em;
   margin-bottom: 4px;
 }
 
@@ -810,11 +792,12 @@ body {
 }
 
 .admin-stat-value {
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-stat-value span {
@@ -860,34 +843,21 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 18px;
+  gap: 16px;
+  padding: 22px 22px;
   background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: var(--radius-xl);
   text-decoration: none;
   color: inherit;
-  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
-.dashboard-tile::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background-color 0.15s;
-}
 .dashboard-tile:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
-  border-color: var(--primary);
-}
-.dashboard-tile:hover::before {
-  background: var(--primary);
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 /* 지표 카드 성격 — 클릭 불가, hover 효과 없음 */
@@ -903,19 +873,19 @@ body {
 
 .tile-icon {
   flex-shrink: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
 .tile-icon svg {
-  width: 22px;
-  height: 22px;
-  stroke-width: 2;
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.2;
 }
 
 .tile-overtime .tile-icon {
@@ -986,23 +956,24 @@ body {
   font-size: 12px;
   color: var(--text-light);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  margin-bottom: 2px;
+  letter-spacing: -0.005em;
+  margin-bottom: 4px;
 }
 
 .tile-value {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   line-height: 1.1;
   margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .tile-sub {
   font-size: 11px;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 .tile-arrow {

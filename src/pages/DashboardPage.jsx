@@ -73,8 +73,8 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       <div className="dashboard-welcome">
         <div className="dashboard-welcome-text">
-          <h2>안녕하세요, {userProfile?.name}님 <span className="welcome-emoji" role="img" aria-label="인사">👋</span></h2>
-          <p>오늘도 좋은 하루 되세요.</p>
+          <h2>{userProfile?.name}</h2>
+          <p>{userProfile?.position || (isAdmin ? '관리자' : '')}</p>
         </div>
         <div className="dashboard-welcome-date">{todayLabel}</div>
       </div>
