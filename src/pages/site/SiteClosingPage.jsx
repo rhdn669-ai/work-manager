@@ -74,6 +74,7 @@ export default function SiteClosingPage() {
   const canEdit = canEditSite(site) && !isCompleted;
   const [copying, setCopying] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
@@ -176,6 +177,25 @@ export default function SiteClosingPage() {
       alert(err.message || '초기화 실패');
     } finally {
       setInitializing(false);
+    }
+  }
+
+  async function handleClearItems() {
+    if (!confirm(`공수표 항목 ${items.length}건을 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?`)) return;
+    setClearing(true);
+    try {
+      for (const item of items) {
+        if (timersRef.current[item.id]) {
+          clearTimeout(timersRef.current[item.id]);
+          delete timersRef.current[item.id];
+        }
+        await deleteClosingItem(item.id);
+      }
+      await loadAll();
+    } catch (err) {
+      alert('삭제 오류: ' + err.message);
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -431,6 +451,11 @@ export default function SiteClosingPage() {
       <div className="page-header">
         <h2>{site.name} <span className="closing-period">{y}년 {m}월</span></h2>
         <div className="page-actions">
+          {canEdit && items.length > 0 && (
+            <button className="btn btn-outline btn-sm" onClick={handleClearItems} disabled={clearing}>
+              {clearing ? '삭제 중...' : '공수표 초기화'}
+            </button>
+          )}
           {canEdit && items.length === 0 && (
             <>
               <button className="btn btn-outline" onClick={handleInitRoster} disabled={initializing}>
