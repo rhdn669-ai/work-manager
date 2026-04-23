@@ -142,9 +142,8 @@ export default function SiteListPage() {
     const pt = s.projectType || 'recurring';
 
     if (st === 'completed') {
-      // 완료 탭: 날짜 무관 전체 표시
+      if (isAfterEnd(s)) return false;
       if (filter === 'completed') return true;
-      // all 탭: 해당 월 데이터 있으면 표시 (마감 후 월도 포함)
       return filter === 'all' && hasMonthData(s);
     }
 
@@ -167,7 +166,7 @@ export default function SiteListPage() {
     }).length,
     recurring: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
     once: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
-    completed: sites.filter((s) => !isBeforeStart(s) && s.status === 'completed').length,
+    completed: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.status === 'completed').length,
   };
 
   function managerNames(site) {
