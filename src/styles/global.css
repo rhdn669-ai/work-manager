@@ -402,14 +402,111 @@ body {
 .btn-danger-outline:hover:not(:disabled) { background: #fef2f2; border-color: #b91c1c; color: #b91c1c; }
 .btn-danger-outline:focus-visible { box-shadow: var(--ring-danger); }
 
-/* 미배정 현황 히트맵 */
-.unassigned-report-page { }
+/* 미배정 · 중복배정 현황 히트맵 */
+.unassigned-report-page .filters { margin-bottom: 16px; }
+
+.ua-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) {
+  .ua-top-grid { grid-template-columns: 1fr; }
+}
+.ua-summary-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.ua-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.ua-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ua-dot-unassigned { background: #f87171; }
+.ua-dot-overlap { background: #a78bfa; }
+.ua-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ua-summary-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.ua-summary-list li:hover { background: var(--bg-subtle); }
+.ua-summary-list li strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ua-summary-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 0;
+  margin: 0;
+}
+
+.ua-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-light);
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+}
+.ua-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.ua-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+.ua-legend-swatch.assigned { background: #bbf7d0; }
+.ua-legend-swatch.overlap { background: linear-gradient(135deg, #c4b5fd 0%, #ddd6fe 100%); }
+.ua-legend-swatch.leave { background: #c7d2fe; }
+.ua-legend-swatch.weekend { background: #e5e7eb; }
+.ua-legend-swatch.unassigned { background: #fecaca; }
+.ua-legend-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
 .unassigned-table-wrap {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: auto;
-  max-height: 75vh;
+  max-height: 72vh;
   box-shadow: var(--shadow-sm);
   -webkit-overflow-scrolling: touch;
 }
@@ -420,8 +517,8 @@ body {
 }
 .unassigned-table th,
 .unassigned-table td {
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-right: 1px solid rgba(229, 231, 235, 0.6);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
   padding: 0;
   text-align: center;
   white-space: nowrap;
@@ -429,15 +526,18 @@ body {
 .unassigned-table thead th {
   position: sticky;
   top: 0;
-  background: linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
   z-index: 5;
-  padding: 6px 4px;
+  padding: 8px 4px;
   font-weight: 700;
   color: var(--text-light);
+  letter-spacing: -0.005em;
+  border-bottom: 1px solid var(--border-strong);
 }
 .unassigned-table .day-col {
-  min-width: 22px;
-  width: 22px;
+  min-width: 26px;
+  width: 26px;
+  font-size: 11px;
 }
 .unassigned-table .day-col.sun { color: var(--danger); }
 .unassigned-table .day-col.sat { color: #2563eb; }
@@ -446,37 +546,78 @@ body {
   left: 0;
   background: #fff;
   z-index: 4;
-  padding: 6px 10px;
+  padding: 8px 14px;
   text-align: left;
-  min-width: 120px;
+  min-width: 130px;
   border-right: 1px solid var(--border-strong);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.03);
 }
-.unassigned-table thead .sticky-col { z-index: 7; background: #f3f4f6; }
+.unassigned-table thead .sticky-col {
+  z-index: 7;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.03);
+}
 .unassigned-table .sticky-col-right {
   position: sticky;
   right: 0;
   background: #fff;
   z-index: 4;
-  padding: 6px 10px;
-  min-width: 64px;
+  padding: 8px 12px;
+  min-width: 56px;
   border-left: 1px solid var(--border-strong);
 }
-.unassigned-table thead .sticky-col-right { z-index: 7; background: #f3f4f6; }
+.unassigned-table thead .sticky-col-right {
+  z-index: 7;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+}
+.unassigned-table tbody tr:hover .sticky-col,
+.unassigned-table tbody tr:hover .sticky-col-right {
+  background: var(--primary-softer);
+}
+.unassigned-table tbody tr:hover td { background-color: rgba(245, 158, 11, 0.04); }
+.unassigned-table .name-col strong {
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
 .unassigned-table .name-col .position-tag {
   font-size: 10px;
   color: var(--text-muted);
-  margin-left: 4px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+.unassigned-table .count-col strong {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .unassigned-table .count-col .neg { color: var(--danger); }
+.unassigned-table .count-col .warn { color: #7c3aed; }
+
 .unassigned-table td.unassigned-cell {
-  width: 22px;
-  height: 26px;
+  position: relative;
+  width: 26px;
+  height: 30px;
   cursor: default;
+  transition: filter 0.1s;
 }
-.unassigned-cell.assigned { background: #dcfce7; }
-.unassigned-cell.leave { background: #e0e7ff; }
-.unassigned-cell.weekend { background: #f3f4f6; }
-.unassigned-cell.unassigned { background: #fee2e2; }
+.unassigned-table td.unassigned-cell:hover { filter: brightness(0.9); }
+.unassigned-cell.assigned { background: #bbf7d0; }
+.unassigned-cell.overlap { background: linear-gradient(135deg, #c4b5fd 0%, #ddd6fe 100%); }
+.unassigned-cell.leave { background: #c7d2fe; }
+.unassigned-cell.weekend { background: #e5e7eb; }
+.unassigned-cell.unassigned { background: #fecaca; }
+.unassigned-cell.has-overtime::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1.5px #fff;
+}
 
 /* 잔업 상세 모달 리스트 */
 .overtime-detail-list {

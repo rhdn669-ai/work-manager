@@ -3,6 +3,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
 import { getAllSites, getClosingItems } from '../../services/siteService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
+import { getAllOvertimeRecords } from '../../services/attendanceService';
+import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 
 function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
@@ -23,8 +25,9 @@ export default function UnassignedReportPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [users, setUsers] = useState([]);
   const [sites, setSites] = useState([]);
-  const [allItems, setAllItems] = useState([]); // { siteId, siteName, detail, dailyQuantities }
+  const [allItems, setAllItems] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [overtimes, setOvertimes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,25 +47,30 @@ export default function UnassignedReportPage() {
     (async () => {
       setLoading(true);
       try {
-        const perSite = await Promise.all(
-          sites.map(async (s) => {
-            const items = await getClosingItems(s.id, year, month);
-            return items
-              .filter((it) => it.itemType === 'employee')
-              .map((it) => ({ siteId: s.id, siteName: s.name, detail: it.detail, dailyQuantities: it.dailyQuantities || {} }));
-          }),
-        );
+        const start = getMonthStart(year, month);
+        const end = getMonthEnd(year, month);
+        const [perSite, lvs, ots] = await Promise.all([
+          Promise.all(
+            sites.map(async (s) => {
+              const items = await getClosingItems(s.id, year, month);
+              return items
+                .filter((it) => it.itemType === 'employee')
+                .map((it) => ({ siteId: s.id, siteName: s.name, detail: it.detail, dailyQuantities: it.dailyQuantities || {} }));
+            }),
+          ),
+          getApprovedLeavesByMonth(year, month),
+          getAllOvertimeRecords(start, end),
+        ]);
         setAllItems(perSite.flat());
-        const lvs = await getApprovedLeavesByMonth(year, month);
         setLeaves(lvs);
+        setOvertimes(ots.filter((o) => o.status === 'approved'));
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     })();
   }, [sites, year, month]);
 
-  const { rows, topUnassigned } = useMemo(() => {
+  const { rows, topUnassigned, topOverlap } = useMemo(() => {
     const totalDays = daysInMonth(year, month);
-    // 직원명 → day → [siteName...]
     const assigned = {};
     for (const it of allItems) {
       if (!it.detail) continue;
@@ -77,7 +85,6 @@ export default function UnassignedReportPage() {
       }
     }
 
-    // 직원별 연차 맵: userId → day → leaveType
     const userIdToName = Object.fromEntries(users.map((u) => [u.uid, u.name]));
     const nameToLeaveDay = {};
     for (const l of leaves) {
@@ -96,28 +103,48 @@ export default function UnassignedReportPage() {
       }
     }
 
+    // 잔업: userName → day → totalMinutes
+    const nameToOvertime = {};
+    for (const o of overtimes) {
+      const name = o.userName || userIdToName[o.userId];
+      if (!name) continue;
+      const d = new Date(o.date);
+      if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
+      const day = d.getDate();
+      if (!nameToOvertime[name]) nameToOvertime[name] = {};
+      nameToOvertime[name][day] = (nameToOvertime[name][day] || 0) + (o.minutes || 0);
+    }
+
     const out = users.map((u) => {
       const days = [];
       let unassignedCount = 0;
+      let overlapCount = 0;
       for (let d = 1; d <= totalDays; d++) {
         const dow = new Date(year, month - 1, d).getDay();
         const isWeekend = dow === 0 || dow === 6;
         const leaveType = nameToLeaveDay[u.name]?.[d];
         const projects = assigned[u.name]?.[d] || [];
+        const overtimeMin = nameToOvertime[u.name]?.[d] || 0;
         let type;
-        if (projects.length > 0) type = 'assigned';
+        if (projects.length > 1) type = 'overlap';
+        else if (projects.length === 1) type = 'assigned';
         else if (leaveType) type = 'leave';
         else if (isWeekend) type = 'weekend';
         else type = 'unassigned';
-        days.push({ d, type, projects, leaveType });
+        days.push({ d, type, projects, leaveType, overtimeMin });
         if (type === 'unassigned') unassignedCount++;
+        if (type === 'overlap') overlapCount++;
       }
-      return { uid: u.uid, name: u.name, position: u.position || '', days, unassignedCount };
-    }).sort((a, b) => b.unassignedCount - a.unassignedCount || a.name.localeCompare(b.name));
+      return { uid: u.uid, name: u.name, position: u.position || '', days, unassignedCount, overlapCount };
+    });
 
-    const top = [...out].filter((r) => r.unassignedCount > 0).slice(0, 5);
-    return { rows: out, topUnassigned: top };
-  }, [users, allItems, leaves, year, month]);
+    const topU = [...out].filter((r) => r.unassignedCount > 0).sort((a, b) => b.unassignedCount - a.unassignedCount).slice(0, 5);
+    const topO = [...out].filter((r) => r.overlapCount > 0).sort((a, b) => b.overlapCount - a.overlapCount).slice(0, 5);
+    const sorted = out.sort((a, b) =>
+      (b.unassignedCount + b.overlapCount) - (a.unassignedCount + a.overlapCount) || a.name.localeCompare(b.name),
+    );
+    return { rows: sorted, topUnassigned: topU, topOverlap: topO };
+  }, [users, allItems, leaves, overtimes, year, month]);
 
   const totalDays = daysInMonth(year, month);
   const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
@@ -127,9 +154,8 @@ export default function UnassignedReportPage() {
   return (
     <div className="unassigned-report-page">
       <div className="page-header">
-        <h2>미배정 현황</h2>
+        <h2>미배정 · 중복배정 현황</h2>
       </div>
-      <p className="field-hint">선택한 월에 어느 프로젝트에도 배정되지 않은 평일을 직원별로 확인합니다. 주말·연차는 미배정 집계에서 제외됩니다.</p>
 
       <div className="filters">
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
@@ -140,26 +166,46 @@ export default function UnassignedReportPage() {
         </select>
       </div>
 
-      {topUnassigned.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="card-body">
-            <strong style={{ fontSize: 13 }}>미배정 Top {topUnassigned.length}</strong>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {topUnassigned.map((r) => (
-                <span key={r.uid} className="badge badge-warning" style={{ fontSize: 12 }}>
-                  {r.name} · {r.unassignedCount}일
-                </span>
-              ))}
-            </div>
+      <div className="ua-top-grid">
+        <div className="ua-summary-card">
+          <div className="ua-summary-title">
+            <span className="ua-dot ua-dot-unassigned" />
+            미배정 Top
           </div>
+          {topUnassigned.length === 0 ? (
+            <p className="ua-summary-empty">미배정 직원 없음</p>
+          ) : (
+            <ul className="ua-summary-list">
+              {topUnassigned.map((r) => (
+                <li key={r.uid}><span>{r.name}</span><strong>{r.unassignedCount}일</strong></li>
+              ))}
+            </ul>
+          )}
         </div>
-      )}
+        <div className="ua-summary-card">
+          <div className="ua-summary-title">
+            <span className="ua-dot ua-dot-overlap" />
+            중복배정 Top
+          </div>
+          {topOverlap.length === 0 ? (
+            <p className="ua-summary-empty">중복배정 없음</p>
+          ) : (
+            <ul className="ua-summary-list">
+              {topOverlap.map((r) => (
+                <li key={r.uid}><span>{r.name}</span><strong>{r.overlapCount}일</strong></li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
-      <div className="legend" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, marginBottom: 8 }}>
-        <span><span className="unassigned-cell assigned" style={{ display: 'inline-block', width: 14, height: 14, verticalAlign: 'middle', marginRight: 4 }}></span>배정</span>
-        <span><span className="unassigned-cell leave" style={{ display: 'inline-block', width: 14, height: 14, verticalAlign: 'middle', marginRight: 4 }}></span>연차</span>
-        <span><span className="unassigned-cell weekend" style={{ display: 'inline-block', width: 14, height: 14, verticalAlign: 'middle', marginRight: 4 }}></span>주말</span>
-        <span><span className="unassigned-cell unassigned" style={{ display: 'inline-block', width: 14, height: 14, verticalAlign: 'middle', marginRight: 4 }}></span>미배정</span>
+      <div className="ua-legend">
+        <span><span className="ua-legend-swatch assigned" />배정</span>
+        <span><span className="ua-legend-swatch overlap" />중복배정</span>
+        <span><span className="ua-legend-swatch leave" />연차</span>
+        <span><span className="ua-legend-swatch weekend" />주말</span>
+        <span><span className="ua-legend-swatch unassigned" />미배정</span>
+        <span><span className="ua-legend-dot" />잔업</span>
       </div>
 
       {loading ? (
@@ -177,6 +223,7 @@ export default function UnassignedReportPage() {
                   return <th key={d} className={`day-col ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''}`}>{d}</th>;
                 })}
                 <th className="sticky-col-right">미배정</th>
+                <th className="sticky-col-right">중복</th>
               </tr>
             </thead>
             <tbody>
@@ -186,17 +233,27 @@ export default function UnassignedReportPage() {
                     <strong>{r.name}</strong>
                     {r.position && <span className="position-tag">{r.position}</span>}
                   </td>
-                  {r.days.map((c) => (
-                    <td key={c.d} className={`unassigned-cell ${c.type}`}
-                      title={
-                        c.type === 'assigned' ? c.projects.join(', ') :
-                        c.type === 'leave' ? leaveLabel(c.leaveType) :
-                        c.type === 'weekend' ? '주말' : '미배정'
-                      }>
-                    </td>
-                  ))}
+                  {r.days.map((c) => {
+                    const hasOT = c.overtimeMin > 0;
+                    const baseTitle =
+                      c.type === 'overlap' ? `중복배정: ${c.projects.join(', ')}` :
+                      c.type === 'assigned' ? c.projects.join(', ') :
+                      c.type === 'leave' ? leaveLabel(c.leaveType) :
+                      c.type === 'weekend' ? '주말' : '미배정';
+                    const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}` : baseTitle;
+                    return (
+                      <td
+                        key={c.d}
+                        className={`unassigned-cell ${c.type} ${hasOT ? 'has-overtime' : ''}`}
+                        title={title}
+                      />
+                    );
+                  })}
                   <td className="sticky-col-right count-col">
                     <strong className={r.unassignedCount > 0 ? 'neg' : ''}>{r.unassignedCount}</strong>
+                  </td>
+                  <td className="sticky-col-right count-col">
+                    <strong className={r.overlapCount > 0 ? 'warn' : ''}>{r.overlapCount}</strong>
                   </td>
                 </tr>
               ))}
