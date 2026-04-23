@@ -4040,6 +4040,29 @@ body {
 .home-cal-dot.type-holiday { background: #ef4444; }
 .home-cal-dot.type-overtime { background: #8b5cf6; }
 .home-cal-dot.type-leave { background: #10b981; }
+.home-cal-dot.type-personal { background: #ec4899; }
+
+/* 내 일정 추가 버튼 */
+.cal-add-personal-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.cal-add-personal-btn:hover {
+  background: var(--primary-softer);
+  border-color: var(--primary);
+}
+
+.home-cal-item.type-personal {
+  border-left: 3px solid #ec4899;
+}
 .home-cal-more {
   font-size: 9px;
   font-weight: 600;

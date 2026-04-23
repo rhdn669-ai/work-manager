@@ -5,9 +5,11 @@ import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/atte
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getUsers } from '../../services/userService';
 import { getDepartmentsByLeader } from '../../services/departmentService';
+import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../../services/personalEventService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
+import Modal from './Modal';
 
-const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차' };
+const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차', personal: '내 일정' };
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -28,9 +30,13 @@ export default function HomeCalendar() {
   const [events, setEvents] = useState([]);
   const [overtimes, setOvertimes] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [personalEvents, setPersonalEvents] = useState([]);
   const [userNameMap, setUserNameMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [showPersonalModal, setShowPersonalModal] = useState(false);
+  const [personalForm, setPersonalForm] = useState({ title: '', startDate: '', endDate: '', note: '' });
+  const [personalBusy, setPersonalBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -74,10 +80,16 @@ export default function HomeCalendar() {
         ]);
       }
 
+      // 본인 개인 일정 로드
+      const personal = userProfile?.uid
+        ? await getMyPersonalEvents(userProfile.uid, year, month).catch(() => [])
+        : [];
+
       if (!active) return;
       setEvents(evs);
       setOvertimes(ots);
       setLeaves(lvs);
+      setPersonalEvents(personal);
       const nameMap = {};
       users.forEach((u) => { nameMap[u.uid] = u.name; });
       setUserNameMap(nameMap);
@@ -85,6 +97,50 @@ export default function HomeCalendar() {
     })();
     return () => { active = false; };
   }, [userProfile?.uid, isAdmin, canApproveAll, canApproveLeave, cursor.y, cursor.m]);
+
+  async function reloadPersonal() {
+    if (!userProfile?.uid) return;
+    const list = await getMyPersonalEvents(userProfile.uid, cursor.y, cursor.m).catch(() => []);
+    setPersonalEvents(list);
+  }
+
+  function openAddPersonal() {
+    const d = selectedDate || toISO(new Date());
+    setPersonalForm({ title: '', startDate: d, endDate: d, note: '' });
+    setShowPersonalModal(true);
+  }
+
+  async function handleSavePersonal(e) {
+    e.preventDefault();
+    if (!personalForm.title.trim()) { alert('제목을 입력해주세요.'); return; }
+    if (!personalForm.startDate) { alert('시작일을 선택해주세요.'); return; }
+    setPersonalBusy(true);
+    try {
+      await addPersonalEvent({
+        userId: userProfile.uid,
+        title: personalForm.title,
+        startDate: personalForm.startDate,
+        endDate: personalForm.endDate || personalForm.startDate,
+        note: personalForm.note,
+      });
+      setShowPersonalModal(false);
+      await reloadPersonal();
+    } catch (err) {
+      alert('저장 실패: ' + err.message);
+    } finally {
+      setPersonalBusy(false);
+    }
+  }
+
+  async function handleDeletePersonal(id) {
+    if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+    try {
+      await deletePersonalEvent(id);
+      await reloadPersonal();
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+    }
+  }
 
   const { weeks, eventsByDay, monthEvents } = useMemo(() => {
     const y = cursor.y, m = cursor.m;
@@ -141,7 +197,17 @@ export default function HomeCalendar() {
         };
       });
 
-    const all = [...inMonthEvents, ...inMonthLeaves, ...inMonthOvertimes];
+    const inMonthPersonal = personalEvents
+      .filter((p) => (p.endDate || p.startDate) >= monthStart && p.startDate <= monthEnd)
+      .map((p) => ({
+        ...p,
+        _kind: 'personal',
+        type: 'personal',
+        _start: p.startDate,
+        _end: p.endDate || p.startDate,
+      }));
+
+    const all = [...inMonthEvents, ...inMonthLeaves, ...inMonthOvertimes, ...inMonthPersonal];
 
     const byDay = {};
     all.forEach((e) => {
@@ -154,7 +220,7 @@ export default function HomeCalendar() {
       }
     });
     return { weeks: ws, eventsByDay: byDay, monthEvents: all };
-  }, [cursor, events, overtimes, leaves, canApproveLeave, userNameMap, userProfile?.uid]);
+  }, [cursor, events, overtimes, leaves, personalEvents, canApproveLeave, userNameMap, userProfile?.uid]);
 
   function prev() {
     setSelectedDate(null);
@@ -186,6 +252,9 @@ export default function HomeCalendar() {
           <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); prev(); }} aria-label="이전 달">‹</button>
           <button type="button" className="cal-today-btn" onPointerDown={(e) => { e.preventDefault(); goToday(); }}>오늘</button>
           <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); next(); }} aria-label="다음 달">›</button>
+          {userProfile?.uid && (
+            <button type="button" className="cal-add-personal-btn" onClick={openAddPersonal} title="내 일정 추가">+ 내 일정</button>
+          )}
         </div>
       </div>
 
@@ -247,7 +316,23 @@ export default function HomeCalendar() {
                           </div>
                         )}
                         {e._kind === 'overtime' && e.reason && <div className="home-cal-item-desc">{e.reason}</div>}
+                        {e._kind === 'personal' && (
+                          <>
+                            {e.note && <div className="home-cal-item-desc">{e.note}</div>}
+                            {e._end !== e._start && (
+                              <div className="home-cal-item-meta">{e._start} ~ {e._end}</div>
+                            )}
+                          </>
+                        )}
                       </div>
+                      {e._kind === 'personal' && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger-outline"
+                          onClick={() => handleDeletePersonal(e.id)}
+                          style={{ flexShrink: 0 }}
+                        >삭제</button>
+                      )}
                     </div>
                   ))
                 )}
@@ -273,6 +358,56 @@ export default function HomeCalendar() {
           </div>
         </>
       )}
+
+      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title="내 일정 추가">
+        <form onSubmit={handleSavePersonal}>
+          <div className="form-group">
+            <label>제목 *</label>
+            <input
+              value={personalForm.title}
+              onChange={(e) => setPersonalForm({ ...personalForm, title: e.target.value })}
+              placeholder="일정 제목"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>시작일 *</label>
+              <input
+                type="date"
+                value={personalForm.startDate}
+                onChange={(e) => setPersonalForm({ ...personalForm, startDate: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>종료일</label>
+              <input
+                type="date"
+                value={personalForm.endDate}
+                onChange={(e) => setPersonalForm({ ...personalForm, endDate: e.target.value })}
+                min={personalForm.startDate}
+              />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>메모</label>
+            <textarea
+              rows={2}
+              value={personalForm.note}
+              onChange={(e) => setPersonalForm({ ...personalForm, note: e.target.value })}
+            />
+          </div>
+          <p className="field-hint">본인만 볼 수 있는 개인 일정입니다.</p>
+          <div className="modal-actions">
+            <button type="submit" className="btn btn-primary" disabled={personalBusy}>
+              {personalBusy ? '저장 중...' : '추가'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowPersonalModal(false)}>취소</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
