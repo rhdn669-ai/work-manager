@@ -8,6 +8,15 @@ import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 
 function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+function workingDaysInMonth(y, m) {
+  const total = daysInMonth(y, m);
+  let count = 0;
+  for (let d = 1; d <= total; d++) {
+    const dow = new Date(y, m - 1, d).getDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return count;
+}
 
 function leaveLabel(type) {
   if (!type) return '';
@@ -70,7 +79,7 @@ export default function UnassignedReportPage() {
     })();
   }, [sites, year, month]);
 
-  const { rows, topUnassigned, topOvertime } = useMemo(() => {
+  const { rows, topUnassigned, topOvertime, totalUnassignedAmount, totalUnassignedDays } = useMemo(() => {
     const totalDays = daysInMonth(year, month);
     const assigned = {};
     for (const it of allItems) {
@@ -156,6 +165,20 @@ export default function UnassignedReportPage() {
       return { uid: u.uid, name: u.name, position: u.position || '', days, unassignedCount, overlapCount };
     });
 
+    // 직원별 일당으로 미배정 금액 계산 (월급 / 근무일수)
+    const workingDays = workingDaysInMonth(year, month);
+    const userByName = Object.fromEntries(users.map((u) => [u.name, u]));
+    let totalUnassignedAmount = 0;
+    let totalUnassignedDays = 0;
+    for (const r of out) {
+      const u = userByName[r.name];
+      const monthlySalary = Number(u?.fixedCost) || 0;
+      const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
+      r.unassignedAmount = r.unassignedCount * dailyRate;
+      totalUnassignedAmount += r.unassignedAmount;
+      totalUnassignedDays += r.unassignedCount;
+    }
+
     const topU = [...out].filter((r) => r.unassignedCount > 0).sort((a, b) => b.unassignedCount - a.unassignedCount).slice(0, 5);
 
     // 잔업 Top: 직원별 총 시간·금액 집계
@@ -171,7 +194,7 @@ export default function UnassignedReportPage() {
     const sorted = out.sort((a, b) =>
       (b.unassignedCount + b.overlapCount) - (a.unassignedCount + a.overlapCount) || a.name.localeCompare(b.name),
     );
-    return { rows: sorted, topUnassigned: topU, topOvertime: topOT };
+    return { rows: sorted, topUnassigned: topU, topOvertime: topOT, totalUnassignedAmount, totalUnassignedDays };
   }, [users, allItems, leaves, overtimes, year, month]);
 
   const totalDays = daysInMonth(year, month);
@@ -194,6 +217,24 @@ export default function UnassignedReportPage() {
         </select>
       </div>
 
+
+      <div className="ua-summary-card" style={{ marginBottom: 14 }}>
+        <div className="ua-summary-title">
+          <span className="ua-dot ua-dot-unassigned" />
+          미배정 금액 집계 · {year}년 {month}월
+        </div>
+        {totalUnassignedDays === 0 ? (
+          <p className="ua-summary-empty">미배정 일수 없음</p>
+        ) : (
+          <div className="ua-summary-total" style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>
+            <span>전체 합계</span>
+            <strong style={{ display: 'inline-grid', gridTemplateColumns: '60px 140px', gap: 14, fontVariantNumeric: 'tabular-nums' }}>
+              <em style={{ fontStyle: 'normal', textAlign: 'right' }}>{totalUnassignedDays}일</em>
+              <em style={{ fontStyle: 'normal', textAlign: 'right' }}>{totalUnassignedAmount.toLocaleString()}원</em>
+            </strong>
+          </div>
+        )}
+      </div>
 
       <div className="ua-legend">
         <span><span className="ua-legend-swatch assigned" />배정</span>
