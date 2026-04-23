@@ -437,7 +437,9 @@ export default function SiteClosingPage() {
   const mirroredExpenseSum = mirroredFinances.filter((f) => canViewSalary || !isOvertimeDesc(f.description)).reduce((s, f) => s + (Number(f.amount) || 0), 0);
   const mirroredLaborSum = canViewSalary ? mirroredLabor : 0;
   const totalExpense = ownExpense + mirroredExpenseSum + mirroredLaborSum;
-  const netTotal = totalRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
+  const hideRevenue = !!site?.hideRevenue;
+  const effectiveRevenue = hideRevenue ? 0 : totalRevenue;
+  const netTotal = effectiveRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
 
   let saveStatus;
   if (saveError) {
@@ -494,10 +496,12 @@ export default function SiteClosingPage() {
           <span className="label">항목</span>
           <strong>{itemCount}건</strong>
         </div>
-        <div className="closing-summary-item">
-          <span className="label">매출</span>
-          <strong style={{ color: 'var(--success, #16a34a)' }}>{totalRevenue.toLocaleString()}원</strong>
-        </div>
+        {!hideRevenue && (
+          <div className="closing-summary-item">
+            <span className="label">매출</span>
+            <strong style={{ color: 'var(--success, #16a34a)' }}>{totalRevenue.toLocaleString()}원</strong>
+          </div>
+        )}
         <div className="closing-summary-item">
           <span className="label">지출</span>
           <strong style={{ color: 'var(--danger, #dc2626)' }}>{totalExpense.toLocaleString()}원</strong>
@@ -525,31 +529,33 @@ export default function SiteClosingPage() {
         {canEdit && saveStatus}
       </div>
 
-      {/* 매출 섹션 */}
-      <div className="finance-section">
-        <div className="finance-section-header">
-          <h3 className="finance-title finance-revenue">매출</h3>
-          {canEdit && <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('revenue')}>+ 추가</button>}
-        </div>
-        {revenueItems.length === 0 ? (
-          <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
-        ) : (
-          <div className="finance-list">
-            {revenueItems.map((f) => {
-              const buf = financeBuf[f.id] || f;
-              return (
-                <div className="finance-row" key={f.id}>
-                  <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  <MoneyInput className="finance-amount" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  <span className="finance-won">원</span>
-                  <input className="finance-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  {canEdit && <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>}
-                </div>
-              );
-            })}
+      {/* 매출 섹션 (hideRevenue 프로젝트는 숨김) */}
+      {!hideRevenue && (
+        <div className="finance-section">
+          <div className="finance-section-header">
+            <h3 className="finance-title finance-revenue">매출</h3>
+            {canEdit && <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('revenue')}>+ 추가</button>}
           </div>
-        )}
-      </div>
+          {revenueItems.length === 0 ? (
+            <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
+          ) : (
+            <div className="finance-list">
+              {revenueItems.map((f) => {
+                const buf = financeBuf[f.id] || f;
+                return (
+                  <div className="finance-row" key={f.id}>
+                    <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                    <MoneyInput className="finance-amount" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                    <span className="finance-won">원</span>
+                    <input className="finance-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                    {canEdit && <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 지출 섹션 */}
       <div className="finance-section">

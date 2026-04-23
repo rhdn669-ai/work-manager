@@ -29,7 +29,7 @@ export default function SiteListPage() {
     name: '', team: '', managerIds: [],
     projectType: 'recurring', status: 'active',
     startYear: null, startMonth: null, endYear: null, endMonth: null,
-    mirrorFromSiteIds: [],
+    mirrorFromSiteIds: [], hideRevenue: false,
   });
   const [managerListOpen, setManagerListOpen] = useState(false);
   const [mirrorListOpen, setMirrorListOpen] = useState(false);
@@ -139,7 +139,7 @@ export default function SiteListPage() {
       name: '', team: '', managerIds: [],
       projectType: 'recurring', status: 'active',
       startYear: year, startMonth: month, endYear: null, endMonth: null,
-      mirrorFromSiteIds: [],
+      mirrorFromSiteIds: [], hideRevenue: false,
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -153,7 +153,7 @@ export default function SiteListPage() {
       projectType: site.projectType || 'recurring', status: site.status || 'active',
       startYear: site.startYear || null, startMonth: site.startMonth || null,
       endYear: site.endYear || null, endMonth: site.endMonth || null,
-      mirrorFromSiteIds: site.mirrorFromSiteIds || [],
+      mirrorFromSiteIds: site.mirrorFromSiteIds || [], hideRevenue: !!site.hideRevenue,
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -258,7 +258,10 @@ export default function SiteListPage() {
       </div>
 
       {isAdmin && filtered.length > 0 && filter !== 'completed' && (() => {
-        const allRevenue = filtered.reduce((s, site) => s + ((siteStats[site.id] || {}).revenue || 0), 0);
+        const allRevenue = filtered.reduce((s, site) => {
+          if (site.hideRevenue) return s;
+          return s + ((siteStats[site.id] || {}).revenue || 0);
+        }, 0);
         const allExpense = filtered.reduce((s, site) => {
           const v = siteStats[site.id] || {};
           return s + (v.expense || 0) + (v.overtime || 0) + (v.labor || 0);
@@ -293,9 +296,11 @@ export default function SiteListPage() {
         <div className="site-list">
           {filtered.map((s) => {
             const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+            const hideRev = !!s.hideRevenue;
+            const revenueShown = hideRev ? 0 : raw.revenue;
             const expenseOnly = raw.expense + raw.overtime;
             const totalExpense = canViewSalary ? expenseOnly + raw.labor : expenseOnly;
-            const balance = raw.revenue - totalExpense;
+            const balance = revenueShown - totalExpense;
             const pt = s.projectType || 'recurring';
             const st = s.status || 'active';
             const period = periodLabel(s);
@@ -324,7 +329,7 @@ export default function SiteListPage() {
                     </div>
                     {(st !== 'completed' || hasMonthData(s)) && (
                       <div className="site-row-stats">
-                        <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
+                        {!hideRev && <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>}
                         <span className="stat-expense">지출 {expenseOnly.toLocaleString()}</span>
                         {canViewSalary && <span className="stat-expense">공수 {raw.labor.toLocaleString()}</span>}
                         <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
@@ -447,6 +452,20 @@ export default function SiteListPage() {
                 )}
               </div>
             )}
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.hideRevenue}
+                onChange={(e) => setForm({ ...form, hideRevenue: e.target.checked })}
+                style={{ width: 'auto', minHeight: 'auto', margin: 0 }}
+              />
+              <span>매출 섹션 숨기기 (지원성 프로젝트)</span>
+            </label>
+            <p className="field-hint" style={{ marginTop: 4 }}>
+              체크 시 이 프로젝트의 마감 화면·목록에서 매출이 표시되지 않고 합계 계산에서도 제외됩니다.
+            </p>
           </div>
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary">{editSite ? '수정' : '추가'}</button>

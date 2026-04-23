@@ -44,6 +44,7 @@ export async function createSite(data) {
     endYear: data.endYear || null,
     endMonth: data.endMonth || null,
     mirrorFromSiteIds: data.mirrorFromSiteIds || [], // 지출 합산 대상 프로젝트 ID 목록
+    hideRevenue: data.hideRevenue || false, // 매출 섹션 숨김 (지원성 프로젝트용)
     createdAt: new Date(),
     updatedAt: new Date(),
   });
