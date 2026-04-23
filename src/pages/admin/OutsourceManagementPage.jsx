@@ -28,15 +28,27 @@ export default function OutsourceManagementPage() {
   const [newProject, setNewProject] = useState({ name: '', unitPrice: 0 });
   const [detailBusy, setDetailBusy] = useState(false);
   const [expandedRateFor, setExpandedRateFor] = useState(null); // freelancer id
-  const [newRateEntry, setNewRateEntry] = useState({ effectiveFrom: new Date().toISOString().slice(0, 10), rate: 0, note: '' });
+  const nowForRate = new Date();
+  const [newRateEntry, setNewRateEntry] = useState({
+    year: nowForRate.getFullYear(),
+    month: nowForRate.getMonth() + 1,
+    rate: 0,
+    note: '',
+  });
 
   async function handleAddRateEntry(freelancerId) {
-    if (!newRateEntry.effectiveFrom) { alert('적용 시작일을 선택해주세요.'); return; }
+    if (!newRateEntry.year || !newRateEntry.month) { alert('적용 년/월을 선택해주세요.'); return; }
     if (!newRateEntry.rate || Number(newRateEntry.rate) <= 0) { alert('단가를 입력해주세요.'); return; }
+    const effectiveFrom = `${newRateEntry.year}-${String(newRateEntry.month).padStart(2, '0')}-01`;
     setDetailBusy(true);
     try {
-      await addRateHistoryEntry(freelancerId, newRateEntry);
-      setNewRateEntry({ effectiveFrom: new Date().toISOString().slice(0, 10), rate: 0, note: '' });
+      await addRateHistoryEntry(freelancerId, {
+        rate: newRateEntry.rate,
+        effectiveFrom,
+        note: newRateEntry.note,
+      });
+      const now = new Date();
+      setNewRateEntry({ year: now.getFullYear(), month: now.getMonth() + 1, rate: 0, note: '' });
       await reloadDetail();
     } catch (err) {
       alert('이력 추가 실패: ' + err.message);
@@ -46,7 +58,9 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleRemoveRateEntry(freelancerId, entry) {
-    if (!confirm(`${entry.effectiveFrom}부터 적용 단가 ${Number(entry.rate).toLocaleString()}원을 삭제하시겠습니까?`)) return;
+    const [y, m] = (entry.effectiveFrom || '').split('-');
+    const label = y && m ? `${y}년 ${Number(m)}월부터` : entry.effectiveFrom;
+    if (!confirm(`${label} 적용 단가 ${Number(entry.rate).toLocaleString()}원을 삭제하시겠습니까?`)) return;
     setDetailBusy(true);
     try {
       await removeRateHistoryEntry(freelancerId, entry);
@@ -464,27 +478,40 @@ export default function OutsourceManagementPage() {
                                 <p className="ua-summary-empty">등록된 단가 이력이 없습니다. (기본 일당만 사용 중)</p>
                               ) : (
                                 <ul className="rate-history-list">
-                                  {history.map((h, i) => (
-                                    <li key={`${h.effectiveFrom}-${h.rate}-${i}`}>
-                                      <span className="rh-date">{h.effectiveFrom} ~</span>
-                                      <strong className="rh-rate">{Number(h.rate).toLocaleString()}원</strong>
-                                      <span className="rh-note">{h.note || ''}</span>
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm btn-danger-outline"
-                                        onClick={() => handleRemoveRateEntry(f.id, h)}
-                                        disabled={detailBusy}
-                                      >삭제</button>
-                                    </li>
-                                  ))}
+                                  {history.map((h, i) => {
+                                    const [hy, hm] = (h.effectiveFrom || '').split('-');
+                                    const label = hy && hm ? `${hy}년 ${Number(hm)}월~` : (h.effectiveFrom || '-');
+                                    return (
+                                      <li key={`${h.effectiveFrom}-${h.rate}-${i}`}>
+                                        <span className="rh-date">{label}</span>
+                                        <strong className="rh-rate">{Number(h.rate).toLocaleString()}원</strong>
+                                        <span className="rh-note">{h.note || ''}</span>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-danger-outline"
+                                          onClick={() => handleRemoveRateEntry(f.id, h)}
+                                          disabled={detailBusy}
+                                        >삭제</button>
+                                      </li>
+                                    );
+                                  })}
                                 </ul>
                               )}
                               <div className="rate-history-add">
-                                <input
-                                  type="date"
-                                  value={newRateEntry.effectiveFrom}
-                                  onChange={(e) => setNewRateEntry({ ...newRateEntry, effectiveFrom: e.target.value })}
-                                />
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  <select
+                                    value={newRateEntry.year}
+                                    onChange={(e) => setNewRateEntry({ ...newRateEntry, year: Number(e.target.value) })}
+                                  >
+                                    {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
+                                  </select>
+                                  <select
+                                    value={newRateEntry.month}
+                                    onChange={(e) => setNewRateEntry({ ...newRateEntry, month: Number(e.target.value) })}
+                                  >
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}월</option>)}
+                                  </select>
+                                </div>
                                 <MoneyInput
                                   value={newRateEntry.rate || 0}
                                   onChange={(e) => setNewRateEntry({ ...newRateEntry, rate: e.target.value })}
