@@ -129,6 +129,18 @@ export async function deleteClosingItem(itemId) {
   await deleteDoc(doc(db, 'siteClosingItems', itemId));
 }
 
+export async function getAllClosingItemsBySite(siteId) {
+  const q = query(itemsRef, where('siteId', '==', siteId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getAllFinanceItemsBySite(siteId) {
+  const q = query(financesRef, where('siteId', '==', siteId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // ---------- 지출/매출(siteFinances) ----------
 
 export async function getFinanceItems(siteId, year, month) {

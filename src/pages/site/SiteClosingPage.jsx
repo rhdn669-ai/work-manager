@@ -5,7 +5,7 @@ import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
   initRosterFromPreviousMonth, updateSite, getAssignedEmployeeIds,
-  getAllSites,
+  getAllSites, getAllClosingItemsBySite, getAllFinanceItemsBySite,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -71,6 +71,7 @@ export default function SiteClosingPage() {
   const [saveError, setSaveError] = useState(null);
   const [showOvertimeDetail, setShowOvertimeDetail] = useState(false);
   // 업체(공수/프로젝트) 추가 모달 — 업체 → 프로젝트 2단계 선택
+  const [allSiteTotals, setAllSiteTotals] = useState(null); // 단발성 프로젝트 전체 누적 합계
   const [vendorPickerMode, setVendorPickerMode] = useState(null); // 'vendor' | 'vendor_case' | null
   const [vendorPickerStep, setVendorPickerStep] = useState('vendor'); // 'vendor' | 'project'
   const [pickedVendor, setPickedVendor] = useState(null);
@@ -196,6 +197,30 @@ export default function SiteClosingPage() {
       const fbuf = {};
       fins.forEach((f) => { fbuf[f.id] = { ...f }; });
       setFinanceBuf(fbuf);
+
+      // 단발성 프로젝트: 전체 월 누적 합계 계산
+      if (s?.projectType === 'once') {
+        const [allItems, allFins] = await Promise.all([
+          getAllClosingItemsBySite(siteId),
+          getAllFinanceItemsBySite(siteId),
+        ]);
+        // 현재 월 항목은 editBuf 값으로 덮어쓰기 (미저장 변경 반영)
+        const allItemsPatched = allItems.map((it) => buf[it.id] ? { ...it, amount: Number(buf[it.id].amount) || 0 } : it);
+        const allFinsPatched = allFins.map((f) => fbuf[f.id] ? { ...f, amount: Number(fbuf[f.id].amount) || 0 } : f);
+
+        const allRevenue = allFinsPatched.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+        const allExpense = allFinsPatched.filter((f) => f.type === 'expense').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+        const allFreelancer = allItemsPatched.filter((it) => it.itemType !== 'employee').reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+        const allEmployee = allItemsPatched.filter((it) => it.itemType === 'employee').reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+
+        // 월별 목록 (연-월 기준 집계)
+        const monthSet = new Set([...allItems, ...allFins].map((x) => `${x.year}-${String(x.month).padStart(2, '0')}`));
+        const months = [...monthSet].sort();
+
+        setAllSiteTotals({ allRevenue, allExpense, allFreelancer, allEmployee, months });
+      } else {
+        setAllSiteTotals(null);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -693,6 +718,53 @@ export default function SiteClosingPage() {
         )}
         {canEdit && saveStatus}
       </div>
+
+      {/* 단발성 프로젝트 총마감 내역 */}
+      {allSiteTotals && !hideRevenue && (
+        <div className="total-closing-summary">
+          <div className="total-closing-header">
+            <span className="total-closing-title">총마감 내역</span>
+            <span className="total-closing-period">
+              {allSiteTotals.months.length > 0
+                ? `${allSiteTotals.months[0]} ~ ${allSiteTotals.months[allSiteTotals.months.length - 1]} (${allSiteTotals.months.length}개월)`
+                : ''}
+            </span>
+          </div>
+          <div className="total-closing-row">
+            <div className="total-closing-item">
+              <span className="label">총 매출</span>
+              <strong style={{ color: 'var(--success, #16a34a)' }}>{allSiteTotals.allRevenue.toLocaleString()}원</strong>
+            </div>
+            <div className="total-closing-item">
+              <span className="label">총 지출</span>
+              <strong style={{ color: 'var(--danger, #dc2626)' }}>{allSiteTotals.allExpense.toLocaleString()}원</strong>
+            </div>
+            {canViewSalary && (
+              <div className="total-closing-item">
+                <span className="label">총 공수</span>
+                <strong>{allSiteTotals.allFreelancer.toLocaleString()}원</strong>
+              </div>
+            )}
+            {canViewSalary && (
+              <div className="total-closing-item">
+                <span className="label">총 인건비</span>
+                <strong>{allSiteTotals.allEmployee.toLocaleString()}원</strong>
+              </div>
+            )}
+            {(() => {
+              const allNet = allSiteTotals.allRevenue - allSiteTotals.allExpense - allSiteTotals.allFreelancer - (canViewSalary ? allSiteTotals.allEmployee : 0);
+              return (
+                <div className="total-closing-item total-closing-net">
+                  <span className="label">총 합계</span>
+                  <strong style={{ color: allNet >= 0 ? 'var(--success)' : 'var(--danger)', fontSize: 15 }}>
+                    {allNet >= 0 ? '+' : ''}{allNet.toLocaleString()}원
+                  </strong>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* 매출 섹션 (hideRevenue 프로젝트는 숨김) */}
       {!hideRevenue && (
