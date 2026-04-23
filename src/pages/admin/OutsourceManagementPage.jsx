@@ -28,6 +28,7 @@ export default function OutsourceManagementPage() {
   const [newProject, setNewProject] = useState({ name: '', unitPrice: 0 });
   const [detailBusy, setDetailBusy] = useState(false);
   const [editRateFor, setEditRateFor] = useState(null); // freelancer id
+  const [openHistoryFor, setOpenHistoryFor] = useState({}); // { [freelancerId]: true/false }
   const nowForRate = new Date();
   const [rateEdit, setRateEdit] = useState({
     year: nowForRate.getFullYear(),
@@ -490,21 +491,32 @@ export default function OutsourceManagementPage() {
                               {isEditing ? '취소' : '단가 변경'}
                             </button>
                           </div>
-                          {historyList.length > 0 && (
-                            <div className="rate-history-list">
-                              <div className="rate-history-title">단가 이력</div>
-                              {historyList.map((h, idx) => {
-                                const hf = fmtYM(h.from);
-                                const ht = fmtYM(h.to);
-                                const period = hf || ht ? `(${hf || '이전'} ~ ${ht || '이전'})` : '';
-                                return (
-                                  <div className="previous-rate-info" key={`${h.rate}-${h.from}-${h.to}-${idx}`}>
-                                    {h.rate.toLocaleString()}원 {period}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                          {historyList.length > 0 && (() => {
+                            const isOpen = !!openHistoryFor[f.id];
+                            return (
+                              <div className="rate-history-list">
+                                <button
+                                  type="button"
+                                  className="rate-history-toggle"
+                                  onClick={() => setOpenHistoryFor((s) => ({ ...s, [f.id]: !s[f.id] }))}
+                                  aria-expanded={isOpen}
+                                >
+                                  <span className={`rate-history-caret${isOpen ? ' open' : ''}`}>▸</span>
+                                  단가 이력 ({historyList.length})
+                                </button>
+                                {isOpen && historyList.map((h, idx) => {
+                                  const hf = fmtYM(h.from);
+                                  const ht = fmtYM(h.to);
+                                  const period = hf || ht ? `(${hf || '이전'} ~ ${ht || '이전'})` : '';
+                                  return (
+                                    <div className="previous-rate-info" key={`${h.rate}-${h.from}-${h.to}-${idx}`}>
+                                      {h.rate.toLocaleString()}원 {period}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                           {isEditing && (
                             <div className="rate-edit-panel">
                               <div className="rate-edit-row">
