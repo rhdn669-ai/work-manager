@@ -160,31 +160,42 @@ export async function getVendorDetail(vendorId, vendorName) {
     .filter((f) => (f.vendor || '').trim() === (vendorName || '').trim())
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  // 업체 문서의 projectNames 배열 (수기 입력)
-  let projectNames = [];
+  // 업체 문서의 projects 배열 (수기 입력: 이름 + 단가)
+  // 구버전 projectNames(문자열 배열)도 흡수
+  let projects = [];
   if (vendorId) {
     const snap = await getDoc(doc(db, 'vendors', vendorId));
     if (snap.exists()) {
-      projectNames = Array.isArray(snap.data().projectNames) ? snap.data().projectNames : [];
+      const d = snap.data();
+      const modern = Array.isArray(d.projects) ? d.projects : [];
+      const legacy = Array.isArray(d.projectNames) ? d.projectNames : [];
+      const merged = [...modern];
+      for (const name of legacy) {
+        if (!merged.some((p) => p.name === name)) {
+          merged.push({ name, unitPrice: 0 });
+        }
+      }
+      projects = merged;
     }
   }
-  return { freelancers: freelancerList, projectNames };
+  return { freelancers: freelancerList, projects };
 }
 
-// 수기 프로젝트명 추가
-export async function addVendorProjectName(vendorId, name) {
+// 업체 프로젝트 추가 (이름 + 건당 단가)
+export async function addVendorProject(vendorId, { name, unitPrice }) {
   if (!vendorId || !name?.trim()) return;
+  const entry = { name: name.trim(), unitPrice: Number(unitPrice) || 0 };
   await updateDoc(doc(db, 'vendors', vendorId), {
-    projectNames: arrayUnion(name.trim()),
+    projects: arrayUnion(entry),
     updatedAt: new Date(),
   });
 }
 
-// 수기 프로젝트명 제거
-export async function removeVendorProjectName(vendorId, name) {
-  if (!vendorId || !name) return;
+// 업체 프로젝트 제거
+export async function removeVendorProject(vendorId, project) {
+  if (!vendorId || !project) return;
   await updateDoc(doc(db, 'vendors', vendorId), {
-    projectNames: arrayRemove(name),
+    projects: arrayRemove(project),
     updatedAt: new Date(),
   });
 }

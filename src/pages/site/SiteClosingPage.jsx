@@ -405,6 +405,16 @@ export default function SiteClosingPage() {
           }
         }
       }
+      // 업체(건당): 프로젝트명(detail) 선택 시 해당 업체 프로젝트 단가로 override
+      if (field === 'detail' && cur.itemType === 'vendor_case' && value) {
+        const vendorMatch = vendors.find((v) => v.name === cur.vendor);
+        const projects = vendorMatch?.projects || [];
+        const proj = projects.find((p) => p.name === value);
+        if (proj && Number(proj.unitPrice) > 0) {
+          cur.unitPrice = Number(proj.unitPrice) || 0;
+          cur.amount = cur.unitPrice * Number(cur.quantity || 0);
+        }
+      }
       scheduleSave(itemId, cur);
       return { ...b, [itemId]: cur };
     });
@@ -865,6 +875,13 @@ export default function SiteClosingPage() {
           <option key={v.id} value={v.name}>{v.representative || ''}</option>
         ))}
       </datalist>
+      <datalist id="closing-vendor-project-list">
+        {vendors.flatMap((v) => (v.projects || []).map((p) => (
+          <option key={`${v.id}-${p.name}`} value={p.name}>
+            {v.name}{p.unitPrice > 0 ? ` · 건당 ${Number(p.unitPrice).toLocaleString()}원` : ''}
+          </option>
+        )))}
+      </datalist>
 
       {items.length === 0 ? (
         <div className="card">
@@ -908,8 +925,11 @@ export default function SiteClosingPage() {
                   <input
                     className="closing-name"
                     value={buf.detail || ''}
-                    placeholder="이름"
-                    list={cardType !== 'employee' ? 'closing-freelancer-list' : undefined}
+                    placeholder={cardType === 'vendor_case' ? '프로젝트명' : '이름'}
+                    list={
+                      cardType === 'vendor_case' ? 'closing-vendor-project-list' :
+                      cardType !== 'employee' ? 'closing-freelancer-list' : undefined
+                    }
                     onChange={(e) => updateField(it.id, 'detail', e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}

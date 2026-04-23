@@ -5,7 +5,7 @@ import {
   getVendors, addVendor, updateVendor, deleteVendor,
   importFromSiteClosings, getVendorDetail,
   addFreelancerToVendor,
-  addVendorProjectName, removeVendorProjectName,
+  addVendorProject, removeVendorProject,
   addRateHistoryEntry, removeRateHistoryEntry,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
@@ -25,7 +25,7 @@ export default function OutsourceManagementPage() {
   const [detailTab, setDetailTab] = useState('freelancers');
   const [detailLoading, setDetailLoading] = useState(false);
   const [newFreelancer, setNewFreelancer] = useState({ name: '', dailyRate: 0 });
-  const [newProjectName, setNewProjectName] = useState('');
+  const [newProject, setNewProject] = useState({ name: '', unitPrice: 0 });
   const [detailBusy, setDetailBusy] = useState(false);
   const [expandedRateFor, setExpandedRateFor] = useState(null); // freelancer id
   const [newRateEntry, setNewRateEntry] = useState({ effectiveFrom: new Date().toISOString().slice(0, 10), rate: 0, note: '' });
@@ -59,14 +59,14 @@ export default function OutsourceManagementPage() {
   }
 
   async function openVendorDetail(v) {
-    setDetailVendor({ ...v, freelancers: [], projectNames: [] });
+    setDetailVendor({ ...v, freelancers: [], projects: [] });
     setDetailTab('freelancers');
     setNewFreelancer({ name: '', dailyRate: v.dailyRate || 0 });
-    setNewProjectName('');
+    setNewProject({ name: '', unitPrice: v.caseRate || 0 });
     setDetailLoading(true);
     try {
       const detail = await getVendorDetail(v.id, v.name);
-      setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projectNames: detail.projectNames } : null);
+      setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null);
     } catch (err) {
       alert('상세 조회 실패: ' + err.message);
     } finally {
@@ -77,7 +77,7 @@ export default function OutsourceManagementPage() {
   async function reloadDetail() {
     if (!detailVendor) return;
     const detail = await getVendorDetail(detailVendor.id, detailVendor.name);
-    setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projectNames: detail.projectNames } : null);
+    setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null);
     await loadAll();
   }
 
@@ -99,28 +99,28 @@ export default function OutsourceManagementPage() {
     }
   }
 
-  async function handleAddProjectName(e) {
+  async function handleAddProject(e) {
     e.preventDefault();
-    const name = newProjectName.trim();
+    const name = newProject.name.trim();
     if (!name) { alert('프로젝트명을 입력해주세요.'); return; }
-    if ((detailVendor.projectNames || []).includes(name)) { alert('이미 등록된 프로젝트명입니다.'); return; }
+    if ((detailVendor.projects || []).some((p) => p.name === name)) { alert('이미 등록된 프로젝트입니다.'); return; }
     setDetailBusy(true);
     try {
-      await addVendorProjectName(detailVendor.id, name);
-      setNewProjectName('');
+      await addVendorProject(detailVendor.id, { name, unitPrice: newProject.unitPrice });
+      setNewProject({ name: '', unitPrice: detailVendor.caseRate || 0 });
       await reloadDetail();
     } catch (err) {
-      alert('프로젝트명 추가 실패: ' + err.message);
+      alert('프로젝트 추가 실패: ' + err.message);
     } finally {
       setDetailBusy(false);
     }
   }
 
-  async function handleRemoveProjectName(name) {
-    if (!confirm(`"${name}"을(를) 삭제하시겠습니까?`)) return;
+  async function handleRemoveProject(project) {
+    if (!confirm(`"${project.name}"을(를) 삭제하시겠습니까?`)) return;
     setDetailBusy(true);
     try {
-      await removeVendorProjectName(detailVendor.id, name);
+      await removeVendorProject(detailVendor.id, project);
       await reloadDetail();
     } catch (err) {
       alert('삭제 실패: ' + err.message);
@@ -427,7 +427,7 @@ export default function OutsourceManagementPage() {
                 className={`tab-nav-item ${detailTab === 'projects' ? 'active' : ''}`}
                 onClick={() => setDetailTab('projects')}
               >
-                프로젝트명 {(detailVendor.projectNames || []).length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projectNames.length}</span>}
+                프로젝트 {(detailVendor.projects || []).length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projects.length}</span>}
               </button>
             </div>
 
@@ -527,28 +527,34 @@ export default function OutsourceManagementPage() {
               </>
             ) : (
               <>
-                {(detailVendor.projectNames || []).length === 0 ? (
-                  <p className="empty-state">등록된 프로젝트명이 없습니다.</p>
+                {(detailVendor.projects || []).length === 0 ? (
+                  <p className="empty-state">등록된 프로젝트가 없습니다.</p>
                 ) : (
                   <ul className="vendor-detail-list">
-                    {detailVendor.projectNames.map((name) => (
-                      <li key={name}>
-                        <strong>{name}</strong>
+                    {detailVendor.projects.map((p) => (
+                      <li key={p.name}>
+                        <strong>{p.name}</strong>
+                        <span>{p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}</span>
                         <button
                           type="button"
                           className="btn btn-sm btn-danger-outline"
-                          onClick={() => handleRemoveProjectName(name)}
+                          onClick={() => handleRemoveProject(p)}
                           disabled={detailBusy}
                         >삭제</button>
                       </li>
                     ))}
                   </ul>
                 )}
-                <form className="vendor-add-form" onSubmit={handleAddProjectName}>
+                <form className="vendor-add-form" onSubmit={handleAddProject}>
                   <input
-                    placeholder="프로젝트명 입력"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="프로젝트명"
+                    value={newProject.name}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                  />
+                  <MoneyInput
+                    placeholder="건당 단가"
+                    value={newProject.unitPrice || 0}
+                    onChange={(e) => setNewProject({ ...newProject, unitPrice: e.target.value })}
                   />
                   <button type="submit" className="btn btn-sm btn-primary" disabled={detailBusy}>
                     {detailBusy ? '…' : '+ 추가'}
