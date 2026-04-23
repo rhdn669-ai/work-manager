@@ -135,12 +135,15 @@ export default function SiteListPage() {
     return false;
   };
 
+  // 날짜 범위 밖이면 어떤 탭에서도 숨김
+  const outOfRange = (s) => isBeforeStart(s) || isAfterEnd(s);
+
   // 필터링된 프로젝트
   const filtered = sites.filter((s) => {
+    if (outOfRange(s)) return false;
     const st = s.status || 'active';
     const pt = s.projectType || 'recurring';
     if (filter === 'completed') return st === 'completed';
-    if (isBeforeStart(s) || isAfterEnd(s)) return false;
     if (pt === 'once') return st === 'active';
     if (filter === 'recurring') return pt === 'recurring' && st === 'active';
     // 'all' = 활성 프로젝트 + 해당 월에 데이터가 있는 완료 프로젝트
@@ -150,14 +153,14 @@ export default function SiteListPage() {
 
   const filterCounts = {
     all: sites.filter((s) => {
-      if (isBeforeStart(s) || isAfterEnd(s)) return false;
+      if (outOfRange(s)) return false;
       const st = s.status || 'active';
       if (st === 'active') return true;
       return hasMonthData(s);
     }).length,
-    recurring: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
-    once: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
-    completed: sites.filter((s) => s.status === 'completed').length,
+    recurring: sites.filter((s) => !outOfRange(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
+    once: sites.filter((s) => !outOfRange(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
+    completed: sites.filter((s) => !outOfRange(s) && s.status === 'completed').length,
   };
 
   function managerNames(site) {
