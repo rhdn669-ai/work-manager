@@ -400,6 +400,7 @@ body {
   width: calc(100% - var(--sidebar-width));
   min-height: calc(100vh - var(--header-height));
   transition: margin-left 0.2s ease, width 0.2s ease;
+  scrollbar-gutter: stable;
 }
 
 .main-content.expanded {
