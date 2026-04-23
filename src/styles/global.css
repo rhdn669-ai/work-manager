@@ -399,6 +399,42 @@ body {
 .btn-outline { background: #fff; border-color: var(--border); color: var(--text); }
 .btn-outline:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-hover); }
 
+/* 잔업 상세 모달 리스트 */
+.overtime-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.overtime-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  transition: border-color 0.1s;
+}
+.overtime-detail-row:hover { border-color: var(--primary); }
+.overtime-detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.overtime-detail-info strong {
+  font-size: 13px;
+  color: var(--text);
+}
+.overtime-detail-amount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+}
+
 /* 파스텔 구분용 (공수표 추가 버튼 등) */
 .btn-pastel-sky { background: #e0f2fe; color: #0c4a6e; border-color: #bae6fd; }
 .btn-pastel-sky:hover:not(:disabled) { background: #bae6fd; border-color: #7dd3fc; }

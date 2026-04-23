@@ -11,6 +11,7 @@ import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
+import Modal from '../../components/common/Modal';
 
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
@@ -67,6 +68,7 @@ export default function SiteClosingPage() {
   const [savingCount, setSavingCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
+  const [showOvertimeDetail, setShowOvertimeDetail] = useState(false);
 
   const timersRef = useRef({});
 
@@ -595,38 +597,44 @@ export default function SiteClosingPage() {
           <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 지출 항목이 없습니다.</p>
         ) : (
           <div className="finance-list">
-            {expenseItems.map((f) => {
+            {/* 비잔업 지출 항목은 개별 렌더 */}
+            {expenseItems.filter((f) => !isOvertimeFinance(f)).map((f) => {
               const buf = financeBuf[f.id] || f;
               const desc = (buf.description || '').trim();
-              const isOvertime = desc === '잔업' || desc.startsWith('잔업 -') || desc.startsWith('잔업-');
               const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material' };
-              const chipKey = isOvertime ? 'overtime' : chipMap[desc];
-              const readOnly = isOvertime;
+              const chipKey = chipMap[desc];
               return (
-                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''} ${readOnly ? 'expense-card-readonly' : ''}`} key={f.id}>
+                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
                   <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
-                    {isOvertime ? '잔업' : (desc || '지출')}
+                    {desc || '지출'}
                   </span>
-                  {readOnly ? (
-                    <span className="expense-input-desc expense-readonly-text" title={desc}>{desc.replace(/^잔업\s*-\s*/, '')}</span>
-                  ) : !chipKey ? (
+                  {!chipKey && (
                     <input className="expense-input-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  ) : null}
-                  {(!isOvertime || canViewSalary) && (
-                    <>
-                      <MoneyInput className="expense-input-amount" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || readOnly} />
-                      <span className="expense-won">원</span>
-                    </>
                   )}
-                  {!readOnly && (
-                    <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  )}
+                  <MoneyInput className="expense-input-amount" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  <span className="expense-won">원</span>
+                  <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   {canEdit && (
-                    <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id, isOvertime)} aria-label="삭제" title={isOvertime ? '잔업 지출 삭제 (고아 데이터 정리용)' : '삭제'}>✕</button>
+                    <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id, false)} aria-label="삭제">✕</button>
                   )}
                 </div>
               );
             })}
+            {/* 잔업 항목은 한 줄로 합산 + 상세 모달 */}
+            {canViewSalary && (() => {
+              const ownOvertimeItems = expenseItems.filter((f) => isOvertimeFinance(f));
+              if (ownOvertimeItems.length === 0) return null;
+              const sum = ownOvertimeItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount ?? f.amount) || 0), 0);
+              return (
+                <div className="expense-card expense-card-overtime expense-card-readonly" key="local-overtime-summary">
+                  <span className="expense-tag expense-chip-overtime">잔업</span>
+                  <span className="expense-input-desc expense-readonly-text">잔업 합계 ({ownOvertimeItems.length}건)</span>
+                  <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
+                  <span className="expense-won">원</span>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowOvertimeDetail(true)}>상세 보기</button>
+                </div>
+              );
+            })()}
             {/* 합산 대상 프로젝트의 비잔업 지출 (카테고리별 합산, 읽기 전용) */}
             {(() => {
               const nonOvertimeItems = mirroredFinances.filter((f) => !isOvertimeDesc(f.description));
@@ -917,6 +925,46 @@ export default function SiteClosingPage() {
           })}
         </div>
       )}
+
+      {/* 잔업 상세 모달 */}
+      {showOvertimeDetail && (() => {
+        const ownOvertimeItems = expenseItems
+          .filter((f) => isOvertimeFinance(f))
+          .sort((a, b) => (a.description || '').localeCompare(b.description || ''));
+        const sum = ownOvertimeItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount ?? f.amount) || 0), 0);
+        return (
+          <Modal isOpen={showOvertimeDetail} onClose={() => setShowOvertimeDetail(false)} title={`잔업 내역 (${ownOvertimeItems.length}건 · ${sum.toLocaleString()}원)`}>
+            {ownOvertimeItems.length === 0 ? (
+              <p className="empty-state">등록된 잔업이 없습니다.</p>
+            ) : (
+              <div className="overtime-detail-list">
+                {ownOvertimeItems.map((f) => {
+                  const desc = (f.description || '').replace(/^잔업\s*-\s*/, '');
+                  return (
+                    <div className="overtime-detail-row" key={f.id}>
+                      <div className="overtime-detail-info">
+                        <strong>{desc}</strong>
+                        <span className="overtime-detail-amount">{Number(f.amount || 0).toLocaleString()}원</span>
+                      </div>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                          onClick={async () => {
+                            if (!confirm('이 잔업 항목을 삭제하시겠습니까?\n(원본 잔업 기록은 남아있을 수 있으니, 필요 시 잔업 관리에서도 정리하세요.)')) return;
+                            await handleDeleteFinance(f.id, true);
+                          }}
+                        >삭제</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
