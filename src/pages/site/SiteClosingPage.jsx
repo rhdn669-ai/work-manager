@@ -9,7 +9,7 @@ import {
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
-import { getFreelancers, getVendors } from '../../services/outsourceService';
+import { getFreelancers, getVendors, getRateForDate } from '../../services/outsourceService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
@@ -381,12 +381,15 @@ export default function SiteClosingPage() {
         cur.amount = Number(cur.unitPrice || 0) * q;
       }
       // 외주관리 연동: 프리랜서/일용직 행에서 이름을 등록된 프리랜서로 바꾸면 업체·단가 자동 채움
+      // 단가는 해당 월(1일 기준)에 유효한 rateHistory 값 사용 (없으면 기본 dailyRate)
       if (field === 'detail' && (cur.itemType === 'freelancer' || cur.itemType === 'daily' || !cur.itemType) && value) {
         const match = freelancers.find((f) => f.name === value);
         if (match) {
           if (match.vendor) cur.vendor = match.vendor;
-          if (match.dailyRate > 0) {
-            cur.unitPrice = Number(match.dailyRate) || 0;
+          const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+          const rate = getRateForDate(match, targetDate);
+          if (rate > 0) {
+            cur.unitPrice = rate;
             cur.amount = cur.unitPrice * Number(cur.quantity || 0);
           }
         }

@@ -986,6 +986,78 @@ body {
   text-overflow: ellipsis;
 }
 
+/* 업체 상세 리스트 항목 확장 (단가 이력) */
+.vendor-detail-item {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 8px;
+  padding: 10px 12px !important;
+}
+.vendor-detail-row-main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.vendor-detail-row-main strong { flex-shrink: 0; }
+.vendor-detail-row-main > span { flex: 1; text-align: right; font-size: 12px; color: var(--text-muted); }
+
+.rate-history-panel {
+  margin-top: 4px;
+  padding: 10px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.rate-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rate-history-list li {
+  display: grid;
+  grid-template-columns: 130px 110px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.rate-history-list .rh-date { color: var(--text-light); font-variant-numeric: tabular-nums; }
+.rate-history-list .rh-rate { color: var(--primary-hover); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.rate-history-list .rh-note { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rate-history-add {
+  display: grid;
+  grid-template-columns: 130px 110px 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.rate-history-add input {
+  padding: 6px 10px;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: #fff;
+}
+.rate-history-add input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
+
+@media (max-width: 640px) {
+  .rate-history-list li,
+  .rate-history-add { grid-template-columns: 1fr 1fr; }
+  .rate-history-list .rh-note { grid-column: 1 / -1; }
+}
+
 /* 업체 상세 모달 내 '추가' 폼 (직원 / 프로젝트) */
 .vendor-add-form {
   display: flex;

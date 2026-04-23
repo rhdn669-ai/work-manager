@@ -43,6 +43,41 @@ export async function deleteFreelancer(id) {
   await deleteDoc(doc(db, 'freelancers', id));
 }
 
+// 특정 날짜(YYYY-MM-DD)에 적용되는 단가 반환
+// rateHistory가 없으면 freelancer.dailyRate(기본값) 반환
+export function getRateForDate(freelancer, dateStr) {
+  const history = Array.isArray(freelancer?.rateHistory) ? freelancer.rateHistory : [];
+  if (history.length === 0) return Number(freelancer?.dailyRate) || 0;
+  const applicable = history
+    .filter((h) => h && h.effectiveFrom && h.effectiveFrom <= dateStr)
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+  if (applicable.length === 0) return Number(freelancer?.dailyRate) || 0;
+  return Number(applicable[0].rate) || 0;
+}
+
+// 단가 이력 항목 추가 (중복 방지: 같은 effectiveFrom+rate는 skip)
+export async function addRateHistoryEntry(freelancerId, entry) {
+  if (!freelancerId || !entry?.effectiveFrom) return;
+  const normalized = {
+    rate: Number(entry.rate) || 0,
+    effectiveFrom: entry.effectiveFrom,
+    note: entry.note || '',
+  };
+  await updateDoc(doc(db, 'freelancers', freelancerId), {
+    rateHistory: arrayUnion(normalized),
+    updatedAt: new Date(),
+  });
+}
+
+// 단가 이력 항목 제거
+export async function removeRateHistoryEntry(freelancerId, entry) {
+  if (!freelancerId || !entry) return;
+  await updateDoc(doc(db, 'freelancers', freelancerId), {
+    rateHistory: arrayRemove(entry),
+    updatedAt: new Date(),
+  });
+}
+
 // ── 업체(vendor) ──────────────────────────────────────
 const vendorsRef = collection(db, 'vendors');
 

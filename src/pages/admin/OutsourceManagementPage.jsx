@@ -6,6 +6,7 @@ import {
   importFromSiteClosings, getVendorDetail,
   addFreelancerToVendor,
   addVendorProjectName, removeVendorProjectName,
+  addRateHistoryEntry, removeRateHistoryEntry,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -26,6 +27,36 @@ export default function OutsourceManagementPage() {
   const [newFreelancer, setNewFreelancer] = useState({ name: '', dailyRate: 0 });
   const [newProjectName, setNewProjectName] = useState('');
   const [detailBusy, setDetailBusy] = useState(false);
+  const [expandedRateFor, setExpandedRateFor] = useState(null); // freelancer id
+  const [newRateEntry, setNewRateEntry] = useState({ effectiveFrom: new Date().toISOString().slice(0, 10), rate: 0, note: '' });
+
+  async function handleAddRateEntry(freelancerId) {
+    if (!newRateEntry.effectiveFrom) { alert('적용 시작일을 선택해주세요.'); return; }
+    if (!newRateEntry.rate || Number(newRateEntry.rate) <= 0) { alert('단가를 입력해주세요.'); return; }
+    setDetailBusy(true);
+    try {
+      await addRateHistoryEntry(freelancerId, newRateEntry);
+      setNewRateEntry({ effectiveFrom: new Date().toISOString().slice(0, 10), rate: 0, note: '' });
+      await reloadDetail();
+    } catch (err) {
+      alert('이력 추가 실패: ' + err.message);
+    } finally {
+      setDetailBusy(false);
+    }
+  }
+
+  async function handleRemoveRateEntry(freelancerId, entry) {
+    if (!confirm(`${entry.effectiveFrom}부터 적용 단가 ${Number(entry.rate).toLocaleString()}원을 삭제하시겠습니까?`)) return;
+    setDetailBusy(true);
+    try {
+      await removeRateHistoryEntry(freelancerId, entry);
+      await reloadDetail();
+    } catch (err) {
+      alert('이력 삭제 실패: ' + err.message);
+    } finally {
+      setDetailBusy(false);
+    }
+  }
 
   async function openVendorDetail(v) {
     setDetailVendor({ ...v, freelancers: [], projectNames: [] });
@@ -408,15 +439,74 @@ export default function OutsourceManagementPage() {
                   <p className="empty-state">등록된 소속 직원이 없습니다.</p>
                 ) : (
                   <ul className="vendor-detail-list">
-                    {detailVendor.freelancers.map((f) => (
-                      <li key={f.id}>
-                        <strong>{f.name}</strong>
-                        <span>
-                          {f.dailyRate > 0 && `${Number(f.dailyRate).toLocaleString()}원`}
-                          {f.contact && ` · ${f.contact}`}
-                        </span>
-                      </li>
-                    ))}
+                    {detailVendor.freelancers.map((f) => {
+                      const isExpanded = expandedRateFor === f.id;
+                      const history = [...(f.rateHistory || [])].sort((a, b) => (b.effectiveFrom || '').localeCompare(a.effectiveFrom || ''));
+                      return (
+                        <li key={f.id} className="vendor-detail-item">
+                          <div className="vendor-detail-row-main">
+                            <strong>{f.name}</strong>
+                            <span>
+                              {f.dailyRate > 0 && `${Number(f.dailyRate).toLocaleString()}원`}
+                              {f.contact && ` · ${f.contact}`}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setExpandedRateFor(isExpanded ? null : f.id)}
+                            >
+                              단가 이력 {isExpanded ? '▲' : '▼'}
+                            </button>
+                          </div>
+                          {isExpanded && (
+                            <div className="rate-history-panel">
+                              {history.length === 0 ? (
+                                <p className="ua-summary-empty">등록된 단가 이력이 없습니다. (기본 일당만 사용 중)</p>
+                              ) : (
+                                <ul className="rate-history-list">
+                                  {history.map((h, i) => (
+                                    <li key={`${h.effectiveFrom}-${h.rate}-${i}`}>
+                                      <span className="rh-date">{h.effectiveFrom} ~</span>
+                                      <strong className="rh-rate">{Number(h.rate).toLocaleString()}원</strong>
+                                      <span className="rh-note">{h.note || ''}</span>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-danger-outline"
+                                        onClick={() => handleRemoveRateEntry(f.id, h)}
+                                        disabled={detailBusy}
+                                      >삭제</button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              <div className="rate-history-add">
+                                <input
+                                  type="date"
+                                  value={newRateEntry.effectiveFrom}
+                                  onChange={(e) => setNewRateEntry({ ...newRateEntry, effectiveFrom: e.target.value })}
+                                />
+                                <MoneyInput
+                                  value={newRateEntry.rate || 0}
+                                  onChange={(e) => setNewRateEntry({ ...newRateEntry, rate: e.target.value })}
+                                  placeholder="단가"
+                                />
+                                <input
+                                  placeholder="비고"
+                                  value={newRateEntry.note}
+                                  onChange={(e) => setNewRateEntry({ ...newRateEntry, note: e.target.value })}
+                                />
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-primary"
+                                  disabled={detailBusy}
+                                  onClick={() => handleAddRateEntry(f.id)}
+                                >{detailBusy ? '…' : '+ 추가'}</button>
+                              </div>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
                 <form className="vendor-add-form" onSubmit={handleAddFreelancerToVendor}>
