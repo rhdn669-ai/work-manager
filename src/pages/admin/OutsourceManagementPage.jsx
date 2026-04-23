@@ -176,6 +176,9 @@ export default function OutsourceManagementPage() {
 
   if (!isAdmin) return <div className="card"><div className="card-body empty-state">접근 권한이 없습니다.</div></div>;
 
+  // 업체 소속이 없는 '개인 프리랜서'만 프리랜서 탭에 표시
+  const soloFreelancers = freelancers.filter((f) => !(f.vendor || '').trim());
+
   return (
     <div className="outsource-management-page">
       <div className="page-header">
@@ -195,13 +198,14 @@ export default function OutsourceManagementPage() {
         </div>
       </div>
 
+      {(() => { return null; })()}
       <div className="tab-nav" style={{ marginBottom: 14 }}>
         <button
           type="button"
           className={`tab-nav-item ${tab === 'freelancer' ? 'active' : ''}`}
           onClick={() => setTab('freelancer')}
         >
-          프리랜서 {freelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{freelancers.length}</span>}
+          프리랜서 {soloFreelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloFreelancers.length}</span>}
         </button>
         <button
           type="button"
@@ -215,14 +219,13 @@ export default function OutsourceManagementPage() {
       {loading ? (
         <div className="loading">로딩 중...</div>
       ) : tab === 'freelancer' ? (
-        freelancers.length === 0 ? (
-          <div className="card"><div className="card-body empty-state">등록된 프리랜서가 없습니다.</div></div>
+        soloFreelancers.length === 0 ? (
+          <div className="card"><div className="card-body empty-state">등록된 개인 프리랜서가 없습니다. (업체 소속 직원은 업체 상세에서 관리)</div></div>
         ) : (
           <table className="table">
             <thead>
               <tr>
                 <th>이름</th>
-                <th>소속 업체</th>
                 <th>일당</th>
                 <th>연락처</th>
                 <th>비고</th>
@@ -230,10 +233,9 @@ export default function OutsourceManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {freelancers.map((f) => (
+              {soloFreelancers.map((f) => (
                 <tr key={f.id}>
                   <td><strong>{f.name}</strong></td>
-                  <td>{f.vendor || '-'}</td>
                   <td>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
                   <td>{f.contact || '-'}</td>
                   <td style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.note || '-'}</td>
@@ -306,14 +308,6 @@ export default function OutsourceManagementPage() {
           </div>
           {tab === 'freelancer' ? (
             <>
-              <div className="form-group">
-                <label>소속 업체</label>
-                <input
-                  value={form.vendor || ''}
-                  onChange={(e) => setForm({ ...form, vendor: e.target.value })}
-                  placeholder="선택 사항"
-                />
-              </div>
               <div className="form-group">
                 <label>일당</label>
                 <MoneyInput
