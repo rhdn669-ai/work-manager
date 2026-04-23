@@ -343,19 +343,34 @@ export default function SiteClosingPage() {
   }
 
   async function handlePickVendor(v) {
+    setPickedVendor(v);
     if (vendorPickerMode === 'vendor') {
-      // 업체(공수): 업체 선택 즉시 행 생성
-      await addVendorRow({
-        itemType: 'vendor',
-        vendorName: v.name,
-        unitPrice: Number(v.dailyRate) || 0,
-      });
-      resetVendorPicker();
+      setVendorPickerStep('member');
     } else {
-      // 업체(프로젝트): 프로젝트 단계로
-      setPickedVendor(v);
       setVendorPickerStep('project');
     }
+  }
+
+  async function handlePickMember(f) {
+    const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+    const rate = getRateForDate(f, targetDate) || Number(pickedVendor?.dailyRate) || 0;
+    await addVendorRow({
+      itemType: 'vendor',
+      vendorName: pickedVendor?.name || '',
+      projectName: f?.name || '',
+      unitPrice: rate,
+    });
+    resetVendorPicker();
+  }
+
+  async function handlePickMemberBlank() {
+    await addVendorRow({
+      itemType: 'vendor',
+      vendorName: pickedVendor?.name || '',
+      projectName: '',
+      unitPrice: Number(pickedVendor?.dailyRate) || 0,
+    });
+    resetVendorPicker();
   }
 
   async function handlePickProject(p) {
@@ -1125,68 +1140,104 @@ export default function SiteClosingPage() {
         );
       })()}
 
-      {/* 업체(공수/프로젝트) 추가 — 업체 → 프로젝트 2단계 선택 모달 */}
-      {vendorPickerMode && (
-        <Modal
-          isOpen={!!vendorPickerMode}
-          onClose={resetVendorPicker}
-          title={
-            vendorPickerMode === 'vendor'
-              ? '업체 선택 (공수)'
-              : vendorPickerStep === 'vendor'
-                ? '업체 선택'
-                : `프로젝트 선택 — ${pickedVendor?.name || ''}`
-          }
-        >
-          {vendorPickerStep === 'vendor' ? (
-            vendors.length === 0 ? (
-              <p className="empty-state">등록된 업체가 없습니다. 먼저 외주관리에 업체를 등록해주세요.</p>
-            ) : (
-              <ul className="vendor-picker-list">
-                {vendors.map((v) => (
-                  <li key={v.id}>
-                    <button type="button" onClick={() => handlePickVendor(v)}>
-                      <strong>{v.name}</strong>
-                      <span>
-                        {vendorPickerMode === 'vendor' && v.dailyRate > 0 && `공수 ${Number(v.dailyRate).toLocaleString()}원`}
-                        {vendorPickerMode === 'vendor_case' && v.caseRate > 0 && `건당 ${Number(v.caseRate).toLocaleString()}원`}
-                        {v.representative && ` · ${v.representative}`}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )
-          ) : (
-            (pickedVendor?.projects || []).length === 0 ? (
-              <>
-                <p className="empty-state">이 업체에 등록된 프로젝트가 없습니다.</p>
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
-                  <button type="button" className="btn btn-primary" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
-                </div>
-              </>
-            ) : (
-              <>
+      {/* 업체(공수/프로젝트) 추가 — 2단계 선택 모달 */}
+      {vendorPickerMode && (() => {
+        const modalTitle =
+          vendorPickerStep === 'vendor'
+            ? (vendorPickerMode === 'vendor' ? '업체 선택 (공수)' : '업체 선택 (프로젝트)')
+            : vendorPickerStep === 'member'
+              ? `직원 선택 — ${pickedVendor?.name || ''}`
+              : `프로젝트 선택 — ${pickedVendor?.name || ''}`;
+        const vendorMembers = pickedVendor
+          ? freelancers.filter((f) => (f.vendor || '').trim() === pickedVendor.name.trim())
+          : [];
+        const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+        return (
+          <Modal isOpen={!!vendorPickerMode} onClose={resetVendorPicker} title={modalTitle}>
+            {vendorPickerStep === 'vendor' && (
+              vendors.length === 0 ? (
+                <p className="empty-state">등록된 업체가 없습니다. 먼저 외주관리에 업체를 등록해주세요.</p>
+              ) : (
                 <ul className="vendor-picker-list">
-                  {pickedVendor.projects.map((p) => (
-                    <li key={p.name}>
-                      <button type="button" onClick={() => handlePickProject(p)}>
-                        <strong>{p.name}</strong>
-                        <span>{p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}</span>
+                  {vendors.map((v) => (
+                    <li key={v.id}>
+                      <button type="button" onClick={() => handlePickVendor(v)}>
+                        <strong>{v.name}</strong>
+                        <span>
+                          {vendorPickerMode === 'vendor' && v.dailyRate > 0 && `공수 ${Number(v.dailyRate).toLocaleString()}원`}
+                          {vendorPickerMode === 'vendor_case' && v.caseRate > 0 && `건당 ${Number(v.caseRate).toLocaleString()}원`}
+                          {v.representative && ` · ${v.representative}`}
+                        </span>
                       </button>
                     </li>
                   ))}
                 </ul>
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
-                  <button type="button" className="btn btn-outline" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
-                </div>
-              </>
-            )
-          )}
-        </Modal>
-      )}
+              )
+            )}
+
+            {vendorPickerStep === 'member' && (
+              vendorMembers.length === 0 ? (
+                <>
+                  <p className="empty-state">이 업체에 등록된 소속 직원이 없습니다.</p>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
+                    <button type="button" className="btn btn-primary" onClick={handlePickMemberBlank}>직원 없이 추가</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ul className="vendor-picker-list">
+                    {vendorMembers.map((f) => {
+                      const rate = getRateForDate(f, targetDate);
+                      return (
+                        <li key={f.id}>
+                          <button type="button" onClick={() => handlePickMember(f)}>
+                            <strong>{f.name}</strong>
+                            <span>{rate > 0 ? `공수 ${rate.toLocaleString()}원` : '단가 미입력'}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
+                    <button type="button" className="btn btn-outline" onClick={handlePickMemberBlank}>직원 없이 추가</button>
+                  </div>
+                </>
+              )
+            )}
+
+            {vendorPickerStep === 'project' && (
+              (pickedVendor?.projects || []).length === 0 ? (
+                <>
+                  <p className="empty-state">이 업체에 등록된 프로젝트가 없습니다.</p>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
+                    <button type="button" className="btn btn-primary" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ul className="vendor-picker-list">
+                    {pickedVendor.projects.map((p) => (
+                      <li key={p.name}>
+                        <button type="button" onClick={() => handlePickProject(p)}>
+                          <strong>{p.name}</strong>
+                          <span>{p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
+                    <button type="button" className="btn btn-outline" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
+                  </div>
+                </>
+              )
+            )}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
