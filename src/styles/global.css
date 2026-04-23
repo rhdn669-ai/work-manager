@@ -649,20 +649,20 @@ body {
   .ua-timeline-seg { height: 22px; }
 }
 
-/* GitHub 잔디 스타일 (기존 테이블 — 현재 미사용) */
+/* GitHub 잔디 스타일 — 세련 버전 */
 .unassigned-table-wrap {
-  background: #fcfcfd;
-  border: 1px solid var(--border);
+  background: #ffffff;
+  border: 1px solid rgba(229, 231, 235, 0.8);
   border-radius: var(--radius-lg);
   overflow: auto;
   max-height: 72vh;
-  padding: 6px;
-  box-shadow: var(--shadow-sm);
+  padding: 14px 14px 18px;
+  box-shadow: var(--shadow);
   -webkit-overflow-scrolling: touch;
 }
 .unassigned-table {
   border-collapse: separate;
-  border-spacing: 3px 3px;
+  border-spacing: 4px;
   font-size: 11px;
 }
 .unassigned-table th,
@@ -672,99 +672,144 @@ body {
   text-align: center;
   white-space: nowrap;
 }
+
+/* 헤더 */
 .unassigned-table thead th {
   position: sticky;
   top: 0;
-  background: #fcfcfd;
+  background: #ffffff;
   z-index: 5;
-  padding: 4px 0 6px;
+  padding: 0 0 10px;
   font-weight: 600;
   font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: -0.005em;
-}
-.unassigned-table .day-col {
-  min-width: 16px;
-  width: 16px;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
-.unassigned-table .day-col.sun { color: var(--danger); }
-.unassigned-table .day-col.sat { color: #2563eb; }
+.unassigned-table thead .sticky-col,
+.unassigned-table thead .sticky-col-right {
+  padding: 0 14px 10px;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  font-weight: 700;
+}
+.unassigned-table .day-col {
+  min-width: 18px;
+  width: 18px;
+}
+.unassigned-table .day-col.sun { color: #ef4444; font-weight: 700; }
+.unassigned-table .day-col.sat { color: #3b82f6; font-weight: 700; }
+
+/* sticky 컬럼 */
 .unassigned-table .sticky-col {
   position: sticky;
   left: 0;
-  background: #fcfcfd;
+  background: #ffffff;
   z-index: 4;
-  padding: 8px 14px 8px 6px;
+  padding: 10px 14px 10px 4px;
   text-align: left;
-  min-width: 130px;
-  box-shadow: 6px 0 6px -4px rgba(0, 0, 0, 0.04);
+  min-width: 140px;
+}
+.unassigned-table tbody .sticky-col::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0));
 }
 .unassigned-table thead .sticky-col { z-index: 7; }
 .unassigned-table .sticky-col-right {
   position: sticky;
   right: 0;
-  background: #fcfcfd;
+  background: #ffffff;
   z-index: 4;
-  padding: 8px 6px 8px 10px;
-  min-width: 48px;
-  box-shadow: -6px 0 6px -4px rgba(0, 0, 0, 0.04);
+  padding: 10px 4px 10px 12px;
+  min-width: 52px;
 }
 .unassigned-table thead .sticky-col-right { z-index: 7; }
+
+/* 짝수 행 배경 (zebra, 매우 미묘) */
+.unassigned-table tbody tr:nth-child(even) .sticky-col,
+.unassigned-table tbody tr:nth-child(even) .sticky-col-right {
+  background: #fafbfc;
+}
+
+/* 행 hover */
 .unassigned-table tbody tr:hover .sticky-col,
-.unassigned-table tbody tr:hover .sticky-col-right { background: var(--primary-softer); }
+.unassigned-table tbody tr:hover .sticky-col-right {
+  background: var(--primary-softer);
+}
+
+/* 이름 컬럼 */
 .unassigned-table .name-col strong {
   font-size: 13px;
   color: var(--text);
   letter-spacing: -0.01em;
+  font-weight: 600;
 }
 .unassigned-table .name-col .position-tag {
   font-size: 10px;
-  color: var(--text-muted);
+  color: #9ca3af;
   margin-left: 6px;
   font-weight: 500;
 }
+
+/* 카운트 컬럼 */
 .unassigned-table .count-col strong {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 14px;
+  color: #d1d5db;
   font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }
 .unassigned-table .count-col .neg { color: var(--danger); }
 .unassigned-table .count-col .warn { color: #7c3aed; }
 
-/* 잔디 셀: 정사각형, 라운드, 보더 없음, gap으로 숨 쉬는 느낌 */
+/* 잔디 셀 */
 .unassigned-table td.unassigned-cell {
   position: relative;
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   cursor: default;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
 }
 .unassigned-table td.unassigned-cell:hover {
-  transform: scale(1.25);
-  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.15);
+  transform: scale(1.4);
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.15), inset 0 0 0 1px rgba(17, 24, 39, 0.06);
   z-index: 2;
 }
+
+/* 상태별 색상 */
 .unassigned-cell.assigned { background: #86efac; }
 .unassigned-cell.overlap { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); }
 .unassigned-cell.leave-annual { background: #818cf8; }
 .unassigned-cell.leave-half { background: linear-gradient(to right, #818cf8 50%, #eef2ff 50%); }
 .unassigned-cell.leave-quarter { background: linear-gradient(to right, #818cf8 25%, #eef2ff 25%); }
 .unassigned-cell.leave-sick { background: #fca5a5; }
-.unassigned-cell.weekend { background: #ebedf0; }
+.unassigned-cell.weekend { background: #f3f4f6; box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.02); }
 .unassigned-cell.unassigned { background: #fca5a5; }
+
+/* 잔업 닷 */
 .unassigned-cell.has-overtime::after {
   content: '';
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 6px;
-  height: 6px;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--primary);
-  box-shadow: 0 0 0 1.5px #fcfcfd;
+  box-shadow: 0 0 0 1.5px #ffffff, 0 1px 2px rgba(245, 158, 11, 0.4);
 }
+
+/* 기존 타임라인 잔여 스타일 정리 (현재 미사용이지만 남겨둠) */
+.ua-timeline { display: none; }
 
 /* 잔업 상세 모달 리스트 */
 .overtime-detail-list {
