@@ -6,7 +6,7 @@ import {
   importFromSiteClosings, getVendorDetail,
   addFreelancerToVendor,
   addVendorProject, removeVendorProject,
-  addRateHistoryEntry, removeRateHistoryEntry,
+  setFreelancerRate,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -27,46 +27,39 @@ export default function OutsourceManagementPage() {
   const [newFreelancer, setNewFreelancer] = useState({ name: '', dailyRate: 0 });
   const [newProject, setNewProject] = useState({ name: '', unitPrice: 0 });
   const [detailBusy, setDetailBusy] = useState(false);
-  const [expandedRateFor, setExpandedRateFor] = useState(null); // freelancer id
+  const [editRateFor, setEditRateFor] = useState(null); // freelancer id
   const nowForRate = new Date();
-  const [newRateEntry, setNewRateEntry] = useState({
+  const [rateEdit, setRateEdit] = useState({
     year: nowForRate.getFullYear(),
     month: nowForRate.getMonth() + 1,
     rate: 0,
-    note: '',
   });
 
-  async function handleAddRateEntry(freelancerId) {
-    if (!newRateEntry.year || !newRateEntry.month) { alert('적용 년/월을 선택해주세요.'); return; }
-    if (!newRateEntry.rate || Number(newRateEntry.rate) <= 0) { alert('단가를 입력해주세요.'); return; }
-    const effectiveFrom = `${newRateEntry.year}-${String(newRateEntry.month).padStart(2, '0')}-01`;
-    setDetailBusy(true);
-    try {
-      await addRateHistoryEntry(freelancerId, {
-        rate: newRateEntry.rate,
-        effectiveFrom,
-        note: newRateEntry.note,
-      });
-      const now = new Date();
-      setNewRateEntry({ year: now.getFullYear(), month: now.getMonth() + 1, rate: 0, note: '' });
-      await reloadDetail();
-    } catch (err) {
-      alert('이력 추가 실패: ' + err.message);
-    } finally {
-      setDetailBusy(false);
-    }
+  function openRateEdit(f) {
+    const now = new Date();
+    const [y, m] = (f.dailyRateFrom || '').split('-');
+    setRateEdit({
+      year: y ? Number(y) : now.getFullYear(),
+      month: m ? Number(m) : now.getMonth() + 1,
+      rate: f.dailyRate || 0,
+    });
+    setEditRateFor(f.id);
   }
 
-  async function handleRemoveRateEntry(freelancerId, entry) {
-    const [y, m] = (entry.effectiveFrom || '').split('-');
-    const label = y && m ? `${y}년 ${Number(m)}월부터` : entry.effectiveFrom;
-    if (!confirm(`${label} 적용 단가 ${Number(entry.rate).toLocaleString()}원을 삭제하시겠습니까?`)) return;
+  async function handleSaveRate(freelancerId) {
+    if (!rateEdit.year || !rateEdit.month) { alert('적용 년/월을 선택해주세요.'); return; }
+    if (!rateEdit.rate || Number(rateEdit.rate) <= 0) { alert('단가를 입력해주세요.'); return; }
+    const effectiveFromMonth = `${rateEdit.year}-${String(rateEdit.month).padStart(2, '0')}-01`;
     setDetailBusy(true);
     try {
-      await removeRateHistoryEntry(freelancerId, entry);
+      await setFreelancerRate(freelancerId, {
+        dailyRate: rateEdit.rate,
+        effectiveFromMonth,
+      });
+      setEditRateFor(null);
       await reloadDetail();
     } catch (err) {
-      alert('이력 삭제 실패: ' + err.message);
+      alert('단가 저장 실패: ' + err.message);
     } finally {
       setDetailBusy(false);
     }
@@ -454,80 +447,51 @@ export default function OutsourceManagementPage() {
                 ) : (
                   <ul className="vendor-detail-list">
                     {detailVendor.freelancers.map((f) => {
-                      const isExpanded = expandedRateFor === f.id;
-                      const history = [...(f.rateHistory || [])].sort((a, b) => (b.effectiveFrom || '').localeCompare(a.effectiveFrom || ''));
+                      const isEditing = editRateFor === f.id;
+                      const [fy, fm] = (f.dailyRateFrom || '').split('-');
+                      const fromLabel = fy && fm ? `${fy}년 ${Number(fm)}월부터` : '';
                       return (
                         <li key={f.id} className="vendor-detail-item">
                           <div className="vendor-detail-row-main">
                             <strong>{f.name}</strong>
                             <span>
-                              {f.dailyRate > 0 && `${Number(f.dailyRate).toLocaleString()}원`}
+                              {f.dailyRate > 0 ? `${Number(f.dailyRate).toLocaleString()}원` : '단가 미입력'}
+                              {fromLabel && ` · ${fromLabel}`}
                               {f.contact && ` · ${f.contact}`}
                             </span>
                             <button
                               type="button"
                               className="btn btn-sm btn-outline"
-                              onClick={() => setExpandedRateFor(isExpanded ? null : f.id)}
+                              onClick={() => (isEditing ? setEditRateFor(null) : openRateEdit(f))}
                             >
-                              단가 이력 {isExpanded ? '▲' : '▼'}
+                              {isEditing ? '취소' : '단가 변경'}
                             </button>
                           </div>
-                          {isExpanded && (
-                            <div className="rate-history-panel">
-                              {history.length === 0 ? (
-                                <p className="ua-summary-empty">등록된 단가 이력이 없습니다. (기본 일당만 사용 중)</p>
-                              ) : (
-                                <ul className="rate-history-list">
-                                  {history.map((h, i) => {
-                                    const [hy, hm] = (h.effectiveFrom || '').split('-');
-                                    const label = hy && hm ? `${hy}년 ${Number(hm)}월~` : (h.effectiveFrom || '-');
-                                    return (
-                                      <li key={`${h.effectiveFrom}-${h.rate}-${i}`}>
-                                        <span className="rh-date">{label}</span>
-                                        <strong className="rh-rate">{Number(h.rate).toLocaleString()}원</strong>
-                                        <span className="rh-note">{h.note || ''}</span>
-                                        <button
-                                          type="button"
-                                          className="btn btn-sm btn-danger-outline"
-                                          onClick={() => handleRemoveRateEntry(f.id, h)}
-                                          disabled={detailBusy}
-                                        >삭제</button>
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              )}
-                              <div className="rate-history-add">
+                          {isEditing && (
+                            <div className="rate-edit-panel">
+                              <div className="rate-edit-row">
+                                <label>적용 월</label>
                                 <div style={{ display: 'flex', gap: 4 }}>
-                                  <select
-                                    value={newRateEntry.year}
-                                    onChange={(e) => setNewRateEntry({ ...newRateEntry, year: Number(e.target.value) })}
-                                  >
+                                  <select value={rateEdit.year} onChange={(e) => setRateEdit({ ...rateEdit, year: Number(e.target.value) })}>
                                     {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
                                   </select>
-                                  <select
-                                    value={newRateEntry.month}
-                                    onChange={(e) => setNewRateEntry({ ...newRateEntry, month: Number(e.target.value) })}
-                                  >
+                                  <select value={rateEdit.month} onChange={(e) => setRateEdit({ ...rateEdit, month: Number(e.target.value) })}>
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}월</option>)}
                                   </select>
                                 </div>
+                              </div>
+                              <div className="rate-edit-row">
+                                <label>새 단가</label>
                                 <MoneyInput
-                                  value={newRateEntry.rate || 0}
-                                  onChange={(e) => setNewRateEntry({ ...newRateEntry, rate: e.target.value })}
-                                  placeholder="단가"
+                                  value={rateEdit.rate || 0}
+                                  onChange={(e) => setRateEdit({ ...rateEdit, rate: e.target.value })}
                                 />
-                                <input
-                                  placeholder="비고"
-                                  value={newRateEntry.note}
-                                  onChange={(e) => setNewRateEntry({ ...newRateEntry, note: e.target.value })}
-                                />
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-primary"
-                                  disabled={detailBusy}
-                                  onClick={() => handleAddRateEntry(f.id)}
-                                >{detailBusy ? '…' : '+ 추가'}</button>
+                              </div>
+                              <p className="rate-edit-hint">지정한 월부터 공수표에 자동 적용됩니다. 과거 공수표는 영향 없습니다.</p>
+                              <div className="rate-edit-actions">
+                                <button type="button" className="btn btn-sm btn-primary" disabled={detailBusy} onClick={() => handleSaveRate(f.id)}>
+                                  {detailBusy ? '저장 중…' : '저장'}
+                                </button>
                               </div>
                             </div>
                           )}

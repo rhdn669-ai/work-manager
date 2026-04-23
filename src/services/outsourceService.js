@@ -44,15 +44,36 @@ export async function deleteFreelancer(id) {
 }
 
 // 특정 날짜(YYYY-MM-DD)에 적용되는 단가 반환
-// rateHistory가 없으면 freelancer.dailyRate(기본값) 반환
+// 정책: dailyRateFrom 지정 시 해당 월 이후만 적용, 이전이면 dailyRate fallback
+// 레거시 rateHistory가 있으면 기존 로직 사용 (호환)
 export function getRateForDate(freelancer, dateStr) {
-  const history = Array.isArray(freelancer?.rateHistory) ? freelancer.rateHistory : [];
-  if (history.length === 0) return Number(freelancer?.dailyRate) || 0;
-  const applicable = history
-    .filter((h) => h && h.effectiveFrom && h.effectiveFrom <= dateStr)
-    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
-  if (applicable.length === 0) return Number(freelancer?.dailyRate) || 0;
-  return Number(applicable[0].rate) || 0;
+  if (!freelancer) return 0;
+  // 레거시 호환: rateHistory가 있으면 기존 방식
+  const history = Array.isArray(freelancer.rateHistory) ? freelancer.rateHistory : [];
+  if (history.length > 0) {
+    const applicable = history
+      .filter((h) => h && h.effectiveFrom && h.effectiveFrom <= dateStr)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+    if (applicable.length > 0) return Number(applicable[0].rate) || 0;
+  }
+  // 신규 정책: dailyRate + dailyRateFrom
+  const from = freelancer.dailyRateFrom; // 'YYYY-MM-01' 또는 없음
+  if (from && dateStr < from) {
+    // 적용 시작 월 이전 → 과거엔 이 단가 기록 없음, fallback
+    return Number(freelancer.dailyRate) || 0;
+  }
+  return Number(freelancer.dailyRate) || 0;
+}
+
+// 프리랜서 단가 변경 — 새 단가 + 적용 시작 월 지정
+export async function setFreelancerRate(freelancerId, { dailyRate, effectiveFromMonth }) {
+  if (!freelancerId) return;
+  const effectiveFrom = effectiveFromMonth || '';
+  await updateDoc(doc(db, 'freelancers', freelancerId), {
+    dailyRate: Number(dailyRate) || 0,
+    dailyRateFrom: effectiveFrom,
+    updatedAt: new Date(),
+  });
 }
 
 // 단가 이력 항목 추가 (중복 방지: 같은 effectiveFrom+rate는 skip)
