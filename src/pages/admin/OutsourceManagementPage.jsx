@@ -127,7 +127,7 @@ export default function OutsourceManagementPage() {
     setEditItem(null);
     setForm(tab === 'freelancer'
       ? { name: '', vendor: '', dailyRate: 0, contact: '', note: '' }
-      : { name: '', representative: '', contact: '', note: '', dailyRate: 0, caseRate: 0 });
+      : { name: '', representative: '', contact: '', businessNumber: '', bankAccount: '' });
     setShowModal(true);
   }
 
@@ -250,9 +250,9 @@ export default function OutsourceManagementPage() {
               <tr>
                 <th>업체명</th>
                 <th>대표자</th>
-                <th>공수 단가</th>
-                <th>건당 단가</th>
                 <th>연락처</th>
+                <th>사업자번호</th>
+                <th>계좌</th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -265,9 +265,9 @@ export default function OutsourceManagementPage() {
                     </button>
                   </td>
                   <td>{v.representative || '-'}</td>
-                  <td>{v.dailyRate > 0 ? `${Number(v.dailyRate).toLocaleString()}원` : '-'}</td>
-                  <td>{v.caseRate > 0 ? `${Number(v.caseRate).toLocaleString()}원` : '-'}</td>
                   <td>{v.contact || '-'}</td>
+                  <td>{v.businessNumber || '-'}</td>
+                  <td style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
                   <td>
                     <div className="btn-group">
                       <button className="btn btn-sm btn-outline" onClick={() => openVendorDetail(v)}>상세</button>
@@ -318,47 +318,59 @@ export default function OutsourceManagementPage() {
           ) : (
             <>
               <div className="form-group">
-                <label>대표자</label>
+                <label>대표자 이름</label>
                 <input
                   value={form.representative || ''}
                   onChange={(e) => setForm({ ...form, representative: e.target.value })}
-                  placeholder="선택 사항"
+                  placeholder="대표자 성함"
                 />
               </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>공수(일) 단가</label>
-                  <MoneyInput
-                    value={form.dailyRate || 0}
-                    onChange={(e) => setForm({ ...form, dailyRate: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>건당 단가</label>
-                  <MoneyInput
-                    value={form.caseRate || 0}
-                    onChange={(e) => setForm({ ...form, caseRate: e.target.value })}
-                  />
-                </div>
+              <div className="form-group">
+                <label>연락처</label>
+                <input
+                  value={form.contact || ''}
+                  onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                  placeholder="010-0000-0000"
+                />
+              </div>
+              <div className="form-group">
+                <label>사업자번호</label>
+                <input
+                  value={form.businessNumber || ''}
+                  onChange={(e) => setForm({ ...form, businessNumber: e.target.value })}
+                  placeholder="000-00-00000"
+                />
+              </div>
+              <div className="form-group">
+                <label>계좌</label>
+                <input
+                  value={form.bankAccount || ''}
+                  onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
+                  placeholder="은행명 · 계좌번호 · 예금주"
+                />
               </div>
             </>
           )}
-          <div className="form-group">
-            <label>연락처</label>
-            <input
-              value={form.contact || ''}
-              onChange={(e) => setForm({ ...form, contact: e.target.value })}
-              placeholder="010-0000-0000"
-            />
-          </div>
-          <div className="form-group">
-            <label>비고</label>
-            <textarea
-              rows={2}
-              value={form.note || ''}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-            />
-          </div>
+          {tab === 'freelancer' && (
+            <>
+              <div className="form-group">
+                <label>연락처</label>
+                <input
+                  value={form.contact || ''}
+                  onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                  placeholder="010-0000-0000"
+                />
+              </div>
+              <div className="form-group">
+                <label>비고</label>
+                <textarea
+                  rows={2}
+                  value={form.note || ''}
+                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                />
+              </div>
+            </>
+          )}
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary">{editItem ? '수정' : '추가'}</button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>

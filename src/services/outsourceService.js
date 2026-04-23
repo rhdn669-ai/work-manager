@@ -53,12 +53,14 @@ export async function getVendors() {
 
 export async function addVendor(data) {
   return addDoc(vendorsRef, {
-    name: data.name || '',
-    representative: data.representative || '',
-    contact: data.contact || '',
+    name: data.name || '',                     // 업체명
+    representative: data.representative || '', // 대표자 이름
+    contact: data.contact || '',               // 연락처
+    businessNumber: data.businessNumber || '', // 사업자번호
+    bankAccount: data.bankAccount || '',       // 계좌
     note: data.note || '',
-    dailyRate: Number(data.dailyRate) || 0, // 공수(일) 단가
-    caseRate: Number(data.caseRate) || 0,   // 건당 단가
+    dailyRate: Number(data.dailyRate) || 0,
+    caseRate: Number(data.caseRate) || 0,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
