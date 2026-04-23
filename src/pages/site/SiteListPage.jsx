@@ -284,7 +284,9 @@ export default function SiteListPage() {
         }, 0);
         const allExpense = filtered.reduce((s, site) => {
           const v = siteStats[site.id] || {};
-          return s + (v.expense || 0) + (v.overtime || 0) + (v.labor || 0);
+          const ov = canViewSalary ? (v.overtime || 0) : 0;
+          const lb = canViewSalary ? (v.labor || 0) : 0;
+          return s + (v.expense || 0) + ov + lb;
         }, 0);
         const allBalance = allRevenue - allExpense;
         return (
@@ -318,8 +320,11 @@ export default function SiteListPage() {
             const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
             const hideRev = !!s.hideRevenue;
             const revenueShown = hideRev ? 0 : raw.revenue;
-            const expenseOnly = raw.expense + raw.overtime;
-            const totalExpense = canViewSalary ? expenseOnly + raw.labor : expenseOnly;
+            // 급여 열람 권한자만 잔업/공수 금액 포함
+            const overtimeShown = canViewSalary ? raw.overtime : 0;
+            const laborShown = canViewSalary ? raw.labor : 0;
+            const expenseOnly = raw.expense + overtimeShown;
+            const totalExpense = expenseOnly + laborShown;
             const balance = revenueShown - totalExpense;
             const pt = s.projectType || 'recurring';
             const st = s.status || 'active';
