@@ -694,7 +694,7 @@ export default function SiteClosingPage() {
         <h3 className="finance-title">공수표</h3>
         {canEdit && (
           <div className="finance-actions">
-            <button className="btn btn-sm btn-pastel-mint" onClick={handleAddRow}>+ 프리랜서</button>
+            <button className="btn btn-sm btn-pastel-sky" onClick={handleAddRow}>+ 프리랜서</button>
             <button className="btn btn-sm btn-pastel-peach" onClick={handleAddDailyWorker}>+ 일용직</button>
             <button className="btn btn-sm btn-pastel-lavender" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
           </div>

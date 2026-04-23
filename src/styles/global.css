@@ -400,8 +400,8 @@ body {
 .btn-outline:hover:not(:disabled) { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-hover); }
 
 /* 파스텔 구분용 (공수표 추가 버튼 등) */
-.btn-pastel-mint { background: #ccfbf1; color: #0f766e; border-color: #99f6e4; }
-.btn-pastel-mint:hover:not(:disabled) { background: #99f6e4; border-color: #5eead4; }
+.btn-pastel-sky { background: #e0f2fe; color: #0c4a6e; border-color: #bae6fd; }
+.btn-pastel-sky:hover:not(:disabled) { background: #bae6fd; border-color: #7dd3fc; }
 .btn-pastel-peach { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
 .btn-pastel-peach:hover:not(:disabled) { background: #fed7aa; border-color: #fdba74; }
 .btn-pastel-lavender { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
