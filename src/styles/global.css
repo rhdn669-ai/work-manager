@@ -983,6 +983,36 @@ body {
   text-overflow: ellipsis;
 }
 
+/* 업체 상세 모달 내 '추가' 폼 (직원 / 프로젝트) */
+.vendor-add-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  flex-wrap: wrap;
+}
+.vendor-add-form input,
+.vendor-add-form select {
+  padding: 6px 10px;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  background: #fff;
+}
+.vendor-add-form input { flex: 1; min-width: 100px; }
+.vendor-add-form select { flex: 1; min-width: 100px; }
+.vendor-add-form input:focus,
+.vendor-add-form select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
+
 /* 잔업 상세 모달 리스트 */
 .overtime-detail-list {
   display: flex;

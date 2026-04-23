@@ -1,9 +1,13 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy,
+  collection, doc, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const closingItemsRef = collection(db, 'siteClosingItems');
+
+function closingIdFor(siteId, year, month) {
+  return `${siteId}_${year}_${String(month).padStart(2, '0')}`;
+}
 
 // ── 프리랜서 ──────────────────────────────────────────
 const freelancersRef = collection(db, 'freelancers');
@@ -69,6 +73,44 @@ export async function updateVendor(id, data) {
 
 export async function deleteVendor(id) {
   await deleteDoc(doc(db, 'vendors', id));
+}
+
+// 업체에 직원(프리랜서) 추가 — vendor 필드를 해당 업체명으로 설정
+export async function addFreelancerToVendor(vendorName, data) {
+  return addFreelancer({
+    name: data.name,
+    vendor: vendorName,
+    dailyRate: data.dailyRate,
+    contact: data.contact || '',
+    note: data.note || '',
+  });
+}
+
+// 업체를 특정 프로젝트의 해당 월 공수표에 추가 (itemType='vendor', unit='day')
+export async function addVendorToProject({ vendorName, siteId, year, month, unitPrice = 0 }) {
+  const cid = closingIdFor(siteId, year, month);
+  // 순서 번호 계산 — 해당 closing의 현재 최대값 + 1
+  const q = query(closingItemsRef, where('closingId', '==', cid));
+  const snap = await getDocs(q);
+  const existing = snap.docs.map((d) => d.data());
+  const nextOrder = existing.length ? Math.max(...existing.map((i) => i.order || 0)) + 1 : 1;
+  const nextNo = existing.length ? Math.max(...existing.map((i) => i.no || 0)) + 1 : 1;
+  return addDoc(closingItemsRef, {
+    closingId: cid,
+    siteId, year, month,
+    no: nextNo,
+    vendor: vendorName,
+    detail: '',
+    category: '',
+    itemType: 'vendor',
+    unitPrice: Number(unitPrice) || 0,
+    dailyQuantities: {},
+    quantity: 0,
+    amount: 0,
+    order: nextOrder,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 }
 
 // 업체 상세: 소속 프리랜서(직원) + 참여 프로젝트 조회
