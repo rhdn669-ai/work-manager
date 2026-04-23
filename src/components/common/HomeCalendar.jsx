@@ -280,11 +280,8 @@ export default function HomeCalendar() {
                       className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''}`}
                       onPointerDown={(e) => {
                         e.preventDefault();
-                        if (iso === selectedDate && userProfile?.uid) {
-                          openAddPersonal(iso);
-                        } else {
-                          setSelectedDate(iso);
-                        }
+                        setSelectedDate(iso);
+                        if (userProfile?.uid) openAddPersonal(iso);
                       }}
                     >
                       <span className="home-cal-date">{d}</span>
@@ -304,12 +301,7 @@ export default function HomeCalendar() {
           <div className="home-calendar-list">
             {selectedDate ? (
               <>
-                <div className="home-cal-list-head">
-                  {selectedDate}
-                  {userProfile?.uid && (
-                    <span className="home-cal-list-hint"> · 한 번 더 누르면 내 일정 추가</span>
-                  )}
-                </div>
+                <div className="home-cal-list-head">{selectedDate}</div>
                 {selectedEvents.length === 0 ? (
                   <div className="home-cal-list-empty">이 날짜의 일정이 없습니다.</div>
                 ) : (
@@ -368,7 +360,7 @@ export default function HomeCalendar() {
         </>
       )}
 
-      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title="내 일정 추가">
+      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title={`내 일정 추가 · ${personalForm.startDate || ''}`}>
         <form onSubmit={handleSavePersonal}>
           <div className="form-group">
             <label>제목 *</label>
@@ -379,26 +371,6 @@ export default function HomeCalendar() {
               required
               autoFocus
             />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>시작일 *</label>
-              <input
-                type="date"
-                value={personalForm.startDate}
-                onChange={(e) => setPersonalForm({ ...personalForm, startDate: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>종료일</label>
-              <input
-                type="date"
-                value={personalForm.endDate}
-                onChange={(e) => setPersonalForm({ ...personalForm, endDate: e.target.value })}
-                min={personalForm.startDate}
-              />
-            </div>
           </div>
           <div className="form-group">
             <label>메모</label>
