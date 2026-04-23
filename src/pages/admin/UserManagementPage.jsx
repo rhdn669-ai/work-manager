@@ -273,22 +273,33 @@ export default function UserManagementPage() {
             <label>입사일</label>
             <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} required />
           </div>
-          <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: (form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)) ? 'not-allowed' : 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={form.canViewSalary || form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)}
-                disabled={form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)}
-                onChange={(e) => setForm({ ...form, canViewSalary: e.target.checked })}
-              />
-              <span>금액 열람 권한</span>
-            </label>
-            <small className="text-muted">
-              {form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position)
-                ? '관리자/대표/부사장은 자동으로 열람 권한이 부여됩니다.'
-                : '체크 시 프로젝트 단가·고정비용 등 금액 정보를 열람할 수 있습니다.'}
-            </small>
-          </div>
+          {(() => {
+            const autoGranted = form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position);
+            const on = autoGranted || !!form.canViewSalary;
+            return (
+              <div className="form-group">
+                <div className="toggle-row">
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">금액 열람 권한</span>
+                    <small className="text-muted">
+                      {autoGranted
+                        ? '관리자/대표/부사장은 자동으로 부여됩니다.'
+                        : '프로젝트 단가·고정비용 등 금액 정보 열람 여부'}
+                    </small>
+                  </div>
+                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={autoGranted}
+                      onChange={(e) => setForm({ ...form, canViewSalary: e.target.checked })}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            );
+          })()}
           {editUser && balances[editUser.uid] && (
             <div className="form-group">
               <label>

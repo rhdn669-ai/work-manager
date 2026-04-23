@@ -3116,6 +3116,66 @@ body {
   font-size: 15px;
 }
 
+/* Toggle switch (iOS-style) */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-subtle, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+}
+.toggle-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.toggle-row-title { font-size: 14px; font-weight: 600; color: var(--text, #111827); }
+.toggle-row-text small { font-size: 12px; line-height: 1.35; }
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #d1d5db;
+  border-radius: 999px;
+  transition: background 0.18s ease;
+}
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.18s ease;
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--primary, #2563eb);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+.toggle-switch input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+.toggle-switch.is-locked { cursor: not-allowed; opacity: 0.7; }
+.toggle-switch.is-locked input:checked + .toggle-slider { background: #9ca3af; }
+
 .total-summary-item .stat-revenue { color: var(--success, #16a34a); }
 .total-summary-item .stat-expense { color: var(--danger, #dc2626); }
 .total-summary-item .stat-balance.positive { color: var(--success, #16a34a); }
