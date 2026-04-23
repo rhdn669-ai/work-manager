@@ -392,6 +392,37 @@ body {
   width: 100%;
 }
 
+/* 공통 뒤로가기 바 */
+.back-bar {
+  margin-bottom: 10px;
+}
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--bg-card, #fff);
+  color: var(--text, #374151);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+.back-btn:hover {
+  background: var(--bg-subtle, #f9fafb);
+  border-color: var(--border-strong, #cbd5e1);
+}
+.back-btn:active {
+  transform: translateX(-1px);
+}
+.back-btn-arrow {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted, #64748b);
+}
+
 /* ===== 카드 ===== */
 .card {
   background: var(--bg-card);
