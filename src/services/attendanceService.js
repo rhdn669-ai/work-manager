@@ -165,17 +165,23 @@ export async function recomputeAllOvertimeExpenses() {
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((r) => r.status === 'approved' && r.siteId && r.siteId !== 'etc');
 
-  const stats = { total: approved.length, updated: 0, skipped: 0 };
+  const stats = { total: approved.length, updated: 0, skipped: [] };
   for (const rec of approved) {
     try {
       const user = await getUser(rec.userId);
       const hourlyRate = Number(user?.hourlyRate) || 0;
-      if (hourlyRate <= 0) { stats.skipped++; continue; }
+      if (hourlyRate <= 0) {
+        stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '시급 미등록' });
+        continue;
+      }
       const hours = (rec.minutes || 0) / 60;
       const newAmount = Math.round(hourlyRate * OVERTIME_MULTIPLIER * hours);
 
       const fins = await findFinanceByOvertimeId(rec.id);
-      if (fins.length === 0) { stats.skipped++; continue; }
+      if (fins.length === 0) {
+        stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '연결된 지출 항목 없음' });
+        continue;
+      }
       for (const f of fins) {
         if (Number(f.amount) !== newAmount) {
           await updateFinanceItem(f.id, { amount: newAmount });
@@ -184,7 +190,7 @@ export async function recomputeAllOvertimeExpenses() {
       }
     } catch (err) {
       console.error('잔업 재계산 실패:', rec.id, err);
-      stats.skipped++;
+      stats.skipped.push({ userName: rec.userName || '(이름없음)', date: rec.date, reason: `에러: ${err.message}` });
     }
   }
   return stats;

@@ -41,7 +41,14 @@ export default function ReportsPage() {
     setRecomputeBusy(true);
     try {
       const { total, updated, skipped } = await recomputeAllOvertimeExpenses();
-      alert(`재계산 완료\n\n대상: ${total}건\n업데이트: ${updated}건\n건너뜀: ${skipped}건`);
+      let msg = `재계산 완료\n\n대상: ${total}건\n업데이트: ${updated}건\n건너뜀: ${skipped.length}건`;
+      if (skipped.length > 0) {
+        msg += '\n\n[건너뜀 상세]';
+        const lines = skipped.slice(0, 20).map((s) => `- ${s.userName} (${s.date}) · ${s.reason}`);
+        msg += '\n' + lines.join('\n');
+        if (skipped.length > 20) msg += `\n... 외 ${skipped.length - 20}건`;
+      }
+      alert(msg);
       await generateReport();
     } catch (err) {
       alert('재계산 실패: ' + err.message);
