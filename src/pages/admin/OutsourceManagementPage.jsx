@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getFreelancers, addFreelancer, updateFreelancer, deleteFreelancer,
   getVendors, addVendor, updateVendor, deleteVendor,
-  importFromSiteClosings,
+  importFromSiteClosings, getVendorDetail,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -18,6 +18,23 @@ export default function OutsourceManagementPage() {
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({});
   const [importing, setImporting] = useState(false);
+  const [detailVendor, setDetailVendor] = useState(null);
+  const [detailTab, setDetailTab] = useState('freelancers');
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  async function openVendorDetail(v) {
+    setDetailVendor({ ...v, freelancers: [], projects: [] });
+    setDetailTab('freelancers');
+    setDetailLoading(true);
+    try {
+      const { freelancers: fl, projects } = await getVendorDetail(v.name);
+      setDetailVendor((prev) => prev ? { ...prev, freelancers: fl, projects } : null);
+    } catch (err) {
+      alert('상세 조회 실패: ' + err.message);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   async function handleImport() {
     if (!confirm('모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?')) return;
@@ -187,13 +204,18 @@ export default function OutsourceManagementPage() {
             <tbody>
               {vendors.map((v) => (
                 <tr key={v.id}>
-                  <td><strong>{v.name}</strong></td>
+                  <td>
+                    <button className="vendor-name-link" onClick={() => openVendorDetail(v)} title="소속 직원·참여 프로젝트 보기">
+                      <strong>{v.name}</strong>
+                    </button>
+                  </td>
                   <td>{v.representative || '-'}</td>
                   <td>{v.dailyRate > 0 ? `${Number(v.dailyRate).toLocaleString()}원` : '-'}</td>
                   <td>{v.caseRate > 0 ? `${Number(v.caseRate).toLocaleString()}원` : '-'}</td>
                   <td>{v.contact || '-'}</td>
                   <td>
                     <div className="btn-group">
+                      <button className="btn btn-sm btn-outline" onClick={() => openVendorDetail(v)}>상세</button>
                       <button className="btn btn-sm btn-outline" onClick={() => openEdit(v)}>수정</button>
                       <button className="btn btn-sm btn-danger-outline" onClick={() => handleDelete(v)}>삭제</button>
                     </div>
@@ -287,6 +309,66 @@ export default function OutsourceManagementPage() {
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
           </div>
         </form>
+      </Modal>
+
+      {/* 업체 상세 모달 */}
+      <Modal isOpen={!!detailVendor} onClose={() => setDetailVendor(null)} title={detailVendor?.name || '업체 상세'}>
+        {detailVendor && (
+          <>
+            <div className="tab-nav" style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                className={`tab-nav-item ${detailTab === 'freelancers' ? 'active' : ''}`}
+                onClick={() => setDetailTab('freelancers')}
+              >
+                포함 직원 {detailVendor.freelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.freelancers.length}</span>}
+              </button>
+              <button
+                type="button"
+                className={`tab-nav-item ${detailTab === 'projects' ? 'active' : ''}`}
+                onClick={() => setDetailTab('projects')}
+              >
+                참여 프로젝트 {detailVendor.projects.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projects.length}</span>}
+              </button>
+            </div>
+
+            {detailLoading ? (
+              <div className="loading">로딩 중...</div>
+            ) : detailTab === 'freelancers' ? (
+              detailVendor.freelancers.length === 0 ? (
+                <p className="empty-state">등록된 소속 직원이 없습니다.</p>
+              ) : (
+                <ul className="vendor-detail-list">
+                  {detailVendor.freelancers.map((f) => (
+                    <li key={f.id}>
+                      <strong>{f.name}</strong>
+                      <span>
+                        {f.dailyRate > 0 && `${Number(f.dailyRate).toLocaleString()}원`}
+                        {f.contact && ` · ${f.contact}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : (
+              detailVendor.projects.length === 0 ? (
+                <p className="empty-state">참여 프로젝트 이력이 없습니다.</p>
+              ) : (
+                <ul className="vendor-detail-list">
+                  {detailVendor.projects.map((p) => (
+                    <li key={p.id}>
+                      <strong>{p.name}</strong>
+                      <span>
+                        {p.months.join(', ')} · {p.entryCount}건
+                        {p.totalAmount > 0 && ` · ${p.totalAmount.toLocaleString()}원`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+          </>
+        )}
       </Modal>
     </div>
   );

@@ -71,6 +71,42 @@ export async function deleteVendor(id) {
   await deleteDoc(doc(db, 'vendors', id));
 }
 
+// 업체 상세: 소속 프리랜서(직원) + 참여 프로젝트 조회
+export async function getVendorDetail(vendorName) {
+  if (!vendorName) return { freelancers: [], projects: [] };
+
+  // 포함 직원(프리랜서 중 소속 업체가 일치하는 사람)
+  const fSnap = await getDocs(freelancersRef);
+  const freelancerList = fSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((f) => (f.vendor || '').trim() === vendorName.trim())
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  // 참여 프로젝트: siteClosingItems에서 해당 업체 등록 건 추출 → siteId·연월 집계
+  const itemSnap = await getDocs(closingItemsRef);
+  const items = itemSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((it) => (it.vendor || '').trim() === vendorName.trim());
+
+  const siteIds = [...new Set(items.map((it) => it.siteId).filter(Boolean))];
+  let siteList = [];
+  if (siteIds.length > 0) {
+    const siteSnap = await getDocs(collection(db, 'sites'));
+    siteList = siteSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((s) => siteIds.includes(s.id));
+  }
+
+  const projects = siteList.map((s) => {
+    const siteItems = items.filter((it) => it.siteId === s.id);
+    const months = [...new Set(siteItems.map((it) => `${it.year}-${String(it.month).padStart(2, '0')}`))].sort();
+    const totalAmount = siteItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+    return { id: s.id, name: s.name, months, totalAmount, entryCount: siteItems.length };
+  }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  return { freelancers: freelancerList, projects };
+}
+
 // ── 기존 공수표에서 프리랜서·업체 일괄 가져오기 ──────
 // 모든 siteClosingItems 중 itemType이 freelancer/daily이고 이름이 있는 것에서 추출.
 // 같은 이름은 최근 값(updatedAt 기준) 우선. 기존 외주관리에 이미 있는 이름은 skip.

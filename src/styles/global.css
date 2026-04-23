@@ -934,6 +934,55 @@ body {
 /* 기존 타임라인 잔여 스타일 정리 (현재 미사용이지만 남겨둠) */
 .ua-timeline { display: none; }
 
+/* 업체명 링크 버튼 */
+.vendor-name-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.1s;
+}
+.vendor-name-link:hover { color: var(--primary-hover); text-decoration: underline; }
+
+/* 업체 상세 리스트 (소속 직원 / 참여 프로젝트) */
+.vendor-detail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.vendor-detail-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  gap: 12px;
+}
+.vendor-detail-list li strong {
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+.vendor-detail-list li span {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 잔업 상세 모달 리스트 */
 .overtime-detail-list {
   display: flex;
