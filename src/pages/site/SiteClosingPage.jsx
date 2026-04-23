@@ -229,14 +229,14 @@ export default function SiteClosingPage() {
   }
 
   async function handleAddEmployee(user) {
-    const alreadyExists = items.some((it) => it.itemType === 'employee' && it.detail === user.name);
+    const resolvedType = user.isExternal ? 'freelancer' : 'employee';
+    const alreadyExists = items.some((it) => it.itemType === resolvedType && it.detail === user.name);
     if (alreadyExists) { alert(`${user.name}은(는) 이미 추가되어 있습니다.`); return; }
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     const monthlySalary = Number(user.fixedCost) || 0;
     const workingDays = getWorkingDaysInMonth(y, m);
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
-    // 영업일 전체 자동 채우기 (연차 유형별 비율 적용: 연차/병가 0, 반차 0.5, 반반차 0.75)
     const userLeaveDays = leaveDays[user.name] || {};
     const dq = {};
     const totalDays = daysInMonth(y, m);
@@ -252,7 +252,7 @@ export default function SiteClosingPage() {
       vendor: '직원',
       detail: user.name,
       category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
-      itemType: 'employee',
+      itemType: resolvedType,
       unitPrice: dailyRate,
       dailyQuantities: dq,
       quantity,
