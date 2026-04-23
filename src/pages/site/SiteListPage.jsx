@@ -252,7 +252,8 @@ export default function SiteListPage() {
         <div className="site-list">
           {filtered.map((s) => {
             const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
-            const totalExpense = canViewSalary ? raw.expense + raw.overtime + raw.labor : raw.expense;
+            const expenseOnly = raw.expense + raw.overtime;
+            const totalExpense = canViewSalary ? expenseOnly + raw.labor : expenseOnly;
             const balance = raw.revenue - totalExpense;
             const pt = s.projectType || 'recurring';
             const st = s.status || 'active';
@@ -283,7 +284,8 @@ export default function SiteListPage() {
                     {st !== 'completed' && (
                       <div className="site-row-stats">
                         <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
-                        <span className="stat-expense">지출 {totalExpense.toLocaleString()}</span>
+                        <span className="stat-expense">지출 {expenseOnly.toLocaleString()}</span>
+                        {canViewSalary && <span className="stat-expense">공수 {raw.labor.toLocaleString()}</span>}
                         <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
                       </div>
                     )}
