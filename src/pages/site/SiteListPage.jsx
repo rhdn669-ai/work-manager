@@ -380,7 +380,7 @@ export default function SiteListPage() {
                       </div>
                       {canViewSalary && raw.labor > 0 && (
                         <div className="stat-row">
-                          <span>공수</span>
+                          <span>인건비</span>
                           <strong className="stat-expense">{raw.labor.toLocaleString()}원</strong>
                         </div>
                       )}
