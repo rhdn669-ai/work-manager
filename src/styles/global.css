@@ -4741,7 +4741,6 @@ body {
   justify-content: flex-start;
   gap: 2px;
   min-height: 64px;
-  height: 64px;
   min-width: 0;
   overflow: hidden;
 }
@@ -4751,7 +4750,6 @@ body {
 
 .day-cal-empty {
   min-height: 64px;
-  height: 64px;
 }
 
 .day-cal-cell label {
