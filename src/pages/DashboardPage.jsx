@@ -64,11 +64,18 @@ export default function DashboardPage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
+  const today = new Date();
+  const weekdayKor = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];
+  const todayLabel = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일 (${weekdayKor})`;
+
   return (
     <div className="dashboard-page">
       <div className="dashboard-welcome">
-        <h2>안녕하세요, {userProfile?.name}님</h2>
-        <p>오늘도 좋은 하루 되세요.</p>
+        <div className="dashboard-welcome-text">
+          <h2>안녕하세요, {userProfile?.name}님 <span className="welcome-emoji" role="img" aria-label="인사">👋</span></h2>
+          <p>오늘도 좋은 하루 되세요.</p>
+        </div>
+        <div className="dashboard-welcome-date">{todayLabel}</div>
       </div>
 
       {isAdmin && (
