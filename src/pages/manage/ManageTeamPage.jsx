@@ -14,7 +14,7 @@ export default function ManageTeamPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editTeam, setEditTeam] = useState(null);
-  const [form, setForm] = useState({ name: '', managerId: '', memberIds: [] });
+  const [form, setForm] = useState({ name: '', managerId: '', subManagerId: '', memberIds: [] });
   const [memberListOpen, setMemberListOpen] = useState(false);
 
   useEffect(() => { if (userProfile) loadData(); }, [userProfile]);
@@ -64,7 +64,7 @@ export default function ManageTeamPage() {
 
   function openCreate() {
     setEditTeam(null);
-    setForm({ name: '', managerId: '', memberIds: [] });
+    setForm({ name: '', managerId: '', subManagerId: '', memberIds: [] });
     setShowModal(true);
   }
 
@@ -76,6 +76,7 @@ export default function ManageTeamPage() {
     setForm({
       name: team.name,
       managerId: team.managerId || '',
+      subManagerId: team.subManagerId || '',
       memberIds,
     });
     setShowModal(true);
@@ -83,13 +84,22 @@ export default function ManageTeamPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (form.subManagerId && form.subManagerId === form.managerId) {
+      alert('팀장과 부팀장은 같은 사람이 될 수 없습니다.');
+      return;
+    }
     try {
       let teamId;
+      const deptData = {
+        name: form.name,
+        managerId: form.managerId,
+        subManagerId: form.subManagerId || '',
+      };
       if (editTeam) {
         teamId = editTeam.id;
-        await updateDepartment(teamId, { name: form.name, managerId: form.managerId });
+        await updateDepartment(teamId, deptData);
       } else {
-        const ref = await addDepartment({ name: form.name, managerId: form.managerId });
+        const ref = await addDepartment(deptData);
         teamId = ref.id;
       }
 
@@ -100,19 +110,36 @@ export default function ManageTeamPage() {
       // 제거된 사용자: departmentId 비우기
       for (const uid of prevMembers) {
         if (!newMembers.includes(uid)) {
-          await updateUser(uid, { departmentId: '', isTeamLeader: false });
+          await updateUser(uid, { departmentId: '', isTeamLeader: false, isSubTeamLeader: false });
         }
       }
 
       // 추가/유지된 사용자: departmentId 설정
       for (const uid of newMembers) {
         const isLeader = uid === form.managerId;
-        await updateUser(uid, { departmentId: teamId, isTeamLeader: isLeader });
+        const isSubLeader = uid === form.subManagerId;
+        await updateUser(uid, {
+          departmentId: teamId,
+          isTeamLeader: isLeader,
+          isSubTeamLeader: isSubLeader,
+        });
       }
 
       // 팀장이 memberIds에 없으면 별도 업데이트
       if (form.managerId && !newMembers.includes(form.managerId)) {
-        await updateUser(form.managerId, { departmentId: teamId, isTeamLeader: true });
+        await updateUser(form.managerId, {
+          departmentId: teamId,
+          isTeamLeader: true,
+          isSubTeamLeader: false,
+        });
+      }
+      // 부팀장이 memberIds에 없으면 별도 업데이트
+      if (form.subManagerId && !newMembers.includes(form.subManagerId)) {
+        await updateUser(form.subManagerId, {
+          departmentId: teamId,
+          isTeamLeader: false,
+          isSubTeamLeader: true,
+        });
       }
 
       setShowModal(false);
@@ -127,7 +154,7 @@ export default function ManageTeamPage() {
     try {
       const members = users.filter((u) => u.departmentId === team.id);
       for (const u of members) {
-        await updateUser(u.uid, { departmentId: '', isTeamLeader: false });
+        await updateUser(u.uid, { departmentId: '', isTeamLeader: false, isSubTeamLeader: false });
       }
       await deleteDepartment(team.id);
       await loadData();
@@ -150,12 +177,10 @@ export default function ManageTeamPage() {
   // === 일반 직원 뷰: 소속 팀 + 팀원 이름/직급만 ===
   if (!isAdmin && !canApproveLeave) {
     const myTeam = teams[0];
-    const members = myTeam ? users.filter((u) => u.departmentId === myTeam.id).sort((a, b) => {
-      if (myTeam.managerId === a.uid) return -1;
-      if (myTeam.managerId === b.uid) return 1;
-      return 0;
-    }) : [];
+    const rankOf = (uid) => (myTeam?.managerId === uid ? 0 : myTeam?.subManagerId === uid ? 1 : 2);
+    const members = myTeam ? users.filter((u) => u.departmentId === myTeam.id).sort((a, b) => rankOf(a.uid) - rankOf(b.uid)) : [];
     const leader = myTeam ? userMap[myTeam.managerId] : null;
+    const subLeader = myTeam && myTeam.subManagerId ? userMap[myTeam.subManagerId] : null;
     return (
       <div className="manage-team-page">
         <div className="page-header">
@@ -165,9 +190,10 @@ export default function ManageTeamPage() {
           <div className="card"><div className="card-body empty-state">소속된 팀이 없습니다. 관리자에게 문의해주세요.</div></div>
         ) : (
           <>
-            {leader && (
+            {(leader || subLeader) && (
               <div className="meta-bar" style={{ marginBottom: 12 }}>
-                <span>팀장: <strong>{leader.name}</strong> {leader.position && `(${leader.position})`}</span>
+                {leader && <span>팀장: <strong>{leader.name}</strong> {leader.position && `(${leader.position})`}</span>}
+                {subLeader && <span style={{ marginLeft: leader ? 12 : 0 }}>부팀장: <strong>{subLeader.name}</strong> {subLeader.position && `(${subLeader.position})`}</span>}
               </div>
             )}
             <table className="table">
@@ -180,6 +206,7 @@ export default function ManageTeamPage() {
                     <td>
                       <strong>{u.name}</strong>
                       {u.uid === myTeam.managerId && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>팀장</span>}
+                      {u.uid === myTeam.subManagerId && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>부팀장</span>}
                       {u.uid === userProfile.uid && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
                     </td>
                     <td>{u.position || '-'}</td>
@@ -249,16 +276,18 @@ export default function ManageTeamPage() {
       ) : (
         <table className="table">
           <thead>
-            <tr><th>팀 이름</th><th>팀장</th><th>팀원</th><th>작업</th></tr>
+            <tr><th>팀 이름</th><th>팀장</th><th>부팀장</th><th>팀원</th><th>작업</th></tr>
           </thead>
           <tbody>
             {teams.map((t) => {
               const leader = userMap[t.managerId];
+              const subLeader = userMap[t.subManagerId];
               const members = getTeamMembers(t.id);
               return (
                 <tr key={t.id}>
                   <td><strong>{t.name}</strong></td>
                   <td>{leader?.name || '-'}</td>
+                  <td>{subLeader?.name || '-'}</td>
                   <td>{members.length}명</td>
                   <td>
                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>수정</button>
@@ -291,6 +320,20 @@ export default function ManageTeamPage() {
             </select>
           </div>
           <div className="form-group">
+            <label>부팀장 선택 (선택사항)</label>
+            <select value={form.subManagerId} onChange={(e) => setForm({ ...form, subManagerId: e.target.value })}>
+              <option value="">선택 안 함</option>
+              {users.filter((u) => {
+                if (u.role === 'admin') return false;
+                if (u.uid === form.managerId) return false;
+                if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
+                return true;
+              }).map((u) => (
+                <option key={u.uid} value={u.uid}>{u.name} ({u.code}){u.position && ` · ${u.position}`}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
             <label>팀원 선택</label>
             <button
               type="button"
@@ -305,6 +348,7 @@ export default function ManageTeamPage() {
                 {users.filter((u) => {
                   if (u.role === 'admin') return false;
                   if (u.uid === form.managerId) return false;
+                  if (u.uid === form.subManagerId) return false;
                   if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
                   return true;
                 }).map((u) => {

@@ -12,17 +12,23 @@ export async function getDepartments() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-// 내가 팀장(managerId)인 팀 목록
+// 내가 팀장(managerId) 또는 부팀장(subManagerId)인 팀 목록
 export async function getDepartmentsByLeader(uid) {
-  const q = query(deptRef, where('managerId', '==', uid));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const [mainSnap, subSnap] = await Promise.all([
+    getDocs(query(deptRef, where('managerId', '==', uid))),
+    getDocs(query(deptRef, where('subManagerId', '==', uid))),
+  ]);
+  const map = new Map();
+  for (const d of mainSnap.docs) map.set(d.id, { id: d.id, ...d.data() });
+  for (const d of subSnap.docs) map.set(d.id, { id: d.id, ...d.data() });
+  return [...map.values()];
 }
 
 export async function addDepartment(data) {
   return addDoc(deptRef, {
     name: data.name,
     managerId: data.managerId || '',
+    subManagerId: data.subManagerId || '',
     createdAt: new Date(),
   });
 }

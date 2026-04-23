@@ -78,12 +78,9 @@ export default function TeamReportsPage() {
   const myTeam = myDepts[0];
 
   // 팀원 목록 + 잔업/연차 데이터 합산
+  const rankOf = (uid) => (myTeam?.managerId === uid ? 0 : myTeam?.subManagerId === uid ? 1 : 2);
   const teamMembers = myTeam
-    ? allUsers.filter((u) => u.departmentId === myTeam.id).sort((a, b) => {
-        if (myTeam.managerId === a.uid) return -1;
-        if (myTeam.managerId === b.uid) return 1;
-        return 0;
-      })
+    ? allUsers.filter((u) => u.departmentId === myTeam.id).sort((a, b) => rankOf(a.uid) - rankOf(b.uid))
     : scopedUsers.filter((u) => u.role !== 'admin');
 
   const overtimeByUser = {};
@@ -104,6 +101,7 @@ export default function TeamReportsPage() {
     name: u.name,
     position: u.position || '',
     isLeader: myTeam && u.uid === myTeam.managerId,
+    isSubLeader: myTeam && u.uid === myTeam.subManagerId,
     isMe: u.uid === userProfile.uid,
     overtimeMinutes: overtimeByUser[u.uid]?.minutes || 0,
     overtimeCount: overtimeByUser[u.uid]?.count || 0,
@@ -158,6 +156,7 @@ export default function TeamReportsPage() {
                   <td>
                     <strong>{r.name}</strong>
                     {r.isLeader && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>팀장</span>}
+                    {r.isSubLeader && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>부팀장</span>}
                     {r.isMe && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
                   </td>
                   <td>{r.position || '-'}</td>
