@@ -9,6 +9,7 @@ import {
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
+import { getFreelancers, getVendors } from '../../services/outsourceService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
@@ -69,6 +70,18 @@ export default function SiteClosingPage() {
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [showOvertimeDetail, setShowOvertimeDetail] = useState(false);
+  const [freelancers, setFreelancers] = useState([]);
+  const [vendors, setVendors] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [fs, vs] = await Promise.all([getFreelancers(), getVendors()]);
+        setFreelancers(fs);
+        setVendors(vs);
+      } catch (err) { console.error(err); }
+    })();
+  }, []);
 
   const timersRef = useRef({});
 
@@ -340,6 +353,18 @@ export default function SiteClosingPage() {
       const cur = { ...b[itemId], [field]: value };
       if (field === 'unitPrice') {
         cur.amount = Number(cur.unitPrice || 0) * Number(cur.quantity || 0);
+      }
+      // 외주관리 연동: 프리랜서/일용직 행에서 이름을 등록된 프리랜서로 바꾸면
+      // 소속 업체·일당 자동 채움 (일용직은 dailyRate가 시급이 아닌 하루 단가라 일당만 반영)
+      if (field === 'detail' && cur.itemType !== 'employee' && value) {
+        const match = freelancers.find((f) => f.name === value);
+        if (match) {
+          if (match.vendor) cur.vendor = match.vendor;
+          if (match.dailyRate > 0) {
+            cur.unitPrice = Number(match.dailyRate) || 0;
+            cur.amount = cur.unitPrice * Number(cur.quantity || 0);
+          }
+        }
       }
       scheduleSave(itemId, cur);
       return { ...b, [itemId]: cur };
@@ -786,6 +811,20 @@ export default function SiteClosingPage() {
         );
       })()}
 
+      {/* 외주관리 연동 datalist */}
+      <datalist id="closing-freelancer-list">
+        {freelancers.map((f) => (
+          <option key={f.id} value={f.name}>
+            {f.vendor ? `${f.vendor} · ` : ''}{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : ''}
+          </option>
+        ))}
+      </datalist>
+      <datalist id="closing-vendor-list">
+        {vendors.map((v) => (
+          <option key={v.id} value={v.name}>{v.representative || ''}</option>
+        ))}
+      </datalist>
+
       {items.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
@@ -813,6 +852,7 @@ export default function SiteClosingPage() {
                     className="closing-vendor"
                     value={buf.vendor || ''}
                     placeholder="업체명"
+                    list={cardType !== 'employee' ? 'closing-vendor-list' : undefined}
                     onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}
@@ -821,6 +861,7 @@ export default function SiteClosingPage() {
                     className="closing-name"
                     value={buf.detail || ''}
                     placeholder="이름"
+                    list={cardType !== 'employee' ? 'closing-freelancer-list' : undefined}
                     onChange={(e) => updateField(it.id, 'detail', e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}
