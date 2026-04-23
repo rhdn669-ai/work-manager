@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
-  copyPreviousMonth, initRosterFromPreviousMonth, updateSite, getAssignedEmployeeIds,
+  initRosterFromPreviousMonth, updateSite, getAssignedEmployeeIds,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -73,7 +73,6 @@ export default function SiteClosingPage() {
   const isCompleted = site?.status === 'completed';
   const canEdit = canEditSite(site) && !isCompleted;
   const [copying, setCopying] = useState(false);
-  const [initializing, setInitializing] = useState(false);
   const [clearing, setClearing] = useState(false);
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
@@ -153,30 +152,16 @@ export default function SiteClosingPage() {
   }
 
   async function handleCopyPrevMonth() {
-    if (!confirm('전월 공수표 · 매출/지출 항목을 이번 달로 복사합니다.\n(수량/금액은 초기화됩니다)\n\n계속하시겠습니까?')) return;
+    if (!confirm('전월 직원/프리랜서 명단을 복사합니다.\n(수량·금액은 0으로 초기화, 매출/지출은 복사되지 않습니다)\n\n계속하시겠습니까?')) return;
     setCopying(true);
     try {
-      const result = await copyPreviousMonth(siteId, y, m);
-      alert(`복사 완료: 공수표 ${result.items}건, 매출/지출 ${result.finances}건`);
+      const count = await initRosterFromPreviousMonth(siteId, y, m);
+      alert(`복사 완료: 명단 ${count}건`);
       await loadAll();
     } catch (err) {
       alert(err.message || '복사 실패');
     } finally {
       setCopying(false);
-    }
-  }
-
-  async function handleInitRoster() {
-    if (!confirm('전월 직원/프리랜서 명단만 초기화합니다.\n(수량·금액은 0으로 초기화되며, 매출/지출은 복사되지 않습니다)\n\n계속하시겠습니까?')) return;
-    setInitializing(true);
-    try {
-      const count = await initRosterFromPreviousMonth(siteId, y, m);
-      alert(`초기화 완료: 명단 ${count}건 복사`);
-      await loadAll();
-    } catch (err) {
-      alert(err.message || '초기화 실패');
-    } finally {
-      setInitializing(false);
     }
   }
 
@@ -457,14 +442,9 @@ export default function SiteClosingPage() {
             </button>
           )}
           {canEdit && items.length === 0 && (
-            <>
-              <button className="btn btn-outline" onClick={handleInitRoster} disabled={initializing}>
-                {initializing ? '초기화 중...' : '명단 초기화'}
-              </button>
-              <button className="btn btn-outline" onClick={handleCopyPrevMonth} disabled={copying}>
-                {copying ? '복사 중...' : '전월 복사'}
-              </button>
-            </>
+            <button className="btn btn-outline" onClick={handleCopyPrevMonth} disabled={copying}>
+              {copying ? '복사 중...' : '전월 복사'}
+            </button>
           )}
           {canEditSite(site) && !isCompleted && (
             <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
