@@ -365,15 +365,35 @@ export default function SiteListPage() {
                       <span className="chip chip-manager">담당 {managerNames(s)}</span>
                       {period && <span className="chip chip-period">{period}</span>}
                     </div>
-                    {(st !== 'completed' || hasMonthData(s)) && (
-                      <div className="site-row-stats">
-                        {!hideRev && <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>}
-                        <span className="stat-expense">지출 {expenseOnly.toLocaleString()}</span>
-                        {canViewSalary && <span className="stat-expense">공수 {raw.labor.toLocaleString()}</span>}
-                        {!hideRev && <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>}
-                      </div>
-                    )}
                   </div>
+                  {(st !== 'completed' || hasMonthData(s)) && (
+                    <div className="site-row-stats-panel">
+                      {!hideRev && (
+                        <div className="stat-row">
+                          <span>매출</span>
+                          <strong className="stat-revenue">{raw.revenue.toLocaleString()}원</strong>
+                        </div>
+                      )}
+                      <div className="stat-row">
+                        <span>지출</span>
+                        <strong className="stat-expense">{expenseOnly.toLocaleString()}원</strong>
+                      </div>
+                      {canViewSalary && raw.labor > 0 && (
+                        <div className="stat-row">
+                          <span>공수</span>
+                          <strong className="stat-expense">{raw.labor.toLocaleString()}원</strong>
+                        </div>
+                      )}
+                      {!hideRev && (
+                        <div className="stat-row stat-balance-row">
+                          <span>합계</span>
+                          <strong className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>
+                            {balance >= 0 ? '+' : ''}{balance.toLocaleString()}원
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="site-row-period">
                     <div className="period-y">{year}</div>
                     <div className="period-m">{String(month).padStart(2, '0')}월</div>
