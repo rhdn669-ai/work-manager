@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
 import { getAllSites, getClosingItems } from '../../services/siteService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
-import { getAllOvertimeRecords } from '../../services/attendanceService';
+import { getAllOvertimeRecords, OVERTIME_MULTIPLIER } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 
@@ -69,7 +69,7 @@ export default function UnassignedReportPage() {
     })();
   }, [sites, year, month]);
 
-  const { rows, topUnassigned, topOverlap } = useMemo(() => {
+  const { rows, topUnassigned, topOvertime } = useMemo(() => {
     const totalDays = daysInMonth(year, month);
     const assigned = {};
     for (const it of allItems) {
@@ -156,11 +156,21 @@ export default function UnassignedReportPage() {
     });
 
     const topU = [...out].filter((r) => r.unassignedCount > 0).sort((a, b) => b.unassignedCount - a.unassignedCount).slice(0, 5);
-    const topO = [...out].filter((r) => r.overlapCount > 0).sort((a, b) => b.overlapCount - a.overlapCount).slice(0, 5);
+
+    // 잔업 Top: 직원별 총 시간·금액 집계
+    const topOT = users.map((u) => {
+      const dayMap = nameToOvertime[u.name] || {};
+      const totalMinutes = Object.values(dayMap).reduce((s, v) => s + (v.minutes || 0), 0);
+      if (totalMinutes === 0) return null;
+      const hours = totalMinutes / 60;
+      const amount = Math.round((Number(u.hourlyRate) || 0) * OVERTIME_MULTIPLIER * hours);
+      return { uid: u.uid, name: u.name, minutes: totalMinutes, amount };
+    }).filter(Boolean).sort((a, b) => b.minutes - a.minutes).slice(0, 5);
+
     const sorted = out.sort((a, b) =>
       (b.unassignedCount + b.overlapCount) - (a.unassignedCount + a.overlapCount) || a.name.localeCompare(b.name),
     );
-    return { rows: sorted, topUnassigned: topU, topOverlap: topO };
+    return { rows: sorted, topUnassigned: topU, topOvertime: topOT };
   }, [users, allItems, leaves, overtimes, year, month]);
 
   const totalDays = daysInMonth(year, month);
@@ -201,15 +211,18 @@ export default function UnassignedReportPage() {
         </div>
         <div className="ua-summary-card">
           <div className="ua-summary-title">
-            <span className="ua-dot ua-dot-overlap" />
-            중복배정 Top
+            <span className="ua-dot ua-dot-overtime" />
+            잔업 Top
           </div>
-          {topOverlap.length === 0 ? (
-            <p className="ua-summary-empty">중복배정 없음</p>
+          {topOvertime.length === 0 ? (
+            <p className="ua-summary-empty">잔업 기록 없음</p>
           ) : (
             <ul className="ua-summary-list">
-              {topOverlap.map((r) => (
-                <li key={r.uid}><span>{r.name}</span><strong>{r.overlapCount}일</strong></li>
+              {topOvertime.map((r) => (
+                <li key={r.uid}>
+                  <span>{r.name}</span>
+                  <strong>{formatMinutes(r.minutes)} · {r.amount.toLocaleString()}원</strong>
+                </li>
               ))}
             </ul>
           )}

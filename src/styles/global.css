@@ -451,6 +451,7 @@ body {
 }
 .ua-dot-unassigned { background: #f87171; }
 .ua-dot-overlap { background: #a78bfa; }
+.ua-dot-overtime { background: var(--primary); }
 .ua-summary-list {
   list-style: none;
   padding: 0;
@@ -469,11 +470,14 @@ body {
 }
 .ua-summary-list li:hover { background: var(--bg-subtle); }
 .ua-summary-list li strong {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
 }
+.ua-summary-list li > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ua-summary-empty {
   font-size: 12px;
   color: var(--text-muted);
