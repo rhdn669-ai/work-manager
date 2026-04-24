@@ -885,7 +885,7 @@ export default function SiteClosingPage() {
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>
               <span className="closing-add-dot" style={{ background: '#f59e0b' }} />+ 업체(프로젝트)
             </button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>
               <span className="closing-add-dot" style={{ background: '#8b5cf6' }} />+ 직원
             </button>
           </div>
@@ -914,79 +914,6 @@ export default function SiteClosingPage() {
                 {t.count > 0 && <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{t.count}</span>}
               </button>
             ))}
-          </div>
-        );
-      })()}
-      {showEmployeeSelect && canEdit && (() => {
-        const currentNames = new Set(items.filter((it) => it.itemType === 'employee').map((it) => it.detail));
-        const allWithCost = Object.values(userMap).filter((u) => u.fixedCost);
-        const unassigned = allWithCost.filter((u) => !assignedNames.has(u.name) && !currentNames.has(u.name));
-        const assignedElsewhere = allWithCost.filter((u) => assignedNames.has(u.name) && !currentNames.has(u.name));
-        const alreadyHere = allWithCost.filter((u) => currentNames.has(u.name));
-
-        async function handleAddAllUnassigned() {
-          if (unassigned.length === 0) return;
-          if (!confirm(`미배정 인원 ${unassigned.length}명을 일괄 추가하시겠습니까?`)) return;
-          setAddingAll(true);
-          try {
-            for (const u of unassigned) { await handleAddEmployee(u); }
-            setShowEmployeeSelect(false);
-          } finally { setAddingAll(false); }
-        }
-
-        return (
-          <div className="select-dropdown-list" style={{ marginBottom: 12 }}>
-            {allWithCost.length === 0 ? (
-              <p className="empty-state" style={{ padding: '12px', margin: 0 }}>고정비용이 등록된 직원이 없습니다. 직원 관리에서 설정하세요.</p>
-            ) : (
-              <>
-                {unassigned.length > 0 && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef3c7', borderBottom: '1px solid #fde68a' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>미배정 인원 ({unassigned.length}명)</span>
-                      <button className="btn btn-sm btn-primary" onClick={handleAddAllUnassigned} disabled={addingAll} style={{ fontSize: 11, padding: '4px 10px' }}>
-                        {addingAll ? '추가 중...' : '일괄 추가'}
-                      </button>
-                    </div>
-                    {unassigned.map((u) => (
-                      <label key={u.uid} className="select-list-item" onClick={() => handleAddEmployee(u)} style={{ cursor: 'pointer' }}>
-                        <span className="select-list-name">{u.name}</span>
-                        <span className="select-list-sub">{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
-                      </label>
-                    ))}
-                  </>
-                )}
-                {assignedElsewhere.length > 0 && (
-                  <>
-                    <div style={{ padding: '8px 12px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>다른 프로젝트 배정 ({assignedElsewhere.length}명)</span>
-                    </div>
-                    {assignedElsewhere.map((u) => (
-                      <label key={u.uid} className="select-list-item" onClick={() => handleAddEmployee(u)} style={{ cursor: 'pointer', opacity: 0.6 }}>
-                        <span className="select-list-name">{u.name}</span>
-                        <span className="select-list-sub">{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
-                      </label>
-                    ))}
-                  </>
-                )}
-                {alreadyHere.length > 0 && (
-                  <>
-                    <div style={{ padding: '8px 12px', background: '#dcfce7', borderBottom: '1px solid #bbf7d0' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>이미 등록됨 ({alreadyHere.length}명)</span>
-                    </div>
-                    {alreadyHere.map((u) => (
-                      <label key={u.uid} className="select-list-item" style={{ opacity: 0.4, cursor: 'default' }}>
-                        <span className="select-list-name">{u.name}</span>
-                        <span className="select-list-sub">{u.position || ''}</span>
-                      </label>
-                    ))}
-                  </>
-                )}
-                {unassigned.length === 0 && assignedElsewhere.length === 0 && alreadyHere.length > 0 && (
-                  <p style={{ padding: '12px', margin: 0, fontSize: 13, color: '#64748b', textAlign: 'center' }}>모든 직원이 이미 등록되었습니다.</p>
-                )}
-              </>
-            )}
           </div>
         );
       })()}
@@ -1397,6 +1324,98 @@ export default function SiteClosingPage() {
                 <div className="modal-actions">
                   <button type="button" className="btn btn-outline" onClick={() => addBlankWorkerRow(freelancerPickerMode)}>직접 입력으로 추가</button>
                 </div>
+              </>
+            )}
+          </Modal>
+        );
+      })()}
+
+      {/* 직원 선택 모달 */}
+      {showEmployeeSelect && canEdit && (() => {
+        const currentNames = new Set(items.filter((it) => it.itemType === 'employee').map((it) => it.detail));
+        const allWithCost = Object.values(userMap).filter((u) => u.fixedCost);
+        const unassigned = allWithCost.filter((u) => !assignedNames.has(u.name) && !currentNames.has(u.name));
+        const assignedElsewhere = allWithCost.filter((u) => assignedNames.has(u.name) && !currentNames.has(u.name));
+        const alreadyHere = allWithCost.filter((u) => currentNames.has(u.name));
+
+        async function handleAddAllUnassigned() {
+          if (unassigned.length === 0) return;
+          if (!confirm(`미배정 인원 ${unassigned.length}명을 일괄 추가하시겠습니까?`)) return;
+          setAddingAll(true);
+          try {
+            for (const u of unassigned) { await handleAddEmployee(u); }
+            setShowEmployeeSelect(false);
+          } finally { setAddingAll(false); }
+        }
+
+        return (
+          <Modal isOpen={showEmployeeSelect} onClose={() => setShowEmployeeSelect(false)} title="직원 선택">
+            {allWithCost.length === 0 ? (
+              <p className="empty-state">고정비용이 등록된 직원이 없습니다. 직원 관리에서 설정하세요.</p>
+            ) : (
+              <>
+                {unassigned.length > 0 && (
+                  <>
+                    <div className="employee-picker-group-head employee-picker-group-head--unassigned">
+                      <span>미배정 인원 ({unassigned.length}명)</span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={handleAddAllUnassigned}
+                        disabled={addingAll}
+                      >
+                        {addingAll ? '추가 중...' : '일괄 추가'}
+                      </button>
+                    </div>
+                    <ul className="vendor-picker-list">
+                      {unassigned.map((u) => (
+                        <li key={u.uid}>
+                          <button type="button" onClick={() => handleAddEmployee(u)}>
+                            <strong>{u.name}</strong>
+                            <span>{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {assignedElsewhere.length > 0 && (
+                  <>
+                    <div className="employee-picker-group-head employee-picker-group-head--assigned">
+                      <span>다른 프로젝트 배정 ({assignedElsewhere.length}명)</span>
+                    </div>
+                    <ul className="vendor-picker-list">
+                      {assignedElsewhere.map((u) => (
+                        <li key={u.uid} style={{ opacity: 0.6 }}>
+                          <button type="button" onClick={() => handleAddEmployee(u)}>
+                            <strong>{u.name}</strong>
+                            <span>{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {alreadyHere.length > 0 && (
+                  <>
+                    <div className="employee-picker-group-head employee-picker-group-head--done">
+                      <span>이미 등록됨 ({alreadyHere.length}명)</span>
+                    </div>
+                    <ul className="vendor-picker-list">
+                      {alreadyHere.map((u) => (
+                        <li key={u.uid} style={{ opacity: 0.4 }}>
+                          <button type="button" disabled style={{ cursor: 'default' }}>
+                            <strong>{u.name}</strong>
+                            <span>{u.position || ''}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {unassigned.length === 0 && assignedElsewhere.length === 0 && alreadyHere.length > 0 && (
+                  <p className="empty-state">모든 직원이 이미 등록되었습니다.</p>
+                )}
               </>
             )}
           </Modal>

@@ -1269,6 +1269,22 @@ body {
 }
 
 /* 업체·프로젝트 선택 모달 리스트 */
+/* 직원 선택 모달 그룹 헤더 */
+.employee-picker-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin: 10px 0 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.employee-picker-group-head:first-child { margin-top: 0; }
+.employee-picker-group-head--unassigned { background: #fef3c7; color: #92400e; }
+.employee-picker-group-head--assigned { background: #f1f5f9; color: #64748b; }
+.employee-picker-group-head--done { background: #dcfce7; color: #166534; }
+
 .vendor-picker-list {
   list-style: none;
   padding: 0;
