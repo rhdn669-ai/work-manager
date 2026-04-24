@@ -4,7 +4,6 @@ import { getEvents } from '../../services/eventService';
 import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getUsers } from '../../services/userService';
-import { getDepartmentsByLeader } from '../../services/departmentService';
 import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../../services/personalEventService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import Modal from './Modal';
@@ -46,34 +45,23 @@ export default function HomeCalendar() {
       const startISO = `${year}-${pad(month)}-01`;
       const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
 
-      const evs = await getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; });
+      const rawEvents = await getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; });
+      // 관리자가 아닌 경우 공지(notice)만 표시, 관리자는 모든 이벤트/공지/휴무 표시
+      const evs = isAdmin ? rawEvents : rawEvents.filter((e) => (e.type || 'event') === 'notice');
 
       let ots = [];
       let lvs = [];
       let users = [];
 
-      if (canApproveAll) {
+      if (isAdmin && canApproveAll) {
+        // 관리자는 전체 인원 조회
         [ots, lvs, users] = await Promise.all([
           getAllOvertimeRecords(startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; }),
           getApprovedLeavesByMonth(year, month).catch((err) => { console.error('연차 로드 실패', err); return []; }),
           getUsers().catch((err) => { console.error('사용자 로드 실패', err); return []; }),
         ]);
-      } else if (canApproveLeave && userProfile?.uid) {
-        const allUsers = await getUsers().catch(() => []);
-        const myDepts = await getDepartmentsByLeader(userProfile.uid).catch(() => []);
-        const myDeptIds = new Set(myDepts.map((d) => d.id));
-        const teamIds = new Set(
-          allUsers.filter((u) => myDeptIds.has(u.departmentId)).map((u) => u.uid)
-        );
-        teamIds.add(userProfile.uid);
-        const [allOts, allLvs] = await Promise.all([
-          getAllOvertimeRecords(startISO, endISO).catch(() => []),
-          getApprovedLeavesByMonth(year, month).catch(() => []),
-        ]);
-        ots = allOts.filter((o) => teamIds.has(o.userId));
-        lvs = allLvs.filter((l) => teamIds.has(l.userId));
-        users = allUsers;
       } else if (userProfile?.uid) {
+        // 비관리자(팀장 포함)는 본인 데이터만 — 팀 데이터는 "우리 팀" 탭 캘린더에서 확인
         [ots, lvs] = await Promise.all([
           getMyOvertimeRecords(userProfile.uid, startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; }),
           getMyLeaves(userProfile.uid, year).catch((err) => { console.error('연차 로드 실패', err); return []; }),
@@ -246,7 +234,7 @@ export default function HomeCalendar() {
       <div className="home-calendar-head">
         <div className="home-calendar-title">
           <h3>{cursor.y}년 {cursor.m}월</h3>
-          <span className="home-calendar-sub">사내 캘린더</span>
+          <span className="home-calendar-sub">{isAdmin ? '사내 캘린더' : '내 일정 · 공지'}</span>
         </div>
         <div className="home-calendar-nav">
           <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); prev(); }} aria-label="이전 달">‹</button>
