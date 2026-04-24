@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { requestLeave } from '../../services/leaveService';
+import { getEvents } from '../../services/eventService';
 import { LEAVE_TYPES, LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
-import { getBusinessDays } from '../../utils/dateUtils';
+import { getBusinessDaysExcludingHolidays, buildHolidaySet } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
 
 export default function LeaveRequestPage() {
@@ -14,13 +15,19 @@ export default function LeaveRequestPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [holidayEvents, setHolidayEvents] = useState([]);
+
+  useEffect(() => {
+    getEvents().then((evs) => setHolidayEvents(evs.filter((e) => e.type === 'holiday'))).catch(() => {});
+  }, []);
+  const holidaySet = useMemo(() => buildHolidaySet(holidayEvents), [holidayEvents]);
 
   function calculateDays() {
     if (!startDate) return 0;
     if (type === LEAVE_TYPES.HALF_AM || type === LEAVE_TYPES.HALF_PM) return 0.5;
     if (QUARTER_LEAVE_TYPES.includes(type)) return 0.25;
     if (!endDate) return 0;
-    return getBusinessDays(startDate, endDate);
+    return getBusinessDaysExcludingHolidays(startDate, endDate, holidaySet);
   }
 
   async function handleSubmit(e) {
@@ -103,6 +110,7 @@ export default function LeaveRequestPage() {
           {days > 0 && (
             <div className="leave-days-info">
               차감일수: <strong>{days}일</strong>
+              <span className="text-muted text-sm" style={{ marginLeft: 8 }}>(주말·휴일 제외)</span>
             </div>
           )}
 

@@ -72,6 +72,41 @@ export function getBusinessDays(startDate, endDate) {
   return count;
 }
 
+// 두 날짜 사이의 영업일 수 — 주말 + 휴일(events collection type='holiday') 제외
+// holidayDates: Set<'YYYY-MM-DD'> — 미리 모든 휴일 날짜를 펼쳐 넣어둔 집합
+export function getBusinessDaysExcludingHolidays(startDate, endDate, holidayDates) {
+  let count = 0;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const current = new Date(start);
+  while (current <= end) {
+    const day = current.getDay();
+    const iso = formatDate(current);
+    const isWeekend = day === 0 || day === 6;
+    const isHoliday = holidayDates && holidayDates.has && holidayDates.has(iso);
+    if (!isWeekend && !isHoliday) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+// 이벤트 배열에서 type='holiday'인 항목의 모든 날짜를 Set으로 펼침
+export function buildHolidaySet(events) {
+  const set = new Set();
+  if (!Array.isArray(events)) return set;
+  events.forEach((e) => {
+    if (!e || e.type !== 'holiday' || !e.startDate) return;
+    const start = new Date(e.startDate);
+    const end = new Date(e.endDate || e.startDate);
+    const cur = new Date(start);
+    while (cur <= end) {
+      set.add(formatDate(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+  });
+  return set;
+}
+
 // 근속 연수 계산
 export function getYearsOfService(joinDate, targetDate) {
   const join = new Date(joinDate);

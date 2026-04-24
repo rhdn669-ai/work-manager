@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyLeaves, editLeaveWithBalance, cancelLeave } from '../../services/leaveService';
+import { getEvents } from '../../services/eventService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
-import { getBusinessDays, getToday } from '../../utils/dateUtils';
+import { getBusinessDaysExcludingHolidays, buildHolidaySet, getToday } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
 
 const STATUS_STYLES = {
@@ -12,12 +13,12 @@ const STATUS_STYLES = {
   rejected:  { color: 'var(--danger)', label: '반려됨' },
 };
 
-function calcDays(type, startDate, endDate) {
+function calcDays(type, startDate, endDate, holidaySet) {
   if (!type || !startDate) return 0;
   if (type === 'half_am' || type === 'half_pm') return 0.5;
   if (QUARTER_LEAVE_TYPES.includes(type)) return 0.25;
   if (!endDate) return 0;
-  return getBusinessDays(startDate, endDate);
+  return getBusinessDaysExcludingHolidays(startDate, endDate, holidaySet);
 }
 
 function isSingleDayType(type) {
@@ -32,6 +33,12 @@ export default function LeaveHistoryPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
+  const [holidayEvents, setHolidayEvents] = useState([]);
+
+  useEffect(() => {
+    getEvents().then((evs) => setHolidayEvents(evs.filter((e) => e.type === 'holiday'))).catch(() => {});
+  }, []);
+  const holidaySet = useMemo(() => buildHolidaySet(holidayEvents), [holidayEvents]);
 
   const today = getToday();
 
@@ -91,7 +98,7 @@ export default function LeaveHistoryPage() {
   async function saveEdit(l) {
     const single = isSingleDayType(editForm.type);
     const endDate = single ? editForm.startDate : editForm.endDate;
-    const newDays = calcDays(editForm.type, editForm.startDate, endDate);
+    const newDays = calcDays(editForm.type, editForm.startDate, endDate, holidaySet);
 
     if (newDays <= 0) {
       alert('올바른 날짜를 선택해주세요.');
@@ -141,7 +148,7 @@ export default function LeaveHistoryPage() {
             const statusStyle = STATUS_STYLES[l.status] || {};
             const period = l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`;
             const previewDays = calcDays(editForm.type, editForm.startDate,
-              isSingleDayType(editForm.type) ? editForm.startDate : editForm.endDate);
+              isSingleDayType(editForm.type) ? editForm.startDate : editForm.endDate, holidaySet);
 
             return (
               <div key={l.id} className="card" style={{ marginBottom: 8 }}>
