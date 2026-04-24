@@ -91,21 +91,101 @@ export function getBusinessDaysExcludingHolidays(startDate, endDate, holidayDate
 }
 
 // 이벤트 배열에서 type='holiday'인 항목의 모든 날짜를 Set으로 펼침
+// + 한국 공휴일(작년/올해/내년) 자동 포함 → 연차 영업일 계산에서 자동 제외됨
 export function buildHolidaySet(events) {
   const set = new Set();
-  if (!Array.isArray(events)) return set;
-  events.forEach((e) => {
-    if (!e || e.type !== 'holiday' || !e.startDate) return;
-    const start = new Date(e.startDate);
-    const end = new Date(e.endDate || e.startDate);
-    const cur = new Date(start);
-    while (cur <= end) {
-      set.add(formatDate(cur));
-      cur.setDate(cur.getDate() + 1);
-    }
+  if (Array.isArray(events)) {
+    events.forEach((e) => {
+      if (!e || e.type !== 'holiday' || !e.startDate) return;
+      const start = new Date(e.startDate);
+      const end = new Date(e.endDate || e.startDate);
+      const cur = new Date(start);
+      while (cur <= end) {
+        set.add(formatDate(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+  }
+  // 한국 공휴일 자동 합산 — 동기화 회피용 dynamic import 대신 정적 import
+  // (순환 참조 방지를 위해 require 대신 ES import 사용)
+  const thisYear = new Date().getFullYear();
+  KOREAN_HOLIDAY_YEARS.forEach((offset) => {
+    const y = thisYear + offset;
+    Object.keys(_getKoreanHolidaysMap(y)).forEach((d) => set.add(d));
   });
   return set;
 }
+
+// 한국 공휴일 자동 포함 범위 (작년/올해/내년)
+const KOREAN_HOLIDAY_YEARS = [-1, 0, 1];
+
+// dateUtils가 koreanHolidays를 import하면 빌드 의존성이 늘어나므로 inline 처리.
+// 양력 고정 공휴일만 자동 계산. 음력/대체는 koreanHolidays.js에서 별도로
+// HomeCalendar 등에서 직접 사용.
+function _getKoreanHolidaysMap(year) {
+  const fixed = {
+    [`${year}-01-01`]: '신정',
+    [`${year}-03-01`]: '삼일절',
+    [`${year}-05-05`]: '어린이날',
+    [`${year}-06-06`]: '현충일',
+    [`${year}-08-15`]: '광복절',
+    [`${year}-10-03`]: '개천절',
+    [`${year}-10-09`]: '한글날',
+    [`${year}-12-25`]: '성탄절',
+  };
+  const lunar = _LUNAR_AND_SUB[year] || {};
+  return { ...fixed, ...lunar };
+}
+
+// 음력/임시공휴일/대체공휴일 (연차 계산용 — koreanHolidays.js와 중복 데이터)
+// 매년 정부 발표 후 추가 필요
+const _LUNAR_AND_SUB = {
+  2024: {
+    '2024-02-09': '설날 연휴',
+    '2024-02-10': '설날',
+    '2024-02-11': '설날 연휴',
+    '2024-02-12': '대체공휴일(설)',
+    '2024-05-06': '대체공휴일(어린이날)',
+    '2024-05-15': '부처님오신날',
+    '2024-09-16': '추석 연휴',
+    '2024-09-17': '추석',
+    '2024-09-18': '추석 연휴',
+    '2024-10-01': '국군의 날',
+  },
+  2025: {
+    '2025-01-27': '임시공휴일',
+    '2025-01-28': '설날 연휴',
+    '2025-01-29': '설날',
+    '2025-01-30': '설날 연휴',
+    '2025-03-03': '대체공휴일(삼일절)',
+    '2025-05-06': '대체공휴일(어린이날·부처님오신날)',
+    '2025-10-05': '추석 연휴',
+    '2025-10-06': '추석',
+    '2025-10-07': '추석 연휴',
+    '2025-10-08': '대체공휴일(추석)',
+  },
+  2026: {
+    '2026-02-16': '설날 연휴',
+    '2026-02-17': '설날',
+    '2026-02-18': '설날 연휴',
+    '2026-03-02': '대체공휴일(삼일절)',
+    '2026-05-24': '부처님오신날',
+    '2026-05-25': '대체공휴일(부처님오신날)',
+    '2026-09-24': '추석 연휴',
+    '2026-09-25': '추석',
+    '2026-09-26': '추석 연휴',
+  },
+  2027: {
+    '2027-02-06': '설날 연휴',
+    '2027-02-07': '설날',
+    '2027-02-08': '설날 연휴',
+    '2027-02-09': '대체공휴일(설)',
+    '2027-05-13': '부처님오신날',
+    '2027-09-14': '추석 연휴',
+    '2027-09-15': '추석',
+    '2027-09-16': '추석 연휴',
+  },
+};
 
 // 근속 연수 계산
 export function getYearsOfService(joinDate, targetDate) {

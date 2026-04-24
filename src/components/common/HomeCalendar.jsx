@@ -7,6 +7,7 @@ import { getUsers } from '../../services/userService';
 import { getAllSites } from '../../services/siteService';
 import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../../services/personalEventService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
+import { getKoreanHolidaysAsEvents, getKoreanHolidayDates } from '../../utils/koreanHolidays';
 import Modal from './Modal';
 
 const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차', personal: '내 일정' };
@@ -51,8 +52,13 @@ export default function HomeCalendar() {
         getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; }),
         getAllSites().catch(() => []),
       ]);
-      // 관리자가 아닌 경우 공지(notice)만 표시, 관리자는 모든 이벤트/공지/휴무 표시
-      const evs = isAdmin ? rawEvents : rawEvents.filter((e) => (e.type || 'event') === 'notice');
+      // 관리자가 아닌 경우 공지(notice)·휴무(holiday)만 표시, 관리자는 모든 이벤트 표시
+      const evs = isAdmin
+        ? rawEvents
+        : rawEvents.filter((e) => {
+            const t = e.type || 'event';
+            return t === 'notice' || t === 'holiday';
+          });
 
       let ots = [];
       let lvs = [];
@@ -156,7 +162,24 @@ export default function HomeCalendar() {
     const monthStart = `${y}-${pad(m)}-01`;
     const monthEnd = `${y}-${pad(m)}-${pad(totalDays)}`;
 
-    const inMonthEvents = events
+    // events(Firestore) + 한국 공휴일(정적) 통합 — 같은 날짜는 Firestore 등록 우선
+    const koreanEvents = getKoreanHolidaysAsEvents(y);
+    const fsHolidayDates = new Set(
+      events.filter((e) => e.type === 'holiday').flatMap((e) => {
+        const result = [];
+        const start = new Date(e.startDate);
+        const end = new Date(e.endDate || e.startDate);
+        const cur = new Date(start);
+        while (cur <= end) {
+          result.push(toISO(cur));
+          cur.setDate(cur.getDate() + 1);
+        }
+        return result;
+      }),
+    );
+    const filteredKorean = koreanEvents.filter((kh) => !fsHolidayDates.has(kh.startDate));
+
+    const inMonthEvents = [...events, ...filteredKorean]
       .filter((e) => (e.endDate || e.startDate) >= monthStart && e.startDate <= monthEnd)
       .map((e) => ({ ...e, _kind: 'event', type: e.type || 'event', _start: e.startDate, _end: e.endDate || e.startDate }));
 
@@ -275,11 +298,12 @@ export default function HomeCalendar() {
                   const dayEvents = eventsByDay[d] || [];
                   const isToday = iso === today;
                   const isSelected = iso === selectedDate;
+                  const isHoliday = dayEvents.some((e) => e.type === 'holiday');
                   return (
                     <button
                       type="button"
                       key={di}
-                      className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''}`}
+                      className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''}`}
                       onPointerDown={(e) => {
                         e.preventDefault();
                         setSelectedDate(iso);

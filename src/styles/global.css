@@ -5127,6 +5127,12 @@ body {
 .home-cal-dow-cell.sunday { color: #ef4444; }
 .home-cal-dow-cell.saturday { color: #3b82f6; }
 
+/* 캘린더 셀 날짜 색상: 일요일·공휴일은 빨강, 토요일은 파랑 */
+.home-cal-cell.sunday .home-cal-date,
+.home-cal-cell.is-holiday .home-cal-date { color: #ef4444; }
+.home-cal-cell.saturday .home-cal-date { color: #3b82f6; }
+.home-cal-cell.is-holiday { background: rgba(239, 68, 68, 0.04); }
+
 .home-cal-cell {
   display: flex;
   flex-direction: column;
