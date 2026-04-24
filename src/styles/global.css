@@ -97,7 +97,7 @@
   --btn-h-lg: 46px;
 
   --header-height: 60px;
-  --sidebar-width: 240px;
+  --sidebar-width: 192px;
 }
 
 /* ===== 리셋 ===== */
@@ -4278,6 +4278,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  height: 165px;
 }
 
 .once-total-bar {
