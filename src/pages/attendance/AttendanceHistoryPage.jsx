@@ -38,7 +38,7 @@ export default function AttendanceHistoryPage() {
       const start = getMonthStart(year, month);
       const end = getMonthEnd(year, month);
       const data = await getMyOvertimeRecords(userProfile.uid, start, end);
-      setRecords(data.filter((r) => r.status === 'approved'));
+      setRecords(data.filter((r) => r.status === 'approved' || r.status === 'pending'));
     } catch (err) {
       console.error(err);
     } finally {
@@ -93,7 +93,8 @@ export default function AttendanceHistoryPage() {
     }
   }
 
-  const totalMinutes = records.reduce((sum, r) => sum + (r.minutes || 0), 0);
+  const approvedRecords = records.filter((r) => r.status === 'approved');
+  const totalMinutes = approvedRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
 
   return (
     <div className="history-page">
@@ -113,10 +114,13 @@ export default function AttendanceHistoryPage() {
         </select>
       </div>
 
-      {totalMinutes > 0 && (
+      {records.length > 0 && (
         <div className="summary-bar">
-          <span>총 잔업 <strong>{formatMinutes(totalMinutes)}</strong></span>
-          <span>등록 건수 <strong>{records.length}건</strong></span>
+          <span>승인 잔업 <strong>{formatMinutes(totalMinutes)}</strong></span>
+          <span>승인 <strong>{approvedRecords.length}건</strong></span>
+          {records.length > approvedRecords.length && (
+            <span style={{ color: '#92400e' }}>대기 <strong>{records.length - approvedRecords.length}건</strong></span>
+          )}
         </div>
       )}
 
@@ -189,11 +193,16 @@ export default function AttendanceHistoryPage() {
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {r.date}
-                          <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>
+                          <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>
                             ({getDayName(r.date)})
                           </span>
+                          {r.status === 'pending' && (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 4, padding: '1px 6px' }}>
+                              승인 대기
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-light)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{formatMinutes(r.minutes)}</span>
@@ -201,7 +210,7 @@ export default function AttendanceHistoryPage() {
                           {r.reason && <span style={{ color: 'var(--text-muted)' }}>{r.reason}</span>}
                         </div>
                       </div>
-                      {isToday && (
+                      {(r.status === 'pending' || isToday) && (
                         <div className="btn-group" style={{ flexShrink: 0 }}>
                           <button className="btn btn-sm btn-outline" onClick={() => startEdit(r)}>수정</button>
                           <button
