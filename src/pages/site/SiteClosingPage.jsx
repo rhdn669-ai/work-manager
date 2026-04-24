@@ -1088,21 +1088,32 @@ export default function SiteClosingPage() {
                             return (
                               <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls}`} key={di}>
                                 <label>{d}</label>
-                                {isOnLeave && (
-                                  <div className={`leave-badge leave-badge-${leaveType}`}>{leaveBadgeLabel(leaveType)}</div>
-                                )}
-                                {isFullLeave ? null : (
-                                  <input
-                                    type="number"
-                                    step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
-                                    min="0"
-                                    max={isDaily ? '24' : isVendorCase ? '99' : '1'}
-                                    value={v ?? ''}
-                                    onChange={(e) => updateDay(it.id, d, e.target.value)}
-                                    onBlur={() => flushRow(it.id)}
-                                    disabled={!canEdit}
-                                    title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : (isDaily ? '시간 입력' : isVendorCase ? '납품 건수' : '')}
-                                  />
+                                {isFullLeave ? (
+                                  <div
+                                    className={`leave-badge-input leave-badge-${leaveType}`}
+                                    title={`${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`}
+                                  >
+                                    {leaveBadgeLabel(leaveType)}
+                                  </div>
+                                ) : (
+                                  <div className="day-cal-input-wrap">
+                                    <input
+                                      type="number"
+                                      step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
+                                      min="0"
+                                      max={isDaily ? '24' : isVendorCase ? '99' : '1'}
+                                      value={v ?? ''}
+                                      onChange={(e) => updateDay(it.id, d, e.target.value)}
+                                      onBlur={() => flushRow(it.id)}
+                                      disabled={!canEdit}
+                                      title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : (isDaily ? '시간 입력' : isVendorCase ? '납품 건수' : '')}
+                                    />
+                                    {isOnLeave && (
+                                      <span className={`leave-badge-tag leave-badge-${leaveType}`}>
+                                        {leaveBadgeLabel(leaveType)}
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             );

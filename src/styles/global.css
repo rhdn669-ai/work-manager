@@ -4980,21 +4980,51 @@ body {
   color: #dc2626;
 }
 
-.leave-badge {
-  display: block;
-  text-align: center;
-  line-height: 16px;
-  height: 16px;
+/* 공수 입력칸을 대체하는 전일 휴가 표시 (입력칸과 동일 크기) */
+.leave-badge-input {
+  margin-top: auto;
   width: 100%;
-  padding: 0 2px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f87171;
+  color: #fff;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  padding: 0 4px;
+}
+
+/* 반차/반반차 등 부분 휴가: 입력칸 우측 상단 뱃지 */
+.day-cal-input-wrap {
+  position: relative;
+  margin-top: auto;
+  width: 100%;
+}
+.day-cal-input-wrap input {
+  margin-top: 0;
+}
+.leave-badge-tag {
+  position: absolute;
+  top: 2px;
+  right: 2px;
   font-size: 8px;
   font-weight: 700;
   color: #fff;
   background: #f87171;
-  border-radius: 4px;
-  margin-bottom: 0;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1;
+  pointer-events: none;
+  max-width: calc(100% - 4px);
   white-space: nowrap;
-  flex-shrink: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
