@@ -74,6 +74,7 @@ export default function SiteClosingPage() {
   const [vendorPickerMode, setVendorPickerMode] = useState(null); // 'vendor' | 'vendor_case' | null
   const [vendorPickerStep, setVendorPickerStep] = useState('vendor'); // 'vendor' | 'project'
   const [pickedVendor, setPickedVendor] = useState(null);
+  const [closingTab, setClosingTab] = useState('all'); // 'all' | 'employee' | 'freelancer' | 'daily' | 'vendor'
 
   function resetVendorPicker() {
     setVendorPickerMode(null);
@@ -849,6 +850,32 @@ export default function SiteClosingPage() {
           </div>
         )}
       </div>
+      {/* 공수표 탭 필터 */}
+      {items.length > 0 && (() => {
+        const cnt = (types) => items.filter((i) => types.includes(i.itemType || 'freelancer')).length;
+        const tabs = [
+          { key: 'all', label: '전체', count: items.length },
+          { key: 'employee', label: '직원', count: cnt(['employee']) },
+          { key: 'freelancer', label: '프리랜서', count: cnt(['freelancer']) },
+          { key: 'daily', label: '일용직', count: cnt(['daily']) },
+          { key: 'vendor', label: '업체', count: cnt(['vendor', 'vendor_case']) },
+        ];
+        return (
+          <div className="tab-nav closing-tab-nav">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                className={`tab-nav-item ${closingTab === t.key ? 'active' : ''}`}
+                onClick={() => setClosingTab(t.key)}
+              >
+                {t.label}
+                {t.count > 0 && <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{t.count}</span>}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
       {showEmployeeSelect && canEdit && (() => {
         const currentNames = new Set(items.filter((it) => it.itemType === 'employee').map((it) => it.detail));
         const allWithCost = Object.values(userMap).filter((u) => u.fixedCost);
@@ -944,26 +971,42 @@ export default function SiteClosingPage() {
         )))}
       </datalist>
 
-      {items.length === 0 ? (
-        <div className="card">
-          <div className="card-body empty-state">
-            항목이 없습니다.{canEdit && ' 우측 상단 "+ 항목 추가" 버튼으로 시작하세요.'}
+      {(() => {
+        const rank = (t) => {
+          if (t === 'employee') return 0;
+          if (t === 'daily') return 1;
+          if (t === 'vendor') return 2;
+          if (t === 'vendor_case') return 3;
+          return 4;
+        };
+        const sorted = [...items].sort((a, b) => {
+          const aR = rank(a.itemType);
+          const bR = rank(b.itemType);
+          return aR !== bR ? aR - bR : (a.order || 0) - (b.order || 0);
+        });
+        const filtered = sorted.filter((it) => {
+          if (closingTab === 'all') return true;
+          const t = it.itemType || 'freelancer';
+          if (closingTab === 'vendor') return t === 'vendor' || t === 'vendor_case';
+          return t === closingTab;
+        });
+
+        if (items.length === 0) return (
+          <div className="card">
+            <div className="card-body empty-state">
+              항목이 없습니다.{canEdit && ' 우측 상단 "+ 항목 추가" 버튼으로 시작하세요.'}
+            </div>
           </div>
-        </div>
-      ) : (
+        );
+        if (filtered.length === 0) return (
+          <div className="card">
+            <div className="card-body empty-state">이 유형의 항목이 없습니다.</div>
+          </div>
+        );
+
+        return (
         <div className="closing-cards">
-          {[...items].sort((a, b) => {
-            const rank = (t) => {
-              if (t === 'employee') return 0;
-              if (t === 'daily') return 1;
-              if (t === 'vendor') return 2;
-              if (t === 'vendor_case') return 3;
-              return 4;
-            };
-            const aR = rank(a.itemType);
-            const bR = rank(b.itemType);
-            return aR !== bR ? aR - bR : (a.order || 0) - (b.order || 0);
-          }).map((it) => {
+          {filtered.map((it) => {
             const buf = editBuf[it.id] || it;
             const cardType = it.itemType || buf.itemType || 'freelancer';
             const isDaily = cardType === 'daily';
@@ -1098,7 +1141,8 @@ export default function SiteClosingPage() {
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       {/* 잔업 상세 모달 */}
       {showOvertimeDetail && (() => {
