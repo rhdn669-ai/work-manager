@@ -1202,6 +1202,10 @@ body {
   padding: 4px 8px;
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   border-left: 2px solid var(--border-strong);
 }
 .rate-history-list {
@@ -1228,6 +1232,23 @@ body {
 .rate-history-toggle:hover {
   color: var(--text, #111827);
 }
+.rate-history-delete {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.rate-history-delete:hover:not(:disabled) {
+  color: #dc2626;
+  background: #fef2f2;
+}
+.rate-history-delete:disabled { opacity: 0.4; cursor: default; }
 .rate-history-caret {
   display: inline-block;
   font-size: 10px;

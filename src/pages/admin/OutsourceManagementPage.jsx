@@ -7,6 +7,7 @@ import {
   addFreelancerToVendor,
   addVendorProject, removeVendorProject,
   setFreelancerRate, clearAllRateHistories,
+  removeRateHistoryByFields,
   getAllClosingItems,
 } from '../../services/outsourceService';
 import { getAllSites } from '../../services/siteService';
@@ -738,6 +739,7 @@ export default function OutsourceManagementPage() {
                             rate: Number(h.rate),
                             from: h.effectiveFrom || '',
                             to: h.effectiveTo || '',
+                            isLegacy: false,
                           });
                         });
                       }
@@ -745,7 +747,7 @@ export default function OutsourceManagementPage() {
                         const legacyFrom = f.previousDailyRateFrom || '';
                         const legacyTo = f.previousDailyRateTo || '';
                         const dup = historyList.some((h) => h.rate === Number(f.previousDailyRate) && h.from === legacyFrom && h.to === legacyTo);
-                        if (!dup) historyList.push({ rate: Number(f.previousDailyRate), from: legacyFrom, to: legacyTo });
+                        if (!dup) historyList.push({ rate: Number(f.previousDailyRate), from: legacyFrom, to: legacyTo, isLegacy: true });
                       }
                       historyList.sort((a, b) => (b.from || '').localeCompare(a.from || ''));
                       return (
@@ -784,7 +786,30 @@ export default function OutsourceManagementPage() {
                                   const period = hf || ht ? `(${hf || '이전'} ~ ${ht || '이전'})` : '';
                                   return (
                                     <div className="previous-rate-info" key={`${h.rate}-${h.from}-${h.to}-${idx}`}>
-                                      {h.rate.toLocaleString()}원 {period}
+                                      <span>{h.rate.toLocaleString()}원 {period}</span>
+                                      <button
+                                        type="button"
+                                        className="rate-history-delete"
+                                        title="이 이력 삭제"
+                                        aria-label="이 이력 삭제"
+                                        onClick={async () => {
+                                          if (!confirm(`${h.rate.toLocaleString()}원 ${period} 이력을 삭제하시겠습니까?`)) return;
+                                          setDetailBusy(true);
+                                          try {
+                                            await removeRateHistoryByFields(f.id, {
+                                              from: h.from, to: h.to, rate: h.rate, isLegacy: h.isLegacy,
+                                            });
+                                            await reloadDetail();
+                                          } catch (err) {
+                                            alert('삭제 실패: ' + err.message);
+                                          } finally {
+                                            setDetailBusy(false);
+                                          }
+                                        }}
+                                        disabled={detailBusy}
+                                      >
+                                        ✕
+                                      </button>
                                     </div>
                                   );
                                 })}

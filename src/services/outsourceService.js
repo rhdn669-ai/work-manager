@@ -152,13 +152,45 @@ export async function addRateHistoryEntry(freelancerId, entry) {
   });
 }
 
-// 단가 이력 항목 제거
+// 단가 이력 항목 제거 (레거시 arrayRemove — 정확한 오브젝트 일치 필요)
 export async function removeRateHistoryEntry(freelancerId, entry) {
   if (!freelancerId || !entry) return;
   await updateDoc(doc(db, 'freelancers', freelancerId), {
     rateHistory: arrayRemove(entry),
     updatedAt: new Date(),
   });
+}
+
+// UI 표시용 historyList 항목(rate/from/to) 또는 레거시 previousDailyRate*를 기반으로 삭제
+// arrayRemove는 객체 구조 정확 일치가 필요하므로 필드 재구성 후 재기록으로 안전하게 처리
+export async function removeRateHistoryByFields(freelancerId, { from, to, rate, isLegacy }) {
+  if (!freelancerId) return;
+  const ref = doc(db, 'freelancers', freelancerId);
+  if (isLegacy) {
+    await updateDoc(ref, {
+      previousDailyRate: 0,
+      previousDailyRateFrom: '',
+      previousDailyRateTo: '',
+      updatedAt: new Date(),
+    });
+    return;
+  }
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const data = snap.data();
+  const current = Array.isArray(data.rateHistory) ? data.rateHistory : [];
+  const targetRate = Number(rate) || 0;
+  const targetFrom = from || '';
+  const targetTo = to || '';
+  const updated = current.filter((h) => {
+    if (!h) return false;
+    const hr = Number(h.rate) || 0;
+    const hf = h.effectiveFrom || '';
+    const ht = h.effectiveTo || '';
+    // 첫 번째 매칭 하나만 제거 (동일 값 중복 있을 때 보호)
+    return !(hr === targetRate && hf === targetFrom && ht === targetTo);
+  });
+  await updateDoc(ref, { rateHistory: updated, updatedAt: new Date() });
 }
 
 // 모든 프리랜서의 단가 이력 일괄 초기화 (rateHistory + 레거시 previousDailyRate*)
