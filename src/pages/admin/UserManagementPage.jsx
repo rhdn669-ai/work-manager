@@ -134,6 +134,20 @@ export default function UserManagementPage() {
     }
   }
 
+  async function handleResetPassword() {
+    if (!editUser) return;
+    if (!confirm(`"${editUser.name}"의 비밀번호를 초기화하시겠습니까?\n본인이 다음 로그인 시 새 비밀번호를 직접 설정합니다.`)) return;
+    try {
+      await updateUser(editUser.uid, { password: '' });
+      setForm((f) => ({ ...f, password: '' }));
+      setEditUser((u) => u ? { ...u, password: '' } : u);
+      await loadData();
+      alert(`${editUser.name} 비밀번호 초기화 완료. 다음 로그인 시 비밀번호 설정 화면으로 이동합니다.`);
+    } catch (err) {
+      alert('초기화 실패: ' + err.message);
+    }
+  }
+
   async function handleImpersonate(u) {
     if (u.uid === userProfile?.uid) { alert('이미 본인 계정으로 로그인 중입니다.'); return; }
     if (!confirm(`${u.name}(${u.code}) 계정으로 전환하시겠습니까?\n상단 배너의 "관리자로 돌아가기"로 복귀할 수 있습니다.`)) return;
@@ -282,10 +296,28 @@ export default function UserManagementPage() {
             <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="예: 1234" required />
           </div>
           <div className="form-group">
-            <label>비밀번호 {editUser && <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(비워두면 기존 유지)</span>}</label>
+            <label>
+              비밀번호 {editUser && <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(비워두면 기존 유지)</span>}
+              {editUser && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger-outline"
+                  onClick={handleResetPassword}
+                  style={{ float: 'right', fontSize: 11, padding: '3px 8px' }}
+                  title="비밀번호를 지워 다음 로그인 시 본인이 직접 재설정하게 함"
+                >
+                  초기화
+                </button>
+              )}
+            </label>
             {editUser && editUser.password && (
               <div style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>
                 현재: <code style={{ background: 'var(--bg-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4 }}>{editUser.password}</code>
+              </div>
+            )}
+            {editUser && !editUser.password && (
+              <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--danger, #dc2626)', fontWeight: 600 }}>
+                ✓ 초기화됨 — 다음 로그인 시 본인이 비밀번호 설정
               </div>
             )}
             <input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editUser ? '변경 시에만 입력' : '비밀번호 입력'} autoComplete="new-password" />
