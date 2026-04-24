@@ -13,6 +13,7 @@ function buildAllItems({ isAdmin, canApproveLeave, unreadCount }) {
     { key: 'admin-users', to: '/admin/users', label: '직원 관리', show: isAdmin },
     { key: 'admin-reports', to: '/admin/reports', label: '잔업 · 연차', show: isAdmin },
     { key: 'admin-unassigned', to: '/admin/unassigned', label: '미배정 현황', show: isAdmin },
+    { key: 'admin-departments', to: '/admin/departments', label: '부서 관리', show: isAdmin },
     { key: 'admin-outsource', to: '/admin/outsource', label: '외주 관리', show: isAdmin },
     { key: 'attendance', to: '/attendance', label: '잔업', show: !isAdmin, end: true },
     { key: 'leave', to: '/leave', label: '연차', show: !isAdmin, end: true },
