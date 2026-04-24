@@ -5937,41 +5937,82 @@ body {
     gap: 6px 10px;
   }
 
-  /* 마감 요약 바 모바일 그리드 */
+  /* 마감 요약 — 모바일: 단일 열 카드 안에 얇은 구분선으로 정돈 */
   .closing-summary {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 4px 14px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
-  /* 모바일에서는 grid 셀 사이 구분선 대신 gap + 각 셀 배경으로 정리 */
   .closing-summary-item {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 12px;
+    padding: 11px 0;
     border-right: none;
-    background: #f8fafc;
-    border-radius: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
+    border-radius: 0;
+  }
+  .closing-summary-item:last-child {
+    border-bottom: none;
   }
   .closing-summary-item .label {
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
+    color: #64748b;
   }
   .closing-summary-item strong {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 700;
     text-align: right;
+    letter-spacing: -0.01em;
   }
+  /* 합계류 — 강조 (좌측 accent 선, 큰 글자) */
   .closing-summary-total {
-    grid-column: 1 / -1;
-    background: #fff8e7;
-    border: 1px solid #fde68a;
+    padding: 12px 0 12px 10px;
+    border-left: 3px solid var(--primary, #d97706);
+    margin: 2px 0 2px -14px;
+    padding-left: 14px;
+    padding-right: 0;
+    background: linear-gradient(to right, rgba(217, 119, 6, 0.05), transparent 60%);
+    border-bottom: 1px solid #f1f5f9;
   }
-  .closing-summary-total strong { font-size: 14px; }
+  .closing-summary-total .label {
+    color: #92400e;
+    font-weight: 600;
+  }
+  .closing-summary-total strong {
+    font-size: 15px;
+    color: var(--primary-hover, #b45309);
+  }
+  /* 최종 합계 — 더 강조 */
   .closing-summary-net {
-    grid-column: 1 / -1;
+    padding: 14px 0 14px 10px;
+    margin: 2px 0 0 -14px;
+    margin-right: -14px;
+    padding-left: 14px;
+    padding-right: 14px;
+    background: linear-gradient(to right, #fff7ed, #fffbeb);
+    border-top: 1px solid #fed7aa;
+    border-bottom: none;
+    border-radius: 0 0 12px 12px;
+  }
+  .closing-summary-net .label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #9a3412;
+  }
+  .closing-summary-net strong {
+    font-size: 17px;
+    font-weight: 800;
   }
 }
 
