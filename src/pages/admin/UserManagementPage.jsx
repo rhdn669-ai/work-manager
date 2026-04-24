@@ -17,7 +17,6 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
-  const [showNameCodeExport, setShowNameCodeExport] = useState(false);
   const [form, setForm] = useState({
     name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
     leaveRemaining: '', canViewSalary: false,
@@ -43,19 +42,6 @@ export default function UserManagementPage() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleSyncAll() {
-    if (!confirm('전체 사용자의 입사일을 연차 데이터에 동기화하시겠습니까?\n(사용 일수는 유지됩니다)')) return;
-    try {
-      for (const u of users) {
-        if (u.joinDate) await initLeaveBalance(u.uid, u.joinDate);
-      }
-      await loadData();
-      alert('동기화 완료');
-    } catch (err) {
-      alert('동기화 오류: ' + err.message);
     }
   }
 
@@ -182,8 +168,6 @@ export default function UserManagementPage() {
         <h2>직원 관리</h2>
         <div className="btn-group" style={{ flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={openCreate}>직원 추가</button>
-          <button className="btn btn-outline" onClick={() => setShowNameCodeExport(true)}>이름·코드 추출</button>
-          <button className="btn btn-outline" onClick={handleSyncAll}>연차 동기화</button>
         </div>
       </div>
       <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
@@ -409,38 +393,6 @@ export default function UserManagementPage() {
         </form>
       </Modal>
 
-      {/* 이름·코드 추출 모달 */}
-      {showNameCodeExport && (() => {
-        const sorted = [...users].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
-        const lines = sorted.map((u) => `${u.name}\t${u.code}`);
-        const text = lines.join('\n');
-        async function copy() {
-          try {
-            await navigator.clipboard.writeText(text);
-            alert(`${sorted.length}명 이름·코드를 클립보드에 복사했습니다.`);
-          } catch {
-            alert('복사 실패 — 아래 텍스트를 직접 선택해 복사해주세요.');
-          }
-        }
-        return (
-          <Modal isOpen={showNameCodeExport} onClose={() => setShowNameCodeExport(false)} title={`이름·코드 추출 (${sorted.length}명)`}>
-            <p className="text-muted text-sm" style={{ marginBottom: 10 }}>
-              이름과 코드를 탭(Tab)으로 구분한 형식입니다. 엑셀·스프레드시트에 붙여넣으면 2개 열로 분리됩니다.
-            </p>
-            <textarea
-              readOnly
-              value={text}
-              rows={Math.min(16, Math.max(6, sorted.length))}
-              onFocus={(e) => e.target.select()}
-              style={{ width: '100%', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 13, padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}
-            />
-            <div className="modal-actions" style={{ marginTop: 12 }}>
-              <button type="button" className="btn btn-primary" onClick={copy}>클립보드 복사</button>
-              <button type="button" className="btn btn-outline" onClick={() => setShowNameCodeExport(false)}>닫기</button>
-            </div>
-          </Modal>
-        );
-      })()}
     </div>
   );
 }
