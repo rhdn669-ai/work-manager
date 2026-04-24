@@ -778,6 +778,27 @@ export default function OutsourceManagementPage() {
                             >
                               {isEditing ? '취소' : '단가 변경'}
                             </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger-outline"
+                              title="이 소속 직원 삭제"
+                              onClick={async () => {
+                                if (!confirm(`"${f.name}"을(를) 이 업체에서 완전히 삭제하시겠습니까?\n(외주관리에서도 제거되며, 공수표에 기록된 과거 내역은 남습니다.)`)) return;
+                                setDetailBusy(true);
+                                try {
+                                  await deleteFreelancer(f.id);
+                                  if (editRateFor === f.id) setEditRateFor(null);
+                                  await reloadDetail();
+                                } catch (err) {
+                                  alert('삭제 실패: ' + err.message);
+                                } finally {
+                                  setDetailBusy(false);
+                                }
+                              }}
+                              disabled={detailBusy}
+                            >
+                              삭제
+                            </button>
                           </div>
                           {historyList.length > 0 && (() => {
                             const isOpen = !!openHistoryFor[f.id];
