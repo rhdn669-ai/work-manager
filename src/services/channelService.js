@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc,
-  query, orderBy, limit, where, onSnapshot, serverTimestamp,
+  query, orderBy, limit, where, onSnapshot, serverTimestamp, increment,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, ensureAnonymousAuth } from '../config/firebase';
@@ -82,12 +82,14 @@ export function subscribeChannelMessages(channelId, callback) {
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
 
-// 채널 메시지 송신 후 채널 문서에 lastMessageAt/lastSenderId 기록 — 알림 집계용
-async function touchChannelMeta(channelId, userId) {
+// 채널 메시지 송신 후 채널 문서에 메타/카운터 기록 — 알림 집계 + 미리보기용
+async function touchChannelMeta(channelId, userId, lastMessage) {
   try {
     await updateDoc(doc(db, 'channels', channelId), {
+      lastMessage: typeof lastMessage === 'string' ? lastMessage.slice(0, 80) : '',
       lastMessageAt: serverTimestamp(),
       lastSenderId: userId,
+      messageCount: increment(1),
     });
   } catch { /* 실패해도 메시지 전송은 유지 */ }
 }
@@ -99,7 +101,7 @@ export async function sendChannelMessage({ channelId, userId, userName, position
     reactions: {}, readBy: { [userId]: Date.now() },
     isPinned: false, deletedAt: null, createdAt: serverTimestamp(),
   });
-  await touchChannelMeta(channelId, userId);
+  await touchChannelMeta(channelId, userId, text);
   return r;
 }
 
@@ -114,7 +116,7 @@ export async function sendChannelImage({ channelId, userId, userName, position, 
     reactions: {}, readBy: { [userId]: Date.now() },
     isPinned: false, deletedAt: null, createdAt: serverTimestamp(),
   });
-  await touchChannelMeta(channelId, userId);
+  await touchChannelMeta(channelId, userId, '📷 사진');
   return r;
 }
 
@@ -129,7 +131,7 @@ export async function sendChannelFile({ channelId, userId, userName, position, f
     reactions: {}, readBy: { [userId]: Date.now() },
     isPinned: false, deletedAt: null, createdAt: serverTimestamp(),
   });
-  await touchChannelMeta(channelId, userId);
+  await touchChannelMeta(channelId, userId, `📎 ${file.name}`);
   return r;
 }
 

@@ -38,7 +38,7 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
   const { userProfile, isAdmin } = useAuth();
   const { markAsRead } = useChat();
 
-  // 채널 입장 시 읽음 처리 (사이드바/바텀바 배지용)
+  // 채널 입장 + 새 메시지 수신 시 읽음 처리 (사이드바/바텀바 배지용)
   useEffect(() => {
     if (channel?.id) markAsRead('channel', channel.id);
   }, [channel?.id, markAsRead]);
@@ -72,9 +72,11 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
           }
         }
       });
+      // 방에 머무르는 동안 새 메시지 수신 → 배지 카운트 동기화
+      if (channel?.id) markAsRead('channel', channel.id);
     });
     return () => unsub();
-  }, [channel.id, userProfile?.uid]);
+  }, [channel.id, userProfile?.uid, markAsRead]);
 
   useEffect(() => {
     getPinnedChannelMessage(channel.id).then(setPinnedMsg);

@@ -44,9 +44,13 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    const unsub = subscribeDmMessages(room.roomId, setMessages);
+    const unsub = subscribeDmMessages(room.roomId, (msgs) => {
+      setMessages(msgs);
+      // 방에 머무르는 동안 새 메시지 수신 → 배지 카운트 동기화
+      if (room?.roomId) markAsRead('dm', room.roomId);
+    });
     return () => unsub();
-  }, [room.roomId]);
+  }, [room.roomId, markAsRead]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

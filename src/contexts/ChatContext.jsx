@@ -5,9 +5,10 @@ import { useAuth } from './AuthContext';
 
 const ChatContext = createContext({ unreadCount: 0, markAsRead: () => {} });
 
-// 채널/DM 단위로 마지막 읽은 시각을 localStorage에 기록
-// key 예: chatRead_<uid>_channel_<channelId>, chatRead_<uid>_dm_<roomId>
+// 채널/DM 단위로 마지막 읽은 시각을 localStorage에 기록 (하위 호환용)
 const readKey = (uid, kind, id) => `chatRead_${uid}_${kind}_${id}`;
+// 채널/DM 단위로 마지막 읽은 messageCount를 저장 (정확한 읽지 않음 수 계산용)
+const readCountKey = (uid, kind, id) => `chatReadCount_${uid}_${kind}_${id}`;
 
 function tsToMs(ts) {
   if (!ts) return 0;
@@ -55,52 +56,82 @@ export function ChatProvider({ children }) {
     });
   }, [channelMetas, userProfile?.uid, userProfile?.departmentId, canApproveAll]);
 
-  // unread = (내가 안 보낸) 마지막 메시지의 시각이 localStorage의 lastRead 이후인 방
-  // unreadRoomIds: { channel: Set<id>, dm: Set<id> } — 각 행에 "읽지 않음" 표시용
+  // unreadCounts: 방별 정확한 읽지 않음 수 (messageCount - lastReadCount)
+  // - 카운터 필드(messageCount)가 없는 기존 방은 timestamp 기반 fallback (1 또는 0)
+  // - 내가 마지막으로 보낸 메시지면 0 (읽음 간주)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const { unreadCount, unreadRoomIds } = useMemo(() => {
-    const empty = { unreadCount: 0, unreadRoomIds: { channel: new Set(), dm: new Set() } };
+  const { unreadCount, unreadRoomIds, unreadCounts } = useMemo(() => {
+    const empty = {
+      unreadCount: 0,
+      unreadRoomIds: { channel: new Set(), dm: new Set() },
+      unreadCounts: { channel: {}, dm: {} },
+    };
     if (!userProfile?.uid) return empty;
     const uid = userProfile.uid;
     const channelSet = new Set();
     const dmSet = new Set();
+    const channelCount = {};
+    const dmCount = {};
+
+    function countFor(kind, room) {
+      const lastMs = tsToMs(room.lastMessageAt);
+      if (!lastMs) return 0;
+      if (room.lastSenderId === uid) return 0;
+      // messageCount 기반
+      const total = Number(room.messageCount || 0);
+      if (total > 0) {
+        const readCount = parseInt(localStorage.getItem(readCountKey(uid, kind, room.id)) || '0', 10);
+        return Math.max(0, total - readCount);
+      }
+      // fallback: timestamp 비교 — 미읽음이면 1
+      const read = parseInt(localStorage.getItem(readKey(uid, kind, room.id)) || '0', 10);
+      return lastMs > read ? 1 : 0;
+    }
+
     accessibleChannels.forEach((c) => {
-      const lastMs = tsToMs(c.lastMessageAt);
-      if (!lastMs) return;
-      if (c.lastSenderId === uid) return;
-      const read = parseInt(localStorage.getItem(readKey(uid, 'channel', c.id)) || '0', 10);
-      if (lastMs > read) channelSet.add(c.id);
+      const n = countFor('channel', c);
+      if (n > 0) { channelSet.add(c.id); channelCount[c.id] = n; }
     });
     dmRooms.forEach((r) => {
-      const lastMs = tsToMs(r.lastMessageAt);
-      if (!lastMs) return;
-      if (r.lastSenderId === uid) return;
-      const read = parseInt(localStorage.getItem(readKey(uid, 'dm', r.id)) || '0', 10);
-      if (lastMs > read) dmSet.add(r.id);
+      const n = countFor('dm', r);
+      if (n > 0) { dmSet.add(r.id); dmCount[r.id] = n; }
     });
+    const total = [...Object.values(channelCount), ...Object.values(dmCount)].reduce((s, n) => s + n, 0);
     return {
-      unreadCount: channelSet.size + dmSet.size,
+      unreadCount: total,
       unreadRoomIds: { channel: channelSet, dm: dmSet },
+      unreadCounts: { channel: channelCount, dm: dmCount },
     };
   }, [accessibleChannels, dmRooms, userProfile?.uid, readTick]);
 
-  // 단일 방 읽음 처리 — 그 방의 lastMessageAt 현재 시각으로 기록
+  // 단일 방 읽음 처리 — messageCount와 timestamp를 현재 값으로 기록
   const markAsRead = useCallback((kind, id) => {
     if (!userProfile?.uid) return;
+    const uid = userProfile.uid;
+    const now = Date.now().toString();
     if (!kind || !id) {
-      // 인자 없이 호출 시 모든 방을 현재 시각으로 읽음 처리 (호환용)
-      const now = Date.now().toString();
-      accessibleChannels.forEach((c) => localStorage.setItem(readKey(userProfile.uid, 'channel', c.id), now));
-      dmRooms.forEach((r) => localStorage.setItem(readKey(userProfile.uid, 'dm', r.id), now));
+      // 인자 없이 호출 시 모든 방을 읽음 처리 (호환용)
+      accessibleChannels.forEach((c) => {
+        localStorage.setItem(readKey(uid, 'channel', c.id), now);
+        localStorage.setItem(readCountKey(uid, 'channel', c.id), String(Number(c.messageCount || 0)));
+      });
+      dmRooms.forEach((r) => {
+        localStorage.setItem(readKey(uid, 'dm', r.id), now);
+        localStorage.setItem(readCountKey(uid, 'dm', r.id), String(Number(r.messageCount || 0)));
+      });
       setReadTick((t) => t + 1);
       return;
     }
-    localStorage.setItem(readKey(userProfile.uid, kind, id), Date.now().toString());
+    const room = kind === 'channel'
+      ? accessibleChannels.find((c) => c.id === id)
+      : dmRooms.find((r) => r.id === id);
+    localStorage.setItem(readKey(uid, kind, id), now);
+    localStorage.setItem(readCountKey(uid, kind, id), String(Number(room?.messageCount || 0)));
     setReadTick((t) => t + 1);
   }, [userProfile?.uid, accessibleChannels, dmRooms]);
 
   return (
-    <ChatContext.Provider value={{ unreadCount, unreadRoomIds, markAsRead }}>
+    <ChatContext.Provider value={{ unreadCount, unreadRoomIds, unreadCounts, markAsRead }}>
       {children}
     </ChatContext.Provider>
   );

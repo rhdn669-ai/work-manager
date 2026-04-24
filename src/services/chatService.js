@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  query, orderBy, limit, where, onSnapshot, serverTimestamp, arrayUnion, arrayRemove,
+  query, orderBy, limit, where, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, increment,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, ensureAnonymousAuth } from '../config/firebase';
@@ -164,7 +164,7 @@ export async function sendDmMessage({ roomId, userId, userName, position, text, 
     createdAt: serverTimestamp(),
   });
   // 메시지 송신 → hiddenBy 전체 초기화 (숨겨놨던 사람한테도 다시 나타나도록)
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: text, lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [] });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: text, lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [], messageCount: increment(1) });
 }
 
 export async function sendDmImage({ roomId, userId, userName, position, file, replyTo = null }) {
@@ -182,7 +182,7 @@ export async function sendDmImage({ roomId, userId, userName, position, file, re
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '사진', lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [] });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '📷 사진', lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [], messageCount: increment(1) });
 }
 
 export async function sendDmFile({ roomId, userId, userName, position, file, replyTo = null }) {
@@ -200,7 +200,7 @@ export async function sendDmFile({ roomId, userId, userName, position, file, rep
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [] });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [], messageCount: increment(1) });
 }
 
 export async function deleteDmMessage(roomId, msgId) {

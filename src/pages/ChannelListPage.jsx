@@ -10,7 +10,28 @@ import { getUsers } from '../services/userService';
 
 export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
   const { userProfile, canApproveAll, isAdmin } = useAuth();
-  const { unreadRoomIds } = useChat();
+  const { unreadRoomIds, unreadCounts } = useChat();
+
+  function truncate(s, n = 36) {
+    if (!s) return '';
+    const str = String(s);
+    return str.length > n ? `${str.slice(0, n)}…` : str;
+  }
+  function relativeTime(ts) {
+    if (!ts) return '';
+    const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : (ts.seconds ? ts.seconds * 1000 : 0);
+    if (!ms) return '';
+    const diff = Date.now() - ms;
+    if (diff < 60_000) return '방금';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분`;
+    const d = new Date(ms);
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+    if (isToday) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const isYesterday = (today.getTime() - d.setHours(23,59,59,999)) < 24 * 3600_000 && d.getDate() !== today.getDate();
+    if (isYesterday) return '어제';
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
   const [channels, setChannels] = useState([]);
   const [dmRooms, setDmRooms] = useState([]);
   const [users, setUsers] = useState([]);
@@ -157,6 +178,12 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
         {channels.map((ch) => {
           const isCustom = ch.type === 'custom';
           const hasUnread = unreadRoomIds?.channel?.has(ch.id);
+          const unread = unreadCounts?.channel?.[ch.id] || 0;
+          const defaultSubtitle = ch.type === 'company' ? '전체 공지 · 대화'
+            : isCustom ? `멤버 ${(ch.memberIds || []).length}명`
+            : '부서 채팅';
+          const preview = ch.lastMessage ? truncate(ch.lastMessage, 38) : defaultSubtitle;
+          const when = relativeTime(ch.lastMessageAt);
           return (
             <div key={ch.id} className={`channel-row channel-menu-wrap ${hasUnread ? 'has-unread' : ''}`}>
               <button className="channel-item" onClick={() => onSelectChannel(ch)}>
@@ -164,18 +191,19 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
                   {ch.type === 'company' ? '전체' : isCustom ? '★' : '#'}
                 </div>
                 <div className="channel-info">
-                  <span className="channel-name">
-                    {ch.name}
-                    {hasUnread && <span className="channel-unread-badge" aria-label="읽지 않은 메시지" />}
-                  </span>
-                  <span className="channel-type-label">
-                    {ch.type === 'company' ? '전체 공지 · 대화' :
-                     isCustom ? `멤버 ${(ch.memberIds || []).length}명` : '부서 채팅'}
-                  </span>
+                  <div className="channel-name-row">
+                    <span className="channel-name">{ch.name}</span>
+                    {when && <span className="channel-when">{when}</span>}
+                  </div>
+                  <div className="channel-preview-row">
+                    <span className="channel-type-label" title={ch.lastMessage || defaultSubtitle}>{preview}</span>
+                    {unread > 0 && (
+                      <span className="channel-unread-count" aria-label={`읽지 않은 메시지 ${unread}개`}>
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="channel-arrow">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </button>
               {isAdmin && isCustom && (
                 <>
@@ -239,6 +267,8 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
           const lastMsg = room.lastMessage || '';
           const menuOpen = openMenuId === `dm_${room.id}`;
           const hasUnread = unreadRoomIds?.dm?.has(room.id);
+          const unread = unreadCounts?.dm?.[room.id] || 0;
+          const when = relativeTime(room.lastMessageAt);
           return (
             <div key={room.id} className={`channel-row channel-menu-wrap ${hasUnread ? 'has-unread' : ''}`}>
               <button className="channel-item" onClick={() => openExistingDm(room)}>
@@ -246,15 +276,19 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
                   {otherName?.[0] || '?'}
                 </div>
                 <div className="channel-info">
-                  <span className="channel-name">
-                    {otherName}
-                    {hasUnread && <span className="channel-unread-badge" aria-label="읽지 않은 메시지" />}
-                  </span>
-                  <span className="channel-type-label">{lastMsg || '대화를 시작해보세요'}</span>
+                  <div className="channel-name-row">
+                    <span className="channel-name">{otherName}</span>
+                    {when && <span className="channel-when">{when}</span>}
+                  </div>
+                  <div className="channel-preview-row">
+                    <span className="channel-type-label" title={lastMsg}>{truncate(lastMsg || '대화를 시작해보세요', 38)}</span>
+                    {unread > 0 && (
+                      <span className="channel-unread-count" aria-label={`읽지 않은 메시지 ${unread}개`}>
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="channel-arrow">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </button>
               <button
                 type="button"
