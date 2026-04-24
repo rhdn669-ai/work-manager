@@ -112,6 +112,9 @@ export async function addClosingItem(siteId, year, month, data) {
     quantity: data.quantity || 0,
     amount: data.amount || 0,
     order: data.order || 0,
+    // 모달 선택으로 추가된 행의 수정 잠금 플래그
+    vendorLocked: !!data.vendorLocked,
+    detailLocked: !!data.detailLocked,
     createdAt: new Date(),
     updatedAt: new Date(),
   });

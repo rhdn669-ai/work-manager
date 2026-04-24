@@ -981,10 +981,14 @@ export default function SiteClosingPage() {
             const isVendorCase = cardType === 'vendor_case';
             const unitLabel = isDaily ? '시간' : isVendorCase ? '건' : '일';
             const priceLabel = isDaily ? '시급' : isVendorCase ? '건당' : '단가';
-            // 직원은 항상 모달로만 생성되므로 과거 데이터도 잠금.
-            // 다른 유형은 저장된 플래그만 사용 (플래그 없으면 편집 가능 = 하위 호환).
-            const vendorLocked = !!buf.vendorLocked || cardType === 'employee';
-            const detailLocked = !!buf.detailLocked || cardType === 'employee';
+            // 모달 전용 생성 유형은 과거 데이터도 파생 잠금.
+            // - employee: 항상 모달 → 업체/이름 둘 다 잠금
+            // - vendor / vendor_case: 업체는 항상 모달 → 업체 잠금. 이름은 값 있을 때만(모달 선택) 잠금.
+            // - freelancer / daily: 직접 입력 경로 있음 → 플래그만 사용
+            const isEmployee = cardType === 'employee';
+            const isVendorType = cardType === 'vendor' || cardType === 'vendor_case';
+            const vendorLocked = !!buf.vendorLocked || isEmployee || (isVendorType && !!(buf.vendor || '').trim());
+            const detailLocked = !!buf.detailLocked || isEmployee || (isVendorType && !!(buf.detail || '').trim());
             return (
               <div className={`closing-card closing-card-${cardType}`} key={it.id}>
                 <div className="closing-card-head">
