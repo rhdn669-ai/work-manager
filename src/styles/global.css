@@ -4086,6 +4086,49 @@ body {
   font-size: 15px;
 }
 
+/* 모바일/폴더블 펼침: 합계 바 콤팩트화 */
+@media (max-width: 640px) {
+  .total-summary-bar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .total-summary-item {
+    min-width: 0;
+  }
+  .total-summary-item .label {
+    font-size: 10px;
+  }
+  .total-summary-item strong {
+    font-size: 13px;
+  }
+}
+
+/* 표준 폰 (Z Flip 외 일반 폰): 3개 한 줄 유지하되 더 압축 */
+@media (max-width: 430px) {
+  .total-summary-bar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .total-summary-item strong {
+    font-size: 12px;
+  }
+}
+
+/* 폴더블 접힘 (Z Flip 외부 화면 등): 2열 그리드로 전환 */
+@media (max-width: 340px) {
+  .total-summary-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .total-summary-item:nth-child(3) {
+    grid-column: 1 / -1;
+    border-top: 1px dashed var(--border);
+    padding-top: 6px;
+  }
+}
+
 /* Toggle switch (iOS-style) */
 .toggle-row {
   display: flex;
