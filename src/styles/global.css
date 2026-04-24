@@ -4731,16 +4731,18 @@ body {
 .home-cal-cell {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
-  gap: 4px;
-  min-height: 54px;
-  padding: 6px 4px;
+  gap: 3px;
+  min-height: 62px;
+  padding: 4px 5px;
   background: #fafbfc;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  border: 1px solid #eef0f2;
+  border-radius: 6px;
   font-family: inherit;
   cursor: pointer;
+  text-align: left;
+  min-width: 0;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.05s, border-color 0.05s;
@@ -4770,15 +4772,19 @@ body {
 .home-cal-cell.selected .home-cal-more { color: #fff; }
 
 .home-cal-date {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1;
+  margin-bottom: 2px;
+  align-self: flex-start;
 }
 .home-cal-cell.sunday .home-cal-date { color: #ef4444; }
 .home-cal-cell.saturday .home-cal-date { color: #3b82f6; }
 .home-cal-cell.today .home-cal-date { color: #F59E0B; }
 .home-cal-cell.today.selected .home-cal-date { color: #fff; }
 
+/* 레거시: 관리자 아닌 홈에서 아직 사용 가능하도록 유지 */
 .home-cal-dots {
   display: inline-flex;
   gap: 3px;
@@ -4796,6 +4802,42 @@ body {
 .home-cal-dot.type-overtime { background: #8b5cf6; }
 .home-cal-dot.type-leave { background: #10b981; }
 .home-cal-dot.type-personal { background: #ec4899; }
+
+/* 팀 캘린더와 동일한 이벤트 레이블 스타일 */
+.home-cal-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.home-cal-ev {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.45;
+}
+.home-cal-ev.type-event { background: #3b82f6; }
+.home-cal-ev.type-notice { background: #f59e0b; }
+.home-cal-ev.type-holiday { background: #ef4444; }
+.home-cal-ev.type-overtime { background: #2563eb; }
+.home-cal-ev.type-leave { background: #ef4444; }
+.home-cal-ev.type-personal { background: #ec4899; }
+.home-cal-ev-more {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 0 3px;
+  line-height: 1.3;
+}
+/* 선택/오늘 셀 안의 레이블은 배경 유지, 날짜 텍스트만 강조 색으로 */
+.home-cal-cell.selected .home-cal-ev { box-shadow: 0 0 0 1px rgba(255,255,255,0.4); }
+.home-cal-cell.selected .home-cal-date { color: #fff; }
 
 .home-cal-list-hint {
   font-size: 11px;
@@ -4835,33 +4877,65 @@ body {
 }
 .home-cal-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: #fafbfc;
-  border: 1px solid #eef2f6;
-  border-left-width: 3px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
 }
-.home-cal-item.type-event { border-left-color: #3b82f6; }
-.home-cal-item.type-notice { border-left-color: #f59e0b; }
-.home-cal-item.type-holiday { border-left-color: #ef4444; }
-.home-cal-item.type-overtime { border-left-color: #8b5cf6; }
-.home-cal-item.type-leave { border-left-color: #10b981; }
+/* 좌측 컬러 accent 점 (dot) */
+.home-cal-item::before {
+  content: '';
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #64748b;
+}
+.home-cal-item.type-event::before { background: #3b82f6; }
+.home-cal-item.type-notice::before { background: #f59e0b; }
+.home-cal-item.type-holiday::before { background: #ef4444; }
+.home-cal-item.type-overtime::before { background: #2563eb; }
+.home-cal-item.type-leave::before { background: #ef4444; }
+.home-cal-item.type-personal::before { background: #ec4899; }
 
+.home-cal-item-body {
+  flex: 1;
+  min-width: 0;
+}
+.home-cal-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.home-cal-item-desc,
+.home-cal-item-meta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* 우측 컬러 칩 badge — 팀 캘린더와 동일한 강조 */
 .home-cal-badge {
   flex-shrink: 0;
-  padding: 2px 8px;
-  font-size: 10px;
+  order: 2; /* body 뒤, 삭제 버튼 앞 */
+  padding: 4px 10px;
+  font-size: 13px;
   font-weight: 700;
-  border-radius: 999px;
-  letter-spacing: 0.02em;
+  color: #fff;
+  border-radius: 6px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  background: #64748b;
 }
-.home-cal-item.type-event .home-cal-badge { background: #FDE68A; color: #92400E; }
-.home-cal-item.type-notice .home-cal-badge { background: #fef3c7; color: #92400e; }
-.home-cal-item.type-holiday .home-cal-badge { background: #fee2e2; color: #991b1b; }
-.home-cal-item.type-overtime .home-cal-badge { background: #ede9fe; color: #5b21b6; }
-.home-cal-item.type-leave .home-cal-badge { background: #d1fae5; color: #065f46; }
+.home-cal-item.type-event .home-cal-badge { background: #3b82f6; }
+.home-cal-item.type-notice .home-cal-badge { background: #f59e0b; }
+.home-cal-item.type-holiday .home-cal-badge { background: #ef4444; }
+.home-cal-item.type-overtime .home-cal-badge { background: #2563eb; }
+.home-cal-item.type-leave .home-cal-badge { background: #ef4444; }
+.home-cal-item.type-personal .home-cal-badge { background: #ec4899; }
 
 /* 연차 잔여 테이블 셀 */
 .leave-balance-cell {

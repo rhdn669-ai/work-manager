@@ -273,12 +273,23 @@ export default function HomeCalendar() {
                       }}
                     >
                       <span className="home-cal-date">{d}</span>
-                      <span className="home-cal-dots">
-                        {dayEvents.slice(0, 3).map((e, ei) => (
-                          <span key={ei} className={`home-cal-dot type-${e.type || 'event'}`} />
-                        ))}
-                        {dayEvents.length > 3 && <span className="home-cal-more">+{dayEvents.length - 3}</span>}
-                      </span>
+                      <div className="home-cal-events">
+                        {dayEvents.slice(0, 3).map((e, ei) => {
+                          const lbl = e._kind === 'overtime' || e._kind === 'leave'
+                            ? (e._who || userNameMap[e.userId] || (TYPE_LABEL[e.type] || '일정'))
+                            : e.title;
+                          return (
+                            <span
+                              key={ei}
+                              className={`home-cal-ev type-${e.type || 'event'}`}
+                              title={e.title}
+                            >
+                              {lbl}
+                            </span>
+                          );
+                        })}
+                        {dayEvents.length > 3 && <span className="home-cal-ev-more">+{dayEvents.length - 3}</span>}
+                      </div>
                     </button>
                   );
                 })}
