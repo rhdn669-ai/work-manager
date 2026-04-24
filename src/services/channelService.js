@@ -150,6 +150,15 @@ export async function editChannelMessage(channelId, msgId, newText) {
 export async function deleteAllChannelMessages(channelId) {
   const snap = await getDocs(msgCol(channelId));
   await Promise.all(snap.docs.map((d) => deleteDoc(doc(db, 'channels', channelId, 'messages', d.id))));
+  // 채널 doc의 메타도 리셋 — unread 오판/잘못된 미리보기 방지
+  try {
+    await updateDoc(doc(db, 'channels', channelId), {
+      lastMessage: '',
+      lastMessageAt: null,
+      lastSenderId: null,
+      messageCount: 0,
+    });
+  } catch { /* 무시 */ }
 }
 
 export async function toggleChannelReaction(channelId, msgId, emoji, userId) {

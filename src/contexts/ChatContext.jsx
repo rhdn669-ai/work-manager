@@ -74,18 +74,13 @@ export function ChatProvider({ children }) {
     const dmCount = {};
 
     function countFor(kind, room) {
-      const lastMs = tsToMs(room.lastMessageAt);
-      if (!lastMs) return 0;
-      if (room.lastSenderId === uid) return 0;
-      // messageCount 기반
+      // 실제 메시지가 있었던 방만 카운트 (messageCount 기반만 인정)
+      // legacy lastMessageAt가 남아있지만 messageCount가 0이면 "메시지 없음"으로 처리
       const total = Number(room.messageCount || 0);
-      if (total > 0) {
-        const readCount = parseInt(localStorage.getItem(readCountKey(uid, kind, room.id)) || '0', 10);
-        return Math.max(0, total - readCount);
-      }
-      // fallback: timestamp 비교 — 미읽음이면 1
-      const read = parseInt(localStorage.getItem(readKey(uid, kind, room.id)) || '0', 10);
-      return lastMs > read ? 1 : 0;
+      if (total <= 0) return 0;
+      if (room.lastSenderId === uid) return 0;
+      const readCount = parseInt(localStorage.getItem(readCountKey(uid, kind, room.id)) || '0', 10);
+      return Math.max(0, total - readCount);
     }
 
     accessibleChannels.forEach((c) => {
@@ -132,11 +127,10 @@ export function ChatProvider({ children }) {
 
   // 알림 소리/브라우저 Notification — unreadCount 증가 시 1회 발화
   const prevUnreadRef = useRef(0);
-  const firstLoadRef = useRef(true);
+  const mountTimeRef = useRef(Date.now());
   useEffect(() => {
-    // 최초 로딩은 skip (기존 누적 unread로 소리 나는 것 방지)
-    if (firstLoadRef.current) {
-      firstLoadRef.current = false;
+    // 마운트 후 5초 동안은 알림 skip — 초기 데이터 로딩으로 튀는 값에 beep 방지
+    if (Date.now() - mountTimeRef.current < 5000) {
       prevUnreadRef.current = unreadCount;
       return;
     }
