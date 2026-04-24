@@ -1583,6 +1583,8 @@ body {
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
+  /* 스크롤이 끝에 도달해도 뒷 배경이 따라 움직이지 않도록 */
+  overscroll-behavior: contain;
 }
 
 .modal-header {
@@ -5782,6 +5784,7 @@ body {
     padding-bottom: max(20px, env(safe-area-inset-bottom));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .modal-close {

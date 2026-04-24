@@ -1,4 +1,23 @@
+import { useEffect } from 'react';
+
 export default function Modal({ isOpen, onClose, title, children }) {
+  // 모달 열렸을 때 배경 스크롤 잠금 — 모바일 iOS 대응 포함
+  useEffect(() => {
+    if (!isOpen) return;
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = documentElement.style.overflow;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+    body.style.overflow = 'hidden';
+    documentElement.style.overflow = 'hidden';
+    body.style.overscrollBehavior = 'none';
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      documentElement.style.overflow = prevHtmlOverflow;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
