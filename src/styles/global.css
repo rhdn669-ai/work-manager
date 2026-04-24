@@ -6320,7 +6320,8 @@ body {
 
   .chat-page {
     margin: -16px -16px 0;
-    height: calc(100dvh - var(--header-height) - env(safe-area-inset-top) - 64px - env(safe-area-inset-bottom));
+    /* 72px = .main-content padding-bottom (BottomNav 영역 확보값과 일치) */
+    height: calc(100dvh - var(--header-height) - env(safe-area-inset-top) - 72px - env(safe-area-inset-bottom));
   }
 
   .header-title {
@@ -6745,8 +6746,11 @@ body {
     padding-bottom: max(4px, env(safe-area-inset-bottom));
   }
 
+  /* BottomNav가 모바일 채팅 페이지에서도 표시되며 자체 safe-area-bottom을
+     처리하므로, chat-input-bar에는 추가 padding-bottom을 두지 않음
+     (이전엔 이중 적용으로 input-area가 두꺼워져 보내기 버튼이 짤림) */
   .chat-input-bar {
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding-bottom: 12px;
   }
 
   /* 로그인 페이지 dvh 단위 */
