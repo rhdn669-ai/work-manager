@@ -6391,26 +6391,58 @@ body {
     font-size: 12px;
     margin-bottom: 6px;
   }
-  /* TeamReportsPage 전용 - 잔업/연차 라벨 부여 */
-  .reports-page .table tbody td:nth-child(3),
-  .reports-page .table tbody td:nth-child(4) {
+  /* 멤버 통계 테이블(.team-stats-table) — 잔업/연차 컬럼에 라벨 부여
+     ReportsPage(5컬럼: # 이름 부서 잔업 연차) → # 컬럼 숨김
+     TeamReportsPage(4컬럼: 이름 직급 잔업 연차) → 그대로 */
+  .reports-page .team-stats-table tbody td:nth-child(1) {
+    display: none;
+  }
+  .reports-page .team-stats-table tbody td:nth-child(2) {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .reports-page .team-stats-table tbody td:nth-child(3) {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  .reports-page .team-stats-table tbody td:nth-child(4),
+  .reports-page .team-stats-table tbody td:nth-child(5),
+  .reports-page .team-stats-4col tbody td:nth-child(3),
+  .reports-page .team-stats-4col tbody td:nth-child(4) {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 4px 0;
     border-top: 1px dashed var(--border);
   }
-  .reports-page .table tbody td:nth-child(3)::before {
+  .reports-page .team-stats-table tbody td:nth-child(4)::before,
+  .reports-page .team-stats-4col tbody td:nth-child(3)::before {
     content: '잔업';
     color: var(--text-muted);
     font-weight: 600;
     font-size: 12px;
   }
-  .reports-page .table tbody td:nth-child(4)::before {
+  .reports-page .team-stats-table tbody td:nth-child(5)::before,
+  .reports-page .team-stats-4col tbody td:nth-child(4)::before {
     content: '연차';
     color: var(--text-muted);
     font-weight: 600;
     font-size: 12px;
+  }
+  /* TeamReportsPage 4컬럼은 1번 td(이름) 헤더, 2번(직급) 부제 — 위 5컬럼 분기와 충돌 회피 */
+  .reports-page .team-stats-4col tbody td:nth-child(1) {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .reports-page .team-stats-4col tbody td:nth-child(2) {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
   }
   /* tfoot 합계 행 */
   .reports-page .table tfoot tr {

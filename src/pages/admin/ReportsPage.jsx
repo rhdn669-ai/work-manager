@@ -200,6 +200,7 @@ export default function ReportsPage() {
               <tr>
                 <th>날짜</th>
                 <th>직원</th>
+                <th>프로젝트</th>
                 <th>시간</th>
                 <th>사유</th>
                 <th style={{ width: 140 }}></th>
@@ -210,6 +211,7 @@ export default function ReportsPage() {
                 <tr key={r.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{r.date}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{r.userName}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{siteMap[r.siteId] || '미지정'}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{formatMinutes(r.minutes)}</td>
                   <td>{r.reason || '-'}</td>
                   <td>
@@ -251,7 +253,7 @@ export default function ReportsPage() {
       ) : rows.length === 0 ? (
         <p className="text-muted">직원 정보가 없습니다.</p>
       ) : (
-        <table className="table">
+        <table className="table team-stats-table">
           <thead>
             <tr>
               <th style={{ width: 48 }}>#</th>

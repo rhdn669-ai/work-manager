@@ -203,7 +203,7 @@ export default function TeamReportsPage() {
         <div className="card"><div className="card-body empty-state">팀원이 없습니다.</div></div>
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table team-stats-table team-stats-4col">
             <thead>
               <tr>
                 <th>이름</th>
