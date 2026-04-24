@@ -423,10 +423,22 @@ export default function OutsourceManagementPage() {
                   <td>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
                   <td>{f.contact || '-'}</td>
                   <td style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.note || '-'}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <div className="btn-group">
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(f)}>수정</button>
-                      <button className="btn btn-sm btn-danger-outline" onClick={() => handleDelete(f)}>삭제</button>
+                  <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
+                    <div className="outsource-action-btns">
+                      <button type="button" className="outsource-icon-btn" onClick={() => openEdit(f)} title="수정" aria-label="수정">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button type="button" className="outsource-icon-btn is-danger" onClick={() => handleDelete(f)} title="삭제" aria-label="삭제">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6"/>
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -462,11 +474,30 @@ export default function OutsourceManagementPage() {
                   <td>{v.contact || '-'}</td>
                   <td>{v.businessNumber || '-'}</td>
                   <td style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <div className="btn-group">
-                      <button className="btn btn-sm btn-outline" onClick={() => openVendorDetail(v)}>소속·프로젝트</button>
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(v)}>수정</button>
-                      <button className="btn btn-sm btn-danger-outline" onClick={() => handleDelete(v)}>삭제</button>
+                  <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
+                    <div className="outsource-action-btns">
+                      <button type="button" className="outsource-icon-btn" onClick={() => openVendorDetail(v)} title="소속·프로젝트" aria-label="소속·프로젝트 보기">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                          <circle cx="9" cy="7" r="4"/>
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                      </button>
+                      <button type="button" className="outsource-icon-btn" onClick={() => openEdit(v)} title="수정" aria-label="수정">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button type="button" className="outsource-icon-btn is-danger" onClick={() => handleDelete(v)} title="삭제" aria-label="삭제">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6"/>
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
