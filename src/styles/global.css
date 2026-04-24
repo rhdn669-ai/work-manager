@@ -4762,6 +4762,21 @@ body {
   border-radius: 6px;
 }
 
+/* 모달로 선택된 업체/이름 — 수정 불가 표시 */
+.closing-vendor[readonly],
+.closing-name[readonly] {
+  background: #f8fafc;
+  color: #334155;
+  border-color: transparent;
+  cursor: default;
+}
+.closing-vendor[readonly]:focus,
+.closing-name[readonly]:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
 .closing-vendor:hover:not(:disabled),
 .closing-name:hover:not(:disabled),
 .closing-category:hover:not(:disabled) {

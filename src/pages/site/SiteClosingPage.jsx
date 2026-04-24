@@ -332,6 +332,8 @@ export default function SiteClosingPage() {
       quantity: 0,
       amount: 0,
       order: nextOrder,
+      vendorLocked: !!(f.vendor || '').trim(),
+      detailLocked: true,
     });
     setFreelancerPickerMode(null);
     await loadAll();
@@ -343,7 +345,7 @@ export default function SiteClosingPage() {
     setPickedVendor(null);
   }
 
-  async function addVendorRow({ itemType, vendorName, projectName = '', unitPrice = 0 }) {
+  async function addVendorRow({ itemType, vendorName, projectName = '', unitPrice = 0, vendorLocked = false, detailLocked = false }) {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     await addClosingItem(siteId, y, m, {
@@ -357,6 +359,8 @@ export default function SiteClosingPage() {
       quantity: 0,
       amount: 0,
       order: nextOrder,
+      vendorLocked,
+      detailLocked,
     });
     await loadAll();
   }
@@ -378,6 +382,8 @@ export default function SiteClosingPage() {
       vendorName: pickedVendor?.name || '',
       projectName: f?.name || '',
       unitPrice: rate,
+      vendorLocked: true,
+      detailLocked: true,
     });
     resetVendorPicker();
   }
@@ -388,6 +394,8 @@ export default function SiteClosingPage() {
       vendorName: pickedVendor?.name || '',
       projectName: '',
       unitPrice: Number(pickedVendor?.dailyRate) || 0,
+      vendorLocked: true,
+      detailLocked: false,
     });
     resetVendorPicker();
   }
@@ -398,6 +406,8 @@ export default function SiteClosingPage() {
       vendorName: pickedVendor?.name || '',
       projectName: p?.name || '',
       unitPrice: Number(p?.unitPrice) || Number(pickedVendor?.caseRate) || 0,
+      vendorLocked: true,
+      detailLocked: true,
     });
     resetVendorPicker();
   }
@@ -409,6 +419,8 @@ export default function SiteClosingPage() {
       vendorName: pickedVendor?.name || '',
       projectName: '',
       unitPrice: Number(pickedVendor?.caseRate) || 0,
+      vendorLocked: true,
+      detailLocked: false,
     });
     resetVendorPicker();
   }
@@ -434,6 +446,8 @@ export default function SiteClosingPage() {
       quantity: 0,
       amount: 0,
       order: nextOrder,
+      vendorLocked: true,
+      detailLocked: true,
     });
     setShowEmployeeSelect(false);
     await loadAll();
@@ -1040,6 +1054,10 @@ export default function SiteClosingPage() {
             const isVendorCase = cardType === 'vendor_case';
             const unitLabel = isDaily ? '시간' : isVendorCase ? '건' : '일';
             const priceLabel = isDaily ? '시급' : isVendorCase ? '건당' : '단가';
+            // 직원은 항상 모달로만 생성되므로 과거 데이터도 잠금.
+            // 다른 유형은 저장된 플래그만 사용 (플래그 없으면 편집 가능 = 하위 호환).
+            const vendorLocked = !!buf.vendorLocked || cardType === 'employee';
+            const detailLocked = !!buf.detailLocked || cardType === 'employee';
             return (
               <div className={`closing-card closing-card-${cardType}`} key={it.id}>
                 <div className="closing-card-head">
@@ -1048,22 +1066,27 @@ export default function SiteClosingPage() {
                     className="closing-vendor"
                     value={buf.vendor || ''}
                     placeholder="업체명"
-                    list={cardType !== 'employee' ? 'closing-vendor-list' : undefined}
+                    list={!vendorLocked && cardType !== 'employee' ? 'closing-vendor-list' : undefined}
                     onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}
+                    readOnly={vendorLocked}
+                    title={vendorLocked ? '모달에서 선택된 값은 수정 불가 (삭제 후 재추가)' : undefined}
                   />
                   <input
                     className="closing-name"
                     value={buf.detail || ''}
                     placeholder={cardType === 'vendor_case' ? '프로젝트명' : '이름'}
                     list={
+                      detailLocked ? undefined :
                       cardType === 'vendor_case' ? 'closing-vendor-project-list' :
                       cardType !== 'employee' ? 'closing-freelancer-list' : undefined
                     }
                     onChange={(e) => updateField(it.id, 'detail', e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}
+                    readOnly={detailLocked}
+                    title={detailLocked ? '모달에서 선택된 값은 수정 불가 (삭제 후 재추가)' : undefined}
                   />
                   {canEdit && (
                     <button
