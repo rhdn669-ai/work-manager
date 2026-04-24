@@ -136,6 +136,17 @@ export async function getApprovedLeavesByMonth(year, month) {
     .filter((l) => l.status === 'confirmed' && l.endDate >= monthStart && l.startDate <= monthEnd);
 }
 
+// 모든 사용자의 연차 신청 목록 (관리자 전용, 연도 기준, 모든 상태)
+export async function getAllLeavesByYear(year) {
+  const startDate = `${year}-01-01`;
+  const endDate = `${year}-12-31`;
+  const snapshot = await getDocs(leavesRef);
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((l) => l.startDate >= startDate && l.startDate <= endDate)
+    .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+}
+
 // 본인 연차 신청 목록 (복합 인덱스 회피: 클라이언트 필터/정렬)
 export async function getMyLeaves(userId, year) {
   const startDate = `${year}-01-01`;

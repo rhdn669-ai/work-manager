@@ -19,6 +19,7 @@ import UnassignedReportPage from './pages/admin/UnassignedReportPage';
 import OutsourceManagementPage from './pages/admin/OutsourceManagementPage';
 import SiteManagementPage from './pages/admin/SiteManagementPage';
 import EventManagementPage from './pages/admin/EventManagementPage';
+import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 
@@ -70,6 +71,7 @@ const router = createBrowserRouter([
           { path: '/admin/unassigned', element: <UnassignedReportPage /> },
           { path: '/admin/outsource', element: <OutsourceManagementPage /> },
           { path: '/admin/events', element: <EventManagementPage /> },
+          { path: '/admin/leaves', element: <LeaveManagementPage /> },
         ],
       },
     ],
