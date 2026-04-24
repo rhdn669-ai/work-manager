@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useChat } from '../contexts/ChatContext';
 import {
   getAccessibleChannels, ensureCompanyChannel,
   createCustomChannel, updateCustomChannel, deleteCustomChannel,
@@ -9,6 +10,7 @@ import { getUsers } from '../services/userService';
 
 export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
   const { userProfile, canApproveAll, isAdmin } = useAuth();
+  const { unreadRoomIds } = useChat();
   const [channels, setChannels] = useState([]);
   const [dmRooms, setDmRooms] = useState([]);
   const [users, setUsers] = useState([]);
@@ -154,14 +156,18 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
         <div className="channel-section-label">채널</div>
         {channels.map((ch) => {
           const isCustom = ch.type === 'custom';
+          const hasUnread = unreadRoomIds?.channel?.has(ch.id);
           return (
-            <div key={ch.id} className="channel-row channel-menu-wrap">
+            <div key={ch.id} className={`channel-row channel-menu-wrap ${hasUnread ? 'has-unread' : ''}`}>
               <button className="channel-item" onClick={() => onSelectChannel(ch)}>
                 <div className={`channel-icon-wrap ${ch.type === 'company' ? 'company' : isCustom ? 'custom' : 'dept'}`}>
                   {ch.type === 'company' ? '전체' : isCustom ? '★' : '#'}
                 </div>
                 <div className="channel-info">
-                  <span className="channel-name">{ch.name}</span>
+                  <span className="channel-name">
+                    {ch.name}
+                    {hasUnread && <span className="channel-unread-badge" aria-label="읽지 않은 메시지" />}
+                  </span>
                   <span className="channel-type-label">
                     {ch.type === 'company' ? '전체 공지 · 대화' :
                      isCustom ? `멤버 ${(ch.memberIds || []).length}명` : '부서 채팅'}
@@ -232,14 +238,18 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
           const otherName = room.names?.[otherUid] || '알 수 없음';
           const lastMsg = room.lastMessage || '';
           const menuOpen = openMenuId === `dm_${room.id}`;
+          const hasUnread = unreadRoomIds?.dm?.has(room.id);
           return (
-            <div key={room.id} className="channel-row channel-menu-wrap">
+            <div key={room.id} className={`channel-row channel-menu-wrap ${hasUnread ? 'has-unread' : ''}`}>
               <button className="channel-item" onClick={() => openExistingDm(room)}>
                 <div className="channel-icon-wrap dm-avatar">
                   {otherName?.[0] || '?'}
                 </div>
                 <div className="channel-info">
-                  <span className="channel-name">{otherName}</span>
+                  <span className="channel-name">
+                    {otherName}
+                    {hasUnread && <span className="channel-unread-badge" aria-label="읽지 않은 메시지" />}
+                  </span>
                   <span className="channel-type-label">{lastMsg || '대화를 시작해보세요'}</span>
                 </div>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="channel-arrow">

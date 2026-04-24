@@ -55,28 +55,33 @@ export function ChatProvider({ children }) {
     });
   }, [channelMetas, userProfile?.uid, userProfile?.departmentId, canApproveAll]);
 
-  // unread = (내가 안 보낸) 마지막 메시지의 시각이 localStorage의 lastRead 이후인 방의 개수
-  // (정확한 메시지 수가 아니라 "읽지 않은 방 개수" — 다수 리스너 회피)
+  // unread = (내가 안 보낸) 마지막 메시지의 시각이 localStorage의 lastRead 이후인 방
+  // unreadRoomIds: { channel: Set<id>, dm: Set<id> } — 각 행에 "읽지 않음" 표시용
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const unreadCount = useMemo(() => {
-    if (!userProfile?.uid) return 0;
-    let n = 0;
+  const { unreadCount, unreadRoomIds } = useMemo(() => {
+    const empty = { unreadCount: 0, unreadRoomIds: { channel: new Set(), dm: new Set() } };
+    if (!userProfile?.uid) return empty;
     const uid = userProfile.uid;
+    const channelSet = new Set();
+    const dmSet = new Set();
     accessibleChannels.forEach((c) => {
       const lastMs = tsToMs(c.lastMessageAt);
       if (!lastMs) return;
       if (c.lastSenderId === uid) return;
       const read = parseInt(localStorage.getItem(readKey(uid, 'channel', c.id)) || '0', 10);
-      if (lastMs > read) n += 1;
+      if (lastMs > read) channelSet.add(c.id);
     });
     dmRooms.forEach((r) => {
       const lastMs = tsToMs(r.lastMessageAt);
       if (!lastMs) return;
       if (r.lastSenderId === uid) return;
       const read = parseInt(localStorage.getItem(readKey(uid, 'dm', r.id)) || '0', 10);
-      if (lastMs > read) n += 1;
+      if (lastMs > read) dmSet.add(r.id);
     });
-    return n;
+    return {
+      unreadCount: channelSet.size + dmSet.size,
+      unreadRoomIds: { channel: channelSet, dm: dmSet },
+    };
   }, [accessibleChannels, dmRooms, userProfile?.uid, readTick]);
 
   // 단일 방 읽음 처리 — 그 방의 lastMessageAt 현재 시각으로 기록
@@ -95,7 +100,7 @@ export function ChatProvider({ children }) {
   }, [userProfile?.uid, accessibleChannels, dmRooms]);
 
   return (
-    <ChatContext.Provider value={{ unreadCount, markAsRead }}>
+    <ChatContext.Provider value={{ unreadCount, unreadRoomIds, markAsRead }}>
       {children}
     </ChatContext.Provider>
   );
