@@ -88,7 +88,7 @@ export default function UserManagementPage() {
         };
         if (form.password !== '') updateData.password = form.password;
         await updateUser(editUser.uid, updateData);
-        await initLeaveBalance(editUser.uid, form.joinDate);
+        if (form.joinDate) await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
         const userId = 'user_' + Date.now();
         targetUid = userId;
@@ -100,7 +100,7 @@ export default function UserManagementPage() {
           canViewSalary: !!form.canViewSalary,
           ...(form.password !== '' && { password: form.password }),
         });
-        await initLeaveBalance(userId, form.joinDate);
+        if (form.joinDate) await initLeaveBalance(userId, form.joinDate);
       }
 
       // 연차 잔여 조정: 편집 중 현재 잔여와 다르면 업데이트
@@ -287,10 +287,12 @@ export default function UserManagementPage() {
             <label>시급 (잔업 단가, 원)</label>
             <MoneyInput value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} placeholder="예: 15,000" />
           </div>
-          <div className="form-group">
-            <label>입사일</label>
-            <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} required />
-          </div>
+          {form.role !== 'admin' && (
+            <div className="form-group">
+              <label>입사일</label>
+              <input type="date" value={form.joinDate} onChange={(e) => setForm({ ...form, joinDate: e.target.value })} required />
+            </div>
+          )}
           {(() => {
             const autoGranted = form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position);
             const on = autoGranted || !!form.canViewSalary;
