@@ -4223,6 +4223,7 @@ body {
 .site-row-stats-panel .stat-balance-row > .stat-balance.negative { color: var(--danger); }
 
 @media (max-width: 640px) {
+  .site-row-wrapper { height: auto; }
   .site-row { flex-wrap: wrap; }
   .site-row-stats-panel {
     order: 5;
