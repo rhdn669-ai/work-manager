@@ -30,6 +30,8 @@ export default function Header({ onToggleSidebar }) {
   return (
     <header className="header">
       <div className="header-left">
+        <div className="header-logo" role="img" aria-label="IOPN" />
+        <span className="header-version">v{__APP_VERSION__}</span>
         <button className="menu-toggle" onClick={onToggleSidebar}>☰</button>
         {showBack && (
           <button type="button" className="header-back-btn" onClick={handleBack} aria-label="뒤로 가기">
@@ -43,8 +45,6 @@ export default function Header({ onToggleSidebar }) {
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
           </svg>
         </button>
-        <div className="header-logo" role="img" aria-label="IOPN" />
-        <span className="header-version">v{__APP_VERSION__}</span>
       </div>
       <div className="header-right">
         {userProfile && (
