@@ -4,7 +4,7 @@ import {
   getAccessibleChannels, ensureCompanyChannel,
   createCustomChannel, updateCustomChannel, deleteCustomChannel,
 } from '../services/channelService';
-import { subscribeDmRooms, getOrCreateDmRoom } from '../services/chatService';
+import { subscribeDmRooms, getOrCreateDmRoom, hideDmRoomForUser } from '../services/chatService';
 import { getUsers } from '../services/userService';
 
 export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
@@ -207,19 +207,57 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
           const otherUid = room.participants?.find((p) => p !== userProfile.uid);
           const otherName = room.names?.[otherUid] || '알 수 없음';
           const lastMsg = room.lastMessage || '';
+          const menuOpen = openMenuId === `dm_${room.id}`;
           return (
-            <button key={room.id} className="channel-item" onClick={() => openExistingDm(room)}>
-              <div className="channel-icon-wrap dm-avatar">
-                {otherName?.[0] || '?'}
-              </div>
-              <div className="channel-info">
-                <span className="channel-name">{otherName}</span>
-                <span className="channel-type-label">{lastMsg || '대화를 시작해보세요'}</span>
-              </div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="channel-arrow">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
+            <div key={room.id} className="channel-row channel-menu-wrap">
+              <button className="channel-item" onClick={() => openExistingDm(room)}>
+                <div className="channel-icon-wrap dm-avatar">
+                  {otherName?.[0] || '?'}
+                </div>
+                <div className="channel-info">
+                  <span className="channel-name">{otherName}</span>
+                  <span className="channel-type-label">{lastMsg || '대화를 시작해보세요'}</span>
+                </div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="channel-arrow">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="channel-menu-btn"
+                aria-label="관리"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpenMenuId(menuOpen ? null : `dm_${room.id}`);
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                  <circle cx="12" cy="5" r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="12" cy="19" r="1.8" />
+                </svg>
+              </button>
+              {menuOpen && (
+                <div className="channel-menu" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="channel-menu-danger"
+                    onClick={async () => {
+                      if (!confirm(`${otherName}님과의 대화를 내 목록에서 숨기시겠습니까?\n(상대방 쪽에는 그대로 남아 있고, 상대가 다시 메시지를 보내면 다시 나타납니다)`)) return;
+                      try {
+                        await hideDmRoomForUser(room.id, userProfile.uid);
+                        setOpenMenuId(null);
+                      } catch (err) {
+                        alert('삭제 실패: ' + err.message);
+                      }
+                    }}
+                  >
+                    내 목록에서 삭제
+                  </button>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

@@ -117,8 +117,10 @@ export default function SiteClosingPage() {
     };
   }, []);
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll(opts = {}) {
+    // silent 모드: 로딩 스피너 안 띄우고 백그라운드 동기화 → 현재 스크롤 위치 유지
+    const silent = opts.silent === true;
+    if (!silent) setLoading(true);
     try {
       const [s, its, fins, users, approvedLeaves, assigned] = await Promise.all([
         getSite(siteId),
@@ -203,7 +205,7 @@ export default function SiteClosingPage() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -213,7 +215,7 @@ export default function SiteClosingPage() {
     try {
       const count = await initRosterFromPreviousMonth(siteId, y, m);
       alert(`복사 완료: 명단 ${count}건`);
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (err) {
       alert(err.message || '복사 실패');
     } finally {
@@ -232,7 +234,7 @@ export default function SiteClosingPage() {
         }
         await deleteClosingItem(item.id);
       }
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (err) {
       alert('삭제 오류: ' + err.message);
     } finally {
@@ -244,7 +246,7 @@ export default function SiteClosingPage() {
     if (!confirm(`"${site.name}" 프로젝트를 마감 처리하시겠습니까?\n\n마감 후 수정이 불가하며, 프로젝트 목록에서 재활성할 수 있습니다.`)) return;
     try {
       await updateSite(siteId, { status: 'completed' });
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (err) {
       alert('마감 처리 오류: ' + err.message);
     }
@@ -310,7 +312,7 @@ export default function SiteClosingPage() {
       order: nextOrder,
     });
     setFreelancerPickerMode(null);
-    await loadAll();
+    await loadAll({ silent: true });
   }
 
   // 프리랜서 선택 시 — 이름/업체/단가 자동 입력
@@ -336,7 +338,7 @@ export default function SiteClosingPage() {
       detailLocked: true,
     });
     setFreelancerPickerMode(null);
-    await loadAll();
+    await loadAll({ silent: true });
   }
 
   function openVendorPicker(mode) {
@@ -362,7 +364,7 @@ export default function SiteClosingPage() {
       vendorLocked,
       detailLocked,
     });
-    await loadAll();
+    await loadAll({ silent: true });
   }
 
   async function handlePickVendor(v) {
@@ -450,7 +452,7 @@ export default function SiteClosingPage() {
       detailLocked: true,
     });
     setShowEmployeeSelect(false);
-    await loadAll();
+    await loadAll({ silent: true });
   }
 
   async function handleDeleteRow(itemId) {
@@ -461,7 +463,13 @@ export default function SiteClosingPage() {
     }
     try {
       await deleteClosingItem(itemId);
-      await loadAll();
+      // 낙관적 업데이트 — 전체 reload 대신 로컬 상태에서만 제거해 스크롤 위치 유지
+      setItems((prev) => prev.filter((x) => x.id !== itemId));
+      setEditBuf((prev) => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
     } catch (err) {
       alert('삭제 오류: ' + err.message);
     }
@@ -551,7 +559,7 @@ export default function SiteClosingPage() {
     const list = finances.filter((f) => f.type === type);
     const nextOrder = list.length ? Math.max(...list.map((f) => f.order || 0)) + 1 : 1;
     await addFinanceItem(siteId, y, m, { type, description, amount: 0, note: '', order: nextOrder });
-    await loadAll();
+    await loadAll({ silent: true });
   }
 
   function updateFinanceField(id, field, value) {
@@ -599,7 +607,7 @@ export default function SiteClosingPage() {
     if (timersRef.current[key]) { clearTimeout(timersRef.current[key]); delete timersRef.current[key]; }
     try {
       await deleteFinanceItem(id);
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (err) {
       alert('삭제 오류: ' + err.message);
     }

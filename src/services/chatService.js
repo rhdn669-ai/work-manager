@@ -163,7 +163,8 @@ export async function sendDmMessage({ roomId, userId, userName, position, text, 
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: text, lastMessageAt: serverTimestamp(), lastSenderId: userId });
+  // 메시지 송신 → hiddenBy 전체 초기화 (숨겨놨던 사람한테도 다시 나타나도록)
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: text, lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [] });
 }
 
 export async function sendDmImage({ roomId, userId, userName, position, file, replyTo = null }) {
@@ -181,7 +182,7 @@ export async function sendDmImage({ roomId, userId, userName, position, file, re
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '사진', lastMessageAt: serverTimestamp(), lastSenderId: userId });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '사진', lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [] });
 }
 
 export async function sendDmFile({ roomId, userId, userName, position, file, replyTo = null }) {
@@ -199,7 +200,7 @@ export async function sendDmFile({ roomId, userId, userName, position, file, rep
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp(), lastSenderId: userId });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp(), lastSenderId: userId, hiddenBy: [] });
 }
 
 export async function deleteDmMessage(roomId, msgId) {
@@ -218,5 +219,17 @@ export async function toggleDmReaction(roomId, msgId, emoji, userId) {
 
 export function subscribeDmRooms(userId, callback) {
   const q = query(DM_ROOMS, where('participants', 'array-contains', userId), orderBy('lastMessageAt', 'desc'));
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  return onSnapshot(q, (snap) => {
+    const rooms = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // 숨김 처리된 방은 필터링 (상대가 이후 새 메시지 보내면 송신 시 hiddenBy를 비워 다시 표시)
+    const visible = rooms.filter((r) => !(Array.isArray(r.hiddenBy) && r.hiddenBy.includes(userId)));
+    callback(visible);
+  });
+}
+
+// 1:1 대화방을 현재 사용자에게만 숨기기 (상대방에게는 그대로 보임)
+export async function hideDmRoomForUser(roomId, userId) {
+  await updateDoc(doc(DM_ROOMS, roomId), {
+    hiddenBy: arrayUnion(userId),
+  });
 }
