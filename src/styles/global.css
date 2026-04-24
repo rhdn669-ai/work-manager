@@ -1403,9 +1403,9 @@ body {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
-.team-calendar-day-detail-head strong { font-size: 14px; color: var(--text); }
+.team-calendar-day-detail-head strong { font-size: 15px; color: var(--text); font-weight: 700; }
 .team-calendar-close {
   margin-left: auto;
   border: none;
@@ -1422,8 +1422,11 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
-  font-size: 13px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
 }
 .team-cal-ev-dot {
   display: inline-block;
@@ -1442,8 +1445,36 @@ body {
 .team-cal-ev-dot.team-cal-ev-leave-quarter_2,
 .team-cal-ev-dot.team-cal-ev-leave-quarter_3,
 .team-cal-ev-dot.team-cal-ev-leave-quarter_4 { background: #f97316; }
-.team-calendar-day-list strong { color: var(--text); }
-.team-calendar-ev-detail { color: var(--text-muted); font-size: 12px; margin-left: auto; }
+
+.team-calendar-day-list strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 반차/연차/잔업 라벨 — 가독성 강화 (색상 칩) */
+.team-calendar-ev-detail {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #64748b;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+/* 유형별 칩 색 — dot과 매칭 */
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-overtime) .team-calendar-ev-detail { background: #2563eb; }
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-annual) .team-calendar-ev-detail,
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave:not(.team-cal-ev-leave-sick):not(.team-cal-ev-leave-half_am):not(.team-cal-ev-leave-half_pm):not(.team-cal-ev-leave-quarter_1):not(.team-cal-ev-leave-quarter_2):not(.team-cal-ev-leave-quarter_3):not(.team-cal-ev-leave-quarter_4)) .team-calendar-ev-detail { background: #ef4444; }
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-sick) .team-calendar-ev-detail { background: #7c3aed; }
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-half_am) .team-calendar-ev-detail,
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-half_pm) .team-calendar-ev-detail { background: #f59e0b; }
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-quarter_1) .team-calendar-ev-detail,
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-quarter_2) .team-calendar-ev-detail,
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-quarter_3) .team-calendar-ev-detail,
+.team-calendar-day-list li:has(.team-cal-ev-dot.team-cal-ev-leave-quarter_4) .team-calendar-ev-detail { background: #f97316; }
 
 @media (max-width: 520px) {
   .team-cal-cell { min-height: 58px; padding: 3px; }
