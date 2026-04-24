@@ -14,7 +14,7 @@ export default function UserManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
-    name: '', code: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
+    name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
     leaveRemaining: '',
   });
 
@@ -64,7 +64,7 @@ export default function UserManagementPage() {
     const bal = balances[user.uid];
     setEditUser(user);
     setForm({
-      name: user.name, code: user.code || '',
+      name: user.name, code: user.code || '', password: '',
       role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
       fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
       leaveRemaining: bal ? String(bal.remainingDays) : '',
@@ -78,12 +78,14 @@ export default function UserManagementPage() {
       let targetUid;
       if (editUser) {
         targetUid = editUser.uid;
-        await updateUser(editUser.uid, {
+        const updateData = {
           name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
-        });
+        };
+        if (form.password !== '') updateData.password = form.password;
+        await updateUser(editUser.uid, updateData);
         await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
         const userId = 'user_' + Date.now();
@@ -93,6 +95,7 @@ export default function UserManagementPage() {
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
+          ...(form.password !== '' && { password: form.password }),
         });
         await initLeaveBalance(userId, form.joinDate);
       }
@@ -197,6 +200,10 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>로그인 코드</label>
             <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="예: 1234" required />
+          </div>
+          <div className="form-group">
+            <label>비밀번호 {editUser && <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(비워두면 기존 유지)</span>}</label>
+            <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editUser ? '변경 시에만 입력' : '비밀번호 입력'} autoComplete="new-password" />
           </div>
           <div className="form-group">
             <label>직급</label>

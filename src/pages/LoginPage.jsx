@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -12,19 +13,11 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const q = query(collection(db, 'users'), where('code', '==', code));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) {
-        setError('잘못된 코드입니다.');
-        setLoading(false);
-        return;
-      }
-      const userDoc = snapshot.docs[0];
-      const profile = { uid: userDoc.id, ...userDoc.data() };
-      localStorage.setItem('workManagerUser', JSON.stringify(profile));
+      await login(code, password);
       window.location.href = '/dashboard';
     } catch (err) {
-      setError('로그인 실패: ' + err.message);
+      setError(err.message || '로그인 실패');
+    } finally {
       setLoading(false);
     }
   };
@@ -45,6 +38,15 @@ export default function LoginPage() {
               placeholder="코드를 입력하세요"
               required
               autoFocus
+            />
+          </div>
+          <div className="login-field">
+            <label>비밀번호</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호를 입력하세요"
             />
           </div>
           <button type="submit" className="login-submit" disabled={loading}>

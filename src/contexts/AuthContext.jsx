@@ -39,16 +39,19 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const login = async (code) => {
-    // accessCodes 컬렉션에서 코드 조회
+  const login = async (code, password = '') => {
     const q = query(collection(db, 'users'), where('code', '==', code));
     const snapshot = await getDocs(q);
     if (snapshot.empty) {
-      throw new Error('잘못된 코드입니다.');
+      throw new Error('코드 또는 비밀번호가 올바르지 않습니다.');
     }
     const userDoc = snapshot.docs[0];
-    // uid는 항상 Firestore 문서 ID로 강제 (data.uid가 다르거나 없을 수 있음)
-    const profile = { ...userDoc.data(), uid: userDoc.id };
+    const data = userDoc.data();
+    // 비밀번호가 설정된 경우 검증, 미설정 시 통과
+    if (data.password && data.password !== password) {
+      throw new Error('코드 또는 비밀번호가 올바르지 않습니다.');
+    }
+    const profile = { ...data, uid: userDoc.id };
     setUserProfile(profile);
     localStorage.setItem('workManagerUser', JSON.stringify(profile));
     await checkTeamLeader(profile.uid);
