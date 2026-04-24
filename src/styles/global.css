@@ -6324,6 +6324,119 @@ body {
     white-space: nowrap;
   }
 
+  /* "우리 팀" 페이지(팀장용 TeamReportsPage / 일반·관리자 ManageTeamPage)
+     멤버 테이블 → 모바일 카드형 변환
+     (기본 .table 가로 스크롤은 유지하되, 이 두 페이지에선 카드로 표시) */
+  .reports-page .table-wrap,
+  .manage-team-page .table-wrap {
+    overflow: visible;
+  }
+  .reports-page .table,
+  .manage-team-page .table {
+    display: block;
+    overflow: visible;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  .reports-page .table thead,
+  .manage-team-page .table thead { display: none; }
+  .reports-page .table tbody,
+  .reports-page .table tfoot,
+  .manage-team-page .table tbody { display: block; }
+  .reports-page .table tr,
+  .manage-team-page .table tr {
+    display: block;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+  .reports-page .table td,
+  .manage-team-page .table td {
+    display: block;
+    padding: 0;
+    border: none;
+    white-space: normal;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  /* 첫 td (이름) - 카드 헤더 */
+  .reports-page .table tbody td:nth-child(1),
+  .manage-team-page .table tbody td:nth-child(1) {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  /* 두번째 td (직급) - 회색 부제목 */
+  .reports-page .table tbody td:nth-child(2),
+  .manage-team-page .table tbody td:nth-child(2) {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  /* TeamReportsPage 전용 - 잔업/연차 라벨 부여 */
+  .reports-page .table tbody td:nth-child(3),
+  .reports-page .table tbody td:nth-child(4) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-top: 1px dashed var(--border);
+  }
+  .reports-page .table tbody td:nth-child(3)::before {
+    content: '잔업';
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .reports-page .table tbody td:nth-child(4)::before {
+    content: '연차';
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  /* tfoot 합계 행 */
+  .reports-page .table tfoot tr {
+    background: var(--bg-subtle, #f8f9fa);
+    font-weight: 700;
+  }
+  .reports-page .table tfoot td {
+    display: inline-block;
+    padding: 0 10px 0 0;
+    font-size: 13px;
+  }
+
+  /* meta-bar (팀장/부팀장 표시) 줄바꿈 */
+  .manage-team-page .meta-bar {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  /* 팀원 일정 캘린더 헤더 좁은 폭 줄바꿈 */
+  .team-calendar-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .team-calendar-ym {
+    min-width: 70px;
+    font-size: 12px;
+  }
+  /* 캘린더 셀 폰트 살짝 축소 */
+  .team-cal-cell {
+    min-height: 56px;
+    padding: 3px 4px;
+  }
+  .team-cal-day {
+    font-size: 10px;
+  }
+  .team-cal-ev {
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+
   .chat-page {
     margin: -16px -16px 0;
     /* 72px = .main-content padding-bottom (BottomNav 영역 확보값과 일치) */
