@@ -163,14 +163,33 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
 
   async function handleDelete(msg) {
     if (!window.confirm('메시지를 삭제할까요?')) return;
-    await deleteChannelMessage(channel.id, msg.id);
+    // 낙관적 업데이트 — snapshot 대기 없이 UI 즉시 반영
+    setMessages((prev) => prev.map((m) =>
+      m.id === msg.id
+        ? { ...m, deletedAt: { seconds: Math.floor(Date.now() / 1000) }, text: '삭제된 메시지입니다.', imageUrl: null, fileUrl: null, fileName: null }
+        : m
+    ));
     setMenuMsg(null);
+    try {
+      await deleteChannelMessage(channel.id, msg.id);
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m));
+    }
   }
 
   async function handleDeleteAll() {
     if (!window.confirm('채팅 내역을 전체 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) return;
-    await deleteAllChannelMessages(channel.id);
+    // 낙관적 업데이트 — 즉시 빈 상태로
+    const prevMsgs = messages;
+    setMessages([]);
     setPinnedMsg(null);
+    try {
+      await deleteAllChannelMessages(channel.id);
+    } catch (err) {
+      alert('전체 삭제 실패: ' + err.message);
+      setMessages(prevMsgs);
+    }
   }
 
   async function handlePin(msg) {

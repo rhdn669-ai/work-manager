@@ -95,8 +95,20 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
 
   async function handleDelete(msg) {
     if (!window.confirm('메시지를 삭제할까요?')) return;
-    await deleteDmMessage(room.roomId, msg.id);
+    // 낙관적 업데이트 — Firestore 라운드트립 대기 없이 UI 즉시 반영
+    setMessages((prev) => prev.map((m) =>
+      m.id === msg.id
+        ? { ...m, deletedAt: { seconds: Math.floor(Date.now() / 1000) }, text: '삭제된 메시지입니다.', imageUrl: null, fileUrl: null, fileName: null }
+        : m
+    ));
     setMenuMsg(null);
+    try {
+      await deleteDmMessage(room.roomId, msg.id);
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+      // 실패 시 원상복구 (snapshot에서 재동기화도 되지만 즉시 되돌리기 위해)
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m));
+    }
   }
 
   async function handleReaction(msg, emoji) {

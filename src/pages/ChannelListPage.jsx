@@ -245,11 +245,15 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
                     className="channel-menu-danger"
                     onClick={async () => {
                       if (!confirm(`${otherName}님과의 대화를 내 목록에서 숨기시겠습니까?\n(상대방 쪽에는 그대로 남아 있고, 상대가 다시 메시지를 보내면 다시 나타납니다)`)) return;
+                      // 낙관적 업데이트 — Firestore 응답 대기 없이 즉시 목록에서 제거
+                      const prevRooms = dmRooms;
+                      setDmRooms((list) => list.filter((x) => x.id !== room.id));
+                      setOpenMenuId(null);
                       try {
                         await hideDmRoomForUser(room.id, userProfile.uid);
-                        setOpenMenuId(null);
                       } catch (err) {
                         alert('삭제 실패: ' + err.message);
+                        setDmRooms(prevRooms);
                       }
                     }}
                   >
