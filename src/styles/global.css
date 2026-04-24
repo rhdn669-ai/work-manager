@@ -4866,7 +4866,7 @@ body {
 
 .day-calendar-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 3px;
   margin-bottom: 4px;
 }
@@ -4889,7 +4889,7 @@ body {
 
 .day-calendar-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 3px;
   margin-bottom: 3px;
 }
