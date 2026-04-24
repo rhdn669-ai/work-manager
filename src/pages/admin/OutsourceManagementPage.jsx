@@ -7,15 +7,17 @@ import {
   addFreelancerToVendor,
   addVendorProject, removeVendorProject,
   setFreelancerRate, clearAllRateHistories,
+  getAllClosingItems,
 } from '../../services/outsourceService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 
 export default function OutsourceManagementPage() {
-  const { isAdmin } = useAuth();
-  const [tab, setTab] = useState('freelancer');
+  const { isAdmin, canViewSalary } = useAuth();
+  const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [closingItems, setClosingItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -177,18 +179,22 @@ export default function OutsourceManagementPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [fs, vs] = await Promise.all([getFreelancers(), getVendors()]);
+      const [fs, vs, cs] = await Promise.all([getFreelancers(), getVendors(), getAllClosingItems()]);
       setFreelancers(fs);
       setVendors(vs);
+      setClosingItems(cs);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
 
   function openCreate() {
     setEditItem(null);
-    setForm(tab === 'freelancer'
-      ? { name: '', vendor: '', dailyRate: 0, contact: '', note: '' }
-      : { name: '', representative: '', contact: '', businessNumber: '', bankAccount: '' });
+    if (tab === 'vendor') {
+      setForm({ name: '', representative: '', contact: '', businessNumber: '', bankAccount: '' });
+    } else {
+      // freelancer / daily 공통 (workerType만 탭에 맞게 설정)
+      setForm({ name: '', vendor: '', dailyRate: 0, contact: '', note: '', workerType: tab });
+    }
     setShowModal(true);
   }
 
@@ -202,12 +208,14 @@ export default function OutsourceManagementPage() {
     e.preventDefault();
     if (!form.name?.trim()) { alert('이름을 입력해주세요.'); return; }
     try {
-      if (tab === 'freelancer') {
-        if (editItem) await updateFreelancer(editItem.id, form);
-        else await addFreelancer(form);
-      } else {
+      if (tab === 'vendor') {
         if (editItem) await updateVendor(editItem.id, form);
         else await addVendor(form);
+      } else {
+        // freelancer / daily
+        const payload = { ...form, workerType: form.workerType || tab };
+        if (editItem) await updateFreelancer(editItem.id, payload);
+        else await addFreelancer(payload);
       }
       setShowModal(false);
       await loadAll();
@@ -217,11 +225,11 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleDelete(item) {
-    const label = tab === 'freelancer' ? '프리랜서' : '업체';
+    const label = tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서';
     if (!confirm(`"${item.name}" ${label}를 삭제하시겠습니까?`)) return;
     try {
-      if (tab === 'freelancer') await deleteFreelancer(item.id);
-      else await deleteVendor(item.id);
+      if (tab === 'vendor') await deleteVendor(item.id);
+      else await deleteFreelancer(item.id);
       await loadAll();
     } catch (err) {
       alert('삭제 실패: ' + err.message);
@@ -230,8 +238,24 @@ export default function OutsourceManagementPage() {
 
   if (!isAdmin) return <div className="card"><div className="card-body empty-state">접근 권한이 없습니다.</div></div>;
 
-  // 업체 소속이 없는 '개인 프리랜서'만 프리랜서 탭에 표시
-  const soloFreelancers = freelancers.filter((f) => !(f.vendor || '').trim());
+  // 업체 소속이 없는 개인 인력만 프리랜서/일용직 탭에 표시 (workerType 미지정은 freelancer로 간주)
+  const soloFreelancers = freelancers.filter((f) => !(f.vendor || '').trim() && (f.workerType || 'freelancer') === 'freelancer');
+  const soloDailies = freelancers.filter((f) => !(f.vendor || '').trim() && f.workerType === 'daily');
+
+  // 탭별 전체 지출 합계 (모든 프로젝트 공수표 누적)
+  // 프리랜서 지출: itemType='freelancer'인 항목의 amount 합산
+  // 일용직 지출: itemType='daily'
+  // 업체 지출: itemType='vendor' 또는 'vendor_case'
+  const sumByItemTypes = (types) => closingItems
+    .filter((it) => types.includes(it.itemType))
+    .reduce((s, it) => s + (Number(it.amount) || 0), 0);
+  const freelancerSpend = sumByItemTypes(['freelancer']);
+  const dailySpend = sumByItemTypes(['daily']);
+  const vendorSpend = sumByItemTypes(['vendor', 'vendor_case']);
+
+  const fmtMoney = (n) => `${Number(n || 0).toLocaleString()}원`;
+  const currentSpend = tab === 'freelancer' ? freelancerSpend : tab === 'daily' ? dailySpend : vendorSpend;
+  const currentSpendLabel = tab === 'freelancer' ? '프리랜서 전체 지출' : tab === 'daily' ? '일용직 전체 지출' : '업체 전체 지출';
 
   return (
     <div className="outsource-management-page">
@@ -255,12 +279,11 @@ export default function OutsourceManagementPage() {
             {clearing ? '초기화 중...' : '단가 이력 초기화'}
           </button>
           <button className="btn btn-primary" onClick={openCreate}>
-            {tab === 'freelancer' ? '+ 프리랜서' : '+ 업체'} 추가
+            {tab === 'vendor' ? '+ 업체' : tab === 'daily' ? '+ 일용직' : '+ 프리랜서'} 추가
           </button>
         </div>
       </div>
 
-      {(() => { return null; })()}
       <div className="tab-nav" style={{ marginBottom: 14 }}>
         <button
           type="button"
@@ -271,6 +294,13 @@ export default function OutsourceManagementPage() {
         </button>
         <button
           type="button"
+          className={`tab-nav-item ${tab === 'daily' ? 'active' : ''}`}
+          onClick={() => setTab('daily')}
+        >
+          일용직 {soloDailies.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloDailies.length}</span>}
+        </button>
+        <button
+          type="button"
           className={`tab-nav-item ${tab === 'vendor' ? 'active' : ''}`}
           onClick={() => setTab('vendor')}
         >
@@ -278,24 +308,37 @@ export default function OutsourceManagementPage() {
         </button>
       </div>
 
+      {/* 탭별 전체 지출 합계 */}
+      {canViewSalary && !loading && (
+        <div className="outsource-spend-summary">
+          <span className="outsource-spend-summary-label">{currentSpendLabel}</span>
+          <strong className="outsource-spend-summary-amount">{fmtMoney(currentSpend)}</strong>
+          <span className="outsource-spend-summary-sub">(모든 프로젝트 공수표 누적)</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="loading">로딩 중...</div>
-      ) : tab === 'freelancer' ? (
-        soloFreelancers.length === 0 ? (
-          <div className="card"><div className="card-body empty-state">등록된 개인 프리랜서가 없습니다. (업체 소속 직원은 업체 상세에서 관리)</div></div>
+      ) : (tab === 'freelancer' || tab === 'daily') ? (
+        (tab === 'freelancer' ? soloFreelancers : soloDailies).length === 0 ? (
+          <div className="card"><div className="card-body empty-state">
+            {tab === 'freelancer'
+              ? '등록된 개인 프리랜서가 없습니다. (업체 소속 직원은 업체 상세에서 관리)'
+              : '등록된 일용직이 없습니다.'}
+          </div></div>
         ) : (
           <table className="table">
             <thead>
               <tr>
                 <th>이름</th>
-                <th>일당</th>
+                <th>{tab === 'daily' ? '시급' : '일당'}</th>
                 <th>연락처</th>
                 <th>비고</th>
                 <th>작업</th>
               </tr>
             </thead>
             <tbody>
-              {soloFreelancers.map((f) => (
+              {(tab === 'freelancer' ? soloFreelancers : soloDailies).map((f) => (
                 <tr key={f.id}>
                   <td><strong>{f.name}</strong></td>
                   <td>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
@@ -356,7 +399,7 @@ export default function OutsourceManagementPage() {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={`${tab === 'freelancer' ? '프리랜서' : '업체'} ${editItem ? '수정' : '추가'}`}
+        title={`${tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서'} ${editItem ? '수정' : '추가'}`}
       >
         <form onSubmit={handleSave}>
           <div className="form-group">
@@ -365,13 +408,13 @@ export default function OutsourceManagementPage() {
               value={form.name || ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
-              placeholder={tab === 'freelancer' ? '홍길동' : '○○ 산업'}
+              placeholder={tab === 'vendor' ? '○○ 산업' : '홍길동'}
             />
           </div>
-          {tab === 'freelancer' ? (
+          {tab !== 'vendor' ? (
             <>
               <div className="form-group">
-                <label>일당</label>
+                <label>{tab === 'daily' ? '시급' : '일당'}</label>
                 <MoneyInput
                   value={form.dailyRate || 0}
                   onChange={(e) => setForm({ ...form, dailyRate: e.target.value })}
@@ -414,7 +457,7 @@ export default function OutsourceManagementPage() {
               </div>
             </>
           )}
-          {tab === 'freelancer' && (
+          {tab !== 'vendor' && (
             <>
               <div className="form-group">
                 <label>연락처</label>

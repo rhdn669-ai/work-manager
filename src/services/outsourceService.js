@@ -26,17 +26,29 @@ export async function addFreelancer(data) {
     dailyRate: Number(data.dailyRate) || 0,
     contact: data.contact || '',
     note: data.note || '',
+    // 개인 인력 유형: 'freelancer' | 'daily' (undefined = 기존 레거시, 프리랜서로 간주)
+    workerType: data.workerType === 'daily' ? 'daily' : 'freelancer',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
 }
 
 export async function updateFreelancer(id, data) {
-  await updateDoc(doc(db, 'freelancers', id), {
+  const payload = {
     ...data,
     dailyRate: Number(data.dailyRate) || 0,
     updatedAt: new Date(),
-  });
+  };
+  if (data.workerType !== undefined) {
+    payload.workerType = data.workerType === 'daily' ? 'daily' : 'freelancer';
+  }
+  await updateDoc(doc(db, 'freelancers', id), payload);
+}
+
+// 전체 공수표 항목 — 외주관리 지출 합계 계산용
+export async function getAllClosingItems() {
+  const snap = await getDocs(closingItemsRef);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function deleteFreelancer(id) {

@@ -1291,6 +1291,35 @@ body {
   overflow: visible;
 }
 
+/* 외주관리 — 탭별 전체 지출 합계 배너 */
+.outsource-spend-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.outsource-spend-summary-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9a3412;
+}
+.outsource-spend-summary-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: #b45309;
+  letter-spacing: -0.01em;
+}
+.outsource-spend-summary-sub {
+  font-size: 11px;
+  color: #a16207;
+  opacity: 0.8;
+}
+
 .vendor-picker-list {
   list-style: none;
   padding: 0;

@@ -1278,8 +1278,12 @@ export default function SiteClosingPage() {
       {freelancerPickerMode && (() => {
         const isDaily = freelancerPickerMode === 'daily';
         const title = isDaily ? '일용직 선택' : '프리랜서 선택';
-        // 업체 소속이 아닌 외주관리 등록자 목록
-        const pool = freelancers.filter((f) => !(f.vendor || '').trim());
+        // 업체 소속이 아닌 개인 인력 + workerType 매칭 (undefined는 freelancer로 간주)
+        const pool = freelancers.filter((f) => {
+          if ((f.vendor || '').trim()) return false;
+          const wt = f.workerType || 'freelancer';
+          return isDaily ? wt === 'daily' : wt === 'freelancer';
+        });
         const currentDetails = new Set(
           items
             .filter((it) => it.itemType === freelancerPickerMode)
