@@ -4902,7 +4902,9 @@ body {
   gap: 2px;
   min-height: 64px;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
+  position: relative;
 }
 .day-cal-cell input {
   margin-top: auto;
@@ -4979,12 +4981,13 @@ body {
 }
 
 .leave-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  text-align: center;
+  line-height: 16px;
   height: 16px;
-  padding: 0 3px;
-  font-size: 8.5px;
+  width: 100%;
+  padding: 0 2px;
+  font-size: 8px;
   font-weight: 700;
   color: #fff;
   background: #f87171;
@@ -4992,7 +4995,6 @@ body {
   margin-bottom: 0;
   white-space: nowrap;
   flex-shrink: 0;
-  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
