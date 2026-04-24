@@ -31,3 +31,6 @@ dist-ssr
 
 # Claude Code 개인 설정
 .claude/settings.local.json
+
+# 테스트용 임시 이미지
+public/_*.png
