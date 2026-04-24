@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useChat } from '../contexts/ChatContext';
 import {
   subscribeChannelMessages, sendChannelMessage, sendChannelImage, sendChannelFile,
   deleteChannelMessage, editChannelMessage, deleteAllChannelMessages,
@@ -35,6 +36,12 @@ function highlight(text, keyword) {
 
 export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
   const { userProfile, isAdmin } = useAuth();
+  const { markAsRead } = useChat();
+
+  // 채널 입장 시 읽음 처리 (사이드바/바텀바 배지용)
+  useEffect(() => {
+    if (channel?.id) markAsRead('channel', channel.id);
+  }, [channel?.id, markAsRead]);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);

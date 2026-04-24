@@ -82,13 +82,25 @@ export function subscribeChannelMessages(channelId, callback) {
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
 
+// 채널 메시지 송신 후 채널 문서에 lastMessageAt/lastSenderId 기록 — 알림 집계용
+async function touchChannelMeta(channelId, userId) {
+  try {
+    await updateDoc(doc(db, 'channels', channelId), {
+      lastMessageAt: serverTimestamp(),
+      lastSenderId: userId,
+    });
+  } catch { /* 실패해도 메시지 전송은 유지 */ }
+}
+
 export async function sendChannelMessage({ channelId, userId, userName, position, text, replyTo = null }) {
-  return addDoc(msgCol(channelId), {
+  const r = await addDoc(msgCol(channelId), {
     userId, userName, position,
     text, type: 'text', replyTo,
     reactions: {}, readBy: { [userId]: Date.now() },
     isPinned: false, deletedAt: null, createdAt: serverTimestamp(),
   });
+  await touchChannelMeta(channelId, userId);
+  return r;
 }
 
 export async function sendChannelImage({ channelId, userId, userName, position, file, replyTo = null }) {
@@ -96,12 +108,14 @@ export async function sendChannelImage({ channelId, userId, userName, position, 
   const storageRef = ref(storage, `channels/${channelId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const imageUrl = await getDownloadURL(storageRef);
-  return addDoc(msgCol(channelId), {
+  const r = await addDoc(msgCol(channelId), {
     userId, userName, position,
     text: '', type: 'image', imageUrl, replyTo,
     reactions: {}, readBy: { [userId]: Date.now() },
     isPinned: false, deletedAt: null, createdAt: serverTimestamp(),
   });
+  await touchChannelMeta(channelId, userId);
+  return r;
 }
 
 export async function sendChannelFile({ channelId, userId, userName, position, file, replyTo = null }) {
@@ -109,12 +123,14 @@ export async function sendChannelFile({ channelId, userId, userName, position, f
   const storageRef = ref(storage, `channels/${channelId}/files/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const fileUrl = await getDownloadURL(storageRef);
-  return addDoc(msgCol(channelId), {
+  const r = await addDoc(msgCol(channelId), {
     userId, userName, position,
     text: '', type: 'file', fileUrl, fileName: file.name, fileSize: file.size, replyTo,
     reactions: {}, readBy: { [userId]: Date.now() },
     isPinned: false, deletedAt: null, createdAt: serverTimestamp(),
   });
+  await touchChannelMeta(channelId, userId);
+  return r;
 }
 
 export async function deleteChannelMessage(channelId, msgId) {

@@ -1291,6 +1291,27 @@ body {
   overflow: visible;
 }
 
+/* 비밀번호 설정 화면 — 로그인으로 돌아가기 버튼 */
+.login-card { position: relative; }
+.login-back-btn {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.login-back-btn:hover {
+  background: rgba(0,0,0,0.04);
+  color: var(--text, #0f172a);
+}
+
 /* 외주관리 — 탭별 전체 지출 합계 배너 */
 .outsource-spend-summary {
   display: flex;
@@ -5920,10 +5941,36 @@ body {
   .closing-summary {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 8px;
+    padding: 10px;
   }
-
+  /* 모바일에서는 grid 셀 사이 구분선 대신 gap + 각 셀 배경으로 정리 */
+  .closing-summary-item {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-right: none;
+    background: #f8fafc;
+    border-radius: 8px;
+  }
+  .closing-summary-item .label {
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .closing-summary-item strong {
+    font-size: 13px;
+    text-align: right;
+  }
   .closing-summary-total {
+    grid-column: 1 / -1;
+    background: #fff8e7;
+    border: 1px solid #fde68a;
+  }
+  .closing-summary-total strong { font-size: 14px; }
+  .closing-summary-net {
     grid-column: 1 / -1;
   }
 }

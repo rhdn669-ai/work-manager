@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useChat } from '../contexts/ChatContext';
 import {
   subscribeDmMessages, sendDmMessage, sendDmImage, sendDmFile,
   deleteDmMessage, toggleDmReaction, editDmMessage,
@@ -26,6 +27,12 @@ function formatDate(ts) {
 
 export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   const { userProfile } = useAuth();
+  const { markAsRead } = useChat();
+
+  // DM 입장 시 읽음 처리 (사이드바/바텀바 배지용)
+  useEffect(() => {
+    if (room?.roomId) markAsRead('dm', room.roomId);
+  }, [room?.roomId, markAsRead]);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);

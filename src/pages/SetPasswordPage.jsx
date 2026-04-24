@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { updateUser } from '../services/userService';
 
 export default function SetPasswordPage() {
-  const { userProfile, refreshProfile } = useAuth();
+  const { userProfile, refreshProfile, logout } = useAuth();
   const navigate = useNavigate();
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -28,9 +28,24 @@ export default function SetPasswordPage() {
     }
   };
 
+  const handleBackToLogin = () => {
+    // 비밀번호 미설정 상태의 임시 로그인을 해제하고 로그인 화면으로 복귀
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className="login-page">
       <div className="login-card">
+        <button
+          type="button"
+          className="login-back-btn"
+          onClick={handleBackToLogin}
+          aria-label="로그인 화면으로 돌아가기"
+          title="로그인 화면으로 돌아가기"
+        >
+          ← 로그인으로
+        </button>
         <div className="login-logo" role="img" aria-label="IOPN" />
         <h3 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700 }}>비밀번호 설정</h3>
         <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-muted)' }}>

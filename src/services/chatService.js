@@ -163,7 +163,7 @@ export async function sendDmMessage({ roomId, userId, userName, position, text, 
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: text, lastMessageAt: serverTimestamp() });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: text, lastMessageAt: serverTimestamp(), lastSenderId: userId });
 }
 
 export async function sendDmImage({ roomId, userId, userName, position, file, replyTo = null }) {
@@ -181,7 +181,7 @@ export async function sendDmImage({ roomId, userId, userName, position, file, re
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '사진', lastMessageAt: serverTimestamp() });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: '사진', lastMessageAt: serverTimestamp(), lastSenderId: userId });
 }
 
 export async function sendDmFile({ roomId, userId, userName, position, file, replyTo = null }) {
@@ -199,7 +199,7 @@ export async function sendDmFile({ roomId, userId, userName, position, file, rep
     deletedAt: null,
     createdAt: serverTimestamp(),
   });
-  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp() });
+  await updateDoc(doc(DM_ROOMS, roomId), { lastMessage: `📎 ${file.name}`, lastMessageAt: serverTimestamp(), lastSenderId: userId });
 }
 
 export async function deleteDmMessage(roomId, msgId) {
