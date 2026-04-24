@@ -3064,6 +3064,8 @@ body {
   gap: 14px;
   padding: 14px 16px;
   flex: 1;
+  height: 165px;
+  overflow: hidden;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 14px;
