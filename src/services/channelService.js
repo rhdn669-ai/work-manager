@@ -3,7 +3,7 @@ import {
   query, orderBy, limit, where, onSnapshot, serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db, storage, ensureAnonymousAuth } from '../config/firebase';
 
 // ── 채널 관리 ──────────────────────────────────────────
 export async function ensureCompanyChannel() {
@@ -30,16 +30,46 @@ export async function deleteDeptChannel(deptId) {
   await deleteDoc(doc(db, 'channels', `dept_${deptId}`));
 }
 
-export async function getAccessibleChannels(departmentId, canApproveAll) {
+// 관리자 커스텀 채팅방
+export async function createCustomChannel({ name, memberIds, creatorId }) {
+  return addDoc(collection(db, 'channels'), {
+    name,
+    type: 'custom',
+    memberIds: memberIds || [],
+    creatorId: creatorId || null,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function updateCustomChannel(channelId, data) {
+  const update = { updatedAt: serverTimestamp() };
+  if (data.name !== undefined) update.name = data.name;
+  if (data.memberIds !== undefined) update.memberIds = data.memberIds;
+  await updateDoc(doc(db, 'channels', channelId), update);
+}
+
+export async function deleteCustomChannel(channelId) {
+  await deleteAllChannelMessages(channelId);
+  await deleteDoc(doc(db, 'channels', channelId));
+}
+
+export async function getAccessibleChannels(userId, departmentId, canApproveAll) {
   const snap = await getDocs(collection(db, 'channels'));
   const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   all.sort((a, b) => {
     if (a.type === 'company') return -1;
     if (b.type === 'company') return 1;
+    if (a.type === 'custom' && b.type !== 'custom') return -1;
+    if (b.type === 'custom' && a.type !== 'custom') return 1;
     return (a.name || '').localeCompare(b.name || '');
   });
   if (canApproveAll) return all;
-  return all.filter((c) => c.type === 'company' || c.departmentId === departmentId);
+  return all.filter((c) => {
+    if (c.type === 'company') return true;
+    if (c.type === 'department') return c.departmentId === departmentId;
+    if (c.type === 'custom') return (c.memberIds || []).includes(userId);
+    return false;
+  });
 }
 
 // ── 채널 메시지 ────────────────────────────────────────
@@ -62,6 +92,7 @@ export async function sendChannelMessage({ channelId, userId, userName, position
 }
 
 export async function sendChannelImage({ channelId, userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `channels/${channelId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const imageUrl = await getDownloadURL(storageRef);
@@ -74,6 +105,7 @@ export async function sendChannelImage({ channelId, userId, userName, position, 
 }
 
 export async function sendChannelFile({ channelId, userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `channels/${channelId}/files/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const fileUrl = await getDownloadURL(storageRef);

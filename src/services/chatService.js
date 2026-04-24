@@ -3,7 +3,7 @@ import {
   query, orderBy, limit, where, onSnapshot, serverTimestamp, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db, storage, ensureAnonymousAuth } from '../config/firebase';
 
 const MSG = collection(db, 'chatMessages');
 const TYPING = collection(db, 'typingStatus');
@@ -29,6 +29,7 @@ export async function sendMessage({ userId, userName, position, text, replyTo = 
 }
 
 export async function sendImage({ userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `chat/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const imageUrl = await getDownloadURL(storageRef);
@@ -45,6 +46,7 @@ export async function sendImage({ userId, userName, position, file, replyTo = nu
 }
 
 export async function sendFile({ userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `chat/files/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const fileUrl = await getDownloadURL(storageRef);
@@ -165,6 +167,7 @@ export async function sendDmMessage({ roomId, userId, userName, position, text, 
 }
 
 export async function sendDmImage({ roomId, userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `dm/${roomId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const imageUrl = await getDownloadURL(storageRef);
@@ -182,6 +185,7 @@ export async function sendDmImage({ roomId, userId, userName, position, file, re
 }
 
 export async function sendDmFile({ roomId, userId, userName, position, file, replyTo = null }) {
+  await ensureAnonymousAuth();
   const storageRef = ref(storage, `dm/${roomId}/files/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const fileUrl = await getDownloadURL(storageRef);

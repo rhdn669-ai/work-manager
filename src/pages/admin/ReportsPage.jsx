@@ -10,6 +10,7 @@ import {
   getPendingOvertimeRecords,
   approveOvertimeRecord,
   rejectOvertimeRecord,
+  OVERTIME_MULTIPLIER,
 } from '../../services/attendanceService';
 import {
   getApprovedLeavesByMonth,
@@ -111,6 +112,7 @@ export default function ReportsPage() {
           };
         });
       records.forEach((r) => {
+        if (r.status !== 'approved') return;
         if (byUser[r.userId]) {
           byUser[r.userId].overtimeMinutes += r.minutes || 0;
           byUser[r.userId].overtimeCount++;
@@ -132,12 +134,61 @@ export default function ReportsPage() {
 
   const rows = report;
   const totalOvertimeMinutes = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
+
+  // 잔업 Top 5 (시간·금액) + 전체 합계 금액
+  const userById = Object.fromEntries(users.map((u) => [u.uid, u]));
+  const calcAmount = (uid, mins) => {
+    const hourlyRate = Number(userById[uid]?.hourlyRate) || 0;
+    const hours = (mins || 0) / 60;
+    return Math.round(hourlyRate * OVERTIME_MULTIPLIER * hours);
+  };
+  const topOvertime = [...rows]
+    .filter((r) => r.overtimeMinutes > 0)
+    .sort((a, b) => b.overtimeMinutes - a.overtimeMinutes)
+    .slice(0, 5)
+    .map((r) => ({ uid: r.uid, name: r.name, minutes: r.overtimeMinutes, count: r.overtimeCount, amount: calcAmount(r.uid, r.overtimeMinutes) }));
+  const totalOvertimeAmount = rows.reduce((s, r) => s + calcAmount(r.uid, r.overtimeMinutes), 0);
   const totalOvertimeCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
   const totalLeaveDays = rows.reduce((s, r) => s + r.leaveDays, 0);
 
   return (
     <div className="reports-page">
-      <h2>잔업 · 연차</h2>
+      <div className="page-header">
+        <h2>잔업 · 연차</h2>
+      </div>
+
+      <div className="ua-summary-card" style={{ marginBottom: 16 }}>
+        <div className="ua-summary-title">
+          <span className="ua-dot ua-dot-overtime" />
+          잔업 Top · {year}년 {month}월
+        </div>
+        {topOvertime.length === 0 ? (
+          <p className="ua-summary-empty">해당 월 잔업 기록 없음</p>
+        ) : (
+          <>
+            <ul className="ua-summary-list">
+              {topOvertime.map((r) => (
+                <li key={r.uid}>
+                  <span>{r.name}</span>
+                  <strong className="ua-summary-metrics">
+                    <em>{r.count}건</em>
+                    <em>{formatMinutes(r.minutes)}</em>
+                    <em>{r.amount.toLocaleString()}원</em>
+                  </strong>
+                </li>
+              ))}
+            </ul>
+            <div className="ua-summary-total">
+              <span>전체 합계</span>
+              <strong className="ua-summary-metrics">
+                <em>{totalOvertimeCount}건</em>
+                <em>{formatMinutes(totalOvertimeMinutes)}</em>
+                <em>{totalOvertimeAmount.toLocaleString()}원</em>
+              </strong>
+            </div>
+          </>
+        )}
+      </div>
 
       {pendingList.length > 0 && (
         <div className="pending-section">
@@ -169,8 +220,7 @@ export default function ReportsPage() {
                         onClick={() => handleApprove(r.id)}
                       >승인</button>
                       <button
-                        className="btn btn-sm btn-outline"
-                        style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                        className="btn btn-sm btn-danger-outline"
                         disabled={pendingBusy === r.id}
                         onClick={() => handleReject(r.id)}
                       >거절</button>
@@ -196,80 +246,44 @@ export default function ReportsPage() {
         </select>
       </div>
 
-      <div className="tab-nav">
-        <button
-          type="button"
-          className={`tab-nav-item ${activeTab === 'overtime' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overtime')}
-        >
-          잔업
-        </button>
-        <button
-          type="button"
-          className={`tab-nav-item ${activeTab === 'leave' ? 'active' : ''}`}
-          onClick={() => setActiveTab('leave')}
-        >
-          연차
-        </button>
-      </div>
-
       {loading ? (
         <div className="loading">로딩 중...</div>
       ) : rows.length === 0 ? (
         <p className="text-muted">직원 정보가 없습니다.</p>
-      ) : activeTab === 'overtime' ? (
-        <table className="table table-clickable">
-          <thead>
-            <tr>
-              <th style={{ width: 48 }}>#</th>
-              <th>이름</th>
-              <th>부서</th>
-              <th>총 잔업</th>
-              <th>건수</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.uid} onClick={() => setDetailUser(r)} style={{ cursor: 'pointer' }}>
-                <td>{i + 1}</td>
-                <td>{r.name}</td>
-                <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>{r.overtimeMinutes > 0 ? formatMinutes(r.overtimeMinutes) : '-'}</td>
-                <td>{r.overtimeCount > 0 ? `${r.overtimeCount}건` : '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={3}><strong>합계</strong></td>
-              <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
-              <td><strong>{totalOvertimeCount}건</strong></td>
-            </tr>
-          </tfoot>
-        </table>
       ) : (
-        <table className="table table-clickable">
+        <table className="table">
           <thead>
             <tr>
               <th style={{ width: 48 }}>#</th>
               <th>이름</th>
               <th>부서</th>
-              <th>연차 사용</th>
+              <th>잔업</th>
+              <th>연차</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.uid} onClick={() => setDetailUser(r)} style={{ cursor: 'pointer' }}>
+              <tr key={r.uid}>
                 <td>{i + 1}</td>
-                <td>{r.name}</td>
+                <td><strong>{r.name}</strong></td>
                 <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>{r.leaveDays > 0 ? `${r.leaveDays}일` : '-'}</td>
+                <td>
+                  <button className="team-detail-btn" onClick={() => { setActiveTab('overtime'); setDetailUser(r); }}>
+                    {r.overtimeMinutes > 0 ? <><strong>{formatMinutes(r.overtimeMinutes)}</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
+                  </button>
+                </td>
+                <td>
+                  <button className="team-detail-btn" onClick={() => { setActiveTab('leave'); setDetailUser(r); }}>
+                    {r.leaveDays > 0 ? <><strong>{r.leaveDays}일</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={3}><strong>합계</strong></td>
+              <td colSpan={3}><strong>합계 ({rows.length}명)</strong></td>
+              <td><strong>{formatMinutes(totalOvertimeMinutes)}</strong></td>
               <td><strong>{totalLeaveDays}일</strong></td>
             </tr>
           </tfoot>
@@ -282,7 +296,7 @@ export default function ReportsPage() {
           tab={activeTab}
           year={year}
           month={month}
-          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid)}
+          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid && r.status === 'approved')}
           leaves={rawLeaves.filter((l) => l.userId === detailUser.uid)}
           siteMap={siteMap}
           canEdit={isAdmin}
@@ -414,7 +428,7 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                         {canEdit && (
                           <div className="btn-group" style={{ flexShrink: 0 }}>
                             <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>수정</button>
-                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(r)}>삭제</button>
+                            <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => removeRow(r)}>삭제</button>
                           </div>
                         )}
                       </div>
@@ -482,7 +496,7 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
                         {canEdit && (
                           <div className="btn-group" style={{ flexShrink: 0 }}>
                             <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
-                            <button className="btn btn-sm btn-outline" style={{ color: '#dc2626', borderColor: '#dc2626' }} disabled={busy} onClick={() => removeRow(l)}>삭제</button>
+                            <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => removeRow(l)}>삭제</button>
                           </div>
                         )}
                       </div>

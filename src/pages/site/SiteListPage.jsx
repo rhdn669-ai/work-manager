@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
@@ -11,6 +11,7 @@ const STATUS_LABELS = { active: '진행 중', completed: '완료' };
 
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive, canViewSalary } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
@@ -20,7 +21,8 @@ export default function SiteListPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [filter, setFilter] = useState('all'); // all | recurring | once | completed
+  const filter = searchParams.get('filter') || 'all';
+  const setFilter = (val) => setSearchParams(val === 'all' ? {} : { filter: val }, { replace: false });
 
   // 프로젝트 추가/수정 모달
   const [showModal, setShowModal] = useState(false);
@@ -29,12 +31,24 @@ export default function SiteListPage() {
     name: '', team: '', managerIds: [],
     projectType: 'recurring', status: 'active',
     startYear: null, startMonth: null, endYear: null, endMonth: null,
+    mirrorFromSiteIds: [], hideRevenue: false,
   });
   const [managerListOpen, setManagerListOpen] = useState(false);
+  const [mirrorListOpen, setMirrorListOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => {
     if (userProfile) loadData();
   }, [userProfile, year, month]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = (e) => {
+      if (!e.target.closest('.site-row-actions')) setOpenMenuId(null);
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
 
   async function loadData() {
     setLoading(true);
@@ -50,19 +64,46 @@ export default function SiteListPage() {
       const uMap = Object.fromEntries(userList.map((u) => [u.uid, u]));
       setUserMap(uMap);
 
-      const stats = {};
-      await Promise.all(list.map(async (s) => {
+      const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
+
+      // 미러 소스 중 list에 없는 사이트들도 통계용으로 추가 조회 (팀장이 담당하지 않는 합산 대상 포함)
+      const listIds = new Set(list.map((x) => x.id));
+      const missingMirrorIds = new Set();
+      for (const s of list) {
+        for (const srcId of s.mirrorFromSiteIds || []) {
+          if (!listIds.has(srcId)) missingMirrorIds.add(srcId);
+        }
+      }
+      const extraMirrorSites = missingMirrorIds.size > 0
+        ? (await Promise.all([...missingMirrorIds].map((id) => getSite(id).catch(() => null)))).filter(Boolean)
+        : [];
+      const statsList = [...list, ...extraMirrorSites];
+
+      // 1단계: 모든 대상 사이트(담당 + 미러 소스) 자체 finance/공수 집계
+      const rawStats = {};
+      await Promise.all(statsList.map(async (s) => {
         const [fins, items] = await Promise.all([
           getFinanceItems(s.id, year, month),
           getClosingItems(s.id, year, month),
         ]);
-        const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
         const revenue = fins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const expense = fins.filter((f) => f.type === 'expense' && !isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const overtime = fins.filter((f) => f.type === 'expense' && isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
         const labor = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
-        stats[s.id] = { revenue, expense, overtime, labor };
+        rawStats[s.id] = { revenue, expense, overtime, labor };
       }));
+
+      // 2단계: mirrorFromSiteIds로 지출 합산 (미러 소스의 expense + overtime + labor 을 타겟의 expense에 추가)
+      const stats = {};
+      for (const s of list) {
+        const own = rawStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+        let mirroredExpense = 0;
+        for (const srcId of s.mirrorFromSiteIds || []) {
+          const src = rawStats[srcId];
+          if (src) mirroredExpense += (src.expense || 0) + (src.overtime || 0) + (src.labor || 0);
+        }
+        stats[s.id] = { ...own, expense: own.expense + mirroredExpense };
+      }
       setSiteStats(stats);
     } catch (err) {
       console.error(err);
@@ -71,21 +112,61 @@ export default function SiteListPage() {
     }
   }
 
+  // 해당 월에 실적(매출/지출/공수) 데이터가 있는지 판별
+  const hasMonthData = (s) => {
+    const v = siteStats[s.id];
+    if (!v) return false;
+    return (v.revenue || 0) > 0 || (v.expense || 0) > 0 || (v.overtime || 0) > 0 || (v.labor || 0) > 0;
+  };
+
+  // 선택한 년/월이 프로젝트 시작 월 이전인지
+  const isBeforeStart = (s) => {
+    if (!s.startYear || !s.startMonth) return false;
+    if (year < s.startYear) return true;
+    if (year === s.startYear && month < s.startMonth) return true;
+    return false;
+  };
+
+  // 선택한 년/월이 프로젝트 마감 월 이후인지
+  const isAfterEnd = (s) => {
+    if (!s.endYear || !s.endMonth) return false;
+    if (year > s.endYear) return true;
+    if (year === s.endYear && month > s.endMonth) return true;
+    return false;
+  };
+
   // 필터링된 프로젝트
   const filtered = sites.filter((s) => {
+    if (isBeforeStart(s)) return false;
     const st = s.status || 'active';
     const pt = s.projectType || 'recurring';
-    if (filter === 'completed') return st === 'completed';
-    if (filter === 'recurring') return pt === 'recurring' && st === 'active';
-    if (filter === 'once') return pt === 'once' && st === 'active';
-    return st === 'active'; // 'all' = 활성 프로젝트 전체
+
+    if (st === 'completed') {
+      if (isAfterEnd(s)) return false;
+      if (filter === 'completed') return true;
+      return filter === 'all' && hasMonthData(s);
+    }
+
+    // 활성 프로젝트: 마감 월 이후 숨김
+    if (isAfterEnd(s)) return false;
+    if (filter === 'completed') return false;
+    if (pt === 'once') return true;
+    if (filter === 'recurring') return pt === 'recurring';
+    if (filter === 'once') return pt === 'once';
+    return true;
   });
 
   const filterCounts = {
-    all: sites.filter((s) => (s.status || 'active') === 'active').length,
-    recurring: sites.filter((s) => (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
-    once: sites.filter((s) => s.projectType === 'once' && (s.status || 'active') === 'active').length,
-    completed: sites.filter((s) => s.status === 'completed').length,
+    all: sites.filter((s) => {
+      if (isBeforeStart(s)) return false;
+      const st = s.status || 'active';
+      if (st === 'completed') return hasMonthData(s);
+      if (isAfterEnd(s)) return false;
+      return true;
+    }).length,
+    recurring: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
+    once: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
+    completed: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.status === 'completed').length,
   };
 
   function managerNames(site) {
@@ -110,8 +191,10 @@ export default function SiteListPage() {
       name: '', team: '', managerIds: [],
       projectType: 'recurring', status: 'active',
       startYear: year, startMonth: month, endYear: null, endMonth: null,
+      mirrorFromSiteIds: [], hideRevenue: false,
     });
     setManagerListOpen(false);
+    setMirrorListOpen(false);
     setShowModal(true);
   }
 
@@ -122,8 +205,10 @@ export default function SiteListPage() {
       projectType: site.projectType || 'recurring', status: site.status || 'active',
       startYear: site.startYear || null, startMonth: site.startMonth || null,
       endYear: site.endYear || null, endMonth: site.endMonth || null,
+      mirrorFromSiteIds: site.mirrorFromSiteIds || [], hideRevenue: !!site.hideRevenue,
     });
     setManagerListOpen(false);
+    setMirrorListOpen(false);
     setShowModal(true);
   }
 
@@ -177,6 +262,15 @@ export default function SiteListPage() {
     }));
   }
 
+  function toggleMirrorSite(sid) {
+    setForm((f) => ({
+      ...f,
+      mirrorFromSiteIds: f.mirrorFromSiteIds.includes(sid)
+        ? f.mirrorFromSiteIds.filter((x) => x !== sid)
+        : [...f.mirrorFromSiteIds, sid],
+    }));
+  }
+
   const candidates = users.filter((u) => u.role !== 'admin');
 
   if (loading) return <div className="loading">로딩 중...</div>;
@@ -215,21 +309,26 @@ export default function SiteListPage() {
         </select>
       </div>
 
-      {isAdmin && filtered.length > 0 && filter !== 'completed' && (() => {
-        const allRevenue = filtered.reduce((s, site) => s + ((siteStats[site.id] || {}).revenue || 0), 0);
+      {isAdmin && filtered.length > 0 && (() => {
+        const allRevenue = filtered.reduce((s, site) => {
+          if (site.hideRevenue) return s;
+          return s + ((siteStats[site.id] || {}).revenue || 0);
+        }, 0);
         const allExpense = filtered.reduce((s, site) => {
           const v = siteStats[site.id] || {};
-          return s + (v.expense || 0) + (v.overtime || 0) + (v.labor || 0);
+          const ov = canViewSalary ? (v.overtime || 0) : 0;
+          const lb = canViewSalary ? (v.labor || 0) : 0;
+          return s + (v.expense || 0) + ov + lb;
         }, 0);
         const allBalance = allRevenue - allExpense;
         return (
           <div className="total-summary-bar">
             <div className="total-summary-item">
-              <span className="label">전체 매출</span>
+              <span className="label">{filter === 'completed' ? '누적 매출' : '전체 매출'}</span>
               <strong className="stat-revenue">{allRevenue.toLocaleString()}원</strong>
             </div>
             <div className="total-summary-item">
-              <span className="label">전체 지출</span>
+              <span className="label">{filter === 'completed' ? '누적 지출' : '전체 지출'}</span>
               <strong className="stat-expense">{allExpense.toLocaleString()}원</strong>
             </div>
             <div className="total-summary-item">
@@ -250,13 +349,21 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {filtered.map((s) => {
-            const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
-            const expenseOnly = raw.expense + raw.overtime;
-            const totalExpense = canViewSalary ? expenseOnly + raw.labor : expenseOnly;
-            const balance = raw.revenue - totalExpense;
             const pt = s.projectType || 'recurring';
             const st = s.status || 'active';
+            const hideRev = !!s.hideRevenue;
             const period = periodLabel(s);
+            const isOnce = pt === 'once';
+
+            // 단발성: 전체 누적 통계 / 양산: 선택 월 통계
+            const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+            const overtimeShown = canViewSalary ? (raw.overtime || 0) : 0;
+            const laborShown = canViewSalary ? raw.labor : 0;
+            const expenseOnly = raw.expense + overtimeShown;
+            const totalExpense = expenseOnly + laborShown;
+            const revenueShown = hideRev ? 0 : raw.revenue;
+            const balance = revenueShown - totalExpense;
+
             return (
               <div key={s.id} className="site-row-wrapper">
                 <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
@@ -280,15 +387,35 @@ export default function SiteListPage() {
                       <span className="chip chip-manager">담당 {managerNames(s)}</span>
                       {period && <span className="chip chip-period">{period}</span>}
                     </div>
-                    {st !== 'completed' && (
-                      <div className="site-row-stats">
-                        <span className="stat-revenue">매출 {raw.revenue.toLocaleString()}</span>
-                        <span className="stat-expense">지출 {expenseOnly.toLocaleString()}</span>
-                        {canViewSalary && <span className="stat-expense">공수 {raw.labor.toLocaleString()}</span>}
-                        <span className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>합계 {balance.toLocaleString()}</span>
-                      </div>
-                    )}
                   </div>
+                  {(st !== 'completed' || hasMonthData(s)) && (
+                    <div className="site-row-stats-panel">
+                      {!hideRev && (
+                        <div className="stat-row">
+                          <span>매출</span>
+                          <strong className="stat-revenue">{raw.revenue.toLocaleString()}원</strong>
+                        </div>
+                      )}
+                      <div className="stat-row">
+                        <span>지출</span>
+                        <strong className="stat-expense">{expenseOnly.toLocaleString()}원</strong>
+                      </div>
+                      {canViewSalary && raw.labor > 0 && (
+                        <div className="stat-row">
+                          <span>인건비</span>
+                          <strong className="stat-expense">{raw.labor.toLocaleString()}원</strong>
+                        </div>
+                      )}
+                      {!hideRev && (
+                        <div className="stat-row stat-balance-row">
+                          <span>합계</span>
+                          <strong className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>
+                            {balance >= 0 ? '+' : ''}{balance.toLocaleString()}원
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="site-row-period">
                     <div className="period-y">{year}</div>
                     <div className="period-m">{String(month).padStart(2, '0')}월</div>
@@ -297,11 +424,31 @@ export default function SiteListPage() {
                 </Link>
                 {isAdmin && (
                   <div className="site-row-actions">
-                    <button className="btn btn-sm btn-outline" onClick={(e) => { e.preventDefault(); openEdit(s); }}>수정</button>
-                    {st === 'completed' && (
-                      <button className="btn btn-sm btn-outline" onClick={(e) => handleToggleStatus(s, e)}>재활성</button>
+                    <button
+                      type="button"
+                      className="site-row-menu-btn"
+                      aria-label="관리 메뉴"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === s.id ? null : s.id);
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="5" r="1.8" />
+                        <circle cx="12" cy="12" r="1.8" />
+                        <circle cx="12" cy="19" r="1.8" />
+                      </svg>
+                    </button>
+                    {openMenuId === s.id && (
+                      <div className="site-row-menu" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <button type="button" className="site-row-menu-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMenuId(null); openEdit(s); }}>수정</button>
+                        {st === 'completed' && (
+                          <button type="button" className="site-row-menu-item" onClick={(e) => { setOpenMenuId(null); handleToggleStatus(s, e); }}>재활성</button>
+                        )}
+                        <button type="button" className="site-row-menu-item site-row-menu-danger" onClick={(e) => { setOpenMenuId(null); handleDelete(s, e); }}>삭제</button>
+                      </div>
                     )}
-                    <button className="btn btn-sm btn-danger" onClick={(e) => handleDelete(s, e)}>삭제</button>
                   </div>
                 )}
               </div>
@@ -378,6 +525,47 @@ export default function SiteListPage() {
                 })}
               </div>
             )}
+          </div>
+          <div className="form-group">
+            <label>지출 합산 대상 프로젝트 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+            <p className="field-hint" style={{ marginTop: 0, marginBottom: 6 }}>
+              선택한 프로젝트의 지출이 이 프로젝트 화면에 읽기 전용으로 표시되고 합계에 포함됩니다.
+            </p>
+            <button type="button" className="select-dropdown-toggle" onClick={() => setMirrorListOpen(!mirrorListOpen)}>
+              <span>{form.mirrorFromSiteIds.length > 0 ? `${form.mirrorFromSiteIds.length}개 선택됨` : '합산할 프로젝트를 선택하세요'}</span>
+              <span className="select-dropdown-arrow">{mirrorListOpen ? '▲' : '▼'}</span>
+            </button>
+            {mirrorListOpen && (
+              <div className="select-dropdown-list">
+                {sites.filter((s) => s.id !== editSite?.id).map((s) => {
+                  const checked = form.mirrorFromSiteIds.includes(s.id);
+                  return (
+                    <label key={s.id} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleMirrorSite(s.id)} />
+                      <span className="select-list-name">{s.name}</span>
+                      <span className="select-list-sub">{s.team || '팀 미지정'}</span>
+                    </label>
+                  );
+                })}
+                {sites.filter((s) => s.id !== editSite?.id).length === 0 && (
+                  <div className="select-list-item" style={{ color: '#9ca3af' }}>선택할 다른 프로젝트가 없습니다.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.hideRevenue}
+                onChange={(e) => setForm({ ...form, hideRevenue: e.target.checked })}
+                style={{ width: 'auto', minHeight: 'auto', margin: 0 }}
+              />
+              <span>매출 섹션 숨기기 (지원성 프로젝트)</span>
+            </label>
+            <p className="field-hint" style={{ marginTop: 4 }}>
+              체크 시 이 프로젝트의 마감 화면·목록에서 매출이 표시되지 않고 합계 계산에서도 제외됩니다.
+            </p>
           </div>
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary">{editSite ? '수정' : '추가'}</button>

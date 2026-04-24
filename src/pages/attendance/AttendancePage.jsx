@@ -36,8 +36,13 @@ export default function AttendancePage() {
       setMessage('프로젝트를 선택해주세요.');
       return;
     }
+    const todayStr = getToday();
+    if (date > todayStr) {
+      setMessage('미래 날짜의 잔업은 등록할 수 없습니다.');
+      return;
+    }
 
-    const isPast = date < getToday();
+    const isPast = date < todayStr;
     setSubmitting(true);
     setMessage('');
     try {
@@ -75,7 +80,7 @@ export default function AttendancePage() {
           <div className="form-row">
             <div className="form-group">
               <label>날짜</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <input type="date" value={date} max={getToday()} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="form-group">
               <label>시간</label>

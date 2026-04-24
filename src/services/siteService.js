@@ -3,6 +3,7 @@ import {
   query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { QUARTER_LEAVE_TYPES } from '../utils/constants';
 
 const sitesRef = collection(db, 'sites');
 const itemsRef = collection(db, 'siteClosingItems');
@@ -42,6 +43,8 @@ export async function createSite(data) {
     startMonth: data.startMonth || null,
     endYear: data.endYear || null,
     endMonth: data.endMonth || null,
+    mirrorFromSiteIds: data.mirrorFromSiteIds || [], // 지출 합산 대상 프로젝트 ID 목록
+    hideRevenue: data.hideRevenue || false, // 매출 섹션 숨김 (지원성 프로젝트용)
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -126,6 +129,18 @@ export async function deleteClosingItem(itemId) {
   await deleteDoc(doc(db, 'siteClosingItems', itemId));
 }
 
+export async function getAllClosingItemsBySite(siteId) {
+  const q = query(itemsRef, where('siteId', '==', siteId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getAllFinanceItemsBySite(siteId) {
+  const q = query(financesRef, where('siteId', '==', siteId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // ---------- 지출/매출(siteFinances) ----------
 
 export async function getFinanceItems(siteId, year, month) {
@@ -170,6 +185,76 @@ export async function findFinanceByOvertimeId(overtimeRecordId) {
   const q = query(financesRef, where('overtimeRecordId', '==', overtimeRecordId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// ---------- 연차 변경 → 공수표 dailyQuantities 자동 동기화 ----------
+
+// 연차 유형별 근무 비율 (SiteClosingPage의 leaveWorkFraction과 동일 정책)
+function _leaveWorkFraction(type) {
+  if (!type) return 1;
+  if (type === 'half_am' || type === 'half_pm') return 0.5;
+  if (QUARTER_LEAVE_TYPES.includes(type)) return 0.75;
+  return 0; // 전일 연차 / 병가 등
+}
+
+// 자동 관리되는 근무량 값(수동 편집 흔적이 아닌 값)
+// 이 집합에 속한 값만 재계산 시 덮어씀 — 그 외(예: 0.3)는 사용자 수동 편집으로 간주하고 보존
+const _AUTO_MANAGED_VALUES = new Set([0.25, 0.5, 0.75, 1]);
+
+// 특정 유저의 특정 월 공수표(employee 타입) dailyQuantities를 연차에 맞게 재계산
+// leaveDaysMap: { [day]: leaveType } — 해당 월 승인된 연차의 날짜→유형 맵
+// 단발성(once) 프로젝트는 건드리지 않음
+export async function syncEmployeeLeaveDaysForMonth(userName, year, month, leaveDaysMap) {
+  if (!userName) return;
+  const q = query(
+    itemsRef,
+    where('year', '==', year),
+    where('month', '==', month),
+    where('itemType', '==', 'employee'),
+  );
+  const snapshot = await getDocs(q);
+  const items = snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((it) => it.detail === userName);
+  if (items.length === 0) return;
+
+  const siteIds = [...new Set(items.map((it) => it.siteId))];
+  const sites = await Promise.all(siteIds.map((id) => getSite(id)));
+  const siteMap = Object.fromEntries(sites.filter(Boolean).map((s) => [s.id, s]));
+
+  const totalDays = new Date(year, month, 0).getDate();
+
+  for (const item of items) {
+    const site = siteMap[item.siteId];
+    if (!site || site.projectType === 'once') continue; // 단발성은 수동 입력 영역
+
+    const oldDq = item.dailyQuantities || {};
+    const newDq = { ...oldDq };
+
+    for (let d = 1; d <= totalDays; d++) {
+      const dow = new Date(year, month - 1, d).getDay();
+      if (dow === 0 || dow === 6) continue; // 주말 무시
+      const frac = _leaveWorkFraction(leaveDaysMap[d]);
+      const currentVal = Number(oldDq[d]);
+      const isEmpty = oldDq[d] === undefined || oldDq[d] === null;
+      const isAutoManaged = isEmpty || _AUTO_MANAGED_VALUES.has(currentVal);
+      if (!isAutoManaged) continue; // 수동 편집된 값 보호
+
+      if (frac > 0) newDq[d] = frac;
+      else delete newDq[d];
+    }
+
+    const quantity = Object.values(newDq).reduce((s, v) => s + Number(v || 0), 0);
+    const unitPrice = Number(item.unitPrice) || 0;
+    const amount = Math.round(unitPrice * quantity);
+
+    await updateDoc(doc(db, 'siteClosingItems', item.id), {
+      dailyQuantities: newDq,
+      quantity,
+      amount,
+      updatedAt: new Date(),
+    });
+  }
 }
 
 // ---------- 월별 전체 프로젝트 직원 배정 조회 ----------
