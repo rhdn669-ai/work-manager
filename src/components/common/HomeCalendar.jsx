@@ -283,7 +283,6 @@ export default function HomeCalendar() {
                       onPointerDown={(e) => {
                         e.preventDefault();
                         setSelectedDate(iso);
-                        if (userProfile?.uid) openAddPersonal(iso);
                       }}
                     >
                       <span className="home-cal-date">{d}</span>
@@ -314,7 +313,18 @@ export default function HomeCalendar() {
           <div className="home-calendar-list">
             {selectedDate ? (
               <>
-                <div className="home-cal-list-head">{selectedDate}</div>
+                <div className="home-cal-list-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span>{selectedDate}</span>
+                  {userProfile?.uid && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => openAddPersonal(selectedDate)}
+                    >
+                      + 내 일정 추가
+                    </button>
+                  )}
+                </div>
                 {selectedEvents.length === 0 ? (
                   <div className="home-cal-list-empty">이 날짜의 일정이 없습니다.</div>
                 ) : (
