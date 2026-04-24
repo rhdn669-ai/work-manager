@@ -9,6 +9,7 @@ import {
   setFreelancerRate, clearAllRateHistories,
   getAllClosingItems,
 } from '../../services/outsourceService';
+import { getAllSites } from '../../services/siteService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 
@@ -18,7 +19,16 @@ export default function OutsourceManagementPage() {
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [closingItems, setClosingItems] = useState([]);
+  const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
+  // 월별 집계 필터
+  const nowRef = new Date();
+  const [filterMode, setFilterMode] = useState('month'); // 'month' | 'all'
+  const [filterYear, setFilterYear] = useState(nowRef.getFullYear());
+  const [filterMonth, setFilterMonth] = useState(nowRef.getMonth() + 1);
+  // 인원별 집계 모달 + 개별 상세 모달
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [detailFor, setDetailFor] = useState(null); // { kind: 'freelancer'|'daily'|'vendor', name }
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({});
@@ -179,12 +189,22 @@ export default function OutsourceManagementPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [fs, vs, cs] = await Promise.all([getFreelancers(), getVendors(), getAllClosingItems()]);
+      const [fs, vs, cs, ss] = await Promise.all([getFreelancers(), getVendors(), getAllClosingItems(), getAllSites()]);
       setFreelancers(fs);
       setVendors(vs);
       setClosingItems(cs);
+      setSites(ss);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
+  }
+
+  function shiftFilterMonth(delta) {
+    let y = filterYear;
+    let m = filterMonth + delta;
+    if (m < 1) { m = 12; y -= 1; }
+    else if (m > 12) { m = 1; y += 1; }
+    setFilterYear(y);
+    setFilterMonth(m);
   }
 
   function openCreate() {
@@ -242,11 +262,13 @@ export default function OutsourceManagementPage() {
   const soloFreelancers = freelancers.filter((f) => !(f.vendor || '').trim() && (f.workerType || 'freelancer') === 'freelancer');
   const soloDailies = freelancers.filter((f) => !(f.vendor || '').trim() && f.workerType === 'daily');
 
-  // 탭별 전체 지출 합계 (모든 프로젝트 공수표 누적)
-  // 프리랜서 지출: itemType='freelancer'인 항목의 amount 합산
-  // 일용직 지출: itemType='daily'
-  // 업체 지출: itemType='vendor' 또는 'vendor_case'
-  const sumByItemTypes = (types) => closingItems
+  // 선택된 기간 필터 — 월별 / 전체
+  const filteredItems = filterMode === 'month'
+    ? closingItems.filter((it) => Number(it.year) === filterYear && Number(it.month) === filterMonth)
+    : closingItems;
+
+  // 탭별 지출 합계 (선택된 기간 기준)
+  const sumByItemTypes = (types, list = filteredItems) => list
     .filter((it) => types.includes(it.itemType))
     .reduce((s, it) => s + (Number(it.amount) || 0), 0);
   const freelancerSpend = sumByItemTypes(['freelancer']);
@@ -255,7 +277,26 @@ export default function OutsourceManagementPage() {
 
   const fmtMoney = (n) => `${Number(n || 0).toLocaleString()}원`;
   const currentSpend = tab === 'freelancer' ? freelancerSpend : tab === 'daily' ? dailySpend : vendorSpend;
-  const currentSpendLabel = tab === 'freelancer' ? '프리랜서 전체 지출' : tab === 'daily' ? '일용직 전체 지출' : '업체 전체 지출';
+  const currentTabTypes = tab === 'freelancer' ? ['freelancer'] : tab === 'daily' ? ['daily'] : ['vendor', 'vendor_case'];
+  const currentTabLabel = tab === 'freelancer' ? '프리랜서' : tab === 'daily' ? '일용직' : '업체';
+  const periodLabel = filterMode === 'month' ? `${filterYear}년 ${filterMonth}월` : '전체 기간';
+  const siteNameMap = Object.fromEntries(sites.map((s) => [s.id, s.name]));
+
+  // 현재 탭 기간별 공수표 항목 집합 (인원/업체별 집계용)
+  const currentTabItems = filteredItems.filter((it) => currentTabTypes.includes(it.itemType));
+
+  // 인원/업체별 집계 — key = 이름(freelancer/daily) 또는 업체명(vendor)
+  const groupKey = (it) => (tab === 'vendor' ? (it.vendor || '(미지정)') : (it.detail || '(이름없음)'));
+  const groupLabel = tab === 'vendor' ? '업체명' : '이름';
+  const perPerson = Object.values(
+    currentTabItems.reduce((acc, it) => {
+      const k = groupKey(it);
+      if (!acc[k]) acc[k] = { key: k, total: 0, count: 0 };
+      acc[k].total += Number(it.amount) || 0;
+      acc[k].count += 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
 
   return (
     <div className="outsource-management-page">
@@ -308,12 +349,45 @@ export default function OutsourceManagementPage() {
         </button>
       </div>
 
-      {/* 탭별 전체 지출 합계 */}
+      {/* 탭별 지출 합계 — 월별 필터 + 인원별 상세 진입 */}
       {canViewSalary && !loading && (
-        <div className="outsource-spend-summary">
-          <span className="outsource-spend-summary-label">{currentSpendLabel}</span>
-          <strong className="outsource-spend-summary-amount">{fmtMoney(currentSpend)}</strong>
-          <span className="outsource-spend-summary-sub">(모든 프로젝트 공수표 누적)</span>
+        <div className="outsource-spend-panel">
+          <div className="outsource-spend-filter">
+            <div className="outsource-spend-filter-tabs">
+              <button
+                type="button"
+                className={`outsource-filter-btn ${filterMode === 'month' ? 'active' : ''}`}
+                onClick={() => setFilterMode('month')}
+              >월별</button>
+              <button
+                type="button"
+                className={`outsource-filter-btn ${filterMode === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterMode('all')}
+              >전체</button>
+            </div>
+            {filterMode === 'month' && (
+              <div className="outsource-spend-month-nav">
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftFilterMonth(-1)} aria-label="이전 달">‹</button>
+                <span className="outsource-spend-ym">{filterYear}년 {filterMonth}월</span>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftFilterMonth(1)} aria-label="다음 달">›</button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="outsource-spend-summary is-clickable"
+            onClick={() => perPerson.length > 0 && setSummaryModalOpen(true)}
+            disabled={perPerson.length === 0}
+            title={perPerson.length > 0 ? `${currentTabLabel} 인원별 상세 보기` : '해당 기간 지출 없음'}
+          >
+            <span className="outsource-spend-summary-label">{currentTabLabel} 지출 · {periodLabel}</span>
+            <strong className="outsource-spend-summary-amount">{fmtMoney(currentSpend)}</strong>
+            {perPerson.length > 0 && (
+              <span className="outsource-spend-summary-sub">
+                {perPerson.length}명 · 클릭하여 인원별 보기 →
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -327,24 +401,29 @@ export default function OutsourceManagementPage() {
               : '등록된 일용직이 없습니다.'}
           </div></div>
         ) : (
-          <table className="table">
+          <table className="table table-clickable">
             <thead>
               <tr>
                 <th>이름</th>
                 <th>{tab === 'daily' ? '시급' : '일당'}</th>
                 <th>연락처</th>
                 <th>비고</th>
-                <th>작업</th>
+                <th style={{ width: 1, whiteSpace: 'nowrap' }}>작업</th>
               </tr>
             </thead>
             <tbody>
               {(tab === 'freelancer' ? soloFreelancers : soloDailies).map((f) => (
-                <tr key={f.id}>
+                <tr
+                  key={f.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setDetailFor({ kind: tab, name: f.name })}
+                  title={`${f.name} 공수표 상세 내역 보기`}
+                >
                   <td><strong>{f.name}</strong></td>
                   <td>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
                   <td>{f.contact || '-'}</td>
                   <td style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.note || '-'}</td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className="btn-group">
                       <button className="btn btn-sm btn-outline" onClick={() => openEdit(f)}>수정</button>
                       <button className="btn btn-sm btn-danger-outline" onClick={() => handleDelete(f)}>삭제</button>
@@ -359,7 +438,7 @@ export default function OutsourceManagementPage() {
         vendors.length === 0 ? (
           <div className="card"><div className="card-body empty-state">등록된 업체가 없습니다.</div></div>
         ) : (
-          <table className="table">
+          <table className="table table-clickable">
             <thead>
               <tr>
                 <th>업체명</th>
@@ -367,24 +446,25 @@ export default function OutsourceManagementPage() {
                 <th>연락처</th>
                 <th>사업자번호</th>
                 <th>계좌</th>
-                <th>작업</th>
+                <th style={{ width: 1, whiteSpace: 'nowrap' }}>작업</th>
               </tr>
             </thead>
             <tbody>
               {vendors.map((v) => (
-                <tr key={v.id}>
-                  <td>
-                    <button className="vendor-name-link" onClick={() => openVendorDetail(v)} title="소속 직원·참여 프로젝트 보기">
-                      <strong>{v.name}</strong>
-                    </button>
-                  </td>
+                <tr
+                  key={v.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setDetailFor({ kind: 'vendor', name: v.name })}
+                  title={`${v.name} 지출 상세 내역 보기`}
+                >
+                  <td><strong>{v.name}</strong></td>
                   <td>{v.representative || '-'}</td>
                   <td>{v.contact || '-'}</td>
                   <td>{v.businessNumber || '-'}</td>
                   <td style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className="btn-group">
-                      <button className="btn btn-sm btn-outline" onClick={() => openVendorDetail(v)}>상세</button>
+                      <button className="btn btn-sm btn-outline" onClick={() => openVendorDetail(v)}>소속·프로젝트</button>
                       <button className="btn btn-sm btn-outline" onClick={() => openEdit(v)}>수정</button>
                       <button className="btn btn-sm btn-danger-outline" onClick={() => handleDelete(v)}>삭제</button>
                     </div>
@@ -483,6 +563,103 @@ export default function OutsourceManagementPage() {
           </div>
         </form>
       </Modal>
+
+      {/* 인원별 집계 모달 — 상단 카드 클릭 시 */}
+      {summaryModalOpen && (
+        <Modal
+          isOpen={summaryModalOpen}
+          onClose={() => setSummaryModalOpen(false)}
+          title={`${currentTabLabel} · ${periodLabel} 인원별 지출`}
+        >
+          <div className="outsource-pp-summary">
+            <div className="outsource-pp-total">
+              <span>합계</span>
+              <strong>{fmtMoney(currentSpend)}</strong>
+            </div>
+            {perPerson.length === 0 ? (
+              <p className="empty-state">해당 기간 지출 내역이 없습니다.</p>
+            ) : (
+              <ul className="outsource-pp-list">
+                {perPerson.map((p) => (
+                  <li key={p.key}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSummaryModalOpen(false);
+                        setDetailFor({ kind: tab, name: p.key });
+                      }}
+                    >
+                      <div className="outsource-pp-name">
+                        <strong>{p.key}</strong>
+                        <span className="outsource-pp-count">{p.count}건</span>
+                      </div>
+                      <span className="outsource-pp-amount">{fmtMoney(p.total)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* 개별 상세 내역 모달 — 이름/업체 행 클릭 시 */}
+      {detailFor && (() => {
+        const types = detailFor.kind === 'vendor' ? ['vendor', 'vendor_case'] : [detailFor.kind];
+        const matcher = (it) => types.includes(it.itemType) && (
+          detailFor.kind === 'vendor'
+            ? (it.vendor || '') === detailFor.name
+            : (it.detail || '') === detailFor.name
+        );
+        const all = closingItems.filter(matcher);
+        const totalAmt = all.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+        // 최신순 정렬
+        const sorted = [...all].sort((a, b) => {
+          const d = Number(b.year) * 100 + Number(b.month) - Number(a.year) * 100 - Number(a.month);
+          return d !== 0 ? d : (a.no || 0) - (b.no || 0);
+        });
+        const kindLabel = detailFor.kind === 'vendor' ? '업체' : detailFor.kind === 'daily' ? '일용직' : '프리랜서';
+        return (
+          <Modal
+            isOpen={!!detailFor}
+            onClose={() => setDetailFor(null)}
+            title={`${detailFor.name} · ${kindLabel} 지출 상세`}
+          >
+            <div className="outsource-pp-summary">
+              <div className="outsource-pp-total">
+                <span>총 지출 (전체 기간)</span>
+                <strong>{fmtMoney(totalAmt)}</strong>
+              </div>
+              {sorted.length === 0 ? (
+                <p className="empty-state">공수표 기록이 없습니다.</p>
+              ) : (
+                <ul className="outsource-detail-list">
+                  {sorted.map((it) => {
+                    const siteName = siteNameMap[it.siteId] || '(삭제된 프로젝트)';
+                    const qty = Number(it.quantity || 0);
+                    const unit = it.itemType === 'daily' ? '시간' : it.itemType === 'vendor_case' ? '건' : '일';
+                    return (
+                      <li key={it.id}>
+                        <div className="outsource-detail-head">
+                          <strong>{it.year}년 {it.month}월</strong>
+                          <span className="outsource-detail-site">{siteName}</span>
+                        </div>
+                        <div className="outsource-detail-body">
+                          <span className="outsource-detail-meta">
+                            {qty > 0 ? `${qty}${unit}` : ''}
+                            {it.unitPrice > 0 && qty > 0 ? ` · 단가 ${Number(it.unitPrice).toLocaleString()}원` : ''}
+                          </span>
+                          <strong className="outsource-detail-amount">{fmtMoney(it.amount)}</strong>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* 업체 상세 모달 */}
       <Modal isOpen={!!detailVendor} onClose={() => setDetailVendor(null)} title={detailVendor?.name || '업체 상세'}>

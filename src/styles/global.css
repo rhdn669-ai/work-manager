@@ -1472,18 +1472,76 @@ body {
   color: var(--text, #0f172a);
 }
 
-/* 외주관리 — 탭별 전체 지출 합계 배너 */
+/* 외주관리 — 탭별 지출 합계 + 월별 필터 */
+.outsource-spend-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.outsource-spend-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.outsource-spend-filter-tabs {
+  display: inline-flex;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+}
+.outsource-filter-btn {
+  background: transparent;
+  border: none;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.outsource-filter-btn.active {
+  background: #fff;
+  color: var(--primary-hover, #b45309);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.outsource-spend-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.outsource-spend-ym {
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 88px;
+  text-align: center;
+}
+
 .outsource-spend-summary {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 12px 16px;
-  margin-bottom: 14px;
+  padding: 14px 18px;
   background: #fff7ed;
   border: 1px solid #fed7aa;
   border-radius: 10px;
   flex-wrap: wrap;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
 }
+.outsource-spend-summary.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+.outsource-spend-summary.is-clickable:not(:disabled):hover {
+  border-color: #fb923c;
+  box-shadow: 0 2px 8px rgba(251, 146, 60, 0.18);
+}
+.outsource-spend-summary.is-clickable:not(:disabled):active { transform: translateY(1px); }
+.outsource-spend-summary:disabled { opacity: 0.55; cursor: default; }
 .outsource-spend-summary-label {
   font-size: 13px;
   font-weight: 700;
@@ -1498,7 +1556,106 @@ body {
 .outsource-spend-summary-sub {
   font-size: 11px;
   color: #a16207;
-  opacity: 0.8;
+  opacity: 0.85;
+  margin-left: auto;
+}
+
+/* 인원별 집계 & 개별 상세 모달 */
+.outsource-pp-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.outsource-pp-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+}
+.outsource-pp-total span { font-size: 12px; font-weight: 700; color: #9a3412; }
+.outsource-pp-total strong { font-size: 17px; font-weight: 800; color: #b45309; letter-spacing: -0.01em; }
+
+.outsource-pp-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.outsource-pp-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.1s, background 0.1s;
+}
+.outsource-pp-list button:hover {
+  border-color: var(--primary);
+  background: var(--primary-softer);
+}
+.outsource-pp-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.outsource-pp-name strong { font-size: 14px; color: var(--text); }
+.outsource-pp-count { font-size: 11px; color: var(--text-muted); }
+.outsource-pp-amount {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary-hover, #b45309);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.outsource-detail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.outsource-detail-list li {
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.outsource-detail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.outsource-detail-head strong { font-size: 13px; color: var(--text); }
+.outsource-detail-site {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outsource-detail-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.outsource-detail-meta { font-size: 11px; color: var(--text-muted); }
+.outsource-detail-amount {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary-hover, #b45309);
+  font-variant-numeric: tabular-nums;
 }
 
 .vendor-picker-list {
