@@ -4,7 +4,7 @@ import {
   getAccessibleChannels, ensureCompanyChannel,
   createCustomChannel, updateCustomChannel, deleteCustomChannel,
 } from '../services/channelService';
-import { subscribeDmRooms, getOrCreateDmRoom, hideDmRoomForUser } from '../services/chatService';
+import { subscribeDmRooms, getOrCreateDmRoom, hideDmRoomForUser, clearAllDmMessages } from '../services/chatService';
 import { getUsers } from '../services/userService';
 
 export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
@@ -199,7 +199,29 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
           );
         })}
 
-        <div className="channel-section-label" style={{ marginTop: 8 }}>1:1 대화</div>
+        <div className="channel-section-label" style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>1:1 대화</span>
+          {isAdmin && dmRooms.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-sm btn-danger-outline"
+              style={{ fontSize: 11, padding: '3px 8px' }}
+              title="모든 사용자의 1:1 대화 이력을 삭제합니다 (방 자체는 유지)"
+              onClick={async () => {
+                if (!confirm('모든 사용자의 1:1 대화 이력을 전부 삭제하시겠습니까?\n(방 자체는 유지되고 메시지만 삭제됩니다. 되돌릴 수 없습니다.)')) return;
+                try {
+                  const res = await clearAllDmMessages();
+                  alert(`1:1 대화 이력 초기화 완료\n방 ${res.rooms}개 · 메시지 ${res.deletedMessages}개 삭제`);
+                  await refreshChannels();
+                } catch (err) {
+                  alert('초기화 실패: ' + err.message);
+                }
+              }}
+            >
+              전체 초기화
+            </button>
+          )}
+        </div>
         {dmRooms.length === 0 && (
           <div className="channel-empty-small">아직 대화가 없습니다. 우측 상단 + 버튼으로 시작하세요.</div>
         )}

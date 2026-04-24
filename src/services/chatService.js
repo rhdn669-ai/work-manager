@@ -233,3 +233,23 @@ export async function hideDmRoomForUser(roomId, userId) {
     hiddenBy: arrayUnion(userId),
   });
 }
+
+// 관리자 — 모든 1:1 대화의 메시지 전체 삭제 (방 자체는 유지, lastMessage/lastMessageAt/hiddenBy 리셋)
+// 반환: { rooms, deletedMessages }
+export async function clearAllDmMessages() {
+  const roomsSnap = await getDocs(DM_ROOMS);
+  let deletedMessages = 0;
+  for (const roomDoc of roomsSnap.docs) {
+    const msgRef = collection(db, 'dmRooms', roomDoc.id, 'messages');
+    const msgsSnap = await getDocs(msgRef);
+    await Promise.all(msgsSnap.docs.map((m) => deleteDoc(doc(db, 'dmRooms', roomDoc.id, 'messages', m.id))));
+    deletedMessages += msgsSnap.size;
+    await updateDoc(doc(DM_ROOMS, roomDoc.id), {
+      lastMessage: '',
+      lastMessageAt: null,
+      lastSenderId: null,
+      hiddenBy: [],
+    });
+  }
+  return { rooms: roomsSnap.size, deletedMessages };
+}
