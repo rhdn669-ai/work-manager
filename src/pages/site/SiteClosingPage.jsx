@@ -377,6 +377,8 @@ export default function SiteClosingPage() {
   }
 
   async function handlePickMember(f) {
+    const dup = items.some((it) => it.itemType === 'vendor' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === (f?.name || ''));
+    if (dup) { alert(`${pickedVendor?.name} · ${f?.name}는 이미 추가되어 있습니다.`); return; }
     const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
     const rate = getRateForDate(f, targetDate) || Number(pickedVendor?.dailyRate) || 0;
     await addVendorRow({
@@ -403,6 +405,8 @@ export default function SiteClosingPage() {
   }
 
   async function handlePickProject(p) {
+    const dup = items.some((it) => it.itemType === 'vendor_case' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === (p?.name || ''));
+    if (dup) { alert(`${pickedVendor?.name} · ${p?.name}는 이미 추가되어 있습니다.`); return; }
     await addVendorRow({
       itemType: 'vendor_case',
       vendorName: pickedVendor?.name || '',
@@ -1232,11 +1236,12 @@ export default function SiteClosingPage() {
                   <ul className="vendor-picker-list">
                     {vendorMembers.map((f) => {
                       const rate = getRateForDate(f, targetDate);
+                      const already = items.some((it) => it.itemType === 'vendor' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === f.name);
                       return (
-                        <li key={f.id}>
-                          <button type="button" onClick={() => handlePickMember(f)}>
+                        <li key={f.id} style={already ? { opacity: 0.4 } : undefined}>
+                          <button type="button" onClick={() => handlePickMember(f)} disabled={already} style={already ? { cursor: 'default' } : undefined}>
                             <strong>{f.name}</strong>
-                            <span>{canViewSalary ? (rate > 0 ? `공수 ${rate.toLocaleString()}원` : '단가 미입력') : ''}</span>
+                            <span>{already ? '이미 등록됨' : (canViewSalary ? (rate > 0 ? `공수 ${rate.toLocaleString()}원` : '단가 미입력') : '')}</span>
                           </button>
                         </li>
                       );
@@ -1262,14 +1267,17 @@ export default function SiteClosingPage() {
               ) : (
                 <>
                   <ul className="vendor-picker-list">
-                    {pickedVendor.projects.map((p) => (
-                      <li key={p.name}>
-                        <button type="button" onClick={() => handlePickProject(p)}>
-                          <strong>{p.name}</strong>
-                          <span>{canViewSalary ? (p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력') : ''}</span>
-                        </button>
-                      </li>
-                    ))}
+                    {pickedVendor.projects.map((p) => {
+                      const already = items.some((it) => it.itemType === 'vendor_case' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === p.name);
+                      return (
+                        <li key={p.name} style={already ? { opacity: 0.4 } : undefined}>
+                          <button type="button" onClick={() => handlePickProject(p)} disabled={already} style={already ? { cursor: 'default' } : undefined}>
+                            <strong>{p.name}</strong>
+                            <span>{already ? '이미 등록됨' : (canViewSalary ? (p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력') : '')}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                   <div className="modal-actions">
                     <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
