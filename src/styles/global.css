@@ -1285,6 +1285,12 @@ body {
 .employee-picker-group-head--assigned { background: #f1f5f9; color: #64748b; }
 .employee-picker-group-head--done { background: #dcfce7; color: #166534; }
 
+/* 직원 선택 모달 — 3개 그룹이라 내부 리스트 개별 스크롤 제거, 외부 .modal 하나만 스크롤 */
+.employee-picker .vendor-picker-list {
+  max-height: none;
+  overflow: visible;
+}
+
 .vendor-picker-list {
   list-style: none;
   padding: 0;

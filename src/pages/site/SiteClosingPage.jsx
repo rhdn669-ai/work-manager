@@ -1353,7 +1353,7 @@ export default function SiteClosingPage() {
             {allWithCost.length === 0 ? (
               <p className="empty-state">고정비용이 등록된 직원이 없습니다. 직원 관리에서 설정하세요.</p>
             ) : (
-              <>
+              <div className="employee-picker">
                 {unassigned.length > 0 && (
                   <>
                     <div className="employee-picker-group-head employee-picker-group-head--unassigned">
@@ -1416,7 +1416,7 @@ export default function SiteClosingPage() {
                 {unassigned.length === 0 && assignedElsewhere.length === 0 && alreadyHere.length > 0 && (
                   <p className="empty-state">모든 직원이 이미 등록되었습니다.</p>
                 )}
-              </>
+              </div>
             )}
           </Modal>
         );
