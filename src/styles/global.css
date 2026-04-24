@@ -1291,6 +1291,166 @@ body {
   overflow: visible;
 }
 
+/* 우리 팀 — 팀원 일정 캘린더 (일반 직원 뷰) */
+.team-calendar-section {
+  margin-top: 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.team-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.team-calendar-title { display: flex; align-items: baseline; gap: 6px; }
+.team-calendar-title strong { font-size: 14px; color: var(--text); }
+.team-calendar-hint { font-size: 11px; color: var(--text-muted); }
+.team-calendar-nav { display: flex; align-items: center; gap: 8px; }
+.team-calendar-ym { font-size: 13px; font-weight: 700; color: var(--text); min-width: 82px; text-align: center; }
+
+.team-calendar { display: flex; flex-direction: column; gap: 2px; }
+.team-calendar-dow-row,
+.team-calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.team-calendar-dow {
+  padding: 6px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.team-calendar-dow.sunday { color: #dc2626; }
+.team-calendar-dow.saturday { color: #2563eb; }
+
+.team-cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 62px;
+  padding: 4px 5px;
+  background: #fafbfc;
+  border: 1px solid #eef0f2;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  text-align: left;
+  font-family: inherit;
+  min-width: 0;
+}
+.team-cal-cell:not(:disabled):hover { border-color: #cbd5e1; background: #f1f5f9; }
+.team-cal-cell:disabled { cursor: default; }
+.team-cal-empty { background: transparent; border-color: transparent; cursor: default; }
+.team-cal-cell.is-today { border-color: var(--primary, #d97706); background: #fff7ed; }
+.team-cal-cell.is-selected { border-color: var(--primary, #d97706); background: #ffedd5; }
+.team-cal-day {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.team-cal-cell.sunday .team-cal-day { color: #dc2626; }
+.team-cal-cell.saturday .team-cal-day { color: #2563eb; }
+.team-cal-events { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.team-cal-ev {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.45;
+}
+.team-cal-ev-overtime { background: #2563eb; }
+.team-cal-ev-leave { background: #ef4444; }
+.team-cal-ev-leave-annual { background: #ef4444; }
+.team-cal-ev-leave-sick { background: #7c3aed; }
+.team-cal-ev-leave-half_am,
+.team-cal-ev-leave-half_pm { background: #f59e0b; }
+.team-cal-ev-leave-quarter_1,
+.team-cal-ev-leave-quarter_2,
+.team-cal-ev-leave-quarter_3,
+.team-cal-ev-leave-quarter_4 { background: #f97316; }
+.team-cal-ev-more {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 0 3px;
+  line-height: 1.3;
+}
+
+/* 선택한 날짜 상세 */
+.team-calendar-day-detail {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.team-calendar-day-detail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.team-calendar-day-detail-head strong { font-size: 14px; color: var(--text); }
+.team-calendar-close {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.team-calendar-close:hover { background: rgba(0,0,0,0.05); }
+.team-calendar-day-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.team-calendar-day-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.team-cal-ev-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.team-cal-ev-dot.team-cal-ev-overtime { background: #2563eb; }
+.team-cal-ev-dot.team-cal-ev-leave,
+.team-cal-ev-dot.team-cal-ev-leave-annual { background: #ef4444; }
+.team-cal-ev-dot.team-cal-ev-leave-sick { background: #7c3aed; }
+.team-cal-ev-dot.team-cal-ev-leave-half_am,
+.team-cal-ev-dot.team-cal-ev-leave-half_pm { background: #f59e0b; }
+.team-cal-ev-dot.team-cal-ev-leave-quarter_1,
+.team-cal-ev-dot.team-cal-ev-leave-quarter_2,
+.team-cal-ev-dot.team-cal-ev-leave-quarter_3,
+.team-cal-ev-dot.team-cal-ev-leave-quarter_4 { background: #f97316; }
+.team-calendar-day-list strong { color: var(--text); }
+.team-calendar-ev-detail { color: var(--text-muted); font-size: 12px; margin-left: auto; }
+
+@media (max-width: 520px) {
+  .team-cal-cell { min-height: 58px; padding: 3px; }
+  .team-cal-ev { font-size: 9px; padding: 1px 3px; }
+  .team-calendar-ym { font-size: 12px; min-width: 72px; }
+}
+
 /* 비밀번호 설정 화면 — 로그인으로 돌아가기 버튼 */
 .login-card { position: relative; }
 .login-back-btn {
