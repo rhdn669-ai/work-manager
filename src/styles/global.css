@@ -177,7 +177,7 @@ body {
   top: 36px;
 }
 .app-layout:has(.impersonation-banner) .app-body {
-  padding-top: calc(var(--header-height) + 36px);
+  padding-top: calc(var(--header-height) + 36px + env(safe-area-inset-top));
 }
 .app-layout:has(.impersonation-banner) .sidebar {
   top: calc(var(--header-height) + 36px);
@@ -214,13 +214,15 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: var(--header-height);
+  height: calc(var(--header-height) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
   z-index: 100;
   box-shadow: var(--shadow);
 }
@@ -298,7 +300,10 @@ body {
 }
 
 @media (max-width: 480px) {
-  .header { padding: 0 12px; }
+  .header {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
   .header-left { gap: 8px; }
   .header-right { gap: 8px; }
   .header-logo { width: 110px; }
@@ -308,14 +313,17 @@ body {
 
 /* 폴드 접힌 화면 (~280px) */
 @media (max-width: 340px) {
-  .header { padding: 0 8px; }
+  .header {
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
   .header-left { gap: 4px; }
   .header-right { gap: 4px; }
   .header-logo { width: 72px; }
   .header-version { font-size: 8px; margin-left: 0; }
   .user-info { max-width: 52px; font-size: 11px; }
   .user-info .badge { font-size: 9px; padding: 1px 3px; }
-  .header-right .btn-sm { font-size: 10px; padding: 3px 6px; }
+  .header-right .btn-sm { font-size: 11px; padding: 6px 8px; min-height: 44px; }
 }
 
 .menu-toggle {
@@ -329,7 +337,7 @@ body {
 
 .app-body {
   display: flex;
-  padding-top: var(--header-height);
+  padding-top: calc(var(--header-height) + env(safe-area-inset-top));
 }
 
 /* ===== 사이드바 ===== */
