@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
@@ -8,6 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { isImpersonating, impersonator, userProfile, stopImpersonation } = useAuth();
+  const location = useLocation();
+  const isChatRoute = location.pathname.startsWith('/chat');
 
   async function handleStopImpersonation() {
     try {
@@ -20,7 +22,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : ''} ${isChatRoute ? 'chat-route' : ''}`}>
       {isImpersonating && (
         <div className="impersonation-banner">
           <span className="impersonation-banner-text">
@@ -39,7 +41,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      <BottomNav />
+      {!isChatRoute && <BottomNav />}
     </div>
   );
 }

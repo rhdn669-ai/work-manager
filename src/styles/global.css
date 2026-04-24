@@ -2791,12 +2791,26 @@ body {
 
 /* ===== 채팅 ===== */
 .chat-page {
+  /* 채팅 페이지는 main-content padding/sidebar/BottomNav 누적 오차를 피하기 위해
+     viewport에 직접 fixed로 배치. Layout.jsx에서 .chat-route 분기로 BottomNav 숨김. */
+  position: fixed;
+  top: calc(var(--header-height) + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  /* main-content padding 상쇄 후 뷰포트 꽉 채우기 */
-  margin: -18px -22px;
-  height: calc(100dvh - var(--header-height) - env(safe-area-inset-top));
+  background: #fff;
   overflow: hidden;
+  z-index: 50;
+}
+/* 데스크톱에서 사이드바 열려있으면 chat-page 좌측을 사이드바 폭만큼 미룸 */
+.app-layout.sidebar-open .chat-page {
+  left: var(--sidebar-width);
+}
+/* impersonation 배너 표시 시 헤더가 36px 아래로 밀림 → chat-page도 보정 */
+.app-layout:has(.impersonation-banner) .chat-page {
+  top: calc(var(--header-height) + env(safe-area-inset-top) + 36px);
 }
 
 .chat-messages {
@@ -6437,10 +6451,12 @@ body {
     padding: 1px 3px;
   }
 
+  /* 모바일: chat-page는 fixed 그대로, 사이드바 자체가 표시되지 않으니 항상 left:0 */
+  .app-layout.sidebar-open .chat-page,
   .chat-page {
-    margin: -16px -16px 0;
-    /* 72px = .main-content padding-bottom (BottomNav 영역 확보값과 일치) */
-    height: calc(100dvh - var(--header-height) - env(safe-area-inset-top) - 72px - env(safe-area-inset-bottom));
+    left: 0;
+    margin: 0;
+    height: auto;
   }
 
   .header-title {
@@ -6865,11 +6881,10 @@ body {
     padding-bottom: max(4px, env(safe-area-inset-bottom));
   }
 
-  /* BottomNav가 모바일 채팅 페이지에서도 표시되며 자체 safe-area-bottom을
-     처리하므로, chat-input-bar에는 추가 padding-bottom을 두지 않음
-     (이전엔 이중 적용으로 input-area가 두꺼워져 보내기 버튼이 짤림) */
+  /* 모바일 채팅에선 BottomNav를 숨기므로(.chat-route 분기) chat-input-bar가
+     화면 최하단을 차지. safe-area-inset-bottom을 직접 처리해 홈인디케이터 영역 회피. */
   .chat-input-bar {
-    padding-bottom: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
   /* 로그인 페이지 dvh 단위 */
