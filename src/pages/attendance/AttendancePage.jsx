@@ -58,6 +58,8 @@ export default function AttendancePage() {
       setHours('');
       setMinutesInput('');
       setReason('');
+      setSiteId('');
+      setDate(getToday());
       setMessage(isPast
         ? '지난 날짜 잔업이 등록되었습니다. 관리자 승인 후 확정됩니다.'
         : '잔업이 등록되었습니다!'
