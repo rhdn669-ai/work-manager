@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
+import SetPasswordPage from './pages/SetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import AttendancePage from './pages/attendance/AttendancePage';
@@ -23,6 +24,7 @@ import SiteClosingPage from './pages/site/SiteClosingPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/set-password', element: <SetPasswordPage /> },
   { path: '/', element: <Navigate to="/dashboard" replace /> },
   {
     element: <ProtectedRoute />,

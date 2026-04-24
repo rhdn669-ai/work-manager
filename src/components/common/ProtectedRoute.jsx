@@ -16,6 +16,11 @@ export default function ProtectedRoute({ allowedRoles }) {
     return <div className="loading-screen">프로필 로딩 중...</div>;
   }
 
+  // 비밀번호 미설정 시 최초 설정 페이지로 이동
+  if (!userProfile.password) {
+    return <Navigate to="/set-password" replace />;
+  }
+
   if (allowedRoles) {
     const effectiveRoles = [userProfile.role];
     // 팀장/대표/부사장 등 승인 권한 보유자는 manager 라우트 접근 허용

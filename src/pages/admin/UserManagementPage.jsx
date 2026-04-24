@@ -195,6 +195,7 @@ export default function UserManagementPage() {
           <tr>
             <th>이름</th>
             <th>코드</th>
+            <th>비밀번호</th>
             <th>직급</th>
             <th>부서</th>
             <th>고정비용</th>
@@ -210,6 +211,11 @@ export default function UserManagementPage() {
               <tr key={u.uid} onClick={() => openEdit(u)} style={{ cursor: 'pointer' }}>
                 <td>{u.name}</td>
                 <td><code>{u.code}</code></td>
+                <td>
+                  {u.password
+                    ? <span style={{ color: 'var(--success, #16a34a)', fontSize: 13 }}>✓ 설정됨</span>
+                    : <span style={{ color: 'var(--danger, #dc2626)', fontSize: 13 }}>✗ 미설정</span>}
+                </td>
                 <td>
                   <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
                     {u.position || '-'}
