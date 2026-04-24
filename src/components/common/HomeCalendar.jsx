@@ -4,6 +4,7 @@ import { getEvents } from '../../services/eventService';
 import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getUsers } from '../../services/userService';
+import { getAllSites } from '../../services/siteService';
 import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../../services/personalEventService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import Modal from './Modal';
@@ -31,6 +32,7 @@ export default function HomeCalendar() {
   const [leaves, setLeaves] = useState([]);
   const [personalEvents, setPersonalEvents] = useState([]);
   const [userNameMap, setUserNameMap] = useState({});
+  const [siteNameMap, setSiteNameMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showPersonalModal, setShowPersonalModal] = useState(false);
@@ -45,7 +47,10 @@ export default function HomeCalendar() {
       const startISO = `${year}-${pad(month)}-01`;
       const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
 
-      const rawEvents = await getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; });
+      const [rawEvents, allSitesForMap] = await Promise.all([
+        getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; }),
+        getAllSites().catch(() => []),
+      ]);
       // 관리자가 아닌 경우 공지(notice)만 표시, 관리자는 모든 이벤트/공지/휴무 표시
       const evs = isAdmin ? rawEvents : rawEvents.filter((e) => (e.type || 'event') === 'notice');
 
@@ -81,6 +86,9 @@ export default function HomeCalendar() {
       const nameMap = {};
       users.forEach((u) => { nameMap[u.uid] = u.name; });
       setUserNameMap(nameMap);
+      const siteMap = {};
+      allSitesForMap.forEach((s) => { siteMap[s.id] = s.name; });
+      setSiteNameMap(siteMap);
       setLoading(false);
     })();
     return () => { active = false; };
@@ -157,6 +165,11 @@ export default function HomeCalendar() {
       .map((o) => {
         const showName = (canApproveLeave) && o.userId !== userProfile?.uid;
         const who = showName ? (o.userName || userNameMap[o.userId] || '') : '';
+        const siteName = o.siteId ? (siteNameMap[o.siteId] || '') : '';
+        const parts = [];
+        if (who) parts.push(who);
+        if (siteName) parts.push(siteName);
+        parts.push(`잔업 ${formatMinutes(o.minutes || 0)}`);
         return {
           ...o,
           _kind: 'overtime',
@@ -164,7 +177,8 @@ export default function HomeCalendar() {
           _start: o.date,
           _end: o.date,
           _who: who,
-          title: `${who ? who + ' · ' : ''}잔업 ${formatMinutes(o.minutes || 0)}`,
+          _siteName: siteName,
+          title: parts.join(' · '),
         };
       });
 
@@ -208,7 +222,7 @@ export default function HomeCalendar() {
       }
     });
     return { weeks: ws, eventsByDay: byDay, monthEvents: all };
-  }, [cursor, events, overtimes, leaves, personalEvents, canApproveLeave, userNameMap, userProfile?.uid]);
+  }, [cursor, events, overtimes, leaves, personalEvents, canApproveLeave, userNameMap, siteNameMap, userProfile?.uid]);
 
   function prev() {
     setSelectedDate(null);
@@ -315,7 +329,13 @@ export default function HomeCalendar() {
                             {e._start}{e._end && e._end !== e._start ? ` ~ ${e._end}` : ''} · {e.days}일
                           </div>
                         )}
-                        {e._kind === 'overtime' && e.reason && <div className="home-cal-item-desc">{e.reason}</div>}
+                        {e._kind === 'overtime' && (e._siteName || e.reason) && (
+                          <div className="home-cal-item-desc">
+                            {e._siteName && <strong style={{ color: '#334155' }}>{e._siteName}</strong>}
+                            {e._siteName && e.reason ? ' · ' : ''}
+                            {e.reason}
+                          </div>
+                        )}
                         {e._kind === 'personal' && (
                           <>
                             {e.note && <div className="home-cal-item-desc">{e.note}</div>}

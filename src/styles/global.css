@@ -4697,32 +4697,37 @@ body {
 .home-calendar-nav {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: #f8fafc;
-  padding: 4px;
-  border-radius: 999px;
+  gap: 6px;
 }
 .cal-nav-btn, .cal-today-btn {
-  height: 30px;
-  min-width: 30px;
-  padding: 0 10px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 12px;
   font-size: 14px;
-  font-weight: 600;
-  color: #475569;
-  background: transparent;
-  border: none;
+  font-weight: 700;
+  color: #334155;
+  background: #fff;
+  border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.15s;
 }
-.cal-nav-btn:hover, .cal-today-btn:hover {
-  background: #fff;
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+.cal-nav-btn {
+  border-radius: 8px;
+  line-height: 1;
 }
 .cal-today-btn {
   font-size: 12px;
-  padding: 0 12px;
+  padding: 0 14px;
+  border-radius: 8px;
+}
+.cal-nav-btn:hover, .cal-today-btn:hover {
+  background: var(--primary-soft, #fef3c7);
+  border-color: var(--primary, #d97706);
+  color: var(--primary-hover, #b45309);
+}
+.cal-nav-btn:active, .cal-today-btn:active {
+  transform: translateY(1px);
 }
 
 .home-calendar-loading {
