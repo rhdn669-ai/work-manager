@@ -6887,6 +6887,31 @@ body {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
+  /* 폴드 접힘/Z Flip 외부 화면 등 초소형(~280-340px) 채팅 입력바 컴팩트화 */
+  @media (max-width: 360px) {
+    .chat-input-bar {
+      padding: 10px 8px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+      padding-left: max(8px, env(safe-area-inset-left));
+      padding-right: max(8px, env(safe-area-inset-right));
+      gap: 6px;
+    }
+    .chat-attach-btn {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+    }
+    .chat-send-btn {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+    .chat-input {
+      padding: 8px 12px;
+      min-width: 0;
+    }
+  }
+
   /* 로그인 페이지 dvh 단위 */
   .login-page {
     min-height: 100dvh;
