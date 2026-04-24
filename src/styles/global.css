@@ -3208,6 +3208,34 @@ body {
 .channel-section-label { padding: 10px 20px 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .channel-new-dm-btn { background: none; border: none; cursor: pointer; color: var(--primary); padding: 6px; border-radius: 8px; display: flex; align-items: center; }
 .channel-new-dm-btn:hover { background: #f1f5f9; }
+
+/* 헤더 액션 버튼 — 아이콘 + 텍스트 레이블 */
+.channel-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.channel-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.channel-action-btn:hover {
+  background: var(--primary-soft, #fef3c7);
+  border-color: var(--primary, #d97706);
+  color: var(--primary-hover, #b45309);
+}
+.channel-action-btn svg { flex-shrink: 0; }
+.channel-action-btn span { white-space: nowrap; line-height: 1; }
 .channel-icon-wrap.dm-avatar { background: #E0F2FE; color: #0369A1; font-size: 16px; font-weight: 700; }
 
 /* 새 DM 모달 */
