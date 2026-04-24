@@ -1779,6 +1779,34 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 품목/이름 줄 */
+.outsource-detail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+.outsource-detail-kind {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 10px;
+  letter-spacing: -0.01em;
+}
+.outsource-detail-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.outsource-detail-cat {
+  font-size: 11px;
+  color: var(--text-muted);
+}
 .outsource-detail-body {
   display: flex;
   align-items: baseline;

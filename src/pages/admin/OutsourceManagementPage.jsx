@@ -290,13 +290,15 @@ export default function OutsourceManagementPage() {
   const groupKey = (it) => (tab === 'vendor' ? (it.vendor || '(미지정)') : (it.detail || '(이름없음)'));
   const groupLabel = tab === 'vendor' ? '업체명' : '이름';
   const perPerson = Object.values(
-    currentTabItems.reduce((acc, it) => {
-      const k = groupKey(it);
-      if (!acc[k]) acc[k] = { key: k, total: 0, count: 0 };
-      acc[k].total += Number(it.amount) || 0;
-      acc[k].count += 1;
-      return acc;
-    }, {})
+    currentTabItems
+      .filter((it) => Number(it.amount) > 0) // 금액 0은 집계 모달에서 제외
+      .reduce((acc, it) => {
+        const k = groupKey(it);
+        if (!acc[k]) acc[k] = { key: k, total: 0, count: 0 };
+        acc[k].total += Number(it.amount) || 0;
+        acc[k].count += 1;
+        return acc;
+      }, {})
   ).sort((a, b) => b.total - a.total);
 
   return (
@@ -655,7 +657,7 @@ export default function OutsourceManagementPage() {
             ? (it.vendor || '') === detailFor.name
             : (it.detail || '') === detailFor.name
         );
-        const all = closingItems.filter(matcher);
+        const all = closingItems.filter(matcher).filter((it) => Number(it.amount) > 0);
         const totalAmt = all.reduce((s, it) => s + (Number(it.amount) || 0), 0);
         // 최신순 정렬
         const sorted = [...all].sort((a, b) => {
@@ -663,6 +665,7 @@ export default function OutsourceManagementPage() {
           return d !== 0 ? d : (a.no || 0) - (b.no || 0);
         });
         const kindLabel = detailFor.kind === 'vendor' ? '업체' : detailFor.kind === 'daily' ? '일용직' : '프리랜서';
+        const isVendorTab = detailFor.kind === 'vendor';
         return (
           <Modal
             isOpen={!!detailFor}
@@ -675,19 +678,33 @@ export default function OutsourceManagementPage() {
                 <strong>{fmtMoney(totalAmt)}</strong>
               </div>
               {sorted.length === 0 ? (
-                <p className="empty-state">공수표 기록이 없습니다.</p>
+                <p className="empty-state">지출 기록이 없습니다.</p>
               ) : (
                 <ul className="outsource-detail-list">
                   {sorted.map((it) => {
                     const siteName = siteNameMap[it.siteId] || '(삭제된 프로젝트)';
                     const qty = Number(it.quantity || 0);
                     const unit = it.itemType === 'daily' ? '시간' : it.itemType === 'vendor_case' ? '건' : '일';
+                    // 품목/이름 라벨: 업체 탭이면 detail=직원명 or 프로젝트명, 프리랜서/일용직 탭이면 vendor=소속업체(있을 때)
+                    const itemLabel = isVendorTab
+                      ? (it.detail || (it.itemType === 'vendor_case' ? '프로젝트 미지정' : '직원 미지정'))
+                      : (it.vendor || '');
+                    const itemKind = isVendorTab
+                      ? (it.itemType === 'vendor_case' ? '프로젝트' : '직원')
+                      : (it.vendor ? '소속 업체' : '');
                     return (
                       <li key={it.id}>
                         <div className="outsource-detail-head">
                           <strong>{it.year}년 {it.month}월</strong>
                           <span className="outsource-detail-site">{siteName}</span>
                         </div>
+                        {itemLabel && (
+                          <div className="outsource-detail-item">
+                            {itemKind && <span className="outsource-detail-kind">{itemKind}</span>}
+                            <strong className="outsource-detail-name">{itemLabel}</strong>
+                            {it.category && <span className="outsource-detail-cat">· {it.category}</span>}
+                          </div>
+                        )}
                         <div className="outsource-detail-body">
                           <span className="outsource-detail-meta">
                             {qty > 0 ? `${qty}${unit}` : ''}
