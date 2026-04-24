@@ -6,8 +6,11 @@ import {
   deleteChannelMessage, editChannelMessage, deleteAllChannelMessages,
   toggleChannelReaction, pinChannelMessage, getPinnedChannelMessage, markChannelRead,
   setChannelTyping, subscribeChannelTyping,
+  updateCustomChannel,
 } from '../services/channelService';
 import { getUsers } from '../services/userService';
+import { getDepartments } from '../services/departmentService';
+import Modal from '../components/common/Modal';
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
@@ -62,6 +65,12 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
   const lastReadRef = useRef({});
   const msgRefs = useRef({});
   const [flashMsgId, setFlashMsgId] = useState(null);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteSearch, setInviteSearch] = useState('');
+  const [localChannel, setLocalChannel] = useState(channel); // memberIds 변경 즉시 반영용
+  const [departments, setDepartments] = useState([]);
+  const [savingMembers, setSavingMembers] = useState(false);
 
   function jumpToMessage(id) {
     if (!id) return;
@@ -101,7 +110,40 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
 
   useEffect(() => {
     getUsers().then(setUsers).catch(() => {});
+    getDepartments().then(setDepartments).catch(() => {});
   }, []);
+  useEffect(() => { setLocalChannel(channel); }, [channel?.id]);
+
+  // 채널 타입별 현재 멤버 목록 계산
+  const currentMembers = (() => {
+    if (!users.length) return [];
+    const ch = localChannel;
+    if (ch.type === 'company') return users.filter((u) => u.isActive !== false);
+    if (ch.type === 'department') return users.filter((u) => u.isActive !== false && u.departmentId === ch.departmentId);
+    // custom
+    const ids = new Set(ch.memberIds || []);
+    return users.filter((u) => ids.has(u.uid));
+  })();
+
+  const deptMap = Object.fromEntries(departments.map((d) => [d.id, d.name]));
+
+  async function handleToggleInvite(uid) {
+    if (localChannel.type !== 'custom' || !isAdmin) return;
+    const current = new Set(localChannel.memberIds || []);
+    if (current.has(uid)) current.delete(uid); else current.add(uid);
+    const newMemberIds = [...current];
+    const prev = localChannel;
+    setLocalChannel({ ...prev, memberIds: newMemberIds });
+    setSavingMembers(true);
+    try {
+      await updateCustomChannel(localChannel.id, { memberIds: newMemberIds });
+    } catch (err) {
+      alert('저장 실패: ' + err.message);
+      setLocalChannel(prev);
+    } finally {
+      setSavingMembers(false);
+    }
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -244,6 +286,25 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
           <span className="channel-chat-title">{channel.name}</span>
           <span className="channel-chat-sub">{channel.type === 'company' ? '전체' : '부서'}</span>
         </div>
+        <button className="chat-header-btn" onClick={() => setShowMembers(true)} title={`멤버 ${currentMembers.length}명`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span className="chat-header-btn-count">{currentMembers.length}</span>
+        </button>
+        {isAdmin && localChannel.type === 'custom' && (
+          <button className="chat-header-btn" onClick={() => { setShowInvite(true); setInviteSearch(''); }} title="멤버 초대">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+              <line x1="19" y1="8" x2="19" y2="14"/>
+              <line x1="16" y1="11" x2="22" y2="11"/>
+            </svg>
+          </button>
+        )}
         <button className="chat-search-btn" onClick={() => { setSearchOpen(!searchOpen); setSearchKeyword(''); }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -462,6 +523,74 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
           </button>
         </form>
       </div>
+
+      {/* 멤버 목록 모달 */}
+      <Modal isOpen={showMembers} onClose={() => setShowMembers(false)} title={`${localChannel.name} · 멤버 ${currentMembers.length}명`}>
+        {localChannel.type === 'department' && (
+          <p className="text-muted text-sm" style={{ marginBottom: 10 }}>
+            {deptMap[localChannel.departmentId] || '부서'} 소속 직원이 자동 포함됩니다.
+          </p>
+        )}
+        {localChannel.type === 'company' && (
+          <p className="text-muted text-sm" style={{ marginBottom: 10 }}>전체 직원이 자동 포함됩니다.</p>
+        )}
+        {localChannel.type === 'custom' && isAdmin && (
+          <div className="modal-actions" style={{ marginBottom: 10, marginTop: 0 }}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => { setShowMembers(false); setShowInvite(true); setInviteSearch(''); }}>+ 초대 / 수정</button>
+          </div>
+        )}
+        <ul className="member-list">
+          {currentMembers.length === 0 ? (
+            <li className="empty-state" style={{ padding: 12 }}>등록된 멤버가 없습니다.</li>
+          ) : currentMembers.map((u) => (
+            <li key={u.uid} className="member-list-item">
+              <div className="member-avatar">{u.name?.[0] || '?'}</div>
+              <div className="member-info">
+                <strong>{u.name}</strong>
+                <span>{u.position ? `${u.position}` : ''}{u.departmentId && deptMap[u.departmentId] ? ` · ${deptMap[u.departmentId]}` : ''}</span>
+              </div>
+              {u.uid === userProfile?.uid && <span className="member-me-badge">나</span>}
+            </li>
+          ))}
+        </ul>
+      </Modal>
+
+      {/* 초대 모달 (custom + admin 전용) */}
+      <Modal isOpen={showInvite} onClose={() => setShowInvite(false)} title={`${localChannel.name} · 멤버 초대`}>
+        <input
+          type="text"
+          placeholder="이름 검색..."
+          value={inviteSearch}
+          onChange={(e) => setInviteSearch(e.target.value)}
+          autoFocus
+          style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 6, marginBottom: 10 }}
+        />
+        <p className="text-muted text-sm" style={{ marginBottom: 10 }}>
+          체크된 인원만 채널에 포함됩니다. 변경 시 바로 저장됩니다. {savingMembers && <span style={{ color: 'var(--primary)' }}>저장 중...</span>}
+        </p>
+        <ul className="member-list">
+          {users
+            .filter((u) => u.role !== 'admin' || u.uid === userProfile?.uid)
+            .filter((u) => u.isActive !== false)
+            .filter((u) => !inviteSearch.trim() || (u.name || '').includes(inviteSearch.trim()))
+            .map((u) => {
+              const checked = (localChannel.memberIds || []).includes(u.uid);
+              return (
+                <li key={u.uid} className={`member-list-item is-selectable ${checked ? 'is-checked' : ''}`} onClick={() => handleToggleInvite(u.uid)}>
+                  <input type="checkbox" checked={checked} readOnly style={{ marginRight: 6 }} />
+                  <div className="member-avatar">{u.name?.[0] || '?'}</div>
+                  <div className="member-info">
+                    <strong>{u.name}</strong>
+                    <span>{u.position ? `${u.position}` : ''}{u.departmentId && deptMap[u.departmentId] ? ` · ${deptMap[u.departmentId]}` : ''}</span>
+                  </div>
+                </li>
+              );
+            })}
+        </ul>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setShowInvite(false)}>닫기</button>
+        </div>
+      </Modal>
     </div>
   );
 }
