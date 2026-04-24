@@ -31,6 +31,20 @@ export async function getSite(siteId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+// 본사 사이트가 없으면 자동 생성 (한 번만)
+// 항상 sites 컬렉션 상단에 표시되며, 일반 프로젝트와 동일하게 잔업/연차에 사용 가능
+export async function ensureHeadquartersSite() {
+  const all = await getAllSites();
+  const existing = all.find((s) => s.name === '본사');
+  if (existing) return existing.id;
+  return await createSite({
+    name: '본사',
+    projectType: 'recurring',
+    status: 'active',
+    hideRevenue: true, // 본사는 매출/지출 합계 비표시 (지원성)
+  });
+}
+
 export async function createSite(data) {
   const docRef = await addDoc(sitesRef, {
     name: data.name,
