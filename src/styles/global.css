@@ -260,30 +260,6 @@ body {
   padding-bottom: 4px;
 }
 
-.header-back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background-color 0.12s, border-color 0.12s, transform 0.1s;
-}
-.header-back-btn:hover {
-  background: var(--bg-subtle, #f1f5f9);
-  border-color: var(--border-strong, #cbd5e1);
-}
-.header-back-btn:active {
-  transform: translateX(-2px);
-}
-
 .header-refresh-btn {
   display: inline-flex;
   align-items: center;
@@ -313,10 +289,6 @@ body {
 }
 @media (max-width: 768px) {
   .header-refresh-btn {
-    width: 44px;
-    height: 44px;
-  }
-  .header-back-btn {
     width: 44px;
     height: 44px;
   }
