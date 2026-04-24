@@ -3889,6 +3889,20 @@ body {
   align-items: center;
 }
 
+/* 공수표 추가 버튼 — 모두 동일한 outline + 좌측 색 점으로 유형 구분 */
+.closing-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.closing-add-btn .closing-add-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .expense-chip {
   display: inline-flex;
   align-items: center;

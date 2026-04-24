@@ -75,6 +75,8 @@ export default function SiteClosingPage() {
   const [vendorPickerStep, setVendorPickerStep] = useState('vendor'); // 'vendor' | 'project'
   const [pickedVendor, setPickedVendor] = useState(null);
   const [closingTab, setClosingTab] = useState('all'); // 'all' | 'employee' | 'freelancer' | 'daily' | 'vendor'
+  // 프리랜서/일용직 추가 모달
+  const [freelancerPickerMode, setFreelancerPickerMode] = useState(null); // 'freelancer' | 'daily' | null
 
   function resetVendorPicker() {
     setVendorPickerMode(null);
@@ -286,37 +288,52 @@ export default function SiteClosingPage() {
     }, AUTO_SAVE_DELAY_MS);
   }
 
-  async function handleAddRow() {
+  function openFreelancerPicker(mode) {
+    setFreelancerPickerMode(mode);
+  }
+
+  // 빈 행으로 추가 (프리랜서/일용직 직접 입력 fallback)
+  async function addBlankWorkerRow(itemType) {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
-    const vendorSuggestion = site?.defaultVendors?.[items.length] || '';
+    const vendorSuggestion = itemType === 'freelancer' ? (site?.defaultVendors?.[items.length] || '') : '';
     await addClosingItem(siteId, y, m, {
       no: nextNo,
       vendor: vendorSuggestion,
-      detail: '', category: '', unitPrice: 0,
-      itemType: 'freelancer',
-      dailyQuantities: {},
-      quantity: 0, amount: 0,
-      order: nextOrder,
-    });
-    await loadAll();
-  }
-
-  async function handleAddDailyWorker() {
-    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
-    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
-    await addClosingItem(siteId, y, m, {
-      no: nextNo,
-      vendor: '',
       detail: '',
       category: '',
-      itemType: 'daily',
-      unitPrice: 0, // 시급
+      itemType,
+      unitPrice: 0,
       dailyQuantities: {},
       quantity: 0,
       amount: 0,
       order: nextOrder,
     });
+    setFreelancerPickerMode(null);
+    await loadAll();
+  }
+
+  // 프리랜서 선택 시 — 이름/업체/단가 자동 입력
+  async function handlePickFreelancer(f, itemType) {
+    const alreadyExists = items.some((it) => (it.itemType === itemType) && it.detail === f.name);
+    if (alreadyExists) { alert(`${f.name}은(는) 이미 추가되어 있습니다.`); return; }
+    const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
+    const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
+    const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+    const rate = getRateForDate(f, targetDate);
+    await addClosingItem(siteId, y, m, {
+      no: nextNo,
+      vendor: f.vendor || '',
+      detail: f.name || '',
+      category: '',
+      itemType,
+      unitPrice: Number(rate) || 0,
+      dailyQuantities: {},
+      quantity: 0,
+      amount: 0,
+      order: nextOrder,
+    });
+    setFreelancerPickerMode(null);
     await loadAll();
   }
 
@@ -842,11 +859,21 @@ export default function SiteClosingPage() {
         <h3 className="finance-title">공수표</h3>
         {canEdit && (
           <div className="finance-actions">
-            <button className="btn btn-sm btn-pastel-sky" onClick={handleAddRow}>+ 프리랜서</button>
-            <button className="btn btn-sm btn-pastel-peach" onClick={handleAddDailyWorker}>+ 일용직</button>
-            <button className="btn btn-sm btn-pastel-teal" onClick={() => openVendorPicker('vendor')}>+ 업체(공수)</button>
-            <button className="btn btn-sm btn-pastel-amber" onClick={() => openVendorPicker('vendor_case')}>+ 업체(프로젝트)</button>
-            <button className="btn btn-sm btn-pastel-lavender" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>+ 직원</button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('freelancer')}>
+              <span className="closing-add-dot" style={{ background: '#38bdf8' }} />+ 프리랜서
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>
+              <span className="closing-add-dot" style={{ background: '#fb923c' }} />+ 일용직
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>
+              <span className="closing-add-dot" style={{ background: '#14b8a6' }} />+ 업체(공수)
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>
+              <span className="closing-add-dot" style={{ background: '#f59e0b' }} />+ 업체(프로젝트)
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(!showEmployeeSelect)}>
+              <span className="closing-add-dot" style={{ background: '#8b5cf6' }} />+ 직원
+            </button>
           </div>
         )}
       </div>
@@ -1288,6 +1315,66 @@ export default function SiteClosingPage() {
                   </div>
                 </>
               )
+            )}
+          </Modal>
+        );
+      })()}
+
+      {/* 프리랜서/일용직 선택 모달 */}
+      {freelancerPickerMode && (() => {
+        const isDaily = freelancerPickerMode === 'daily';
+        const title = isDaily ? '일용직 선택' : '프리랜서 선택';
+        // 업체 소속이 아닌 외주관리 등록자 목록
+        const pool = freelancers.filter((f) => !(f.vendor || '').trim());
+        const currentDetails = new Set(
+          items
+            .filter((it) => it.itemType === freelancerPickerMode)
+            .map((it) => (it.detail || '').trim())
+        );
+        const available = pool.filter((f) => !currentDetails.has((f.name || '').trim()));
+        const already = pool.filter((f) => currentDetails.has((f.name || '').trim()));
+        const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+        return (
+          <Modal isOpen={!!freelancerPickerMode} onClose={() => setFreelancerPickerMode(null)} title={title}>
+            {pool.length === 0 ? (
+              <>
+                <p className="empty-state">외주관리에 등록된 {isDaily ? '일용직' : '프리랜서'}이 없습니다.</p>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => addBlankWorkerRow(freelancerPickerMode)}>직접 입력으로 추가</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <ul className="vendor-picker-list">
+                  {available.map((f) => {
+                    const rate = getRateForDate(f, targetDate);
+                    return (
+                      <li key={f.id}>
+                        <button type="button" onClick={() => handlePickFreelancer(f, freelancerPickerMode)}>
+                          <strong>{f.name}</strong>
+                          <span>{canViewSalary ? (rate > 0 ? `${isDaily ? '시급' : '공수'} ${rate.toLocaleString()}원` : '단가 미입력') : ''}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {already.length > 0 && available.length === 0 && (
+                    <li style={{ listStyle: 'none', padding: '12px', color: '#64748b', fontSize: 13, textAlign: 'center' }}>
+                      모든 {isDaily ? '일용직' : '프리랜서'}이 이미 등록되었습니다.
+                    </li>
+                  )}
+                  {already.map((f) => (
+                    <li key={f.id} style={{ opacity: 0.4 }}>
+                      <button type="button" disabled style={{ cursor: 'default' }}>
+                        <strong>{f.name}</strong>
+                        <span>이미 등록됨</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-outline" onClick={() => addBlankWorkerRow(freelancerPickerMode)}>직접 입력으로 추가</button>
+                </div>
+              </>
             )}
           </Modal>
         );
