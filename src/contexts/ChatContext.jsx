@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
@@ -129,6 +129,50 @@ export function ChatProvider({ children }) {
     localStorage.setItem(readCountKey(uid, kind, id), String(Number(room?.messageCount || 0)));
     setReadTick((t) => t + 1);
   }, [userProfile?.uid, accessibleChannels, dmRooms]);
+
+  // 알림 소리/브라우저 Notification — unreadCount 증가 시 1회 발화
+  const prevUnreadRef = useRef(0);
+  const firstLoadRef = useRef(true);
+  useEffect(() => {
+    // 최초 로딩은 skip (기존 누적 unread로 소리 나는 것 방지)
+    if (firstLoadRef.current) {
+      firstLoadRef.current = false;
+      prevUnreadRef.current = unreadCount;
+      return;
+    }
+    if (unreadCount > prevUnreadRef.current) {
+      // 1) beep (WebAudio)
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) {
+          const ctx = new Ctx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(); osc.stop(ctx.currentTime + 0.3);
+          setTimeout(() => ctx.close(), 400);
+        }
+      } catch { /* 무시 */ }
+      // 2) 브라우저 알림 (권한 허용된 경우에만, 탭이 백그라운드일 때)
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+        try { new Notification('새 메시지', { body: `읽지 않은 메시지 ${unreadCount}건`, tag: 'wm-chat-unread' }); } catch { /* 무시 */ }
+      }
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount]);
+
+  // Notification 권한 요청 (아직 결정 안 된 경우에만 한 번)
+  useEffect(() => {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'default') {
+      try { Notification.requestPermission().catch(() => {}); } catch { /* 무시 */ }
+    }
+  }, []);
 
   return (
     <ChatContext.Provider value={{ unreadCount, unreadRoomIds, unreadCounts, markAsRead }}>

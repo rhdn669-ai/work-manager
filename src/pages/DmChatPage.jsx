@@ -42,6 +42,16 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   const [editingMsg, setEditingMsg] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const msgRefs = useRef({});
+  const [flashMsgId, setFlashMsgId] = useState(null);
+  function jumpToMessage(id) {
+    if (!id) return;
+    const el = msgRefs.current[id];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashMsgId(id);
+    setTimeout(() => setFlashMsgId((cur) => (cur === id ? null : cur)), 1200);
+  }
 
   useEffect(() => {
     const unsub = subscribeDmMessages(room.roomId, (msgs) => {
@@ -155,12 +165,14 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
           const mine = msg.userId === userProfile?.uid;
           const isDeleted = !!msg.deletedAt;
           const readerCount = msg.readBy ? Object.keys(msg.readBy).length - 1 : 0;
+          const isMentioned = !mine && !isDeleted && userProfile?.name && typeof msg.text === 'string' && msg.text.includes(`@${userProfile.name}`);
+          const isFlashed = flashMsgId === msg.id;
 
           return (
-            <div key={msg.id}>
+            <div key={msg.id} ref={(el) => { if (el) msgRefs.current[msg.id] = el; }}>
               {showDate && <div className="chat-date-divider"><span>{dateStr}</span></div>}
               <div
-                className={`chat-bubble-wrap ${mine ? 'mine' : 'theirs'}`}
+                className={`chat-bubble-wrap ${mine ? 'mine' : 'theirs'} ${isMentioned ? 'is-mentioned' : ''} ${isFlashed ? 'is-flashed' : ''}`}
                 onContextMenu={(e) => { e.preventDefault(); if (!isDeleted) setMenuMsg(msg); }}
                 onPointerDown={(e) => {
                   if (e.pointerType !== 'touch') return;
@@ -170,10 +182,15 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
                 }}
               >
                 {msg.replyTo && (
-                  <div className="chat-reply-preview">
+                  <button
+                    type="button"
+                    className="chat-reply-preview"
+                    onClick={() => jumpToMessage(msg.replyTo.id)}
+                    title="원본 메시지로 이동"
+                  >
                     <span className="chat-reply-name">{msg.replyTo.userName}</span>
                     <span>{msg.replyTo.type === 'image' ? '사진' : msg.replyTo.type === 'file' ? `📎 ${msg.replyTo.fileName || '파일'}` : msg.replyTo.text}</span>
-                  </div>
+                  </button>
                 )}
                 <div className="chat-row">
                   {mine && (

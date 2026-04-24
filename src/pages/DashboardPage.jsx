@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyOvertimeRecords, getPendingOvertimeRecords } from '../services/attendanceService';
-import { getLeaveBalance } from '../services/leaveService';
+import { getLeaveBalance, getMyLeaves } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [siteCount, setSiteCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [adminStats, setAdminStats] = useState({ users: 0, activeUsers: 0, departments: 0 });
+  const [recentApprovals, setRecentApprovals] = useState([]); // 최근 결재 결과 (비관리자)
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +55,39 @@ export default function DashboardPage() {
         });
         const pending = await getPendingOvertimeRecords();
         setPendingCount(pending.length);
+      } else {
+        // 비관리자 — 최근 14일 결재 결과 (잔업/연차)
+        const since = new Date(); since.setDate(since.getDate() - 14);
+        const sinceStr = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
+        const myLeaves = await getMyLeaves(userProfile.uid, now.getFullYear()).catch(() => []);
+        const otRecent = records;
+        const approvals = [];
+        otRecent.forEach((r) => {
+          if ((r.status === 'approved' || r.status === 'rejected') && r.date >= sinceStr) {
+            approvals.push({
+              kind: 'overtime',
+              status: r.status,
+              date: r.date,
+              key: `ot-${r.id}`,
+              label: `잔업 ${formatMinutes(r.minutes || 0)}`,
+              sub: r.siteId ? (sites.find((s) => s.id === r.siteId)?.name || '') : '',
+            });
+          }
+        });
+        myLeaves.forEach((l) => {
+          if ((l.status === 'confirmed' || l.status === 'approved' || l.status === 'rejected') && (l.startDate || '') >= sinceStr) {
+            approvals.push({
+              kind: 'leave',
+              status: l.status === 'confirmed' ? 'approved' : l.status,
+              date: l.startDate,
+              key: `lv-${l.id}`,
+              label: `연차 ${l.startDate}${l.endDate && l.endDate !== l.startDate ? ` ~ ${l.endDate}` : ''} (${l.days || 1}일)`,
+              sub: l.reason || '',
+            });
+          }
+        });
+        approvals.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        setRecentApprovals(approvals.slice(0, 5));
       }
 
     } catch (err) {
@@ -194,6 +228,29 @@ export default function DashboardPage() {
           </div>
 
           {/* 팀장의 "팀원 잔업·연차" 타일은 우리 팀 탭으로 이동했으므로 홈에선 숨김 */}
+        </div>
+      )}
+
+      {!isAdmin && recentApprovals.length > 0 && (
+        <div className="approvals-widget">
+          <div className="approvals-widget-head">
+            <strong>최근 결재 결과</strong>
+            <span className="text-muted text-sm">최근 14일</span>
+          </div>
+          <ul className="approvals-list">
+            {recentApprovals.map((a) => (
+              <li key={a.key} className={`approval-item approval-${a.status}`}>
+                <span className={`approval-badge approval-badge-${a.status}`}>
+                  {a.status === 'approved' ? '승인' : a.status === 'rejected' ? '반려' : '대기'}
+                </span>
+                <div className="approval-body">
+                  <strong>{a.label}</strong>
+                  {a.sub && <span className="approval-sub">{a.sub}</span>}
+                </div>
+                <span className="approval-date">{a.date}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
