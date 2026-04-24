@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
 import { getDepartments, getDepartmentsByLeader } from '../../services/departmentService';
@@ -22,6 +22,7 @@ export default function TeamReportsPage() {
   const [loading, setLoading] = useState(true);
   const [detailUser, setDetailUser] = useState(null);
   const [detailTab, setDetailTab] = useState('overtime');
+  const [selectedCalDay, setSelectedCalDay] = useState(null);
 
   useEffect(() => {
     if (userProfile) loadBase();
@@ -119,6 +120,66 @@ export default function TeamReportsPage() {
     setDetailTab(tab);
   }
 
+  // === 팀원 일정 캘린더 (본인 제외) ===
+  const userMap = Object.fromEntries(allUsers.map((u) => [u.uid, u]));
+  const teammateIds = useMemo(() => {
+    const ids = new Set(teamMembers.map((u) => u.uid));
+    ids.delete(userProfile?.uid);
+    return ids;
+  // teamMembers/userProfile.uid 기반이므로 deps 지정 시 무한 루프 우려, 직접 계산 후 메모만 사용
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamMembers.length, userProfile?.uid]);
+
+  const calendarEventsByDate = useMemo(() => {
+    const map = {};
+    const push = (date, ev) => { (map[date] = map[date] || []).push(ev); };
+    rawLeaves.filter((l) => teammateIds.has(l.userId)).forEach((l) => {
+      const from = new Date(l.startDate);
+      const to = new Date(l.endDate);
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const u = userMap[l.userId];
+        push(dateStr, { userId: l.userId, kind: 'leave', type: l.type, label: u?.name || '?' });
+      }
+    });
+    rawRecords.filter((r) => r.status === 'approved' && teammateIds.has(r.userId)).forEach((r) => {
+      const u = userMap[r.userId];
+      push(r.date, { userId: r.userId, kind: 'overtime', minutes: r.minutes || 0, label: u?.name || '?' });
+    });
+    return map;
+  }, [rawLeaves, rawRecords, teammateIds, year, month, userMap]);
+
+  function leaveTypeLabel(t) {
+    if (t === 'half_am') return '오전반차';
+    if (t === 'half_pm') return '오후반차';
+    if (t === 'sick') return '병가';
+    if (t === 'quarter_1' || t === 'quarter_2' || t === 'quarter_3' || t === 'quarter_4') return '반반차';
+    return '연차';
+  }
+  function buildCalendarWeeks(y, m) {
+    const firstDow = new Date(y, m - 1, 1).getDay();
+    const totalDays = new Date(y, m, 0).getDate();
+    const weeks = [];
+    let week = new Array(firstDow).fill(null);
+    for (let d = 1; d <= totalDays; d++) {
+      week.push(d);
+      if (week.length === 7) { weeks.push(week); week = []; }
+    }
+    if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week); }
+    return weeks;
+  }
+  function shiftMonth(delta) {
+    let y = year;
+    let m = month + delta;
+    if (m < 1) { m = 12; y -= 1; }
+    else if (m > 12) { m = 1; y += 1; }
+    setYear(y);
+    setMonth(m);
+    setSelectedCalDay(null);
+  }
+  const todayRef = new Date();
+
   return (
     <div className="reports-page">
       <h2>우리 팀{myTeam && ` — ${myTeam.name}`}</h2>
@@ -182,6 +243,96 @@ export default function TeamReportsPage() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* 팀원 일정 캘린더 — 본인 잔업/연차 제외 */}
+      {!loading && rows.length > 0 && (
+        <div className="team-calendar-section">
+          <div className="team-calendar-head">
+            <div className="team-calendar-title">
+              <strong>팀원 일정</strong>
+              <span className="team-calendar-hint">· 본인 잔업/연차 제외</span>
+            </div>
+            <div className="team-calendar-nav">
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftMonth(-1)} aria-label="이전 달">‹</button>
+              <span className="team-calendar-ym">{year}년 {month}월</span>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftMonth(1)} aria-label="다음 달">›</button>
+            </div>
+          </div>
+
+          <div className="team-calendar">
+            <div className="team-calendar-dow-row">
+              {['일','월','화','수','목','금','토'].map((dn, i) => (
+                <div key={dn} className={`team-calendar-dow ${i === 0 ? 'sunday' : i === 6 ? 'saturday' : ''}`}>{dn}</div>
+              ))}
+            </div>
+            {buildCalendarWeeks(year, month).map((wk, wi) => (
+              <div className="team-calendar-row" key={wi}>
+                {wk.map((d, di) => {
+                  if (d === null) return <div className="team-cal-cell team-cal-empty" key={di} />;
+                  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                  const events = calendarEventsByDate[dateStr] || [];
+                  const isToday =
+                    year === todayRef.getFullYear() &&
+                    month === todayRef.getMonth() + 1 &&
+                    d === todayRef.getDate();
+                  const isSunday = di === 0;
+                  const isSaturday = di === 6;
+                  const visible = events.slice(0, 3);
+                  const extra = events.length - visible.length;
+                  return (
+                    <button
+                      type="button"
+                      key={di}
+                      className={`team-cal-cell ${events.length > 0 ? 'has-events' : ''} ${isToday ? 'is-today' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${selectedCalDay === dateStr ? 'is-selected' : ''}`}
+                      onClick={() => setSelectedCalDay(selectedCalDay === dateStr ? null : dateStr)}
+                      disabled={events.length === 0}
+                    >
+                      <span className="team-cal-day">{d}</span>
+                      <div className="team-cal-events">
+                        {visible.map((e, i) => (
+                          <span
+                            key={i}
+                            className={`team-cal-ev team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`}
+                            title={`${e.label} · ${e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}`}
+                          >
+                            {e.label}
+                          </span>
+                        ))}
+                        {extra > 0 && <span className="team-cal-ev-more">+{extra}</span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {selectedCalDay && (() => {
+            const evs = calendarEventsByDate[selectedCalDay] || [];
+            const [, mm, dd] = selectedCalDay.split('-');
+            return (
+              <div className="team-calendar-day-detail">
+                <div className="team-calendar-day-detail-head">
+                  <strong>{Number(mm)}월 {Number(dd)}일</strong>
+                  <span className="team-calendar-hint">· {evs.length}건</span>
+                  <button type="button" className="team-calendar-close" onClick={() => setSelectedCalDay(null)} aria-label="닫기">✕</button>
+                </div>
+                <ul className="team-calendar-day-list">
+                  {evs.map((e, i) => (
+                    <li key={i}>
+                      <span className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`} />
+                      <strong>{e.label}</strong>
+                      <span className="team-calendar-ev-detail">
+                        {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
         </div>
       )}
 
