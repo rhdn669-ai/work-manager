@@ -135,6 +135,80 @@ body {
   min-height: 100vh;
 }
 
+/* 관리자 임시 로그인 배너 — 헤더 위에 고정 */
+.impersonation-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  color: #fff;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  flex-wrap: wrap;
+}
+.impersonation-banner-text strong {
+  font-weight: 800;
+  margin: 0 2px;
+}
+.impersonation-banner-btn {
+  background: #fff;
+  color: #b91c1c;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.impersonation-banner-btn:hover {
+  background: #fef2f2;
+}
+/* 배너가 떠 있을 때 헤더/사이드바/콘텐츠를 배너 높이만큼 아래로 밀기 */
+.app-layout:has(.impersonation-banner) .header {
+  top: 36px;
+}
+.app-layout:has(.impersonation-banner) .app-body {
+  padding-top: calc(var(--header-height) + 36px);
+}
+.app-layout:has(.impersonation-banner) .sidebar {
+  top: calc(var(--header-height) + 36px);
+}
+
+/* 직원관리 — 계정 전환 화살표 버튼 */
+.impersonate-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.impersonate-btn:hover:not(:disabled) {
+  background: var(--primary-soft, #fef3c7);
+  border-color: var(--primary, #d97706);
+  color: var(--primary-hover, #b45309);
+}
+.impersonate-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
 .header {
   position: fixed;
   top: 0;

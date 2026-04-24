@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getUsers, updateUser, createUser, deleteUser } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { POSITIONS } from '../../utils/constants';
+import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 
 export default function UserManagementPage() {
+  const { impersonate, userProfile } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [balances, setBalances] = useState({});
@@ -130,6 +134,17 @@ export default function UserManagementPage() {
     }
   }
 
+  async function handleImpersonate(u) {
+    if (u.uid === userProfile?.uid) { alert('이미 본인 계정으로 로그인 중입니다.'); return; }
+    if (!confirm(`${u.name}(${u.code}) 계정으로 전환하시겠습니까?\n상단 배너의 "관리자로 돌아가기"로 복귀할 수 있습니다.`)) return;
+    try {
+      await impersonate(u);
+      navigate('/');
+    } catch (err) {
+      alert('전환 오류: ' + err.message);
+    }
+  }
+
   const deptMap = {};
   departments.forEach((d) => { deptMap[d.id] = d.name; });
 
@@ -202,11 +217,13 @@ export default function UserManagementPage() {
             <th>시급</th>
             <th>입사일</th>
             <th>연차 (누적/사용/잔여)</th>
+            <th style={{ width: 44 }} aria-label="로그인 전환"></th>
           </tr>
         </thead>
         <tbody>
           {users.map((u) => {
             const bal = balances[u.uid];
+            const isSelf = u.uid === userProfile?.uid;
             return (
               <tr key={u.uid} onClick={() => openEdit(u)} style={{ cursor: 'pointer' }}>
                 <td>{u.name}</td>
@@ -235,6 +252,18 @@ export default function UserManagementPage() {
                       <strong className="leave-remaining" style={bal.remainingDays < 0 ? { color: 'var(--danger, #dc2626)' } : undefined}>{bal.remainingDays}</strong>
                     </span>
                   ) : '-'}
+                </td>
+                <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', padding: '6px 8px' }}>
+                  <button
+                    type="button"
+                    className="impersonate-btn"
+                    onClick={(e) => { e.stopPropagation(); handleImpersonate(u); }}
+                    disabled={isSelf}
+                    title={isSelf ? '본인 계정' : `${u.name}(${u.code}) 계정으로 로그인`}
+                    aria-label={`${u.name} 계정으로 전환`}
+                  >
+                    →
+                  </button>
                 </td>
               </tr>
             );
