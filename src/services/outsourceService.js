@@ -229,7 +229,8 @@ export async function addVendor(data) {
     representative: data.representative || '', // 대표자 이름
     contact: data.contact || '',               // 연락처
     businessNumber: data.businessNumber || '', // 사업자번호
-    bankAccount: data.bankAccount || '',       // 계좌
+    bankName: data.bankName || '',             // 은행명
+    bankAccount: data.bankAccount || '',       // 계좌번호 (예금주 포함 가능)
     note: data.note || '',
     dailyRate: Number(data.dailyRate) || 0,
     caseRate: Number(data.caseRate) || 0,

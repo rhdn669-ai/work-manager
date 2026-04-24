@@ -211,7 +211,7 @@ export default function OutsourceManagementPage() {
   function openCreate() {
     setEditItem(null);
     if (tab === 'vendor') {
-      setForm({ name: '', representative: '', contact: '', businessNumber: '', bankAccount: '' });
+      setForm({ name: '', representative: '', contact: '', businessNumber: '', bankName: '', bankAccount: '' });
     } else {
       // freelancer / daily 공통 (workerType만 탭에 맞게 설정)
       setForm({ name: '', vendor: '', dailyRate: 0, contact: '', note: '', workerType: tab });
@@ -458,6 +458,7 @@ export default function OutsourceManagementPage() {
                 <th>대표자</th>
                 <th>연락처</th>
                 <th>사업자번호</th>
+                <th>은행</th>
                 <th>계좌</th>
                 <th style={{ width: 1, whiteSpace: 'nowrap' }}>작업</th>
               </tr>
@@ -474,6 +475,7 @@ export default function OutsourceManagementPage() {
                   <td>{v.representative || '-'}</td>
                   <td>{v.contact || '-'}</td>
                   <td>{v.businessNumber || '-'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{v.bankName || '-'}</td>
                   <td style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
                   <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
                     <div className="outsource-action-btns">
@@ -559,13 +561,23 @@ export default function OutsourceManagementPage() {
                   placeholder="000-00-00000"
                 />
               </div>
-              <div className="form-group">
-                <label>계좌</label>
-                <input
-                  value={form.bankAccount || ''}
-                  onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
-                  placeholder="은행명 · 계좌번호 · 예금주"
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label>은행명</label>
+                  <input
+                    value={form.bankName || ''}
+                    onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                    placeholder="예: 국민은행"
+                  />
+                </div>
+                <div className="form-group" style={{ flex: 2 }}>
+                  <label>계좌번호</label>
+                  <input
+                    value={form.bankAccount || ''}
+                    onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
+                    placeholder="계좌번호 · 예금주"
+                  />
+                </div>
               </div>
             </>
           )}
