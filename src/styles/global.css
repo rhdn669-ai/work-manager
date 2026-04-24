@@ -284,6 +284,44 @@ body {
   transform: translateX(-2px);
 }
 
+.header-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s, border-color 0.12s, transform 0.3s;
+}
+.header-refresh-btn:hover {
+  background: var(--bg-subtle, #f1f5f9);
+  border-color: var(--border-strong, #cbd5e1);
+}
+.header-refresh-btn:active {
+  transform: rotate(180deg);
+}
+@media (hover: hover) {
+  .header-refresh-btn:hover svg {
+    transform: rotate(45deg);
+    transition: transform 0.25s;
+  }
+}
+@media (max-width: 768px) {
+  .header-refresh-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .header-back-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 .header-right {
   display: flex;
   align-items: center;
