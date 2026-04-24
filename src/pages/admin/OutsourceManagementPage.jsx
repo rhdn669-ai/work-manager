@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getFreelancers, addFreelancer, updateFreelancer, deleteFreelancer,
@@ -39,6 +39,7 @@ export default function OutsourceManagementPage() {
   const [detailTab, setDetailTab] = useState('freelancers');
   const [detailLoading, setDetailLoading] = useState(false);
   const [newFreelancer, setNewFreelancer] = useState({ name: '', dailyRate: 0 });
+  const newFreelancerNameRef = useRef(null);
   const [newProject, setNewProject] = useState({ name: '', unitPrice: 0 });
   const [detailBusy, setDetailBusy] = useState(false);
   const [editRateFor, setEditRateFor] = useState(null); // freelancer id
@@ -114,6 +115,8 @@ export default function OutsourceManagementPage() {
       });
       setNewFreelancer({ name: '', dailyRate: detailVendor.dailyRate || 0 });
       await reloadDetail();
+      // 다음 직원 이름을 바로 입력할 수 있도록 이름 input에 재포커스 → IME가 한글 모드로 복귀
+      setTimeout(() => { newFreelancerNameRef.current?.focus(); }, 0);
     } catch (err) {
       alert('직원 추가 실패: ' + err.message);
     } finally {
@@ -525,6 +528,9 @@ export default function OutsourceManagementPage() {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
               placeholder={tab === 'vendor' ? '○○ 산업' : '홍길동'}
+              lang="ko"
+              autoComplete="off"
+              spellCheck={false}
             />
           </div>
           {tab !== 'vendor' ? (
@@ -545,6 +551,9 @@ export default function OutsourceManagementPage() {
                   value={form.representative || ''}
                   onChange={(e) => setForm({ ...form, representative: e.target.value })}
                   placeholder="대표자 성함"
+                  lang="ko"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </div>
               <div className="form-group">
@@ -553,6 +562,8 @@ export default function OutsourceManagementPage() {
                   value={form.contact || ''}
                   onChange={(e) => setForm({ ...form, contact: e.target.value })}
                   placeholder="010-0000-0000"
+                  inputMode="tel"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-group">
@@ -561,6 +572,8 @@ export default function OutsourceManagementPage() {
                   value={form.businessNumber || ''}
                   onChange={(e) => setForm({ ...form, businessNumber: e.target.value })}
                   placeholder="000-00-00000"
+                  inputMode="numeric"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-row">
@@ -570,6 +583,9 @@ export default function OutsourceManagementPage() {
                     value={form.bankName || ''}
                     onChange={(e) => setForm({ ...form, bankName: e.target.value })}
                     placeholder="예: 국민은행"
+                    lang="ko"
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                 </div>
                 <div className="form-group" style={{ flex: 2 }}>
@@ -578,6 +594,7 @@ export default function OutsourceManagementPage() {
                     value={form.bankAccount || ''}
                     onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
                     placeholder="계좌번호 · 예금주"
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -901,9 +918,13 @@ export default function OutsourceManagementPage() {
                 )}
                 <form className="vendor-add-form" onSubmit={handleAddFreelancerToVendor}>
                   <input
+                    ref={newFreelancerNameRef}
                     placeholder="직원 이름"
                     value={newFreelancer.name}
                     onChange={(e) => setNewFreelancer({ ...newFreelancer, name: e.target.value })}
+                    lang="ko"
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                   <MoneyInput
                     placeholder="일당"
