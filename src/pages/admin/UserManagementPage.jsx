@@ -213,7 +213,7 @@ export default function UserManagementPage() {
                 <td><code>{u.code}</code></td>
                 <td>
                   {u.password
-                    ? <span style={{ color: 'var(--success, #16a34a)', fontSize: 13 }}>✓ 설정됨</span>
+                    ? <code style={{ fontSize: 13 }}>{u.password}</code>
                     : <span style={{ color: 'var(--danger, #dc2626)', fontSize: 13 }}>✗ 미설정</span>}
                 </td>
                 <td>
@@ -254,7 +254,12 @@ export default function UserManagementPage() {
           </div>
           <div className="form-group">
             <label>비밀번호 {editUser && <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(비워두면 기존 유지)</span>}</label>
-            <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editUser ? '변경 시에만 입력' : '비밀번호 입력'} autoComplete="new-password" />
+            {editUser && editUser.password && (
+              <div style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+                현재: <code style={{ background: 'var(--bg-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4 }}>{editUser.password}</code>
+              </div>
+            )}
+            <input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editUser ? '변경 시에만 입력' : '비밀번호 입력'} autoComplete="new-password" />
           </div>
           <div className="form-group">
             <label>직급</label>
