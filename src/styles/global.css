@@ -345,20 +345,12 @@ body {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.12);
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.28);
   color: #1C1917;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transform: translateY(-1px);
 }
 .nav-link:active { transform: scale(0.97); }
 
