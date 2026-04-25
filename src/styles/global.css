@@ -2173,8 +2173,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 24px 28px;
-  margin-bottom: 18px;
+  padding: 14px 22px;
+  margin-bottom: 14px;
   background: linear-gradient(135deg, #fff 0%, #FFF3E0 100%);
   border: 1px solid rgba(245, 158, 11, 0.15);
   border-radius: var(--radius-xl);
@@ -2187,7 +2187,7 @@ body {
 }
 
 .dashboard-welcome h2 {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.022em;
@@ -2195,9 +2195,9 @@ body {
 }
 
 .dashboard-welcome p {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--text-light);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -6712,11 +6712,12 @@ body {
 
   /* 대시보드 — 모바일 압축 */
   .dashboard-welcome {
-    margin-bottom: 12px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
   }
 
   .dashboard-welcome h2 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .dashboard-welcome p {
