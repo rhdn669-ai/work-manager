@@ -318,7 +318,9 @@ body {
   .header-right { gap: 8px; }
   .header-logo { width: 110px; }
   .header-version { font-size: 9px; }
-  .user-info { max-width: 90px; font-size: 12px; }
+  /* 모바일에선 사용자 이름 숨김 → 로그아웃 버튼이 항상 우측 끝에 보이도록 폭 확보
+     (사용자 이름은 사이드바에서 확인 가능) */
+  .user-info { display: none; }
 }
 
 /* 폴드 접힌 화면 (~280px) */
@@ -331,8 +333,6 @@ body {
   .header-right { gap: 4px; }
   .header-logo { width: 72px; }
   .header-version { font-size: 8px; margin-left: 0; }
-  .user-info { max-width: 52px; font-size: 11px; }
-  .user-info .badge { font-size: 9px; padding: 1px 3px; }
   .header-right .btn-sm { font-size: 11px; padding: 6px 8px; min-height: 44px; }
 }
 
