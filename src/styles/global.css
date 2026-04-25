@@ -6720,6 +6720,21 @@ body {
     font-size: 16px;
   }
 
+  /* 폴드 접힘 / Z Flip 외부 (~280-340px) 추가 컴팩트화 */
+  @media (max-width: 340px) {
+    .dashboard-welcome {
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .dashboard-welcome h2 { font-size: 14px; }
+    .dashboard-welcome p { font-size: 11px; margin-top: 1px; }
+    .dashboard-welcome-date {
+      font-size: 10px;
+      padding: 4px 8px;
+    }
+  }
+
   .dashboard-welcome p {
     font-size: 12px;
   }
