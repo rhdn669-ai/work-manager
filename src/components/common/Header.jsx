@@ -18,7 +18,7 @@ export default function Header({ onToggleSidebar }) {
     <header className="header">
       <div className="header-left">
         <div className="header-logo" role="img" aria-label="IOPN" />
-        <span className="header-version">v{__APP_VERSION__.split('.').pop().slice(-2)}</span>
+        <span className="header-version">v{__APP_VERSION__}</span>
         <button className="menu-toggle" onClick={onToggleSidebar}>☰</button>
         <button type="button" className="header-refresh-btn" onClick={handleRefresh} aria-label="새로고침">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16" strokeLinecap="round" strokeLinejoin="round">
