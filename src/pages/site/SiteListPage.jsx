@@ -5,9 +5,25 @@ import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingIte
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
+import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
 const STATUS_LABELS = { active: '진행 중', completed: '완료' };
+
+// 아이콘 배경색 팔레트 — { key, label, bg, fg }
+const ICON_COLORS = [
+  { key: '',       label: '기본',   bg: '',         fg: '' },
+  { key: 'amber',  label: '앰버',   bg: '#fef3c7',  fg: '#92400e' },
+  { key: 'sky',    label: '스카이', bg: '#e0f2fe',  fg: '#075985' },
+  { key: 'green',  label: '그린',   bg: '#dcfce7',  fg: '#166534' },
+  { key: 'rose',   label: '로즈',   bg: '#ffe4e6',  fg: '#9f1239' },
+  { key: 'violet', label: '바이올렛', bg: '#ede9fe', fg: '#5b21b6' },
+  { key: 'teal',   label: '틸',     bg: '#ccfbf1',  fg: '#115e59' },
+  { key: 'slate',  label: '슬레이트', bg: '#e2e8f0', fg: '#334155' },
+];
+function getIconColor(key) {
+  return ICON_COLORS.find((c) => c.key === key) || ICON_COLORS[0];
+}
 
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive, canViewSalary } = useAuth();
@@ -198,7 +214,7 @@ export default function SiteListPage() {
       name: '', team: '', managerIds: [],
       projectType: 'recurring', status: 'active',
       startYear: year, startMonth: month, endYear: null, endMonth: null,
-      mirrorFromSiteIds: [], hideRevenue: false,
+      mirrorFromSiteIds: [], hideRevenue: false, icon: '', iconColor: '',
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -213,6 +229,7 @@ export default function SiteListPage() {
       startYear: site.startYear || null, startMonth: site.startMonth || null,
       endYear: site.endYear || null, endMonth: site.endMonth || null,
       mirrorFromSiteIds: site.mirrorFromSiteIds || [], hideRevenue: !!site.hideRevenue,
+      icon: site.icon || '', iconColor: site.iconColor || '',
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -356,8 +373,8 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {[...filtered].sort((a, b) => {
-            // 본사 / 본사 행정업무 등 핀 고정 카드 — 항상 최상단
-            const PINNED = ['본사', '본사 행정업무'];
+            // 핀 고정 카드 — 항상 최상단, 정의된 순서대로
+            const PINNED = ['본사 행정업무', '프로버 지원'];
             const aPin = PINNED.indexOf(a.name);
             const bPin = PINNED.indexOf(b.name);
             if (aPin !== -1 && bPin !== -1) return aPin - bPin;
@@ -383,13 +400,23 @@ export default function SiteListPage() {
             return (
               <div key={s.id} className="site-row-wrapper">
                 <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
-                  <div className="site-row-icon">
+                  <div
+                    className="site-row-icon"
+                    style={(() => {
+                      const c = getIconColor(s.iconColor);
+                      return c.bg ? { background: c.bg, color: c.fg } : undefined;
+                    })()}
+                  >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      {pt === 'once' ? (
-                        <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>
-                      ) : (
-                        <><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></>
-                      )}
+                      {(() => {
+                        const customIcon = s.icon ? getProjectIcon(s.icon) : null;
+                        if (customIcon) return customIcon.paths;
+                        return pt === 'once' ? (
+                          <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>
+                        ) : (
+                          <><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></>
+                        );
+                      })()}
                     </svg>
                   </div>
                   <div className="site-row-body">
@@ -491,6 +518,55 @@ export default function SiteListPage() {
             <div className="btn-group">
               <button type="button" className={`btn btn-sm ${form.projectType === 'recurring' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'recurring' })}>양산형</button>
               <button type="button" className={`btn btn-sm ${form.projectType === 'once' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'once' })}>단발성</button>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>아이콘 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택, 미선택 시 유형별 기본)</span></label>
+            <div className="icon-picker-grid">
+              <button
+                type="button"
+                className={`icon-picker-item ${!form.icon ? 'is-selected' : ''}`}
+                onClick={() => setForm({ ...form, icon: '' })}
+                title="기본"
+              >
+                <span style={{ fontSize: 11, color: '#64748b' }}>기본</span>
+              </button>
+              {PROJECT_ICONS.map((ic) => {
+                const c = getIconColor(form.iconColor);
+                return (
+                  <button
+                    key={ic.key}
+                    type="button"
+                    className={`icon-picker-item ${form.icon === ic.key ? 'is-selected' : ''}`}
+                    onClick={() => setForm({ ...form, icon: ic.key })}
+                    title={ic.label}
+                    aria-label={ic.label}
+                    style={c.bg ? { background: c.bg, color: c.fg } : undefined}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+                      {ic.paths}
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="form-group">
+            <label>아이콘 배경색 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+            <div className="color-picker-grid">
+              {ICON_COLORS.map((c) => (
+                <button
+                  key={c.key || 'default'}
+                  type="button"
+                  className={`color-picker-item ${form.iconColor === c.key ? 'is-selected' : ''}`}
+                  onClick={() => setForm({ ...form, iconColor: c.key })}
+                  title={c.label}
+                  aria-label={c.label}
+                  style={c.bg ? { background: c.bg, borderColor: c.fg + '33' } : undefined}
+                >
+                  {c.bg ? '' : <span style={{ fontSize: 10, color: '#64748b' }}>기본</span>}
+                </button>
+              ))}
             </div>
           </div>
           <div className="form-row">

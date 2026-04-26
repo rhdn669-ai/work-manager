@@ -135,6 +135,65 @@ body {
   min-height: 100vh;
 }
 
+/* 프로젝트 아이콘 선택 그리드 */
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+.icon-picker-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.06s;
+}
+.icon-picker-item:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.icon-picker-item.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+}
+.icon-picker-item:active { transform: scale(0.96); }
+
+/* 아이콘 배경색 선택 */
+.color-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.color-picker-item {
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.06s, box-shadow 0.12s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.color-picker-item:hover {
+  transform: scale(1.08);
+}
+.color-picker-item.is-selected {
+  box-shadow: 0 0 0 2px var(--primary), 0 0 0 4px rgba(245, 158, 11, 0.25);
+}
+.color-picker-item:active { transform: scale(0.94); }
+
 /* 테스트 서버 경고 배너 — localhost/사설 IP 접속 시 상단 고정 */
 .dev-host-banner {
   position: fixed;
