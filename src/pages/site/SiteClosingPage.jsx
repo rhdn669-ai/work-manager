@@ -885,21 +885,11 @@ export default function SiteClosingPage() {
         <h3 className="finance-title">공수표</h3>
         {canEdit && (
           <div className="finance-actions">
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('freelancer')}>
-              <span className="closing-add-dot" style={{ background: '#38bdf8' }} />+ 프리랜서
-            </button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>
-              <span className="closing-add-dot" style={{ background: '#fb923c' }} />+ 일용직
-            </button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>
-              <span className="closing-add-dot" style={{ background: '#14b8a6' }} />+ 업체(공수)
-            </button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>
-              <span className="closing-add-dot" style={{ background: '#f59e0b' }} />+ 업체(프로젝트)
-            </button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>
-              <span className="closing-add-dot" style={{ background: '#8b5cf6' }} />+ 직원
-            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('freelancer')}>+ 프리랜서</button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>+ 일용직</button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>+ 업체(공수)</button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>+ 업체(프로젝트)</button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>+ 직원</button>
           </div>
         )}
       </div>

@@ -4799,6 +4799,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 8px;
 }
 
@@ -4806,6 +4808,19 @@ body {
   font-size: 15px;
   font-weight: 700;
   margin: 0;
+  flex-shrink: 0;
+}
+
+/* 모바일 — 타이틀과 추가 버튼들 줄바꿈 (폰 폭마다 깨지는 현상 방지) */
+@media (max-width: 768px) {
+  .finance-section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .finance-section-header .finance-actions {
+    justify-content: flex-start;
+  }
 }
 
 .finance-title.finance-revenue {
@@ -6879,6 +6894,15 @@ body {
 
   .btn-sm {
     padding: 8px 14px;
+  }
+
+  /* 매출/지출 섹션의 추가 버튼은 옆의 expense-chip(식대·교통비·자재비)과
+     크기를 맞추기 위해 44px 강제 룰 해제 — 한 줄에 다같이 들어가도록 */
+  .finance-actions .btn,
+  .finance-actions .btn-sm {
+    min-height: var(--btn-h-sm);
+    min-width: 0;
+    padding: 4px 12px;
   }
 
   .filters select {
