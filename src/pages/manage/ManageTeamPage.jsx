@@ -352,15 +352,13 @@ export default function ManageTeamPage() {
                           disabled={events.length === 0}
                         >
                           <span className="team-cal-day">{d}</span>
-                          <div className="team-cal-events">
+                          <div className="team-cal-events team-cal-events-dots">
                             {visible.map((e, i) => (
                               <span
                                 key={i}
-                                className={`team-cal-ev team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`}
+                                className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`}
                                 title={`${e.label} · ${e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}`}
-                              >
-                                {e.label}
-                              </span>
+                              />
                             ))}
                             {extra > 0 && <span className="team-cal-ev-more">+{extra}</span>}
                           </div>

@@ -1546,6 +1546,14 @@ body {
 .team-cal-cell.sunday .team-cal-day { color: #dc2626; }
 .team-cal-cell.saturday .team-cal-day { color: #2563eb; }
 .team-cal-events { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* 명단 대신 색상 점만 표시 — 가로 정렬 */
+.team-cal-events-dots {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
 .team-cal-ev {
   font-size: 10px;
   font-weight: 700;

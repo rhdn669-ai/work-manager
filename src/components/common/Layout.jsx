@@ -93,15 +93,19 @@ export default function Layout() {
       )}
       <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
-        {isAdmin && <Sidebar isOpen={sidebarOpen} />}
-        {isAdmin && sidebarOpen && (
+        {/* 사이드바 표시 조건:
+            - 관리자: 항상 (PC는 기본 열림, 모바일은 햄버거로 토글)
+            - 비관리자 PC: 항상 (BottomNav 대용)
+            - 비관리자 모바일: 미표시 (BottomNav만 사용) */}
+        {(isAdmin || !isMobile) && <Sidebar isOpen={sidebarOpen} />}
+        {isAdmin && isMobile && sidebarOpen && (
           <div
             className="sidebar-backdrop"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
-        <main className={`main-content ${isAdmin && sidebarOpen ? '' : 'expanded'}`}>
+        <main className={`main-content ${(isAdmin || !isMobile) && sidebarOpen ? '' : 'expanded'}`}>
           <Outlet />
         </main>
       </div>
