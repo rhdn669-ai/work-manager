@@ -105,7 +105,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      {!isAdmin && !isChatRoute && <BottomNav />}
+      {!isAdmin && <BottomNav />}
       {exitToast && (
         <div className="exit-toast" role="status" aria-live="polite">
           한 번 더 누르면 종료됩니다

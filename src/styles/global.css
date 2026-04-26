@@ -3540,8 +3540,11 @@ body {
   .app-layout.sidebar-open .channel-list-page,
   .channel-list-page {
     left: 0;
-    /* BottomNav는 채팅 라우트에서 숨겨지므로 bottom 여백 불필요 */
     bottom: env(safe-area-inset-bottom);
+  }
+  /* BottomNav가 보이는 사용자(비관리자)는 채널 목록 하단도 BottomNav 위까지로 제한 */
+  .app-layout:has(.bottom-nav) .channel-list-page {
+    bottom: calc(60px + env(safe-area-inset-bottom));
   }
 }
 .channel-list-header {
@@ -6687,6 +6690,10 @@ body {
     left: 0;
     margin: 0;
     height: auto;
+  }
+  /* BottomNav가 보이는 사용자(비관리자)는 채팅 페이지 하단을 BottomNav 위까지로 제한 */
+  .app-layout:has(.bottom-nav) .chat-page {
+    bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
   .header-title {
