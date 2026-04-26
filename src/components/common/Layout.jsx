@@ -7,12 +7,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 
 export default function Layout() {
-  // PC는 기본 열림, 모바일은 기본 닫힘
+  const { isImpersonating, impersonator, userProfile, stopImpersonation, logout, isAdmin } = useAuth();
+  // 사이드바: 관리자만 사용. PC는 기본 열림, 모바일은 기본 닫힘
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
     return window.matchMedia('(min-width: 769px)').matches;
   });
-  const { isImpersonating, impersonator, userProfile, stopImpersonation, logout, isAdmin } = useAuth();
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/chat');
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
@@ -93,15 +93,15 @@ export default function Layout() {
       )}
       <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
-        <Sidebar isOpen={sidebarOpen} />
-        {sidebarOpen && (
+        {isAdmin && <Sidebar isOpen={sidebarOpen} />}
+        {isAdmin && sidebarOpen && (
           <div
             className="sidebar-backdrop"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
-        <main className={`main-content ${sidebarOpen ? '' : 'expanded'}`}>
+        <main className={`main-content ${isAdmin && sidebarOpen ? '' : 'expanded'}`}>
           <Outlet />
         </main>
       </div>
