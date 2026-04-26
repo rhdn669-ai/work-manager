@@ -665,22 +665,88 @@ export default function SiteClosingPage() {
   function updateFinanceField(id, field, value) {
     setFinanceBuf((b) => {
       const cur = { ...b[id], [field]: field === 'amount' ? Number(value) || 0 : value };
-      if (timersRef.current['fin_' + id]) clearTimeout(timersRef.current['fin_' + id]);
-      timersRef.current['fin_' + id] = setTimeout(async () => {
-        setSavingCount((c) => c + 1);
-        try {
-          await updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note });
-          setLastSavedAt(new Date());
-          setSaveError(null);
-        } catch (err) {
-          setSaveError(err.message || '저장 실패');
-        } finally {
-          setSavingCount((c) => Math.max(0, c - 1));
-        }
-        delete timersRef.current['fin_' + id];
-      }, AUTO_SAVE_DELAY_MS);
+      scheduleFinanceSave(id, cur);
       return { ...b, [id]: cur };
     });
+  }
+  // 매출 단가 갱신 → 매출액 = 단가 × 총 댓수 자동 재계산
+  function updateFinanceUnitPrice(id, value) {
+    setFinanceBuf((b) => {
+      const cur = { ...b[id] };
+      cur.unitPrice = Number(String(value).replace(/[,\s]/g, '')) || 0;
+      const closings = Array.isArray(cur.closings) ? cur.closings : [];
+      const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+      cur.quantity = totalQty;
+      cur.amount = cur.unitPrice * totalQty;
+      scheduleFinanceSave(id, cur);
+      return { ...b, [id]: cur };
+    });
+  }
+  // 매출 마감행 추가/삭제/수정
+  function addClosingRow(id) {
+    setFinanceBuf((b) => {
+      const cur = { ...b[id] };
+      const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      closings.push({ id: `c-${Date.now()}`, date: `${yyyy}-${mm}-${dd}`, count: 0, units: '' });
+      cur.closings = closings;
+      scheduleFinanceSave(id, cur);
+      return { ...b, [id]: cur };
+    });
+  }
+  function removeClosingRow(id, idx) {
+    setFinanceBuf((b) => {
+      const cur = { ...b[id] };
+      const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
+      closings.splice(idx, 1);
+      cur.closings = closings;
+      const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+      cur.quantity = totalQty;
+      cur.amount = (Number(cur.unitPrice) || 0) * totalQty;
+      scheduleFinanceSave(id, cur);
+      return { ...b, [id]: cur };
+    });
+  }
+  function updateClosingRow(id, idx, field, value) {
+    setFinanceBuf((b) => {
+      const cur = { ...b[id] };
+      const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
+      const row = { ...(closings[idx] || {}) };
+      row[field] = field === 'count' ? (Number(value) || 0) : value;
+      closings[idx] = row;
+      cur.closings = closings;
+      const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+      cur.quantity = totalQty;
+      cur.amount = (Number(cur.unitPrice) || 0) * totalQty;
+      scheduleFinanceSave(id, cur);
+      return { ...b, [id]: cur };
+    });
+  }
+  function scheduleFinanceSave(id, cur) {
+    if (timersRef.current['fin_' + id]) clearTimeout(timersRef.current['fin_' + id]);
+    timersRef.current['fin_' + id] = setTimeout(async () => {
+      setSavingCount((c) => c + 1);
+      try {
+        await updateFinanceItem(id, {
+          description: cur.description,
+          amount: cur.amount,
+          note: cur.note,
+          unitPrice: cur.unitPrice || 0,
+          quantity: cur.quantity || 0,
+          closings: cur.closings || [],
+        });
+        setLastSavedAt(new Date());
+        setSaveError(null);
+      } catch (err) {
+        setSaveError(err.message || '저장 실패');
+      } finally {
+        setSavingCount((c) => Math.max(0, c - 1));
+      }
+      delete timersRef.current['fin_' + id];
+    }, AUTO_SAVE_DELAY_MS);
   }
 
   function flushFinance(id) {
@@ -847,16 +913,98 @@ export default function SiteClosingPage() {
           {revenueItems.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
           ) : (
-            <div className="finance-list">
+            <div className="revenue-list">
               {revenueItems.map((f) => {
                 const buf = financeBuf[f.id] || f;
+                const closings = Array.isArray(buf.closings) ? buf.closings : [];
+                const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+                const totalAmount = (Number(buf.unitPrice) || 0) * totalQty;
                 return (
-                  <div className="finance-row" key={f.id}>
-                    <input className="finance-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                    <MoneyInput className="finance-amount" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                    <span className="finance-won">원</span>
-                    <input className="finance-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                    {canEdit && <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>}
+                  <div className="revenue-card" key={f.id}>
+                    <div className="revenue-card-head">
+                      <input
+                        className="revenue-desc"
+                        value={buf.description || ''}
+                        placeholder="항목명 (예: A설비)"
+                        onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
+                        onBlur={() => flushFinance(f.id)}
+                        disabled={!canEdit}
+                      />
+                      <div className="revenue-unitprice">
+                        <span className="label">1대당</span>
+                        <MoneyInput
+                          className="revenue-unitprice-input"
+                          value={buf.unitPrice || 0}
+                          onChange={(e) => updateFinanceUnitPrice(f.id, e.target.value)}
+                          onBlur={() => flushFinance(f.id)}
+                          disabled={!canEdit}
+                        />
+                        <span className="label">원</span>
+                      </div>
+                      {canEdit && (
+                        <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
+                      )}
+                    </div>
+
+                    <div className="revenue-rows">
+                      <div className="revenue-row revenue-row-head">
+                        <span>마감일자</span>
+                        <span>댓수</span>
+                        <span>호기</span>
+                        <span></span>
+                      </div>
+                      {closings.length === 0 && (
+                        <div className="revenue-row-empty">마감 일자를 추가해주세요.</div>
+                      )}
+                      {closings.map((c, idx) => (
+                        <div className="revenue-row" key={c.id || idx}>
+                          <input
+                            type="date"
+                            value={c.date || ''}
+                            onChange={(e) => updateClosingRow(f.id, idx, 'date', e.target.value)}
+                            onBlur={() => flushFinance(f.id)}
+                            disabled={!canEdit}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={c.count ?? ''}
+                            onChange={(e) => updateClosingRow(f.id, idx, 'count', e.target.value)}
+                            onBlur={() => flushFinance(f.id)}
+                            disabled={!canEdit}
+                            placeholder="0"
+                          />
+                          <input
+                            type="text"
+                            value={c.units || ''}
+                            onChange={(e) => updateClosingRow(f.id, idx, 'units', e.target.value)}
+                            onBlur={() => flushFinance(f.id)}
+                            disabled={!canEdit}
+                            placeholder="예: 1호기, 2호기"
+                          />
+                          {canEdit && (
+                            <button type="button" className="closing-delete" onClick={() => removeClosingRow(f.id, idx)} aria-label="행 삭제">✕</button>
+                          )}
+                        </div>
+                      ))}
+                      {canEdit && (
+                        <button type="button" className="btn btn-sm btn-outline revenue-add-row" onClick={() => addClosingRow(f.id)}>
+                          + 마감 추가
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="revenue-card-foot">
+                      <div className="foot-field">
+                        <span className="label">총 댓수</span>
+                        <strong>{totalQty}대</strong>
+                      </div>
+                      <div className="foot-field">
+                        <span className="label">매출</span>
+                        <strong style={{ color: 'var(--success)' }}>{totalAmount.toLocaleString()}원</strong>
+                      </div>
+                    </div>
                   </div>
                 );
               })}

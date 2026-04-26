@@ -188,6 +188,10 @@ export async function addFinanceItem(siteId, year, month, data) {
     note: data.note || '',
     order: data.order || 0,
     overtimeRecordId: data.overtimeRecordId || '',
+    // 매출 — 단가 × 마감 행별 댓수 합 = 매출액
+    unitPrice: data.unitPrice || 0,
+    quantity: data.quantity || 0,
+    closings: data.closings || [], // [{ id, date, count, units }]
     createdAt: new Date(),
     updatedAt: new Date(),
   });

@@ -5255,6 +5255,145 @@ body {
   gap: 6px;
 }
 
+/* ===== 매출 카드 (마감 행별 댓수/호기) ===== */
+.revenue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.revenue-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.revenue-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.revenue-desc {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  background: #fff;
+  font-family: inherit;
+}
+.revenue-desc:focus { outline: none; border-color: var(--primary); }
+.revenue-unitprice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.revenue-unitprice .label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.revenue-unitprice-input {
+  width: 110px;
+  border: none;
+  outline: none;
+  text-align: right;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.revenue-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.revenue-row {
+  display: grid;
+  grid-template-columns: 150px 80px 1fr 32px;
+  align-items: center;
+  gap: 8px;
+}
+.revenue-row-head {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0 4px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.revenue-row input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 0;
+}
+.revenue-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.revenue-row-empty {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 16px;
+}
+.revenue-add-row {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.revenue-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px solid #bbf7d0;
+}
+.revenue-card-foot .foot-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.revenue-card-foot .foot-field .label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.revenue-card-foot .foot-field strong {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .revenue-row {
+    grid-template-columns: 1fr 1fr 32px;
+    grid-template-areas: 'date count del' 'units units units';
+  }
+  .revenue-row > input[type='date'] { grid-area: date; }
+  .revenue-row > input[type='number'] { grid-area: count; }
+  .revenue-row > input[type='text'] { grid-area: units; }
+  .revenue-row-head { display: none; }
+}
+
 .finance-row {
   display: flex;
   align-items: center;
@@ -6477,19 +6616,27 @@ body {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 2px;
-  min-height: 64px;
+  gap: 4px;
+  min-height: 52px;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
   position: relative;
+}
+/* 입력칸/배지가 일자 라벨 바로 아래에 붙도록 — auto-margin 제거 */
+.day-cal-cell input,
+.day-cal-cell .day-cal-input-wrap,
+.day-cal-cell .leave-badge-input,
+.day-cal-cell .emp-rest-attendance,
+.day-cal-cell .emp-rest-blocked {
+  margin-top: 0;
 }
 .day-cal-cell input {
   margin-top: auto;
 }
 
 .day-cal-empty {
-  min-height: 64px;
+  min-height: 52px;
 }
 
 .day-cal-cell label {
