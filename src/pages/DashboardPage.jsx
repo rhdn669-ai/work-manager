@@ -57,7 +57,7 @@ export default function DashboardPage() {
         setPendingCount(pending.length);
       } else {
         // 비관리자 — 최근 14일 결재 결과 (잔업/연차)
-        const since = new Date(); since.setDate(since.getDate() - 14);
+        const since = new Date(); since.setDate(since.getDate() - 1);
         const sinceStr = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
         const myLeaves = await getMyLeaves(userProfile.uid, now.getFullYear()).catch(() => []);
         const otRecent = records;
@@ -235,7 +235,7 @@ export default function DashboardPage() {
         <div className="approvals-widget">
           <div className="approvals-widget-head">
             <strong>최근 결재 결과</strong>
-            <span className="text-muted text-sm">최근 14일</span>
+            <span className="text-muted text-sm">최근 1일</span>
           </div>
           <ul className="approvals-list">
             {recentApprovals.map((a) => (
