@@ -4,12 +4,16 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import { useAuth } from '../../contexts/AuthContext';
+import { useVersionCheck } from '../../hooks/useVersionCheck';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { isImpersonating, impersonator, userProfile, stopImpersonation } = useAuth();
+  const { isImpersonating, impersonator, userProfile, stopImpersonation, logout } = useAuth();
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/chat');
+
+  // 새 버전 배포 감지 시 자동 로그아웃
+  useVersionCheck(logout);
 
   async function handleStopImpersonation() {
     try {
