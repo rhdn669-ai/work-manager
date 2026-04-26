@@ -84,26 +84,22 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
     finally { setSending(false); }
   }
 
-  async function handleImageSelect(e) {
+  async function handleAttachSelect(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isImage = file.type.startsWith('image/');
+    if (!isImage && file.size > 20 * 1024 * 1024) {
+      alert('파일 크기는 20MB 이하만 가능합니다.');
+      e.target.value = '';
+      return;
+    }
     setSending(true);
     try {
-      await sendDmImage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo });
+      const base = { roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo };
+      if (isImage) await sendDmImage(base);
+      else         await sendDmFile(base);
       setReplyTo(null);
-    } catch (err) { alert('이미지 전송 실패: ' + err.message); }
-    finally { setSending(false); e.target.value = ''; }
-  }
-
-  async function handleFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) { alert('파일 크기는 20MB 이하만 가능합니다.'); e.target.value = ''; return; }
-    setSending(true);
-    try {
-      await sendDmFile({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo });
-      setReplyTo(null);
-    } catch (err) { alert('파일 전송 실패: ' + err.message); }
+    } catch (err) { alert('전송 실패: ' + err.message); }
     finally { setSending(false); e.target.value = ''; }
   }
 
@@ -285,18 +281,11 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
           </div>
         )}
         <form className="chat-input-bar" onSubmit={handleSend}>
-          <label className="chat-attach-btn" title="사진 첨부">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            <input type="file" accept="image/*" style={{display:'none'}} onChange={handleImageSelect} />
-          </label>
-          <label className="chat-attach-btn" title="파일 첨부">
+          <label className="chat-attach-btn" title="사진 / 파일 첨부">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
             </svg>
-            <input type="file" accept="*/*" style={{display:'none'}} onChange={handleFileSelect} />
+            <input type="file" accept="*/*" style={{display:'none'}} onChange={handleAttachSelect} />
           </label>
           <input ref={inputRef} type="text" className="chat-input" placeholder="메시지 입력..." value={text}
             onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} autoComplete="off" />
