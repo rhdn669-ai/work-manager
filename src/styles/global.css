@@ -135,6 +135,27 @@ body {
   min-height: 100vh;
 }
 
+/* "한 번 더 누르면 종료됩니다" 토스트 */
+.exit-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(28, 25, 23, 0.92);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  pointer-events: none;
+  animation: exitToastIn 0.18s ease-out;
+}
+@keyframes exitToastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* 관리자 임시 로그인 배너 — 헤더 위에 고정 */
 .impersonation-banner {
   position: fixed;

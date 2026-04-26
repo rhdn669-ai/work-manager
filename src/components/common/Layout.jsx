@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -11,9 +11,51 @@ export default function Layout() {
   const { isImpersonating, impersonator, userProfile, stopImpersonation, logout } = useAuth();
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/chat');
+  const [exitToast, setExitToast] = useState(false);
+  const exitArmedRef = useRef(false);
+  const exitTimerRef = useRef(null);
 
   // 새 버전 배포 감지 시 자동 로그아웃
   useVersionCheck(logout);
+
+  // 모바일 뒤로가기 두 번 → 앱 종료 (대시보드 루트에서만 작동, iOS 제외)
+  // iOS Safari에서는 두 번째 뒤로가기로도 종료 안 되고 이전 사이트로 이동만 하므로 비활성
+  useEffect(() => {
+    if (location.pathname !== '/dashboard') return;
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+    if (isIOS) return;
+    // 가드 상태 push — 뒤로가기 시 popstate 이벤트로 가로챔
+    window.history.pushState({ exitGuard: true }, '');
+
+    function onPopState() {
+      if (exitArmedRef.current) {
+        // 두 번째 누름 — 한 단계 더 뒤로가기 = 실제 종료/이전 페이지
+        clearTimeout(exitTimerRef.current);
+        setExitToast(false);
+        exitArmedRef.current = false;
+        window.history.back();
+        return;
+      }
+      // 첫 번째 누름 — 토스트 표시 후 가드 재push
+      exitArmedRef.current = true;
+      setExitToast(true);
+      window.history.pushState({ exitGuard: true }, '');
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = setTimeout(() => {
+        exitArmedRef.current = false;
+        setExitToast(false);
+      }, 2000);
+    }
+
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      clearTimeout(exitTimerRef.current);
+      exitArmedRef.current = false;
+      setExitToast(false);
+    };
+  }, [location.pathname]);
 
   async function handleStopImpersonation() {
     try {
@@ -46,6 +88,11 @@ export default function Layout() {
         </main>
       </div>
       <BottomNav />
+      {exitToast && (
+        <div className="exit-toast" role="status" aria-live="polite">
+          한 번 더 누르면 종료됩니다
+        </div>
+      )}
     </div>
   );
 }
