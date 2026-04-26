@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite, ensureHeadquartersSite } from '../../services/siteService';
+import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
@@ -56,10 +56,6 @@ export default function SiteListPage() {
   useEffect(() => {
     if (!userProfile) return;
     (async () => {
-      // 관리자가 진입할 때 본사 사이트가 없으면 한 번 자동 생성
-      if (isAdmin) {
-        try { await ensureHeadquartersSite(); } catch (err) { console.error('본사 자동 생성 실패', err); }
-      }
       await loadData();
     })();
   }, [userProfile, year, month, isAdmin]);
