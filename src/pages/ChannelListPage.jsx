@@ -10,7 +10,10 @@ import { getUsers } from '../services/userService';
 
 export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
   const { userProfile, canApproveAll, isAdmin } = useAuth();
-  const { unreadRoomIds, unreadCounts } = useChat();
+  const { unreadRoomIds, unreadCounts, markAsRead } = useChat();
+  const totalUnread =
+    Object.values(unreadCounts?.channel || {}).reduce((s, n) => s + n, 0) +
+    Object.values(unreadCounts?.dm || {}).reduce((s, n) => s + n, 0);
 
   function truncate(s, n = 36) {
     if (!s) return '';
@@ -154,6 +157,19 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
       <div className="channel-list-header">
         <span className="channel-list-title">채팅</span>
         <div className="channel-list-actions">
+          {totalUnread > 0 && (
+            <button
+              type="button"
+              className="channel-action-btn"
+              onClick={() => markAsRead()}
+              title="모든 채팅 읽음 표시"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>모두 읽음</span>
+            </button>
+          )}
           {isAdmin && (
             <button className="channel-action-btn" onClick={openCreateChannel} title="새 채팅방 만들기">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">

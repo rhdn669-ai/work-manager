@@ -120,8 +120,11 @@ export function ChatProvider({ children }) {
     const room = kind === 'channel'
       ? accessibleChannels.find((c) => c.id === id)
       : dmRooms.find((r) => r.id === id);
+    // race condition 방지 — 방 데이터가 아직 로드되지 않았으면 readCount 갱신 보류
+    // (다음 snapshot이 들어와 다시 markAsRead가 호출될 때 정상 갱신됨)
+    if (!room) return;
     localStorage.setItem(readKey(uid, kind, id), now);
-    localStorage.setItem(readCountKey(uid, kind, id), String(Number(room?.messageCount || 0)));
+    localStorage.setItem(readCountKey(uid, kind, id), String(Number(room.messageCount || 0)));
     setReadTick((t) => t + 1);
   }, [userProfile?.uid, accessibleChannels, dmRooms]);
 
