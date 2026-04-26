@@ -2,11 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChat } from '../../contexts/ChatContext';
+import Modal from './Modal';
 
 const LS_KEY_PREFIX = 'sidebar-order-v1:';
 const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 
-// 기본 순서대로 모든 메뉴 정의
+// 기본 메뉴 정의
 function buildAllItems({ isAdmin, canApproveLeave, unreadCount }) {
   return [
     { key: 'home', to: '/dashboard', label: '홈', show: true, end: false },
@@ -32,15 +33,26 @@ export default function Sidebar({ isOpen }) {
   const { unreadCount } = useChat();
   const [editing, setEditing] = useState(false);
   const [order, setOrder] = useState(null);
+  const [groups, setGroups] = useState([]); // [{ key, label, isGroup: true }]
 
-  // 로그인 계정(uid)이 바뀔 때마다 해당 계정의 순서 로드
+  // 로그인 계정(uid)이 바뀔 때마다 해당 계정의 순서/대분류 로드
   useEffect(() => {
     const key = lsKeyFor(userProfile?.uid);
-    if (!key) { setOrder(null); return; }
+    if (!key) { setOrder(null); setGroups([]); return; }
     try {
-      const saved = JSON.parse(localStorage.getItem(key) || 'null');
-      setOrder(Array.isArray(saved) ? saved : null);
-    } catch { setOrder(null); }
+      const raw = JSON.parse(localStorage.getItem(key) || 'null');
+      // 구버전 호환: array 형태일 경우 order만
+      if (Array.isArray(raw)) {
+        setOrder(raw);
+        setGroups([]);
+      } else if (raw && typeof raw === 'object') {
+        setOrder(Array.isArray(raw.order) ? raw.order : null);
+        setGroups(Array.isArray(raw.groups) ? raw.groups : []);
+      } else {
+        setOrder(null);
+        setGroups([]);
+      }
+    } catch { setOrder(null); setGroups([]); }
     setEditing(false);
   }, [userProfile?.uid]);
 
@@ -49,38 +61,47 @@ export default function Sidebar({ isOpen }) {
     [isAdmin, canApproveLeave, unreadCount],
   );
 
-  // 사용자의 저장된 순서대로 정렬, 없으면 기본 순서
+  // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬
   const visibleItems = useMemo(() => {
     const visibles = allItems.filter((it) => it.show);
-    if (!order) return visibles;
+    const groupItems = (groups || []).map((g) => ({ ...g, isGroup: true }));
+    const merged = [...visibles, ...groupItems];
+    if (!order) return merged;
     const sorted = [];
-    for (const key of order) {
-      const found = visibles.find((x) => x.key === key);
+    for (const k of order) {
+      const found = merged.find((x) => x.key === k);
       if (found) sorted.push(found);
     }
-    // 저장된 순서에 없던 새로운 메뉴는 뒤에 추가
-    for (const it of visibles) {
+    for (const it of merged) {
       if (!sorted.includes(it)) sorted.push(it);
     }
     return sorted;
-  }, [allItems, order]);
+  }, [allItems, groups, order]);
 
+  // 순서/대분류 변경 시 즉시 저장 — 편집 모드 종료를 기다리지 않음
+  // (편집 도중 새로고침해도 데이터 유실 없게)
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
-    // 편집 종료 시 현재 계정 키로 저장
+    if (userProfile?.uid) setHydrated(true);
+  }, [userProfile?.uid]);
+  useEffect(() => {
     const key = lsKeyFor(userProfile?.uid);
-    if (!editing && order && key) {
-      try { localStorage.setItem(key, JSON.stringify(order)); } catch {}
-    }
-  }, [editing, order, userProfile?.uid]);
+    if (!key || !hydrated) return; // 로드 전엔 저장 안 함 (기존 값 덮어쓰기 방지)
+    try {
+      localStorage.setItem(key, JSON.stringify({ order: order || null, groups }));
+    } catch { /* 무시 */ }
+  }, [order, groups, userProfile?.uid, hydrated]);
 
   const [draggedKey, setDraggedKey] = useState(null);
+  // 대분류 추가 모달 상태
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [groupName, setGroupName] = useState('');
 
   function handleDragStart(e, key) {
     setDraggedKey(key);
     e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', key); } catch {}
+    try { e.dataTransfer.setData('text/plain', key); } catch { /* 무시 */ }
   }
-
   function handleDragOver(e, overKey) {
     e.preventDefault();
     if (!draggedKey || draggedKey === overKey) return;
@@ -93,16 +114,39 @@ export default function Sidebar({ isOpen }) {
     next.splice(to, 0, draggedKey);
     setOrder(next);
   }
-
   function handleDragEnd() {
     setDraggedKey(null);
   }
 
   function resetOrder() {
-    if (!confirm('사이드바 순서를 기본으로 초기화하시겠습니까?')) return;
+    if (!confirm('사이드바 순서와 추가한 대분류를 모두 기본으로 초기화하시겠습니까?')) return;
     const key = lsKeyFor(userProfile?.uid);
     if (key) localStorage.removeItem(key);
     setOrder(null);
+    setGroups([]);
+  }
+
+  function openAddGroup() {
+    setGroupName('');
+    setGroupModalOpen(true);
+  }
+  function confirmAddGroup() {
+    const label = (groupName || '').trim();
+    if (!label) return;
+    const newGroup = { key: `group-${Date.now()}`, label, isGroup: true };
+    setGroups((gs) => [...gs, newGroup]);
+    setOrder((o) => {
+      const base = o || visibleItems.map((x) => x.key);
+      return [...base, newGroup.key];
+    });
+    setGroupModalOpen(false);
+    setGroupName('');
+  }
+
+  function deleteGroup(groupKey) {
+    if (!confirm('이 대분류를 삭제하시겠습니까?')) return;
+    setGroups((gs) => gs.filter((g) => g.key !== groupKey));
+    setOrder((o) => (o ? o.filter((k) => k !== groupKey) : o));
   }
 
   return (
@@ -131,11 +175,17 @@ export default function Sidebar({ isOpen }) {
           </button>
         </div>
 
+        {editing && (
+          <button type="button" className="sidebar-add-group-btn" onClick={openAddGroup}>
+            + 대분류 추가
+          </button>
+        )}
+
         {visibleItems.map((item) => {
           if (editing) {
             return (
               <div
-                className={`nav-link nav-edit-row ${draggedKey === item.key ? 'is-dragging' : ''}`}
+                className={`nav-link nav-edit-row ${item.isGroup ? 'is-group' : ''} ${draggedKey === item.key ? 'is-dragging' : ''}`}
                 key={item.key}
                 draggable
                 onDragStart={(e) => handleDragStart(e, item.key)}
@@ -146,8 +196,23 @@ export default function Sidebar({ isOpen }) {
               >
                 <span className="nav-drag-handle">⋮⋮</span>
                 <span className="nav-edit-label">{item.label}</span>
+                {item.isGroup && (
+                  <span className="nav-edit-actions">
+                    <button
+                      type="button"
+                      className="nav-edit-del"
+                      onClick={(e) => { e.stopPropagation(); deleteGroup(item.key); }}
+                      title="대분류 삭제"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
               </div>
             );
+          }
+          if (item.isGroup) {
+            return <div key={item.key} className="nav-group">{item.label}</div>;
           }
           return (
             <NavLink
@@ -166,6 +231,28 @@ export default function Sidebar({ isOpen }) {
           );
         })}
       </nav>
+
+      <Modal isOpen={groupModalOpen} onClose={() => setGroupModalOpen(false)} title="대분류 추가">
+        <div className="form-group">
+          <label>대분류 이름</label>
+          <input
+            type="text"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && groupName.trim()) confirmAddGroup(); }}
+            placeholder="예: 관리, 일반, 외부"
+            autoFocus
+            maxLength={20}
+          />
+          <p className="field-hint" style={{ marginTop: 6 }}>
+            메뉴 사이에 들어가는 그룹 헤더입니다. 이후 드래그로 위치를 조정할 수 있어요.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-primary" disabled={!groupName.trim()} onClick={confirmAddGroup}>추가</button>
+          <button type="button" className="btn btn-outline" onClick={() => setGroupModalOpen(false)}>취소</button>
+        </div>
+      </Modal>
     </aside>
   );
 }

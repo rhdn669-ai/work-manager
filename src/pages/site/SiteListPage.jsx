@@ -392,10 +392,16 @@ export default function SiteListPage() {
             const totalExpense = expenseOnly + laborShown;
             const revenueShown = hideRev ? 0 : raw.revenue;
             const balance = revenueShown - totalExpense;
+            // 흑자/적자 색 표식용은 권한 무관하게 전체 데이터로 계산 (숫자 자체는 비공개여도 부호는 표시)
+            const fullBalance = (hideRev ? 0 : (raw.revenue || 0))
+              - ((raw.expense || 0) + (raw.overtime || 0) + (raw.labor || 0));
 
             return (
               <div key={s.id} className="site-row-wrapper">
-                <Link to={`/sites/${s.id}/${year}/${month}`} className={`site-row ${st === 'completed' ? 'site-row-completed' : ''}`}>
+                <Link
+                  to={`/sites/${s.id}/${year}/${month}`}
+                  className={`site-row ${st === 'completed' ? 'site-row-completed' : ''} ${!hideRev ? (fullBalance >= 0 ? 'site-row-balance-pos' : 'site-row-balance-neg') : ''}`}
+                >
                   <div
                     className="site-row-icon"
                     style={(() => {
@@ -427,7 +433,7 @@ export default function SiteListPage() {
                       {period && <span className="chip chip-period">{period}</span>}
                     </div>
                   </div>
-                  {(st !== 'completed' || hasMonthData(s)) && (
+                  {(canViewSalary || isAdmin) && (st !== 'completed' || hasMonthData(s)) && (
                     <div className="site-row-stats-panel">
                       {!hideRev && (
                         <div className="stat-row">
