@@ -155,10 +155,11 @@ export default function UnassignedReportPage() {
         const otInfo = nameToOvertime[u.name]?.[d];
         const overtimeMin = otInfo?.minutes || 0;
         const otSiteNames = otInfo ? [...otInfo.siteNames] : [];
+        // 휴가(연차/반차/반반차/병가) 우선 표시 → 반차/반반차도 시각적으로 보임
         let type;
-        if (projects.length > 1) type = 'overlap';
+        if (leaveType) type = leaveTypeToClass(leaveType);
+        else if (projects.length > 1) type = 'overlap';
         else if (projects.length === 1) type = 'assigned';
-        else if (leaveType) type = leaveTypeToClass(leaveType);
         else if (isWeekend) type = 'weekend';
         else type = 'unassigned';
         days.push({ d, type, projects, leaveType, overtimeMin, otSiteNames });

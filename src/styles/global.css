@@ -6580,6 +6580,46 @@ body {
   padding: 0 4px;
 }
 
+/* 직원 공수표 휴무일(토/일/공휴일) — 입력 차단 (빈 칸) */
+.emp-rest-blocked {
+  margin-top: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 28px;
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  cursor: not-allowed;
+  box-sizing: border-box;
+  flex-shrink: 1;
+}
+/* 휴무일에 잔업 신청 → 자동 "출근" 표시 */
+.emp-rest-attendance {
+  margin-top: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  cursor: default;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+  flex-shrink: 1;
+}
+
 /* 반차/반반차 등 부분 휴가: 입력칸 우측 상단 뱃지 */
 .day-cal-input-wrap {
   position: relative;

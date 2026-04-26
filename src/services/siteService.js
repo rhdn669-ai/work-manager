@@ -290,7 +290,12 @@ export async function getAssignedEmployeeIds(year, month) {
   const ids = new Set();
   snapshot.docs.forEach((d) => {
     const data = d.data();
-    if (data.detail) ids.add(data.detail); // detail = 직원 이름
+    if (!data.detail) return;
+    // 실제 일자별 값이 1개라도 있는 직원만 "배정됨"으로 판정
+    // (단순히 항목만 추가되고 dailyQuantities가 모두 비어있으면 미배정 취급)
+    const dq = data.dailyQuantities || {};
+    const hasAnyDay = Object.values(dq).some((v) => Number(v) > 0);
+    if (hasAnyDay) ids.add(data.detail);
   });
   return ids;
 }

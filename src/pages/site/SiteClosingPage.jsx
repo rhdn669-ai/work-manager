@@ -9,6 +9,9 @@ import {
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
+import { getAllOvertimeRecords } from '../../services/attendanceService';
+import { getEvents } from '../../services/eventService';
+import { getKoreanHolidayDates } from '../../utils/koreanHolidays';
 import { getFreelancers, getVendors, getRateForDate } from '../../services/outsourceService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -67,6 +70,10 @@ export default function SiteClosingPage() {
   const [assignedNames, setAssignedNames] = useState(new Set());
   // 다른 프로젝트 같은 월의 직원 일별 공수 합 — 1일 합 1 초과 검증용
   const [otherSitesEmployeeDaily, setOtherSitesEmployeeDaily] = useState({});
+  // 휴무일(주말 + 회사 공휴일 + 한국 공휴일) 집합 — 'YYYY-MM-DD'
+  const [holidaySet, setHolidaySet] = useState(new Set());
+  // 이 사이트 같은 월의 직원 잔업일 집합 — { 이름: Set<day> } (휴무일에 잔업 신청 → 출근으로 표시)
+  const [siteOvertimeDays, setSiteOvertimeDays] = useState({});
   // 1일 초과 경고 모달 데이터
   const [overflowAlert, setOverflowAlert] = useState(null);
   const [addingAll, setAddingAll] = useState(false);
@@ -126,7 +133,10 @@ export default function SiteClosingPage() {
     const silent = opts.silent === true;
     if (!silent) setLoading(true);
     try {
-      const [s, its, fins, users, approvedLeaves, assigned, allEmpItemsThisMonth] = await Promise.all([
+      const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
+      const totalDaysInMonth = new Date(y, m, 0).getDate();
+      const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(totalDaysInMonth).padStart(2, '0')}`;
+      const [s, its, fins, users, approvedLeaves, assigned, allEmpItemsThisMonth, eventList, allOvertime] = await Promise.all([
         getSite(siteId),
         getClosingItems(siteId, y, m),
         getFinanceItems(siteId, y, m),
@@ -134,13 +144,54 @@ export default function SiteClosingPage() {
         getApprovedLeavesByMonth(y, m),
         getAssignedEmployeeIds(y, m),
         getEmployeeClosingItemsByMonth(y, m),
+        getEvents().catch(() => []),
+        getAllOvertimeRecords(monthStart, monthEnd).catch(() => []),
       ]);
+
+      // 휴무일 집합 — 한국 공휴일 + Firestore 등록 휴일 (해당 월만)
+      const hSet = new Set();
+      try {
+        const koreanHolidays = getKoreanHolidayDates(y) || [];
+        koreanHolidays.forEach((iso) => { if (iso.startsWith(`${y}-${String(m).padStart(2, '0')}`)) hSet.add(iso); });
+      } catch { /* 무시 */ }
+      eventList.filter((e) => e.type === 'holiday').forEach((e) => {
+        const start = new Date(e.startDate);
+        const end = new Date(e.endDate || e.startDate);
+        const cur = new Date(start);
+        while (cur <= end) {
+          if (cur.getFullYear() === y && cur.getMonth() + 1 === m) {
+            const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+            hSet.add(iso);
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      });
+      setHolidaySet(hSet);
+
+      // 이 사이트의 승인된 잔업 — 직원 이름별 잔업일 집합 (휴무일 출근 표시용)
+      const otMap = {};
+      const userIdToName = Object.fromEntries(users.map((u) => [u.uid, u.name]));
+      allOvertime
+        .filter((r) => r.status === 'approved' && r.siteId === siteId)
+        .forEach((r) => {
+          const name = userIdToName[r.userId] || r.userName;
+          if (!name) return;
+          const day = new Date(r.date).getDate();
+          if (!otMap[name]) otMap[name] = new Set();
+          otMap[name].add(day);
+        });
+      setSiteOvertimeDays(otMap);
       // 다른 프로젝트(현재 사이트 제외) 같은 월의 직원 일별 공수 분포
       // { 이름: { day: { total, sources: [{siteName, qty}] } } }
       const allSitesNameMap = Object.fromEntries((await getAllSites()).map((x) => [x.id, x.name]));
+      const currentClosingId = `${siteId}-${y}-${m}`;
       const otherDaily = {};
       allEmpItemsThisMonth.forEach((it) => {
-        if (it.siteId === siteId) return;
+        // 현재 사이트 제외 — siteId 또는 closingId 둘 중 하나라도 일치하면 자기 항목으로 간주
+        // (legacy 데이터에 siteId 필드가 없을 수 있어 closingId 까지 함께 체크)
+        if (it.siteId && it.siteId === siteId) return;
+        if (it.closingId === currentClosingId) return;
+        if (!it.siteId && !it.closingId) return; // 식별 불가 항목은 안전하게 제외
         const name = it.detail || '';
         if (!name) return;
         const siteName = allSitesNameMap[it.siteId] || '(다른 프로젝트)';
@@ -562,10 +613,15 @@ export default function SiteClosingPage() {
         let num = Number(value);
         if (!isNaN(num)) {
           if (cur.itemType === 'employee') {
-            num = Math.max(0, Math.min(1, num));
+            // 휴가 종류에 따라 일 최대 입력값 제한 (반차 0.5 / 반반차 0.75)
+            const leaveType = leaveDays[cur.detail]?.[day];
+            let dayMax = 1;
+            if (leaveType === 'half_am' || leaveType === 'half_pm') dayMax = 0.5;
+            else if (QUARTER_LEAVE_TYPES.includes(leaveType)) dayMax = 0.75;
+            num = Math.max(0, Math.min(dayMax, num));
             const info = otherSitesEmployeeDaily[cur.detail || '']?.[day];
             const otherTotal = info?.total || 0;
-            const allowed = Math.max(0, Math.min(1 - otherTotal, 1));
+            const allowed = Math.max(0, Math.min(dayMax - otherTotal, dayMax));
             if (num > allowed) {
               setOverflowAlert({
                 name: cur.detail || '직원',
@@ -1110,15 +1166,28 @@ export default function SiteClosingPage() {
                             const isSunday = di === 0;
                             const isSaturday = di === 6;
                             const isEmployee = cardType === 'employee';
+                            const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                            const isHoliday = holidaySet.has(dayIso);
+                            // 직원 공수표: 토/일/공휴일 = 입력 차단 (잔업 별도 등록 영역)
+                            const isEmpRest = isEmployee && (isSaturday || isSunday || isHoliday);
+                            // 휴무일에 잔업 신청 있으면 자동으로 "출근" 표시
+                            const hasSiteOvertime = isEmployee && siteOvertimeDays[buf.detail]?.has(d);
+                            const showAttendance = isEmpRest && hasSiteOvertime;
                             const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
                             const isOnLeave = !!leaveType;
                             const workFraction = leaveWorkFraction(leaveType);
                             const isFullLeave = isOnLeave && workFraction === 0;
                             const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
                             return (
-                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls}`} key={di}>
+                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''}`} key={di}>
                                 <label>{d}</label>
-                                {isFullLeave ? (
+                                {isEmpRest ? (
+                                  showAttendance ? (
+                                    <div className="emp-rest-attendance" title="잔업 신청에 따라 자동 출근 표시">출근</div>
+                                  ) : (
+                                    <div className="emp-rest-blocked" title="휴무일은 잔업 신청 시 자동 출근 표시됩니다" />
+                                  )
+                                ) : isFullLeave ? (
                                   <div
                                     className={`leave-badge-input leave-badge-${leaveType}`}
                                     title={`${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`}
@@ -1131,7 +1200,12 @@ export default function SiteClosingPage() {
                                       type="number"
                                       step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
                                       min="0"
-                                      max={isDaily ? '24' : isVendorCase ? '99' : '1'}
+                                      max={isDaily ? '24' : isVendorCase ? '99' : (
+                                        // 직원 휴가일 최대값: 반차 0.5 / 반반차 0.75 / 그 외 1
+                                        (leaveType === 'half_am' || leaveType === 'half_pm') ? '0.5'
+                                          : QUARTER_LEAVE_TYPES.includes(leaveType) ? '0.75'
+                                          : '1'
+                                      )}
                                       value={v ?? ''}
                                       onChange={(e) => updateDay(it.id, d, e.target.value)}
                                       onBlur={() => flushRow(it.id)}
