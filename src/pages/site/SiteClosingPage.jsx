@@ -677,7 +677,7 @@ export default function SiteClosingPage() {
             </button>
           )}
           {canEditSite(site) && !isCompleted && (
-            <button className="btn btn-outline btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
+            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
           )}
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
         </div>
