@@ -583,9 +583,10 @@ body {
 .nav-group::before,
 .nav-group::after {
   content: '';
-  flex: 1;
-  height: 2.5px;
-  background: rgba(0, 0, 0, 0.85);
+  flex: 1 1 0;
+  min-width: 8px;
+  height: 3px;
+  background: #1a1a1a;
   border-radius: 2px;
 }
 .nav-group .nav-group-label {

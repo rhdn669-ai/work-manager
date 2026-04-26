@@ -153,7 +153,6 @@ export default function TotalClosingPage() {
                           <Link to={`/sites/${s.id}/${year}/${month}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                             {s.name}
                           </Link>
-                          {s.hideRevenue && <span className="text-muted text-sm" style={{ marginLeft: 6 }}>(매출 비공개)</span>}
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           {s.hideRevenue ? <span className="text-muted">-</span> : `${rev.toLocaleString()}원`}
