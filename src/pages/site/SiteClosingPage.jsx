@@ -714,7 +714,7 @@ export default function SiteClosingPage() {
         </div>
         {canViewSalary && (
           <div className="closing-summary-item closing-summary-total">
-            <span className="label">공수 합계</span>
+            <span className="label">외주 합계</span>
             <strong>{freelancerTotal.toLocaleString()}원</strong>
           </div>
         )}
@@ -774,10 +774,10 @@ export default function SiteClosingPage() {
           {canEdit && (
             <div className="finance-actions">
               <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '운송비')}>운송비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '식대')}>+ 식대</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>+ 교통비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>+ 자재비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '운송비')}>+ 운송비</button>
             </div>
           )}
         </div>
@@ -890,11 +890,11 @@ export default function SiteClosingPage() {
         <h3 className="finance-title">공수표</h3>
         {canEdit && (
           <div className="finance-actions">
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>+ 직원</button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('freelancer')}>+ 프리랜서</button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>+ 일용직</button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>+ 업체(공수)</button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>+ 업체(프로젝트)</button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>+ 직원</button>
           </div>
         )}
       </div>

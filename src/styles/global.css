@@ -272,13 +272,14 @@ body {
 }
 
 .header-version {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--text-muted);
-  font-weight: 500;
-  opacity: 0.6;
-  margin-left: -8px;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-left: -4px;
   align-self: flex-end;
   padding-bottom: 4px;
+  letter-spacing: 0.02em;
 }
 
 .header-refresh-btn {
@@ -332,7 +333,7 @@ body {
   .header-left { gap: 8px; }
   .header-right { gap: 8px; }
   .header-logo { width: 110px; }
-  .header-version { font-size: 9px; }
+  .header-version { font-size: 13px; }
   /* 모바일에선 사용자 이름 숨김 → 로그아웃 버튼이 항상 우측 끝에 보이도록 폭 확보
      (사용자 이름은 사이드바에서 확인 가능) */
   .user-info { display: none; }
@@ -347,7 +348,7 @@ body {
   .header-left { gap: 4px; }
   .header-right { gap: 4px; }
   .header-logo { width: 72px; }
-  .header-version { font-size: 8px; margin-left: 0; }
+  .header-version { font-size: 12px; margin-left: 0; }
   .header-right .btn-sm { font-size: 11px; padding: 6px 8px; min-height: 44px; }
 }
 
@@ -2821,11 +2822,24 @@ body {
 }
 
 .login-version {
-  margin-top: 40px;
-  font-size: 11px;
-  color: var(--border-strong);
-  letter-spacing: 0.08em;
+  width: 100%;
+  margin: 40px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  line-height: 1.6;
+  text-align: center;
+}
+.login-version-num {
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  opacity: 0.75;
+  text-transform: none;
 }
 
 /* ===== 채팅 ===== */

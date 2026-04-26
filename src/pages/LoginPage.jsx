@@ -54,7 +54,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="login-version">IOPN · Work Manager · v{__APP_VERSION__}</p>
+        <p className="login-version">
+          IOPN · Work Manager
+          <br />
+          <span className="login-version-num">v{__APP_VERSION__}</span>
+        </p>
       </div>
     </div>
   );
