@@ -296,7 +296,10 @@ export default function HomeCalendar() {
                   const dayEvents = eventsByDay[d] || [];
                   const isToday = iso === today;
                   const isSelected = iso === selectedDate;
-                  const isHoliday = dayEvents.some((e) => e.type === 'holiday');
+                  const holidayEv = dayEvents.find((e) => e.type === 'holiday');
+                  const isHoliday = !!holidayEv;
+                  // 공휴일은 셀 상단(날짜 옆)에 텍스트로 표시 → 이벤트 칩 목록에서 제외
+                  const otherEvents = dayEvents.filter((e) => e.type !== 'holiday');
                   return (
                     <button
                       type="button"
@@ -307,9 +310,16 @@ export default function HomeCalendar() {
                         setSelectedDate(iso);
                       }}
                     >
-                      <span className="home-cal-date">{d}</span>
+                      <span className="home-cal-date-row">
+                        <span className="home-cal-date">{d}</span>
+                        {holidayEv && (
+                          <span className="home-cal-holiday-label" title={holidayEv.title}>
+                            {holidayEv.title}
+                          </span>
+                        )}
+                      </span>
                       <div className="home-cal-events">
-                        {dayEvents.slice(0, 3).map((e, ei) => {
+                        {otherEvents.slice(0, 3).map((e, ei) => {
                           const lbl = e._kind === 'overtime' || e._kind === 'leave'
                             ? (e._who || userNameMap[e.userId] || (TYPE_LABEL[e.type] || '일정'))
                             : e.title;
@@ -323,7 +333,7 @@ export default function HomeCalendar() {
                             </span>
                           );
                         })}
-                        {dayEvents.length > 3 && <span className="home-cal-ev-more">+{dayEvents.length - 3}</span>}
+                        {otherEvents.length > 3 && <span className="home-cal-ev-more">+{otherEvents.length - 3}</span>}
                       </div>
                     </button>
                   );

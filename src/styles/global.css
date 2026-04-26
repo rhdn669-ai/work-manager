@@ -572,25 +572,28 @@ body {
   transform: translateY(-50%);
 }
 
-/* 사용자가 추가한 대분류 헤더 — 양옆 라인 + 중앙 글자 (절취선 스타일) */
+/* 사용자가 추가한 대분류 헤더 — 흰 절취선 + 흰 글씨 */
 .nav-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 4px 8px;
+  gap: 10px;
+  padding: 16px 4px 8px;
   margin-top: 8px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: rgba(28, 25, 23, 0.85);
-  text-align: center;
 }
 .nav-group::before,
 .nav-group::after {
   content: '';
   flex: 1;
-  height: 1.5px;
-  background: rgba(28, 25, 23, 0.25);
+  height: 2.5px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 2px;
+}
+.nav-group .nav-group-label {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #1a1a1a;
+  white-space: nowrap;
 }
 .nav-group:first-child { margin-top: 0; padding-top: 4px; }
 .nav-edit-row.is-group {
@@ -5654,7 +5657,7 @@ body {
 .home-cal-cell.sunday .home-cal-date,
 .home-cal-cell.is-holiday .home-cal-date { color: #ef4444; }
 .home-cal-cell.saturday .home-cal-date { color: #3b82f6; }
-.home-cal-cell.is-holiday { background: rgba(239, 68, 68, 0.04); }
+/* 공휴일 배경 강조 제거 — 날짜 숫자만 빨갛게 표시 */
 
 .home-cal-cell {
   display: flex;
@@ -5732,6 +5735,25 @@ body {
 .home-cal-dot.type-personal { background: #ec4899; }
 
 /* 팀 캘린더와 동일한 이벤트 레이블 스타일 */
+.home-cal-date-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  margin-bottom: 2px;
+}
+.home-cal-holiday-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #dc2626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
 .home-cal-events {
   display: flex;
   flex-direction: column;
