@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
+  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc,
   query, orderBy, limit, where, onSnapshot, serverTimestamp, arrayUnion, arrayRemove, increment,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -131,19 +131,33 @@ export async function getOrCreateDmRoom(uid1, uid2, name1, name2) {
   const roomRef = doc(DM_ROOMS, roomId);
   const snap = await getDoc(roomRef);
   if (!snap.exists()) {
-    await updateDoc(roomRef, {}).catch(async () => {
-      const { setDoc } = await import('firebase/firestore');
-      await setDoc(roomRef, {
-        participants: [uid1, uid2],
-        names: { [uid1]: name1, [uid2]: name2 },
-        lastMessage: '',
-        lastMessageAt: serverTimestamp(),
-        unread: { [uid1]: 0, [uid2]: 0 },
-        createdAt: serverTimestamp(),
-      });
+    await setDoc(roomRef, {
+      participants: [uid1, uid2],
+      names: { [uid1]: name1, [uid2]: name2 },
+      lastMessage: '',
+      lastMessageAt: serverTimestamp(),
+      hiddenBy: [],
+      messageCount: 0,
+      createdAt: serverTimestamp(),
     });
   }
   return roomId;
+}
+
+export async function setDmTyping(roomId, userId, userName, isTyping) {
+  const ref = doc(db, 'dmRooms', roomId, 'typing', userId);
+  await setDoc(ref, { isTyping, userName, updatedAt: Date.now() }, { merge: true });
+}
+
+export function subscribeDmTyping(roomId, myUserId, callback) {
+  const typingCol = collection(db, 'dmRooms', roomId, 'typing');
+  return onSnapshot(typingCol, (snap) => {
+    const now = Date.now();
+    const typing = snap.docs
+      .filter((d) => d.id !== myUserId && d.data().isTyping && now - d.data().updatedAt < 5000)
+      .map((d) => d.data().userName);
+    callback(typing);
+  });
 }
 
 export function subscribeDmMessages(roomId, callback) {

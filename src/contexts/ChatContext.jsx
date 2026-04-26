@@ -135,23 +135,26 @@ export function ChatProvider({ children }) {
       return;
     }
     if (unreadCount > prevUnreadRef.current) {
-      // 1) beep (WebAudio)
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) {
-          const ctx = new Ctx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = 880;
-          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(); osc.stop(ctx.currentTime + 0.3);
-          setTimeout(() => ctx.close(), 400);
-        }
-      } catch { /* 무시 */ }
+      // 탭이 보이는 상태(채팅방 열려있는 상태 포함)에서는 beep 안 함 — 시끄러움 방지
+      const tabHidden = typeof document !== 'undefined' && document.visibilityState !== 'visible';
+      if (tabHidden) {
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) {
+            const ctx = new Ctx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.3);
+            setTimeout(() => ctx.close(), 400);
+          }
+        } catch { /* 무시 */ }
+      }
       // 2) 브라우저 알림 (권한 허용된 경우에만, 탭이 백그라운드일 때)
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
         try { new Notification('새 메시지', { body: `읽지 않은 메시지 ${unreadCount}건`, tag: 'wm-chat-unread' }); } catch { /* 무시 */ }

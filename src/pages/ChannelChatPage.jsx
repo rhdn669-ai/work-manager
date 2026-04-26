@@ -29,9 +29,13 @@ function formatDate(ts) {
   if (!ts?.seconds) return '';
   return new Date(ts.seconds * 1000).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 }
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 function highlight(text, keyword) {
-  if (!keyword) return text;
-  const parts = text.split(new RegExp(`(${keyword})`, 'gi'));
+  if (!keyword || typeof text !== 'string') return text;
+  const safe = escapeRegex(keyword);
+  const parts = text.split(new RegExp(`(${safe})`, 'gi'));
   return parts.map((p, i) =>
     p.toLowerCase() === keyword.toLowerCase() ? <mark key={i} className="chat-highlight">{p}</mark> : p
   );
@@ -60,11 +64,13 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [showMention, setShowMention] = useState(false);
   const bottomRef = useRef(null);
+  const messagesRef = useRef(null);
   const inputRef = useRef(null);
   const typingTimer = useRef(null);
   const lastReadRef = useRef({});
   const msgRefs = useRef({});
   const [flashMsgId, setFlashMsgId] = useState(null);
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteSearch, setInviteSearch] = useState('');
@@ -145,9 +151,31 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
     }
   }
 
+  // 스마트 자동 스크롤 — 사용자가 하단(120px 이내)에 있을 때만 자동으로 내려감
+  // 검색 모드/위쪽 탐색 중에는 강제 스크롤하지 않음
   useEffect(() => {
+    if (searchOpen && searchKeyword) return;
+    const el = messagesRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const myLast = messages[messages.length - 1]?.userId === userProfile?.uid;
+    if (distFromBottom < 120 || myLast) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } else if (messages.length > 0) {
+      setShowJumpToBottom(true);
+    }
+  }, [messages, searchOpen, searchKeyword, userProfile?.uid]);
+
+  function handleScroll() {
+    const el = messagesRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom < 120) setShowJumpToBottom(false);
+  }
+  function jumpToBottom() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    setShowJumpToBottom(false);
+  }
 
   function handleTextChange(e) {
     const val = e.target.value;
@@ -335,7 +363,7 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
       )}
 
       {/* 메시지 목록 */}
-      <div className="chat-messages" onClick={() => setMenuMsg(null)}>
+      <div className="chat-messages" ref={messagesRef} onScroll={handleScroll} onClick={() => setMenuMsg(null)}>
         {filtered.map((msg) => {
           const dateStr = formatDate(msg.createdAt);
           const showDate = dateStr && dateStr !== lastDate;
@@ -423,6 +451,14 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
         <div ref={bottomRef} />
       </div>
 
+      {showJumpToBottom && (
+        <button type="button" className="chat-jump-to-bottom" onClick={jumpToBottom} aria-label="최신 메시지로 이동">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width="18" height="18">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      )}
+
       {/* 컨텍스트 메뉴 */}
       {menuMsg && (
         <div className="chat-menu-overlay" onClick={() => setMenuMsg(null)}>
@@ -494,11 +530,11 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
             </svg>
             <input type="file" accept="*/*" style={{ display: 'none' }} onChange={handleAttachSelect} />
           </label>
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
+            rows={1}
             className="chat-input"
-            placeholder="메시지 입력... (@로 멘션)"
+            placeholder="메시지 입력... (@멘션, Shift+Enter 줄바꿈)"
             value={text}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}

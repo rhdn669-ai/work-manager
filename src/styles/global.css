@@ -2902,14 +2902,42 @@ body {
   min-width: 0; /* flex item의 기본 min-width(content) 무력화 — 좁은 화면에서 send-btn 밀려나는 것 방지 */
   padding: 10px 14px;
   border: 1.5px solid var(--border);
-  border-radius: 999px;
+  border-radius: 20px;
   font-size: 14px;
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s;
   background: var(--bg);
+  resize: none;
+  line-height: 1.4;
+  max-height: 120px;
+  overflow-y: auto;
 }
 .chat-input:focus { border-color: var(--primary); }
+
+/* 메시지 영역 우하단의 "최신 메시지로 이동" 플로팅 버튼 */
+.chat-jump-to-bottom {
+  position: absolute;
+  right: 14px;
+  bottom: 84px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  cursor: pointer;
+  z-index: 5;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.chat-jump-to-bottom:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
 
 .chat-send-btn {
   width: 40px; height: 40px;
