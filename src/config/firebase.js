@@ -38,7 +38,6 @@ export function ensureAnonymousAuth() {
   return _anonPromise;
 }
 
-// 앱 로드 시 즉시 시도 (실패해도 앱은 동작)
-ensureAnonymousAuth().catch((err) => console.warn('Firebase 익명 인증 실패:', err?.message || err));
+// 익명 인증은 파일 업로드 등 Storage 사용 시에만 명시적으로 호출됩니다.
 
 export default app;
