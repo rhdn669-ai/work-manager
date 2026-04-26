@@ -2906,6 +2906,7 @@ body {
 
 .chat-input {
   flex: 1;
+  min-width: 0; /* flex item의 기본 min-width(content) 무력화 — 좁은 화면에서 send-btn 밀려나는 것 방지 */
   padding: 10px 14px;
   border: 1.5px solid var(--border);
   border-radius: 999px;
@@ -6935,8 +6936,9 @@ body {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
-  /* 폴드 접힘/Z Flip 외부 화면 등 초소형(~280-360px) 채팅 입력바 컴팩트화 */
-  @media (max-width: 360px) {
+  /* Z Fold 6 외부(~376px) / 폴드 접힘 / Z Flip 외부 등 초소형(~280-400px)
+     채팅 입력바 컴팩트화 — 일반 폰(360px-)도 약간 압축 적용 */
+  @media (max-width: 400px) {
     .chat-input-bar {
       padding: 10px 8px;
       padding-bottom: max(10px, env(safe-area-inset-bottom));
