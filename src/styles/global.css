@@ -5257,9 +5257,14 @@ body {
 
 /* ===== 매출 카드 (마감 행별 댓수/호기) ===== */
 .revenue-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+@media (max-width: 768px) {
+  .revenue-list {
+    grid-template-columns: 1fr;
+  }
 }
 .revenue-card {
   position: relative;
