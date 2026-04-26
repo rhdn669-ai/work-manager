@@ -384,6 +384,31 @@ body {
   transform: translateX(0);
 }
 
+/* 모바일 사이드바 backdrop — 사이드바 열릴 때 본문 위에 어두운 막 */
+.sidebar-backdrop {
+  display: none;
+}
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 95;
+    animation: sidebarBackdropIn 0.18s ease-out;
+  }
+  .app-layout:has(.impersonation-banner) .sidebar-backdrop {
+    top: calc(var(--header-height) + 36px);
+  }
+}
+@keyframes sidebarBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .sidebar-nav {
   padding: 14px 10px;
   display: flex;
@@ -6406,12 +6431,16 @@ body {
 
 /* ===== 반응형 ===== */
 @media (max-width: 768px) {
+  /* 모바일에선 사이드바를 슬라이드 오버레이로 — backdrop과 함께 표시 */
   .sidebar {
-    display: none !important;
+    z-index: 100;
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15);
   }
 
   .menu-toggle {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .main-content,

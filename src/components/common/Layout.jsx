@@ -7,10 +7,21 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 
 export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { isImpersonating, impersonator, userProfile, stopImpersonation, logout } = useAuth();
+  // PC는 기본 열림, 모바일은 기본 닫힘
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 769px)').matches;
+  });
+  const { isImpersonating, impersonator, userProfile, stopImpersonation, logout, isAdmin } = useAuth();
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/chat');
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+  // 모바일에서 라우트 변경 시 사이드바 자동 닫기
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
   const [exitToast, setExitToast] = useState(false);
   const exitArmedRef = useRef(false);
   const exitTimerRef = useRef(null);
@@ -83,11 +94,18 @@ export default function Layout() {
       <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       <div className="app-body">
         <Sidebar isOpen={sidebarOpen} />
+        {sidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
         <main className={`main-content ${sidebarOpen ? '' : 'expanded'}`}>
           <Outlet />
         </main>
       </div>
-      <BottomNav />
+      {!isAdmin && <BottomNav />}
       {exitToast && (
         <div className="exit-toast" role="status" aria-live="polite">
           한 번 더 누르면 종료됩니다
