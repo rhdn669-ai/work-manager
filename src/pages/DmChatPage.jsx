@@ -30,10 +30,15 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   const { userProfile } = useAuth();
   const { markAsRead } = useChat();
 
-  // DM 입장 시 읽음 처리 (사이드바/바텀바 배지용)
+  // markAsRead ref로 안정화 — ChatContext 의존성으로 인한 잦은 재생성 → 구독 churn 방지
+  const markAsReadRef = useRef(markAsRead);
+  useEffect(() => { markAsReadRef.current = markAsRead; }, [markAsRead]);
+
+  // DM 입장 시 읽음 처리
   useEffect(() => {
     if (room?.roomId) markAsRead('dm', room.roomId);
-  }, [room?.roomId, markAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.roomId]);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -69,11 +74,10 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   useEffect(() => {
     const unsub = subscribeDmMessages(room.roomId, (msgs) => {
       setMessages(msgs);
-      // 방에 머무르는 동안 새 메시지 수신 → 배지 카운트 동기화
-      if (room?.roomId) markAsRead('dm', room.roomId);
+      if (room?.roomId) markAsReadRef.current?.('dm', room.roomId);
     });
     return () => unsub();
-  }, [room.roomId, markAsRead]);
+  }, [room.roomId]);
 
   useEffect(() => {
     if (!userProfile?.uid || !room?.roomId) return;
@@ -181,6 +185,8 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   }
 
   function handleKeyDown(e) {
+    // 한글 IME 조합 중에는 Enter가 IME 확정용 — 메시지 전송으로 가로채면 안 됨
+    if (e.isComposing || e.nativeEvent?.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 

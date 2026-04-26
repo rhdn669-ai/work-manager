@@ -45,10 +45,11 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
   const { userProfile, isAdmin } = useAuth();
   const { markAsRead } = useChat();
 
-  // 채널 입장 + 새 메시지 수신 시 읽음 처리 (사이드바/바텀바 배지용)
+  // 채널 입장 시 읽음 처리 (배지용) — markAsRead는 ref로 접근해 의존성 churn 방지
   useEffect(() => {
     if (channel?.id) markAsRead('channel', channel.id);
-  }, [channel?.id, markAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel?.id]);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -87,6 +88,11 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
     setTimeout(() => setFlashMsgId((cur) => (cur === id ? null : cur)), 1200);
   }
 
+  // markAsRead가 ChatContext 내부 의존성으로 인해 자주 새로 생성됨 → ref로 안정화
+  // (subscription이 매번 재생성돼 메시지 다시 로드되면서 입력 포커스/타이핑이 끊기는 문제 방지)
+  const markAsReadRef = useRef(markAsRead);
+  useEffect(() => { markAsReadRef.current = markAsRead; }, [markAsRead]);
+
   useEffect(() => {
     const unsub = subscribeChannelMessages(channel.id, (msgs) => {
       setMessages(msgs);
@@ -98,11 +104,10 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
           }
         }
       });
-      // 방에 머무르는 동안 새 메시지 수신 → 배지 카운트 동기화
-      if (channel?.id) markAsRead('channel', channel.id);
+      if (channel?.id) markAsReadRef.current?.('channel', channel.id);
     });
     return () => unsub();
-  }, [channel.id, userProfile?.uid, markAsRead]);
+  }, [channel.id, userProfile?.uid]);
 
   useEffect(() => {
     getPinnedChannelMessage(channel.id).then(setPinnedMsg);
@@ -284,6 +289,8 @@ export default function ChannelChatPage({ channel, onBack, onGoToDm }) {
   }
 
   function handleKeyDown(e) {
+    // 한글 IME 조합 중에는 Enter가 IME 확정용 — 메시지 전송으로 가로채면 안 됨
+    if (e.isComposing || e.nativeEvent?.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
