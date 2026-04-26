@@ -78,8 +78,26 @@ export default function Layout() {
     }
   }
 
+  // 테스트(개발) 서버 감지 — localhost / 사설 IP에서 접속한 경우
+  const isDevHost = (() => {
+    if (typeof window === 'undefined') return false;
+    const h = window.location.hostname;
+    return (
+      h === 'localhost' ||
+      h === '127.0.0.1' ||
+      /^192\.168\./.test(h) ||
+      /^10\./.test(h) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(h)
+    );
+  })();
+
   return (
-    <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : ''} ${isChatRoute ? 'chat-route' : ''}`}>
+    <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : ''} ${isChatRoute ? 'chat-route' : ''} ${isDevHost ? 'is-dev-host' : ''}`}>
+      {isDevHost && (
+        <div className="dev-host-banner" role="alert">
+          ⚠ 테스트 서버입니다. 여기서 수정하는 내용은 실제 데이터베이스에 반영됩니다.
+        </div>
+      )}
       {isImpersonating && (
         <div className="impersonation-banner">
           <span className="impersonation-banner-text">

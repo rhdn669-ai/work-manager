@@ -135,6 +135,49 @@ body {
   min-height: 100vh;
 }
 
+/* 테스트 서버 경고 배너 — localhost/사설 IP 접속 시 상단 고정 */
+.dev-host-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 110;
+  background: repeating-linear-gradient(
+    -45deg,
+    #dc2626,
+    #dc2626 12px,
+    #b91c1c 12px,
+    #b91c1c 24px
+  );
+  color: #fff;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+/* 배너 높이만큼 헤더/사이드바/본문을 아래로 밀어줌 */
+.app-layout.is-dev-host .header {
+  top: 28px;
+}
+.app-layout.is-dev-host .sidebar {
+  top: calc(var(--header-height) + 28px);
+}
+.app-layout.is-dev-host .app-body {
+  padding-top: calc(var(--header-height) + 28px + env(safe-area-inset-top));
+}
+.app-layout.is-dev-host:has(.impersonation-banner) .header {
+  top: calc(28px + 36px);
+}
+.app-layout.is-dev-host:has(.impersonation-banner) .sidebar {
+  top: calc(var(--header-height) + 28px + 36px);
+}
+.app-layout.is-dev-host:has(.impersonation-banner) .app-body {
+  padding-top: calc(var(--header-height) + 28px + 36px + env(safe-area-inset-top));
+}
+
 /* "한 번 더 누르면 종료됩니다" 토스트 */
 .exit-toast {
   position: fixed;
