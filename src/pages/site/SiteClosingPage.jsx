@@ -677,7 +677,7 @@ export default function SiteClosingPage() {
             </button>
           )}
           {canEditSite(site) && !isCompleted && (
-            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
+            <button className="btn btn-outline btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
           )}
           <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
         </div>
@@ -740,7 +740,11 @@ export default function SiteClosingPage() {
         <div className="finance-section">
           <div className="finance-section-header">
             <h3 className="finance-title finance-revenue">매출</h3>
-            {canEdit && <button className="btn btn-sm btn-pastel-green" onClick={() => handleAddFinance('revenue')}>+ 추가</button>}
+            {canEdit && (
+              <div className="finance-actions">
+                <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('revenue')}>+ 추가</button>
+              </div>
+            )}
           </div>
           {revenueItems.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
@@ -769,10 +773,11 @@ export default function SiteClosingPage() {
           <h3 className="finance-title finance-expense">지출</h3>
           {canEdit && (
             <div className="finance-actions">
-              <button className="btn btn-sm btn-pastel-rose" onClick={() => handleAddFinance('expense')}>+ 추가</button>
-              <button className="expense-chip expense-chip-meal" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
-              <button className="expense-chip expense-chip-transport" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
-              <button className="expense-chip expense-chip-material" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '식대')}>식대</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>교통비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>자재비</button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '운송비')}>운송비</button>
             </div>
           )}
         </div>
@@ -784,7 +789,7 @@ export default function SiteClosingPage() {
             {expenseItems.filter((f) => !isOvertimeFinance(f)).map((f) => {
               const buf = financeBuf[f.id] || f;
               const desc = (buf.description || '').trim();
-              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material' };
+              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '운송비': 'shipping' };
               const chipKey = chipMap[desc];
               return (
                 <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
@@ -822,7 +827,7 @@ export default function SiteClosingPage() {
             {(() => {
               const nonOvertimeItems = mirroredFinances.filter((f) => !isOvertimeDesc(f.description));
               if (nonOvertimeItems.length === 0) return null;
-              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material' };
+              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '운송비': 'shipping' };
               // description 단위로 그룹핑
               const groups = new Map();
               for (const f of nonOvertimeItems) {

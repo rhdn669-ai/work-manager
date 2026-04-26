@@ -4963,6 +4963,12 @@ body {
   border-color: #c7d2fe;
 }
 
+.expense-chip-shipping {
+  background: #cffafe;
+  color: #155e75;
+  border-color: #a5f3fc;
+}
+
 .expense-chip-overtime {
   background: #fee2e2;
   color: #991b1b;
@@ -4996,6 +5002,11 @@ body {
   color: #3730a3;
   border-color: #c7d2fe;
 }
+.expense-tag.expense-chip-shipping {
+  background: #cffafe;
+  color: #155e75;
+  border-color: #a5f3fc;
+}
 .expense-tag.expense-chip-overtime {
   background: #fee2e2;
   color: #991b1b;
@@ -5027,6 +5038,7 @@ body {
 .expense-card-meal { border-left-color: #f59e0b; }
 .expense-card-transport { border-left-color: #3b82f6; }
 .expense-card-material { border-left-color: #6366f1; }
+.expense-card-shipping { border-left-color: #06b6d4; }
 .expense-card-overtime { border-left-color: #ef4444; }
 
 .expense-card-readonly {
@@ -5844,8 +5856,8 @@ body {
 }
 
 .closing-vendor {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 160px;
+  min-width: 160px;
   font-size: 14px;
   font-weight: 700;
   color: var(--text);
@@ -5854,7 +5866,7 @@ body {
 }
 
 .closing-name {
-  flex: 0 0 90px;
+  flex: 0 0 160px;
   font-size: 14px;
   font-weight: 700;
   color: var(--text);
@@ -6734,9 +6746,14 @@ body {
     flex-wrap: wrap;
   }
 
+  .closing-vendor {
+    flex: 1 1 140px;
+    min-width: 140px;
+  }
+
   .closing-name {
-    flex: 0 0 auto;
-    min-width: 70px;
+    flex: 1 1 140px;
+    min-width: 140px;
   }
 
   .day-cell input {
