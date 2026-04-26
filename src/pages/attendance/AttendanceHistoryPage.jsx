@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyOvertimeRecords, deleteOvertimeRecord, updateOvertimeRecord } from '../../services/attendanceService';
+import { getMyOvertimeRecords, deleteOvertimeRecord, updateOvertimeRecord, OVERTIME_MULTIPLIER } from '../../services/attendanceService';
 import { getAllSites } from '../../services/siteService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName, getToday } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
@@ -96,6 +96,8 @@ export default function AttendanceHistoryPage() {
 
   const approvedRecords = records.filter((r) => r.status === 'approved');
   const totalMinutes = approvedRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
+  const hourlyRate = Number(userProfile?.hourlyRate) || 0;
+  const totalAmount = Math.round((totalMinutes / 60) * hourlyRate * OVERTIME_MULTIPLIER);
 
   return (
     <div className="history-page">
@@ -116,12 +118,28 @@ export default function AttendanceHistoryPage() {
       </div>
 
       {records.length > 0 && (
-        <div className="summary-bar">
-          <span>승인 잔업 <strong>{formatMinutes(totalMinutes)}</strong></span>
-          <span>승인 <strong>{approvedRecords.length}건</strong></span>
-          {records.length > approvedRecords.length && (
-            <span style={{ color: '#92400e' }}>대기 <strong>{records.length - approvedRecords.length}건</strong></span>
-          )}
+        <div className="overtime-summary-card">
+          <div className="overtime-summary-head">
+            <span className="overtime-summary-title">{year}년 {month}월 잔업 집계</span>
+            <span className="overtime-summary-meta">
+              승인 {approvedRecords.length}건
+              {records.length > approvedRecords.length && ` · 대기 ${records.length - approvedRecords.length}건`}
+            </span>
+          </div>
+          <div className="overtime-summary-row">
+            <div className="overtime-summary-cell">
+              <span className="overtime-summary-label">승인 잔업</span>
+              <strong className="overtime-summary-value">{formatMinutes(totalMinutes)}</strong>
+            </div>
+            {hourlyRate > 0 && (
+              <div className="overtime-summary-cell">
+                <span className="overtime-summary-label">예상 금액</span>
+                <strong className="overtime-summary-value overtime-summary-amount">
+                  {totalAmount.toLocaleString()}원
+                </strong>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -742,16 +742,18 @@ export default function SiteClosingPage() {
           <span className="label">항목</span>
           <strong>{itemCount}건</strong>
         </div>
-        {!hideRevenue && (
+        {canViewSalary && !hideRevenue && (
           <div className="closing-summary-item">
             <span className="label">매출</span>
             <strong style={{ color: 'var(--success, #16a34a)' }}>{totalRevenue.toLocaleString()}원</strong>
           </div>
         )}
-        <div className="closing-summary-item">
-          <span className="label">지출</span>
-          <strong style={{ color: 'var(--danger, #dc2626)' }}>{totalExpense.toLocaleString()}원</strong>
-        </div>
+        {canViewSalary && (
+          <div className="closing-summary-item">
+            <span className="label">지출</span>
+            <strong style={{ color: 'var(--danger, #dc2626)' }}>{totalExpense.toLocaleString()}원</strong>
+          </div>
+        )}
         {canViewSalary && (
           <div className="closing-summary-item closing-summary-total">
             <span className="label">외주 합계</span>
@@ -764,7 +766,7 @@ export default function SiteClosingPage() {
             <strong>{employeeTotal.toLocaleString()}원</strong>
           </div>
         )}
-        {!hideRevenue && (
+        {canViewSalary && !hideRevenue && (
           <div className="closing-summary-item closing-summary-net">
             <span className="label">합계</span>
             <strong style={{ color: netTotal >= 0 ? 'var(--success)' : 'var(--danger)' }}>

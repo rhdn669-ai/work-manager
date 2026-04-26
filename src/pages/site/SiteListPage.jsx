@@ -329,7 +329,7 @@ export default function SiteListPage() {
         </select>
       </div>
 
-      {isAdmin && filtered.length > 0 && (() => {
+      {(isAdmin || canViewSalary) && filtered.length > 0 && (() => {
         const allRevenue = filtered.reduce((s, site) => {
           if (site.hideRevenue) return s;
           return s + ((siteStats[site.id] || {}).revenue || 0);

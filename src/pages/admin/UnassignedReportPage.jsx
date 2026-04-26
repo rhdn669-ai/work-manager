@@ -293,11 +293,6 @@ export default function UnassignedReportPage() {
                     else baseTitle = '미배정';
                     const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}${c.otSiteNames.length > 0 ? ` (${c.otSiteNames.join(', ')})` : ''}` : baseTitle;
                     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(c.d).padStart(2, '0')}`;
-                    const leaveMark =
-                      c.type === 'leave-annual' ? '연' :
-                      c.type === 'leave-half' ? '½' :
-                      c.type === 'leave-quarter' ? '¼' :
-                      c.type === 'leave-sick' ? '병' : '';
                     return (
                       <td
                         key={c.d}
@@ -316,9 +311,7 @@ export default function UnassignedReportPage() {
                           overtimeMin: c.overtimeMin,
                           otSiteNames: c.otSiteNames,
                         })}
-                      >
-                        {leaveMark && <span className="cell-leave-mark">{leaveMark}</span>}
-                      </td>
+                      />
                     );
                   })}
                   <td className="sticky-col-right count-col">
