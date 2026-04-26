@@ -356,9 +356,13 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {[...filtered].sort((a, b) => {
-            // 본사는 항상 최상단 고정
-            if (a.name === '본사') return -1;
-            if (b.name === '본사') return 1;
+            // 본사 / 본사 행정업무 등 핀 고정 카드 — 항상 최상단
+            const PINNED = ['본사', '본사 행정업무'];
+            const aPin = PINNED.indexOf(a.name);
+            const bPin = PINNED.indexOf(b.name);
+            if (aPin !== -1 && bPin !== -1) return aPin - bPin;
+            if (aPin !== -1) return -1;
+            if (bPin !== -1) return 1;
             return 0;
           }).map((s) => {
             const pt = s.projectType || 'recurring';
