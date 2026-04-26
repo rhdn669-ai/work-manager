@@ -715,7 +715,12 @@ export default function SiteClosingPage() {
       const cur = { ...b[id] };
       const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
       const row = { ...(closings[idx] || {}) };
-      row[field] = field === 'count' ? (Number(value) || 0) : value;
+      row[field] = value;
+      // units 필드에서 자동으로 count 도출 (콤마/공백 구분)
+      if (field === 'units') {
+        const tokens = (value || '').split(/[,\s/]+/).filter((x) => x.trim());
+        row.count = tokens.length;
+      }
       closings[idx] = row;
       cur.closings = closings;
       const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
@@ -917,7 +922,9 @@ export default function SiteClosingPage() {
               {revenueItems.map((f) => {
                 const buf = financeBuf[f.id] || f;
                 const closings = Array.isArray(buf.closings) ? buf.closings : [];
-                const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+                // 호기 문자열을 콤마/공백으로 split → 비어있지 않은 항목 수 = 댓수
+                const countUnits = (units) => (units || '').split(/[,\s/]+/).filter((x) => x.trim()).length;
+                const totalQty = closings.reduce((s, c) => s + countUnits(c.units), 0);
                 const totalAmount = (Number(buf.unitPrice) || 0) * totalQty;
                 return (
                   <div className="revenue-card" key={f.id}>
@@ -949,7 +956,6 @@ export default function SiteClosingPage() {
                     <div className="revenue-rows">
                       <div className="revenue-row revenue-row-head">
                         <span>마감일자</span>
-                        <span>댓수</span>
                         <span>호기</span>
                         <span></span>
                       </div>
@@ -966,22 +972,12 @@ export default function SiteClosingPage() {
                             disabled={!canEdit}
                           />
                           <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={c.count ?? ''}
-                            onChange={(e) => updateClosingRow(f.id, idx, 'count', e.target.value)}
-                            onBlur={() => flushFinance(f.id)}
-                            disabled={!canEdit}
-                            placeholder="0"
-                          />
-                          <input
                             type="text"
                             value={c.units || ''}
                             onChange={(e) => updateClosingRow(f.id, idx, 'units', e.target.value)}
                             onBlur={() => flushFinance(f.id)}
                             disabled={!canEdit}
-                            placeholder="예: 1호기, 2호기"
+                            placeholder="예: 1호기, 2호기 (콤마로 구분 → 자동 카운트)"
                           />
                           {canEdit && (
                             <button type="button" className="closing-delete" onClick={() => removeClosingRow(f.id, idx)} aria-label="행 삭제">✕</button>

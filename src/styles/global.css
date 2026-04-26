@@ -5262,22 +5262,30 @@ body {
   gap: 12px;
 }
 .revenue-card {
+  position: relative;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 12px;
   padding: 14px 16px;
+  padding-right: 44px; /* 우상단 ✕ 영역 확보 */
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+.revenue-card > .closing-delete,
+.revenue-card-head > .closing-delete {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
 .revenue-card-head {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .revenue-desc {
-  flex: 1 1 200px;
+  flex: 1 1 0;
   min-width: 0;
   padding: 8px 12px;
   border: 1px solid var(--border);
@@ -5289,6 +5297,8 @@ body {
 }
 .revenue-desc:focus { outline: none; border-color: var(--primary); }
 .revenue-unitprice {
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5303,7 +5313,9 @@ body {
   font-weight: 600;
 }
 .revenue-unitprice-input {
-  width: 110px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
   border: none;
   outline: none;
   text-align: right;
@@ -5325,7 +5337,7 @@ body {
 }
 .revenue-row {
   display: grid;
-  grid-template-columns: 150px 80px 1fr 32px;
+  grid-template-columns: 150px 1fr 32px;
   align-items: center;
   gap: 8px;
 }
@@ -5385,12 +5397,12 @@ body {
 
 @media (max-width: 640px) {
   .revenue-row {
-    grid-template-columns: 1fr 1fr 32px;
-    grid-template-areas: 'date count del' 'units units units';
+    grid-template-columns: 1fr 32px;
+    grid-template-areas: 'date del' 'units units';
   }
   .revenue-row > input[type='date'] { grid-area: date; }
-  .revenue-row > input[type='number'] { grid-area: count; }
   .revenue-row > input[type='text'] { grid-area: units; }
+  .revenue-row > .closing-delete { grid-area: del; }
   .revenue-row-head { display: none; }
 }
 
