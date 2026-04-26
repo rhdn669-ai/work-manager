@@ -309,22 +309,6 @@ export default function OutsourceManagementPage() {
       <div className="page-header">
         <h2>외주 관리</h2>
         <div className="page-actions">
-          <button
-            className="btn btn-sm btn-outline"
-            onClick={handleImport}
-            disabled={importing}
-            title="모든 프로젝트 공수표에서 프리랜서·업체 정보 일괄 가져오기"
-          >
-            {importing ? '가져오는 중...' : '공수표에서 가져오기'}
-          </button>
-          <button
-            className="btn btn-sm btn-danger-outline"
-            onClick={handleClearHistories}
-            disabled={clearing}
-            title="모든 프리랜서의 단가 변경 이력을 한 번에 초기화"
-          >
-            {clearing ? '초기화 중...' : '단가 이력 초기화'}
-          </button>
           <button className="btn btn-primary" onClick={openCreate}>
             {tab === 'vendor' ? '+ 업체' : tab === 'daily' ? '+ 일용직' : '+ 프리랜서'} 추가
           </button>

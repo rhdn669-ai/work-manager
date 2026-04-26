@@ -13,13 +13,13 @@ import LeaveBalancePage from './pages/leave/LeaveBalancePage';
 import TeamReportsPage from './pages/manage/TeamReportsPage';
 import ManageTeamPage from './pages/manage/ManageTeamPage';
 import UserManagementPage from './pages/admin/UserManagementPage';
-import DepartmentManagementPage from './pages/admin/DepartmentManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import UnassignedReportPage from './pages/admin/UnassignedReportPage';
 import OutsourceManagementPage from './pages/admin/OutsourceManagementPage';
 import SiteManagementPage from './pages/admin/SiteManagementPage';
 import EventManagementPage from './pages/admin/EventManagementPage';
 import LeaveManagementPage from './pages/admin/LeaveManagementPage';
+import TotalClosingPage from './pages/admin/TotalClosingPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 
@@ -65,13 +65,13 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
           { path: '/admin/users', element: <UserManagementPage /> },
-          { path: '/admin/departments', element: <DepartmentManagementPage /> },
           { path: '/admin/sites', element: <SiteManagementPage /> },
           { path: '/admin/reports', element: <ReportsPage /> },
           { path: '/admin/unassigned', element: <UnassignedReportPage /> },
           { path: '/admin/outsource', element: <OutsourceManagementPage /> },
           { path: '/admin/events', element: <EventManagementPage /> },
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
+          { path: '/admin/total-closing', element: <TotalClosingPage /> },
         ],
       },
     ],
