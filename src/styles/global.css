@@ -3376,10 +3376,31 @@ body {
 
 /* ===== 채널 목록 ===== */
 .channel-list-page {
+  /* 채팅 목록도 chat-page와 동일하게 viewport에 fixed 배치 →
+     안의 .channel-list가 flex:1 + overflow-y:auto로 정상 스크롤 동작 */
+  position: fixed;
+  top: calc(var(--header-height) + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   background: var(--bg);
+  overflow: hidden;
+  z-index: 50;
+}
+.app-layout.sidebar-open .channel-list-page {
+  left: var(--sidebar-width);
+}
+.app-layout:has(.impersonation-banner) .channel-list-page {
+  top: calc(var(--header-height) + env(safe-area-inset-top) + 36px);
+}
+@media (max-width: 768px) {
+  .app-layout.sidebar-open .channel-list-page,
+  .channel-list-page {
+    left: 0;
+  }
 }
 .channel-list-header {
   display: flex;
@@ -3407,8 +3428,11 @@ body {
 }
 .channel-list {
   flex: 1;
+  min-height: 0; /* flex item 안전망 — 부모가 flex column일 때 자식 overflow 정상 동작 */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 .channel-item {
   display: flex;
