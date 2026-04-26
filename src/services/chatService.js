@@ -232,11 +232,16 @@ export async function toggleDmReaction(roomId, msgId, emoji, userId) {
 }
 
 export function subscribeDmRooms(userId, callback) {
-  const q = query(DM_ROOMS, where('participants', 'array-contains', userId), orderBy('lastMessageAt', 'desc'));
+  // composite index 요구 회피 — orderBy는 클라이언트에서 처리
+  const q = query(DM_ROOMS, where('participants', 'array-contains', userId));
   return onSnapshot(q, (snap) => {
     const rooms = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    // 숨김 처리된 방은 필터링 (상대가 이후 새 메시지 보내면 송신 시 hiddenBy를 비워 다시 표시)
     const visible = rooms.filter((r) => !(Array.isArray(r.hiddenBy) && r.hiddenBy.includes(userId)));
+    visible.sort((a, b) => {
+      const ams = a.lastMessageAt?.toMillis ? a.lastMessageAt.toMillis() : (a.lastMessageAt?.seconds ? a.lastMessageAt.seconds * 1000 : 0);
+      const bms = b.lastMessageAt?.toMillis ? b.lastMessageAt.toMillis() : (b.lastMessageAt?.seconds ? b.lastMessageAt.seconds * 1000 : 0);
+      return bms - ams;
+    });
     callback(visible);
   });
 }

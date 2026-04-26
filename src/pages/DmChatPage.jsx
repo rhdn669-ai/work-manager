@@ -4,7 +4,7 @@ import { useChat } from '../contexts/ChatContext';
 import {
   subscribeDmMessages, sendDmMessage, sendDmImage, sendDmFile,
   deleteDmMessage, toggleDmReaction, editDmMessage,
-  setDmTyping, subscribeDmTyping,
+  setDmTyping, subscribeDmTyping, getOrCreateDmRoom,
 } from '../services/chatService';
 
 const EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
@@ -43,6 +43,14 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
   const [editingMsg, setEditingMsg] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  // 신규 DM이면 첫 메시지 전송 시까지 방 doc 생성 보류
+  const [roomReady, setRoomReady] = useState(!room?.isNew);
+
+  async function ensureRoom() {
+    if (roomReady) return;
+    await getOrCreateDmRoom(userProfile.uid, room.otherUid, userProfile.name, room.otherName);
+    setRoomReady(true);
+  }
   const bottomRef = useRef(null);
   const messagesRef = useRef(null);
   const inputRef = useRef(null);
@@ -120,6 +128,7 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
         await editDmMessage(room.roomId, editingMsg.id, trimmed);
         setEditingMsg(null);
       } else {
+        await ensureRoom();
         await sendDmMessage({ roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', text: trimmed, replyTo });
         setReplyTo(null);
       }
@@ -139,6 +148,7 @@ export default function DmChatPage({ room, onBack, onGoToGroup, onGoToDm }) {
     }
     setSending(true);
     try {
+      await ensureRoom();
       const base = { roomId: room.roomId, userId: userProfile.uid, userName: userProfile.name, position: userProfile.position || '', file, replyTo };
       if (isImage) await sendDmImage(base);
       else         await sendDmFile(base);

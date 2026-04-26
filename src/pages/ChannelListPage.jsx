@@ -5,7 +5,7 @@ import {
   getAccessibleChannels, ensureCompanyChannel,
   createCustomChannel, updateCustomChannel, deleteCustomChannel,
 } from '../services/channelService';
-import { subscribeDmRooms, getOrCreateDmRoom, hideDmRoomForUser, clearAllDmMessages } from '../services/chatService';
+import { subscribeDmRooms, getDmRoomId, hideDmRoomForUser, clearAllDmMessages } from '../services/chatService';
 import { getUsers } from '../services/userService';
 
 export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
@@ -77,11 +77,12 @@ export default function ChannelListPage({ onSelectChannel, onSelectDm }) {
     setLoading(false);
   }
 
-  async function startDm(user) {
-    const roomId = await getOrCreateDmRoom(userProfile.uid, user.uid, userProfile.name, user.name);
+  function startDm(user) {
+    // 방 생성은 첫 메시지 전송 시점에 — 클릭만으로는 빈 방이 만들어지지 않도록
+    const roomId = getDmRoomId(userProfile.uid, user.uid);
     setShowNewDm(false);
     setUserSearch('');
-    onSelectDm({ roomId, otherName: user.name, otherUid: user.uid });
+    onSelectDm({ roomId, otherName: user.name, otherUid: user.uid, isNew: true });
   }
 
   function openExistingDm(room) {
