@@ -189,10 +189,8 @@ export default function HomeCalendar() {
         const showName = (canApproveLeave) && o.userId !== userProfile?.uid;
         const who = showName ? (o.userName || userNameMap[o.userId] || '') : '';
         const siteName = o.siteId ? (siteNameMap[o.siteId] || '') : '';
-        const parts = [];
-        if (who) parts.push(who);
-        if (siteName) parts.push(siteName);
-        parts.push(`잔업 ${formatMinutes(o.minutes || 0)}`);
+        // 제목은 사람 + 잔업 시간만 — 프로젝트명은 상세 영역에서 별도 표시 (중복 방지)
+        const title = `${who ? who + ' · ' : ''}잔업 ${formatMinutes(o.minutes || 0)}`;
         return {
           ...o,
           _kind: 'overtime',
@@ -201,7 +199,7 @@ export default function HomeCalendar() {
           _end: o.date,
           _who: who,
           _siteName: siteName,
-          title: parts.join(' · '),
+          title,
         };
       });
 

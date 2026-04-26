@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { requestLeave } from '../../services/leaveService';
 import { getEvents } from '../../services/eventService';
@@ -11,6 +11,19 @@ export default function LeaveRequestPage() {
   const [type, setType] = useState(LEAVE_TYPES.ANNUAL);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const startInputRef = useRef(null);
+  const endInputRef = useRef(null);
+
+  // 칸 어디든 클릭하면 날짜 선택기 열기
+  function openPicker(ref) {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return; } catch { /* fallback */ }
+    }
+    el.focus();
+    el.click();
+  }
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -89,17 +102,38 @@ export default function LeaveRequestPage() {
           </div>
 
           <div className="form-row">
-            <div className="form-group">
+            <div
+              className="form-group date-picker-cell"
+              role="button"
+              tabIndex={0}
+              onClick={() => openPicker(startInputRef)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(startInputRef); } }}
+            >
               <label>시작일</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+              <input
+                ref={startInputRef}
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                required
+              />
             </div>
             {!isSingleDay && (
-              <div className="form-group">
+              <div
+                className="form-group date-picker-cell"
+                role="button"
+                tabIndex={0}
+                onClick={() => openPicker(endInputRef)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(endInputRef); } }}
+              >
                 <label>종료일</label>
                 <input
+                  ref={endInputRef}
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
                   min={startDate}
                   required
                 />

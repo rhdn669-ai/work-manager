@@ -144,7 +144,8 @@ export default function LeaveHistoryPage() {
         <div className="record-list">
           {leaves.map((l) => {
             const isEditing = editingId === l.id;
-            const isToday = l.startDate === today;
+            // 시작일이 오늘이거나 미래면 수정/취소 가능 (지난 연차는 잠금)
+            const isToday = l.startDate >= today;
             const statusStyle = STATUS_STYLES[l.status] || {};
             const period = l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`;
             const previewDays = calcDays(editForm.type, editForm.startDate,
@@ -222,6 +223,9 @@ export default function LeaveHistoryPage() {
                           <span>{LEAVE_TYPE_LABELS[l.type] || l.type}</span>
                           {l.reason && <span style={{ color: 'var(--text-muted)' }}>{l.reason}</span>}
                           <span style={{ color: statusStyle.color, fontWeight: 500 }}>{statusStyle.label}</span>
+                          {l.status === 'cancelled' && l.cancelReason && (
+                            <span style={{ color: 'var(--danger)', fontWeight: 500 }}>· 취소 사유: {l.cancelReason}</span>
+                          )}
                         </div>
                       </div>
                       {isToday && l.status !== 'cancelled' && (

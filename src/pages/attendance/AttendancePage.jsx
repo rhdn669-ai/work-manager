@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { addOvertimeRecord } from '../../services/attendanceService';
 import { getAllSites } from '../../services/siteService';
@@ -15,6 +15,16 @@ export default function AttendancePage() {
   const [sites, setSites] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const dateInputRef = useRef(null);
+  function openPicker(ref) {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return; } catch { /* fallback */ }
+    }
+    el.focus();
+    el.click();
+  }
 
   useEffect(() => {
     (async () => {
@@ -80,9 +90,23 @@ export default function AttendancePage() {
         <div className="card-body">
           {message && <div className="alert alert-info">{message}</div>}
           <div className="form-row">
-            <div className="form-group">
+            <div
+              className="form-group date-picker-cell"
+              role="button"
+              tabIndex={0}
+              onClick={() => openPicker(dateInputRef)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(dateInputRef); } }}
+            >
               <label>날짜</label>
-              <input type="date" value={date} max={getToday()} onChange={(e) => setDate(e.target.value)} required />
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={date}
+                max={getToday()}
+                onChange={(e) => setDate(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                required
+              />
             </div>
             <div className="form-group">
               <label>시간</label>

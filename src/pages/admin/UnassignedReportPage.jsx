@@ -6,6 +6,7 @@ import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getAllOvertimeRecords, OVERTIME_MULTIPLIER } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
+import Modal from '../../components/common/Modal';
 
 function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
 function workingDaysInMonth(y, m) {
@@ -33,6 +34,7 @@ export default function UnassignedReportPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [hoverDay, setHoverDay] = useState(null);
+  const [detailCell, setDetailCell] = useState(null); // { name, day, dateStr, projects, leaveType, overtimeMin, otSiteNames }
   const [users, setUsers] = useState([]);
   const [sites, setSites] = useState([]);
   const [allItems, setAllItems] = useState([]);
@@ -45,7 +47,8 @@ export default function UnassignedReportPage() {
       setLoading(true);
       try {
         const [u, s] = await Promise.all([getUsers(), getAllSites()]);
-        setUsers(u.filter((x) => x.role !== 'admin' && x.isActive !== false));
+        // 활성 직원은 모두 포함 (대표·부사장·관리자 role도 — 본인 연차/배정도 보여줘야 함)
+        setUsers(u.filter((x) => x.isActive !== false));
         setSites(s);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -143,6 +146,7 @@ export default function UnassignedReportPage() {
       const days = [];
       let unassignedCount = 0;
       let overlapCount = 0;
+      let leaveCount = 0; // 차감일수 (반차 0.5, 반반차 0.25)
       for (let d = 1; d <= totalDays; d++) {
         const dow = new Date(year, month - 1, d).getDay();
         const isWeekend = dow === 0 || dow === 6;
@@ -156,13 +160,17 @@ export default function UnassignedReportPage() {
         else if (projects.length === 1) type = 'assigned';
         else if (leaveType) type = leaveTypeToClass(leaveType);
         else if (isWeekend) type = 'weekend';
-        else if (overtimeMin > 0) type = 'assigned';
         else type = 'unassigned';
         days.push({ d, type, projects, leaveType, overtimeMin, otSiteNames });
         if (type === 'unassigned') unassignedCount++;
         if (type === 'overlap') overlapCount++;
+        if (leaveType) {
+          if (leaveType === 'half_am' || leaveType === 'half_pm') leaveCount += 0.5;
+          else if (QUARTER_LEAVE_TYPES.includes(leaveType)) leaveCount += 0.25;
+          else leaveCount += 1;
+        }
       }
-      return { uid: u.uid, name: u.name, position: u.position || '', days, unassignedCount, overlapCount };
+      return { uid: u.uid, name: u.name, position: u.position || '', days, unassignedCount, overlapCount, leaveCount };
     });
 
     // 직원별 일당으로 미배정 금액 계산 (월급 / 근무일수)
@@ -205,7 +213,7 @@ export default function UnassignedReportPage() {
   return (
     <div className="unassigned-report-page">
       <div className="page-header">
-        <h2>미배정 · 중복배정 현황</h2>
+        <h2>직원 배치현황</h2>
       </div>
 
       <div className="filters">
@@ -262,6 +270,7 @@ export default function UnassignedReportPage() {
                   const dow = new Date(year, month - 1, d).getDay();
                   return <th key={d} className={`day-col ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''} ${hoverDay === d ? 'col-hover' : ''}`}>{d}</th>;
                 })}
+                <th className="sticky-col-right">연차</th>
                 <th className="sticky-col-right">미배정</th>
                 <th className="sticky-col-right">중복</th>
               </tr>
@@ -278,14 +287,17 @@ export default function UnassignedReportPage() {
                     const isLeave = c.type.startsWith('leave-');
                     let baseTitle;
                     if (c.type === 'overlap') baseTitle = `중복배정: ${c.projects.join(', ')}`;
-                    else if (c.type === 'assigned') {
-                      if (c.projects.length > 0) baseTitle = c.projects.join(', ');
-                      else if (c.otSiteNames.length > 0) baseTitle = `잔업: ${c.otSiteNames.join(', ')}`;
-                      else baseTitle = '잔업';
-                    } else if (isLeave) baseTitle = leaveLabel(c.leaveType);
+                    else if (c.type === 'assigned') baseTitle = c.projects.join(', ');
+                    else if (isLeave) baseTitle = leaveLabel(c.leaveType);
                     else if (c.type === 'weekend') baseTitle = '주말';
                     else baseTitle = '미배정';
-                    const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}` : baseTitle;
+                    const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}${c.otSiteNames.length > 0 ? ` (${c.otSiteNames.join(', ')})` : ''}` : baseTitle;
+                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(c.d).padStart(2, '0')}`;
+                    const leaveMark =
+                      c.type === 'leave-annual' ? '연' :
+                      c.type === 'leave-half' ? '½' :
+                      c.type === 'leave-quarter' ? '¼' :
+                      c.type === 'leave-sick' ? '병' : '';
                     return (
                       <td
                         key={c.d}
@@ -293,9 +305,25 @@ export default function UnassignedReportPage() {
                         title={`${c.d}일 · ${title}`}
                         onMouseEnter={() => setHoverDay(c.d)}
                         onMouseLeave={() => setHoverDay((prev) => (prev === c.d ? null : prev))}
-                      />
+                        onClick={() => setDetailCell({
+                          name: r.name,
+                          position: r.position,
+                          day: c.d,
+                          dateStr,
+                          type: c.type,
+                          projects: c.projects,
+                          leaveType: c.leaveType,
+                          overtimeMin: c.overtimeMin,
+                          otSiteNames: c.otSiteNames,
+                        })}
+                      >
+                        {leaveMark && <span className="cell-leave-mark">{leaveMark}</span>}
+                      </td>
                     );
                   })}
+                  <td className="sticky-col-right count-col">
+                    <strong className={r.leaveCount > 0 ? 'leave-count' : ''}>{r.leaveCount % 1 === 0 ? r.leaveCount : r.leaveCount.toFixed(2).replace(/\.?0+$/, '')}</strong>
+                  </td>
                   <td className="sticky-col-right count-col">
                     <strong className={r.unassignedCount > 0 ? 'neg' : ''}>{r.unassignedCount}</strong>
                   </td>
@@ -308,6 +336,70 @@ export default function UnassignedReportPage() {
           </table>
         </div>
       )}
+
+      {/* 셀 클릭 시 배치 상세 모달 */}
+      {detailCell && (() => {
+        const c = detailCell;
+        const isLeave = typeof c.type === 'string' && c.type.startsWith('leave-');
+        const statusLabel =
+          c.type === 'overlap' ? '중복배정' :
+          c.type === 'assigned' ? '배정' :
+          isLeave ? leaveLabel(c.leaveType) :
+          c.type === 'weekend' ? '주말' : '미배정';
+        return (
+          <Modal isOpen={!!detailCell} onClose={() => setDetailCell(null)} title={`${c.name}님 · ${c.dateStr}`}>
+            <div className="placement-detail-body">
+              <div className="placement-detail-summary">
+                <span className={`ua-legend-swatch ${c.type}`} />
+                <strong>{statusLabel}</strong>
+                {c.position && <span className="placement-detail-pos">· {c.position}</span>}
+              </div>
+
+              {(c.projects.length > 0) && (
+                <div className="placement-detail-section">
+                  <div className="placement-detail-label">배정 프로젝트</div>
+                  <ul className="placement-detail-list">
+                    {c.projects.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {isLeave && (
+                <div className="placement-detail-section">
+                  <div className="placement-detail-label">휴가</div>
+                  <p>{leaveLabel(c.leaveType)}</p>
+                </div>
+              )}
+
+              {c.overtimeMin > 0 && (
+                <div className="placement-detail-section">
+                  <div className="placement-detail-label">잔업 (별도 집계)</div>
+                  <p>
+                    {formatMinutes(c.overtimeMin)}
+                    {c.otSiteNames.length > 0 && ` · ${c.otSiteNames.join(', ')}`}
+                  </p>
+                  <p className="text-muted text-sm" style={{ marginTop: 2 }}>
+                    잔업은 공수표 배정과 무관하게 별도로 집계됩니다.
+                  </p>
+                </div>
+              )}
+
+              {c.type === 'unassigned' && (
+                <div className="placement-detail-section">
+                  <p className="text-muted text-sm">
+                    공수표에 배정된 프로젝트가 없는 날입니다.
+                    {c.overtimeMin > 0 && ' (잔업 기록은 위에 별도 표시됨)'}
+                  </p>
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-primary" onClick={() => setDetailCell(null)}>닫기</button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

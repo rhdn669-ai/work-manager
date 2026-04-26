@@ -107,14 +107,15 @@ export async function requestLeave(data) {
 }
 
 
-// 연차 취소
-export async function cancelLeave(leaveId) {
+// 연차 취소 (선택적으로 취소 사유 기록)
+export async function cancelLeave(leaveId, cancelReason = '') {
   const leaveDoc = await getDoc(doc(db, 'leaves', leaveId));
   if (!leaveDoc.exists()) throw new Error('신청을 찾을 수 없습니다');
   const leave = leaveDoc.data();
 
   await updateDoc(doc(db, 'leaves', leaveId), {
     status: 'cancelled',
+    cancelReason: cancelReason || '',
     updatedAt: new Date(),
   });
 

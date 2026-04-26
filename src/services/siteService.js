@@ -146,6 +146,14 @@ export async function deleteClosingItem(itemId) {
   await deleteDoc(doc(db, 'siteClosingItems', itemId));
 }
 
+// 같은 년/월의 직원(employee) 공수표 항목을 전 사이트에서 조회
+// 직원 1일 합계 검증용 — 다른 프로젝트에 이미 들어간 일별 수량을 합산할 때 사용
+export async function getEmployeeClosingItemsByMonth(year, month) {
+  const q = query(itemsRef, where('year', '==', year), where('month', '==', month), where('itemType', '==', 'employee'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 export async function getAllClosingItemsBySite(siteId) {
   const q = query(itemsRef, where('siteId', '==', siteId));
   const snapshot = await getDocs(q);

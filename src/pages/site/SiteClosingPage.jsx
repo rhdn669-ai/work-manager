@@ -5,7 +5,7 @@ import {
   getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
   getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
   initRosterFromPreviousMonth, updateSite, getAssignedEmployeeIds,
-  getAllSites,
+  getAllSites, getEmployeeClosingItemsByMonth,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -65,6 +65,10 @@ export default function SiteClosingPage() {
   const [leaveDays, setLeaveDays] = useState({}); // { userId: Set of day numbers }
   const [showEmployeeSelect, setShowEmployeeSelect] = useState(false);
   const [assignedNames, setAssignedNames] = useState(new Set());
+  // 다른 프로젝트 같은 월의 직원 일별 공수 합 — 1일 합 1 초과 검증용
+  const [otherSitesEmployeeDaily, setOtherSitesEmployeeDaily] = useState({});
+  // 1일 초과 경고 모달 데이터
+  const [overflowAlert, setOverflowAlert] = useState(null);
   const [addingAll, setAddingAll] = useState(false);
   const [savingCount, setSavingCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState(null);
@@ -122,14 +126,35 @@ export default function SiteClosingPage() {
     const silent = opts.silent === true;
     if (!silent) setLoading(true);
     try {
-      const [s, its, fins, users, approvedLeaves, assigned] = await Promise.all([
+      const [s, its, fins, users, approvedLeaves, assigned, allEmpItemsThisMonth] = await Promise.all([
         getSite(siteId),
         getClosingItems(siteId, y, m),
         getFinanceItems(siteId, y, m),
         getUsers(),
         getApprovedLeavesByMonth(y, m),
         getAssignedEmployeeIds(y, m),
+        getEmployeeClosingItemsByMonth(y, m),
       ]);
+      // 다른 프로젝트(현재 사이트 제외) 같은 월의 직원 일별 공수 분포
+      // { 이름: { day: { total, sources: [{siteName, qty}] } } }
+      const allSitesNameMap = Object.fromEntries((await getAllSites()).map((x) => [x.id, x.name]));
+      const otherDaily = {};
+      allEmpItemsThisMonth.forEach((it) => {
+        if (it.siteId === siteId) return;
+        const name = it.detail || '';
+        if (!name) return;
+        const siteName = allSitesNameMap[it.siteId] || '(다른 프로젝트)';
+        if (!otherDaily[name]) otherDaily[name] = {};
+        const dq = it.dailyQuantities || {};
+        for (const [day, qty] of Object.entries(dq)) {
+          const q = Number(qty) || 0;
+          if (q <= 0) continue;
+          if (!otherDaily[name][day]) otherDaily[name][day] = { total: 0, sources: [] };
+          otherDaily[name][day].total += q;
+          otherDaily[name][day].sources.push({ siteName, qty: q });
+        }
+      });
+      setOtherSitesEmployeeDaily(otherDaily);
       setSite(s);
       setAssignedNames(assigned);
       setFinances(fins);
@@ -536,8 +561,23 @@ export default function SiteClosingPage() {
       } else {
         let num = Number(value);
         if (!isNaN(num)) {
-          // 직원 공수는 일 단위 최대 1 (하루 이상 근무 불가)
-          if (cur.itemType === 'employee') num = Math.max(0, Math.min(1, num));
+          if (cur.itemType === 'employee') {
+            num = Math.max(0, Math.min(1, num));
+            const info = otherSitesEmployeeDaily[cur.detail || '']?.[day];
+            const otherTotal = info?.total || 0;
+            const allowed = Math.max(0, Math.min(1 - otherTotal, 1));
+            if (num > allowed) {
+              setOverflowAlert({
+                name: cur.detail || '직원',
+                day,
+                otherTotal,
+                allowed,
+                attempted: num,
+                sources: info?.sources || [],
+              });
+              num = allowed;
+            }
+          }
           dq[day] = num;
         }
       }
@@ -1140,6 +1180,47 @@ export default function SiteClosingPage() {
             );
           })}
         </div>
+        );
+      })()}
+
+      {/* 1일 공수 1 초과 경고 모달 */}
+      {overflowAlert && (() => {
+        const ratio = Math.min(100, Math.round(overflowAlert.otherTotal * 100));
+        return (
+        <Modal isOpen={!!overflowAlert} onClose={() => setOverflowAlert(null)} title="1일 공수가 한도(1)를 넘습니다">
+          <div className="overflow-alert-body">
+            <div className="overflow-alert-headline">
+              <span className="overflow-alert-who">{overflowAlert.name}</span>
+              <span className="overflow-alert-when">{m}/{overflowAlert.day}</span>
+            </div>
+
+            <div className="overflow-alert-meter">
+              <div className="overflow-alert-meter-bar"><span style={{ width: `${ratio}%` }} /></div>
+              <div className="overflow-alert-meter-label">
+                다른 프로젝트 합계 <strong>{overflowAlert.otherTotal}</strong> · 남은 가능량 <strong className="text-danger">{overflowAlert.allowed}</strong>
+              </div>
+            </div>
+
+            {overflowAlert.sources.length > 0 && (
+              <ul className="overflow-alert-list">
+                {overflowAlert.sources.map((s, i) => (
+                  <li key={i}>
+                    <span>{s.siteName}</span>
+                    <strong>{s.qty}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="overflow-alert-note">
+              💡 잔업은 신청한 프로젝트에 자동으로 집계되니, 1일 공수는 다른 프로젝트와 나눠서 입력하면 됩니다.
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={() => setOverflowAlert(null)}>확인</button>
+            </div>
+          </div>
+        </Modal>
         );
       })()}
 

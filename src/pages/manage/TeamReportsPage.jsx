@@ -145,10 +145,16 @@ export default function TeamReportsPage() {
     });
     rawRecords.filter((r) => r.status === 'approved' && teammateIds.has(r.userId)).forEach((r) => {
       const u = userMap[r.userId];
-      push(r.date, { userId: r.userId, kind: 'overtime', minutes: r.minutes || 0, label: u?.name || '?' });
+      push(r.date, {
+        userId: r.userId,
+        kind: 'overtime',
+        minutes: r.minutes || 0,
+        label: u?.name || '?',
+        siteName: r.siteId ? (siteMap[r.siteId] || '') : '',
+      });
     });
     return map;
-  }, [rawLeaves, rawRecords, teammateIds, year, month, userMap]);
+  }, [rawLeaves, rawRecords, teammateIds, year, month, userMap, siteMap]);
 
   function leaveTypeLabel(t) {
     if (t === 'half_am') return '오전반차';
@@ -325,6 +331,9 @@ export default function TeamReportsPage() {
                       <span className="team-calendar-ev-detail">
                         {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
                       </span>
+                      {e.kind === 'overtime' && e.siteName && (
+                        <span className="team-calendar-ev-site">{e.siteName}</span>
+                      )}
                     </li>
                   ))}
                 </ul>

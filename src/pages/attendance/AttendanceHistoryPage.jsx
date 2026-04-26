@@ -38,7 +38,8 @@ export default function AttendanceHistoryPage() {
       const start = getMonthStart(year, month);
       const end = getMonthEnd(year, month);
       const data = await getMyOvertimeRecords(userProfile.uid, start, end);
-      setRecords(data.filter((r) => r.status === 'approved' || r.status === 'pending'));
+      // 거절된 항목도 표시 — 당사자가 거절 사유 확인 가능하도록
+      setRecords(data.filter((r) => r.status === 'approved' || r.status === 'pending' || r.status === 'rejected'));
     } catch (err) {
       console.error(err);
     } finally {
@@ -203,12 +204,22 @@ export default function AttendanceHistoryPage() {
                               승인 대기
                             </span>
                           )}
+                          {r.status === 'rejected' && (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 4, padding: '1px 6px' }}>
+                              거절됨
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-light)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{formatMinutes(r.minutes)}</span>
                           <span>{siteMap[r.siteId] || '기타'}</span>
                           {r.reason && <span style={{ color: 'var(--text-muted)' }}>{r.reason}</span>}
                         </div>
+                        {r.status === 'rejected' && r.rejectionReason && (
+                          <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 3 }}>
+                            거절 사유: {r.rejectionReason}
+                          </div>
+                        )}
                       </div>
                       {(r.status === 'pending' || isToday) && (
                         <div className="btn-group" style={{ flexShrink: 0 }}>

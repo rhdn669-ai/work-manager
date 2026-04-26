@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAllLeavesByYear, editLeaveWithBalance, cancelLeave } from '../../services/leaveService';
+import { getAllLeavesByYear, editLeaveWithBalance, cancelLeave, deleteLeaveById } from '../../services/leaveService';
 import {
   getAllOvertimeRecords,
   approveOvertimeRecord,
@@ -13,6 +13,7 @@ import { getEvents } from '../../services/eventService';
 import { getAllSites } from '../../services/siteService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDaysExcludingHolidays, buildHolidaySet, formatMinutes } from '../../utils/dateUtils';
+import Modal from '../../components/common/Modal';
 
 const LEAVE_STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },
@@ -82,6 +83,10 @@ export default function LeaveManagementPage() {
   const [editingOtId, setEditingOtId] = useState(null);
   const [editOtForm, setEditOtForm] = useState({});
   const [otBusy, setOtBusy] = useState(null); // id 또는 null
+
+  // 취소/거절 사유 입력 모달 상태
+  const [reasonModal, setReasonModal] = useState(null);
+  // { kind: 'leave-cancel' | 'overtime-reject', target: object, reason: string }
 
   useEffect(() => {
     Promise.all([getUsers(), getDepartments(), getEvents(), getAllSites()])
@@ -197,12 +202,31 @@ export default function LeaveManagementPage() {
     const single = isSingleDayType(type);
     setEditLeaveForm((f) => ({ ...f, type, endDate: single ? f.startDate : f.endDate }));
   }
-  async function handleCancelLeave(l) {
+  function handleCancelLeave(l) {
+    setReasonModal({ kind: 'leave-cancel', target: l, reason: l.cancelReason || '' });
+  }
+  async function confirmReason() {
+    if (!reasonModal) return;
+    const { kind, target, reason } = reasonModal;
+    const trimmed = (reason || '').trim();
+    if (kind === 'leave-cancel') {
+      setLeaveBusy(true);
+      try { await cancelLeave(target.id, trimmed); await loadLeaves(); setReasonModal(null); }
+      catch (err) { alert('취소 실패: ' + err.message); }
+      finally { setLeaveBusy(false); }
+    } else if (kind === 'overtime-reject') {
+      setOtBusy(target.id);
+      try { await rejectOvertimeRecord(target.id, trimmed); await loadOvertimes(); setReasonModal(null); }
+      catch (err) { alert('거절 실패: ' + err.message); }
+      finally { setOtBusy(null); }
+    }
+  }
+  async function handleDeleteLeave(l) {
     const u = userMap[l.userId];
-    if (!confirm(`${u ? u.name + ' 직원의 ' : ''}${l.startDate} 연차 신청을 취소(반려)하시겠습니까?`)) return;
+    if (!confirm(`${u ? u.name + ' 직원의 ' : ''}${l.startDate} 연차 신청을 영구 삭제합니다.\n\n취소된 항목은 복구할 수 없습니다. 계속하시겠습니까?`)) return;
     setLeaveBusy(true);
-    try { await cancelLeave(l.id); await loadLeaves(); }
-    catch (err) { alert('취소 실패: ' + err.message); }
+    try { await deleteLeaveById(l.id); await loadLeaves(); }
+    catch (err) { alert('삭제 실패: ' + err.message); }
     finally { setLeaveBusy(false); }
   }
   async function saveLeave(l) {
@@ -260,12 +284,8 @@ export default function LeaveManagementPage() {
     catch (err) { alert('승인 실패: ' + err.message); }
     finally { setOtBusy(null); }
   }
-  async function rejectOt(r) {
-    if (!confirm('이 잔업 신청을 거절(반려)하시겠습니까?')) return;
-    setOtBusy(r.id);
-    try { await rejectOvertimeRecord(r.id); await loadOvertimes(); }
-    catch (err) { alert('거절 실패: ' + err.message); }
-    finally { setOtBusy(null); }
+  function rejectOt(r) {
+    setReasonModal({ kind: 'overtime-reject', target: r, reason: r.rejectionReason || '' });
   }
   async function deleteOt(r) {
     const u = userMap[r.userId];
@@ -337,6 +357,7 @@ export default function LeaveManagementPage() {
           cancelEdit={cancelEditLeave}
           handleTypeChange={handleLeaveTypeChange}
           handleCancel={handleCancelLeave}
+          handleDelete={handleDeleteLeave}
           saveEdit={saveLeave}
           busy={leaveBusy}
           holidaySet={holidaySet}
@@ -362,12 +383,49 @@ export default function LeaveManagementPage() {
           busy={otBusy}
         />
       )}
+
+      {/* 취소/거절 사유 입력 모달 — 다른 모달들과 디자인 통일 */}
+      {reasonModal && (() => {
+        const isLeave = reasonModal.kind === 'leave-cancel';
+        const u = userMap[reasonModal.target.userId];
+        const dateStr = isLeave
+          ? reasonModal.target.startDate
+          : reasonModal.target.date;
+        return (
+          <Modal isOpen={!!reasonModal} onClose={() => setReasonModal(null)} title={isLeave ? '연차 신청 취소' : '잔업 신청 거절'}>
+            <div className="form-group">
+              <label className="text-muted text-sm" style={{ display: 'block', marginBottom: 6 }}>
+                {u?.name || '직원'} · {dateStr}
+              </label>
+            </div>
+            <div className="form-group">
+              <label>{isLeave ? '취소' : '거절'} 사유</label>
+              <textarea
+                rows={3}
+                autoFocus
+                placeholder="사유를 입력해주세요 (당사자도 확인 가능)"
+                value={reasonModal.reason}
+                onChange={(e) => setReasonModal({ ...reasonModal, reason: e.target.value })}
+              />
+              <p className="field-hint" style={{ marginTop: 4 }}>
+                입력한 사유는 당사자의 연차/잔업 내역에 함께 표시됩니다.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-danger" onClick={confirmReason}>
+                {isLeave ? '취소 처리' : '거절 처리'}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setReasonModal(null)}>닫기</button>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
 
 // ===== 연차 탭 =====
-function LeaveTab({ stats, loading, filtered, userMap, deptMap, editingId, editForm, setEditForm, startEdit, cancelEdit, handleTypeChange, handleCancel, saveEdit, busy, holidaySet }) {
+function LeaveTab({ stats, loading, filtered, userMap, deptMap, editingId, editForm, setEditForm, startEdit, cancelEdit, handleTypeChange, handleCancel, handleDelete, saveEdit, busy, holidaySet }) {
   return (
     <>
       <div className="total-summary-bar">
@@ -474,12 +532,22 @@ function LeaveTab({ stats, loading, filtered, userMap, deptMap, editingId, editF
                         <span style={{ color: statusStyle.color, fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
                           {statusStyle.label}
                         </span>
-                        {canEdit && (
-                          <div className="btn-group">
-                            <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
-                            <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => handleCancel(l)}>취소</button>
-                          </div>
+                        {l.status === 'cancelled' && l.cancelReason && (
+                          <span style={{ fontSize: 11, color: 'var(--danger)', textAlign: 'right', maxWidth: 220, lineHeight: 1.4 }}>
+                            취소 사유: {l.cancelReason}
+                          </span>
                         )}
+                        <div className="btn-group">
+                          {canEdit && (
+                            <>
+                              <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>수정</button>
+                              <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => handleCancel(l)}>취소</button>
+                            </>
+                          )}
+                          {handleDelete && (
+                            <button className="btn btn-sm btn-danger-outline" disabled={busy} onClick={() => handleDelete(l)} title="기록 영구 삭제">삭제</button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -599,6 +667,11 @@ function OvertimeTab({ stats, loading, filtered, userMap, deptMap, siteMap, site
                         }}>
                           {statusStyle.label}
                         </span>
+                        {r.status === 'rejected' && r.rejectionReason && (
+                          <span style={{ fontSize: 11, color: 'var(--danger)', textAlign: 'right', maxWidth: 220, lineHeight: 1.4 }}>
+                            거절 사유: {r.rejectionReason}
+                          </span>
+                        )}
                         <div className="btn-group">
                           {isPending && (
                             <>

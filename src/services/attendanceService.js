@@ -42,11 +42,15 @@ export async function approveOvertimeRecord(id) {
   }
 }
 
-// 잔업 거절 (관리자) - 기존 지출 제거
-export async function rejectOvertimeRecord(id) {
+// 잔업 거절 (관리자) - 기존 지출 제거, 선택적으로 거절 사유 기록
+export async function rejectOvertimeRecord(id, rejectionReason = '') {
   const snap = await getDoc(doc(db, 'overtimeRecords', id));
   const prev = snap.exists() ? snap.data() : null;
-  await updateDoc(doc(db, 'overtimeRecords', id), { status: 'rejected', updatedAt: new Date() });
+  await updateDoc(doc(db, 'overtimeRecords', id), {
+    status: 'rejected',
+    rejectionReason: rejectionReason || '',
+    updatedAt: new Date(),
+  });
   await removeOvertimeExpense(id, prev);
 }
 

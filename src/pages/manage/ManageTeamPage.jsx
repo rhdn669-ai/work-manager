@@ -4,6 +4,7 @@ import { getUsers, updateUser } from '../../services/userService';
 import { getDepartments, getDepartmentsByLeader, addDepartment, updateDepartment, deleteDepartment } from '../../services/departmentService';
 import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
+import { getAllSites } from '../../services/siteService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 import Modal from '../../components/common/Modal';
 
@@ -22,7 +23,8 @@ export default function ManageTeamPage() {
   const [calYear, setCalYear] = useState(nowRef.getFullYear());
   const [calMonth, setCalMonth] = useState(nowRef.getMonth() + 1);
   const [teamLeaves, setTeamLeaves] = useState([]); // { userId, startDate, endDate, type }[]
-  const [teamOvertime, setTeamOvertime] = useState([]); // { userId, date, minutes }[]
+  const [teamOvertime, setTeamOvertime] = useState([]); // { userId, date, minutes, siteId }[]
+  const [siteMap, setSiteMap] = useState({}); // id → name
   const [selectedCalDay, setSelectedCalDay] = useState(null); // 'YYYY-MM-DD'
 
   useEffect(() => { if (userProfile) loadData(); }, [userProfile]);
@@ -81,12 +83,12 @@ export default function ManageTeamPage() {
       try {
         const start = getMonthStart(calYear, calMonth);
         const end = getMonthEnd(calYear, calMonth);
-        const [leaves, allOvertime] = await Promise.all([
+        const [leaves, allOvertime, allSites] = await Promise.all([
           getApprovedLeavesByMonth(calYear, calMonth),
           getAllOvertimeRecords(start, end),
+          getAllSites(),
         ]);
         if (cancelled) return;
-        // 팀원 uid 집합 (본인 제외)
         const teammateIds = new Set(
           users
             .filter((u) => u.departmentId === userProfile.departmentId && u.uid !== userProfile.uid)
@@ -96,8 +98,9 @@ export default function ManageTeamPage() {
         setTeamOvertime(
           allOvertime
             .filter((r) => r.status === 'approved' && teammateIds.has(r.userId))
-            .map((r) => ({ userId: r.userId, date: r.date, minutes: r.minutes || 0 }))
+            .map((r) => ({ userId: r.userId, date: r.date, minutes: r.minutes || 0, siteId: r.siteId || '' }))
         );
+        setSiteMap(Object.fromEntries(allSites.map((s) => [s.id, s.name])));
       } catch (err) { /* 네트워크 실패 시 빈 캘린더 */ console.error(err); }
     })();
     return () => { cancelled = true; };
@@ -120,10 +123,16 @@ export default function ManageTeamPage() {
     });
     teamOvertime.forEach((r) => {
       const u = userMap[r.userId];
-      push(r.date, { userId: r.userId, kind: 'overtime', minutes: r.minutes, label: u?.name || '?' });
+      push(r.date, {
+        userId: r.userId,
+        kind: 'overtime',
+        minutes: r.minutes,
+        label: u?.name || '?',
+        siteName: r.siteId ? (siteMap[r.siteId] || '') : '',
+      });
     });
     return map;
-  }, [teamLeaves, teamOvertime, calYear, calMonth, userMap]);
+  }, [teamLeaves, teamOvertime, calYear, calMonth, userMap, siteMap]);
 
   function shiftCalMonth(delta) {
     let y = calYear;
@@ -387,6 +396,9 @@ export default function ManageTeamPage() {
                           <span className="team-calendar-ev-detail">
                             {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
                           </span>
+                          {e.kind === 'overtime' && e.siteName && (
+                            <span className="team-calendar-ev-site">{e.siteName}</span>
+                          )}
                         </li>
                       ))}
                     </ul>
