@@ -4524,11 +4524,12 @@ body {
 
 /* ===== 저장 상태 표시 ===== */
 .save-status {
-  font-size: var(--font-base);
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
+  white-space: nowrap;
+  font-weight: 500;
 }
 
 .save-status-idle { color: var(--text-muted); }
@@ -6047,6 +6048,11 @@ body {
   font-weight: 700;
   color: #dc2626;
   flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+.expense-input-amount.is-saved {
+  color: #94a3b8;
+  background: #f8fafc;
 }
 .expense-input-note {
   flex: 1;

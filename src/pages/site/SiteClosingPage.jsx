@@ -80,6 +80,7 @@ export default function SiteClosingPage() {
   const [savingCount, setSavingCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveError, setSaveError] = useState(null);
+  const [dirtyFinances, setDirtyFinances] = useState(new Set());
   const [showOvertimeDetail, setShowOvertimeDetail] = useState(false);
   // 업체(공수/프로젝트) 추가 모달 — 업체 → 프로젝트 2단계 선택
   const [vendorPickerMode, setVendorPickerMode] = useState(null); // 'vendor' | 'vendor_case' | null
@@ -675,6 +676,7 @@ export default function SiteClosingPage() {
   }
 
   function updateFinanceField(id, field, value) {
+    setDirtyFinances((s) => new Set([...s, id]));
     setFinanceBuf((b) => {
       const cur = { ...b[id], [field]: field === 'amount' ? Number(value) || 0 : value };
       scheduleFinanceSave(id, cur);
@@ -759,6 +761,7 @@ export default function SiteClosingPage() {
         });
         setLastSavedAt(new Date());
         setSaveError(null);
+        setDirtyFinances((s) => { const n = new Set(s); n.delete(id); return n; });
       } catch (err) {
         setSaveError(err.message || '저장 실패');
       } finally {
@@ -855,6 +858,7 @@ export default function SiteClosingPage() {
       <div className="page-header">
         <h2>{site.name} <span className="closing-period">{y}년 {m}월</span></h2>
         <div className="page-actions">
+          {canEdit && saveStatus}
           {canEdit && items.length > 0 && (
             <button className="btn btn-outline btn-sm" onClick={handleClearItems} disabled={clearing}>
               {clearing ? '삭제 중...' : '공수표 초기화'}
@@ -924,7 +928,6 @@ export default function SiteClosingPage() {
           </div>
         )}
       </div>
-      {canEdit && <div className="closing-save-status">{saveStatus}</div>}
 
       {/* 매출 섹션 (hideRevenue 프로젝트는 숨김) */}
       {!hideRevenue && (
@@ -1080,7 +1083,7 @@ export default function SiteClosingPage() {
                     aria-label="발생일"
                   />
                   <input className="expense-input-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || !!chipKey} />
-                  <MoneyInput className="expense-input-amount" value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
+                  <MoneyInput className={`expense-input-amount ${!dirtyFinances.has(f.id) && lastSavedAt ? 'is-saved' : ''}`} value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   <span className="expense-won">원</span>
                   <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   {canEdit && (
