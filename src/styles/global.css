@@ -494,12 +494,12 @@ body {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 180px;
+  min-width: 230px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-  padding: 6px;
+  padding: 8px;
   z-index: 1100;
   animation: userMenuIn 0.14s ease-out;
 }
@@ -510,18 +510,19 @@ body {
 .user-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 13px 16px;
   background: transparent;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text);
   cursor: pointer;
   text-align: left;
   transition: background 0.12s;
+  white-space: nowrap;
 }
 .user-menu-item:hover { background: var(--bg-subtle); }
 .user-menu-item-danger { color: var(--danger); }
@@ -606,7 +607,7 @@ body {
   .user-menu-name { display: none; }
   .user-menu-caret { display: none; }
   .user-menu-trigger { padding: 4px; }
-  .user-menu-dropdown { min-width: 160px; }
+  .user-menu-dropdown { min-width: 210px; }
 }
 
 /* 비밀번호 변경 모달 폼 */
