@@ -5940,7 +5940,7 @@ body {
 /* ===== 지출 카드 (컴팩트 한 줄) ===== */
 .expense-card {
   display: grid;
-  grid-template-columns: 56px 138px 1fr 110px auto 1fr 28px;
+  grid-template-columns: 56px 138px 1fr 110px auto 0.2fr 28px;
   align-items: center;
   column-gap: 8px;
   padding: 8px 10px;
