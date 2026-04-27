@@ -5867,17 +5867,28 @@ body {
   filter: brightness(0.95);
 }
 
-.expense-chip-meal,
-.expense-chip-transport,
-.expense-chip-material,
-.expense-chip-shipping {
-  background: #f1f5f9;
-  color: #334155;
-  border-color: #cbd5e1;
+.expense-chip-meal {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
 }
-
+.expense-chip-transport {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.expense-chip-material {
+  background: #f5f3ff;
+  color: #4338ca;
+  border-color: #ddd6fe;
+}
+.expense-chip-shipping {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
 .expense-chip-overtime {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #991b1b;
   border-color: #fecaca;
 }
@@ -5894,16 +5905,28 @@ body {
   letter-spacing: 0.02em;
 }
 
-.expense-tag.expense-chip-meal,
-.expense-tag.expense-chip-transport,
-.expense-tag.expense-chip-material,
+.expense-tag.expense-chip-meal {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+.expense-tag.expense-chip-transport {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.expense-tag.expense-chip-material {
+  background: #f5f3ff;
+  color: #4338ca;
+  border-color: #ddd6fe;
+}
 .expense-tag.expense-chip-shipping {
-  background: #f1f5f9;
-  color: #334155;
-  border-color: #cbd5e1;
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
 }
 .expense-tag.expense-chip-overtime {
-  background: #fee2e2;
+  background: #fef2f2;
   color: #991b1b;
   border-color: #fecaca;
 }
@@ -5930,11 +5953,11 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-.expense-card-meal,
-.expense-card-transport,
-.expense-card-material,
-.expense-card-shipping { border-left-color: #94a3b8; }
-.expense-card-overtime { border-left-color: #ef4444; }
+.expense-card-meal    { border-left-color: #fb923c; }
+.expense-card-transport { border-left-color: #60a5fa; }
+.expense-card-material  { border-left-color: #818cf8; }
+.expense-card-shipping  { border-left-color: #4ade80; }
+.expense-card-overtime  { border-left-color: #f87171; }
 
 .expense-card-readonly {
   background: #fafbfc;
@@ -6715,36 +6738,21 @@ body {
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
 }
 
-/* 타입별 카드 배경 (파스텔 버튼색보다 더 연한 톤) */
-.closing-card-freelancer {
-  background: #f0f9ff; /* sky-50 */
-  border-color: #e0f2fe;
-}
-.closing-card-freelancer:hover { border-color: #bae6fd; }
+/* 타입별 카드 — 흰 배경 + 좌측 색 테두리로만 구분 */
+.closing-card-freelancer { border-left: 3px solid #60a5fa; }
+.closing-card-freelancer:hover { border-color: #93c5fd; border-left-color: #60a5fa; }
 
-.closing-card-daily {
-  background: #fff7ed; /* orange-50 */
-  border-color: #ffedd5;
-}
-.closing-card-daily:hover { border-color: #fed7aa; }
+.closing-card-daily { border-left: 3px solid #fb923c; }
+.closing-card-daily:hover { border-color: #fdba74; border-left-color: #fb923c; }
 
-.closing-card-employee {
-  background: #f5f3ff; /* violet-50 */
-  border-color: #ede9fe;
-}
-.closing-card-employee:hover { border-color: #ddd6fe; }
+.closing-card-employee { border-left: 3px solid #818cf8; }
+.closing-card-employee:hover { border-color: #a5b4fc; border-left-color: #818cf8; }
 
-.closing-card-vendor {
-  background: #f0fdfa; /* teal-50 */
-  border-color: #ccfbf1;
-}
-.closing-card-vendor:hover { border-color: #99f6e4; }
+.closing-card-vendor { border-left: 3px solid #34d399; }
+.closing-card-vendor:hover { border-color: #6ee7b7; border-left-color: #34d399; }
 
-.closing-card-vendor_case {
-  background: #fffbeb; /* amber-50 */
-  border-color: #fef3c7;
-}
-.closing-card-vendor_case:hover { border-color: #fde68a; }
+.closing-card-vendor_case { border-left: 3px solid #f59e0b; }
+.closing-card-vendor_case:hover { border-color: #fcd34d; border-left-color: #f59e0b; }
 
 
 .closing-card-head {
@@ -6914,13 +6922,13 @@ body {
 }
 
 .day-cell.has-value input {
-  background: var(--primary-soft);
-  border-color: #FCD34D;
-  color: #92400E;
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1e40af;
 }
 
 .day-cell.has-value label {
-  color: var(--primary);
+  color: #2563eb;
 }
 
 /* ===== 캘린더 형식 일수 입력 ===== */
