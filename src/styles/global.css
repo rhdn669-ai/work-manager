@@ -6074,6 +6074,10 @@ body {
 .expense-card-readonly .expense-readonly-text {
   grid-column: 2 / 4;
 }
+.expense-card-mirror .expense-readonly-text {
+  color: #94a3b8;
+  font-weight: 500;
+}
 
 .expense-card .expense-won {
   font-size: 12px;

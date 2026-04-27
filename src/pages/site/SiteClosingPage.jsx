@@ -1116,7 +1116,7 @@ export default function SiteClosingPage() {
                 const chipKey = chipMap[desc];
                 const sourceNames = [...g.sources].join(', ');
                 return (
-                  <div className={`expense-card expense-card-readonly ${chipKey ? `expense-card-${chipKey}` : ''}`} key={`mirror-group-${desc}`}>
+                  <div className={`expense-card expense-card-readonly expense-card-mirror ${chipKey ? `expense-card-${chipKey}` : ''}`} key={`mirror-group-${desc}`}>
                     <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>{desc}</span>
                     <span className="expense-input-desc expense-readonly-text">합산 프로젝트 {desc} 합계 ({g.items.length}건)</span>
                     <MoneyInput className="expense-input-amount" value={g.sum} onChange={() => {}} disabled />
@@ -1133,7 +1133,7 @@ export default function SiteClosingPage() {
               const sum = overtimeItems.reduce((s, f) => s + (Number(f.amount) || 0), 0);
               const sourceNames = [...new Set(overtimeItems.map((f) => f._sourceName))].join(', ');
               return (
-                <div className="expense-card expense-card-readonly expense-card-overtime" key="mirror-overtime-total">
+                <div className="expense-card expense-card-readonly expense-card-mirror expense-card-overtime" key="mirror-overtime-total">
                   <span className="expense-tag expense-chip-overtime">잔업</span>
                   <span className="expense-input-desc expense-readonly-text">합산 프로젝트 잔업 합계 ({overtimeItems.length}건)</span>
                   <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
@@ -1146,7 +1146,7 @@ export default function SiteClosingPage() {
             {canViewSalary && mirroredLaborSum > 0 && (() => {
               const laborSourceNames = [...new Set((mirroredFinances || []).map((f) => f._sourceName).filter(Boolean))].join(', ') || '합산 합계';
               return (
-                <div className="expense-card expense-card-readonly" key="mirror-labor-total">
+                <div className="expense-card expense-card-readonly expense-card-mirror" key="mirror-labor-total">
                   <span className="expense-tag expense-chip-default">인건비</span>
                   <span className="expense-input-desc expense-readonly-text">합산 프로젝트 인건비 합계</span>
                   <MoneyInput className="expense-input-amount" value={mirroredLaborSum} onChange={() => {}} disabled />
