@@ -5983,6 +5983,10 @@ body {
   min-width: 0;
   display: flex;
   align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
 }
 .expense-readonly-badge {
   font-size: 13px;
