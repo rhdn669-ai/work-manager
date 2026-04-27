@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useChat } from '../../contexts/ChatContext';
 
 const Item = ({ to, end, label, badge, children }) => (
   <NavLink to={to} end={end} className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
@@ -14,8 +13,6 @@ const Item = ({ to, end, label, badge, children }) => (
 
 export default function BottomNav() {
   const { isAdmin, canApproveLeave } = useAuth();
-  const { unreadCount } = useChat();
-
   return (
     <nav className="bottom-nav">
       {/* 1. 홈 */}
@@ -94,11 +91,6 @@ export default function BottomNav() {
           <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </Item>
       )}
-
-      {/* 7. 채팅 (전체) */}
-      <Item to="/chat" end label="채팅" badge={unreadCount}>
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </Item>
 
       {/* 7. 이벤트 · 공지 (관리자) */}
       {isAdmin && (
