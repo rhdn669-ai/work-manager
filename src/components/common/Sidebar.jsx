@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useChat } from '../../contexts/ChatContext';
 import { subscribePreferences, setSidebarPref, clearSidebarPref, setSeededAdminDefaults } from '../../services/userPreferenceService';
 
 // 관리자에게만 1회 자동 추가되는 기본 대분류 (삭제 후 재등장 방지를 위해 didSeedAdminDefaults 플래그로 관리)
@@ -13,7 +12,7 @@ const LS_KEY_PREFIX = 'sidebar-order-v1:';
 const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 
 // 기본 메뉴 정의
-function buildAllItems({ isAdmin, canApproveLeave, unreadCount }) {
+function buildAllItems({ isAdmin, canApproveLeave }) {
   return [
     { key: 'home', to: '/dashboard', label: '홈', show: true, end: false },
     { key: 'admin-users', to: '/admin/users', label: '직원 관리', show: isAdmin },
@@ -28,14 +27,12 @@ function buildAllItems({ isAdmin, canApproveLeave, unreadCount }) {
     { key: 'manage-team-admin', to: '/manage/team', label: '팀구성 관리', show: isAdmin, end: true },
     { key: 'manage-team-employee', to: '/manage/team', label: '우리 팀', show: !isAdmin && !canApproveLeave, end: true },
     { key: 'manage-leave', to: '/manage/leave', label: '우리 팀', show: canApproveLeave && !isAdmin, end: true },
-    { key: 'chat', to: '/chat', label: '채팅', show: true, end: true, badgeCount: unreadCount },
     { key: 'admin-events', to: '/admin/events', label: '이벤트 · 공지', show: isAdmin },
   ];
 }
 
 export default function Sidebar({ isOpen }) {
   const { userProfile, isAdmin, canApproveLeave } = useAuth();
-  const { unreadCount } = useChat();
   const [editing, setEditing] = useState(false);
   const [order, setOrder] = useState(null);
   const [groups, setGroups] = useState([]); // [{ key, label, isGroup: true }]
@@ -109,8 +106,8 @@ export default function Sidebar({ isOpen }) {
   }, [userProfile?.uid, isAdmin]);
 
   const allItems = useMemo(
-    () => buildAllItems({ isAdmin, canApproveLeave, unreadCount }),
-    [isAdmin, canApproveLeave, unreadCount],
+    () => buildAllItems({ isAdmin, canApproveLeave }),
+    [isAdmin, canApproveLeave],
   );
 
   // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬

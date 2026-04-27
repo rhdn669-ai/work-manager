@@ -15,7 +15,6 @@ export default function Layout() {
     return window.matchMedia('(min-width: 769px)').matches;
   });
   const location = useLocation();
-  const isChatRoute = location.pathname.startsWith('/chat');
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
   // 모바일에서 라우트 변경 시 사이드바 자동 닫기
@@ -80,7 +79,7 @@ export default function Layout() {
   }
 
   return (
-    <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : ''} ${isChatRoute ? 'chat-route' : ''}`}>
+    <div className={`app-layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
       {isImpersonating && (
         <div className="impersonation-banner">
           <span className="impersonation-banner-text">
