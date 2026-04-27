@@ -1,14 +1,8 @@
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import UserMenu from './UserMenu';
 
 export default function Header({ onToggleSidebar }) {
-  const { userProfile, logout, isAdmin } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const { userProfile, isAdmin } = useAuth();
 
   function handleRefresh() {
     window.location.reload();
@@ -31,17 +25,7 @@ export default function Header({ onToggleSidebar }) {
         </button>
       </div>
       <div className="header-right">
-        {userProfile && (
-          <>
-            <span className="user-info">
-              {userProfile.name}
-              {userProfile.position && (
-                <> (<span className={`badge badge-position-${userProfile.position}`}>{userProfile.position}</span>)</>
-              )}
-            </span>
-            <button className="btn btn-sm btn-outline" onClick={handleLogout}>로그아웃</button>
-          </>
-        )}
+        {userProfile && <UserMenu />}
       </div>
     </header>
   );

@@ -431,6 +431,304 @@ body {
   max-width: 160px;
 }
 
+/* ===== 사용자 드롭다운 메뉴 (헤더 우측) ===== */
+.user-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  min-height: 36px;
+}
+.user-menu-trigger:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.user-menu-trigger.is-open {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+.user-menu-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+.user-menu-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.user-menu-caret {
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+  color: var(--text-light);
+  opacity: 0.75;
+}
+.user-menu-trigger.is-open .user-menu-caret {
+  transform: rotate(180deg);
+}
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  z-index: 1100;
+  animation: userMenuIn 0.14s ease-out;
+}
+@keyframes userMenuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.user-menu-item:hover { background: var(--bg-subtle); }
+.user-menu-item-danger { color: var(--danger); }
+.user-menu-item-danger:hover { background: rgba(239, 68, 68, 0.08); }
+.user-menu-item svg { flex-shrink: 0; opacity: 0.85; }
+
+/* 아바타 우측 상단 빨간 점 (힌트 미설정 시) */
+.user-menu-avatar { position: relative; }
+.user-menu-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 1.5px solid #fff;
+}
+
+/* 드롭다운 메뉴 항목 우측 "필요" 배지 */
+.user-menu-badge-new {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  letter-spacing: 0.02em;
+}
+
+/* 힌트 설정 알림 배너 (헤더 아래) */
+.hint-reminder-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, #fef3c7, #fed7aa);
+  border-bottom: 1px solid #fbbf24;
+  font-size: 13px;
+  color: #78350f;
+  flex-wrap: wrap;
+}
+.hint-reminder-icon { font-size: 18px; flex-shrink: 0; }
+.hint-reminder-text { flex: 1; min-width: 200px; line-height: 1.5; }
+.hint-reminder-text strong { color: #78350f; font-weight: 700; }
+.hint-reminder-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.hint-reminder-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.12s, background 0.15s;
+}
+.hint-reminder-btn.primary {
+  background: #f59e0b;
+  color: #fff;
+  border: 1px solid #f59e0b;
+}
+.hint-reminder-btn.primary:hover { background: #d97706; transform: translateY(-1px); }
+.hint-reminder-btn.ghost {
+  background: transparent;
+  color: #78350f;
+  border: 1px solid rgba(120, 53, 15, 0.35);
+}
+.hint-reminder-btn.ghost:hover { background: rgba(120, 53, 15, 0.06); }
+
+@media (max-width: 480px) {
+  .hint-reminder-banner { padding: 9px 12px; font-size: 12px; gap: 8px; }
+  .hint-reminder-text { min-width: 140px; }
+  .hint-reminder-btn { padding: 5px 10px; font-size: 11px; }
+}
+@media (max-width: 360px) {
+  .hint-reminder-text { font-size: 11px; }
+  .hint-reminder-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* 모바일에서는 이름·드롭다운 화살표 숨기고 아바타만 노출 */
+@media (max-width: 480px) {
+  .user-menu-name { display: none; }
+  .user-menu-caret { display: none; }
+  .user-menu-trigger { padding: 4px; }
+  .user-menu-dropdown { min-width: 160px; }
+}
+
+/* 비밀번호 변경 모달 폼 */
+.pwchange-form .form-group { margin-bottom: 14px; }
+.pwchange-form .form-group:last-of-type { margin-bottom: 18px; }
+.pwchange-form input[type="password"],
+.pwchange-form input[type="text"],
+.pwchange-form select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pwchange-form input[type="password"]:focus,
+.pwchange-form input[type="text"]:focus,
+.pwchange-form select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+  outline: none;
+}
+
+/* 힌트 섹션 (비밀번호 변경 모달 안 점선 박스) */
+.pwchange-hint-section {
+  margin-top: 6px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  background: #fafbfc;
+}
+.pwchange-hint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.pwchange-hint-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pwchange-hint-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+}
+.pwchange-hint-status:empty { display: none; }
+.pwchange-hint-desc {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* 비밀번호 찾기 모달 */
+.forgot-pw-form input[type="text"],
+.forgot-pw-form input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.forgot-pw-form input:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+  outline: none;
+}
+.forgot-pw-form .form-group { margin-bottom: 14px; }
+.forgot-pw-step-desc {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.forgot-pw-question {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+}
+.forgot-pw-question-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0369a1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.forgot-pw-question strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1c1917;
+}
+
+/* 로그인 화면 — 비밀번호 찾기 링크 */
+.login-forgot-link {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+.login-forgot-link:hover { color: var(--primary); }
+
 @media (max-width: 480px) {
   .header {
     padding-left: max(12px, env(safe-area-inset-left));
@@ -443,6 +741,8 @@ body {
   /* 모바일에선 사용자 이름 숨김 → 로그아웃 버튼이 항상 우측 끝에 보이도록 폭 확보
      (사용자 이름은 사이드바에서 확인 가능) */
   .user-info { display: none; }
+  /* UserMenu 모바일 — 트리거를 아바타만 보이게 (위 .user-menu-trigger 모바일 규칙과 별개) */
+  .header-right { gap: 8px; }
 }
 
 /* 폴드 접힌 화면 (~280px) */
@@ -7651,10 +7951,22 @@ body {
   .modal {
     width: 100%;
     max-width: 100%;
-    max-height: 85vh;
+    max-height: 92vh;
+    max-height: 92dvh; /* iOS Safari 동적 뷰포트(주소창 자동 숨김) 대응 */
     margin: 0;
     border-radius: 16px 16px 0 0;
     animation: slide-up 0.25s ease-out;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 헤더 sticky + body가 스크롤 책임 */
+  }
+  /* 본문이 스크롤 컨테이너 — 안전영역(홈 인디케이터) 위까지 패딩 */
+  .modal > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
 
   .modal-header {
@@ -7679,10 +7991,26 @@ body {
 
   .modal-body {
     padding: 16px 20px;
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-bottom: 0; /* 액션 영역의 sticky 패딩으로 안전영역 처리 */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+  }
+
+  /* 모바일: 모달 하단 버튼(설정/취소/확인 등) 항상 보이도록 sticky bottom 고정 */
+  .modal-body .modal-actions,
+  .modal-body form .modal-actions {
+    position: sticky;
+    bottom: 0;
+    margin-top: 16px;
+    margin-left: -20px;
+    margin-right: -20px;
+    margin-bottom: 0;
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, var(--bg-card) 30%);
+    border-top: 1px solid var(--border);
+    z-index: 2;
   }
 
   .modal-close {

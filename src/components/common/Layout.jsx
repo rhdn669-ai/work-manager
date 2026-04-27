@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import HintReminderBanner from './HintReminderBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 
@@ -92,6 +93,7 @@ export default function Layout() {
         </div>
       )}
       <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <HintReminderBanner />
       <div className="app-body">
         {/* 사이드바 표시 조건:
             - 관리자: 항상 (PC는 기본 열림, 모바일은 햄버거로 토글)

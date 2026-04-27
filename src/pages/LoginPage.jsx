@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import ForgotPasswordModal from '../components/common/ForgotPasswordModal';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -7,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -54,12 +56,21 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <button
+          type="button"
+          className="login-forgot-link"
+          onClick={() => setForgotOpen(true)}
+        >
+          비밀번호를 잊으셨나요?
+        </button>
+
         <p className="login-version">
           IOPN · Work Manager
           <br />
           <span className="login-version-num">v{__APP_VERSION__}</span>
         </p>
       </div>
+      <ForgotPasswordModal isOpen={forgotOpen} onClose={() => setForgotOpen(false)} />
     </div>
   );
 }
