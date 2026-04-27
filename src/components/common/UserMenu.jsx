@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeModal from './PasswordChangeModal';
 import HintSettingModal from './HintSettingModal';
 
 export default function UserMenu() {
-  const { userProfile, logout } = useAuth();
-  const navigate = useNavigate();
+  const { userProfile } = useAuth();
   const [open, setOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
@@ -30,12 +28,6 @@ export default function UserMenu() {
 
   const initial = (userProfile.name || '?').trim().charAt(0);
   const hasHint = !!userProfile.passwordHintQuestion;
-
-  const handleLogout = async () => {
-    setOpen(false);
-    await logout();
-    navigate('/login');
-  };
 
   return (
     <>
@@ -78,14 +70,6 @@ export default function UserMenu() {
               </svg>
               비밀번호 힌트 {hasHint ? '변경' : '설정'}
               {!hasHint && <span className="user-menu-badge-new">필요</span>}
-            </button>
-            <button type="button" className="user-menu-item user-menu-item-danger" role="menuitem" onClick={handleLogout}>
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              로그아웃
             </button>
           </div>
         )}

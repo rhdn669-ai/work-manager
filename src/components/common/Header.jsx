@@ -1,11 +1,18 @@
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import UserMenu from './UserMenu';
 
 export default function Header({ onToggleSidebar }) {
-  const { userProfile, isAdmin } = useAuth();
+  const { userProfile, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
 
   function handleRefresh() {
     window.location.reload();
+  }
+
+  async function handleLogout() {
+    await logout();
+    navigate('/login');
   }
 
   return (
@@ -25,7 +32,12 @@ export default function Header({ onToggleSidebar }) {
         </button>
       </div>
       <div className="header-right">
-        {userProfile && <UserMenu />}
+        {userProfile && (
+          <>
+            <UserMenu />
+            <button className="btn btn-sm btn-outline" onClick={handleLogout}>로그아웃</button>
+          </>
+        )}
       </div>
     </header>
   );
