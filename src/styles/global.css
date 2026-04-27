@@ -6665,7 +6665,7 @@ body {
 }
 
 .closing-summary-item strong {
-  font-size: 18px;
+  font-size: 15px;
   color: var(--text);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -6681,10 +6681,6 @@ body {
   background: #fff;
   border: 2px solid var(--primary);
 }
-.closing-summary-net strong {
-  font-size: 20px;
-}
-
 .closing-summary-net strong {
   font-size: 15px;
 }
