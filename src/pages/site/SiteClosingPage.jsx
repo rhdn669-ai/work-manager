@@ -1059,17 +1059,7 @@ export default function SiteClosingPage() {
               const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '운송비': 'shipping' };
               const chipKey = chipMap[desc];
               return (
-                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''} ${buf.checked ? 'expense-card-checked' : ''}`} key={f.id}>
-                  <button
-                    type="button"
-                    className={`expense-check-btn ${buf.checked ? 'is-checked' : ''}`}
-                    onClick={() => canEdit && toggleFinanceChecked(f.id)}
-                    aria-label={buf.checked ? '확인 취소' : '확인'}
-                    title={buf.checked ? '확인 취소' : '미확인'}
-                    disabled={!canEdit}
-                  >
-                    ✓
-                  </button>
+                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
                   <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
                     {desc || '지출'}
                   </span>
