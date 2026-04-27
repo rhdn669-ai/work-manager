@@ -66,3 +66,9 @@ export async function clearChatReads(uid) {
   if (!uid) return;
   await setDoc(refFor(uid), { chatReads: deleteField(), updatedAt: new Date() }, { merge: true });
 }
+
+// 관리자 기본 대분류 seed 완료 플래그 — 사용자가 삭제해도 재등장하지 않도록 저장
+export async function setSeededAdminDefaults(uid) {
+  if (!uid) return;
+  await setDoc(refFor(uid), { didSeedAdminDefaults: true, updatedAt: new Date() }, { merge: true });
+}

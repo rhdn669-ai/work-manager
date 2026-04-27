@@ -2,7 +2,10 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChat } from '../../contexts/ChatContext';
-import { subscribePreferences, setSidebarPref, clearSidebarPref } from '../../services/userPreferenceService';
+import { subscribePreferences, setSidebarPref, clearSidebarPref, setSeededAdminDefaults } from '../../services/userPreferenceService';
+
+// 관리자에게만 1회 자동 추가되는 기본 대분류 (삭제 후 재등장 방지를 위해 didSeedAdminDefaults 플래그로 관리)
+const ADMIN_DEFAULT_GROUP_LABELS = ['직원', '외주', '비용'];
 import Modal from './Modal';
 
 // 구버전 호환 — 기존 localStorage 값을 1회 Firestore로 마이그레이션 후 삭제
@@ -37,52 +40,73 @@ export default function Sidebar({ isOpen }) {
   const [order, setOrder] = useState(null);
   const [groups, setGroups] = useState([]); // [{ key, label, isGroup: true }]
 
-  // 로그인 계정(uid)이 바뀔 때마다 Firestore 구독 + 구버전 LS 마이그레이션
+  // 로그인 계정(uid)이 바뀔 때마다 Firestore 구독 + 구버전 LS 마이그레이션 + 관리자 기본 대분류 seed
   // - 처음 동기화될 때 Firestore에 sidebar pref가 없고 LS에 값이 있으면 → 업로드 후 LS 삭제
+  // - 관리자(isAdmin=true)이고 didSeedAdminDefaults 플래그가 없으면 → ADMIN_DEFAULT_GROUP_LABELS 1회 추가
   // - 이후 모든 변경은 Firestore가 source of truth (다른 PC/기기 실시간 반영)
   const migratedRef = useRef(false);
+  const seedAttemptedRef = useRef(false);
   useEffect(() => {
     const uid = userProfile?.uid;
     setEditing(false);
     migratedRef.current = false;
+    seedAttemptedRef.current = false;
     if (!uid) { setOrder(null); setGroups([]); return; }
 
     const unsub = subscribePreferences(uid, (data) => {
+      let nextOrder = null;
+      let nextGroups = [];
+
       const sidebar = data?.sidebar;
       if (sidebar && (Array.isArray(sidebar.order) || Array.isArray(sidebar.groups))) {
-        setOrder(Array.isArray(sidebar.order) ? sidebar.order : null);
-        setGroups(Array.isArray(sidebar.groups) ? sidebar.groups : []);
+        nextOrder = Array.isArray(sidebar.order) ? sidebar.order : null;
+        nextGroups = Array.isArray(sidebar.groups) ? sidebar.groups : [];
+        setOrder(nextOrder);
+        setGroups(nextGroups);
         migratedRef.current = true;
-        return;
-      }
-      // Firestore에 값이 없는 경우 — 구버전 LS 1회 마이그레이션 시도
-      if (!migratedRef.current) {
+      } else if (!migratedRef.current) {
+        // Firestore에 값이 없는 경우 — 구버전 LS 1회 마이그레이션 시도
         migratedRef.current = true;
         const key = lsKeyFor(uid);
-        let lsOrder = null;
-        let lsGroups = [];
         if (key) {
           try {
             const raw = JSON.parse(localStorage.getItem(key) || 'null');
             if (Array.isArray(raw)) {
-              lsOrder = raw;
+              nextOrder = raw;
             } else if (raw && typeof raw === 'object') {
-              lsOrder = Array.isArray(raw.order) ? raw.order : null;
-              lsGroups = Array.isArray(raw.groups) ? raw.groups : [];
+              nextOrder = Array.isArray(raw.order) ? raw.order : null;
+              nextGroups = Array.isArray(raw.groups) ? raw.groups : [];
             }
           } catch { /* 무시 */ }
         }
-        setOrder(lsOrder);
-        setGroups(lsGroups);
-        if (lsOrder || lsGroups.length > 0) {
-          setSidebarPref(uid, { order: lsOrder, groups: lsGroups })
+        setOrder(nextOrder);
+        setGroups(nextGroups);
+        if (nextOrder || nextGroups.length > 0) {
+          setSidebarPref(uid, { order: nextOrder, groups: nextGroups })
             .then(() => { try { if (key) localStorage.removeItem(key); } catch { /* 무시 */ } })
             .catch(() => { /* 다음 변경 때 재시도됨 */ });
         }
+      } else {
+        return; // 이미 초기화 완료된 후의 빈 snapshot은 무시
+      }
+
+      // 관리자 기본 대분류 1회 seed — 라벨 중복은 건너뛰고 끝에 append
+      if (isAdmin && !data?.didSeedAdminDefaults && !seedAttemptedRef.current) {
+        seedAttemptedRef.current = true;
+        const existing = new Set((nextGroups || []).map((g) => g.label));
+        const newOnes = ADMIN_DEFAULT_GROUP_LABELS
+          .filter((l) => !existing.has(l))
+          .map((l, idx) => ({ key: `group-default-${Date.now()}-${idx}`, label: l, isGroup: true }));
+        if (newOnes.length > 0) {
+          setGroups([...(nextGroups || []), ...newOnes]);
+          // saveTimer 효과(300ms 디바운스)가 자동으로 Firestore에 반영
+        }
+        // 추가 여부와 무관하게 플래그 마킹 — 사용자가 삭제해도 재등장하지 않도록
+        setSeededAdminDefaults(uid).catch(() => { /* 무시 */ });
       }
     });
     return () => unsub();
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, isAdmin]);
 
   const allItems = useMemo(
     () => buildAllItems({ isAdmin, canApproveLeave, unreadCount }),

@@ -632,9 +632,9 @@ body {
   content: '';
   flex: 1 1 0;
   min-width: 8px;
-  height: 3px;
+  height: 1.5px;
   background: #1a1a1a;
-  border-radius: 2px;
+  border-radius: 1px;
 }
 .nav-group .nav-group-label {
   font-size: 15px;
