@@ -5994,6 +5994,13 @@ body {
   padding: 0 6px;
   cursor: help;
   flex-shrink: 0;
+  min-width: 72px;
+  text-align: right;
+}
+
+.expense-card-readonly .btn-sm {
+  flex-shrink: 0;
+  min-width: 72px;
 }
 
 .expense-chip-default {
