@@ -658,7 +658,19 @@ export default function SiteClosingPage() {
   async function handleAddFinance(type, description = '') {
     const list = finances.filter((f) => f.type === type);
     const nextOrder = list.length ? Math.max(...list.map((f) => f.order || 0)) + 1 : 1;
-    await addFinanceItem(siteId, y, m, { type, description, amount: 0, note: '', order: nextOrder });
+    // 지출은 발생일 기본값을 설정 — 오늘이 현재 마감월 안이면 오늘, 아니면 마감월 1일
+    let date = '';
+    if (type === 'expense') {
+      const today = new Date();
+      if (today.getFullYear() === y && (today.getMonth() + 1) === m) {
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        date = `${today.getFullYear()}-${mm}-${dd}`;
+      } else {
+        date = `${y}-${String(m).padStart(2, '0')}-01`;
+      }
+    }
+    await addFinanceItem(siteId, y, m, { type, description, amount: 0, note: '', order: nextOrder, date });
     await loadAll({ silent: true });
   }
 
@@ -739,6 +751,7 @@ export default function SiteClosingPage() {
           description: cur.description,
           amount: cur.amount,
           note: cur.note,
+          date: cur.date || '',
           unitPrice: cur.unitPrice || 0,
           quantity: cur.quantity || 0,
           closings: cur.closings || [],
@@ -762,7 +775,7 @@ export default function SiteClosingPage() {
     const cur = financeBuf[id];
     if (cur) {
       setSavingCount((c) => c + 1);
-      updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note })
+      updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note, date: cur.date || '' })
         .then(() => { setLastSavedAt(new Date()); setSaveError(null); })
         .catch((err) => setSaveError(err.message))
         .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
@@ -1038,6 +1051,15 @@ export default function SiteClosingPage() {
                   <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
                     {desc || '지출'}
                   </span>
+                  <input
+                    type="date"
+                    className="expense-input-date"
+                    value={buf.date || ''}
+                    onChange={(e) => updateFinanceField(f.id, 'date', e.target.value)}
+                    onBlur={() => flushFinance(f.id)}
+                    disabled={!canEdit}
+                    aria-label="발생일"
+                  />
                   {!chipKey && (
                     <input className="expense-input-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
                   )}

@@ -5703,7 +5703,8 @@ body {
 
 .expense-input-desc,
 .expense-input-amount,
-.expense-input-note {
+.expense-input-note,
+.expense-input-date {
   padding: 8px 12px;
   min-height: 36px;
   font-size: 13px;
@@ -5715,17 +5716,25 @@ body {
 }
 .expense-input-desc:focus,
 .expense-input-amount:focus,
-.expense-input-note:focus {
+.expense-input-note:focus,
+.expense-input-date:focus {
   border-color: var(--primary);
   box-shadow: var(--ring-primary);
   outline: none;
 }
 .expense-input-desc:disabled,
 .expense-input-amount:disabled,
-.expense-input-note:disabled {
+.expense-input-note:disabled,
+.expense-input-date:disabled {
   background: #f8fafc;
   color: #64748b;
   cursor: default;
+}
+.expense-input-date {
+  width: 138px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .expense-input-desc {
@@ -5754,10 +5763,11 @@ body {
     flex-wrap: wrap;
     padding: 8px;
   }
-  .expense-input-desc { flex: 1 1 100%; order: 1; }
-  .expense-input-amount { flex: 1 1 auto; width: auto; order: 2; }
-  .expense-input-note { flex: 1 1 100%; order: 4; }
-  .expense-card .closing-delete { order: 3; margin-left: auto; }
+  .expense-input-date { order: 1; width: 130px; padding: 6px 8px; font-size: 12px; }
+  .expense-input-desc { flex: 1 1 100%; order: 2; }
+  .expense-input-amount { flex: 1 1 auto; width: auto; order: 3; }
+  .expense-input-note { flex: 1 1 100%; order: 5; }
+  .expense-card .closing-delete { order: 4; margin-left: auto; }
 }
 
 /* ===== 홈 캘린더 ===== */

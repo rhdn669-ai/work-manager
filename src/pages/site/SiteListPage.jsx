@@ -369,10 +369,11 @@ export default function SiteListPage() {
       ) : (
         <div className="site-list">
           {[...filtered].sort((a, b) => {
-            // 핀 고정 카드 — 항상 최상단, 정의된 순서대로
-            const PINNED = ['본사 행정업무', '프로버 지원'];
-            const aPin = PINNED.indexOf(a.name);
-            const bPin = PINNED.indexOf(b.name);
+            // 핀 고정 카드 — 항상 최상단, 정의된 순서대로 (띄어쓰기 변형 모두 매칭)
+            const PINNED = ['본사업무', '프로버지원'];
+            const normalize = (s) => (s || '').replace(/\s+/g, '');
+            const aPin = PINNED.indexOf(normalize(a.name));
+            const bPin = PINNED.indexOf(normalize(b.name));
             if (aPin !== -1 && bPin !== -1) return aPin - bPin;
             if (aPin !== -1) return -1;
             if (bPin !== -1) return 1;
