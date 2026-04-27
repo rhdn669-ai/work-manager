@@ -194,6 +194,7 @@ export async function addFinanceItem(siteId, year, month, data) {
     closings: data.closings || [], // [{ id, date, count, units }]
     // 지출 — 행별 발생일 (YYYY-MM-DD), 매출은 closings에 날짜 있어 미사용
     date: data.date || '',
+    checked: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
