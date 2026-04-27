@@ -2,13 +2,13 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
+import { subscribePreferences, setChatRead, setChatReadBulk } from '../services/userPreferenceService';
 
 const ChatContext = createContext({ unreadCount: 0, markAsRead: () => {} });
 
-// 채널/DM 단위로 마지막 읽은 시각을 localStorage에 기록 (하위 호환용)
-const readKey = (uid, kind, id) => `chatRead_${uid}_${kind}_${id}`;
-// 채널/DM 단위로 마지막 읽은 messageCount를 저장 (정확한 읽지 않음 수 계산용)
-const readCountKey = (uid, kind, id) => `chatReadCount_${uid}_${kind}_${id}`;
+// 구버전 호환 — localStorage에 남아있는 읽음 데이터를 1회 Firestore로 마이그레이션 후 삭제
+const lsReadKey = (uid, kind, id) => `chatRead_${uid}_${kind}_${id}`;
+const lsReadCountKey = (uid, kind, id) => `chatReadCount_${uid}_${kind}_${id}`;
 
 function tsToMs(ts) {
   if (!ts) return 0;
@@ -22,8 +22,11 @@ export function ChatProvider({ children }) {
   const { userProfile, canApproveAll } = useAuth();
   const [channelMetas, setChannelMetas] = useState([]); // [{id, type, departmentId, memberIds, lastMessageAt, lastSenderId}]
   const [dmRooms, setDmRooms] = useState([]); // [{id, lastMessageAt, lastSenderId, ...}]
-  // "읽은 시각 틱" — markAsRead가 불릴 때 증가시켜 재계산 유발
-  const [readTick, setReadTick] = useState(0);
+  // 채팅 읽음 상태 (Firestore userPreferences/{uid}.chatReads) — 다른 기기와 실시간 동기화
+  // 형태: { 'channel_xxx': { count, ts }, 'dm_yyy': { count, ts } }
+  const [chatReads, setChatReads] = useState({});
+  const chatReadsRef = useRef({});
+  chatReadsRef.current = chatReads;
 
   // 전체 채널 메타데이터 구독 (메시지 서브컬렉션이 아니라 채널 doc만)
   useEffect(() => {
@@ -49,6 +52,65 @@ export function ChatProvider({ children }) {
     return () => unsub();
   }, [userProfile?.uid]);
 
+  // 채팅 읽음 상태 Firestore 구독 — 다른 기기와 실시간 동기화
+  // 최초 동기화 시 Firestore에 값이 없고 localStorage에 구버전 값이 있으면 1회 업로드 후 LS 삭제
+  const chatReadMigratedRef = useRef(false);
+  useEffect(() => {
+    const uid = userProfile?.uid;
+    chatReadMigratedRef.current = false;
+    if (!uid) { setChatReads({}); return; }
+
+    const unsub = subscribePreferences(uid, (data) => {
+      const incoming = data?.chatReads;
+      if (incoming && typeof incoming === 'object' && Object.keys(incoming).length > 0) {
+        setChatReads(incoming);
+        chatReadMigratedRef.current = true;
+        return;
+      }
+      // Firestore에 chatReads가 없으면 localStorage 마이그레이션 시도 (1회만)
+      if (chatReadMigratedRef.current) return;
+      chatReadMigratedRef.current = true;
+      try {
+        const migrated = {};
+        const entries = [];
+        // localStorage 전체 키 스캔 — `chatReadCount_{uid}_{kind}_{id}` 패턴
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k) continue;
+          const prefix = `chatReadCount_${uid}_`;
+          if (!k.startsWith(prefix)) continue;
+          const rest = k.slice(prefix.length); // `{kind}_{id}` 형태
+          const sep = rest.indexOf('_');
+          if (sep <= 0) continue;
+          const kind = rest.slice(0, sep);
+          const id = rest.slice(sep + 1);
+          const count = parseInt(localStorage.getItem(k) || '0', 10);
+          const ts = parseInt(localStorage.getItem(lsReadKey(uid, kind, id)) || '0', 10);
+          if (!kind || !id) continue;
+          migrated[`${kind}_${id}`] = { count: count || 0, ts: ts || Date.now() };
+          entries.push({ kind, roomId: id, count: count || 0, ts: ts || Date.now() });
+        }
+        if (entries.length > 0) {
+          setChatReads(migrated);
+          setChatReadBulk(uid, entries)
+            .then(() => {
+              // 업로드 성공 → LS에서 해당 키 정리
+              for (const { kind, roomId } of entries) {
+                try { localStorage.removeItem(lsReadKey(uid, kind, roomId)); } catch { /* 무시 */ }
+                try { localStorage.removeItem(lsReadCountKey(uid, kind, roomId)); } catch { /* 무시 */ }
+              }
+            })
+            .catch(() => { /* 다음 markAsRead 때 재시도됨 */ });
+        } else {
+          setChatReads({});
+        }
+      } catch {
+        setChatReads({});
+      }
+    });
+    return () => unsub();
+  }, [userProfile?.uid]);
+
   // 접근 가능한 채널만 필터링
   const accessibleChannels = useMemo(() => {
     if (!userProfile?.uid) return [];
@@ -61,10 +123,9 @@ export function ChatProvider({ children }) {
     });
   }, [channelMetas, userProfile?.uid, userProfile?.departmentId, canApproveAll]);
 
-  // unreadCounts: 방별 정확한 읽지 않음 수 (messageCount - lastReadCount)
-  // - 카운터 필드(messageCount)가 없는 기존 방은 timestamp 기반 fallback (1 또는 0)
+  // unreadCounts: 방별 정확한 읽지 않음 수 (messageCount - chatReads[key].count)
+  // - 카운터 필드(messageCount)가 없는 기존 방은 0으로 처리 (메시지 없음)
   // - 내가 마지막으로 보낸 메시지면 0 (읽음 간주)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { unreadCount, unreadRoomIds, unreadCounts } = useMemo(() => {
     const empty = {
       unreadCount: 0,
@@ -79,12 +140,11 @@ export function ChatProvider({ children }) {
     const dmCount = {};
 
     function countFor(kind, room) {
-      // 실제 메시지가 있었던 방만 카운트 (messageCount 기반만 인정)
-      // legacy lastMessageAt가 남아있지만 messageCount가 0이면 "메시지 없음"으로 처리
       const total = Number(room.messageCount || 0);
       if (total <= 0) return 0;
       if (room.lastSenderId === uid) return 0;
-      const readCount = parseInt(localStorage.getItem(readCountKey(uid, kind, room.id)) || '0', 10);
+      const entry = chatReads[`${kind}_${room.id}`];
+      const readCount = Number(entry?.count || 0);
       return Math.max(0, total - readCount);
     }
 
@@ -102,35 +162,40 @@ export function ChatProvider({ children }) {
       unreadRoomIds: { channel: channelSet, dm: dmSet },
       unreadCounts: { channel: channelCount, dm: dmCount },
     };
-  }, [accessibleChannels, dmRooms, userProfile?.uid, readTick]);
+  }, [accessibleChannels, dmRooms, userProfile?.uid, chatReads]);
 
-  // 단일 방 읽음 처리 — messageCount와 timestamp를 현재 값으로 기록
+  // 단일 방 읽음 처리 — Firestore에 저장 (다른 기기와 실시간 동기화)
+  // 로컬 state는 즉시 갱신해 UI 반응성 확보, Firestore 저장은 백그라운드
   const markAsRead = useCallback((kind, id) => {
     if (!userProfile?.uid) return;
     const uid = userProfile.uid;
-    const now = Date.now().toString();
+    const now = Date.now();
     if (!kind || !id) {
-      // 인자 없이 호출 시 모든 방을 읽음 처리 (호환용)
+      // 인자 없이 호출 시 모든 방을 읽음 처리
+      const entries = [];
+      const nextLocal = { ...chatReadsRef.current };
       accessibleChannels.forEach((c) => {
-        localStorage.setItem(readKey(uid, 'channel', c.id), now);
-        localStorage.setItem(readCountKey(uid, 'channel', c.id), String(Number(c.messageCount || 0)));
+        const cnt = Number(c.messageCount || 0);
+        nextLocal[`channel_${c.id}`] = { count: cnt, ts: now };
+        entries.push({ kind: 'channel', roomId: c.id, count: cnt, ts: now });
       });
       dmRooms.forEach((r) => {
-        localStorage.setItem(readKey(uid, 'dm', r.id), now);
-        localStorage.setItem(readCountKey(uid, 'dm', r.id), String(Number(r.messageCount || 0)));
+        const cnt = Number(r.messageCount || 0);
+        nextLocal[`dm_${r.id}`] = { count: cnt, ts: now };
+        entries.push({ kind: 'dm', roomId: r.id, count: cnt, ts: now });
       });
-      setReadTick((t) => t + 1);
+      setChatReads(nextLocal);
+      setChatReadBulk(uid, entries).catch(() => { /* 무시 */ });
       return;
     }
     const room = kind === 'channel'
       ? accessibleChannels.find((c) => c.id === id)
       : dmRooms.find((r) => r.id === id);
     // race condition 방지 — 방 데이터가 아직 로드되지 않았으면 readCount 갱신 보류
-    // (다음 snapshot이 들어와 다시 markAsRead가 호출될 때 정상 갱신됨)
     if (!room) return;
-    localStorage.setItem(readKey(uid, kind, id), now);
-    localStorage.setItem(readCountKey(uid, kind, id), String(Number(room.messageCount || 0)));
-    setReadTick((t) => t + 1);
+    const cnt = Number(room.messageCount || 0);
+    setChatReads((prev) => ({ ...prev, [`${kind}_${id}`]: { count: cnt, ts: now } }));
+    setChatRead(uid, kind, id, { count: cnt, ts: now }).catch(() => { /* 무시 */ });
   }, [userProfile?.uid, accessibleChannels, dmRooms]);
 
   // 알림 소리/브라우저 Notification — unreadCount 증가 시 1회 발화
