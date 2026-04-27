@@ -268,6 +268,7 @@ export async function clearAllDmMessages() {
       lastMessageAt: null,
       lastSenderId: null,
       hiddenBy: [],
+      messageCount: 0,
     });
   }
   return { rooms: roomsSnap.size, deletedMessages };

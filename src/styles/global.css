@@ -215,6 +215,53 @@ body {
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* 새 버전 알림 토스트 — 클릭 가능, 사용자가 새로고침 결정 */
+.update-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(28, 25, 23, 0.94);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 12px 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  z-index: 10000;
+  animation: updateToastIn 0.22s ease-out;
+  max-width: calc(100vw - 24px);
+}
+.update-toast-text {
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.update-toast-btn {
+  background: #fff;
+  color: #1c1917;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.update-toast-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
+.update-toast-btn:active { transform: translateY(0); }
+@keyframes updateToastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (max-width: 480px) {
+  .update-toast { font-size: 12px; padding: 9px 10px 9px 14px; gap: 8px; }
+  .update-toast-text { white-space: normal; }
+  .update-toast-btn { padding: 6px 12px; font-size: 11px; }
+}
+
 /* 관리자 임시 로그인 배너 — 헤더 위에 고정 */
 .impersonation-banner {
   position: fixed;

@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 
 export default function Layout() {
-  const { isImpersonating, impersonator, userProfile, stopImpersonation, logout, isAdmin } = useAuth();
+  const { isImpersonating, impersonator, userProfile, stopImpersonation, isAdmin } = useAuth();
   // 사이드바: 관리자만 사용. PC는 기본 열림, 모바일은 기본 닫힘
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -26,8 +26,8 @@ export default function Layout() {
   const exitArmedRef = useRef(false);
   const exitTimerRef = useRef(null);
 
-  // 새 버전 배포 감지 시 자동 로그아웃
-  useVersionCheck(logout);
+  // 새 버전 배포 감지 — 토스트로 알림 후 사용자가 새로고침
+  const { hasNewVersion, latestVersion } = useVersionCheck();
 
   // 모바일 뒤로가기 두 번 → 앱 종료 (대시보드 루트에서만 작동, iOS 제외)
   // iOS Safari에서는 두 번째 뒤로가기로도 종료 안 되고 이전 사이트로 이동만 하므로 비활성
@@ -113,6 +113,20 @@ export default function Layout() {
       {exitToast && (
         <div className="exit-toast" role="status" aria-live="polite">
           한 번 더 누르면 종료됩니다
+        </div>
+      )}
+      {hasNewVersion && (
+        <div className="update-toast" role="status" aria-live="polite">
+          <span className="update-toast-text">
+            새 버전(v{latestVersion})이 배포됐어요
+          </span>
+          <button
+            type="button"
+            className="update-toast-btn"
+            onClick={() => window.location.reload()}
+          >
+            새로고침
+          </button>
         </div>
       )}
     </div>

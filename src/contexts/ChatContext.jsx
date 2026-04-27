@@ -34,12 +34,17 @@ export function ChatProvider({ children }) {
     return () => unsub();
   }, [userProfile?.uid]);
 
-  // 내가 참여한 DM 방 구독
+  // 내가 참여한 DM 방 구독 — 내가 hiddenBy에 들어가있는 방은 알림 집계에서 제외
+  // (목록에선 안 보이는데 배지만 떠있는 유령 알림 방지)
   useEffect(() => {
     if (!userProfile?.uid) { setDmRooms([]); return; }
-    const q = query(collection(db, 'dmRooms'), where('participants', 'array-contains', userProfile.uid));
+    const uid = userProfile.uid;
+    const q = query(collection(db, 'dmRooms'), where('participants', 'array-contains', uid));
     const unsub = onSnapshot(q, (snap) => {
-      setDmRooms(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const rooms = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((r) => !(Array.isArray(r.hiddenBy) && r.hiddenBy.includes(uid)));
+      setDmRooms(rooms);
     }, () => setDmRooms([]));
     return () => unsub();
   }, [userProfile?.uid]);
