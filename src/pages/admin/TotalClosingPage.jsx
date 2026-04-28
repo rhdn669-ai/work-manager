@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getFinanceItems, getClosingItems } from '../../services/siteService';
+import { getFixedExpenses, saveFixedExpenses } from '../../services/fixedExpenseService';
+import FixedExpensePanel from '../../components/admin/FixedExpensePanel';
 
 const isOvertimeItem = (f) => {
   const d = (f.description || '').trim();
@@ -16,15 +18,21 @@ export default function TotalClosingPage() {
   const [sites, setSites] = useState([]);
   const [stats, setStats] = useState({}); // { siteId: { revenue, expense, overtime, labor } }
   const [loading, setLoading] = useState(true);
+  const [fixedItems, setFixedItems] = useState([]);
+  const [fixedSaving, setFixedSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const allSites = await getAllSites();
+        const [allSites, fixed] = await Promise.all([
+          getAllSites(),
+          getFixedExpenses(year, month),
+        ]);
         if (cancelled) return;
         setSites(allSites);
+        setFixedItems(fixed);
         const out = {};
         await Promise.all(allSites.map(async (s) => {
           const [fins, items] = await Promise.all([
@@ -44,6 +52,19 @@ export default function TotalClosingPage() {
     return () => { cancelled = true; };
   }, [year, month]);
 
+  const handleFixedChange = async (next) => {
+    setFixedItems(next);
+    setFixedSaving(true);
+    try {
+      await saveFixedExpenses(year, month, next);
+    } catch (err) {
+      console.error(err);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setFixedSaving(false);
+    }
+  };
+
   const totals = useMemo(() => {
     let revenue = 0, expense = 0, overtime = 0, labor = 0;
     let revenueAll = 0; // hideRevenue 무시한 전체 매출 (참고용)
@@ -59,10 +80,11 @@ export default function TotalClosingPage() {
       overtime += o;
       labor += l;
     });
-    const totalExpense = expense + overtime + labor;
+    const fixed = fixedItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+    const totalExpense = expense + overtime + labor + fixed;
     const balance = revenue - totalExpense;
-    return { revenue, revenueAll, expense, overtime, labor, totalExpense, balance };
-  }, [sites, stats]);
+    return { revenue, revenueAll, expense, overtime, labor, fixed, totalExpense, balance };
+  }, [sites, stats, fixedItems]);
 
   // 프로젝트별 정렬: 매출 큰 순
   const sortedSites = useMemo(() => {
@@ -117,6 +139,12 @@ export default function TotalClosingPage() {
               <span className="label">잔업</span>
               <strong>{totals.overtime.toLocaleString()}원</strong>
             </div>
+            {isAdmin && (
+              <div className="closing-summary-item closing-summary-total">
+                <span className="label">고정지출</span>
+                <strong>{totals.fixed.toLocaleString()}원</strong>
+              </div>
+            )}
             <div className="closing-summary-item closing-summary-net">
               <span className="label">합계</span>
               <strong style={{ color: totals.balance >= 0 ? 'var(--success)' : 'var(--danger)' }}>
@@ -124,6 +152,16 @@ export default function TotalClosingPage() {
               </strong>
             </div>
           </div>
+
+          {isAdmin && (
+            <FixedExpensePanel
+              year={year}
+              month={month}
+              items={fixedItems}
+              onChange={handleFixedChange}
+              saving={fixedSaving}
+            />
+          )}
 
           <div className="card">
             <div className="card-body" style={{ padding: 0 }}>

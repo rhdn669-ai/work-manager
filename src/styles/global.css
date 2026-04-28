@@ -6722,6 +6722,183 @@ body {
   font-size: 11px;
 }
 
+/* ===== 고정지출 패널 (총마감) ===== */
+.fixed-expense-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--danger, #dc2626);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.fixed-expense-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.fixed-expense-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.fixed-expense-period {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.fixed-expense-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fixed-expense-saving {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.fixed-expense-empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 8px;
+}
+.fixed-expense-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fixed-expense-row {
+  display: grid;
+  grid-template-columns: 70px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary, #f9fafb);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.fixed-expense-cat {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-align: center;
+  white-space: nowrap;
+}
+.fixed-expense-row.fixed-expense-total-row .fixed-expense-cat {
+  background: transparent;
+}
+.fixed-expense-name {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fixed-expense-amount {
+  font-weight: 700;
+  color: var(--danger, #dc2626);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fixed-expense-row.fixed-expense-total-row {
+  background: #fff;
+  border: 2px solid var(--primary);
+  font-weight: 800;
+}
+.fixed-expense-row.fixed-expense-total-row .fixed-expense-name {
+  font-weight: 800;
+}
+.fixed-expense-row.fixed-expense-total-row .fixed-expense-amount {
+  font-size: 15px;
+}
+.fixed-expense-row-actions {
+  display: flex;
+  gap: 4px;
+}
+.btn.btn-xs {
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  border-radius: 6px;
+}
+.btn.btn-danger-text {
+  color: var(--danger, #dc2626);
+}
+
+/* 고정지출 입력 폼 */
+.fixed-expense-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.fixed-expense-form .form-row label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.fixed-expense-form .form-row select,
+.fixed-expense-form .form-row input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+.fixed-expense-form .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* 모바일/폴더블 — 항목을 2줄 레이아웃으로 */
+@media (max-width: 600px) {
+  .fixed-expense-row {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "cat name amount"
+      "actions actions actions";
+    row-gap: 6px;
+  }
+  .fixed-expense-cat { grid-area: cat; }
+  .fixed-expense-name { grid-area: name; }
+  .fixed-expense-amount { grid-area: amount; }
+  .fixed-expense-row-actions {
+    grid-area: actions;
+    justify-content: flex-end;
+    border-top: 1px dashed var(--border);
+    padding-top: 6px;
+  }
+  .fixed-expense-row.fixed-expense-total-row {
+    grid-template-areas:
+      "cat name amount";
+  }
+  .fixed-expense-row.fixed-expense-total-row .fixed-expense-row-actions {
+    display: none;
+  }
+}
+
+
 .total-closing-summary {
   background: var(--bg-secondary, #f8f9fa);
   border: 1px solid var(--border);
