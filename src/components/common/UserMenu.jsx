@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeModal from './PasswordChangeModal';
 import HintSettingModal from './HintSettingModal';
+import VehicleMileageModal from './VehicleMileageModal';
 
 export default function UserMenu() {
   const { userProfile } = useAuth();
   const [open, setOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
+  const [vehicleOpen, setVehicleOpen] = useState(false);
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -71,11 +73,23 @@ export default function UserMenu() {
               비밀번호 힌트 {hasHint ? '변경' : '설정'}
               {!hasHint && <span className="user-menu-badge-new">필요</span>}
             </button>
+            {userProfile.usesVehicle && (
+              <button type="button" className="user-menu-item" role="menuitem" onClick={() => { setOpen(false); setVehicleOpen(true); }}>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 17h14" />
+                  <path d="M5 17a2 2 0 0 1-2-2v-4l2-5h14l2 5v4a2 2 0 0 1-2 2" />
+                  <circle cx="7.5" cy="17" r="1.5" />
+                  <circle cx="16.5" cy="17" r="1.5" />
+                </svg>
+                차량 키로수 입력
+              </button>
+            )}
           </div>
         )}
       </div>
       <PasswordChangeModal isOpen={pwOpen} onClose={() => setPwOpen(false)} />
       <HintSettingModal isOpen={hintOpen} onClose={() => setHintOpen(false)} />
+      <VehicleMileageModal isOpen={vehicleOpen} onClose={() => setVehicleOpen(false)} />
     </>
   );
 }

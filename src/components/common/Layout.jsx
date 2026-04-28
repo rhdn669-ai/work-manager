@@ -4,8 +4,10 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import HintReminderBanner from './HintReminderBanner';
+import VehicleMileageModal from './VehicleMileageModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
+import { getMileage } from '../../services/vehicleMileageService';
 
 export default function Layout() {
   const { isImpersonating, impersonator, userProfile, stopImpersonation, isAdmin } = useAuth();
@@ -28,6 +30,21 @@ export default function Layout() {
 
   // 새 버전 배포 감지 — 토스트로 알림 후 사용자가 새로고침
   const { hasNewVersion, latestVersion } = useVersionCheck();
+
+  // 차량 운행자 — 이번달 키로수 미입력 시 자동 안내 모달 (1회 체크 / 로그인당 1회)
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+  const vehicleCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!userProfile?.uid || !userProfile?.usesVehicle) return;
+    if (vehicleCheckedRef.current) return;
+    vehicleCheckedRef.current = true;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    getMileage(userProfile.uid, y, m)
+      .then((rec) => { if (!rec) setVehicleModalOpen(true); })
+      .catch(() => { /* 무시 — 다음 로그인 때 재확인 */ });
+  }, [userProfile?.uid, userProfile?.usesVehicle]);
 
   // 모바일 뒤로가기 두 번 → 앱 종료 (대시보드 루트에서만 작동, iOS 제외)
   // iOS Safari에서는 두 번째 뒤로가기로도 종료 안 되고 이전 사이트로 이동만 하므로 비활성
@@ -130,6 +147,11 @@ export default function Layout() {
           </button>
         </div>
       )}
+      <VehicleMileageModal
+        isOpen={vehicleModalOpen}
+        onClose={() => setVehicleModalOpen(false)}
+        onSaved={() => setVehicleModalOpen(false)}
+      />
     </div>
   );
 }

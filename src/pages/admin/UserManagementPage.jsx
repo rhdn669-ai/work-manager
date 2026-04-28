@@ -20,6 +20,7 @@ export default function UserManagementPage() {
   const [form, setForm] = useState({
     name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
     leaveRemaining: '', canViewSalary: false,
+    usesVehicle: false, vehiclePlate: '',
   });
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false });
+    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, usesVehicle: false, vehiclePlate: '' });
     setShowModal(true);
   }
 
@@ -60,6 +61,8 @@ export default function UserManagementPage() {
       fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
       leaveRemaining: bal ? String(bal.remainingDays) : '',
       canViewSalary: !!user.canViewSalary,
+      usesVehicle: !!user.usesVehicle,
+      vehiclePlate: user.vehiclePlate || '',
     });
     setShowModal(true);
   }
@@ -76,6 +79,8 @@ export default function UserManagementPage() {
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
+          usesVehicle: !!form.usesVehicle,
+          vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
         };
         if (form.password !== '') updateData.password = form.password;
         await updateUser(editUser.uid, updateData);
@@ -89,6 +94,8 @@ export default function UserManagementPage() {
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
+          usesVehicle: !!form.usesVehicle,
+          vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           ...(form.password !== '' && { password: form.password }),
         });
         if (form.joinDate) await initLeaveBalance(userId, form.joinDate);
@@ -367,6 +374,36 @@ export default function UserManagementPage() {
               </div>
             );
           })()}
+          <div className="form-group">
+            <div className="toggle-row">
+              <div className="toggle-row-text">
+                <span className="toggle-row-title">차량 운행자 지정</span>
+                <small className="text-muted">
+                  지정 시 매월 누적 키로수를 입력하지 않으면 로그인할 때마다 안내 모달이 표시됩니다.
+                </small>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={!!form.usesVehicle}
+                  onChange={(e) => setForm({ ...form, usesVehicle: e.target.checked })}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </div>
+          {form.usesVehicle && (
+            <div className="form-group">
+              <label>차량번호 <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(선택)</span></label>
+              <input
+                type="text"
+                value={form.vehiclePlate}
+                onChange={(e) => setForm({ ...form, vehiclePlate: e.target.value })}
+                placeholder="예: 12가 3456"
+                maxLength={20}
+              />
+            </div>
+          )}
           {editUser && balances[editUser.uid] && (
             <div className="form-group">
               <label>

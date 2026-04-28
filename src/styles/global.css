@@ -8439,3 +8439,332 @@ body {
 @keyframes spinner {
   to { transform: rotate(360deg); }
 }
+
+/* ===== 차량 운행 키로수 모달 ===== */
+.vehicle-mileage-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.vehicle-mileage-greet {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--primary-softer);
+  border: 1px solid #fde2a4;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.vehicle-mileage-greet strong {
+  color: var(--primary-hover);
+  font-weight: 800;
+}
+.vehicle-mileage-info {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.vmm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.vmm-label {
+  color: var(--text-light);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+.vmm-value {
+  color: var(--text);
+  font-size: 14px;
+  text-align: right;
+}
+.vmm-value strong {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.vmm-driven {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--success);
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+}
+.vmm-driven strong {
+  font-weight: 800;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.vmm-driven.is-invalid {
+  color: var(--danger);
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.vmm-error {
+  font-size: 13px;
+  color: var(--danger);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+/* ===== 관리자 — 운행일지 페이지 ===== */
+.vehicle-log-page .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.vehicle-log-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 14px;
+}
+.vehicle-log-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vehicle-log-filters select {
+  height: var(--btn-h-md);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  min-width: 84px;
+}
+.vehicle-log-search {
+  height: var(--btn-h-md);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  min-width: 180px;
+}
+.vehicle-log-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.vehicle-log-summary-item {
+  font-size: 13px;
+  color: var(--text-light);
+}
+.vehicle-log-summary-item strong {
+  font-size: 16px;
+  color: var(--text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin: 0 2px;
+}
+.vehicle-log-summary-item.is-warn strong { color: var(--danger); }
+.vehicle-log-summary-item.is-ok strong { color: var(--success); }
+
+.vehicle-log-empty {
+  padding: 32px 16px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+}
+.vehicle-log-empty p { margin-bottom: 6px; }
+
+.vehicle-log-table-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.vehicle-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.vehicle-log-table thead th {
+  background: var(--bg-subtle);
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.vehicle-log-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.vehicle-log-table tbody tr:last-child td { border-bottom: none; }
+.vehicle-log-table tbody tr:hover td { background: var(--primary-softer); }
+.vehicle-log-table .num-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vehicle-log-table tbody tr.is-missing td { background: #fff7ed; }
+.vehicle-log-table tbody tr.is-missing:hover td { background: #ffedd5; }
+.vehicle-log-missing-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.vehicle-log-cards { display: none; }
+
+@media (max-width: 768px) {
+  .vehicle-log-toolbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .vehicle-log-filters { width: 100%; }
+  .vehicle-log-search {
+    flex: 1;
+    min-width: 0;
+  }
+  .vehicle-log-summary {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+  .vehicle-log-summary-item {
+    font-size: 12px;
+    flex: 1;
+    text-align: center;
+  }
+  .vehicle-log-summary-item strong { font-size: 15px; display: block; margin-top: 2px; }
+  .vehicle-log-table-wrap { display: none; }
+  .vehicle-log-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .vehicle-log-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .vehicle-log-card.is-missing {
+    background: #fff7ed;
+    border-color: #fed7aa;
+  }
+  .vlc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .vlc-name {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .vlc-name strong {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .vlc-plate {
+    font-size: 12px;
+    color: var(--text-light);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .vlc-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .vlc-badge-ok {
+    color: var(--success);
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+  }
+  .vlc-badge-missing {
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+  }
+  .vlc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .vlc-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+  }
+  .vlc-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .vlc-value {
+    font-size: 14px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .vlc-value.vlc-strong { font-weight: 800; }
+  .vlc-value.vlc-driven {
+    color: var(--success);
+    font-weight: 700;
+  }
+}
+
+/* 매우 좁은 폴더블 외부 화면 (~360px) */
+@media (max-width: 380px) {
+  .vehicle-log-filters select { min-width: 72px; }
+  .vehicle-log-search { min-width: 0; }
+  .vlc-grid { grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .vlc-name strong { font-size: 14px; }
+}

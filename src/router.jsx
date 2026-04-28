@@ -19,6 +19,7 @@ import SiteManagementPage from './pages/admin/SiteManagementPage';
 import EventManagementPage from './pages/admin/EventManagementPage';
 import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import TotalClosingPage from './pages/admin/TotalClosingPage';
+import VehicleLogPage from './pages/admin/VehicleLogPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 
@@ -70,6 +71,7 @@ const router = createBrowserRouter([
           { path: '/admin/events', element: <EventManagementPage /> },
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
+          { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
         ],
       },
     ],
