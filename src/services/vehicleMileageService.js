@@ -1,6 +1,6 @@
 import {
-  collection, doc, getDoc, getDocs, setDoc,
-  query, where, orderBy, limit,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc,
+  query, where,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -26,19 +26,18 @@ export async function getMileage(uid, year, month) {
 }
 
 // 동일 사용자의 가장 최근(이번달 이전) 누적 km 1건
+// 사용자×월 1건이라 전체를 받아 JS로 정렬 — 복합 인덱스 불필요
 export async function getLatestPrevMileage(uid, year, month) {
   const targetYm = ymKey(year, month);
-  const q = query(
-    colRef,
-    where('uid', '==', uid),
-    where('yearMonth', '<', targetYm),
-    orderBy('yearMonth', 'desc'),
-    limit(1),
-  );
+  const q = query(colRef, where('uid', '==', uid));
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() };
+  const earlier = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => r.yearMonth && r.yearMonth < targetYm);
+  if (earlier.length === 0) return null;
+  earlier.sort((a, b) => (a.yearMonth < b.yearMonth ? 1 : a.yearMonth > b.yearMonth ? -1 : 0));
+  return earlier[0];
 }
 
 export async function saveMileage(uid, year, month, payload) {
@@ -65,6 +64,18 @@ export async function saveMileage(uid, year, month, payload) {
   );
 }
 
+// 관리자 — 특정 사용자×월 기록 삭제 (deterministic docId 기반)
+export async function deleteMileage(uid, year, month) {
+  const ref = doc(db, 'vehicleMileages', docId(uid, year, month));
+  await deleteDoc(ref);
+}
+
+// 관리자 — Firestore 문서 id로 직접 삭제 (legacy/auto-id 문서 안전 삭제)
+export async function deleteMileageById(id) {
+  if (!id) return;
+  await deleteDoc(doc(db, 'vehicleMileages', id));
+}
+
 // 관리자 — 특정 월 전체 운행자 기록
 export async function getMileagesByMonth(year, month) {
   const ym = ymKey(year, month);
@@ -74,8 +85,11 @@ export async function getMileagesByMonth(year, month) {
 }
 
 // 관리자 — 특정 사용자의 전체 운행 기록 (최신순)
+// JS 정렬로 처리 — 복합 인덱스 불필요
 export async function getMileagesByUser(uid) {
-  const q = query(colRef, where('uid', '==', uid), orderBy('yearMonth', 'desc'));
+  const q = query(colRef, where('uid', '==', uid));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.yearMonth < b.yearMonth ? 1 : a.yearMonth > b.yearMonth ? -1 : 0));
 }

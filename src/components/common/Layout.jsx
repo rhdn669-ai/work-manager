@@ -32,6 +32,8 @@ export default function Layout() {
   const { hasNewVersion, latestVersion } = useVersionCheck();
 
   // 차량 운행자 — 이번달 키로수 미입력 시 자동 안내 모달 (1회 체크 / 로그인당 1회)
+  // 자동 안내 시작일 — 이 날짜 이전에는 자동 모달이 뜨지 않음 (수동 메뉴 입력은 항상 가능)
+  const VEHICLE_PROMPT_START_DATE = '2026-05-01';
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const vehicleCheckedRef = useRef(false);
   useEffect(() => {
@@ -39,6 +41,8 @@ export default function Layout() {
     if (vehicleCheckedRef.current) return;
     vehicleCheckedRef.current = true;
     const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (today < VEHICLE_PROMPT_START_DATE) return;
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
     getMileage(userProfile.uid, y, m)
