@@ -20,6 +20,7 @@ import EventManagementPage from './pages/admin/EventManagementPage';
 import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import TotalClosingPage from './pages/admin/TotalClosingPage';
 import VehicleLogPage from './pages/admin/VehicleLogPage';
+import DataCleanupPage from './pages/admin/DataCleanupPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 
@@ -72,6 +73,7 @@ const router = createBrowserRouter([
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
+          { path: '/admin/data-cleanup', element: <DataCleanupPage /> },
         ],
       },
     ],

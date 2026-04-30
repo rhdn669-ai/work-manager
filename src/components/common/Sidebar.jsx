@@ -29,6 +29,7 @@ function buildAllItems({ isAdmin, canApproveLeave }) {
     { key: 'manage-leave', to: '/manage/leave', label: '우리 팀', show: canApproveLeave && !isAdmin, end: true },
     { key: 'admin-events', to: '/admin/events', label: '이벤트 · 공지', show: isAdmin },
     { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', show: isAdmin },
+    { key: 'admin-data-cleanup', to: '/admin/data-cleanup', label: '데이터 정리', show: isAdmin },
   ];
 }
 

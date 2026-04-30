@@ -185,17 +185,17 @@ export default function SiteClosingPage() {
       // 다른 프로젝트(현재 사이트 제외) 같은 월의 직원 일별 공수 분포
       // { 이름: { day: { total, sources: [{siteName, qty}] } } }
       const allSitesNameMap = Object.fromEntries((await getAllSites()).map((x) => [x.id, x.name]));
-      const currentClosingId = `${siteId}-${y}-${m}`;
+      const currentClosingId = `${siteId}_${y}_${String(m).padStart(2, '0')}`;
       const otherDaily = {};
       allEmpItemsThisMonth.forEach((it) => {
-        // 현재 사이트 제외 — siteId 또는 closingId 둘 중 하나라도 일치하면 자기 항목으로 간주
-        // (legacy 데이터에 siteId 필드가 없을 수 있어 closingId 까지 함께 체크)
-        if (it.siteId && it.siteId === siteId) return;
-        if (it.closingId === currentClosingId) return;
-        if (!it.siteId && !it.closingId) return; // 식별 불가 항목은 안전하게 제외
+        // closingId 포맷: `{siteId}_{year}_{MM}` — siteId 필드가 누락된 legacy 항목의 출처 복원용
+        const effectiveSiteId = it.siteId || (it.closingId ? String(it.closingId).split('_')[0] : '');
+        if (!effectiveSiteId) return; // 출처 식별 불가 → 합계 제외
+        if (effectiveSiteId === siteId) return; // 현재 사이트 본인 항목 제외
+        if (it.closingId === currentClosingId) return; // 안전망
         const name = it.detail || '';
         if (!name) return;
-        const siteName = allSitesNameMap[it.siteId] || '(다른 프로젝트)';
+        const siteName = allSitesNameMap[effectiveSiteId] || '(삭제된 프로젝트)';
         if (!otherDaily[name]) otherDaily[name] = {};
         const dq = it.dailyQuantities || {};
         for (const [day, qty] of Object.entries(dq)) {
