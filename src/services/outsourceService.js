@@ -338,13 +338,18 @@ export async function removeVendorProject(vendorId, project) {
 }
 
 // ── 기존 공수표에서 프리랜서·업체 일괄 가져오기 ──────
-// 모든 siteClosingItems 중 itemType이 freelancer/daily이고 이름이 있는 것에서 추출.
+// itemType별 분류 규칙:
+//   - employee:    스킵 (직원은 외주 아님)
+//   - freelancer:  detail=이름 → 프리랜서로 등록 (workerType='freelancer')
+//   - daily:       detail=이름 → 프리랜서 컬렉션에 일용직으로 등록 (workerType='daily')
+//   - vendor:      vendor=업체명 → 업체 등록. detail=소속직원명은 vendor가 있을 때만 프리랜서로 등록(소속 직원으로 연결)
+//   - vendor_case: vendor=업체명 → 업체 등록. detail은 프로젝트명이라 프리랜서로 등록하지 않음
 // 같은 이름은 최근 값(updatedAt 기준) 우선. 기존 외주관리에 이미 있는 이름은 skip.
 export async function importFromSiteClosings() {
   const snap = await getDocs(closingItemsRef);
   const items = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((it) => it.itemType !== 'employee' && (it.detail || '').trim());
+    .filter((it) => it.itemType && it.itemType !== 'employee');
 
   // 최신순 정렬 (최근 값 우선 채택)
   items.sort((a, b) => {
@@ -353,20 +358,33 @@ export async function importFromSiteClosings() {
     return tb - ta;
   });
 
+  // key = 이름, value = { name, vendor, dailyRate, workerType }
   const freelancerMap = new Map();
   const vendorSet = new Set();
   for (const it of items) {
     const name = (it.detail || '').trim();
     const vendor = (it.vendor || '').trim();
+    const type = it.itemType;
+
+    // 업체는 itemType이 vendor/vendor_case일 때만 등록
+    if ((type === 'vendor' || type === 'vendor_case') && vendor) {
+      vendorSet.add(vendor);
+    }
+
+    // 프리랜서 컬렉션 등록 대상 결정
     if (!name) continue;
+    if (type === 'vendor_case') continue; // detail=프로젝트명이라 사람으로 등록 X
+    if (type === 'vendor' && !vendor) continue; // 업체 공수인데 업체 미지정이면 분류 모호 → 스킵
+    if (type !== 'freelancer' && type !== 'daily' && type !== 'vendor') continue;
+
     if (!freelancerMap.has(name)) {
       freelancerMap.set(name, {
         name,
-        vendor,
+        vendor: type === 'vendor' ? vendor : '',
         dailyRate: Number(it.unitPrice) || 0,
+        workerType: type === 'daily' ? 'daily' : 'freelancer',
       });
     }
-    if (vendor) vendorSet.add(vendor);
   }
 
   const [existingF, existingV] = await Promise.all([getFreelancers(), getVendors()]);

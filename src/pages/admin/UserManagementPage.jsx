@@ -20,7 +20,7 @@ export default function UserManagementPage() {
   const [form, setForm] = useState({
     name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
     leaveRemaining: '', canViewSalary: false,
-    usesVehicle: false, vehiclePlate: '',
+    usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '',
   });
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, usesVehicle: false, vehiclePlate: '' });
+    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
     setShowModal(true);
   }
 
@@ -63,6 +63,7 @@ export default function UserManagementPage() {
       canViewSalary: !!user.canViewSalary,
       usesVehicle: !!user.usesVehicle,
       vehiclePlate: user.vehiclePlate || '',
+      vehicleMonthlyCost: user.vehicleMonthlyCost ? Number(user.vehicleMonthlyCost).toLocaleString() : '',
     });
     setShowModal(true);
   }
@@ -81,6 +82,9 @@ export default function UserManagementPage() {
           canViewSalary: !!form.canViewSalary,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
+          vehicleMonthlyCost: form.usesVehicle
+            ? (Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0)
+            : 0,
         };
         if (form.password !== '') updateData.password = form.password;
         await updateUser(editUser.uid, updateData);
@@ -96,6 +100,9 @@ export default function UserManagementPage() {
           canViewSalary: !!form.canViewSalary,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
+          vehicleMonthlyCost: form.usesVehicle
+            ? (Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0)
+            : 0,
           ...(form.password !== '' && { password: form.password }),
         });
         if (form.joinDate) await initLeaveBalance(userId, form.joinDate);
@@ -393,16 +400,27 @@ export default function UserManagementPage() {
             </div>
           </div>
           {form.usesVehicle && (
-            <div className="form-group">
-              <label>차량번호 <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(선택)</span></label>
-              <input
-                type="text"
-                value={form.vehiclePlate}
-                onChange={(e) => setForm({ ...form, vehiclePlate: e.target.value })}
-                placeholder="예: 12가 3456"
-                maxLength={20}
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label>차량번호 <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(선택)</span></label>
+                <input
+                  type="text"
+                  value={form.vehiclePlate}
+                  onChange={(e) => setForm({ ...form, vehiclePlate: e.target.value })}
+                  placeholder="예: 12가 3456"
+                  maxLength={20}
+                />
+              </div>
+              <div className="form-group">
+                <label>차량 월 금액 <span className="text-muted text-sm" style={{ fontWeight: 400 }}>(원, 선택)</span></label>
+                <MoneyInput
+                  value={form.vehicleMonthlyCost}
+                  onChange={(e) => setForm({ ...form, vehicleMonthlyCost: e.target.value })}
+                  placeholder="예: 500,000"
+                />
+                <small className="text-muted">리스료·보조금 등 매월 동일하게 들어가는 금액. 운행일지에 함께 표시됩니다.</small>
+              </div>
+            </>
           )}
           {editUser && balances[editUser.uid] && (
             <div className="form-group">

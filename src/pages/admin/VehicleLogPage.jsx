@@ -10,6 +10,10 @@ function fmt(n) {
   if (n == null || isNaN(Number(n))) return '-';
   return Number(n).toLocaleString();
 }
+function fmtMoney(n) {
+  if (n == null || isNaN(Number(n)) || Number(n) === 0) return '-';
+  return Number(n).toLocaleString() + '원';
+}
 // 전월 대비 운행 km 차이 — +/- 부호 + 천단위 콤마, null이면 '-'
 function fmtDelta(d) {
   if (d == null || isNaN(Number(d))) return '-';
@@ -164,6 +168,7 @@ export default function VehicleLogPage() {
         recordId: rec?.id || null, // Firestore 문서 id — 삭제·수정 시 실제 ID 사용
         name: u.name,
         plate: u.vehiclePlate || rec?.plate || '',
+        monthlyCost: Number(u.vehicleMonthlyCost) || 0,
         odometer: rec?.odometer ?? null,
         prevOdometer: rec?.prevOdometer ?? null,
         drivenKm,
@@ -191,6 +196,7 @@ export default function VehicleLogPage() {
 
   const missingCount = rows.filter((r) => !r.hasInput).length;
   const totalDrivenKm = rows.reduce((sum, r) => sum + (Number(r.drivenKm) || 0), 0);
+  const totalMonthlyCost = rows.reduce((sum, r) => sum + (Number(r.monthlyCost) || 0), 0);
 
   const yearOptions = [];
   const curY = now.getFullYear();
@@ -230,6 +236,11 @@ export default function VehicleLogPage() {
           <span className="vehicle-log-summary-item">
             합계 운행 <strong>{fmt(totalDrivenKm)}</strong> km
           </span>
+          {totalMonthlyCost > 0 && (
+            <span className="vehicle-log-summary-item">
+              합계 월 금액 <strong>{fmt(totalMonthlyCost)}</strong> 원
+            </span>
+          )}
         </div>
       </div>
 
@@ -248,6 +259,7 @@ export default function VehicleLogPage() {
                 <tr>
                   <th>운행자</th>
                   <th>차량번호</th>
+                  <th className="num-col">월 금액</th>
                   <th className="num-col">이전월 누적</th>
                   <th className="num-col">이번월 누적</th>
                   <th className="num-col">운행 km</th>
@@ -269,6 +281,7 @@ export default function VehicleLogPage() {
                     <tr key={r.uid} className={r.hasInput ? '' : 'is-missing'}>
                       <td><strong>{r.name}</strong></td>
                       <td>{r.plate || <span className="text-muted">-</span>}</td>
+                      <td className="num-col">{r.monthlyCost > 0 ? fmtMoney(r.monthlyCost) : <span className="text-muted">-</span>}</td>
                       <td className="num-col">{fmt(r.prevOdometer)}</td>
                       <td className="num-col">{r.hasInput ? <strong>{fmt(r.odometer)}</strong> : <span className="vehicle-log-missing-tag">미입력</span>}</td>
                       <td className="num-col">{r.hasInput ? fmt(r.drivenKm) : '-'}</td>
@@ -317,6 +330,12 @@ export default function VehicleLogPage() {
                     : <span className="vlc-badge vlc-badge-missing">미입력</span>}
                 </div>
                 <div className="vlc-grid">
+                  {r.monthlyCost > 0 && (
+                    <div className="vlc-cell vlc-cell-cost">
+                      <span className="vlc-label">월 금액</span>
+                      <span className="vlc-value vlc-cost">{fmtMoney(r.monthlyCost)}</span>
+                    </div>
+                  )}
                   <div className="vlc-cell">
                     <span className="vlc-label">이전월</span>
                     <span className="vlc-value">{fmt(r.prevOdometer)} km</span>

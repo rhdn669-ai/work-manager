@@ -8759,6 +8759,23 @@ body {
     color: var(--success);
     font-weight: 700;
   }
+  .vlc-cell.vlc-cell-cost {
+    grid-column: 1 / -1;
+    padding: 6px 10px;
+    background: var(--pastel-amber-bg, #fff8e7);
+    border: 1px solid var(--pastel-amber-border, #f2d48a);
+    border-radius: 6px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .vlc-cell.vlc-cell-cost .vlc-label { font-size: 12px; }
+  .vlc-value.vlc-cost {
+    color: #92400e;
+    font-weight: 800;
+    font-size: 15px;
+  }
 }
 
 /* 매우 좁은 폴더블 외부 화면 (~360px) */
