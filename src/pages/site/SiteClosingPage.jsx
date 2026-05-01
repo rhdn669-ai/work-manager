@@ -816,7 +816,7 @@ export default function SiteClosingPage() {
       <div className="card">
         <div className="card-body">
           <p>이 프로젝트에 접근 권한이 없습니다.</p>
-          <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록으로</button>
+          <button className="btn btn-outline" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>목록으로</button>
         </div>
       </div>
     );
@@ -872,7 +872,7 @@ export default function SiteClosingPage() {
           {canEditSite(site) && !isCompleted && (
             <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
           )}
-          <button className="btn btn-outline" onClick={() => navigate('/sites')}>목록</button>
+          <button className="btn btn-outline" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>목록</button>
         </div>
       </div>
 

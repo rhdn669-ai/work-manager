@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getFinanceItems, getClosingItems } from '../../services/siteService';
 import { getFixedExpenses, saveFixedExpenses } from '../../services/fixedExpenseService';
@@ -13,8 +13,21 @@ const isOvertimeItem = (f) => {
 export default function TotalClosingPage() {
   const { isAdmin, canViewSalary } = useAuth();
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlY = Number(searchParams.get('y'));
+  const urlM = Number(searchParams.get('m'));
+  const year = (urlY >= 2024 && urlY <= 2030) ? urlY : now.getFullYear();
+  const month = (urlM >= 1 && urlM <= 12) ? urlM : (now.getMonth() + 1);
+  const setYear = (v) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('y', String(v));
+    setSearchParams(next, { replace: false });
+  };
+  const setMonth = (v) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('m', String(v));
+    setSearchParams(next, { replace: false });
+  };
   const [sites, setSites] = useState([]);
   const [stats, setStats] = useState({}); // { siteId: { revenue, expense, overtime, labor } }
   const [loading, setLoading] = useState(true);

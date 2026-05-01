@@ -35,10 +35,24 @@ export default function SiteListPage() {
   const [siteStats, setSiteStats] = useState({});
   const [loading, setLoading] = useState(true);
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const urlY = Number(searchParams.get('y'));
+  const urlM = Number(searchParams.get('m'));
+  const year = (urlY >= 2024 && urlY <= 2030) ? urlY : now.getFullYear();
+  const month = (urlM >= 1 && urlM <= 12) ? urlM : (now.getMonth() + 1);
+  function updateParams(next) {
+    const merged = {
+      ...(searchParams.get('filter') ? { filter: searchParams.get('filter') } : {}),
+      ...(searchParams.get('y') ? { y: searchParams.get('y') } : {}),
+      ...(searchParams.get('m') ? { m: searchParams.get('m') } : {}),
+      ...next,
+    };
+    Object.keys(merged).forEach((k) => { if (merged[k] === '' || merged[k] == null) delete merged[k]; });
+    setSearchParams(merged, { replace: false });
+  }
+  const setYear = (v) => updateParams({ y: String(v) });
+  const setMonth = (v) => updateParams({ m: String(v) });
   const filter = searchParams.get('filter') || 'all';
-  const setFilter = (val) => setSearchParams(val === 'all' ? {} : { filter: val }, { replace: false });
+  const setFilter = (val) => updateParams({ filter: val === 'all' ? '' : val });
 
   // 프로젝트 추가/수정 모달
   const [showModal, setShowModal] = useState(false);
