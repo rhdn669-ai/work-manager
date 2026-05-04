@@ -8,6 +8,7 @@ function buildFixedHolidays(year) {
   return [
     { date: `${year}-01-01`, name: '신정' },
     { date: `${year}-03-01`, name: '삼일절' },
+    { date: `${year}-05-01`, name: '근로자의 날' },
     { date: `${year}-05-05`, name: '어린이날' },
     { date: `${year}-06-06`, name: '현충일' },
     { date: `${year}-08-15`, name: '광복절' },

@@ -47,6 +47,36 @@ function leaveBadgeLabel(type) {
   return '연차';
 }
 
+// 양산형 프로젝트 자동 채움 범위: 과거 월=전체 평일, 현재 월=오늘까지, 미래 월=0
+function autofillUpToDay(year, month) {
+  const today = new Date();
+  const ty = today.getFullYear();
+  const tm = today.getMonth() + 1;
+  if (year < ty || (year === ty && month < tm)) return daysInMonth(year, month);
+  if (year === ty && month === tm) return today.getDate();
+  return 0;
+}
+
+// 직원 dailyQuantities에서 평일 빈 칸을 1로 채움 (수동값/연차일/공휴일/주말 보존)
+function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay }) {
+  if (upToDay <= 0) return { newDq: oldDq || {}, changed: false };
+  const newDq = { ...(oldDq || {}) };
+  let changed = false;
+  for (let d = 1; d <= upToDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    if (dow === 0 || dow === 6) continue;
+    const iso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (holidaySet.has(iso)) continue;
+    if (leaveMap && leaveMap[d]) continue;
+    const cur = newDq[d];
+    if (cur === undefined || cur === null || cur === '') {
+      newDq[d] = 1;
+      changed = true;
+    }
+  }
+  return { newDq, changed };
+}
+
 const AUTO_SAVE_DELAY_MS = 800;
 
 export default function SiteClosingPage() {
@@ -271,9 +301,37 @@ export default function SiteClosingPage() {
       }
       setLeaveDays(ldByName);
 
-      setItems(its);
+      // 양산형 프로젝트: 직원 평일 빈 칸을 오늘까지 1로 자동 채움 (단발성은 제외)
+      let finalItems = its;
+      if (s?.projectType === 'recurring') {
+        const upToDay = autofillUpToDay(y, m);
+        if (upToDay > 0) {
+          const updates = [];
+          finalItems = its.map((it) => {
+            if (it.itemType !== 'employee') return it;
+            const leaveMap = ldByName[it.detail] || {};
+            const { newDq, changed } = autofillEmployeeDq({
+              oldDq: it.dailyQuantities,
+              year: y,
+              month: m,
+              holidaySet: hSet,
+              leaveMap,
+              upToDay,
+            });
+            if (!changed) return it;
+            const quantity = Object.values(newDq).reduce((sum, v) => sum + Number(v || 0), 0);
+            const unitPrice = Number(it.unitPrice) || 0;
+            const amount = Math.round(unitPrice * quantity);
+            updates.push(updateClosingItem(it.id, { dailyQuantities: newDq, quantity, amount }));
+            return { ...it, dailyQuantities: newDq, quantity, amount };
+          });
+          if (updates.length > 0) await Promise.all(updates);
+        }
+      }
+
+      setItems(finalItems);
       const buf = {};
-      its.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
+      finalItems.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
       setEditBuf(buf);
       const fbuf = {};
       fins.forEach((f) => { fbuf[f.id] = { ...f }; });
@@ -517,7 +575,27 @@ export default function SiteClosingPage() {
     const monthlySalary = Number(user.fixedCost) || 0;
     const workingDays = getWorkingDaysInMonth(y, m);
     const dailyRate = workingDays > 0 ? Math.round(monthlySalary / workingDays) : 0;
-    // 출근일자는 비운 상태로 생성 — 사용자가 날짜별로 직접 기록
+    // 양산형: 평일 빈 칸을 오늘까지 1로 자동 채움 / 단발성: 빈 상태로 생성
+    let initDq = {};
+    let initQuantity = 0;
+    let initAmount = 0;
+    if (site?.projectType === 'recurring') {
+      const upToDay = autofillUpToDay(y, m);
+      if (upToDay > 0) {
+        const leaveMap = leaveDays[user.name] || {};
+        const { newDq } = autofillEmployeeDq({
+          oldDq: {},
+          year: y,
+          month: m,
+          holidaySet,
+          leaveMap,
+          upToDay,
+        });
+        initDq = newDq;
+        initQuantity = Object.values(newDq).reduce((sum, v) => sum + Number(v || 0), 0);
+        initAmount = Math.round(dailyRate * initQuantity);
+      }
+    }
     await addClosingItem(siteId, y, m, {
       no: nextNo,
       vendor: '직원',
@@ -525,9 +603,9 @@ export default function SiteClosingPage() {
       category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
       itemType: resolvedType,
       unitPrice: dailyRate,
-      dailyQuantities: {},
-      quantity: 0,
-      amount: 0,
+      dailyQuantities: initDq,
+      quantity: initQuantity,
+      amount: initAmount,
       order: nextOrder,
       vendorLocked: true,
       detailLocked: true,

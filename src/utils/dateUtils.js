@@ -126,6 +126,7 @@ function _getKoreanHolidaysMap(year) {
   const fixed = {
     [`${year}-01-01`]: '신정',
     [`${year}-03-01`]: '삼일절',
+    [`${year}-05-01`]: '근로자의 날',
     [`${year}-05-05`]: '어린이날',
     [`${year}-06-06`]: '현충일',
     [`${year}-08-15`]: '광복절',
