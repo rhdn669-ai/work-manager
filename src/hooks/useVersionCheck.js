@@ -8,6 +8,7 @@ const RELOAD_KEY = 'wm_last_auto_reload_ts';
 export function useVersionCheck() {
   const currentVersion = __APP_VERSION__;
   const [latestVersion, setLatestVersion] = useState(currentVersion);
+  const [latestBuildTime, setLatestBuildTime] = useState(null);
   const intervalRef = useRef(null);
   const inFlightRef = useRef(false);
   const lastActivityRef = useRef(Date.now());
@@ -48,6 +49,7 @@ export function useVersionCheck() {
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled || !data?.version) return;
+        if (data.buildTime) setLatestBuildTime(data.buildTime);
         if (data.version === currentVersion) return;
         setLatestVersion(data.version);
         if (canAutoReload()) {
@@ -80,5 +82,5 @@ export function useVersionCheck() {
 
   const hasNewVersion = !!latestVersion && latestVersion !== currentVersion;
 
-  return { hasNewVersion, currentVersion, latestVersion };
+  return { hasNewVersion, currentVersion, latestVersion, latestBuildTime };
 }

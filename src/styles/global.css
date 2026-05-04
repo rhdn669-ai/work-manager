@@ -378,6 +378,10 @@ body {
 }
 
 .header-version {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
   font-size: 14px;
   color: var(--text-muted);
   font-weight: 700;
@@ -386,6 +390,23 @@ body {
   align-self: flex-end;
   padding-bottom: 4px;
   letter-spacing: 0.02em;
+}
+
+.header-version-num {
+  font-size: inherit;
+}
+
+.header-version-rel {
+  font-weight: 500;
+  opacity: 0.75;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.update-toast-rel {
+  font-weight: 500;
+  opacity: 0.85;
+  margin-left: 2px;
 }
 
 .header-refresh-btn {

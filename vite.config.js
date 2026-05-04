@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { readFileSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
 const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'))
+const BUILD_TIME = new Date().toISOString()
 
 // 빌드 시 public/version.json 자동 생성 플러그인
 function versionJsonPlugin() {
@@ -11,7 +12,7 @@ function versionJsonPlugin() {
     buildStart() {
       writeFileSync(
         resolve('./public/version.json'),
-        JSON.stringify({ version }, null, 2)
+        JSON.stringify({ version, buildTime: BUILD_TIME }, null, 2)
       )
     },
   }
@@ -21,6 +22,7 @@ function versionJsonPlugin() {
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
+    __APP_BUILD_TIME__: JSON.stringify(BUILD_TIME),
   },
   plugins: [react(), versionJsonPlugin()],
   build: {
