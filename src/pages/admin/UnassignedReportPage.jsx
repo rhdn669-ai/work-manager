@@ -48,7 +48,8 @@ export default function UnassignedReportPage() {
       try {
         const [u, s] = await Promise.all([getUsers(), getAllSites()]);
         // 활성 직원은 모두 포함 (대표·부사장·관리자 role도 — 본인 연차/배정도 보여줘야 함)
-        setUsers(u.filter((x) => x.isActive !== false));
+        // 'iopn' 계정은 시스템/회사 계정이므로 직원 배치현황에서 제외
+        setUsers(u.filter((x) => x.isActive !== false && (x.name || '').trim().toLowerCase() !== 'iopn'));
         setSites(s);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }

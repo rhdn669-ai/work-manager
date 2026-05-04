@@ -7057,20 +7057,20 @@ body {
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
 }
 
-/* 타입별 카드 — 흰 배경 + 좌측 색 테두리로만 구분 */
-.closing-card-freelancer { border-left: 3px solid #60a5fa; }
+/* 타입별 카드 — 좌측 띠 색 + 같은 계열 파스텔 배경으로 전체 구분 */
+.closing-card-freelancer { border-left: 3px solid #60a5fa; background: #dbeafe; }
 .closing-card-freelancer:hover { border-color: #93c5fd; border-left-color: #60a5fa; }
 
-.closing-card-daily { border-left: 3px solid #fb923c; }
+.closing-card-daily { border-left: 3px solid #fb923c; background: #ffedd5; }
 .closing-card-daily:hover { border-color: #fdba74; border-left-color: #fb923c; }
 
-.closing-card-employee { border-left: 3px solid #818cf8; }
+.closing-card-employee { border-left: 3px solid #818cf8; background: #e0e7ff; }
 .closing-card-employee:hover { border-color: #a5b4fc; border-left-color: #818cf8; }
 
-.closing-card-vendor { border-left: 3px solid #34d399; }
+.closing-card-vendor { border-left: 3px solid #34d399; background: #d1fae5; }
 .closing-card-vendor:hover { border-color: #6ee7b7; border-left-color: #34d399; }
 
-.closing-card-vendor_case { border-left: 3px solid #f59e0b; }
+.closing-card-vendor_case { border-left: 3px solid #f59e0b; background: #fef3c7; }
 .closing-card-vendor_case:hover { border-color: #fcd34d; border-left-color: #f59e0b; }
 
 
