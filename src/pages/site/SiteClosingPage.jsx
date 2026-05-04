@@ -12,7 +12,7 @@ import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getAllOvertimeRecords } from '../../services/attendanceService';
 import { getEvents } from '../../services/eventService';
 import { getKoreanHolidayDates } from '../../utils/koreanHolidays';
-import { getFreelancers, getVendors, getRateForDate } from '../../services/outsourceService';
+import { getFreelancers, getVendors, getRateForDate, addFreelancer } from '../../services/outsourceService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
@@ -119,6 +119,8 @@ export default function SiteClosingPage() {
   const [closingTab, setClosingTab] = useState('all'); // 'all' | 'employee' | 'freelancer' | 'daily' | 'vendor'
   // 프리랜서/일용직 추가 모달
   const [freelancerPickerMode, setFreelancerPickerMode] = useState(null); // 'freelancer' | 'daily' | null
+  // 프리랜서/일용직 직접 입력 모달
+  const [directInputModal, setDirectInputModal] = useState(null); // { type, name, vendor, dailyRate } | null
 
   function resetVendorPicker() {
     setVendorPickerMode(null);
@@ -409,11 +411,55 @@ export default function SiteClosingPage() {
       });
       setLastSavedAt(new Date());
       setSaveError(null);
+      // 프리랜서/일용직 직접입력 → 외주관리에 미등록 이름이면 자동 등록
+      maybeAutoRegisterFreelancer(data);
     } catch (err) {
       console.error('자동 저장 실패', err);
       setSaveError(err.message || '저장 실패');
     } finally {
       setSavingCount((c) => Math.max(0, c - 1));
+    }
+  }
+
+  // 프리랜서/일용직 직접입력 자동 외주관리 등록
+  async function maybeAutoRegisterFreelancer(data) {
+    if (!data) return;
+    const type = data.itemType;
+    if (type !== 'freelancer' && type !== 'daily') return;
+    const name = (data.detail || '').trim();
+    if (!name) return;
+    // 이미 등록되어 있으면 skip (이름 + workerType 동일)
+    const wt = type === 'daily' ? 'daily' : 'freelancer';
+    const exists = freelancers.some((f) => {
+      const fwt = f.workerType || 'freelancer';
+      return (f.name || '').trim() === name && fwt === wt;
+    });
+    if (exists) return;
+    try {
+      await addFreelancer({
+        name,
+        vendor: (data.vendor || '').trim(),
+        dailyRate: Number(data.unitPrice) || 0,
+        contact: '',
+        note: '',
+        workerType: wt,
+        autoCreated: true,
+        createdBy: userProfile?.uid || '',
+      });
+      // 로컬 freelancers state 갱신 — 같은 이름이 중복 호출돼도 한 번만 등록되도록
+      setFreelancers((prev) => [
+        ...prev,
+        {
+          id: `auto-${Date.now()}`,
+          name,
+          vendor: (data.vendor || '').trim(),
+          dailyRate: Number(data.unitPrice) || 0,
+          workerType: wt,
+          autoCreated: true,
+        },
+      ]);
+    } catch (err) {
+      console.error('외주관리 자동 등록 실패:', err);
     }
   }
 
@@ -429,25 +475,50 @@ export default function SiteClosingPage() {
     setFreelancerPickerMode(mode);
   }
 
-  // 빈 행으로 추가 (프리랜서/일용직 직접 입력 fallback)
-  async function addBlankWorkerRow(itemType) {
+  // 프리랜서/일용직 직접 입력 모달 열기 (picker 모달 닫고 입력 폼 표시)
+  function openDirectInput(itemType) {
+    setFreelancerPickerMode(null);
+    const vendorSuggestion = itemType === 'freelancer' ? (site?.defaultVendors?.[items.length] || '') : '';
+    setDirectInputModal({ type: itemType, name: '', vendor: vendorSuggestion, dailyRate: 0 });
+  }
+
+  // 직접 입력 모달 제출 — 행 생성 + 외주관리 자동 등록
+  async function submitDirectInput() {
+    const m_ = directInputModal;
+    if (!m_) return;
+    const name = (m_.name || '').trim();
+    if (!name) { alert('이름을 입력해주세요.'); return; }
+    const dup = items.some((it) => it.itemType === m_.type && (it.detail || '').trim() === name);
+    if (dup) { alert(`${name}은(는) 이미 추가되어 있습니다.`); return; }
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
-    const vendorSuggestion = itemType === 'freelancer' ? (site?.defaultVendors?.[items.length] || '') : '';
-    await addClosingItem(siteId, y, m, {
-      no: nextNo,
-      vendor: vendorSuggestion,
-      detail: '',
-      category: '',
-      itemType,
-      unitPrice: 0,
-      dailyQuantities: {},
-      quantity: 0,
-      amount: 0,
-      order: nextOrder,
-    });
-    setFreelancerPickerMode(null);
-    await loadAll({ silent: true });
+    const vendor = (m_.vendor || '').trim();
+    const dailyRate = Number(m_.dailyRate) || 0;
+    try {
+      await addClosingItem(siteId, y, m, {
+        no: nextNo,
+        vendor,
+        detail: name,
+        category: '',
+        itemType: m_.type,
+        unitPrice: dailyRate,
+        dailyQuantities: {},
+        quantity: 0,
+        amount: 0,
+        order: nextOrder,
+      });
+      // 외주관리 자동 등록 (이름 미등록인 경우)
+      await maybeAutoRegisterFreelancer({
+        itemType: m_.type,
+        detail: name,
+        vendor,
+        unitPrice: dailyRate,
+      });
+      setDirectInputModal(null);
+      await loadAll({ silent: true });
+    } catch (err) {
+      alert('추가 실패: ' + (err.message || '알 수 없는 오류'));
+    }
   }
 
   // 프리랜서 선택 시 — 이름/업체/단가 자동 입력
@@ -1710,7 +1781,7 @@ export default function SiteClosingPage() {
               <>
                 <p className="empty-state">외주관리에 등록된 {isDaily ? '일용직' : '프리랜서'}이 없습니다.</p>
                 <div className="modal-actions">
-                  <button type="button" className="btn btn-primary" onClick={() => addBlankWorkerRow(freelancerPickerMode)}>직접 입력으로 추가</button>
+                  <button type="button" className="btn btn-primary" onClick={() => openDirectInput(freelancerPickerMode)}>직접 입력으로 추가</button>
                 </div>
               </>
             ) : (
@@ -1742,10 +1813,60 @@ export default function SiteClosingPage() {
                   ))}
                 </ul>
                 <div className="modal-actions">
-                  <button type="button" className="btn btn-outline" onClick={() => addBlankWorkerRow(freelancerPickerMode)}>직접 입력으로 추가</button>
+                  <button type="button" className="btn btn-outline" onClick={() => openDirectInput(freelancerPickerMode)}>직접 입력으로 추가</button>
                 </div>
               </>
             )}
+          </Modal>
+        );
+      })()}
+
+      {/* 프리랜서/일용직 직접 입력 모달 */}
+      {directInputModal && (() => {
+        const isDaily = directInputModal.type === 'daily';
+        const title = `${isDaily ? '일용직' : '프리랜서'} 직접 입력`;
+        return (
+          <Modal isOpen={!!directInputModal} onClose={() => setDirectInputModal(null)} title={title}>
+            <div className="direct-input-form">
+              <label className="direct-input-row">
+                <span className="direct-input-label">이름 <em>*</em></span>
+                <input
+                  type="text"
+                  className="direct-input-text"
+                  value={directInputModal.name}
+                  onChange={(e) => setDirectInputModal({ ...directInputModal, name: e.target.value })}
+                  placeholder={`${isDaily ? '일용직' : '프리랜서'} 이름`}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitDirectInput(); }}
+                />
+              </label>
+              <label className="direct-input-row">
+                <span className="direct-input-label">소속 업체</span>
+                <input
+                  type="text"
+                  className="direct-input-text"
+                  value={directInputModal.vendor}
+                  onChange={(e) => setDirectInputModal({ ...directInputModal, vendor: e.target.value })}
+                  placeholder="없으면 비워두세요"
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitDirectInput(); }}
+                />
+              </label>
+              {canViewSalary && (
+                <label className="direct-input-row">
+                  <span className="direct-input-label">{isDaily ? '시급/일급' : '공수 단가'}</span>
+                  <MoneyInput
+                    className="direct-input-text"
+                    value={directInputModal.dailyRate}
+                    onChange={(e) => setDirectInputModal({ ...directInputModal, dailyRate: Number(e.target.value) || 0 })}
+                  />
+                </label>
+              )}
+              <p className="direct-input-hint">외주관리에 미등록된 이름이면 자동 등록됩니다.</p>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setDirectInputModal(null)}>취소</button>
+              <button type="button" className="btn btn-primary" onClick={submitDirectInput}>추가</button>
+            </div>
           </Modal>
         );
       })()}

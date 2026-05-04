@@ -28,6 +28,9 @@ export async function addFreelancer(data) {
     note: data.note || '',
     // 개인 인력 유형: 'freelancer' | 'daily' (undefined = 기존 레거시, 프리랜서로 간주)
     workerType: data.workerType === 'daily' ? 'daily' : 'freelancer',
+    // 공수표 직접입력에서 자동 등록된 항목 추적용
+    autoCreated: !!data.autoCreated,
+    createdBy: data.createdBy || '',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
