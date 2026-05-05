@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import ForgotPasswordModal from '../components/common/ForgotPasswordModal';
 
@@ -7,8 +7,19 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const reason = sessionStorage.getItem('autoLogoutReason');
+      if (reason === 'inactivity') {
+        setInfo('30분 이상 활동이 없어 자동 로그아웃되었습니다. 다시 로그인해주세요.');
+        sessionStorage.removeItem('autoLogoutReason');
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -30,6 +41,7 @@ export default function LoginPage() {
         <div className="login-logo" role="img" aria-label="IOPN" />
 
         <form onSubmit={handleLogin} style={{ width: '100%' }}>
+          {info && !error && <div className="alert alert-info" style={{ marginBottom: 20 }}>{info}</div>}
           {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>{error}</div>}
           <div className="login-field">
             <label>로그인 코드</label>

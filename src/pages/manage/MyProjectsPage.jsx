@@ -1,71 +1,41 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
-import { getDepartments, getDepartmentsByLeader } from '../../services/departmentService';
-import { getAllSites } from '../../services/siteService';
+import { getSitesByManager, getClosingItems } from '../../services/siteService';
 import { getAllOvertimeRecords } from '../../services/attendanceService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
-import { EmployeeDetailModal } from '../admin/ReportsPage';
 
-export default function TeamReportsPage() {
-  const { userProfile, isAdmin, canApproveAll } = useAuth();
-  const [allUsers, setAllUsers] = useState([]);
-  const [scopedUsers, setScopedUsers] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [myDepts, setMyDepts] = useState([]);
+export default function MyProjectsPage() {
+  const { userProfile } = useAuth();
   const [sites, setSites] = useState([]);
-  const [rawRecords, setRawRecords] = useState([]);
-  const [rawLeaves, setRawLeaves] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [rawRecords, setRawRecords] = useState([]);
+  const [rawLeaves, setRawLeaves] = useState([]);
+  const [siteEmployees, setSiteEmployees] = useState({});
   const [loading, setLoading] = useState(true);
-  const [detailUser, setDetailUser] = useState(null);
-  const [detailTab, setDetailTab] = useState('overtime');
   const [selectedCalDay, setSelectedCalDay] = useState(null);
 
   useEffect(() => {
-    if (userProfile) loadBase();
-  }, [userProfile]);
+    if (userProfile?.uid) loadBase();
+  }, [userProfile?.uid]);
 
   useEffect(() => {
-    if (scopedUsers.length > 0) loadMonthData();
-  }, [scopedUsers, year, month]);
+    if (sites.length > 0) loadMonthData();
+    else { setRawRecords([]); setRawLeaves([]); setSiteEmployees({}); }
+  }, [sites, year, month]);
 
   async function loadBase() {
     setLoading(true);
-    const [fetchedUsers, deps, allSites] = await Promise.all([
-      getUsers(),
-      getDepartments(),
-      getAllSites(),
-    ]);
-
-    let scoped = fetchedUsers;
-    let depts = [];
-    if (!canApproveAll) {
-      depts = await getDepartmentsByLeader(userProfile.uid);
-      const myDeptIds = new Set(depts.map((d) => d.id));
-      scoped = fetchedUsers.filter((u) => myDeptIds.has(u.departmentId));
-    }
-
-    setAllUsers(fetchedUsers);
-    setScopedUsers(scoped);
-    setDepartments(deps);
-    setMyDepts(depts);
-    setSites(allSites);
-  }
-
-  async function loadMonthData() {
-    setLoading(true);
     try {
-      const start = getMonthStart(year, month);
-      const end = getMonthEnd(year, month);
-      const [records, approvedLeaves] = await Promise.all([
-        getAllOvertimeRecords(start, end),
-        getApprovedLeavesByMonth(year, month),
+      const [mySites, users] = await Promise.all([
+        getSitesByManager(userProfile.uid),
+        getUsers(),
       ]);
-      setRawRecords(records);
-      setRawLeaves(approvedLeaves);
+      setSites(mySites);
+      setAllUsers(users);
     } catch (err) {
       console.error(err);
     } finally {
@@ -73,94 +43,121 @@ export default function TeamReportsPage() {
     }
   }
 
-  const siteMap = { etc: '기타' };
-  sites.forEach((s) => { siteMap[s.id] = s.name; });
-
-  const myTeam = myDepts[0];
-
-  // 팀원 목록 + 잔업/연차 데이터 합산
-  const rankOf = (uid) => (myTeam?.managerId === uid ? 0 : myTeam?.subManagerId === uid ? 1 : 2);
-  const teamMembers = myTeam
-    ? allUsers.filter((u) => u.departmentId === myTeam.id).sort((a, b) => rankOf(a.uid) - rankOf(b.uid))
-    : scopedUsers.filter((u) => u.role !== 'admin');
-
-  const overtimeByUser = {};
-  rawRecords.forEach((r) => {
-    if (r.status !== 'approved') return;
-    if (!overtimeByUser[r.userId]) overtimeByUser[r.userId] = { minutes: 0, count: 0 };
-    overtimeByUser[r.userId].minutes += r.minutes || 0;
-    overtimeByUser[r.userId].count++;
-  });
-
-  const leaveByUser = {};
-  rawLeaves.forEach((l) => {
-    if (!leaveByUser[l.userId]) leaveByUser[l.userId] = 0;
-    leaveByUser[l.userId] += l.days || 0;
-  });
-
-  const rows = teamMembers.filter((u) => u.isActive !== false && u.role !== 'admin').map((u) => ({
-    uid: u.uid,
-    name: u.name,
-    position: u.position || '',
-    isLeader: myTeam && u.uid === myTeam.managerId,
-    isSubLeader: myTeam && u.uid === myTeam.subManagerId,
-    isMe: u.uid === userProfile.uid,
-    overtimeMinutes: overtimeByUser[u.uid]?.minutes || 0,
-    overtimeCount: overtimeByUser[u.uid]?.count || 0,
-    leaveDays: leaveByUser[u.uid] || 0,
-    departmentId: u.departmentId,
-  }));
-
-  const totalOT = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
-  const totalOTCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
-  const totalLeave = rows.reduce((s, r) => s + r.leaveDays, 0);
-
-  function openDetail(row, tab) {
-    setDetailUser(row);
-    setDetailTab(tab);
+  async function loadMonthData() {
+    setLoading(true);
+    try {
+      const start = getMonthStart(year, month);
+      const end = getMonthEnd(year, month);
+      const [records, leaves, ...closings] = await Promise.all([
+        getAllOvertimeRecords(start, end),
+        getApprovedLeavesByMonth(year, month),
+        ...sites.map((s) => getClosingItems(s.id, year, month)),
+      ]);
+      setRawRecords(records);
+      setRawLeaves(leaves);
+      const empMap = {};
+      sites.forEach((s, i) => {
+        const items = closings[i] || [];
+        const names = new Set();
+        items.forEach((it) => {
+          if (it.itemType === 'employee' && it.detail) names.add(it.detail);
+        });
+        empMap[s.id] = Array.from(names);
+      });
+      setSiteEmployees(empMap);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // === 팀원 일정 캘린더 (본인 포함) ===
-  const userMap = Object.fromEntries(allUsers.map((u) => [u.uid, u]));
-  const teammateIds = useMemo(() => {
-    return new Set(teamMembers.map((u) => u.uid));
-  // teamMembers 기반이므로 deps 지정 시 무한 루프 우려, 직접 계산 후 메모만 사용
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamMembers.length]);
+  const userByName = useMemo(() => {
+    const map = {};
+    allUsers.forEach((u) => { if (u.name) map[u.name] = u; });
+    return map;
+  }, [allUsers]);
+
+  const userByUid = useMemo(
+    () => Object.fromEntries(allUsers.map((u) => [u.uid, u])),
+    [allUsers],
+  );
+
+  const rows = useMemo(() => {
+    return sites.map((s) => {
+      const employees = siteEmployees[s.id] || [];
+      const employeeUids = new Set(employees.map((n) => userByName[n]?.uid).filter(Boolean));
+      const ot = rawRecords
+        .filter((r) => r.status === 'approved' && r.siteId === s.id)
+        .reduce((sum, r) => sum + (r.minutes || 0), 0);
+      const leaveDays = rawLeaves
+        .filter((l) => employeeUids.has(l.userId))
+        .reduce((sum, l) => sum + (l.days || 0), 0);
+      return {
+        siteId: s.id,
+        siteName: s.name,
+        memberCount: employees.length,
+        overtimeMinutes: ot,
+        leaveDays,
+      };
+    });
+  }, [sites, siteEmployees, rawRecords, rawLeaves, userByName]);
+
+  const totalMembers = rows.reduce((s, r) => s + r.memberCount, 0);
+  const totalOT = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
+  const totalLeave = rows.reduce((s, r) => s + r.leaveDays, 0);
 
   const calendarEventsByDate = useMemo(() => {
     const map = {};
     const push = (date, ev) => { (map[date] = map[date] || []).push(ev); };
-    rawLeaves.filter((l) => teammateIds.has(l.userId)).forEach((l) => {
-      const from = new Date(l.startDate);
-      const to = new Date(l.endDate);
-      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-        if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const u = userMap[l.userId];
-        push(dateStr, { userId: l.userId, kind: 'leave', type: l.type, label: u?.name || '?' });
-      }
-    });
-    rawRecords.filter((r) => r.status === 'approved' && teammateIds.has(r.userId)).forEach((r) => {
-      const u = userMap[r.userId];
-      push(r.date, {
-        userId: r.userId,
-        kind: 'overtime',
-        minutes: r.minutes || 0,
-        label: u?.name || '?',
-        siteName: r.siteId ? (siteMap[r.siteId] || '') : '',
+    const mySiteIds = new Set(sites.map((s) => s.id));
+
+    rawRecords
+      .filter((r) => r.status === 'approved' && mySiteIds.has(r.siteId))
+      .forEach((r) => {
+        const u = userByUid[r.userId];
+        const s = sites.find((x) => x.id === r.siteId);
+        push(r.date, {
+          kind: 'overtime',
+          minutes: r.minutes || 0,
+          label: u?.name || '?',
+          siteName: s?.name || '',
+        });
+      });
+
+    const allEmployeeUids = new Set();
+    Object.values(siteEmployees).forEach((names) => {
+      names.forEach((n) => {
+        const u = userByName[n];
+        if (u?.uid) allEmployeeUids.add(u.uid);
       });
     });
-    return map;
-  }, [rawLeaves, rawRecords, teammateIds, year, month, userMap, siteMap]);
+    rawLeaves
+      .filter((l) => allEmployeeUids.has(l.userId))
+      .forEach((l) => {
+        const from = new Date(l.startDate);
+        const to = new Date(l.endDate);
+        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+          if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
+          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const u = userByUid[l.userId];
+          push(dateStr, { kind: 'leave', type: l.type, label: u?.name || '?' });
+        }
+      });
 
-  function leaveTypeLabel(t) {
-    if (t === 'half_am') return '오전반차';
-    if (t === 'half_pm') return '오후반차';
-    if (t === 'sick') return '병가';
-    if (t === 'quarter_1' || t === 'quarter_2' || t === 'quarter_3' || t === 'quarter_4') return '반반차';
-    return '연차';
+    return map;
+  }, [sites, siteEmployees, rawRecords, rawLeaves, userByName, userByUid, year, month]);
+
+  function shiftMonth(delta) {
+    let y = year;
+    let m = month + delta;
+    if (m < 1) { m = 12; y -= 1; }
+    else if (m > 12) { m = 1; y += 1; }
+    setYear(y);
+    setMonth(m);
+    setSelectedCalDay(null);
   }
+
   function buildCalendarWeeks(y, m) {
     const firstDow = new Date(y, m - 1, 1).getDay();
     const totalDays = new Date(y, m, 0).getDate();
@@ -173,20 +170,20 @@ export default function TeamReportsPage() {
     if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week); }
     return weeks;
   }
-  function shiftMonth(delta) {
-    let y = year;
-    let m = month + delta;
-    if (m < 1) { m = 12; y -= 1; }
-    else if (m > 12) { m = 1; y += 1; }
-    setYear(y);
-    setMonth(m);
-    setSelectedCalDay(null);
+
+  function leaveTypeLabel(t) {
+    if (t === 'half_am') return '오전반차';
+    if (t === 'half_pm') return '오후반차';
+    if (t === 'sick') return '병가';
+    if (t === 'quarter_1' || t === 'quarter_2' || t === 'quarter_3' || t === 'quarter_4') return '반반차';
+    return '연차';
   }
+
   const todayRef = new Date();
 
   return (
     <div className="reports-page">
-      <h2>우리 팀{myTeam && ` — ${myTeam.name}`}</h2>
+      <h2>내 프로젝트</h2>
 
       <div className="filters">
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
@@ -204,44 +201,32 @@ export default function TeamReportsPage() {
       {loading ? (
         <div className="loading">로딩 중...</div>
       ) : rows.length === 0 ? (
-        <div className="card"><div className="card-body empty-state">팀원이 없습니다.</div></div>
+        <div className="card"><div className="card-body empty-state">담당하는 프로젝트가 없습니다.</div></div>
       ) : (
         <div className="table-wrap">
           <table className="table team-stats-table team-stats-4col">
             <thead>
               <tr>
-                <th>이름</th>
-                <th>직급</th>
+                <th>프로젝트</th>
+                <th>인원</th>
                 <th>잔업</th>
                 <th>연차</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.uid}>
-                  <td>
-                    <strong>{r.name}</strong>
-                    {r.isLeader && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>팀장</span>}
-                    {r.isSubLeader && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>부팀장</span>}
-                    {r.isMe && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
-                  </td>
-                  <td>{r.position || '-'}</td>
-                  <td>
-                    <button className="team-detail-btn" onClick={() => openDetail(r, 'overtime')}>
-                      {r.overtimeMinutes > 0 ? <><strong>{formatMinutes(r.overtimeMinutes)}</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
-                    </button>
-                  </td>
-                  <td>
-                    <button className="team-detail-btn" onClick={() => openDetail(r, 'leave')}>
-                      {r.leaveDays > 0 ? <><strong>{r.leaveDays}일</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
-                    </button>
-                  </td>
+                <tr key={r.siteId}>
+                  <td><strong>{r.siteName}</strong></td>
+                  <td>{r.memberCount > 0 ? `${r.memberCount}명` : '-'}</td>
+                  <td>{r.overtimeMinutes > 0 ? <strong>{formatMinutes(r.overtimeMinutes)}</strong> : '-'}</td>
+                  <td>{r.leaveDays > 0 ? <strong>{r.leaveDays}일</strong> : '-'}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={2}><strong>합계 ({rows.length}명)</strong></td>
+                <td><strong>합계 ({rows.length}개)</strong></td>
+                <td><strong>{totalMembers}명</strong></td>
                 <td><strong>{formatMinutes(totalOT)}</strong></td>
                 <td><strong>{totalLeave}일</strong></td>
               </tr>
@@ -250,12 +235,11 @@ export default function TeamReportsPage() {
         </div>
       )}
 
-      {/* 팀원 일정 캘린더 — 본인 포함 */}
       {!loading && rows.length > 0 && (
         <div className="team-calendar-section">
           <div className="team-calendar-head">
             <div className="team-calendar-title">
-              <strong>팀원 일정</strong>
+              <strong>프로젝트 일정</strong>
             </div>
             <div className="team-calendar-nav">
               <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftMonth(-1)} aria-label="이전 달">‹</button>
@@ -266,7 +250,7 @@ export default function TeamReportsPage() {
 
           <div className="team-calendar">
             <div className="team-calendar-dow-row">
-              {['일','월','화','수','목','금','토'].map((dn, i) => (
+              {['일', '월', '화', '수', '목', '금', '토'].map((dn, i) => (
                 <div key={dn} className={`team-calendar-dow ${i === 0 ? 'sunday' : i === 6 ? 'saturday' : ''}`}>{dn}</div>
               ))}
             </div>
@@ -316,7 +300,7 @@ export default function TeamReportsPage() {
             return (
               <div className="team-calendar-day-detail">
                 <div className="team-calendar-day-detail-head">
-                  <strong>{Number(mm)}월 {Number(dd)}일</strong>
+                  <strong>{Number(mm)}/{Number(dd)}</strong>
                   <span className="team-calendar-hint">· {evs.length}건</span>
                   <button type="button" className="team-calendar-close" onClick={() => setSelectedCalDay(null)} aria-label="닫기">✕</button>
                 </div>
@@ -338,21 +322,6 @@ export default function TeamReportsPage() {
             );
           })()}
         </div>
-      )}
-
-      {detailUser && (
-        <EmployeeDetailModal
-          user={detailUser}
-          tab={detailTab}
-          year={year}
-          month={month}
-          overtimes={rawRecords.filter((r) => r.userId === detailUser.uid && r.status === 'approved')}
-          leaves={rawLeaves.filter((l) => l.userId === detailUser.uid)}
-          siteMap={siteMap}
-          canEdit={isAdmin}
-          onClose={() => setDetailUser(null)}
-          onChanged={loadMonthData}
-        />
       )}
     </div>
   );

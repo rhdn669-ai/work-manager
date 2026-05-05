@@ -11,6 +11,7 @@ import LeaveHistoryPage from './pages/leave/LeaveHistoryPage';
 import LeaveBalancePage from './pages/leave/LeaveBalancePage';
 import TeamReportsPage from './pages/manage/TeamReportsPage';
 import ManageTeamPage from './pages/manage/ManageTeamPage';
+import MyProjectsPage from './pages/manage/MyProjectsPage';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import UnassignedReportPage from './pages/admin/UnassignedReportPage';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
 { path: '/manage/leave', element: <TeamReportsPage /> },
+          { path: '/manage/my-projects', element: <MyProjectsPage /> },
         ],
       },
     ],

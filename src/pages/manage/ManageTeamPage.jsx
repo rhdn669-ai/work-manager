@@ -18,7 +18,7 @@ export default function ManageTeamPage() {
   const [editTeam, setEditTeam] = useState(null);
   const [form, setForm] = useState({ name: '', managerId: '', subManagerId: '', memberIds: [] });
   const [memberListOpen, setMemberListOpen] = useState(false);
-  // 일반 직원 뷰용 팀 캘린더 (본인 제외)
+  // 일반 직원 뷰용 팀 캘린더 (본인 포함)
   const nowRef = new Date();
   const [calYear, setCalYear] = useState(nowRef.getFullYear());
   const [calMonth, setCalMonth] = useState(nowRef.getMonth() + 1);
@@ -91,7 +91,7 @@ export default function ManageTeamPage() {
         if (cancelled) return;
         const teammateIds = new Set(
           users
-            .filter((u) => u.departmentId === userProfile.departmentId && u.uid !== userProfile.uid)
+            .filter((u) => u.departmentId === userProfile.departmentId)
             .map((u) => u.uid)
         );
         setTeamLeaves(leaves.filter((l) => teammateIds.has(l.userId)));
@@ -318,12 +318,11 @@ export default function ManageTeamPage() {
               </tbody>
             </table>
 
-            {/* 팀원 일정 캘린더 — 본인 잔업/연차는 제외 */}
+            {/* 팀원 일정 캘린더 — 본인 포함 */}
             <div className="team-calendar-section">
               <div className="team-calendar-head">
                 <div className="team-calendar-title">
                   <strong>팀원 일정</strong>
-                  <span className="team-calendar-hint">· 본인 잔업/연차 제외</span>
                 </div>
                 <div className="team-calendar-nav">
                   <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftCalMonth(-1)} aria-label="이전 달">‹</button>

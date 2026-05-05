@@ -443,6 +443,70 @@ body {
   gap: 12px;
 }
 
+/* ===== 세션 타이머 배지 (자동 로그아웃 카운트다운 + 연장) ===== */
+.session-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  background: #f9fafb;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.session-timer.urgent {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+.session-timer-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.session-timer-icon { opacity: 0.75; }
+.session-timer.urgent .session-timer-icon { opacity: 1; }
+.session-timer-extend {
+  appearance: none;
+  border: none;
+  background: var(--primary, #2563eb);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  line-height: 1;
+  min-height: 24px;
+}
+.session-timer-extend:hover { filter: brightness(1.05); }
+.session-timer.urgent .session-timer-extend { background: #dc2626; }
+
+@media (max-width: 768px) {
+  .session-timer {
+    gap: 4px;
+    padding: 3px 4px 3px 7px;
+    font-size: 11px;
+  }
+  .session-timer-extend {
+    font-size: 10px;
+    padding: 3px 8px;
+    min-height: 22px;
+  }
+}
+@media (max-width: 360px) {
+  /* 폴더블/소형 모바일 — 글자/패딩 더 압축 */
+  .session-timer { gap: 3px; padding: 2px 3px 2px 6px; }
+  .session-timer-text { font-size: 10px; }
+  .session-timer-extend { font-size: 10px; padding: 2px 6px; min-height: 20px; }
+}
+
 .user-info {
   color: var(--text-light);
   font-size: 13px;
