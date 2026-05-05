@@ -78,10 +78,28 @@ export default function TotalClosingPage() {
     }
   };
 
+  // 마감(완료)된 프로젝트가 종료월 이후 월에 노출되는 것을 방지.
+  // 단, 해당 월에 정산 데이터(매출/지출/잔업/인건비)가 한 푼이라도 잡혀있으면 표시 — 잔여 정산 누락 방지.
+  const visibleSites = useMemo(() => {
+    const curIdx = year * 12 + month;
+    return sites.filter((s) => {
+      const v = stats[s.id] || {};
+      const hasData = (Number(v.revenue) || 0) + (Number(v.expense) || 0)
+        + (Number(v.overtime) || 0) + (Number(v.labor) || 0) > 0;
+      if (hasData) return true;
+      if (s.status !== 'completed') return true;
+      const ey = Number(s.endYear) || 0;
+      const em = Number(s.endMonth) || 0;
+      if (!ey || !em) return true;
+      const endIdx = ey * 12 + em;
+      return endIdx >= curIdx;
+    });
+  }, [sites, stats, year, month]);
+
   const totals = useMemo(() => {
     let revenue = 0, expense = 0, overtime = 0, labor = 0;
     let revenueAll = 0; // hideRevenue 무시한 전체 매출 (참고용)
-    sites.forEach((s) => {
+    visibleSites.forEach((s) => {
       const v = stats[s.id] || {};
       const r = Number(v.revenue) || 0;
       const e = Number(v.expense) || 0;
@@ -97,16 +115,16 @@ export default function TotalClosingPage() {
     const totalExpense = expense + overtime + labor + fixed;
     const balance = revenue - totalExpense;
     return { revenue, revenueAll, expense, overtime, labor, fixed, totalExpense, balance };
-  }, [sites, stats, fixedItems]);
+  }, [visibleSites, stats, fixedItems]);
 
   // 프로젝트별 정렬: 매출 큰 순
   const sortedSites = useMemo(() => {
-    return [...sites].sort((a, b) => {
+    return [...visibleSites].sort((a, b) => {
       const sa = stats[a.id] || {};
       const sb = stats[b.id] || {};
       return (Number(sb.revenue) || 0) - (Number(sa.revenue) || 0);
     });
-  }, [sites, stats]);
+  }, [visibleSites, stats]);
 
   if (!isAdmin && !canViewSalary) {
     return <div className="card"><div className="card-body empty-state">접근 권한이 없습니다.</div></div>;
@@ -134,7 +152,7 @@ export default function TotalClosingPage() {
           <div className="closing-summary">
             <div className="closing-summary-item">
               <span className="label">프로젝트</span>
-              <strong>{sites.length}개</strong>
+              <strong>{visibleSites.length}개</strong>
             </div>
             <div className="closing-summary-item">
               <span className="label">매출</span>
