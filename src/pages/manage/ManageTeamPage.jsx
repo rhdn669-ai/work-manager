@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUsers, updateUser } from '../../services/userService';
 import { getDepartments, getDepartmentsByLeader, addDepartment, updateDepartment, deleteDepartment } from '../../services/departmentService';
@@ -128,6 +129,7 @@ export default function ManageTeamPage() {
         kind: 'overtime',
         minutes: r.minutes,
         label: u?.name || '?',
+        siteId: r.siteId || '',
         siteName: r.siteId ? (siteMap[r.siteId] || '') : '',
       });
     });
@@ -388,18 +390,34 @@ export default function ManageTeamPage() {
                       <button type="button" className="team-calendar-close" onClick={() => setSelectedCalDay(null)} aria-label="닫기">✕</button>
                     </div>
                     <ul className="team-calendar-day-list">
-                      {evs.map((e, i) => (
-                        <li key={i}>
-                          <span className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`} />
-                          <strong>{e.label}</strong>
-                          <span className="team-calendar-ev-detail">
-                            {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
-                          </span>
-                          {e.kind === 'overtime' && e.siteName && (
-                            <span className="team-calendar-ev-site">{e.siteName}</span>
-                          )}
-                        </li>
-                      ))}
+                      {evs.map((e, i) => {
+                        const linkable = e.kind === 'overtime' && !!e.siteId;
+                        const inner = (
+                          <>
+                            <span className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`} />
+                            <strong>{e.label}</strong>
+                            <span className="team-calendar-ev-detail">
+                              {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
+                            </span>
+                            {e.kind === 'overtime' && e.siteName && (
+                              <span className="team-calendar-ev-site">{e.siteName}</span>
+                            )}
+                          </>
+                        );
+                        return linkable ? (
+                          <li key={i} className="has-link">
+                            <Link
+                              to={`/sites/${e.siteId}/${calYear}/${calMonth}`}
+                              className="team-calendar-day-link"
+                              title={`${e.siteName} 마감 페이지로 이동`}
+                            >
+                              {inner}
+                            </Link>
+                          </li>
+                        ) : (
+                          <li key={i}>{inner}</li>
+                        );
+                      })}
                     </ul>
                   </div>
                 );

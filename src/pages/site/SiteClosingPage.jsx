@@ -999,7 +999,7 @@ export default function SiteClosingPage() {
     const mm = String(t.getMinutes()).padStart(2, '0');
     saveStatus = <span className="save-status save-status-saved">✓ {hh}:{mm} 저장됨</span>;
   } else {
-    saveStatus = <span className="save-status save-status-idle">자동 저장 대기</span>;
+    saveStatus = null;
   }
 
   return (

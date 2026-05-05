@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getSitesByManager, getClosingItems } from '../../services/siteService';
 
@@ -11,6 +12,7 @@ export default function MyProjectsPage() {
   const [outsourceAttendance, setOutsourceAttendance] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCalDay, setSelectedCalDay] = useState(null);
+  const [calSiteId, setCalSiteId] = useState('all');
 
   useEffect(() => {
     if (userProfile?.uid) loadSites();
@@ -56,6 +58,7 @@ export default function MyProjectsPage() {
               label: it.detail,
               vendor: it.vendor || '',
               qty: q,
+              siteId: s.id,
               siteName: s.name,
               itemType: it.itemType,
             });
@@ -82,6 +85,17 @@ export default function MyProjectsPage() {
 
   const totalOutsource = rows.reduce((s, r) => s + r.outsourceCount, 0);
 
+  // 캘린더에 표시할 출근 데이터 — 'all'이면 전체, 아니면 해당 사이트만
+  const filteredAttendance = useMemo(() => {
+    if (calSiteId === 'all') return outsourceAttendance;
+    const out = {};
+    Object.entries(outsourceAttendance).forEach(([date, evs]) => {
+      const filtered = evs.filter((e) => e.siteId === calSiteId);
+      if (filtered.length > 0) out[date] = filtered;
+    });
+    return out;
+  }, [outsourceAttendance, calSiteId]);
+
   function shiftMonth(delta) {
     let y = year;
     let m = month + delta;
@@ -105,10 +119,13 @@ export default function MyProjectsPage() {
     return weeks;
   }
 
-  function qtyLabel(q) {
-    if (q === 1) return '1일';
-    if (q === 0.5) return '0.5일';
-    return `${q}일`;
+  // itemType별 단위 표기
+  // freelancer/vendor(인원·업체일당) = 공수, daily(일용직) = 시간, vendor_case(업체 프로젝트) = 댓
+  function qtyLabel(q, itemType) {
+    const unit = itemType === 'daily' ? '시간'
+      : itemType === 'vendor_case' ? '댓'
+      : '공수';
+    return `${q}${unit}`;
   }
 
   const todayRef = new Date();
@@ -163,6 +180,27 @@ export default function MyProjectsPage() {
 
       {!loading && rows.length > 0 && (
         <div className="team-calendar-section">
+          <div className="tab-nav" role="tablist" aria-label="프로젝트별 외주 출근">
+            <button
+              type="button"
+              role="tab"
+              className={`tab-nav-item ${calSiteId === 'all' ? 'active' : ''}`}
+              onClick={() => { setCalSiteId('all'); setSelectedCalDay(null); }}
+            >
+              전체
+            </button>
+            {sites.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                className={`tab-nav-item ${calSiteId === s.id ? 'active' : ''}`}
+                onClick={() => { setCalSiteId(s.id); setSelectedCalDay(null); }}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
           <div className="team-calendar-head">
             <div className="team-calendar-title">
               <strong>외주 출근</strong>
@@ -185,7 +223,7 @@ export default function MyProjectsPage() {
                 {wk.map((d, di) => {
                   if (d === null) return <div className="team-cal-cell team-cal-empty" key={di} />;
                   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                  const events = outsourceAttendance[dateStr] || [];
+                  const events = filteredAttendance[dateStr] || [];
                   const isToday =
                     year === todayRef.getFullYear() &&
                     month === todayRef.getMonth() + 1 &&
@@ -208,7 +246,7 @@ export default function MyProjectsPage() {
                           <span
                             key={i}
                             className="team-cal-ev-dot team-cal-ev-overtime"
-                            title={`${e.label} · ${qtyLabel(e.qty)} · ${e.siteName}`}
+                            title={`${e.label} · ${qtyLabel(e.qty, e.itemType)} · ${e.siteName}`}
                           />
                         ))}
                         {extra > 0 && <span className="team-cal-ev-more">+{extra}</span>}
@@ -221,7 +259,7 @@ export default function MyProjectsPage() {
           </div>
 
           {selectedCalDay && (() => {
-            const evs = outsourceAttendance[selectedCalDay] || [];
+            const evs = filteredAttendance[selectedCalDay] || [];
             const [, mm, dd] = selectedCalDay.split('-');
             return (
               <div className="team-calendar-day-detail">
@@ -232,11 +270,17 @@ export default function MyProjectsPage() {
                 </div>
                 <ul className="team-calendar-day-list">
                   {evs.map((e, i) => (
-                    <li key={i}>
-                      <span className="team-cal-ev-dot team-cal-ev-overtime" />
-                      <strong>{e.label}</strong>
-                      <span className="team-calendar-ev-detail">{qtyLabel(e.qty)}</span>
-                      {e.siteName && <span className="team-calendar-ev-site">{e.siteName}</span>}
+                    <li key={i} className="has-link">
+                      <Link
+                        to={`/sites/${e.siteId}/${year}/${month}`}
+                        className="team-calendar-day-link"
+                        title={`${e.siteName} 마감 페이지로 이동`}
+                      >
+                        <span className="team-cal-ev-dot team-cal-ev-overtime" />
+                        <strong>{e.label}</strong>
+                        <span className="team-calendar-ev-detail">{qtyLabel(e.qty, e.itemType)}</span>
+                        {e.siteName && <span className="team-calendar-ev-site">{e.siteName}</span>}
+                      </Link>
                     </li>
                   ))}
                 </ul>

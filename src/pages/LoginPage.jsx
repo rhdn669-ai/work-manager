@@ -15,7 +15,7 @@ export default function LoginPage() {
     try {
       const reason = sessionStorage.getItem('autoLogoutReason');
       if (reason === 'inactivity') {
-        setInfo('30분 이상 활동이 없어 자동 로그아웃되었습니다. 다시 로그인해주세요.');
+        setInfo('장시간 활동이 없어 자동 로그아웃되었습니다. 다시 로그인해주세요.');
         sessionStorage.removeItem('autoLogoutReason');
       }
     } catch { /* ignore */ }

@@ -2177,6 +2177,21 @@ body {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
 }
+/* li 안에 Link로 감싸 클릭 영역을 li 전체로 확장 — li padding은 Link로 이전 */
+.team-calendar-day-list li.has-link { padding: 0; }
+.team-calendar-day-link {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.team-calendar-day-link:hover { background: rgba(0, 0, 0, 0.03); }
 /* 잔업 프로젝트명 — 시간 칩 다음 줄에 별도 행으로 표시 */
 .team-calendar-ev-site {
   flex-basis: 100%;
