@@ -83,9 +83,9 @@ export default function BottomNav() {
           <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </Item>
       )}
-      {/* 5-1. 내 프로젝트 (팀장 한정) */}
+      {/* 5-1. 외주 (팀장 한정) */}
       {canApproveLeave && !isAdmin && (
-        <Item to="/manage/my-projects" end label="내 프로젝트">
+        <Item to="/manage/my-projects" end label="외주">
           <path d="M3 21h18"/>
           <path d="M5 21V7l7-4 7 4v14"/>
           <path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/>

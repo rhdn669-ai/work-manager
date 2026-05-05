@@ -1,41 +1,31 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUsers } from '../../services/userService';
 import { getSitesByManager, getClosingItems } from '../../services/siteService';
-import { getAllOvertimeRecords } from '../../services/attendanceService';
-import { getApprovedLeavesByMonth } from '../../services/leaveService';
-import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 
 export default function MyProjectsPage() {
   const { userProfile } = useAuth();
   const [sites, setSites] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [rawRecords, setRawRecords] = useState([]);
-  const [rawLeaves, setRawLeaves] = useState([]);
-  const [siteEmployees, setSiteEmployees] = useState({});
+  const [siteOutsource, setSiteOutsource] = useState({});
+  const [outsourceAttendance, setOutsourceAttendance] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedCalDay, setSelectedCalDay] = useState(null);
 
   useEffect(() => {
-    if (userProfile?.uid) loadBase();
+    if (userProfile?.uid) loadSites();
   }, [userProfile?.uid]);
 
   useEffect(() => {
     if (sites.length > 0) loadMonthData();
-    else { setRawRecords([]); setRawLeaves([]); setSiteEmployees({}); }
+    else { setSiteOutsource({}); setOutsourceAttendance({}); }
   }, [sites, year, month]);
 
-  async function loadBase() {
+  async function loadSites() {
     setLoading(true);
     try {
-      const [mySites, users] = await Promise.all([
-        getSitesByManager(userProfile.uid),
-        getUsers(),
-      ]);
+      const mySites = await getSitesByManager(userProfile.uid);
       setSites(mySites);
-      setAllUsers(users);
     } catch (err) {
       console.error(err);
     } finally {
@@ -46,25 +36,35 @@ export default function MyProjectsPage() {
   async function loadMonthData() {
     setLoading(true);
     try {
-      const start = getMonthStart(year, month);
-      const end = getMonthEnd(year, month);
-      const [records, leaves, ...closings] = await Promise.all([
-        getAllOvertimeRecords(start, end),
-        getApprovedLeavesByMonth(year, month),
-        ...sites.map((s) => getClosingItems(s.id, year, month)),
-      ]);
-      setRawRecords(records);
-      setRawLeaves(leaves);
-      const empMap = {};
+      const closings = await Promise.all(sites.map((s) => getClosingItems(s.id, year, month)));
+      const outMap = {};
+      const attendance = {};
+      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
       sites.forEach((s, i) => {
         const items = closings[i] || [];
-        const names = new Set();
+        const outNames = new Set();
         items.forEach((it) => {
-          if (it.itemType === 'employee' && it.detail) names.add(it.detail);
+          if (!it.itemType || it.itemType === 'employee') return;
+          if (!it.detail) return;
+          outNames.add(`${it.itemType}::${it.vendor || ''}::${it.detail}`);
+          const dq = it.dailyQuantities || {};
+          Object.entries(dq).forEach(([day, qty]) => {
+            const q = Number(qty) || 0;
+            if (q <= 0) return;
+            const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+            (attendance[dateStr] = attendance[dateStr] || []).push({
+              label: it.detail,
+              vendor: it.vendor || '',
+              qty: q,
+              siteName: s.name,
+              itemType: it.itemType,
+            });
+          });
         });
-        empMap[s.id] = Array.from(names);
+        outMap[s.id] = Array.from(outNames);
       });
-      setSiteEmployees(empMap);
+      setSiteOutsource(outMap);
+      setOutsourceAttendance(attendance);
     } catch (err) {
       console.error(err);
     } finally {
@@ -72,81 +72,15 @@ export default function MyProjectsPage() {
     }
   }
 
-  const userByName = useMemo(() => {
-    const map = {};
-    allUsers.forEach((u) => { if (u.name) map[u.name] = u; });
-    return map;
-  }, [allUsers]);
-
-  const userByUid = useMemo(
-    () => Object.fromEntries(allUsers.map((u) => [u.uid, u])),
-    [allUsers],
-  );
-
   const rows = useMemo(() => {
-    return sites.map((s) => {
-      const employees = siteEmployees[s.id] || [];
-      const employeeUids = new Set(employees.map((n) => userByName[n]?.uid).filter(Boolean));
-      const ot = rawRecords
-        .filter((r) => r.status === 'approved' && r.siteId === s.id)
-        .reduce((sum, r) => sum + (r.minutes || 0), 0);
-      const leaveDays = rawLeaves
-        .filter((l) => employeeUids.has(l.userId))
-        .reduce((sum, l) => sum + (l.days || 0), 0);
-      return {
-        siteId: s.id,
-        siteName: s.name,
-        memberCount: employees.length,
-        overtimeMinutes: ot,
-        leaveDays,
-      };
-    });
-  }, [sites, siteEmployees, rawRecords, rawLeaves, userByName]);
+    return sites.map((s) => ({
+      siteId: s.id,
+      siteName: s.name,
+      outsourceCount: (siteOutsource[s.id] || []).length,
+    }));
+  }, [sites, siteOutsource]);
 
-  const totalMembers = rows.reduce((s, r) => s + r.memberCount, 0);
-  const totalOT = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
-  const totalLeave = rows.reduce((s, r) => s + r.leaveDays, 0);
-
-  const calendarEventsByDate = useMemo(() => {
-    const map = {};
-    const push = (date, ev) => { (map[date] = map[date] || []).push(ev); };
-    const mySiteIds = new Set(sites.map((s) => s.id));
-
-    rawRecords
-      .filter((r) => r.status === 'approved' && mySiteIds.has(r.siteId))
-      .forEach((r) => {
-        const u = userByUid[r.userId];
-        const s = sites.find((x) => x.id === r.siteId);
-        push(r.date, {
-          kind: 'overtime',
-          minutes: r.minutes || 0,
-          label: u?.name || '?',
-          siteName: s?.name || '',
-        });
-      });
-
-    const allEmployeeUids = new Set();
-    Object.values(siteEmployees).forEach((names) => {
-      names.forEach((n) => {
-        const u = userByName[n];
-        if (u?.uid) allEmployeeUids.add(u.uid);
-      });
-    });
-    rawLeaves
-      .filter((l) => allEmployeeUids.has(l.userId))
-      .forEach((l) => {
-        const from = new Date(l.startDate);
-        const to = new Date(l.endDate);
-        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-          if (d.getFullYear() !== year || d.getMonth() + 1 !== month) continue;
-          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const u = userByUid[l.userId];
-          push(dateStr, { kind: 'leave', type: l.type, label: u?.name || '?' });
-        }
-      });
-
-    return map;
-  }, [sites, siteEmployees, rawRecords, rawLeaves, userByName, userByUid, year, month]);
+  const totalOutsource = rows.reduce((s, r) => s + r.outsourceCount, 0);
 
   function shiftMonth(delta) {
     let y = year;
@@ -171,19 +105,17 @@ export default function MyProjectsPage() {
     return weeks;
   }
 
-  function leaveTypeLabel(t) {
-    if (t === 'half_am') return '오전반차';
-    if (t === 'half_pm') return '오후반차';
-    if (t === 'sick') return '병가';
-    if (t === 'quarter_1' || t === 'quarter_2' || t === 'quarter_3' || t === 'quarter_4') return '반반차';
-    return '연차';
+  function qtyLabel(q) {
+    if (q === 1) return '1일';
+    if (q === 0.5) return '0.5일';
+    return `${q}일`;
   }
 
   const todayRef = new Date();
 
   return (
     <div className="reports-page">
-      <h2>내 프로젝트</h2>
+      <h2>외주</h2>
 
       <div className="filters">
         <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
@@ -204,31 +136,25 @@ export default function MyProjectsPage() {
         <div className="card"><div className="card-body empty-state">담당하는 프로젝트가 없습니다.</div></div>
       ) : (
         <div className="table-wrap">
-          <table className="table team-stats-table team-stats-4col">
+          <table className="table team-stats-table">
             <thead>
               <tr>
                 <th>프로젝트</th>
-                <th>인원</th>
-                <th>잔업</th>
-                <th>연차</th>
+                <th>외주 인원</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.siteId}>
                   <td><strong>{r.siteName}</strong></td>
-                  <td>{r.memberCount > 0 ? `${r.memberCount}명` : '-'}</td>
-                  <td>{r.overtimeMinutes > 0 ? <strong>{formatMinutes(r.overtimeMinutes)}</strong> : '-'}</td>
-                  <td>{r.leaveDays > 0 ? <strong>{r.leaveDays}일</strong> : '-'}</td>
+                  <td>{r.outsourceCount > 0 ? `${r.outsourceCount}명` : '-'}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td><strong>합계 ({rows.length}개)</strong></td>
-                <td><strong>{totalMembers}명</strong></td>
-                <td><strong>{formatMinutes(totalOT)}</strong></td>
-                <td><strong>{totalLeave}일</strong></td>
+                <td><strong>{totalOutsource}명</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -239,7 +165,7 @@ export default function MyProjectsPage() {
         <div className="team-calendar-section">
           <div className="team-calendar-head">
             <div className="team-calendar-title">
-              <strong>프로젝트 일정</strong>
+              <strong>외주 출근</strong>
             </div>
             <div className="team-calendar-nav">
               <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftMonth(-1)} aria-label="이전 달">‹</button>
@@ -259,7 +185,7 @@ export default function MyProjectsPage() {
                 {wk.map((d, di) => {
                   if (d === null) return <div className="team-cal-cell team-cal-empty" key={di} />;
                   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                  const events = calendarEventsByDate[dateStr] || [];
+                  const events = outsourceAttendance[dateStr] || [];
                   const isToday =
                     year === todayRef.getFullYear() &&
                     month === todayRef.getMonth() + 1 &&
@@ -281,8 +207,8 @@ export default function MyProjectsPage() {
                         {visible.map((e, i) => (
                           <span
                             key={i}
-                            className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`}
-                            title={`${e.label} · ${e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}`}
+                            className="team-cal-ev-dot team-cal-ev-overtime"
+                            title={`${e.label} · ${qtyLabel(e.qty)} · ${e.siteName}`}
                           />
                         ))}
                         {extra > 0 && <span className="team-cal-ev-more">+{extra}</span>}
@@ -295,26 +221,22 @@ export default function MyProjectsPage() {
           </div>
 
           {selectedCalDay && (() => {
-            const evs = calendarEventsByDate[selectedCalDay] || [];
+            const evs = outsourceAttendance[selectedCalDay] || [];
             const [, mm, dd] = selectedCalDay.split('-');
             return (
               <div className="team-calendar-day-detail">
                 <div className="team-calendar-day-detail-head">
                   <strong>{Number(mm)}/{Number(dd)}</strong>
-                  <span className="team-calendar-hint">· {evs.length}건</span>
+                  <span className="team-calendar-hint">· {evs.length}명</span>
                   <button type="button" className="team-calendar-close" onClick={() => setSelectedCalDay(null)} aria-label="닫기">✕</button>
                 </div>
                 <ul className="team-calendar-day-list">
                   {evs.map((e, i) => (
                     <li key={i}>
-                      <span className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`} />
+                      <span className="team-cal-ev-dot team-cal-ev-overtime" />
                       <strong>{e.label}</strong>
-                      <span className="team-calendar-ev-detail">
-                        {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
-                      </span>
-                      {e.kind === 'overtime' && e.siteName && (
-                        <span className="team-calendar-ev-site">{e.siteName}</span>
-                      )}
+                      <span className="team-calendar-ev-detail">{qtyLabel(e.qty)}</span>
+                      {e.siteName && <span className="team-calendar-ev-site">{e.siteName}</span>}
                     </li>
                   ))}
                 </ul>
