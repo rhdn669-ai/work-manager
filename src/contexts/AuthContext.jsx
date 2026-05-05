@@ -7,7 +7,7 @@ import { INACTIVITY_TIMEOUT_MS, SESSION_ACTIVITY_KEY as ACTIVITY_KEY } from '../
 
 const AuthContext = createContext(null);
 
-const ACTIVITY_THROTTLE_MS = 1000;
+const ACTIVITY_THROTTLE_MS = 5000;
 
 export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
@@ -111,7 +111,7 @@ export function AuthProvider({ children }) {
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
     events.forEach((e) => window.addEventListener(e, updateActivity, { passive: true }));
 
-    const interval = setInterval(checkExpiry, 5 * 1000);
+    const interval = setInterval(checkExpiry, 60 * 1000);
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') checkExpiry();
