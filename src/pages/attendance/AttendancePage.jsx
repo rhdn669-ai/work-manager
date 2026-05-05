@@ -30,7 +30,8 @@ export default function AttendancePage() {
     (async () => {
       try {
         const list = await getAllSites();
-        setSites(list);
+        // 마감된 프로젝트는 잔업 등록 선택지에서 제외
+        setSites(list.filter((s) => s.status !== 'completed'));
       } catch (err) { console.error(err); }
     })();
   }, [userProfile]);
