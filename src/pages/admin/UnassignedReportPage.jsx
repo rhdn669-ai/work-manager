@@ -4,7 +4,7 @@ import { getUsers } from '../../services/userService';
 import { getAllSites, getClosingItems } from '../../services/siteService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getAllOvertimeRecords, OVERTIME_MULTIPLIER } from '../../services/attendanceService';
-import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
+import { getMonthStart, getMonthEnd, formatMinutes, buildHolidaySet } from '../../utils/dateUtils';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
 
@@ -41,6 +41,8 @@ export default function UnassignedReportPage() {
   const [leaves, setLeaves] = useState([]);
   const [overtimes, setOvertimes] = useState([]);
   const [loading, setLoading] = useState(true);
+  // 한국 공휴일 Set (배치현황에 회색 표시용)
+  const holidaySet = useMemo(() => buildHolidaySet([]), []);
 
   useEffect(() => {
     (async () => {
@@ -151,17 +153,20 @@ export default function UnassignedReportPage() {
       for (let d = 1; d <= totalDays; d++) {
         const dow = new Date(year, month - 1, d).getDay();
         const isWeekend = dow === 0 || dow === 6;
+        const dateIso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isHoliday = holidaySet.has(dateIso);
         const leaveType = nameToLeaveDay[u.name]?.[d];
         const projects = assigned[u.name]?.[d] || [];
         const otInfo = nameToOvertime[u.name]?.[d];
         const overtimeMin = otInfo?.minutes || 0;
         const otSiteNames = otInfo ? [...otInfo.siteNames] : [];
-        // 휴가(연차/반차/반반차/병가) 우선 표시 → 반차/반반차도 시각적으로 보임
+        // 공휴일 → 회색(holiday), 그 외 휴가/배정/주말/미배정 순으로 결정
         let type;
-        if (leaveType) type = leaveTypeToClass(leaveType);
+        if (isHoliday) type = 'holiday';
+        else if (isWeekend) type = 'weekend';
+        else if (leaveType) type = leaveTypeToClass(leaveType);
         else if (projects.length > 1) type = 'overlap';
         else if (projects.length === 1) type = 'assigned';
-        else if (isWeekend) type = 'weekend';
         else type = 'unassigned';
         days.push({ d, type, projects, leaveType, overtimeMin, otSiteNames });
         if (type === 'unassigned') unassignedCount++;
@@ -205,7 +210,7 @@ export default function UnassignedReportPage() {
       (b.unassignedCount + b.overlapCount) - (a.unassignedCount + a.overlapCount) || a.name.localeCompare(b.name),
     );
     return { rows: sorted, topUnassigned: topU, topOvertime: topOT, totalUnassignedAmount, totalUnassignedDays };
-  }, [users, allItems, leaves, overtimes, year, month]);
+  }, [users, allItems, leaves, overtimes, year, month, holidaySet]);
 
   const totalDays = daysInMonth(year, month);
   const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
@@ -254,6 +259,7 @@ export default function UnassignedReportPage() {
         <span><span className="ua-legend-swatch leave-quarter" />반반차</span>
         <span><span className="ua-legend-swatch leave-sick" />병가</span>
         <span><span className="ua-legend-swatch weekend" />주말</span>
+        <span><span className="ua-legend-swatch holiday" />공휴일</span>
         <span><span className="ua-legend-swatch unassigned" />미배정</span>
         <span><span className="ua-legend-dot" />잔업</span>
       </div>
@@ -270,7 +276,9 @@ export default function UnassignedReportPage() {
                 <th className="sticky-col">직원</th>
                 {dayHeaders.map((d) => {
                   const dow = new Date(year, month - 1, d).getDay();
-                  return <th key={d} className={`day-col ${dow === 0 ? 'sun' : dow === 6 ? 'sat' : ''} ${hoverDay === d ? 'col-hover' : ''}`}>{d}</th>;
+                  const isHoliday = holidaySet.has(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+                  const dowCls = (dow === 0 || isHoliday) ? 'sun' : dow === 6 ? 'sat' : '';
+                  return <th key={d} className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`}>{d}</th>;
                 })}
                 <th className="sticky-col-right">연차</th>
                 <th className="sticky-col-right">미배정</th>
@@ -291,6 +299,7 @@ export default function UnassignedReportPage() {
                     if (c.type === 'overlap') baseTitle = `중복배정: ${c.projects.join(', ')}`;
                     else if (c.type === 'assigned') baseTitle = c.projects.join(', ');
                     else if (isLeave) baseTitle = leaveLabel(c.leaveType);
+                    else if (c.type === 'holiday') baseTitle = '공휴일';
                     else if (c.type === 'weekend') baseTitle = '주말';
                     else baseTitle = '미배정';
                     const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}${c.otSiteNames.length > 0 ? ` (${c.otSiteNames.join(', ')})` : ''}` : baseTitle;
@@ -340,6 +349,7 @@ export default function UnassignedReportPage() {
           c.type === 'overlap' ? '중복배정' :
           c.type === 'assigned' ? '배정' :
           isLeave ? leaveLabel(c.leaveType) :
+          c.type === 'holiday' ? '공휴일' :
           c.type === 'weekend' ? '주말' : '미배정';
         return (
           <Modal isOpen={!!detailCell} onClose={() => setDetailCell(null)} title={`${c.name}님 · ${c.dateStr}`}>
