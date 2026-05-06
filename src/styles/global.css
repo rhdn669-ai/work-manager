@@ -817,10 +817,10 @@ body {
 
 @media (max-width: 480px) {
   .header {
-    padding-left: max(12px, env(safe-area-inset-left));
+    padding-left: max(4px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
   }
-  .header-left { gap: 8px; }
+  .header-left { gap: 6px; }
   .header-right { gap: 8px; }
   .header-logo { width: 110px; }
   .header-version { font-size: 13px; }
@@ -834,7 +834,7 @@ body {
 /* 폴드 접힌 화면 (~280px) */
 @media (max-width: 340px) {
   .header {
-    padding-left: max(8px, env(safe-area-inset-left));
+    padding-left: max(2px, env(safe-area-inset-left));
     padding-right: max(8px, env(safe-area-inset-right));
   }
   .header-left { gap: 4px; }
