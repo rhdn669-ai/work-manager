@@ -123,6 +123,7 @@ export async function addClosingItem(siteId, year, month, data) {
     itemType: data.itemType || 'freelancer',
     unitPrice: data.unitPrice || 0,
     dailyQuantities: data.dailyQuantities || {},
+    closings: data.closings || [], // vendor_case 전용: [{ id, date, count, units }]
     quantity: data.quantity || 0,
     amount: data.amount || 0,
     order: data.order || 0,

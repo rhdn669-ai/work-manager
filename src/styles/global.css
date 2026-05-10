@@ -5862,6 +5862,76 @@ body {
   .revenue-row-head { display: none; }
 }
 
+/* ===== 공수표 업체(프로젝트) — 납기일별 호기/댓수 행 ===== */
+.vendor-case-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 4px;
+}
+.vendor-case-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 64px 32px;
+  align-items: center;
+  gap: 8px;
+}
+.vendor-case-row-head {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0 4px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.vendor-case-row input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 0;
+}
+.vendor-case-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.vendor-case-count {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  padding: 0 6px;
+}
+.vendor-case-count-head {
+  text-align: right;
+}
+.vendor-case-row-empty {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 16px;
+}
+.vendor-case-add-row {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+@media (max-width: 640px) {
+  .vendor-case-row {
+    grid-template-columns: 1fr 64px 32px;
+    grid-template-areas: 'date count del' 'units units units';
+  }
+  .vendor-case-row > input[type='date'] { grid-area: date; }
+  .vendor-case-row > input[type='text'] { grid-area: units; }
+  .vendor-case-row > .vendor-case-count { grid-area: count; }
+  .vendor-case-row > .closing-delete { grid-area: del; }
+  .vendor-case-row-head { display: none; }
+}
+
 .finance-row {
   display: flex;
   align-items: center;

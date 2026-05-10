@@ -331,9 +331,43 @@ export default function SiteClosingPage() {
         }
       }
 
+      // vendor_case: 캘린더(dailyQuantities) → 납기일 행(closings) 자동 마이그레이션
+      // closings가 비어있고 dailyQuantities에 값이 있는 항목만 1회 변환 후 firestore 저장
+      const migrationUpdates = [];
+      finalItems = finalItems.map((it) => {
+        if (it.itemType !== 'vendor_case') return it;
+        const closings = Array.isArray(it.closings) ? it.closings : [];
+        const dq = it.dailyQuantities || {};
+        const hasDq = Object.values(dq).some((v) => Number(v) > 0);
+        if (closings.length > 0 || !hasDq) return it;
+        const migrated = Object.entries(dq)
+          .map(([day, n]) => ({ day: Number(day), count: Number(n) || 0 }))
+          .filter((r) => r.count > 0)
+          .sort((a, b) => a.day - b.day)
+          .map((r, i) => ({
+            id: `c-${Date.now()}-${i}`,
+            date: `${y}-${String(m).padStart(2, '0')}-${String(r.day).padStart(2, '0')}`,
+            count: r.count,
+            units: '',
+          }));
+        const quantity = migrated.reduce((s, r) => s + (r.count || 0), 0);
+        const amount = (Number(it.unitPrice) || 0) * quantity;
+        migrationUpdates.push(updateClosingItem(it.id, { closings: migrated, dailyQuantities: {}, quantity, amount }));
+        return { ...it, closings: migrated, dailyQuantities: {}, quantity, amount };
+      });
+      if (migrationUpdates.length > 0) {
+        try { await Promise.all(migrationUpdates); } catch (e) { console.error('vendor_case 마이그레이션 일부 실패', e); }
+      }
+
       setItems(finalItems);
       const buf = {};
-      finalItems.forEach((it) => { buf[it.id] = { ...it, dailyQuantities: { ...(it.dailyQuantities || {}) } }; });
+      finalItems.forEach((it) => {
+        buf[it.id] = {
+          ...it,
+          dailyQuantities: { ...(it.dailyQuantities || {}) },
+          closings: Array.isArray(it.closings) ? it.closings.map((c) => ({ ...c })) : [],
+        };
+      });
       setEditBuf(buf);
       const fbuf = {};
       fins.forEach((f) => { fbuf[f.id] = { ...f }; });
@@ -406,6 +440,7 @@ export default function SiteClosingPage() {
         itemType: data.itemType || 'freelancer',
         unitPrice: Number(data.unitPrice) || 0,
         dailyQuantities: data.dailyQuantities || {},
+        closings: Array.isArray(data.closings) ? data.closings : [],
         quantity: Number(data.quantity) || 0,
         amount: Number(data.amount) || 0,
       });
@@ -564,6 +599,7 @@ export default function SiteClosingPage() {
       itemType,
       unitPrice: Number(unitPrice) || 0,
       dailyQuantities: {},
+      closings: [],
       quantity: 0,
       amount: 0,
       order: nextOrder,
@@ -802,6 +838,60 @@ export default function SiteClosingPage() {
     delete timersRef.current[itemId];
     const data = editBuf[itemId];
     if (data) persistRow(itemId, data);
+  }
+
+  // --- 업체(프로젝트) 납기일 행 추가/삭제/수정 ---
+  function addRowClosing(itemId) {
+    setEditBuf((b) => {
+      const cur = { ...b[itemId] };
+      const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
+      const today = new Date();
+      const tYear = today.getFullYear();
+      const tMonth = today.getMonth() + 1;
+      let yyyy = tYear, mm = tMonth, dd = today.getDate();
+      if (tYear !== y || tMonth !== m) { yyyy = y; mm = m; dd = 1; }
+      const dateStr = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+      closings.push({ id: `c-${Date.now()}`, date: dateStr, count: 0, units: '' });
+      cur.closings = closings;
+      const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+      cur.quantity = totalQty;
+      cur.amount = (Number(cur.unitPrice) || 0) * totalQty;
+      scheduleSave(itemId, cur);
+      return { ...b, [itemId]: cur };
+    });
+  }
+  function removeRowClosing(itemId, idx) {
+    setEditBuf((b) => {
+      const cur = { ...b[itemId] };
+      const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
+      closings.splice(idx, 1);
+      cur.closings = closings;
+      const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+      cur.quantity = totalQty;
+      cur.amount = (Number(cur.unitPrice) || 0) * totalQty;
+      scheduleSave(itemId, cur);
+      return { ...b, [itemId]: cur };
+    });
+  }
+  function updateRowClosing(itemId, idx, field, value) {
+    setEditBuf((b) => {
+      const cur = { ...b[itemId] };
+      const closings = Array.isArray(cur.closings) ? [...cur.closings] : [];
+      const row = { ...(closings[idx] || {}) };
+      row[field] = value;
+      // units 텍스트에서 콤마/공백/슬래시로 분리 → 자동 댓수 카운트
+      if (field === 'units') {
+        const tokens = (value || '').split(/[,\s/]+/).filter((x) => x.trim());
+        row.count = tokens.length;
+      }
+      closings[idx] = row;
+      cur.closings = closings;
+      const totalQty = closings.reduce((s, c) => s + (Number(c.count) || 0), 0);
+      cur.quantity = totalQty;
+      cur.amount = (Number(cur.unitPrice) || 0) * totalQty;
+      scheduleSave(itemId, cur);
+      return { ...b, [itemId]: cur };
+    });
   }
 
   // --- 지출/매출 ---
@@ -1329,7 +1419,8 @@ export default function SiteClosingPage() {
           { key: 'employee', label: '직원', count: cnt(['employee']) },
           { key: 'freelancer', label: '프리랜서', count: cnt(['freelancer']) },
           { key: 'daily', label: '일용직', count: cnt(['daily']) },
-          { key: 'vendor', label: '업체', count: cnt(['vendor', 'vendor_case']) },
+          { key: 'vendor', label: '업체(공수)', count: cnt(['vendor']) },
+          { key: 'vendor_case', label: '업체(프로젝트)', count: cnt(['vendor_case']) },
         ];
         return (
           <div className="tab-nav closing-tab-nav">
@@ -1385,7 +1476,6 @@ export default function SiteClosingPage() {
         const filtered = sorted.filter((it) => {
           if (closingTab === 'all') return true;
           const t = it.itemType || 'freelancer';
-          if (closingTab === 'vendor') return t === 'vendor' || t === 'vendor_case';
           return t === closingTab;
         });
 
@@ -1409,8 +1499,8 @@ export default function SiteClosingPage() {
             const cardType = it.itemType || buf.itemType || 'freelancer';
             const isDaily = cardType === 'daily';
             const isVendorCase = cardType === 'vendor_case';
-            const unitLabel = isDaily ? '시간' : isVendorCase ? '건' : '일';
-            const priceLabel = isDaily ? '시급' : isVendorCase ? '건당' : '단가';
+            const unitLabel = isDaily ? '시간' : isVendorCase ? '대' : '일';
+            const priceLabel = isDaily ? '시급' : isVendorCase ? '1대당' : '단가';
             // 모달 전용 생성 유형은 과거 데이터도 파생 잠금.
             // - employee: 항상 모달 → 업체/이름 둘 다 잠금
             // - vendor / vendor_case: 업체는 항상 모달 → 업체 잠금. 이름은 값 있을 때만(모달 선택) 잠금.
@@ -1461,7 +1551,52 @@ export default function SiteClosingPage() {
                   )}
                 </div>
 
-                {(() => {
+                {isVendorCase ? (
+                  (() => {
+                    const closings = Array.isArray(buf.closings) ? buf.closings : [];
+                    return (
+                      <div className="vendor-case-rows">
+                        <div className="vendor-case-row vendor-case-row-head">
+                          <span>납기일</span>
+                          <span>호기</span>
+                          <span className="vendor-case-count-head">댓수</span>
+                          <span></span>
+                        </div>
+                        {closings.length === 0 && (
+                          <div className="vendor-case-row-empty">납기일 행을 추가해주세요.</div>
+                        )}
+                        {closings.map((c, idx) => (
+                          <div className="vendor-case-row" key={c.id || idx}>
+                            <input
+                              type="date"
+                              value={c.date || ''}
+                              onChange={(e) => updateRowClosing(it.id, idx, 'date', e.target.value)}
+                              onBlur={() => flushRow(it.id)}
+                              disabled={!canEdit}
+                            />
+                            <input
+                              type="text"
+                              value={c.units || ''}
+                              onChange={(e) => updateRowClosing(it.id, idx, 'units', e.target.value)}
+                              onBlur={() => flushRow(it.id)}
+                              disabled={!canEdit}
+                              placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
+                            />
+                            <span className="vendor-case-count">{Number(c.count) || 0}대</span>
+                            {canEdit && (
+                              <button type="button" className="closing-delete" onClick={() => removeRowClosing(it.id, idx)} aria-label="행 삭제">✕</button>
+                            )}
+                          </div>
+                        ))}
+                        {canEdit && (
+                          <button type="button" className="btn btn-sm btn-outline vendor-case-add-row" onClick={() => addRowClosing(it.id)}>
+                            + 납기 추가
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()
+                ) : (() => {
                   // 캘린더 형식 생성
                   const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
                   const totalDays = daysInMonth(y, m);
