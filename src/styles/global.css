@@ -9080,3 +9080,113 @@ body {
   .vlc-grid { grid-template-columns: 1fr 1fr; gap: 6px 10px; }
   .vlc-name strong { font-size: 14px; }
 }
+
+/* ===== CS업무 프로젝트 (사이트별 일자 라벨) ===== */
+/* 프로젝트 목록 카드의 CS 배지 */
+.site-type-badge.site-type-cs {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+/* CS 셀 — 일반 input 대신 모달 트리거 버튼 */
+.day-cal-cell.is-cs-cell {
+  position: relative;
+}
+.cs-cell-btn {
+  margin-top: auto;
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px dashed #fcd34d;
+  border-radius: 6px;
+  padding: 2px 3px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  box-sizing: border-box;
+  line-height: 1.1;
+  transition: background 0.12s, border-color 0.12s, transform 0.06s;
+}
+.cs-cell-btn:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+.cs-cell-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.cs-cell-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cs-cell-btn.has-value {
+  background: #fde68a;
+  border-style: solid;
+  border-color: #f59e0b;
+  color: #78350f;
+}
+.cs-cell-qty {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+.cs-cell-btn.has-value .cs-cell-qty { font-size: 13px; }
+.cs-cell-btn:not(.has-value) .cs-cell-qty {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d97706;
+}
+.cs-cell-site {
+  max-width: 100%;
+  font-size: 9px;
+  font-weight: 600;
+  color: #92400e;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* CS 셀 입력 모달 — 빠른 선택 칩 */
+.cs-cell-modal-body .cs-cell-modal-qty-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cs-cell-modal-body .cs-cell-modal-qty-row .btn {
+  min-width: 50px;
+}
+.cs-cell-modal-body .cs-cell-modal-qty-row input[type="number"] {
+  flex: 1;
+  min-width: 90px;
+}
+
+/* 모바일 — 좁은 화면에서 현장명/공수가 자리 잡도록 */
+@media (max-width: 640px) {
+  .cs-cell-btn {
+    min-height: 32px;
+    padding: 2px;
+    font-size: 10px;
+  }
+  .cs-cell-qty { font-size: 12px; }
+  .cs-cell-site { font-size: 8px; }
+}
+
+/* 폴더블 외부 화면 (~360px) */
+@media (max-width: 380px) {
+  .cs-cell-btn { min-height: 34px; padding: 1px; }
+  .cs-cell-qty { font-size: 11px; }
+  .cs-cell-site { font-size: 8px; max-width: 38px; }
+  .cs-cell-modal-body .cs-cell-modal-qty-row .btn { min-width: 42px; padding-left: 6px; padding-right: 6px; }
+  .cs-cell-modal-body .cs-cell-modal-qty-row input[type="number"] { min-width: 70px; }
+}

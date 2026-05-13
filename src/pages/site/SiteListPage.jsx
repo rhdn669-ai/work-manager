@@ -8,6 +8,7 @@ import Modal from '../../components/common/Modal';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
+const CS_BADGE_LABEL = 'CS';
 const STATUS_LABELS = { active: '진행 중', completed: '완료' };
 
 // 아이콘 배경색 팔레트 — { key, label, bg, fg }
@@ -61,7 +62,7 @@ export default function SiteListPage() {
     name: '', team: '', managerIds: [],
     projectType: 'recurring', status: 'active',
     startYear: null, startMonth: null, endYear: null, endMonth: null,
-    mirrorFromSiteIds: [], hideRevenue: false,
+    mirrorFromSiteIds: [], hideRevenue: false, isCS: false,
   });
   const [managerListOpen, setManagerListOpen] = useState(false);
   const [mirrorListOpen, setMirrorListOpen] = useState(false);
@@ -224,7 +225,8 @@ export default function SiteListPage() {
       name: '', team: '', managerIds: [],
       projectType: 'recurring', status: 'active',
       startYear: year, startMonth: month, endYear: null, endMonth: null,
-      mirrorFromSiteIds: [], hideRevenue: false, icon: '', iconColor: '',
+      mirrorFromSiteIds: [], hideRevenue: false, isCS: false,
+      icon: '', iconColor: '',
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -239,6 +241,7 @@ export default function SiteListPage() {
       startYear: site.startYear || null, startMonth: site.startMonth || null,
       endYear: site.endYear || null, endMonth: site.endMonth || null,
       mirrorFromSiteIds: site.mirrorFromSiteIds || [], hideRevenue: !!site.hideRevenue,
+      isCS: !!site.isCS,
       icon: site.icon || '', iconColor: site.iconColor || '',
     });
     setManagerListOpen(false);
@@ -440,6 +443,7 @@ export default function SiteListPage() {
                     <div className="site-row-name">
                       {s.name}
                       <span className={`site-type-badge site-type-${pt}`}>{TYPE_LABELS[pt]}</span>
+                      {s.isCS && <span className="site-type-badge site-type-cs" title="CS업무: 매일 다른 현장 방문">{CS_BADGE_LABEL}</span>}
                       {st === 'completed' && <span className="site-status-badge site-status-completed">{STATUS_LABELS[st]}</span>}
                     </div>
                     <div className="site-row-meta">
@@ -536,6 +540,20 @@ export default function SiteListPage() {
               <button type="button" className={`btn btn-sm ${form.projectType === 'recurring' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'recurring' })}>양산형</button>
               <button type="button" className={`btn btn-sm ${form.projectType === 'once' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'once' })}>단발성</button>
             </div>
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!form.isCS}
+                onChange={(e) => setForm({ ...form, isCS: e.target.checked })}
+                style={{ width: 'auto', minHeight: 'auto', margin: 0 }}
+              />
+              <span>CS업무 (직원이 매일 다른 현장 방문)</span>
+            </label>
+            <p className="field-hint" style={{ marginTop: 4 }}>
+              체크 시 공수표 셀을 탭하면 모달이 열려 <strong>공수와 현장명</strong>을 함께 입력할 수 있습니다.
+            </p>
           </div>
           <div className="form-group">
             <label>아이콘 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택, 미선택 시 유형별 기본)</span></label>

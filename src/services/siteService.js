@@ -59,6 +59,9 @@ export async function createSite(data) {
     endMonth: data.endMonth || null,
     mirrorFromSiteIds: data.mirrorFromSiteIds || [], // 지출 합산 대상 프로젝트 ID 목록
     hideRevenue: data.hideRevenue || false, // 매출 섹션 숨김 (지원성 프로젝트용)
+    isCS: data.isCS || false, // CS업무: 직원이 매일 다른 현장 방문 → 셀에 현장 라벨 함께 저장
+    icon: data.icon || '',
+    iconColor: data.iconColor || '',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -123,6 +126,7 @@ export async function addClosingItem(siteId, year, month, data) {
     itemType: data.itemType || 'freelancer',
     unitPrice: data.unitPrice || 0,
     dailyQuantities: data.dailyQuantities || {},
+    dailySites: data.dailySites || {}, // CS 프로젝트 전용: { [day]: '현장명' } — dailyQuantities와 동일 키
     closings: data.closings || [], // vendor_case 전용: [{ id, date, count, units }]
     quantity: data.quantity || 0,
     amount: data.amount || 0,
@@ -267,12 +271,23 @@ export async function syncEmployeeLeaveDaysForMonth(userName, year, month, leave
     for (let d = 1; d <= totalDays; d++) {
       const dow = new Date(year, month - 1, d).getDay();
       if (dow === 0 || dow === 6) continue; // 주말 무시
-      const frac = _leaveWorkFraction(leaveDaysMap[d]);
+      const leaveType = leaveDaysMap[d];
       const currentVal = Number(oldDq[d]);
       const isEmpty = oldDq[d] === undefined || oldDq[d] === null;
-      const isAutoManaged = isEmpty || _AUTO_MANAGED_VALUES.has(currentVal);
-      if (!isAutoManaged) continue; // 수동 편집된 값 보호
+      const isAutoManaged = _AUTO_MANAGED_VALUES.has(currentVal);
 
+      // 빈 칸: 동기화로 자동 채우지 않음 (미래 도래하지 않은 평일이 1로 채워지는 버그 방지)
+      // 단, 빈 칸에 새 연차가 들어오면(반차/반반차) frac만큼 채움
+      if (isEmpty) {
+        if (!leaveType) continue;                 // 연차도 없으면 그대로 둠
+        const frac = _leaveWorkFraction(leaveType);
+        if (frac > 0) newDq[d] = frac;            // 반차/반반차: 0.5/0.75만 채움 (전일 연차는 0)
+        continue;
+      }
+
+      // 값이 있는 칸: 자동관리값(0.25/0.5/0.75/1)만 연차에 맞게 재계산
+      if (!isAutoManaged) continue; // 수동 편집된 값 보호
+      const frac = _leaveWorkFraction(leaveType);
       if (frac > 0) newDq[d] = frac;
       else delete newDq[d];
     }

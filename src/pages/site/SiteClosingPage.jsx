@@ -121,6 +121,8 @@ export default function SiteClosingPage() {
   const [freelancerPickerMode, setFreelancerPickerMode] = useState(null); // 'freelancer' | 'daily' | null
   // 프리랜서/일용직 직접 입력 모달
   const [directInputModal, setDirectInputModal] = useState(null); // { type, name, vendor, dailyRate } | null
+  // CS 셀 입력 모달 — site.isCS일 때 셀 탭하면 공수+현장명 함께 입력
+  const [csCellModal, setCsCellModal] = useState(null); // { itemId, day, qty, siteName } | null
 
   function resetVendorPicker() {
     setVendorPickerMode(null);
@@ -440,6 +442,7 @@ export default function SiteClosingPage() {
         itemType: data.itemType || 'freelancer',
         unitPrice: Number(data.unitPrice) || 0,
         dailyQuantities: data.dailyQuantities || {},
+        dailySites: data.dailySites || {},
         closings: Array.isArray(data.closings) ? data.closings : [],
         quantity: Number(data.quantity) || 0,
         amount: Number(data.amount) || 0,
@@ -838,6 +841,76 @@ export default function SiteClosingPage() {
     delete timersRef.current[itemId];
     const data = editBuf[itemId];
     if (data) persistRow(itemId, data);
+  }
+
+  // CS 셀 모달 열기 — 기존 값(공수/현장명) 채워서 표시
+  function openCsCellModal(itemId, day) {
+    const buf = editBuf[itemId];
+    if (!buf) return;
+    setCsCellModal({
+      itemId,
+      day,
+      qty: buf.dailyQuantities?.[day] ?? '',
+      siteName: buf.dailySites?.[day] || '',
+    });
+  }
+
+  // CS 셀 모달 저장 — dailyQuantities와 dailySites 동시 업데이트
+  function saveCsCellModal() {
+    if (!csCellModal) return;
+    const { itemId, day, qty, siteName } = csCellModal;
+    setEditBuf((b) => {
+      const cur = { ...b[itemId] };
+      const dq = { ...(cur.dailyQuantities || {}) };
+      const ds = { ...(cur.dailySites || {}) };
+      const trimmedSite = (siteName || '').trim();
+      const rawQty = qty;
+      let num = Number(rawQty);
+      if (rawQty === '' || rawQty === null || isNaN(num) || num <= 0) {
+        delete dq[day];
+        delete ds[day];
+      } else {
+        // CS는 보통 직원/프리랜서/일용직 → 1일 최대 1로 클램프 (직원일 때 다른 사이트 합산 검증)
+        const isEmployee = cur.itemType === 'employee';
+        const leaveType = isEmployee ? leaveDays[cur.detail]?.[day] : null;
+        let dayMax = 1;
+        if (leaveType === 'half_am' || leaveType === 'half_pm') dayMax = 0.5;
+        else if (QUARTER_LEAVE_TYPES.includes(leaveType)) dayMax = 0.75;
+        num = Math.max(0, Math.min(dayMax, num));
+        if (isEmployee) {
+          const info = otherSitesEmployeeDaily[cur.detail || '']?.[day];
+          const otherTotal = info?.total || 0;
+          const allowed = Math.max(0, Math.min(dayMax - otherTotal, dayMax));
+          if (num > allowed) {
+            setOverflowAlert({
+              name: cur.detail || '직원',
+              day,
+              otherTotal,
+              allowed,
+              attempted: num,
+              sources: info?.sources || [],
+            });
+            num = allowed;
+          }
+        }
+        if (num <= 0) {
+          delete dq[day];
+          delete ds[day];
+        } else {
+          dq[day] = num;
+          if (trimmedSite) ds[day] = trimmedSite;
+          else delete ds[day];
+        }
+      }
+      cur.dailyQuantities = dq;
+      cur.dailySites = ds;
+      const sum = Object.values(dq).reduce((a, v) => a + (Number(v) || 0), 0);
+      cur.quantity = sum;
+      cur.amount = Number(cur.unitPrice || 0) * sum;
+      scheduleSave(itemId, cur);
+      return { ...b, [itemId]: cur };
+    });
+    setCsCellModal(null);
   }
 
   // --- 업체(프로젝트) 납기일 행 추가/삭제/수정 ---
@@ -1638,8 +1711,11 @@ export default function SiteClosingPage() {
                             const workFraction = leaveWorkFraction(leaveType);
                             const isFullLeave = isOnLeave && workFraction === 0;
                             const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
+                            // CS 프로젝트: 셀 탭 → 모달로 공수+현장명 입력
+                            const isCSMode = !!site?.isCS && !isVendorCase;
+                            const csSiteName = isCSMode ? (buf.dailySites?.[d] || '') : '';
                             return (
-                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''}`} key={di}>
+                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''} ${isCSMode ? 'is-cs-cell' : ''}`} key={di}>
                                 <label>{d}</label>
                                 {isEmpRest ? (
                                   showAttendance ? (
@@ -1654,6 +1730,17 @@ export default function SiteClosingPage() {
                                   >
                                     {leaveBadgeLabel(leaveType)}
                                   </div>
+                                ) : isCSMode ? (
+                                  <button
+                                    type="button"
+                                    className={`cs-cell-btn ${hasValue ? 'has-value' : ''}`}
+                                    onClick={() => canEdit && openCsCellModal(it.id, d)}
+                                    disabled={!canEdit}
+                                    title={canEdit ? '탭하여 공수·현장 입력' : (csSiteName ? `${csSiteName} · ${v}공수` : '')}
+                                  >
+                                    <span className="cs-cell-qty">{hasValue ? v : '+'}</span>
+                                    {csSiteName && <span className="cs-cell-site">{csSiteName}</span>}
+                                  </button>
                                 ) : (
                                   <div className="day-cal-input-wrap">
                                     <input
@@ -1716,6 +1803,76 @@ export default function SiteClosingPage() {
             );
           })}
         </div>
+        );
+      })()}
+
+      {/* CS 셀 입력 모달 — 공수 + 현장명 */}
+      {csCellModal && (() => {
+        const buf = editBuf[csCellModal.itemId];
+        const personName = buf?.detail || '담당자';
+        const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(csCellModal.day).padStart(2, '0')}`;
+        // 이번 달 이미 방문한 현장 목록 — 자동완성 후보
+        const visitedSites = Array.from(new Set(
+          items.flatMap((it) => Object.values(it.dailySites || {}))
+        )).filter((s) => s && s.trim()).sort();
+        return (
+          <Modal isOpen={!!csCellModal} onClose={() => setCsCellModal(null)} title={`${m}/${csCellModal.day} 공수 입력 — ${personName}`}>
+            <div className="cs-cell-modal-body">
+              <div className="form-group">
+                <label>현장명</label>
+                <input
+                  type="text"
+                  value={csCellModal.siteName}
+                  onChange={(e) => setCsCellModal({ ...csCellModal, siteName: e.target.value })}
+                  placeholder="예: 삼성 SDS 본사"
+                  list="cs-cell-visited-sites"
+                  autoFocus
+                />
+                <datalist id="cs-cell-visited-sites">
+                  {visitedSites.map((s) => <option key={s} value={s} />)}
+                </datalist>
+                <p className="field-hint" style={{ marginTop: 4 }}>
+                  이번 달 방문 이력이 있는 현장명은 자동으로 추천됩니다.
+                </p>
+              </div>
+              <div className="form-group">
+                <label>공수 ({dayIso})</label>
+                <div className="cs-cell-modal-qty-row">
+                  {[0.25, 0.5, 0.75, 1].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`btn btn-sm ${Number(csCellModal.qty) === preset ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setCsCellModal({ ...csCellModal, qty: preset })}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    max="1"
+                    value={csCellModal.qty}
+                    onChange={(e) => setCsCellModal({ ...csCellModal, qty: e.target.value })}
+                    placeholder="직접 입력"
+                  />
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-primary" onClick={saveCsCellModal}>저장</button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setCsCellModal({ ...csCellModal, qty: '', siteName: '' })}
+                  title="이 날 입력 비우기"
+                >
+                  비우기
+                </button>
+                <button type="button" className="btn btn-outline" onClick={() => setCsCellModal(null)}>취소</button>
+              </div>
+            </div>
+          </Modal>
         );
       })()}
 
