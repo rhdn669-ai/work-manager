@@ -57,12 +57,23 @@ function autofillUpToDay(year, month) {
   return 0;
 }
 
+// 프로젝트 시작월 이전은 자동 채우지 않음 (신규 프로젝트 직원 추가 시 과거 일자가 1로 채워지는 버그 방지)
+function autofillUpToDayForSite(site, year, month) {
+  const sy = Number(site?.startYear) || 0;
+  const sm = Number(site?.startMonth) || 0;
+  if (sy && sm) {
+    if (year < sy || (year === sy && month < sm)) return 0;
+  }
+  return autofillUpToDay(year, month);
+}
+
 // 직원 dailyQuantities에서 평일 빈 칸을 1로 채움 (수동값/연차일/공휴일/주말 보존)
-function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay }) {
+// fromDay: 채우기 시작일 (기본 1). 직원 신규 추가 시 추가 당일부터 채우려고 사용
+function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay, fromDay = 1 }) {
   if (upToDay <= 0) return { newDq: oldDq || {}, changed: false };
   const newDq = { ...(oldDq || {}) };
   let changed = false;
-  for (let d = 1; d <= upToDay; d++) {
+  for (let d = fromDay; d <= upToDay; d++) {
     const dow = new Date(year, month - 1, d).getDay();
     if (dow === 0 || dow === 6) continue;
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -308,7 +319,7 @@ export default function SiteClosingPage() {
       // 양산형 프로젝트: 직원 평일 빈 칸을 오늘까지 1로 자동 채움 (단발성은 제외)
       let finalItems = its;
       if (s?.projectType === 'recurring') {
-        const upToDay = autofillUpToDay(y, m);
+        const upToDay = autofillUpToDayForSite(s, y, m);
         if (upToDay > 0) {
           const updates = [];
           finalItems = its.map((it) => {
@@ -690,8 +701,12 @@ export default function SiteClosingPage() {
     let initQuantity = 0;
     let initAmount = 0;
     if (site?.projectType === 'recurring') {
-      const upToDay = autofillUpToDay(y, m);
+      const upToDay = autofillUpToDayForSite(site, y, m);
       if (upToDay > 0) {
+        // 직원 추가일부터 채움 — 현재 월이면 오늘 날짜부터, 과거 월이면 채우지 않음(추가일이 범위 밖)
+        const today = new Date();
+        const isCurrentMonth = today.getFullYear() === y && today.getMonth() + 1 === m;
+        const fromDay = isCurrentMonth ? today.getDate() : upToDay + 1;
         const leaveMap = leaveDays[user.name] || {};
         const { newDq } = autofillEmployeeDq({
           oldDq: {},
@@ -700,6 +715,7 @@ export default function SiteClosingPage() {
           holidaySet,
           leaveMap,
           upToDay,
+          fromDay,
         });
         initDq = newDq;
         initQuantity = Object.values(newDq).reduce((sum, v) => sum + Number(v || 0), 0);
