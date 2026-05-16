@@ -31,6 +31,9 @@ function buildAllItems({ isAdmin, canApproveLeave }) {
     { key: 'manage-my-projects', to: '/manage/my-projects', label: '외주', show: canApproveLeave && !isAdmin, end: true },
     { key: 'admin-events', to: '/admin/events', label: '이벤트 · 공지', show: isAdmin },
     { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', show: isAdmin },
+    { key: 'admin-purchase', to: '/admin/purchase', label: '구매 · 발주 현황', show: isAdmin, end: true },
+    { key: 'admin-purchase-suppliers', to: '/admin/purchase/suppliers', label: '구매처 관리', show: isAdmin },
+    { key: 'admin-purchase-items', to: '/admin/purchase/items', label: '구매 품목 관리', show: isAdmin },
     { key: 'admin-data-cleanup', to: '/admin/data-cleanup', label: '데이터 정리', show: isAdmin },
   ];
 }

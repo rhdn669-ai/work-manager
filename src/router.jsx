@@ -22,6 +22,9 @@ import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import TotalClosingPage from './pages/admin/TotalClosingPage';
 import VehicleLogPage from './pages/admin/VehicleLogPage';
 import DataCleanupPage from './pages/admin/DataCleanupPage';
+import PurchaseListPage from './pages/admin/PurchaseListPage';
+import SupplierManagementPage from './pages/admin/SupplierManagementPage';
+import PurchaseItemPage from './pages/admin/PurchaseItemPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 
@@ -76,6 +79,9 @@ const router = createBrowserRouter([
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
           { path: '/admin/data-cleanup', element: <DataCleanupPage /> },
+          { path: '/admin/purchase', element: <PurchaseListPage /> },
+          { path: '/admin/purchase/suppliers', element: <SupplierManagementPage /> },
+          { path: '/admin/purchase/items', element: <PurchaseItemPage /> },
         ],
       },
     ],

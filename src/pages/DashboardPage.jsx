@@ -6,6 +6,7 @@ import { getLeaveBalance, getMyLeaves } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
+import { getPurchases } from '../services/purchaseService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
 
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [siteCount, setSiteCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [purchasePending, setPurchasePending] = useState(0);
   const [adminStats, setAdminStats] = useState({ users: 0, activeUsers: 0, departments: 0 });
   const [recentApprovals, setRecentApprovals] = useState([]); // 최근 결재 결과 (비관리자)
   const [loading, setLoading] = useState(true);
@@ -53,8 +55,12 @@ export default function DashboardPage() {
           activeUsers,
           departments: departments.length,
         });
-        const pending = await getPendingOvertimeRecords();
+        const [pending, purchases] = await Promise.all([
+          getPendingOvertimeRecords(),
+          getPurchases(),
+        ]);
         setPendingCount(pending.length);
+        setPurchasePending(purchases.filter((p) => p.status === 'ordered').length);
       } else {
         // 비관리자 — 최근 14일 결재 결과 (잔업/연차)
         const since = new Date(); since.setDate(since.getDate() - 1);
@@ -182,6 +188,24 @@ export default function DashboardPage() {
               <div className="tile-title">잔업 승인 대기</div>
               <div className="tile-value">{pendingCount}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
               <div className="tile-sub">{pendingCount > 0 ? '탭해서 승인' : '대기 없음'}</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/purchase"
+            className={`dashboard-tile tile-purchase ${purchasePending > 0 ? 'is-urgent' : ''}`}
+          >
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">입고 대기 구매</div>
+              <div className="tile-value">{purchasePending}<span style={{ fontSize: 13, marginLeft: 3 }}>건</span></div>
+              <div className="tile-sub">{purchasePending > 0 ? '탭해서 입고처리' : '대기 없음'}</div>
             </div>
           </Link>
         </div>
