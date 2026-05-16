@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getEvents, addEvent, updateEvent, deleteEvent } from '../../services/eventService';
 import { getKoreanHolidaysAsEvents } from '../../utils/koreanHolidays';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무' };
 const TYPE_COLORS = {
@@ -16,6 +17,7 @@ function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.
 function todayISO() { return toISO(new Date()); }
 
 export default function EventManagementPage() {
+  const { confirm, alert } = useDialog();
   const { userProfile } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ export default function EventManagementPage() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('삭제하시겠습니까?')) return;
+    if (!await confirm('삭제하시겠습니까?')) return;
     try {
       await deleteEvent(id);
       await loadData();
@@ -128,7 +130,7 @@ export default function EventManagementPage() {
       alert(`${currentYear}년 한국 공휴일은 이미 모두 등록되어 있습니다.`);
       return;
     }
-    if (!confirm(`${currentYear}년 한국 공휴일 ${toAdd.length}개를 일괄 등록하시겠습니까?\n\n${toAdd.slice(0, 5).map((h) => `· ${h.startDate} ${h.title}`).join('\n')}${toAdd.length > 5 ? `\n... 외 ${toAdd.length - 5}개` : ''}`)) return;
+    if (!await confirm(`${currentYear}년 한국 공휴일 ${toAdd.length}개를 일괄 등록하시겠습니까?\n\n${toAdd.slice(0, 5).map((h) => `· ${h.startDate} ${h.title}`).join('\n')}${toAdd.length > 5 ? `\n... 외 ${toAdd.length - 5}개` : ''}`)) return;
     setSyncing(true);
     try {
       for (const kh of toAdd) {

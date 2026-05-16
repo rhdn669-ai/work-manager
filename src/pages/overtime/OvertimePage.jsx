@@ -96,7 +96,7 @@ export default function OvertimePage() {
           {history.length === 0 ? (
             <p className="text-muted">이력이 없습니다.</p>
           ) : (
-            <table className="table">
+            <table className="table cards-sm">
               <thead>
                 <tr>
                   <th>주 시작일</th>
@@ -111,10 +111,10 @@ export default function OvertimePage() {
                   const pct = Math.round((s.totalOvertimeMinutes / WEEKLY_OVERTIME_LIMIT) * 100);
                   return (
                     <tr key={s.id}>
-                      <td>{s.weekStart}</td>
-                      <td>{formatMinutes(s.totalOvertimeMinutes)}</td>
-                      <td>{pct}%</td>
-                      <td>
+                      <td data-label="주 시작일">{s.weekStart}</td>
+                      <td data-label="초과근무">{formatMinutes(s.totalOvertimeMinutes)}</td>
+                      <td data-label="한도 대비">{pct}%</td>
+                      <td data-label="상태">
                         <span className={`badge badge-${level}`}>
                           {level === 'danger' ? '초과' : level === 'warning' ? '경고' : level === 'caution' ? '주의' : '정상'}
                         </span>

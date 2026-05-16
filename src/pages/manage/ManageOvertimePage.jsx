@@ -6,11 +6,13 @@ import {
 } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
 import StatusBadge from '../../components/common/StatusBadge';
+import { useDialog } from '../../components/common/DialogProvider';
 
 const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절' };
 
 export default function ManageOvertimePage() {
   const { userProfile, isAdmin } = useAuth();
+  const { alert } = useDialog();
   const [records, setRecords] = useState([]);
   const [pendingList, setPendingList] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());

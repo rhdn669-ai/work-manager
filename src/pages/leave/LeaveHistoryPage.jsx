@@ -5,6 +5,7 @@ import { getEvents } from '../../services/eventService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDaysExcludingHolidays, buildHolidaySet, getToday } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
+import { useDialog } from '../../components/common/DialogProvider';
 
 const STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },
@@ -27,6 +28,7 @@ function isSingleDayType(type) {
 
 export default function LeaveHistoryPage() {
   const { userProfile } = useAuth();
+  const { confirm, alert } = useDialog();
   const [leaves, setLeaves] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -83,7 +85,7 @@ export default function LeaveHistoryPage() {
   }
 
   async function handleCancel(l) {
-    if (!confirm('이 연차를 취소하시겠습니까?')) return;
+    if (!await confirm('이 연차를 취소하시겠습니까?')) return;
     setBusy(true);
     try {
       await cancelLeave(l.id);

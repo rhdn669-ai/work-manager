@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribePreferences, setSidebarPref, clearSidebarPref, setSeededAdminDefaults } from '../../services/userPreferenceService';
+import { useDialog } from './DialogProvider';
 
 // 관리자에게만 1회 자동 추가되는 기본 대분류 (삭제 후 재등장 방지를 위해 didSeedAdminDefaults 플래그로 관리)
 const ADMIN_DEFAULT_GROUP_LABELS = ['직원', '외주', '비용'];
@@ -36,6 +37,7 @@ function buildAllItems({ isAdmin, canApproveLeave }) {
 
 export default function Sidebar({ isOpen }) {
   const { userProfile, isAdmin, canApproveLeave } = useAuth();
+  const { confirm } = useDialog();
   const [editing, setEditing] = useState(false);
   const [order, setOrder] = useState(null);
   const [groups, setGroups] = useState([]); // [{ key, label, isGroup: true }]
@@ -168,8 +170,8 @@ export default function Sidebar({ isOpen }) {
     setDraggedKey(null);
   }
 
-  function resetOrder() {
-    if (!confirm('사이드바 순서와 추가한 대분류를 모두 기본으로 초기화하시겠습니까?')) return;
+  async function resetOrder() {
+    if (!await confirm('사이드바 순서와 추가한 대분류를 모두 기본으로 초기화하시겠습니까?')) return;
     const uid = userProfile?.uid;
     const key = lsKeyFor(uid);
     if (key) { try { localStorage.removeItem(key); } catch { /* 무시 */ } }
@@ -195,8 +197,8 @@ export default function Sidebar({ isOpen }) {
     setGroupName('');
   }
 
-  function deleteGroup(groupKey) {
-    if (!confirm('이 대분류를 삭제하시겠습니까?')) return;
+  async function deleteGroup(groupKey) {
+    if (!await confirm('이 대분류를 삭제하시겠습니까?')) return;
     setGroups((gs) => gs.filter((g) => g.key !== groupKey));
     setOrder((o) => (o ? o.filter((k) => k !== groupKey) : o));
   }

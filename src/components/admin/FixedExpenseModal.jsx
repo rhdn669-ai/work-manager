@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Modal from '../common/Modal';
 import MoneyInput from '../common/MoneyInput';
 import { FIXED_EXPENSE_CATEGORIES } from '../../services/fixedExpenseService';
+import { useDialog } from '../common/DialogProvider';
 
 // 카테고리별 추가 필드 정의 — type: 'text' | 'money' | 'percent'
 const CATEGORY_FIELDS = {
@@ -31,6 +32,7 @@ const CATEGORY_FIELDS = {
 };
 
 export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) {
+  const { alert } = useDialog();
   const [category, setCategory] = useState(initial?.category || FIXED_EXPENSE_CATEGORIES[0]);
   const [name, setName] = useState(initial?.name || '');
   const [amount, setAmount] = useState(initial?.amount != null ? String(initial.amount) : '');
@@ -49,7 +51,7 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
     if (!name.trim()) return;
     if (!Number.isFinite(numeric) || numeric < 0) return;
     if (startDate && endDate && endDate < startDate) {
-      window.alert('종료일이 시작일보다 빠를 수 없습니다.');
+      alert('종료일이 시작일보다 빠를 수 없습니다.');
       return;
     }
     // 현재 카테고리의 details 키만 남기고 나머지는 제거 (카테고리 바꿨을 때 잔여 데이터 정리)

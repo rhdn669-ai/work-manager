@@ -9,6 +9,7 @@ import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../.
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { getKoreanHolidaysAsEvents, getKoreanHolidayDates } from '../../utils/koreanHolidays';
 import Modal from './Modal';
+import { useDialog } from './DialogProvider';
 
 const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차', personal: '내 일정' };
 
@@ -24,6 +25,7 @@ function formatMinutes(min) {
 
 export default function HomeCalendar() {
   const { userProfile, isAdmin, canApproveAll, canApproveLeave } = useAuth();
+  const { confirm, alert } = useDialog();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() + 1 };
@@ -135,7 +137,7 @@ export default function HomeCalendar() {
   }
 
   async function handleDeletePersonal(id) {
-    if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+    if (!await confirm('이 일정을 삭제하시겠습니까?')) return;
     try {
       await deletePersonalEvent(id);
       await reloadPersonal();

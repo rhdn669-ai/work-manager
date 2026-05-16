@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getFinanceItems, getClosingItems } from '../../services/siteService';
 import { getFixedExpenses, saveFixedExpenses } from '../../services/fixedExpenseService';
 import FixedExpensePanel from '../../components/admin/FixedExpensePanel';
+import { useDialog } from '../../components/common/DialogProvider';
 
 const isOvertimeItem = (f) => {
   const d = (f.description || '').trim();
@@ -12,6 +13,7 @@ const isOvertimeItem = (f) => {
 
 export default function TotalClosingPage() {
   const { isAdmin, canViewSalary } = useAuth();
+  const { alert } = useDialog();
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlY = Number(searchParams.get('y'));

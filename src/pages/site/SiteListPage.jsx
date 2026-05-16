@@ -5,6 +5,7 @@ import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingIte
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
@@ -28,6 +29,7 @@ function getIconColor(key) {
 
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive, canViewSalary } = useAuth();
+  const { confirm, alert } = useDialog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
@@ -267,7 +269,7 @@ export default function SiteListPage() {
   async function handleDelete(site, e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
+    if (!await confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
     try {
       await deleteSite(site.id);
       await loadData();
@@ -281,7 +283,7 @@ export default function SiteListPage() {
     e.stopPropagation();
     const next = (site.status || 'active') === 'active' ? 'completed' : 'active';
     const msg = next === 'completed' ? `"${site.name}" 프로젝트를 완료 처리하시겠습니까?` : `"${site.name}" 프로젝트를 다시 활성화하시겠습니까?`;
-    if (!confirm(msg)) return;
+    if (!await confirm(msg)) return;
     try {
       await updateSite(site.id, { status: next });
       await loadData();

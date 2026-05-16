@@ -2879,6 +2879,83 @@ body {
   margin-top: 16px;
 }
 
+/* 전역 확인/알림 다이얼로그 (DialogProvider) */
+.app-dialog {
+  max-width: 380px;
+}
+
+.app-dialog-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+.app-dialog-actions {
+  justify-content: flex-end;
+}
+
+.app-dialog-actions .btn {
+  min-width: 72px;
+}
+
+/* 모바일에서 표를 카드로 전환 — <table class="cards-sm">, 각 <td>에 data-label 필요 */
+@media (max-width: 768px) {
+  table.cards-sm,
+  table.cards-sm tbody,
+  table.cards-sm tr,
+  table.cards-sm td {
+    display: block;
+    width: 100%;
+  }
+
+  table.cards-sm thead {
+    display: none;
+  }
+
+  table.cards-sm tr {
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  table.cards-sm td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-size: 13px;
+    min-height: 34px;
+  }
+
+  table.cards-sm tr td:last-child {
+    border-bottom: none;
+  }
+
+  table.cards-sm td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: left;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* data-label이 없는 셀(액션 버튼 전용 등)은 라벨 칸 숨김 */
+  table.cards-sm td:not([data-label])::before {
+    display: none;
+  }
+}
+
 /* ===== 대시보드 ===== */
 .dashboard-welcome {
   display: flex;
@@ -8271,6 +8348,21 @@ body {
 
   .closing-card {
     padding: 12px;
+  }
+
+  /* 공수표 탭 — 모바일에선 가로 스크롤 대신 줄바꿈으로 한 화면에 고정 */
+  .closing-tab-nav {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    overflow-x: visible;
+  }
+
+  .closing-tab-nav .tab-nav-item {
+    flex: 1 1 auto;
+    padding: 7px 10px;
+    font-size: 12.5px;
+    text-align: center;
   }
 
   .closing-card-head {

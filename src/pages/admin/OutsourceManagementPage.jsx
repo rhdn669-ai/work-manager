@@ -13,9 +13,11 @@ import {
 import { getAllSites } from '../../services/siteService';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function OutsourceManagementPage() {
   const { isAdmin, canViewSalary } = useAuth();
+  const { confirm, alert } = useDialog();
   const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -142,7 +144,7 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleRemoveProject(project) {
-    if (!confirm(`"${project.name}"을(를) 삭제하시겠습니까?`)) return;
+    if (!await confirm(`"${project.name}"을(를) 삭제하시겠습니까?`)) return;
     setDetailBusy(true);
     try {
       await removeVendorProject(detailVendor.id, project);
@@ -155,7 +157,7 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleImport() {
-    if (!confirm('모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?')) return;
+    if (!await confirm('모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?')) return;
     setImporting(true);
     try {
       const stats = await importFromSiteClosings();
@@ -173,7 +175,7 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleClearHistories() {
-    if (!confirm('모든 프리랜서의 단가 변경 이력을 초기화합니다.\n현재 단가는 유지되고, 이전 단가 기록만 전부 삭제됩니다.\n되돌릴 수 없습니다.\n\n계속하시겠습니까?')) return;
+    if (!await confirm('모든 프리랜서의 단가 변경 이력을 초기화합니다.\n현재 단가는 유지되고, 이전 단가 기록만 전부 삭제됩니다.\n되돌릴 수 없습니다.\n\n계속하시겠습니까?')) return;
     setClearing(true);
     try {
       const count = await clearAllRateHistories();
@@ -250,7 +252,7 @@ export default function OutsourceManagementPage() {
 
   async function handleDelete(item) {
     const label = tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서';
-    if (!confirm(`"${item.name}" ${label}를 삭제하시겠습니까?`)) return;
+    if (!await confirm(`"${item.name}" ${label}를 삭제하시겠습니까?`)) return;
     try {
       if (tab === 'vendor') await deleteVendor(item.id);
       else await deleteFreelancer(item.id);
@@ -391,7 +393,7 @@ export default function OutsourceManagementPage() {
               : '등록된 일용직이 없습니다.'}
           </div></div>
         ) : (
-          <table className="table table-clickable">
+          <table className="table table-clickable cards-sm">
             <thead>
               <tr>
                 <th>이름</th>
@@ -409,10 +411,10 @@ export default function OutsourceManagementPage() {
                   onClick={() => setDetailFor({ kind: tab, name: f.name })}
                   title={`${f.name} 공수표 상세 내역 보기`}
                 >
-                  <td><strong>{f.name}</strong></td>
-                  <td>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
-                  <td>{f.contact || '-'}</td>
-                  <td style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.note || '-'}</td>
+                  <td data-label="이름"><strong>{f.name}</strong></td>
+                  <td data-label={tab === 'daily' ? '시급' : '일당'}>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
+                  <td data-label="연락처">{f.contact || '-'}</td>
+                  <td data-label="비고" style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.note || '-'}</td>
                   <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
                     <div className="outsource-action-btns">
                       <button type="button" className="outsource-icon-btn" onClick={() => openEdit(f)} title="수정" aria-label="수정">
@@ -440,7 +442,7 @@ export default function OutsourceManagementPage() {
         vendors.length === 0 ? (
           <div className="card"><div className="card-body empty-state">등록된 업체가 없습니다.</div></div>
         ) : (
-          <table className="table table-clickable">
+          <table className="table table-clickable cards-sm">
             <thead>
               <tr>
                 <th>업체명</th>
@@ -460,12 +462,12 @@ export default function OutsourceManagementPage() {
                   onClick={() => setDetailFor({ kind: 'vendor', name: v.name })}
                   title={`${v.name} 지출 상세 내역 보기`}
                 >
-                  <td><strong>{v.name}</strong></td>
-                  <td>{v.representative || '-'}</td>
-                  <td>{v.contact || '-'}</td>
-                  <td>{v.businessNumber || '-'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{v.bankName || '-'}</td>
-                  <td style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
+                  <td data-label="업체명"><strong>{v.name}</strong></td>
+                  <td data-label="대표자">{v.representative || '-'}</td>
+                  <td data-label="연락처">{v.contact || '-'}</td>
+                  <td data-label="사업자번호">{v.businessNumber || '-'}</td>
+                  <td data-label="은행" style={{ whiteSpace: 'nowrap' }}>{v.bankName || '-'}</td>
+                  <td data-label="계좌" style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
                   <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
                     <div className="outsource-action-btns">
                       <button type="button" className="outsource-icon-btn" onClick={() => openVendorDetail(v)} title="소속·프로젝트" aria-label="소속·프로젝트 보기">
@@ -801,7 +803,7 @@ export default function OutsourceManagementPage() {
                               className="btn btn-sm btn-danger-outline"
                               title="이 소속 직원 삭제"
                               onClick={async () => {
-                                if (!confirm(`"${f.name}"을(를) 이 업체에서 완전히 삭제하시겠습니까?\n(외주관리에서도 제거되며, 공수표에 기록된 과거 내역은 남습니다.)`)) return;
+                                if (!await confirm(`"${f.name}"을(를) 이 업체에서 완전히 삭제하시겠습니까?\n(외주관리에서도 제거되며, 공수표에 기록된 과거 내역은 남습니다.)`)) return;
                                 setDetailBusy(true);
                                 try {
                                   await deleteFreelancer(f.id);
@@ -844,7 +846,7 @@ export default function OutsourceManagementPage() {
                                         title="이 이력 삭제"
                                         aria-label="이 이력 삭제"
                                         onClick={async () => {
-                                          if (!confirm(`${h.rate.toLocaleString()}원 ${period} 이력을 삭제하시겠습니까?`)) return;
+                                          if (!await confirm(`${h.rate.toLocaleString()}원 ${period} 이력을 삭제하시겠습니까?`)) return;
                                           setDetailBusy(true);
                                           try {
                                             await removeRateHistoryByFields(f.id, {

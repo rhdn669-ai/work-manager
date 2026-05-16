@@ -18,8 +18,10 @@ import {
   updateLeaveRecord,
 } from '../../services/leaveService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function ReportsPage() {
+  const { confirm, alert } = useDialog();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -69,7 +71,7 @@ export default function ReportsPage() {
   }
 
   async function handleReject(id) {
-    if (!confirm('이 잔업 신청을 거절할까요?')) return;
+    if (!await confirm('이 잔업 신청을 거절할까요?')) return;
     setPendingBusy(id);
     try {
       await rejectOvertimeRecord(id);
@@ -195,7 +197,7 @@ export default function ReportsPage() {
           <div className="pending-section-title">
             승인 대기 <span className="pending-count">{pendingList.length}</span>
           </div>
-          <table className="table">
+          <table className="table cards-sm">
             <thead>
               <tr>
                 <th>날짜</th>
@@ -209,11 +211,11 @@ export default function ReportsPage() {
             <tbody>
               {pendingList.map((r) => (
                 <tr key={r.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{r.date}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{r.userName}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{siteMap[r.siteId] || '미지정'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatMinutes(r.minutes)}</td>
-                  <td>{r.reason || '-'}</td>
+                  <td data-label="날짜" style={{ whiteSpace: 'nowrap' }}>{r.date}</td>
+                  <td data-label="직원" style={{ whiteSpace: 'nowrap' }}>{r.userName}</td>
+                  <td data-label="프로젝트" style={{ whiteSpace: 'nowrap' }}>{siteMap[r.siteId] || '미지정'}</td>
+                  <td data-label="시간" style={{ whiteSpace: 'nowrap' }}>{formatMinutes(r.minutes)}</td>
+                  <td data-label="사유">{r.reason || '-'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button
@@ -253,7 +255,7 @@ export default function ReportsPage() {
       ) : rows.length === 0 ? (
         <p className="text-muted">직원 정보가 없습니다.</p>
       ) : (
-        <table className="table team-stats-table">
+        <table className="table team-stats-table cards-sm">
           <thead>
             <tr>
               <th style={{ width: 48 }}>#</th>
@@ -266,15 +268,15 @@ export default function ReportsPage() {
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.uid}>
-                <td>{i + 1}</td>
-                <td><strong>{r.name}</strong></td>
-                <td>{deptMap[r.departmentId] || '-'}</td>
-                <td>
+                <td data-label="#">{i + 1}</td>
+                <td data-label="이름"><strong>{r.name}</strong></td>
+                <td data-label="부서">{deptMap[r.departmentId] || '-'}</td>
+                <td data-label="잔업">
                   <button className="team-detail-btn" onClick={() => { setActiveTab('overtime'); setDetailUser(r); }}>
                     {r.overtimeMinutes > 0 ? <><strong>{formatMinutes(r.overtimeMinutes)}</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
                   </button>
                 </td>
-                <td>
+                <td data-label="연차">
                   <button className="team-detail-btn" onClick={() => { setActiveTab('leave'); setDetailUser(r); }}>
                     {r.leaveDays > 0 ? <><strong>{r.leaveDays}일</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
                   </button>
@@ -311,6 +313,7 @@ export default function ReportsPage() {
 }
 
 export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves, siteMap, canEdit, onClose, onChanged }) {
+  const { confirm, alert } = useDialog();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
@@ -351,7 +354,7 @@ export function EmployeeDetailModal({ user, tab, year, month, overtimes, leaves,
     const msg = tab === 'overtime'
       ? '이 잔업 기록을 삭제할까요?'
       : '이 연차 기록을 삭제할까요?\n(사용일수가 자동 복원됩니다)';
-    if (!confirm(msg)) return;
+    if (!await confirm(msg)) return;
     setBusy(true);
     try {
       if (tab === 'overtime') {

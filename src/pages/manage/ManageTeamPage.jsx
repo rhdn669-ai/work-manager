@@ -8,9 +8,11 @@ import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getAllSites } from '../../services/siteService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function ManageTeamPage() {
   const { userProfile, isAdmin, canApproveLeave } = useAuth();
+  const { confirm, alert } = useDialog();
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [overtimeMap, setOvertimeMap] = useState({});
@@ -255,7 +257,7 @@ export default function ManageTeamPage() {
   }
 
   async function handleDelete(team) {
-    if (!confirm(`"${team.name}" 팀을 삭제하시겠습니까?\n소속 팀원의 부서가 초기화됩니다.`)) return;
+    if (!await confirm(`"${team.name}" 팀을 삭제하시겠습니까?\n소속 팀원의 부서가 초기화됩니다.`)) return;
     try {
       const members = users.filter((u) => u.departmentId === team.id);
       for (const u of members) {

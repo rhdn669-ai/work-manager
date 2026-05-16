@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { getAllSites, createSite, updateSite, deleteSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function SiteManagementPage() {
+  const { confirm, alert } = useDialog();
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ export default function SiteManagementPage() {
   }
 
   async function handleDelete(site) {
-    if (!confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
+    if (!await confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
     try {
       await deleteSite(site.id);
       await loadData();

@@ -14,6 +14,7 @@ import { getAllSites } from '../../services/siteService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDaysExcludingHolidays, buildHolidaySet, formatMinutes } from '../../utils/dateUtils';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 const LEAVE_STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },
@@ -56,6 +57,7 @@ function formatDays(d) {
 }
 
 export default function LeaveManagementPage() {
+  const { confirm, alert } = useDialog();
   // 공통
   const [activeTab, setActiveTab] = useState('leave');
   const [users, setUsers] = useState([]);
@@ -223,7 +225,7 @@ export default function LeaveManagementPage() {
   }
   async function handleDeleteLeave(l) {
     const u = userMap[l.userId];
-    if (!confirm(`${u ? u.name + ' 직원의 ' : ''}${l.startDate} 연차 신청을 영구 삭제합니다.\n\n취소된 항목은 복구할 수 없습니다. 계속하시겠습니까?`)) return;
+    if (!await confirm(`${u ? u.name + ' 직원의 ' : ''}${l.startDate} 연차 신청을 영구 삭제합니다.\n\n취소된 항목은 복구할 수 없습니다. 계속하시겠습니까?`)) return;
     setLeaveBusy(true);
     try { await deleteLeaveById(l.id); await loadLeaves(); }
     catch (err) { alert('삭제 실패: ' + err.message); }
@@ -289,7 +291,7 @@ export default function LeaveManagementPage() {
   }
   async function deleteOt(r) {
     const u = userMap[r.userId];
-    if (!confirm(`${u ? u.name + ' 직원의 ' : ''}${r.date} 잔업 기록을 삭제하시겠습니까?`)) return;
+    if (!await confirm(`${u ? u.name + ' 직원의 ' : ''}${r.date} 잔업 기록을 삭제하시겠습니까?`)) return;
     setOtBusy(r.id);
     try { await deleteOvertimeRecord(r.id); await loadOvertimes(); }
     catch (err) { alert('삭제 실패: ' + err.message); }

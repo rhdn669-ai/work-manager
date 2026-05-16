@@ -16,6 +16,7 @@ import { getFreelancers, getVendors, getRateForDate, addFreelancer } from '../..
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
@@ -95,6 +96,7 @@ export default function SiteClosingPage() {
   const y = Number(year);
   const m = Number(month);
   const { isAdmin, isExecutive, canViewSalary, userProfile } = useAuth();
+  const { confirm, alert } = useDialog();
   const navigate = useNavigate();
 
   const [site, setSite] = useState(null);
@@ -394,7 +396,7 @@ export default function SiteClosingPage() {
   }
 
   async function handleCopyPrevMonth() {
-    if (!confirm('전월 직원/프리랜서 명단을 복사합니다.\n(수량·금액은 0으로 초기화, 매출/지출은 복사되지 않습니다)\n\n계속하시겠습니까?')) return;
+    if (!await confirm('전월 직원/프리랜서 명단을 복사합니다.\n(수량·금액은 0으로 초기화, 매출/지출은 복사되지 않습니다)\n\n계속하시겠습니까?')) return;
     setCopying(true);
     try {
       const count = await initRosterFromPreviousMonth(siteId, y, m);
@@ -408,7 +410,7 @@ export default function SiteClosingPage() {
   }
 
   async function handleClearItems() {
-    if (!confirm(`공수표 항목 ${items.length}건을 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?`)) return;
+    if (!await confirm(`공수표 항목 ${items.length}건을 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?`)) return;
     setClearing(true);
     try {
       for (const item of items) {
@@ -427,7 +429,7 @@ export default function SiteClosingPage() {
   }
 
   async function handleCloseProject() {
-    if (!confirm(`"${site.name}" 프로젝트를 마감 처리하시겠습니까?\n\n마감 후 수정이 불가하며, 프로젝트 목록에서 재활성할 수 있습니다.`)) return;
+    if (!await confirm(`"${site.name}" 프로젝트를 마감 처리하시겠습니까?\n\n마감 후 수정이 불가하며, 프로젝트 목록에서 재활성할 수 있습니다.`)) return;
     try {
       await updateSite(siteId, { status: 'completed' });
       await loadAll({ silent: true });
@@ -741,7 +743,7 @@ export default function SiteClosingPage() {
   }
 
   async function handleDeleteRow(itemId) {
-    if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+    if (!await confirm('이 항목을 삭제하시겠습니까?')) return;
     if (timersRef.current[itemId]) {
       clearTimeout(timersRef.current[itemId]);
       delete timersRef.current[itemId];
@@ -1126,7 +1128,7 @@ export default function SiteClosingPage() {
     const msg = isOvertime
       ? '잔업 지출 항목을 삭제합니다.\n(원본 잔업 기록은 남아있을 수 있으니, 필요 시 잔업 관리에서도 정리하세요.)\n\n계속하시겠습니까?'
       : '이 항목을 삭제하시겠습니까?';
-    if (!confirm(msg)) return;
+    if (!await confirm(msg)) return;
     const key = 'fin_' + id;
     if (timersRef.current[key]) { clearTimeout(timersRef.current[key]); delete timersRef.current[key]; }
     try {
@@ -2189,7 +2191,7 @@ export default function SiteClosingPage() {
 
         async function handleAddAllUnassigned() {
           if (unassigned.length === 0) return;
-          if (!confirm(`미배정 인원 ${unassigned.length}명을 일괄 추가하시겠습니까?`)) return;
+          if (!await confirm(`미배정 인원 ${unassigned.length}명을 일괄 추가하시겠습니까?`)) return;
           setAddingAll(true);
           try {
             for (const u of unassigned) { await handleAddEmployee(u); }

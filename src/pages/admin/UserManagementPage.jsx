@@ -7,8 +7,10 @@ import { POSITIONS } from '../../utils/constants';
 import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function UserManagementPage() {
+  const { confirm, alert } = useDialog();
   const { impersonate, userProfile } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -125,7 +127,7 @@ export default function UserManagementPage() {
   }
 
   async function handleDelete(user) {
-    if (!confirm(`"${user.name}" 직원을 삭제하시겠습니까?`)) return;
+    if (!await confirm(`"${user.name}" 직원을 삭제하시겠습니까?`)) return;
     try {
       await deleteUser(user.uid);
       setShowModal(false);
@@ -137,7 +139,7 @@ export default function UserManagementPage() {
 
   async function handleResetPassword() {
     if (!editUser) return;
-    if (!confirm(`"${editUser.name}"의 비밀번호를 초기화하시겠습니까?\n본인이 다음 로그인 시 새 비밀번호를 직접 설정합니다.`)) return;
+    if (!await confirm(`"${editUser.name}"의 비밀번호를 초기화하시겠습니까?\n본인이 다음 로그인 시 새 비밀번호를 직접 설정합니다.`)) return;
     try {
       await updateUser(editUser.uid, { password: '' });
       setForm((f) => ({ ...f, password: '' }));
@@ -151,7 +153,7 @@ export default function UserManagementPage() {
 
   async function handleImpersonate(u) {
     if (u.uid === userProfile?.uid) { alert('이미 본인 계정으로 로그인 중입니다.'); return; }
-    if (!confirm(`${u.name}(${u.code}) 계정으로 전환하시겠습니까?\n상단 배너의 "관리자로 돌아가기"로 복귀할 수 있습니다.`)) return;
+    if (!await confirm(`${u.name}(${u.code}) 계정으로 전환하시겠습니까?\n상단 배너의 "관리자로 돌아가기"로 복귀할 수 있습니다.`)) return;
     try {
       await impersonate(u);
       navigate('/');
@@ -219,7 +221,7 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      <table className="table user-management-table table-clickable">
+      <table className="table user-management-table table-clickable cards-sm">
         <thead>
           <tr>
             <th>이름</th>
@@ -240,23 +242,23 @@ export default function UserManagementPage() {
             const isSelf = u.uid === userProfile?.uid;
             return (
               <tr key={u.uid} onClick={() => openEdit(u)} style={{ cursor: 'pointer' }}>
-                <td>{u.name}</td>
-                <td><code>{u.code}</code></td>
-                <td>
+                <td data-label="이름">{u.name}</td>
+                <td data-label="코드"><code>{u.code}</code></td>
+                <td data-label="비밀번호">
                   {u.password
                     ? <code style={{ fontSize: 13 }}>{u.password}</code>
                     : <span style={{ color: 'var(--danger, #dc2626)', fontSize: 13 }}>✗ 미설정</span>}
                 </td>
-                <td>
+                <td data-label="직급">
                   <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
                     {u.position || '-'}
                   </span>
                 </td>
-                <td>{deptMap[u.departmentId] || '-'}</td>
-                <td>{u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}</td>
-                <td>{u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}</td>
-                <td>{u.joinDate || '-'}</td>
-                <td>
+                <td data-label="부서">{deptMap[u.departmentId] || '-'}</td>
+                <td data-label="고정비용">{u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}</td>
+                <td data-label="시급">{u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}</td>
+                <td data-label="입사일">{u.joinDate || '-'}</td>
+                <td data-label="연차 (누적/사용/잔여)">
                   {bal ? (
                     <span className="leave-balance-cell">
                       <span className="leave-total">{bal.totalDays}</span>

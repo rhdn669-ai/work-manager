@@ -9,9 +9,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 import { getMileage } from '../../services/vehicleMileageService';
 import { formatRelativeKo } from '../../utils/dateUtils';
+import { useDialog } from './DialogProvider';
 
 export default function Layout() {
   const { isImpersonating, impersonator, userProfile, stopImpersonation, isAdmin } = useAuth();
+  const { alert } = useDialog();
   // 사이드바: 관리자만 사용. PC는 기본 열림, 모바일은 기본 닫힘
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true;

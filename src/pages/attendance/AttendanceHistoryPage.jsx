@@ -4,9 +4,11 @@ import { getMyOvertimeRecords, deleteOvertimeRecord, updateOvertimeRecord, OVERT
 import { getAllSites } from '../../services/siteService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName, getToday } from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
+  const { confirm, alert } = useDialog();
   const [records, setRecords] = useState([]);
   const [sites, setSites] = useState([]);
   const [siteMap, setSiteMap] = useState({});
@@ -48,7 +50,7 @@ export default function AttendanceHistoryPage() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('이 잔업 기록을 삭제하시겠습니까?')) return;
+    if (!await confirm('이 잔업 기록을 삭제하시겠습니까?')) return;
     try {
       await deleteOvertimeRecord(id);
       await loadRecords();

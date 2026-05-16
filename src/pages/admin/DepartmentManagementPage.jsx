@@ -3,8 +3,10 @@ import { getDepartments, addDepartment, updateDepartment, deleteDepartment } fro
 import { getUsers } from '../../services/userService';
 import { ensureDeptChannel, deleteDeptChannel } from '../../services/channelService';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 export default function DepartmentManagementPage() {
+  const { confirm, alert } = useDialog();
   const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ export default function DepartmentManagementPage() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
+    if (!await confirm('정말 삭제하시겠습니까?')) return;
     try {
       await deleteDepartment(id);
       await deleteDeptChannel(id);

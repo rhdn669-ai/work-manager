@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import FixedExpenseModal from './FixedExpenseModal';
+import { useDialog } from '../common/DialogProvider';
 
 // 목록 행에 표시할 핵심 정보 칩 (간결하게 1~3개)
 function buildDetailChips(it) {
@@ -27,6 +28,7 @@ function buildDetailChips(it) {
 }
 
 export default function FixedExpensePanel({ year, month, items, onChange, saving }) {
+  const { confirm } = useDialog();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -42,8 +44,8 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
     setModalOpen(false);
     setEditing(null);
   };
-  const handleDelete = (id) => {
-    if (!window.confirm('이 항목을 삭제할까요?')) return;
+  const handleDelete = async (id) => {
+    if (!await confirm('이 항목을 삭제할까요?')) return;
     onChange(items.filter((it) => it.id !== id));
   };
 

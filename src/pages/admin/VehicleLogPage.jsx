@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getUsers } from '../../services/userService';
 import { getMileagesByMonth, saveMileage, deleteMileage, deleteMileageById } from '../../services/vehicleMileageService';
 import Modal from '../../components/common/Modal';
+import { useDialog } from '../../components/common/DialogProvider';
 
 // 관리자 운행일지 — 차량 운행자 지정자의 월별 누적 키로수 / 운행 km 모니터링
 // /admin/vehicle-log
@@ -31,6 +32,7 @@ function fmtDate(ts) {
 }
 
 export default function VehicleLogPage() {
+  const { alert } = useDialog();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
