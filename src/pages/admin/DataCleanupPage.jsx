@@ -188,7 +188,7 @@ export default function DataCleanupPage() {
             <p style={{ color: '#080', margin: 0 }}>✔ 고아 데이터가 없습니다.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table className="data-table" style={{ width: '100%', fontSize: 13 }}>
+              <table className="data-table cards-sm" style={{ width: '100%', fontSize: 13 }}>
                 <thead>
                   <tr>
                     <th style={{ minWidth: 60 }}>종류</th>
@@ -202,12 +202,12 @@ export default function DataCleanupPage() {
                 <tbody>
                   {report.orphans.map((o) => (
                     <tr key={`${o.kind}-${o.id}`}>
-                      <td>{o.kind === 'closing' ? '마감' : '지출/매출'}</td>
-                      <td>{o.ym}</td>
-                      <td>{o.label}</td>
-                      <td>{o.qty}</td>
-                      <td>{o.reason}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 11, color: '#666' }}>
+                      <td data-label="종류">{o.kind === 'closing' ? '마감' : '지출/매출'}</td>
+                      <td data-label="년-월">{o.ym}</td>
+                      <td data-label="라벨">{o.label}</td>
+                      <td data-label="수량/금액">{o.qty}</td>
+                      <td data-label="사유">{o.reason}</td>
+                      <td data-label="siteId / closingId" style={{ fontFamily: 'monospace', fontSize: 11, color: '#666' }}>
                         {o.siteId || '(없음)'} / {o.closingId || '(없음)'}
                       </td>
                     </tr>

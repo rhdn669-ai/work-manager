@@ -209,7 +209,7 @@ export default function TeamReportsPage() {
         <div className="card"><div className="card-body empty-state">팀원이 없습니다.</div></div>
       ) : (
         <div className="table-wrap">
-          <table className="table team-stats-table team-stats-4col">
+          <table className="table team-stats-table team-stats-4col cards-sm">
             <thead>
               <tr>
                 <th>이름</th>
@@ -221,19 +221,19 @@ export default function TeamReportsPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.uid}>
-                  <td>
+                  <td data-label="이름">
                     <strong>{r.name}</strong>
                     {r.isLeader && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>팀장</span>}
                     {r.isSubLeader && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>부팀장</span>}
                     {r.isMe && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
                   </td>
-                  <td>{r.position || '-'}</td>
-                  <td>
+                  <td data-label="직급">{r.position || '-'}</td>
+                  <td data-label="잔업">
                     <button className="team-detail-btn" onClick={() => openDetail(r, 'overtime')}>
                       {r.overtimeMinutes > 0 ? <><strong>{formatMinutes(r.overtimeMinutes)}</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
                     </button>
                   </td>
-                  <td>
+                  <td data-label="연차">
                     <button className="team-detail-btn" onClick={() => openDetail(r, 'leave')}>
                       {r.leaveDays > 0 ? <><strong>{r.leaveDays}일</strong> <span className="team-detail-arrow">&rsaquo;</span></> : '-'}
                     </button>

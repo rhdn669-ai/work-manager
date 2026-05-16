@@ -100,7 +100,7 @@ export default function SiteManagementPage() {
         <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>
       </div>
 
-      <table className="table">
+      <table className="table cards-sm">
         <thead>
           <tr>
             <th>프로젝트명</th>
@@ -112,9 +112,9 @@ export default function SiteManagementPage() {
         <tbody>
           {sites.map((s) => (
             <tr key={s.id}>
-              <td>{s.name}</td>
-              <td>{s.team || '-'}</td>
-              <td>
+              <td data-label="프로젝트명">{s.name}</td>
+              <td data-label="팀">{s.team || '-'}</td>
+              <td data-label="담당자">
                 {(s.managerIds || []).map((uid) => userMap[uid]?.name || uid).join(', ') || '-'}
               </td>
               <td>

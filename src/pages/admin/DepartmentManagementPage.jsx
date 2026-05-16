@@ -82,7 +82,7 @@ export default function DepartmentManagementPage() {
         <button className="btn btn-primary" onClick={openCreate}>부서 추가</button>
       </div>
 
-      <table className="table">
+      <table className="table cards-sm">
         <thead>
           <tr>
             <th>부서명</th>
@@ -93,8 +93,8 @@ export default function DepartmentManagementPage() {
         <tbody>
           {departments.map((d) => (
             <tr key={d.id}>
-              <td>{d.name}</td>
-              <td>{userMap[d.managerId] || '-'}</td>
+              <td data-label="부서명">{d.name}</td>
+              <td data-label="부서장">{userMap[d.managerId] || '-'}</td>
               <td>
                 <div className="btn-group">
                   <button className="btn btn-sm btn-outline" onClick={() => openEdit(d)}>수정</button>

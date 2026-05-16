@@ -303,20 +303,20 @@ export default function ManageTeamPage() {
                 {subLeader && <span style={{ marginLeft: leader ? 12 : 0 }}>부팀장: <strong>{subLeader.name}</strong> {subLeader.position && `(${subLeader.position})`}</span>}
               </div>
             )}
-            <table className="table">
+            <table className="table cards-sm">
               <thead>
                 <tr><th>이름</th><th>직급</th></tr>
               </thead>
               <tbody>
                 {members.map((u) => (
                   <tr key={u.uid}>
-                    <td>
+                    <td data-label="이름">
                       <strong>{u.name}</strong>
                       {u.uid === myTeam.managerId && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>팀장</span>}
                       {u.uid === myTeam.subManagerId && <span className="badge badge-role-manager" style={{ marginLeft: 6 }}>부팀장</span>}
                       {u.uid === userProfile.uid && <span className="badge badge-position" style={{ marginLeft: 6 }}>나</span>}
                     </td>
-                    <td>{u.position || '-'}</td>
+                    <td data-label="직급">{u.position || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -447,7 +447,7 @@ export default function ManageTeamPage() {
         {members.length === 0 ? (
           <div className="card"><div className="card-body empty-state">소속 팀원이 없습니다.</div></div>
         ) : (
-          <table className="table">
+          <table className="table cards-sm">
             <thead>
               <tr><th>이름</th><th>직급</th><th>이번 달 잔업</th></tr>
             </thead>
@@ -456,9 +456,9 @@ export default function ManageTeamPage() {
                 const minutes = overtimeMap[u.uid] || 0;
                 return (
                   <tr key={u.uid}>
-                    <td><strong>{u.name}</strong></td>
-                    <td>{u.position || '-'}</td>
-                    <td>{minutes > 0 ? <strong style={{ color: 'var(--primary)' }}>{formatMinutes(minutes)}</strong> : '-'}</td>
+                    <td data-label="이름"><strong>{u.name}</strong></td>
+                    <td data-label="직급">{u.position || '-'}</td>
+                    <td data-label="이번 달 잔업">{minutes > 0 ? <strong style={{ color: 'var(--primary)' }}>{formatMinutes(minutes)}</strong> : '-'}</td>
                   </tr>
                 );
               })}
@@ -485,7 +485,7 @@ export default function ManageTeamPage() {
       {teams.length === 0 ? (
         <div className="card"><div className="card-body empty-state">등록된 팀이 없습니다.</div></div>
       ) : (
-        <table className="table">
+        <table className="table cards-sm">
           <thead>
             <tr><th>팀 이름</th><th>팀장</th><th>부팀장</th><th>팀원</th><th>작업</th></tr>
           </thead>
@@ -496,10 +496,10 @@ export default function ManageTeamPage() {
               const members = getTeamMembers(t.id);
               return (
                 <tr key={t.id}>
-                  <td><strong>{t.name}</strong></td>
-                  <td>{leader?.name || '-'}</td>
-                  <td>{subLeader?.name || '-'}</td>
-                  <td>{members.length}명</td>
+                  <td data-label="팀 이름"><strong>{t.name}</strong></td>
+                  <td data-label="팀장">{leader?.name || '-'}</td>
+                  <td data-label="부팀장">{subLeader?.name || '-'}</td>
+                  <td data-label="팀원">{members.length}명</td>
                   <td>
                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>수정</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t)}>삭제</button>

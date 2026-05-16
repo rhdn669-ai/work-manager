@@ -79,7 +79,7 @@ export default function ManageOvertimePage() {
         <div className="card card-warning">
           <div className="card-header">승인 대기 ({pendingList.length}건)</div>
           <div className="card-body">
-            <table className="table">
+            <table className="table cards-sm">
               <thead>
                 <tr>
                   <th>이름</th>
@@ -92,10 +92,10 @@ export default function ManageOvertimePage() {
               <tbody>
                 {pendingList.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.userName}</td>
-                    <td>{r.date}</td>
-                    <td>{formatMinutes(r.minutes)}</td>
-                    <td>{r.reason || '-'}</td>
+                    <td data-label="이름">{r.userName}</td>
+                    <td data-label="날짜">{r.date}</td>
+                    <td data-label="잔업 시간">{formatMinutes(r.minutes)}</td>
+                    <td data-label="사유">{r.reason || '-'}</td>
                     <td>
                       <div className="btn-group">
                         <button className="btn btn-sm btn-primary" onClick={() => handleApprove(r.id)}>승인</button>
@@ -130,7 +130,7 @@ export default function ManageOvertimePage() {
           {Object.keys(byUser).length === 0 ? (
             <p className="text-muted">해당 월의 승인된 기록이 없습니다.</p>
           ) : (
-            <table className="table">
+            <table className="table cards-sm">
               <thead>
                 <tr>
                   <th>이름</th>
@@ -141,9 +141,9 @@ export default function ManageOvertimePage() {
               <tbody>
                 {Object.entries(byUser).map(([uid, data]) => (
                   <tr key={uid}>
-                    <td>{data.name}</td>
-                    <td>{formatMinutes(data.total)}</td>
-                    <td>{data.count}건</td>
+                    <td data-label="이름">{data.name}</td>
+                    <td data-label="총 잔업">{formatMinutes(data.total)}</td>
+                    <td data-label="등록 건수">{data.count}건</td>
                   </tr>
                 ))}
               </tbody>
@@ -164,7 +164,7 @@ export default function ManageOvertimePage() {
         <div className="card">
           <div className="card-header">상세 기록</div>
           <div className="card-body">
-            <table className="table">
+            <table className="table cards-sm">
               <thead>
                 <tr>
                   <th>이름</th>
@@ -178,12 +178,12 @@ export default function ManageOvertimePage() {
               <tbody>
                 {records.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.userName}</td>
-                    <td>{r.date}</td>
-                    <td>{getDayName(r.date)}</td>
-                    <td>{formatMinutes(r.minutes)}</td>
-                    <td>{r.reason || '-'}</td>
-                    <td><StatusBadge status={r.status} labels={STATUS_LABELS} /></td>
+                    <td data-label="이름">{r.userName}</td>
+                    <td data-label="날짜">{r.date}</td>
+                    <td data-label="요일">{getDayName(r.date)}</td>
+                    <td data-label="잔업 시간">{formatMinutes(r.minutes)}</td>
+                    <td data-label="사유">{r.reason || '-'}</td>
+                    <td data-label="상태"><StatusBadge status={r.status} labels={STATUS_LABELS} /></td>
                   </tr>
                 ))}
               </tbody>

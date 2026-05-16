@@ -198,7 +198,7 @@ export default function TotalClosingPage() {
 
           <div className="card">
             <div className="card-body" style={{ padding: 0 }}>
-              <table className="table">
+              <table className="table cards-sm">
                 <thead>
                   <tr>
                     <th>프로젝트</th>
@@ -220,18 +220,18 @@ export default function TotalClosingPage() {
                     const bal = rev - totalExp;
                     return (
                       <tr key={s.id}>
-                        <td>
+                        <td data-label="프로젝트">
                           <Link to={`/sites/${s.id}/${year}/${month}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
                             {s.name}
                           </Link>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td data-label="매출" style={{ textAlign: 'right' }}>
                           {s.hideRevenue ? <span className="text-muted">-</span> : `${rev.toLocaleString()}원`}
                         </td>
-                        <td style={{ textAlign: 'right' }}>{(v.expense || 0).toLocaleString()}원</td>
-                        <td style={{ textAlign: 'right' }}>{(v.labor || 0).toLocaleString()}원</td>
-                        <td style={{ textAlign: 'right' }}>{(v.overtime || 0).toLocaleString()}원</td>
-                        <td style={{ textAlign: 'right', color: bal >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
+                        <td data-label="지출" style={{ textAlign: 'right' }}>{(v.expense || 0).toLocaleString()}원</td>
+                        <td data-label="인건비" style={{ textAlign: 'right' }}>{(v.labor || 0).toLocaleString()}원</td>
+                        <td data-label="잔업" style={{ textAlign: 'right' }}>{(v.overtime || 0).toLocaleString()}원</td>
+                        <td data-label="합계" style={{ textAlign: 'right', color: bal >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>
                           {bal >= 0 ? '+' : ''}{bal.toLocaleString()}원
                         </td>
                       </tr>

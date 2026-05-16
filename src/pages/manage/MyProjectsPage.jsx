@@ -153,7 +153,7 @@ export default function MyProjectsPage() {
         <div className="card"><div className="card-body empty-state">담당하는 프로젝트가 없습니다.</div></div>
       ) : (
         <div className="table-wrap">
-          <table className="table team-stats-table">
+          <table className="table team-stats-table cards-sm">
             <thead>
               <tr>
                 <th>프로젝트</th>
@@ -163,8 +163,8 @@ export default function MyProjectsPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.siteId}>
-                  <td><strong>{r.siteName}</strong></td>
-                  <td>{r.outsourceCount > 0 ? `${r.outsourceCount}명` : '-'}</td>
+                  <td data-label="프로젝트"><strong>{r.siteName}</strong></td>
+                  <td data-label="외주 인원">{r.outsourceCount > 0 ? `${r.outsourceCount}명` : '-'}</td>
                 </tr>
               ))}
             </tbody>
