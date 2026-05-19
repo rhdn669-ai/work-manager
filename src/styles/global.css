@@ -5998,6 +5998,15 @@ body {
   .revenue-list {
     grid-template-columns: 1fr;
   }
+  .revenue-card-head {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .revenue-card-head .revenue-desc,
+  .revenue-card-head .revenue-unitprice {
+    flex: 1 1 auto;
+    width: 100%;
+  }
 }
 .revenue-card {
   position: relative;
@@ -6088,12 +6097,14 @@ body {
   margin-bottom: 4px;
 }
 .revenue-row input {
+  width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
   font-family: inherit;
   min-width: 0;
+  box-sizing: border-box;
 }
 .revenue-row input:focus {
   outline: none;
