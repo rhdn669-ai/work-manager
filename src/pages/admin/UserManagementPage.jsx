@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUsers, updateUser, createUser, deleteUser } from '../../services/userService';
+import { getUsers, updateUser, createUser, deleteUser, seedSiteCreatorsIfNeeded } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { POSITIONS } from '../../utils/constants';
@@ -21,7 +21,7 @@ export default function UserManagementPage() {
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
     name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
-    leaveRemaining: '', canViewSalary: false,
+    leaveRemaining: '', canViewSalary: false, canCreateSite: false,
     usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '',
   });
 
@@ -31,7 +31,11 @@ export default function UserManagementPage() {
 
   async function loadData() {
     try {
-      const [u, d] = await Promise.all([getUsers(), getDepartments()]);
+      let [u, d] = await Promise.all([getUsers(), getDepartments()]);
+      // 일회성 — 명단 직원에게 프로젝트 추가 권한 부여 (한 번만 실행)
+      const seedNames = ['이종현', '손성욱', '이주현', '하성민', '박정현'];
+      const granted = await seedSiteCreatorsIfNeeded(seedNames, u).catch(() => []);
+      if (granted.length > 0) u = await getUsers();
       setUsers(u);
       setDepartments(d);
 
@@ -50,7 +54,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
+    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, canCreateSite: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
     setShowModal(true);
   }
 
@@ -63,6 +67,7 @@ export default function UserManagementPage() {
       fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
       leaveRemaining: bal ? String(bal.remainingDays) : '',
       canViewSalary: !!user.canViewSalary,
+      canCreateSite: !!user.canCreateSite,
       usesVehicle: !!user.usesVehicle,
       vehiclePlate: user.vehiclePlate || '',
       vehicleMonthlyCost: user.vehicleMonthlyCost ? Number(user.vehicleMonthlyCost).toLocaleString() : '',
@@ -82,6 +87,7 @@ export default function UserManagementPage() {
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
+          canCreateSite: !!form.canCreateSite,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle
@@ -100,6 +106,7 @@ export default function UserManagementPage() {
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
+          canCreateSite: !!form.canCreateSite,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle
@@ -176,6 +183,15 @@ export default function UserManagementPage() {
     .map((u) => ({ user: u, reason: getSalaryPermissionReason(u) }))
     .filter((x) => x.reason);
 
+  function getCreateSiteReason(u) {
+    if (u.role === 'admin') return '관리자';
+    if (u.canCreateSite) return '권한 부여';
+    return null;
+  }
+  const siteCreators = users
+    .map((u) => ({ user: u, reason: getCreateSiteReason(u) }))
+    .filter((x) => x.reason);
+
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
@@ -207,6 +223,37 @@ export default function UserManagementPage() {
                 style={{
                   cursor: 'pointer',
                   background: reason === '권한 부여' ? '#e0f2fe' : '#fef3c7',
+                  color: '#374151',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  fontSize: 13,
+                }}
+              >
+                {user.name} <span style={{ opacity: 0.6, marginLeft: 4 }}>({reason})</span>
+              </span>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 14, marginBottom: 16, background: '#eef2ff', border: '1px solid #c7d2fe' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <strong style={{ fontSize: 14 }}>프로젝트 추가 권한자 ({siteCreators.length}명)</strong>
+          <span className="text-muted text-sm">관리자는 자동 포함. 그 외 직원은 아래 직원 행을 눌러 권한 부여.</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {siteCreators.length === 0 ? (
+            <span className="text-muted text-sm">권한자가 없습니다.</span>
+          ) : (
+            siteCreators.map(({ user, reason }) => (
+              <span
+                key={user.uid}
+                className="badge"
+                onClick={() => openEdit(user)}
+                style={{
+                  cursor: 'pointer',
+                  background: reason === '권한 부여' ? '#dbeafe' : '#e0e7ff',
                   color: '#374151',
                   border: '1px solid rgba(0,0,0,0.08)',
                   padding: '4px 10px',
@@ -376,6 +423,33 @@ export default function UserManagementPage() {
                       checked={on}
                       disabled={autoGranted}
                       onChange={(e) => setForm({ ...form, canViewSalary: e.target.checked })}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            );
+          })()}
+          {(() => {
+            const autoGranted = form.role === 'admin';
+            const on = autoGranted || !!form.canCreateSite;
+            return (
+              <div className="form-group">
+                <div className="toggle-row">
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">프로젝트 추가 권한</span>
+                    <small className="text-muted">
+                      {autoGranted
+                        ? '관리자는 자동으로 부여됩니다.'
+                        : '프로젝트 목록에서 신규 프로젝트를 등록할 수 있습니다.'}
+                    </small>
+                  </div>
+                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={autoGranted}
+                      onChange={(e) => setForm({ ...form, canCreateSite: e.target.checked })}
                     />
                     <span className="toggle-slider" />
                   </label>

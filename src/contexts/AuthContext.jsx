@@ -182,6 +182,8 @@ export function AuthProvider({ children }) {
   const canApproveLeave = canApproveAll || isTeamLeader;
   // 급여/직원 비용 열람: 관리자 + 대표/부사장 + canViewSalary 플래그
   const canViewSalary = userProfile?.role === 'admin' || isExecutive || !!userProfile?.canViewSalary;
+  // 프로젝트(현장) 추가 권한: 관리자 + canCreateSite 플래그
+  const canCreateSite = userProfile?.role === 'admin' || !!userProfile?.canCreateSite;
 
   const value = {
     user: userProfile,
@@ -203,6 +205,7 @@ export function AuthProvider({ children }) {
     canApproveAll,
     canApproveLeave,
     canViewSalary,
+    canCreateSite,
   };
 
   return (

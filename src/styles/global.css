@@ -2980,7 +2980,230 @@ body {
   gap: 6px;
   margin-bottom: 6px;
 }
+.purchase-line-item-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+.purchase-line-item-wrap .purchase-line-item { width: 100%; }
 .purchase-line-item { flex: 1 1 auto; min-width: 0; }
+
+.purchase-line-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 250;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.purchase-line-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 1px solid var(--bg-subtle);
+  font-family: inherit;
+}
+.purchase-line-option:hover {
+  background: var(--bg-subtle);
+}
+.purchase-line-option:last-child {
+  border-bottom: none;
+}
+.purchase-line-option.is-selected {
+  background: var(--primary-softer);
+}
+.purchase-line-option .opt-name {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.purchase-line-option .opt-code {
+  display: inline-block;
+  margin-right: 5px;
+  padding: 1px 5px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.purchase-line-option .opt-price {
+  font-size: 12px;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.purchase-line-option-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ===== 프로젝트별 BOM ===== */
+.bom-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.bom-site-select {
+  height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: #fff;
+  min-width: 200px;
+}
+.bom-summary {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.bom-summary strong { color: var(--text); margin-left: 4px; }
+
+.bom-table input {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.bom-table input:hover { background: var(--bg-subtle); }
+.bom-table input:focus { background: #fff; border-color: var(--primary); }
+.bom-table td { padding: 4px 6px; vertical-align: middle; }
+.bom-cell-amount {
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bom-name-wrap { position: relative; }
+.bom-name-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+  min-width: 240px;
+}
+
+/* ===== 인라인 편집 표 공통 (구매 품목·BOM 등) ===== */
+.inline-edit-table input,
+.inline-edit-table select,
+.inline-edit-table textarea {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+  color: var(--text);
+}
+.inline-edit-table input:hover,
+.inline-edit-table select:hover,
+.inline-edit-table textarea:hover { background: var(--bg-subtle); }
+.inline-edit-table input:focus,
+.inline-edit-table select:focus,
+.inline-edit-table textarea:focus {
+  background: #fff;
+  border-color: var(--primary);
+}
+.inline-edit-table td { padding: 4px 6px; vertical-align: middle; }
+
+.item-cell-price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.item-cell-price .price-since {
+  white-space: nowrap;
+}
+
+.item-actions-cell {
+  white-space: nowrap;
+}
+.item-actions-cell > * { margin-right: 4px; }
+.item-actions-cell > *:last-child { margin-right: 0; }
+
+.item-expand-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-family: inherit;
+}
+.item-expand-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.item-detail-row > td {
+  background: var(--bg-subtle);
+  padding: 14px 18px !important;
+}
+.item-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.item-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.item-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.item-detail-body textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+.item-detail-body textarea:focus { border-color: var(--primary); }
 .purchase-line-qty { width: 64px; flex-shrink: 0; }
 .purchase-line-price { width: 90px; flex-shrink: 0; }
 .purchase-line-amount {

@@ -28,7 +28,7 @@ function getIconColor(key) {
 }
 
 export default function SiteListPage() {
-  const { userProfile, isAdmin, isExecutive, canViewSalary } = useAuth();
+  const { userProfile, isAdmin, isExecutive, canViewSalary, canCreateSite } = useAuth();
   const { confirm, alert } = useDialog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
@@ -318,7 +318,7 @@ export default function SiteListPage() {
     <div className="site-list-page">
       <div className="page-header">
         <h2>프로젝트</h2>
-        {isAdmin && <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>}
+        {(isAdmin || canCreateSite) && <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>}
       </div>
 
       {/* 필터 탭 */}

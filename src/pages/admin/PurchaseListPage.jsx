@@ -59,6 +59,7 @@ export default function PurchaseListPage() {
   const [detail, setDetail] = useState(null);
   const [receiveModal, setReceiveModal] = useState(null);
   const [receiveForm, setReceiveForm] = useState({ date: todayStr(), note: '' });
+  const [activeLine, setActiveLine] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -132,6 +133,24 @@ export default function PurchaseListPage() {
       ...f,
       items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)),
     }));
+  }
+
+  function pickItemForLine(idx, m) {
+    setForm((f) => ({
+      ...f,
+      items: f.items.map((ln, i) => {
+        if (i !== idx) return ln;
+        return {
+          ...ln,
+          itemId: m.id,
+          name: m.name,
+          spec: m.spec || ln.spec,
+          unit: m.unit || ln.unit,
+          unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : (Number(m.standardPrice) || 0),
+        };
+      }),
+    }));
+    setActiveLine(null);
   }
 
   function updateLineName(idx, name) {
@@ -421,22 +440,55 @@ export default function PurchaseListPage() {
 
           <div className="form-group">
             <label>품목</label>
-            <p className="field-hint">자주 쓰는 품목은 자동완성에서 선택, 새 품목은 직접 입력하면 자동 등록됩니다.</p>
-            <datalist id="purchase-item-list">
-              {itemMaster.map((m) => (
-                <option key={m.id} value={m.name}>{m.spec || ''}</option>
-              ))}
-            </datalist>
-            {form.items.map((ln, idx) => (
+            <p className="field-hint">검색해서 선택하거나 새 품목명을 직접 입력하세요. 등록 안 된 품목은 저장 시 자동 등록됩니다.</p>
+            {form.items.map((ln, idx) => {
+              const kw = (ln.name || '').toLowerCase().trim();
+              const matches = itemMaster.filter((m) => {
+                if (!kw) return true;
+                return (m.code || '').toLowerCase().includes(kw)
+                    || (m.name || '').toLowerCase().includes(kw)
+                    || (m.spec || '').toLowerCase().includes(kw);
+              }).slice(0, 50);
+              return (
               <div className="purchase-line" key={idx}>
-                <input
-                  className="purchase-line-item"
-                  type="text"
-                  list="purchase-item-list"
-                  placeholder="품목명"
-                  value={ln.name}
-                  onChange={(e) => updateLineName(idx, e.target.value)}
-                />
+                <div className="purchase-line-item-wrap">
+                  <input
+                    className="purchase-line-item"
+                    type="text"
+                    placeholder="품목명 검색·입력"
+                    value={ln.name}
+                    onChange={(e) => updateLineName(idx, e.target.value)}
+                    onFocus={() => setActiveLine(idx)}
+                    onBlur={() => setTimeout(() => setActiveLine((c) => (c === idx ? null : c)), 150)}
+                    autoComplete="off"
+                  />
+                  {activeLine === idx && (
+                    <div className="purchase-line-dropdown">
+                      {matches.length === 0 ? (
+                        <div className="purchase-line-option-empty">
+                          {kw ? `"${kw}"는 새 품목으로 등록됩니다` : '등록된 품목이 없습니다 — 직접 입력하세요'}
+                        </div>
+                      ) : (
+                        matches.map((m) => (
+                          <button
+                            type="button"
+                            key={m.id}
+                            className={`purchase-line-option ${m.id === ln.itemId ? 'is-selected' : ''}`}
+                            onMouseDown={(e) => { e.preventDefault(); pickItemForLine(idx, m); }}
+                          >
+                            <span className="opt-name">
+                              {m.code && <span className="opt-code">[{m.code}]</span>}
+                              {m.name}{m.spec ? ` (${m.spec})` : ''}
+                            </span>
+                            {m.standardPrice > 0 && (
+                              <span className="opt-price">{Number(m.standardPrice).toLocaleString()}원</span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 <input
                   className="purchase-line-qty"
                   type="number" min="0" placeholder="수량"
@@ -454,7 +506,8 @@ export default function PurchaseListPage() {
                 </span>
                 <button type="button" className="closing-delete" onClick={() => removeLine(idx)} aria-label="행 삭제">✕</button>
               </div>
-            ))}
+              );
+            })}
             <button type="button" className="btn btn-sm btn-outline" onClick={addLine} style={{ marginTop: 6 }}>
               + 품목 추가
             </button>

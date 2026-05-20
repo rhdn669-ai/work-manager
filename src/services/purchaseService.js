@@ -66,6 +66,7 @@ export async function getPurchaseItems() {
 
 export async function addPurchaseItem(data) {
   return addDoc(itemsRef, {
+    code: data.code || '',                // 품목 코드
     name: data.name || '',
     spec: data.spec || '',
     unit: data.unit || '',

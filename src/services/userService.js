@@ -76,3 +76,16 @@ export async function resetHintAttempts(uid) {
     updatedAt: new Date(),
   });
 }
+
+// 일회성 시드 — 명단의 직원에게 canCreateSite=true 부여. appConfig/permSeed로 중복 실행 방지.
+export async function seedSiteCreatorsIfNeeded(names, users) {
+  const seedDoc = doc(db, 'appConfig', 'permSeed');
+  const snap = await getDoc(seedDoc);
+  if (snap.exists() && snap.data().siteCreatorSeeded) return [];
+  const targets = users.filter((u) => names.includes(u.name) && u.role !== 'admin' && !u.canCreateSite);
+  if (targets.length > 0) {
+    await Promise.all(targets.map((u) => updateUser(u.uid, { canCreateSite: true })));
+  }
+  await setDoc(seedDoc, { siteCreatorSeeded: true, seededAt: new Date(), names }, { merge: true });
+  return targets.map((u) => u.name);
+}
