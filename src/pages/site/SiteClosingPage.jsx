@@ -327,6 +327,13 @@ export default function SiteClosingPage() {
           finalItems = its.map((it) => {
             if (it.itemType !== 'employee') return it;
             const leaveMap = ldByName[it.detail] || {};
+            // 직원의 참여 시작일(participatedFrom) 이전 평일은 자동 채움 제외
+            let fromDay = 1;
+            if (it.participatedFrom) {
+              const [py, pm, pd] = it.participatedFrom.split('-').map(Number);
+              if (py === y && pm === m) fromDay = pd;
+              else if (py > y || (py === y && pm > m)) fromDay = upToDay + 1; // 참여 전 월
+            }
             const { newDq, changed } = autofillEmployeeDq({
               oldDq: it.dailyQuantities,
               year: y,
@@ -334,6 +341,7 @@ export default function SiteClosingPage() {
               holidaySet: hSet,
               leaveMap,
               upToDay,
+              fromDay,
             });
             if (!changed) return it;
             const quantity = Object.values(newDq).reduce((sum, v) => sum + Number(v || 0), 0);
@@ -724,6 +732,8 @@ export default function SiteClosingPage() {
         initAmount = Math.round(dailyRate * initQuantity);
       }
     }
+    const todayDate = new Date();
+    const joinDateStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
     await addClosingItem(siteId, y, m, {
       no: nextNo,
       vendor: '직원',
@@ -731,6 +741,7 @@ export default function SiteClosingPage() {
       category: `월급 ${monthlySalary.toLocaleString()} ÷ ${workingDays}일`,
       itemType: resolvedType,
       unitPrice: dailyRate,
+      participatedFrom: joinDateStr,
       dailyQuantities: initDq,
       quantity: initQuantity,
       amount: initAmount,
