@@ -1,6 +1,6 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
-  query, orderBy,
+  query, orderBy, arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { addFinanceItem } from './siteService';
@@ -151,6 +151,24 @@ export async function settlePurchase(purchase, settledBy) {
     note: purchase.supplierName ? `구매처: ${purchase.supplierName}` : '',
     date: dateStr,
   });
+
+  // 각 품목의 실거래 단가를 priceHistory에 누적, standardPrice도 최신화
+  const lineItems = Array.isArray(purchase.items) ? purchase.items : [];
+  await Promise.all(lineItems
+    .filter((ln) => ln.itemId)
+    .map((ln) => updateDoc(doc(db, 'purchaseItems', ln.itemId), {
+      priceHistory: arrayUnion({
+        price: Number(ln.unitPrice) || 0,
+        date: dateStr,
+        qty: Number(ln.qty) || 0,
+        supplierId: purchase.supplierId || '',
+        supplierName: purchase.supplierName || '',
+        purchaseId: purchase.id,
+      }),
+      standardPrice: Number(ln.unitPrice) || 0,
+      updatedAt: new Date(),
+    })),
+  );
 
   await setPurchaseStatus(purchase.id, 'settled', {
     settledAt: new Date(),

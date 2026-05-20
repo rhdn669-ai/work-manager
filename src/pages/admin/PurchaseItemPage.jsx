@@ -128,16 +128,11 @@ export default function PurchaseItemPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.name.trim()) { alert('품명을 입력해주세요.'); return; }
-    const newPrice = Number(form.standardPrice) || 0;
     try {
       if (editTarget) {
-        const oldPrice = Number(editTarget.standardPrice) || 0;
-        const history = Array.isArray(editTarget.priceHistory) ? [...editTarget.priceHistory] : [];
-        if (newPrice !== oldPrice) history.push({ price: newPrice, date: todayStr() });
-        await updatePurchaseItem(editTarget.id, { ...form, priceHistory: history });
+        await updatePurchaseItem(editTarget.id, form);
       } else {
-        const history = newPrice > 0 ? [{ price: newPrice, date: todayStr() }] : [];
-        await addPurchaseItem({ ...form, priceHistory: history });
+        await addPurchaseItem({ ...form, priceHistory: [] });
       }
       setShowModal(false);
       await loadData();
@@ -166,11 +161,7 @@ export default function PurchaseItemPage() {
     if (!await confirm(`${parsedBulk.length}개 품목을 일괄 등록하시겠습니까?`)) return;
     setBulkSaving(true);
     try {
-      const today = todayStr();
-      await Promise.all(parsedBulk.map((r) => {
-        const price = Number(r.standardPrice) || 0;
-        return addPurchaseItem({ ...r, priceHistory: price > 0 ? [{ price, date: today }] : [] });
-      }));
+      await Promise.all(parsedBulk.map((r) => addPurchaseItem({ ...r, priceHistory: [] })));
       setBulkModal(false);
       setBulkText('');
       await loadData();
@@ -298,7 +289,11 @@ export default function PurchaseItemPage() {
               <div className="price-history">
                 {[...editTarget.priceHistory].reverse().map((h, i) => (
                   <div key={i} className="price-history-row">
-                    <span className="price-history-date">{h.date}</span>
+                    <div className="ph-info">
+                      <span className="price-history-date">{h.date}</span>
+                      {h.supplierName && <span className="ph-supplier">{h.supplierName}</span>}
+                      {Number(h.qty) > 0 && <span className="ph-qty">×{h.qty}</span>}
+                    </div>
                     <strong>{Number(h.price).toLocaleString()}원</strong>
                   </div>
                 ))}
@@ -320,16 +315,20 @@ export default function PurchaseItemPage() {
               <p className="field-hint">등록된 프로젝트가 없습니다.</p>
             ) : (
               <div className="purchase-site-checks">
-                {sites.map((s) => (
-                  <label key={s.id} className="purchase-site-check">
-                    <input
-                      type="checkbox"
-                      checked={form.siteIds.includes(s.id)}
-                      onChange={() => toggleSite(s.id)}
-                    />
-                    {s.name}
-                  </label>
-                ))}
+                {sites.map((s) => {
+                  const on = form.siteIds.includes(s.id);
+                  return (
+                    <label key={s.id} className={`purchase-site-check ${on ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => toggleSite(s.id)}
+                      />
+                      {on && <span className="chip-check">✓</span>}
+                      {s.name}
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>

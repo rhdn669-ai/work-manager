@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   getPurchases, addPurchase, updatePurchase, deletePurchase, setPurchaseStatus,
-  settlePurchase, getSuppliers, getPurchaseItems, getPurchaseConfig, setHqSite,
+  settlePurchase, getSuppliers, getPurchaseItems, addPurchaseItem,
+  getPurchaseConfig, setHqSite,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -133,13 +134,27 @@ export default function PurchaseListPage() {
     }));
   }
 
-  function pickItem(idx, itemId) {
-    const m = itemMaster.find((x) => x.id === itemId);
-    if (!m) { updateLine(idx, { itemId: '', name: '', spec: '', unit: '' }); return; }
-    updateLine(idx, {
-      itemId: m.id, name: m.name, spec: m.spec || '', unit: m.unit || '',
-      unitPrice: Number(m.standardPrice) || 0,
-    });
+  function updateLineName(idx, name) {
+    const trimmed = name;
+    setForm((f) => ({
+      ...f,
+      items: f.items.map((ln, i) => {
+        if (i !== idx) return ln;
+        const m = itemMaster.find((x) => x.name === trimmed);
+        if (m) {
+          // 마스터 매칭 — 정보 자동 채움 (사용자가 입력한 단가는 보존)
+          return {
+            ...ln,
+            itemId: m.id,
+            name: m.name,
+            spec: m.spec || ln.spec,
+            unit: m.unit || ln.unit,
+            unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : (Number(m.standardPrice) || 0),
+          };
+        }
+        return { ...ln, itemId: '', name: trimmed };
+      }),
+    }));
   }
 
   function addLine() {
@@ -165,10 +180,31 @@ export default function PurchaseListPage() {
       alert(form.ownerType === 'hq' ? '본사 귀속 프로젝트를 선택해주세요.' : '귀속 프로젝트를 선택해주세요.');
       return;
     }
-    const lines = form.items.filter((ln) => ln.itemId);
-    if (lines.length === 0) { alert('품목을 1개 이상 선택해주세요.'); return; }
+    const lines = form.items.filter((ln) => (ln.name || '').trim());
+    if (lines.length === 0) { alert('품목을 1개 이상 입력해주세요.'); return; }
 
-    const items = lines.map((ln) => ({
+    // 마스터에 없는 품목은 자동 생성 후 itemId 부여
+    const linesWithIds = [];
+    for (const ln of lines) {
+      let itemId = ln.itemId;
+      if (!itemId) {
+        const m = itemMaster.find((x) => x.name === ln.name.trim());
+        if (m) itemId = m.id;
+      }
+      if (!itemId) {
+        const docRef = await addPurchaseItem({
+          name: ln.name.trim(),
+          spec: ln.spec || '',
+          unit: ln.unit || '',
+          standardPrice: Number(ln.unitPrice) || 0,
+          priceHistory: [],
+        });
+        itemId = docRef.id;
+      }
+      linesWithIds.push({ ...ln, itemId });
+    }
+
+    const items = linesWithIds.map((ln) => ({
       itemId: ln.itemId, name: ln.name, spec: ln.spec, unit: ln.unit,
       qty: Number(ln.qty) || 0,
       unitPrice: Number(ln.unitPrice) || 0,
@@ -385,23 +421,22 @@ export default function PurchaseListPage() {
 
           <div className="form-group">
             <label>품목</label>
-            {itemMaster.length === 0 && (
-              <p className="field-hint">먼저 "구매 품목 관리"에서 품목을 등록해주세요.</p>
-            )}
+            <p className="field-hint">자주 쓰는 품목은 자동완성에서 선택, 새 품목은 직접 입력하면 자동 등록됩니다.</p>
+            <datalist id="purchase-item-list">
+              {itemMaster.map((m) => (
+                <option key={m.id} value={m.name}>{m.spec || ''}</option>
+              ))}
+            </datalist>
             {form.items.map((ln, idx) => (
               <div className="purchase-line" key={idx}>
-                <select
+                <input
                   className="purchase-line-item"
-                  value={ln.itemId}
-                  onChange={(e) => pickItem(idx, e.target.value)}
-                >
-                  <option value="">품목 선택</option>
-                  {itemMaster.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}{m.spec ? ` (${m.spec})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  type="text"
+                  list="purchase-item-list"
+                  placeholder="품목명"
+                  value={ln.name}
+                  onChange={(e) => updateLineName(idx, e.target.value)}
+                />
                 <input
                   className="purchase-line-qty"
                   type="number" min="0" placeholder="수량"
