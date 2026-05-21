@@ -68,9 +68,13 @@ function autofillUpToDayForSite(site, year, month) {
   return autofillUpToDay(year, month);
 }
 
-// 직원 dailyQuantities에서 평일 빈 칸을 1로 채움 (수동값/연차일/공휴일/주말 보존)
-// fromDay: 채우기 시작일 (기본 1). 직원 신규 추가 시 추가 당일부터 채우려고 사용
-function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay, fromDay = 1 }) {
+// 직원 dailyQuantities에서 평일 빈 칸을 자동 채움 (수동값/연차일/공휴일/주말 보존)
+// fromDay: 채우기 시작일 (기본 1) — 직원 신규 추가 시 추가 당일부터 채울 때 사용
+// otherDailyByDay: { [day]: { total, sources } } — 다른 프로젝트의 같은 직원·같은 날 공수 합. 1일 합 1 초과 방지
+function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay, fromDay = 1, otherDailyByDay = {}, skipAutofill = false }) {
+  // 같은 직원이 다른 양산형 프로젝트에도 배정돼 있으면 자동 채움 스킵
+  // (직원은 하루에 한 프로젝트만 수행 — 어느 프로젝트에서 일했는지는 사용자가 직접 입력)
+  if (skipAutofill) return { newDq: oldDq || {}, changed: false };
   if (upToDay <= 0) return { newDq: oldDq || {}, changed: false };
   const newDq = { ...(oldDq || {}) };
   let changed = false;
@@ -82,8 +86,14 @@ function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay,
     if (leaveMap && leaveMap[d]) continue;
     const cur = newDq[d];
     if (cur === undefined || cur === null || cur === '') {
-      newDq[d] = 1;
-      changed = true;
+      // 다른 프로젝트에 이미 들어간 공수만큼 빼고 남은 만큼만 채움 (없으면 1)
+      const otherTotal = Number(otherDailyByDay[d]?.total) || 0;
+      const allowed = Math.max(0, 1 - otherTotal);
+      if (allowed > 0) {
+        newDq[d] = allowed;
+        changed = true;
+      }
+      // allowed === 0 → 다른 프로젝트가 이미 1, 빈 칸으로 둠
     }
   }
   return { newDq, changed };
@@ -113,6 +123,8 @@ export default function SiteClosingPage() {
   const [assignedNames, setAssignedNames] = useState(new Set());
   // 다른 프로젝트 같은 월의 직원 일별 공수 합 — 1일 합 1 초과 검증용
   const [otherSitesEmployeeDaily, setOtherSitesEmployeeDaily] = useState({});
+  // 같은 월에 다른 양산형 프로젝트에도 항목으로 존재하는 직원 이름 set ({name: true})
+  const [employeesInOtherSites, setEmployeesInOtherSites] = useState({});
   // 휴무일(주말 + 회사 공휴일 + 한국 공휴일) 집합 — 'YYYY-MM-DD'
   const [holidaySet, setHolidaySet] = useState(new Set());
   // 이 사이트 같은 월의 직원 잔업일 집합 — { 이름: Set<day> } (휴무일에 잔업 신청 → 출근으로 표시)
@@ -234,6 +246,7 @@ export default function SiteClosingPage() {
       const allSitesNameMap = Object.fromEntries((await getAllSites()).map((x) => [x.id, x.name]));
       const currentClosingId = `${siteId}_${y}_${String(m).padStart(2, '0')}`;
       const otherDaily = {};
+      const inOtherSites = {};
       allEmpItemsThisMonth.forEach((it) => {
         // closingId 포맷: `{siteId}_{year}_{MM}` — siteId 필드가 누락된 legacy 항목의 출처 복원용
         const effectiveSiteId = it.siteId || (it.closingId ? String(it.closingId).split('_')[0] : '');
@@ -243,6 +256,7 @@ export default function SiteClosingPage() {
         const name = it.detail || '';
         if (!name) return;
         const siteName = allSitesNameMap[effectiveSiteId] || '(삭제된 프로젝트)';
+        inOtherSites[name] = true;
         if (!otherDaily[name]) otherDaily[name] = {};
         const dq = it.dailyQuantities || {};
         for (const [day, qty] of Object.entries(dq)) {
@@ -254,6 +268,7 @@ export default function SiteClosingPage() {
         }
       });
       setOtherSitesEmployeeDaily(otherDaily);
+      setEmployeesInOtherSites(inOtherSites);
       setSite(s);
       setAssignedNames(assigned);
       setFinances(fins);
@@ -342,6 +357,8 @@ export default function SiteClosingPage() {
               leaveMap,
               upToDay,
               fromDay,
+              otherDailyByDay: otherDaily[it.detail] || {},
+              skipAutofill: !!inOtherSites[it.detail] || !!it.autofillDisabled,
             });
             if (!changed) return it;
             const quantity = Object.values(newDq).reduce((sum, v) => sum + Number(v || 0), 0);
@@ -726,6 +743,8 @@ export default function SiteClosingPage() {
           leaveMap,
           upToDay,
           fromDay,
+          otherDailyByDay: otherSitesEmployeeDaily[user.name] || {},
+          skipAutofill: !!employeesInOtherSites[user.name],
         });
         initDq = newDq;
         initQuantity = Object.values(newDq).reduce((sum, v) => sum + Number(v || 0), 0);
@@ -751,6 +770,19 @@ export default function SiteClosingPage() {
     });
     setShowEmployeeSelect(false);
     await loadAll({ silent: true });
+  }
+
+  async function toggleEmployeeAutofill(itemId) {
+    const buf = editBuf[itemId];
+    if (!buf) return;
+    const next = !buf.autofillDisabled;
+    setEditBuf((prev) => ({ ...prev, [itemId]: { ...prev[itemId], autofillDisabled: next } }));
+    setItems((prev) => prev.map((it) => (it.id === itemId ? { ...it, autofillDisabled: next } : it)));
+    try {
+      await updateClosingItem(itemId, { autofillDisabled: next });
+    } catch (err) {
+      alert('자동 채움 설정 변경 중 오류: ' + err.message);
+    }
   }
 
   async function handleDeleteRow(itemId) {
@@ -1641,6 +1673,18 @@ export default function SiteClosingPage() {
                     readOnly={detailLocked}
                     title={detailLocked ? '모달에서 선택된 값은 수정 불가 (삭제 후 재추가)' : undefined}
                   />
+                  {canEdit && isEmployee && site?.projectType === 'recurring' && (
+                    <button
+                      type="button"
+                      className={`closing-autofill-btn ${buf.autofillDisabled ? 'is-disabled' : ''}`}
+                      onClick={() => toggleEmployeeAutofill(it.id)}
+                      title={buf.autofillDisabled
+                        ? '자동 채움 꺼짐 — 클릭해서 켜기'
+                        : '자동 채움 켜짐 — 클릭해서 끄기'}
+                    >
+                      {buf.autofillDisabled ? '자동⛔' : '자동✓'}
+                    </button>
+                  )}
                   {canEdit && (
                     <button
                       type="button"

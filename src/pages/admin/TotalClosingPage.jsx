@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAllSites, getFinanceItems, getClosingItems } from '../../services/siteService';
 import { getFixedExpenses, saveFixedExpenses } from '../../services/fixedExpenseService';
@@ -14,6 +14,7 @@ const isOvertimeItem = (f) => {
 export default function TotalClosingPage() {
   const { isAdmin, canViewSalary } = useAuth();
   const { alert } = useDialog();
+  const navigate = useNavigate();
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlY = Number(searchParams.get('y'));
@@ -219,12 +220,13 @@ export default function TotalClosingPage() {
                     const totalExp = (v.expense || 0) + (v.overtime || 0) + (v.labor || 0);
                     const bal = rev - totalExp;
                     return (
-                      <tr key={s.id}>
-                        <td data-label="프로젝트">
-                          <Link to={`/sites/${s.id}/${year}/${month}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 600 }}>
-                            {s.name}
-                          </Link>
-                        </td>
+                      <tr
+                        key={s.id}
+                        onClick={() => navigate(`/sites/${s.id}/${year}/${month}`)}
+                        className="table-clickable-row"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <td data-label="프로젝트" style={{ fontWeight: 600 }}>{s.name}</td>
                         <td data-label="매출" style={{ textAlign: 'right' }}>
                           {s.hideRevenue ? <span className="text-muted">-</span> : `${rev.toLocaleString()}원`}
                         </td>
