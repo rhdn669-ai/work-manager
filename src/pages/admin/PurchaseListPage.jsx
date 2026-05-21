@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   getPurchases, addPurchase, updatePurchase, deletePurchase, setPurchaseStatus,
-  settlePurchase, getSuppliers, getPurchaseItems, addPurchaseItem,
+  settlePurchase, getSuppliers, getPurchaseItems, addPurchaseItem, nextItemCode,
   getPurchaseConfig, setHqSite,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
@@ -202,16 +202,19 @@ export default function PurchaseListPage() {
     const lines = form.items.filter((ln) => (ln.name || '').trim());
     if (lines.length === 0) { alert('품목을 1개 이상 입력해주세요.'); return; }
 
-    // 마스터에 없는 품목은 자동 생성 후 itemId 부여
+    // 마스터에 없는 품목은 자동 생성 후 itemId·코드 부여
     const linesWithIds = [];
+    let masterBuf = [...itemMaster];
     for (const ln of lines) {
       let itemId = ln.itemId;
       if (!itemId) {
-        const m = itemMaster.find((x) => x.name === ln.name.trim());
+        const m = masterBuf.find((x) => x.name === ln.name.trim());
         if (m) itemId = m.id;
       }
       if (!itemId) {
+        const code = nextItemCode(masterBuf);
         const docRef = await addPurchaseItem({
+          code,
           name: ln.name.trim(),
           spec: ln.spec || '',
           unit: ln.unit || '',
@@ -219,6 +222,7 @@ export default function PurchaseListPage() {
           priceHistory: [],
         });
         itemId = docRef.id;
+        masterBuf = [...masterBuf, { id: itemId, code, name: ln.name.trim() }];
       }
       linesWithIds.push({ ...ln, itemId });
     }

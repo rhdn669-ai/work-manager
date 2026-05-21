@@ -35,7 +35,7 @@ export default function SupplierManagementPage() {
     const kw = search.trim().toLowerCase();
     if (!kw) return suppliers;
     return suppliers.filter((s) =>
-      [s.name, s.representative, s.contact, s.category]
+      [s.name, s.representative, s.contact, s.category, s.note]
         .some((v) => (v || '').toLowerCase().includes(kw)),
     );
   }, [suppliers, search]);
@@ -94,7 +94,7 @@ export default function SupplierManagementPage() {
       <div className="form-group" style={{ maxWidth: 320 }}>
         <input
           type="text"
-          placeholder="상호 · 대표 · 연락처 · 분류 검색"
+          placeholder="상호 · 대표 · 연락처 · 분류 · 비고 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -113,6 +113,7 @@ export default function SupplierManagementPage() {
               <th>연락처</th>
               <th>사업자번호</th>
               <th>분류</th>
+              <th>비고</th>
               <th>작업</th>
             </tr>
           </thead>
@@ -124,6 +125,7 @@ export default function SupplierManagementPage() {
                 <td data-label="연락처">{s.contact || '-'}</td>
                 <td data-label="사업자번호">{s.businessNumber || '-'}</td>
                 <td data-label="분류">{s.category || '-'}</td>
+                <td data-label="비고" className="supplier-note-cell">{s.note || '-'}</td>
                 <td>
                   <div className="btn-group">
                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>수정</button>

@@ -89,6 +89,19 @@ export async function deletePurchaseItem(id) {
   await deleteDoc(doc(db, 'purchaseItems', id));
 }
 
+// 다음 IOPN- 코드 생성 (기존 items의 IOPN-XXXXX 중 최대 + 1)
+export function nextItemCode(items) {
+  const PREFIX = 'IOPN-';
+  let max = 0;
+  for (const it of items || []) {
+    const code = (it && it.code) || '';
+    if (!code.startsWith(PREFIX)) continue;
+    const n = parseInt(code.slice(PREFIX.length), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return `${PREFIX}${String(max + 1).padStart(5, '0')}`;
+}
+
 // ---------- 구매 건 (purchases) ----------
 // status: ordered(발주) → received(입고) → settled(정산완료)
 

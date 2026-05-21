@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   getPurchaseItems, addPurchaseItem, updatePurchaseItem, deletePurchaseItem,
-  getSuppliers,
+  getSuppliers, nextItemCode,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import Modal from '../../components/common/Modal';
@@ -70,13 +70,16 @@ export default function PurchaseItemPage() {
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    return items.filter((it) => {
+    const result = items.filter((it) => {
       if (kw && ![it.code, it.name, it.spec, it.category].some((v) => (v || '').toLowerCase().includes(kw))) return false;
       if (filterCategory && it.category !== filterCategory) return false;
       if (filterSupplier && it.defaultSupplierId !== filterSupplier) return false;
       if (filterSite && !(it.siteIds || []).includes(filterSite)) return false;
       return true;
     });
+    // 코드 오름차순 — 작은 번호(IOPN-00001)가 위로
+    result.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+    return result;
   }, [items, search, filterCategory, filterSupplier, filterSite]);
 
   const parsedBulk = useMemo(() => parseBulkText(bulkText), [bulkText]);
@@ -117,7 +120,7 @@ export default function PurchaseItemPage() {
     const tmpId = `tmp-${Date.now()}`;
     setItems((prev) => [{
       id: tmpId,
-      code: '', name: '', spec: '', unit: '', category: '',
+      code: nextItemCode(prev), name: '', spec: '', unit: '', category: '',
       standardPrice: 0, defaultSupplierId: '', siteIds: [], note: '',
       priceHistory: [],
     }, ...prev]);
@@ -151,7 +154,15 @@ export default function PurchaseItemPage() {
     if (!await confirm(`${parsedBulk.length}개 품목을 일괄 등록하시겠습니까?`)) return;
     setBulkSaving(true);
     try {
-      await Promise.all(parsedBulk.map((r) => addPurchaseItem({ ...r, priceHistory: [] })));
+      // 빈 코드 행은 IOPN-XXXXX 자동 부여 (기존 items + 새 코드 누적 계산)
+      let buf = [...items];
+      const withCodes = parsedBulk.map((r) => {
+        if (r.code) return r;
+        const code = nextItemCode(buf);
+        buf = [...buf, { code }];
+        return { ...r, code };
+      });
+      await Promise.all(withCodes.map((r) => addPurchaseItem({ ...r, priceHistory: [] })));
       setBulkModal(false);
       setBulkText('');
       await loadData();

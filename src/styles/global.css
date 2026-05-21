@@ -3115,6 +3115,77 @@ body {
   min-width: 240px;
 }
 
+.bom-code {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.supplier-note-cell {
+  max-width: 240px;
+  font-size: 12px;
+  color: var(--text-light);
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+/* 품목 선택 모달 */
+.bom-picker-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.bom-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bg-subtle);
+  cursor: pointer;
+  font-size: 13px;
+  user-select: none;
+}
+.bom-picker-row:last-child { border-bottom: none; }
+.bom-picker-row:hover { background: var(--bg-subtle); }
+.bom-picker-row.is-checked { background: var(--primary-softer); }
+.bom-picker-row input[type="checkbox"] {
+  width: 16px; height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.bom-picker-code {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.bom-picker-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bom-picker-spec {
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 2px;
+}
+.bom-picker-price {
+  font-size: 12px;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
 /* ===== 인라인 편집 표 공통 (구매 품목·BOM 등) ===== */
 .inline-edit-table input,
 .inline-edit-table select,
