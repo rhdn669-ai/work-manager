@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   getPurchases, addPurchase, updatePurchase, deletePurchase, setPurchaseStatus,
-  settlePurchase, getSuppliers, getPurchaseItems, addPurchaseItem, nextItemCode,
+  settlePurchase, cancelSettlePurchase, getSuppliers, getPurchaseItems, addPurchaseItem, nextItemCode,
   getPurchaseConfig, setHqSite,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
@@ -212,7 +212,7 @@ export default function PurchaseListPage() {
         if (m) itemId = m.id;
       }
       if (!itemId) {
-        const code = nextItemCode(masterBuf);
+        const code = nextItemCode(masterBuf, ln.name.trim());
         const docRef = await addPurchaseItem({
           code,
           name: ln.name.trim(),
@@ -304,6 +304,19 @@ export default function PurchaseListPage() {
       await loadData();
     } catch (err) {
       alert('정산 중 오류: ' + err.message);
+    }
+  }
+
+  async function handleCancelSettle(p) {
+    if (!await confirm(
+      `"${p.title}" 정산을 취소하시겠습니까?\n등록된 지출 항목이 삭제되고, 품목 단가 이력에서도 이 구매 기록이 제거됩니다.\n구매 상태는 '입고'로 되돌아갑니다.`,
+    )) return;
+    try {
+      await cancelSettlePurchase(p);
+      setDetail(null);
+      await loadData();
+    } catch (err) {
+      alert('정산 취소 중 오류: ' + err.message);
     }
   }
 
@@ -588,12 +601,19 @@ export default function PurchaseListPage() {
                 </>
               )}
               {detail.status === 'received' && (
-                <button className="btn btn-primary" onClick={() => handleSettle(detail)}>정산 처리</button>
+                <>
+                  <button className="btn btn-primary" onClick={() => handleSettle(detail)}>정산 처리</button>
+                  <button className="btn btn-outline" onClick={() => openEdit(detail)}>수정</button>
+                  <button className="btn btn-outline" onClick={() => handleDelete(detail)}>삭제</button>
+                </>
               )}
               {detail.status === 'settled' && (
-                <p className="field-hint">
-                  정산 완료 — {detail.siteName || '귀속 프로젝트'} 지출에 반영됨
-                </p>
+                <>
+                  <p className="field-hint" style={{ flex: '1 1 100%' }}>
+                    정산 완료 — {detail.siteName || '귀속 프로젝트'} 지출에 반영됨
+                  </p>
+                  <button className="btn btn-danger" onClick={() => handleCancelSettle(detail)}>정산 취소</button>
+                </>
               )}
             </div>
           </div>

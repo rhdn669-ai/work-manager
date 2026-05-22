@@ -3186,8 +3186,146 @@ body {
   flex-shrink: 0;
 }
 
+/* 다중 선택 드롭다운 (구매 품목의 사용 프로젝트 등) */
+.multi-select {
+  position: relative;
+  display: inline-block;
+  min-width: 220px;
+  max-width: 100%;
+}
+.multi-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 38px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.multi-select-trigger:hover { border-color: var(--primary); }
+.multi-select-trigger:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
+.multi-select-arrow {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.multi-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.multi-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  user-select: none;
+  border-bottom: 1px solid var(--bg-subtle);
+}
+.multi-select-item:last-child { border-bottom: none; }
+.multi-select-item:hover { background: var(--bg-subtle); }
+.multi-select-item.is-checked { background: var(--primary-softer); }
+.multi-select-item input[type="checkbox"] {
+  width: 16px; height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* 표 셀 안에 들어가는 multi-select는 더 좁고 가볍게 */
+.inline-edit-table .multi-select { min-width: 0; display: block; }
+.inline-edit-table .multi-select-trigger {
+  min-height: 32px;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-color: transparent;
+}
+.inline-edit-table .multi-select-trigger:hover { border-color: var(--border); }
+
+/* 사용 프로젝트 — 셀 안 인라인 펼침 드롭다운 (absolute 아님, 행이 자연스럽게 grow) */
+.site-dropdown {
+  display: block;
+  min-width: 160px;
+  max-width: 280px;
+}
+.site-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  min-height: 32px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text);
+}
+.site-dropdown-trigger:hover {
+  border-color: var(--primary);
+  background: var(--bg-card);
+}
+.site-dropdown-arrow {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.site-dropdown-menu {
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-sm);
+}
+.site-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+  border-bottom: 1px solid var(--bg-subtle);
+}
+.site-dropdown-item:last-child { border-bottom: none; }
+.site-dropdown-item:hover { background: var(--bg-subtle); }
+.site-dropdown-item.is-checked { background: var(--primary-softer); font-weight: 600; }
+.site-dropdown-item input[type="checkbox"] {
+  width: 14px; height: 14px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
 /* ===== 인라인 편집 표 공통 (구매 품목·BOM 등) ===== */
-.inline-edit-table input,
+.inline-edit-table input:not([type="checkbox"]):not([type="radio"]),
 .inline-edit-table select,
 .inline-edit-table textarea {
   width: 100%;
@@ -3201,10 +3339,10 @@ body {
   box-sizing: border-box;
   color: var(--text);
 }
-.inline-edit-table input:hover,
+.inline-edit-table input:not([type="checkbox"]):not([type="radio"]):hover,
 .inline-edit-table select:hover,
 .inline-edit-table textarea:hover { background: var(--bg-subtle); }
-.inline-edit-table input:focus,
+.inline-edit-table input:not([type="checkbox"]):not([type="radio"]):focus,
 .inline-edit-table select:focus,
 .inline-edit-table textarea:focus {
   background: #fff;
@@ -3241,6 +3379,25 @@ body {
 .item-expand-btn:hover {
   background: var(--bg-subtle);
   color: var(--text);
+}
+
+.item-same-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.item-same-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-softer);
 }
 
 .item-detail-row > td {

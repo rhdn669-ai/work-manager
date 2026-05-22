@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   getPurchaseItems, addPurchaseItem, updatePurchaseItem, deletePurchaseItem,
-  getSuppliers, nextItemCode,
+  getSuppliers, nextMainCode, nextSubCode,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import Modal from '../../components/common/Modal';
@@ -14,10 +14,11 @@ function parseBulkText(text) {
     .map((cols) => ({
       code: (cols[0] || '').trim(),
       name: (cols[1] || '').trim(),
-      spec: (cols[2] || '').trim(),
-      unit: (cols[3] || '').trim(),
-      category: (cols[4] || '').trim(),
-      standardPrice: (cols[5] || '').replace(/[^0-9.]/g, ''),
+      maker: (cols[2] || '').trim(),
+      spec: (cols[3] || '').trim(),
+      unit: (cols[4] || '').trim(),
+      category: (cols[5] || '').trim(),
+      standardPrice: (cols[6] || '').replace(/[^0-9.]/g, ''),
     }))
     .filter((r) => r.name && r.name !== '품명' && r.code !== '코드');
 }
@@ -33,6 +34,7 @@ export default function PurchaseItemPage() {
   const [filterSupplier, setFilterSupplier] = useState('');
   const [filterSite, setFilterSite] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [siteDropdownOpenId, setSiteDropdownOpenId] = useState(null);
 
   // 엑셀 일괄 추가 모달
   const [bulkModal, setBulkModal] = useState(false);
@@ -42,6 +44,18 @@ export default function PurchaseItemPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // 외부 클릭 시 사용 프로젝트 드롭다운 닫기 (mousedown 대신 click — 체크박스 onChange가 먼저 발화하도록)
+  useEffect(() => {
+    if (!siteDropdownOpenId) return;
+    function onClickOutside(e) {
+      if (!e.target.closest('.multi-select')) {
+        setSiteDropdownOpenId(null);
+      }
+    }
+    document.addEventListener('click', onClickOutside);
+    return () => document.removeEventListener('click', onClickOutside);
+  }, [siteDropdownOpenId]);
 
   async function loadData() {
     try {
@@ -71,7 +85,7 @@ export default function PurchaseItemPage() {
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     const result = items.filter((it) => {
-      if (kw && ![it.code, it.name, it.spec, it.category].some((v) => (v || '').toLowerCase().includes(kw))) return false;
+      if (kw && ![it.code, it.name, it.spec, it.maker, it.category].some((v) => (v || '').toLowerCase().includes(kw))) return false;
       if (filterCategory && it.category !== filterCategory) return false;
       if (filterSupplier && it.defaultSupplierId !== filterSupplier) return false;
       if (filterSite && !(it.siteIds || []).includes(filterSite)) return false;
@@ -102,13 +116,16 @@ export default function PurchaseItemPage() {
     if (!it) return;
     const isNew = String(id).startsWith('tmp-');
     if (isNew && !(it.name || '').trim()) return; // 빈 행 무시
+
+    const payload = { ...it };
+
     try {
       if (isNew) {
-        const ref = await addPurchaseItem({ ...it, priceHistory: [] });
-        setItems((prev) => prev.map((x) => (x.id === id ? { ...x, id: ref.id } : x)));
+        const ref = await addPurchaseItem({ ...payload, priceHistory: [] });
+        setItems((prev) => prev.map((x) => (x.id === id ? { ...x, id: ref.id, code: payload.code } : x)));
         if (expandedId === id) setExpandedId(ref.id);
       } else {
-        const { id: _id, createdAt: _c, updatedAt: _u, ...data } = it;
+        const { id: _id, createdAt: _c, updatedAt: _u, ...data } = payload;
         await updatePurchaseItem(id, data);
       }
     } catch (err) {
@@ -120,13 +137,39 @@ export default function PurchaseItemPage() {
     const tmpId = `tmp-${Date.now()}`;
     setItems((prev) => [{
       id: tmpId,
-      code: nextItemCode(prev), name: '', spec: '', unit: '', category: '',
+      code: nextMainCode(prev), // 새 대분류 (IOPN-NNNNN)
+      name: '', spec: '', maker: '', unit: '', category: '',
       standardPrice: 0, defaultSupplierId: '', siteIds: [], note: '',
       priceHistory: [],
     }, ...prev]);
     setExpandedId(null);
     // 검색/필터를 비워야 새 행이 보임
     setSearch(''); setFilterCategory(''); setFilterSupplier(''); setFilterSite('');
+  }
+
+  function addSameItem(parent) {
+    const code = nextSubCode(items, parent.code);
+    if (!code) { alert('부모 코드가 잘못되어 동일품명을 추가할 수 없습니다.'); return; }
+    const tmpId = `tmp-${Date.now()}`;
+    const newItem = {
+      id: tmpId,
+      code,
+      name: parent.name || '',
+      spec: '',
+      maker: parent.maker || '',
+      unit: parent.unit || '',
+      category: parent.category || '',
+      standardPrice: 0,
+      defaultSupplierId: parent.defaultSupplierId || '',
+      siteIds: Array.isArray(parent.siteIds) ? [...parent.siteIds] : [],
+      note: '',
+      priceHistory: [],
+    };
+    setItems((prev) => {
+      const idx = prev.findIndex((x) => x.id === parent.id);
+      if (idx < 0) return [newItem, ...prev];
+      return [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)];
+    });
   }
 
   async function handleDelete(it) {
@@ -154,12 +197,12 @@ export default function PurchaseItemPage() {
     if (!await confirm(`${parsedBulk.length}개 품목을 일괄 등록하시겠습니까?`)) return;
     setBulkSaving(true);
     try {
-      // 빈 코드 행은 IOPN-XXXXX 자동 부여 (기존 items + 새 코드 누적 계산)
+      // 빈 코드 행은 IOPN-XXXXX-N 자동 부여 (품명 기준 대분류/소분류, 기존 items + 누적 계산)
       let buf = [...items];
       const withCodes = parsedBulk.map((r) => {
         if (r.code) return r;
-        const code = nextItemCode(buf);
-        buf = [...buf, { code }];
+        const code = nextItemCode(buf, r.name);
+        buf = [...buf, { code, name: r.name }];
         return { ...r, code };
       });
       await Promise.all(withCodes.map((r) => addPurchaseItem({ ...r, priceHistory: [] })));
@@ -190,7 +233,7 @@ export default function PurchaseItemPage() {
         <input
           type="text"
           className="purchase-filter-search"
-          placeholder="코드 · 품명 · 규격 검색"
+          placeholder="코드 · 품명 · 규격 · 메이커 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -213,17 +256,19 @@ export default function PurchaseItemPage() {
           <tr>
             <th style={{ minWidth: 100 }}>코드</th>
             <th style={{ minWidth: 160 }}>품명</th>
+            <th>메이커</th>
             <th>규격</th>
             <th>단위</th>
             <th>분류</th>
             <th>표준단가</th>
+            <th style={{ minWidth: 200 }}>사용 프로젝트</th>
             <th>기본 구매처</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {filtered.length === 0 && (
-            <tr><td colSpan={8} className="text-muted text-sm" style={{ textAlign: 'center', padding: 20 }}>
+            <tr><td colSpan={10} className="text-muted text-sm" style={{ textAlign: 'center', padding: 20 }}>
               {items.length === 0 ? '등록된 품목이 없습니다 — 우측 상단 "+ 품목 추가" 또는 "엑셀 일괄 추가"' : '조건에 맞는 품목이 없습니다.'}
             </td></tr>
           )}
@@ -248,6 +293,14 @@ export default function PurchaseItemPage() {
                       value={it.name || ''}
                       placeholder="품명"
                       onChange={(e) => updateField(it.id, { name: e.target.value })}
+                      onBlur={() => flushItem(it.id)}
+                    />
+                  </td>
+                  <td data-label="메이커">
+                    <input
+                      type="text"
+                      value={it.maker || ''}
+                      onChange={(e) => updateField(it.id, { maker: e.target.value })}
                       onBlur={() => flushItem(it.id)}
                     />
                   </td>
@@ -287,6 +340,56 @@ export default function PurchaseItemPage() {
                       <span className="price-since">{it.priceHistory[it.priceHistory.length - 1].date}~</span>
                     )}
                   </td>
+                  <td data-label="사용 프로젝트">
+                    {sites.length === 0 ? (
+                      <span className="text-muted text-sm">프로젝트 없음</span>
+                    ) : (() => {
+                      const selectedIds = it.siteIds || [];
+                      const selectedNames = selectedIds
+                        .map((id) => sites.find((s) => s.id === id)?.name)
+                        .filter(Boolean);
+                      const open = siteDropdownOpenId === it.id;
+                      return (
+                        <div className="site-dropdown">
+                          <button
+                            type="button"
+                            className="site-dropdown-trigger"
+                            onClick={() => setSiteDropdownOpenId(open ? null : it.id)}
+                          >
+                            {selectedNames.length === 0 ? (
+                              <span className="text-muted">선택</span>
+                            ) : (
+                              <span>
+                                {selectedNames.slice(0, 2).join(', ')}
+                                {selectedNames.length > 2 && ` 외 ${selectedNames.length - 2}`}
+                              </span>
+                            )}
+                            <span className="site-dropdown-arrow">{open ? '▴' : '▾'}</span>
+                          </button>
+                          {open && (
+                            <div className="site-dropdown-menu">
+                              {sites.map((s) => {
+                                const on = selectedIds.includes(s.id);
+                                return (
+                                  <label key={s.id} className={`site-dropdown-item ${on ? 'is-checked' : ''}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={on}
+                                      onChange={() => {
+                                        toggleSite(it.id, s.id);
+                                        setTimeout(() => flushItem(it.id), 0);
+                                      }}
+                                    />
+                                    <span>{s.name}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td data-label="기본 구매처">
                     <select
                       value={it.defaultSupplierId || ''}
@@ -302,9 +405,15 @@ export default function PurchaseItemPage() {
                   <td className="item-actions-cell">
                     <button
                       type="button"
+                      className="item-same-btn"
+                      onClick={() => addSameItem(it)}
+                      title="같은 품명으로 다른 규격 추가 (소분류 -N)"
+                    >+ 동일</button>
+                    <button
+                      type="button"
                       className="item-expand-btn"
                       onClick={() => setExpandedId(expanded ? null : it.id)}
-                      title={expanded ? '접기' : '상세 보기 (사용 프로젝트·메모·단가 이력)'}
+                      title={expanded ? '접기' : '상세 보기 (메모·단가 이력)'}
                     >
                       {expanded ? '∧' : '∨'}
                     </button>
@@ -318,38 +427,8 @@ export default function PurchaseItemPage() {
                 </tr>
                 {expanded && (
                   <tr className="item-detail-row">
-                    <td colSpan={8}>
+                    <td colSpan={10}>
                       <div className="item-detail-body">
-                        <div className="item-detail-section">
-                          <label className="item-detail-label">사용 프로젝트</label>
-                          {sites.length === 0 ? (
-                            <p className="field-hint">등록된 프로젝트가 없습니다.</p>
-                          ) : (
-                            <div className="purchase-site-checks">
-                              {sites.map((s) => {
-                                const on = (it.siteIds || []).includes(s.id);
-                                return (
-                                  <label
-                                    key={s.id}
-                                    className={`purchase-site-check ${on ? 'is-checked' : ''}`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={on}
-                                      onChange={() => {
-                                        toggleSite(it.id, s.id);
-                                        setTimeout(() => flushItem(it.id), 0);
-                                      }}
-                                    />
-                                    {on && <span className="chip-check">✓</span>}
-                                    {s.name}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
                         <div className="item-detail-section">
                           <label className="item-detail-label">메모</label>
                           <textarea
@@ -392,7 +471,7 @@ export default function PurchaseItemPage() {
         <div className="form-group">
           <label>엑셀에서 복사한 내용 붙여넣기</label>
           <p className="field-hint">
-            컬럼 순서: <strong>코드 · 품명 · 규격 · 단위 · 분류 · 표준단가</strong> (6개 열)<br />
+            컬럼 순서: <strong>코드 · 품명 · 메이커 · 규격 · 단위 · 분류 · 표준단가</strong> (7개 열)<br />
             엑셀에서 해당 열들을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 첫 줄이 머리글(코드/품명…)이면 자동 제외됩니다.
           </p>
           <textarea
@@ -408,13 +487,14 @@ export default function PurchaseItemPage() {
             <div className="bulk-preview-head">{parsedBulk.length}개 품목 인식됨</div>
             <table className="table">
               <thead>
-                <tr><th>코드</th><th>품명</th><th>규격</th><th>단위</th><th>분류</th><th>표준단가</th></tr>
+                <tr><th>코드</th><th>품명</th><th>메이커</th><th>규격</th><th>단위</th><th>분류</th><th>표준단가</th></tr>
               </thead>
               <tbody>
                 {parsedBulk.slice(0, 50).map((r, i) => (
                   <tr key={i}>
                     <td>{r.code || '-'}</td>
                     <td>{r.name}</td>
+                    <td>{r.maker || '-'}</td>
                     <td>{r.spec || '-'}</td>
                     <td>{r.unit || '-'}</td>
                     <td>{r.category || '-'}</td>
