@@ -118,8 +118,10 @@ export default function SiteManagementPage() {
                 {(s.managerIds || []).map((uid) => userMap[uid]?.name || uid).join(', ') || '-'}
               </td>
               <td>
-                <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>수정</button>
-                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>삭제</button>
+                <div className="btn-group">
+                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>수정</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>삭제</button>
+                </div>
               </td>
             </tr>
           ))}

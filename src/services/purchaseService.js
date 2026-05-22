@@ -1,6 +1,6 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
-  query, orderBy, arrayUnion,
+  query, orderBy, arrayUnion, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
@@ -103,6 +103,40 @@ export function nextMainCode(items) {
     }
   }
   return `${PREFIX}${String(maxMain + 1).padStart(5, '0')}`;
+}
+
+// 그룹 안의 항목들을 새 순서대로 재할당 (드래그앤드롭 후 호출)
+// orderedIds: 새 순서대로 정렬된 doc id 배열
+// mainCode: 그룹 키 (예: "IOPN-00001")
+// 첫 번째 항목은 bare main code, 나머지는 -1, -2, ...
+// 변경 필요한 행만 batch update. 결과 [{ id, code }] 반환
+export async function reorderGroupCodes(orderedIds, currentItems, mainCode) {
+  const m = (mainCode || '').match(/^IOPN-(\d{5})/);
+  if (!m) throw new Error('잘못된 그룹 코드');
+  const mainNum = m[1];
+  const prefix = `IOPN-${mainNum}`;
+
+  const byId = new Map(currentItems.map((it) => [it.id, it]));
+  const updates = [];
+
+  orderedIds.forEach((id, idx) => {
+    const it = byId.get(id);
+    if (!it) return;
+    const newCode = idx === 0 ? prefix : `${prefix}-${idx}`;
+    if (it.code !== newCode) {
+      updates.push({ id, code: newCode });
+    }
+  });
+
+  if (updates.length === 0) return [];
+
+  const batch = writeBatch(db);
+  for (const u of updates) {
+    if (String(u.id).startsWith('tmp-')) continue;
+    batch.update(doc(db, 'purchaseItems', u.id), { code: u.code, updatedAt: new Date() });
+  }
+  await batch.commit();
+  return updates;
 }
 
 // 부모 코드의 다음 소분류 (IOPN-00001-1, -2, ...)

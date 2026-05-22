@@ -501,8 +501,10 @@ export default function ManageTeamPage() {
                   <td data-label="부팀장">{subLeader?.name || '-'}</td>
                   <td data-label="팀원">{members.length}명</td>
                   <td>
-                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>수정</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t)}>삭제</button>
+                    <div className="btn-group">
+                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>수정</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t)}>삭제</button>
+                    </div>
                   </td>
                 </tr>
               );

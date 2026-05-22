@@ -2639,6 +2639,17 @@ body {
   flex-wrap: wrap;
 }
 
+/* 표 안의 작업 셀은 우측 끝 정렬로 통일 — btn-group 사용 시 */
+.table td .btn-group {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+/* 표 안의 작업 셀 — 단일 버튼이나 wrapper 없는 경우용 (인라인 편집표 등) */
+.item-actions-cell {
+  text-align: right;
+}
+
 /* ===== 폼 ===== */
 .form-group {
   margin-bottom: 12px;
@@ -3064,14 +3075,33 @@ body {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
-.bom-site-select {
-  height: 38px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  background: #fff;
-  min-width: 200px;
+/* 프로젝트명 링크 (table 셀 안에서 클릭 가능한 텍스트) */
+.bom-project-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: -0.01em;
+}
+.bom-project-link:hover { text-decoration: underline; }
+
+/* 뒤로가기 버튼 + 제목 */
+.bom-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.bom-back-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 .bom-summary {
   display: flex;
@@ -3186,7 +3216,7 @@ body {
   flex-shrink: 0;
 }
 
-/* 다중 선택 드롭다운 (구매 품목의 사용 프로젝트 등) */
+/* 다중 선택 드롭다운 */
 .multi-select {
   position: relative;
   display: inline-block;
@@ -3264,81 +3294,24 @@ body {
 }
 .inline-edit-table .multi-select-trigger:hover { border-color: var(--border); }
 
-/* 사용 프로젝트 — 셀 안 인라인 펼침 드롭다운 (absolute 아님, 행이 자연스럽게 grow) */
-.site-dropdown {
-  display: block;
-  min-width: 160px;
-  max-width: 280px;
-}
-.site-dropdown-trigger {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 6px 10px;
-  min-height: 32px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-family: inherit;
-  text-align: left;
-  color: var(--text);
-}
-.site-dropdown-trigger:hover {
-  border-color: var(--primary);
-  background: var(--bg-card);
-}
-.site-dropdown-arrow {
-  color: var(--text-muted);
-  font-size: 10px;
-  flex-shrink: 0;
-}
-.site-dropdown-menu {
-  margin-top: 4px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: var(--shadow-sm);
-}
-.site-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  user-select: none;
-  border-bottom: 1px solid var(--bg-subtle);
-}
-.site-dropdown-item:last-child { border-bottom: none; }
-.site-dropdown-item:hover { background: var(--bg-subtle); }
-.site-dropdown-item.is-checked { background: var(--primary-softer); font-weight: 600; }
-.site-dropdown-item input[type="checkbox"] {
-  width: 14px; height: 14px;
-  margin: 0;
-  flex-shrink: 0;
-}
-
 /* ===== 인라인 편집 표 공통 (구매 품목·BOM 등) ===== */
 .inline-edit-table input:not([type="checkbox"]):not([type="radio"]),
 .inline-edit-table select,
 .inline-edit-table textarea {
   width: 100%;
+  height: 32px;
   border: 1px solid transparent;
   background: transparent;
   padding: 6px 8px;
   font-size: 13px;
+  line-height: 1.2;
   border-radius: 6px;
   outline: none;
   font-family: inherit;
   box-sizing: border-box;
   color: var(--text);
 }
+.inline-edit-table textarea { height: auto; min-height: 32px; }
 .inline-edit-table input:not([type="checkbox"]):not([type="radio"]):hover,
 .inline-edit-table select:hover,
 .inline-edit-table textarea:hover { background: var(--bg-subtle); }
@@ -3487,6 +3460,187 @@ body {
   white-space: pre-line;
 }
 .purchase-detail-actions { flex-wrap: wrap; }
+
+/* 구매 품목 — 대분류 그룹 카드 (펼치면 내부 항목 표시) */
+.item-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.item-group {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.item-group::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background 0.18s ease;
+}
+.item-group:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.item-group:hover::before { background: var(--primary-softer, #dbeafe); }
+.item-group.is-expanded {
+  border-color: var(--primary);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.10);
+}
+.item-group.is-expanded::before { background: var(--primary); }
+
+.item-group-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px 14px 18px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.15s ease;
+}
+.item-group-header:hover { background: linear-gradient(to right, rgba(59, 130, 246, 0.03), transparent 60%); }
+.item-group.is-expanded .item-group-header {
+  background: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent 70%);
+}
+
+.item-group-code {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.item-group.is-expanded .item-group-code {
+  background: var(--primary-softer, #dbeafe);
+  color: var(--primary);
+}
+
+.item-group-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.015em;
+}
+
+.item-group-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 3px 10px;
+  background: var(--bg-subtle);
+  border-radius: 999px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.item-group.is-expanded .item-group-count {
+  background: #fff;
+  color: var(--primary);
+  border: 1px solid var(--primary-softer, #dbeafe);
+  padding: 2px 9px;
+}
+
+.item-group-arrow {
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  transition: background 0.18s ease, color 0.18s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.item-group-header:hover .item-group-arrow {
+  background: var(--primary-softer, #dbeafe);
+  color: var(--primary);
+}
+.item-group.is-expanded .item-group-arrow {
+  background: var(--primary);
+  color: #fff;
+  transform: rotate(180deg);
+}
+.item-group-detail {
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+  padding: 10px 12px 12px;
+}
+.item-group-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.item-group-detail .table {
+  background: #fff;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* 드래그 핸들 (정렬 가능한 표 행) */
+.sortable-rows tbody tr { touch-action: none; }
+.drag-handle-cell {
+  width: 32px;
+  padding: 0 !important;
+  text-align: center;
+  vertical-align: middle;
+}
+.drag-handle-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: grab;
+  border-radius: 4px;
+  padding: 0;
+  user-select: none;
+  touch-action: none;
+}
+.drag-handle-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.drag-handle-btn:active { cursor: grabbing; }
+
+/* 모바일 cards-sm 모드에서 드래그 핸들 셀은 숨기지 않고 카드 우측 상단으로 — data-label 없으므로 ::before도 안 보임 */
+@media (max-width: 768px) {
+  table.cards-sm .drag-handle-cell {
+    border-bottom: none;
+    padding: 4px 0 !important;
+    justify-content: flex-end;
+    min-height: 0;
+  }
+  .drag-handle-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+}
 
 .purchase-filters {
   display: flex;

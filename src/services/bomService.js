@@ -1,10 +1,39 @@
 import {
   collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy,
+  query, where, orderBy, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const bomRef = collection(db, 'bom');
+const projectsRef = collection(db, 'bomProjects');
+
+// ---- 프로젝트 (BOM 그룹) ----
+export async function getBomProjects() {
+  try {
+    const snap = await getDocs(query(projectsRef, orderBy('createdAt', 'desc')));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    const snap = await getDocs(projectsRef);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  }
+}
+
+export async function addBomProject(name) {
+  return addDoc(projectsRef, {
+    name: String(name || '').trim(),
+    createdAt: new Date(),
+  });
+}
+
+export async function deleteBomProject(projectId) {
+  const snap = await getDocs(query(bomRef, where('siteId', '==', projectId)));
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, 'bomProjects', projectId));
+  await batch.commit();
+}
 
 // 프로젝트별 BOM 항목 조회 (order 순)
 export async function getBomBySite(siteId) {

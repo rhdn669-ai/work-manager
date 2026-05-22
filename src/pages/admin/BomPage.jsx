@@ -1,19 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getBomBySite, addBomItem, updateBomItem, deleteBomItem } from '../../services/bomService';
+import {
+  getBomBySite, addBomItem, updateBomItem, deleteBomItem,
+  getBomProjects, addBomProject, deleteBomProject,
+} from '../../services/bomService';
 import { getPurchaseItems } from '../../services/purchaseService';
-import { getAllSites } from '../../services/siteService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
 
-const LS_KEY = 'bom-last-site';
+const LS_KEY = 'bom-last-project-id';
 
 export default function BomPage() {
   const { confirm, alert } = useDialog();
-  const [sites, setSites] = useState([]);
-  const [siteId, setSiteId] = useState('');
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null); // { id, name } | null
   const [bomItems, setBomItems] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 프로젝트 추가 모달
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [addingProject, setAddingProject] = useState(false);
 
   // 품목 선택 모달
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -23,11 +30,14 @@ export default function BomPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [st, im] = await Promise.all([getAllSites(), getPurchaseItems()]);
-        setSites(st);
+        const [im, ps] = await Promise.all([getPurchaseItems(), getBomProjects()]);
         setItemMaster(im);
-        const saved = (() => { try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; } })();
-        if (saved && st.some((s) => s.id === saved)) setSiteId(saved);
+        setProjects(ps);
+        const savedId = (() => { try { return localStorage.getItem(LS_KEY) || ''; } catch { return ''; } })();
+        if (savedId) {
+          const found = ps.find((p) => p.id === savedId);
+          if (found) setSelectedProject(found);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -37,10 +47,10 @@ export default function BomPage() {
   }, []);
 
   useEffect(() => {
-    if (!siteId) { setBomItems([]); return; }
-    try { localStorage.setItem(LS_KEY, siteId); } catch { /* 무시 */ }
-    getBomBySite(siteId).then(setBomItems).catch((err) => console.error(err));
-  }, [siteId]);
+    if (!selectedProject) { setBomItems([]); return; }
+    try { localStorage.setItem(LS_KEY, selectedProject.id); } catch { /* 무시 */ }
+    getBomBySite(selectedProject.id).then(setBomItems).catch((err) => console.error(err));
+  }, [selectedProject]);
 
   const masterMap = useMemo(() => {
     const m = {};
@@ -65,6 +75,48 @@ export default function BomPage() {
     [displayItems],
   );
 
+  // ---- 프로젝트 추가 / 삭제 ----
+  function openAddProject() {
+    setNewProjectName('');
+    setAddProjectOpen(true);
+  }
+
+  async function submitAddProject() {
+    const name = newProjectName.trim();
+    if (!name) { alert('프로젝트 이름을 입력하세요.'); return; }
+    if (projects.some((p) => (p.name || '').trim().toLowerCase() === name.toLowerCase())) {
+      alert('같은 이름의 프로젝트가 이미 있습니다.');
+      return;
+    }
+    setAddingProject(true);
+    try {
+      const ref = await addBomProject(name);
+      const created = { id: ref.id, name, createdAt: new Date() };
+      setProjects((prev) => [created, ...prev]);
+      setAddProjectOpen(false);
+      setSelectedProject(created);
+    } catch (err) {
+      alert('프로젝트 추가 중 오류: ' + err.message);
+    } finally {
+      setAddingProject(false);
+    }
+  }
+
+  async function handleDeleteProject(project) {
+    if (!await confirm(`"${project.name}" 프로젝트와 등록된 BOM을 모두 삭제하시겠습니까?`)) return;
+    try {
+      await deleteBomProject(project.id);
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+      if (selectedProject?.id === project.id) {
+        setSelectedProject(null);
+        try { localStorage.removeItem(LS_KEY); } catch { /* 무시 */ }
+      }
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
+  // ---- BOM 항목 편집 ----
   function updateField(id, patch) {
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
@@ -115,7 +167,8 @@ export default function BomPage() {
         [m.code, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw)),
       );
     }
-    return list.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return list.sort((a, b) => collator.compare(a.code || '', b.code || ''));
   }, [itemMaster, bomItems, pickerSearch]);
 
   async function addPickedToBom() {
@@ -137,8 +190,8 @@ export default function BomPage() {
         order: nextOrder++,
       };
       try {
-        const ref = await addBomItem(siteId, data);
-        added.push({ ...data, id: ref.id, siteId });
+        const ref = await addBomItem(selectedProject.id, data);
+        added.push({ ...data, id: ref.id, siteId: selectedProject.id });
       } catch (err) {
         console.error(err);
       }
@@ -150,97 +203,169 @@ export default function BomPage() {
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
+  // ---- 프로젝트 목록 화면 ----
+  if (!selectedProject) {
+    return (
+      <div className="bom-page">
+        <div className="page-header">
+          <h2>프로젝트별 BOM</h2>
+          <div className="page-actions">
+            <button type="button" className="btn btn-primary" onClick={openAddProject}>+ 프로젝트 추가</button>
+          </div>
+        </div>
+
+        {projects.length === 0 ? (
+          <p className="text-muted text-sm" style={{ padding: '12px 0' }}>
+            등록된 프로젝트가 없습니다 — 우측 상단 "+ 프로젝트 추가"로 시작하세요.
+          </p>
+        ) : (
+          <table className="table cards-sm">
+            <thead>
+              <tr>
+                <th>프로젝트명</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((p) => (
+                <tr key={p.id}>
+                  <td data-label="프로젝트명">
+                    <button
+                      type="button"
+                      className="bom-project-link"
+                      onClick={() => setSelectedProject(p)}
+                    >
+                      {p.name}
+                    </button>
+                  </td>
+                  <td>
+                    <div className="btn-group">
+                      <button className="btn btn-sm btn-outline" onClick={() => setSelectedProject(p)}>열기</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDeleteProject(p)}>삭제</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* 프로젝트 추가 모달 */}
+        <Modal isOpen={addProjectOpen} onClose={() => setAddProjectOpen(false)} title="프로젝트 추가">
+          <div className="form-group">
+            <label>프로젝트 이름</label>
+            <input
+              type="text"
+              value={newProjectName}
+              placeholder="예: 2026 공장동 신축"
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitAddProject(); }}
+              autoFocus
+            />
+          </div>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={submitAddProject}
+              disabled={addingProject || !newProjectName.trim()}
+            >
+              {addingProject ? '추가 중…' : '추가'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setAddProjectOpen(false)}>취소</button>
+          </div>
+        </Modal>
+      </div>
+    );
+  }
+
+  // ---- BOM 상세 화면 (프로젝트 선택됨) ----
   return (
     <div className="bom-page">
       <div className="page-header">
-        <h2>프로젝트별 BOM</h2>
+        <div className="bom-detail-title">
+          <button
+            type="button"
+            className="btn btn-outline bom-back-btn"
+            onClick={() => setSelectedProject(null)}
+          >← 프로젝트 목록</button>
+          <h2>{selectedProject.name}</h2>
+        </div>
       </div>
 
       <div className="bom-toolbar">
-        <select className="bom-site-select" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-          <option value="">프로젝트 선택</option>
-          {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        {siteId && (
-          <div className="bom-summary">
-            <span>항목 <strong>{bomItems.length}</strong>건</span>
-            <span>예상 합계 <strong>{total.toLocaleString()}원</strong></span>
-          </div>
-        )}
-        {siteId && (
-          <button type="button" className="btn btn-primary" onClick={openPicker} style={{ marginLeft: 'auto' }}>
-            + 품목 불러오기
-          </button>
-        )}
+        <div className="bom-summary">
+          <span>항목 <strong>{bomItems.length}</strong>건</span>
+          <span>예상 합계 <strong>{total.toLocaleString()}원</strong></span>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={openPicker} style={{ marginLeft: 'auto' }}>
+          + 품목 불러오기
+        </button>
       </div>
 
-      {!siteId ? (
-        <p className="text-muted text-sm" style={{ padding: '20px 0' }}>
-          상단에서 프로젝트를 선택하면 해당 프로젝트의 BOM이 표시됩니다.
-        </p>
-      ) : (
-        <table className="table bom-table inline-edit-table cards-sm">
-          <thead>
-            <tr>
-              <th style={{ width: 100 }}>코드</th>
-              <th style={{ minWidth: 160 }}>품명</th>
-              <th>규격</th>
-              <th>단위</th>
-              <th>수량</th>
-              <th>단가</th>
-              <th>합계</th>
-              <th>메모</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayItems.length === 0 && (
-              <tr><td colSpan={9} className="text-muted text-sm" style={{ textAlign: 'center', padding: 20 }}>
-                품목이 없습니다 — 우측의 "+ 품목 불러오기"로 추가하세요.
-              </td></tr>
-            )}
-            {displayItems.map((it) => {
-              const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
-              return (
-                <tr key={it.id}>
-                  <td data-label="코드"><code className="bom-code">{it.code || '-'}</code></td>
-                  <td data-label="품명"><strong>{it.name}</strong></td>
-                  <td data-label="규격">{it.spec || '-'}</td>
-                  <td data-label="단위">{it.unit || '-'}</td>
-                  <td data-label="수량">
-                    <input
-                      type="number" min="0"
-                      value={it.qty || ''}
-                      onChange={(e) => updateField(it.id, { qty: e.target.value })}
-                      onBlur={() => flushItem(it.id)}
-                    />
-                  </td>
-                  <td data-label="단가">
-                    <input
-                      type="number" min="0"
-                      value={it.unitPrice || ''}
-                      onChange={(e) => updateField(it.id, { unitPrice: e.target.value })}
-                      onBlur={() => flushItem(it.id)}
-                    />
-                  </td>
-                  <td data-label="합계" className="bom-cell-amount">{amount.toLocaleString()}</td>
-                  <td data-label="메모">
-                    <input
-                      type="text"
-                      value={it.note || ''}
-                      onChange={(e) => updateField(it.id, { note: e.target.value })}
-                      onBlur={() => flushItem(it.id)}
-                    />
-                  </td>
-                  <td>
+      <table className="table bom-table inline-edit-table cards-sm">
+        <thead>
+          <tr>
+            <th style={{ width: 100 }}>코드</th>
+            <th style={{ minWidth: 160 }}>품명</th>
+            <th>규격</th>
+            <th>단위</th>
+            <th>수량</th>
+            <th>단가</th>
+            <th>합계</th>
+            <th>메모</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {displayItems.length === 0 && (
+            <tr><td colSpan={9} className="text-muted text-sm" style={{ textAlign: 'center', padding: 20 }}>
+              품목이 없습니다 — 우측의 "+ 품목 불러오기"로 추가하세요.
+            </td></tr>
+          )}
+          {displayItems.map((it) => {
+            const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+            return (
+              <tr key={it.id}>
+                <td data-label="코드"><code className="bom-code">{it.code || '-'}</code></td>
+                <td data-label="품명"><strong>{it.name}</strong></td>
+                <td data-label="규격">{it.spec || '-'}</td>
+                <td data-label="단위">{it.unit || '-'}</td>
+                <td data-label="수량">
+                  <input
+                    type="number" min="0"
+                    value={it.qty || ''}
+                    onChange={(e) => updateField(it.id, { qty: e.target.value })}
+                    onBlur={() => flushItem(it.id)}
+                  />
+                </td>
+                <td data-label="단가">
+                  <input
+                    type="number" min="0"
+                    value={it.unitPrice || ''}
+                    onChange={(e) => updateField(it.id, { unitPrice: e.target.value })}
+                    onBlur={() => flushItem(it.id)}
+                  />
+                </td>
+                <td data-label="합계" className="bom-cell-amount">{amount.toLocaleString()}</td>
+                <td data-label="메모">
+                  <input
+                    type="text"
+                    value={it.note || ''}
+                    onChange={(e) => updateField(it.id, { note: e.target.value })}
+                    onBlur={() => flushItem(it.id)}
+                  />
+                </td>
+                <td>
+                  <div className="btn-group">
                     <button type="button" className="closing-delete" onClick={() => removeRow(it.id)} aria-label="삭제">✕</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
 
       {/* 품목 선택 모달 */}
       <Modal isOpen={pickerOpen} onClose={() => setPickerOpen(false)} title="품목 선택">
