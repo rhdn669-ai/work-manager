@@ -45,17 +45,7 @@ export default function PurchaseItemPage() {
     loadData();
   }, []);
 
-  // 외부 클릭 시 사용 프로젝트 드롭다운 닫기 (mousedown 대신 click — 체크박스 onChange가 먼저 발화하도록)
-  useEffect(() => {
-    if (!siteDropdownOpenId) return;
-    function onClickOutside(e) {
-      if (!e.target.closest('.multi-select')) {
-        setSiteDropdownOpenId(null);
-      }
-    }
-    document.addEventListener('click', onClickOutside);
-    return () => document.removeEventListener('click', onClickOutside);
-  }, [siteDropdownOpenId]);
+  // 외부 클릭 닫기는 사용 안 함 — 트리거 ▾ 재클릭으로만 접음 (체크박스 이벤트 충돌 방지)
 
   async function loadData() {
     try {
