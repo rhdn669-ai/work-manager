@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
 import { getAllSites, getClosingItems } from '../../services/siteService';
@@ -19,6 +20,12 @@ function workingDaysInMonth(y, m) {
   return count;
 }
 
+function formatQty(q) {
+  const n = Number(q) || 0;
+  if (n % 1 === 0) return String(n);
+  return n.toFixed(2).replace(/\.?0+$/, '');
+}
+
 function leaveLabel(type) {
   if (!type) return '';
   if (type === 'half_am') return '오전반차';
@@ -30,6 +37,7 @@ function leaveLabel(type) {
 
 export default function UnassignedReportPage() {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -87,17 +95,17 @@ export default function UnassignedReportPage() {
 
   const { rows, topUnassigned, topOvertime, totalUnassignedAmount, totalUnassignedDays } = useMemo(() => {
     const totalDays = daysInMonth(year, month);
+    // assigned[userName][day] = { siteName: qty누적합, ... }
     const assigned = {};
     for (const it of allItems) {
       if (!it.detail) continue;
       if (!assigned[it.detail]) assigned[it.detail] = {};
       for (const [dStr, q] of Object.entries(it.dailyQuantities || {})) {
         const d = Number(dStr);
-        if (!q || Number(q) <= 0) continue;
-        if (!assigned[it.detail][d]) assigned[it.detail][d] = [];
-        if (!assigned[it.detail][d].includes(it.siteName)) {
-          assigned[it.detail][d].push(it.siteName);
-        }
+        const qty = Number(q) || 0;
+        if (qty <= 0) continue;
+        if (!assigned[it.detail][d]) assigned[it.detail][d] = {};
+        assigned[it.detail][d][it.siteName] = (assigned[it.detail][d][it.siteName] || 0) + qty;
       }
     }
 
@@ -156,7 +164,10 @@ export default function UnassignedReportPage() {
         const dateIso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const isHoliday = holidaySet.has(dateIso);
         const leaveType = nameToLeaveDay[u.name]?.[d];
-        const projects = assigned[u.name]?.[d] || [];
+        const projectsMap = assigned[u.name]?.[d] || {};
+        const projects = Object.entries(projectsMap)
+          .map(([name, qty]) => ({ name, qty }))
+          .sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
         const otInfo = nameToOvertime[u.name]?.[d];
         const overtimeMin = otInfo?.minutes || 0;
         const otSiteNames = otInfo ? [...otInfo.siteNames] : [];
@@ -296,8 +307,9 @@ export default function UnassignedReportPage() {
                     const hasOT = c.overtimeMin > 0;
                     const isLeave = c.type.startsWith('leave-');
                     let baseTitle;
-                    if (c.type === 'overlap') baseTitle = `중복배정: ${c.projects.join(', ')}`;
-                    else if (c.type === 'assigned') baseTitle = c.projects.join(', ');
+                    const projectLabel = (p) => `${p.name} ${formatQty(p.qty)}공수`;
+                    if (c.type === 'overlap') baseTitle = `중복배정: ${c.projects.map(projectLabel).join(', ')}`;
+                    else if (c.type === 'assigned') baseTitle = c.projects.map(projectLabel).join(', ');
                     else if (isLeave) baseTitle = leaveLabel(c.leaveType);
                     else if (c.type === 'holiday') baseTitle = '공휴일';
                     else if (c.type === 'weekend') baseTitle = '주말';
@@ -360,14 +372,50 @@ export default function UnassignedReportPage() {
                 {c.position && <span className="placement-detail-pos">· {c.position}</span>}
               </div>
 
-              {(c.projects.length > 0) && (
+              {(c.projects.length > 0) && (() => {
+                const totalQty = c.projects.reduce((s, p) => s + (Number(p.qty) || 0), 0);
+                return (
                 <div className="placement-detail-section">
-                  <div className="placement-detail-label">배정 프로젝트</div>
+                  <div className="placement-detail-label">
+                    배정 프로젝트
+                    <span className="placement-detail-total">합계 {formatQty(totalQty)}공수</span>
+                  </div>
                   <ul className="placement-detail-list">
-                    {c.projects.map((p, i) => <li key={i}>{p}</li>)}
+                    {c.projects.map((p, i) => {
+                      const site = sites.find((s) => s.name === p.name);
+                      const canNavigate = !!site;
+                      const qtyEl = (
+                        <span className="placement-project-qty">{formatQty(p.qty)}공수</span>
+                      );
+                      return (
+                        <li key={i}>
+                          {canNavigate ? (
+                            <button
+                              type="button"
+                              className="placement-project-link"
+                              onClick={() => {
+                                setDetailCell(null);
+                                navigate(`/sites/${site.id}/${year}/${month}`);
+                              }}
+                              title={`${p.name} 프로젝트로 이동`}
+                            >
+                              <span className="placement-project-name">{p.name}</span>
+                              {qtyEl}
+                              <span className="placement-project-link-arrow" aria-hidden="true">→</span>
+                            </button>
+                          ) : (
+                            <span className="placement-project-row">
+                              <span className="placement-project-name">{p.name}</span>
+                              {qtyEl}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
-              )}
+                );
+              })()}
 
               {isLeave && (
                 <div className="placement-detail-section">

@@ -232,12 +232,31 @@ export function nextItemCode(items, name = '') {
 }
 
 // ---------- 구매 건 (purchases) ----------
-// status: ordered(발주) → received(입고) → settled(정산완료)
+// status: ordered(발주) → partial(부분입고) → received(전체입고) → settled(정산완료)
+// 라인 데이터: { itemId, name, spec, unit, qty, unitPrice, amount,
+//              receivedQty, receivedAt, receivedBy, receiveNote }
+
+// items 배열로부터 발주 상태 자동 계산 (settled는 그대로 유지)
+export function deriveStatus(items, currentStatus) {
+  if (currentStatus === 'settled') return 'settled';
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) return 'ordered';
+  const allReceived = list.every((it) => Number(it.receivedQty) >= Number(it.qty) && Number(it.qty) > 0);
+  if (allReceived) return 'received';
+  const anyReceived = list.some((it) => Number(it.receivedQty) > 0);
+  return anyReceived ? 'partial' : 'ordered';
+}
 
 export async function getPurchases() {
   const q = query(purchasesRef, orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getPurchaseById(id) {
+  const snap = await getDoc(doc(db, 'purchases', id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
 }
 
 export async function addPurchase(data) {
@@ -275,6 +294,88 @@ export async function setPurchaseStatus(id, status, extra = {}) {
     ...extra,
     updatedAt: new Date(),
   });
+}
+
+// 일괄 입고 — 잔여 수량 있는 모든 라인을 동일 일자/메모로 입고 처리
+// mode: 'remaining' (잔여만큼만 입고, 발주 수량은 그대로) | 'close-as-is' (현재 입고 수량으로 발주 수량 정정 후 종결)
+export async function bulkReceivePurchase(purchase, info) {
+  const items = Array.isArray(purchase.items) ? [...purchase.items] : [];
+  if (items.length === 0) throw new Error('입고할 품목이 없습니다.');
+  const mode = info.mode || 'remaining';
+  const date = info.date ? new Date(info.date) : new Date();
+  const receivedBy = info.receivedBy || purchase.receivedBy || '';
+  const note = info.note || '';
+
+  const next = items.map((it) => {
+    const lineQty = Number(it.qty) || 0;
+    const prevRecv = Number(it.receivedQty) || 0;
+    if (mode === 'close-as-is') {
+      // 입고된 수량을 발주 수량으로 정정. prevRecv === 0인 라인은 그대로 미입고로 두지 않고 0 처리
+      const finalQty = prevRecv;
+      const finalAmount = finalQty * (Number(it.unitPrice) || 0);
+      return {
+        ...it,
+        qty: finalQty,
+        amount: finalAmount,
+        receivedQty: finalQty,
+        receivedAt: it.receivedAt || date,
+        receivedBy: it.receivedBy || receivedBy,
+        receiveNote: it.receiveNote || note,
+      };
+    }
+    // 잔여만큼만 채워서 받기
+    if (prevRecv >= lineQty || lineQty <= 0) return it;
+    return {
+      ...it,
+      receivedQty: lineQty,
+      receivedAt: date,
+      receivedBy,
+      receiveNote: it.receiveNote || note,
+    };
+  });
+
+  const totalAmount = next.reduce((s, it) => s + (Number(it.amount) || (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)), 0);
+  const nextStatus = deriveStatus(next, purchase.status);
+  const extra = {
+    items: next,
+    totalAmount,
+    status: nextStatus,
+    updatedAt: new Date(),
+  };
+  if (nextStatus === 'received' && purchase.status !== 'received') {
+    extra.receivedAt = date;
+    extra.receivedBy = receivedBy;
+    extra.receiveNote = note;
+  }
+  await updateDoc(doc(db, 'purchases', purchase.id), extra);
+  return { items: next, status: nextStatus };
+}
+
+// 라인별 입고 처리 — qty/입고일/메모를 해당 라인에 기록, 발주 상태는 자동 계산
+// lineIdx: items 배열 인덱스, info: { qty, date 'YYYY-MM-DD', note, receivedBy }
+export async function receivePurchaseLine(purchase, lineIdx, info) {
+  const items = Array.isArray(purchase.items) ? [...purchase.items] : [];
+  if (lineIdx < 0 || lineIdx >= items.length) throw new Error('잘못된 라인 인덱스');
+  const cur = items[lineIdx];
+  const receivedQty = Math.max(0, Number(info.qty) || 0);
+  const lineQty = Number(cur.qty) || 0;
+  if (receivedQty > lineQty) throw new Error(`입고 수량(${receivedQty})이 발주 수량(${lineQty})을 초과합니다.`);
+  items[lineIdx] = {
+    ...cur,
+    receivedQty,
+    receivedAt: info.date ? new Date(info.date) : null,
+    receivedBy: info.receivedBy || '',
+    receiveNote: info.note || '',
+  };
+  const nextStatus = deriveStatus(items, purchase.status);
+  const extra = { items, status: nextStatus, updatedAt: new Date() };
+  // 발주 전체 입고 완료 시 발주 단위 메타도 갱신 (정산 흐름과 호환)
+  if (nextStatus === 'received' && purchase.status !== 'received') {
+    extra.receivedAt = items[lineIdx].receivedAt || new Date();
+    extra.receivedBy = info.receivedBy || purchase.receivedBy || '';
+  }
+  await updateDoc(doc(db, 'purchases', purchase.id), extra);
+  return { items, status: nextStatus };
 }
 
 // 정산 — 구매 금액을 귀속 프로젝트의 지출로 등록하고 status='settled' 처리

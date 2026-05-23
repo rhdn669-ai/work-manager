@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  getPurchases, addPurchase, updatePurchase, deletePurchase, setPurchaseStatus,
-  settlePurchase, cancelSettlePurchase, getSuppliers, getPurchaseItems, addPurchaseItem, nextItemCode,
+  getPurchases, addPurchase, setPurchaseStatus,
   getPurchaseConfig, setHqSite,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
@@ -11,22 +11,20 @@ import Modal from '../../components/common/Modal';
 
 const STATUS = {
   ordered: { label: '발주', cls: 'ordered' },
-  received: { label: '입고', cls: 'received' },
+  partial: { label: '부분입고', cls: 'partial' },
+  received: { label: '입고완료', cls: 'received' },
   settled: { label: '정산완료', cls: 'settled' },
 };
 
 const TABS = [
   { key: 'all', label: '전체' },
   { key: 'ordered', label: '발주' },
-  { key: 'received', label: '입고' },
+  { key: 'partial', label: '부분입고' },
+  { key: 'received', label: '입고완료' },
   { key: 'settled', label: '정산완료' },
 ];
 
-const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0 };
-const EMPTY_FORM = {
-  title: '', ownerType: 'hq', siteId: '', supplierId: '',
-  items: [{ ...EMPTY_LINE }], note: '',
-};
+const EMPTY_FORM = { title: '', siteId: '' };
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -35,31 +33,21 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 export default function PurchaseListPage() {
   const { userProfile } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { alert } = useDialog();
+  const navigate = useNavigate();
 
   const [purchases, setPurchases] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [itemMaster, setItemMaster] = useState([]);
   const [sites, setSites] = useState([]);
-  const [hqSiteId, setHqSiteId] = useState('');
+  const [recentSiteId, setRecentSiteId] = useState('');
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
 
   const [formModal, setFormModal] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [detail, setDetail] = useState(null);
-  const [receiveModal, setReceiveModal] = useState(null);
-  const [receiveForm, setReceiveForm] = useState({ date: todayStr(), note: '' });
-  const [activeLine, setActiveLine] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -67,21 +55,18 @@ export default function PurchaseListPage() {
 
   async function loadData() {
     try {
-      const [p, sp, im, st, cfg] = await Promise.all([
-        getPurchases(), getSuppliers(), getPurchaseItems(), getAllSites(), getPurchaseConfig(),
+      const [p, st, cfg] = await Promise.all([
+        getPurchases(), getAllSites(), getPurchaseConfig(),
       ]);
-      // 워크플로우 간소화 이전 상태값(requested 등) → ordered 자동 보정
-      const validStatus = ['ordered', 'received', 'settled'];
+      const validStatus = ['ordered', 'partial', 'received', 'settled'];
       const legacy = p.filter((x) => !validStatus.includes(x.status));
       if (legacy.length > 0) {
         await Promise.all(legacy.map((x) => setPurchaseStatus(x.id, 'ordered')));
         legacy.forEach((x) => { x.status = 'ordered'; });
       }
       setPurchases(p);
-      setSuppliers(sp);
-      setItemMaster(im);
       setSites(st);
-      setHqSiteId(cfg.hqSiteId || '');
+      setRecentSiteId(cfg.hqSiteId || '');
     } catch (err) {
       console.error(err);
     } finally {
@@ -105,229 +90,38 @@ export default function PurchaseListPage() {
     });
   }, [purchases, tab, search]);
 
-  // ---- 작성/수정 ----
   function openCreate() {
-    setEditTarget(null);
-    setForm({ ...EMPTY_FORM, items: [{ ...EMPTY_LINE }], ownerType: 'hq', siteId: hqSiteId || '' });
+    setForm({ ...EMPTY_FORM, siteId: recentSiteId || '' });
     setFormModal(true);
   }
 
-  function openEdit(p) {
-    setEditTarget(p);
-    setForm({
-      title: p.title || '',
-      ownerType: p.ownerType || 'hq',
-      siteId: p.siteId || '',
-      supplierId: p.supplierId || '',
-      items: (p.items && p.items.length > 0)
-        ? p.items.map((it) => ({ ...EMPTY_LINE, ...it }))
-        : [{ ...EMPTY_LINE }],
-      note: p.note || '',
-    });
-    setDetail(null);
-    setFormModal(true);
-  }
-
-  function updateLine(idx, patch) {
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)),
-    }));
-  }
-
-  function pickItemForLine(idx, m) {
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((ln, i) => {
-        if (i !== idx) return ln;
-        return {
-          ...ln,
-          itemId: m.id,
-          name: m.name,
-          spec: m.spec || ln.spec,
-          unit: m.unit || ln.unit,
-          unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : (Number(m.standardPrice) || 0),
-        };
-      }),
-    }));
-    setActiveLine(null);
-  }
-
-  function updateLineName(idx, name) {
-    const trimmed = name;
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((ln, i) => {
-        if (i !== idx) return ln;
-        const m = itemMaster.find((x) => x.name === trimmed);
-        if (m) {
-          // 마스터 매칭 — 정보 자동 채움 (사용자가 입력한 단가는 보존)
-          return {
-            ...ln,
-            itemId: m.id,
-            name: m.name,
-            spec: m.spec || ln.spec,
-            unit: m.unit || ln.unit,
-            unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : (Number(m.standardPrice) || 0),
-          };
-        }
-        return { ...ln, itemId: '', name: trimmed };
-      }),
-    }));
-  }
-
-  function addLine() {
-    setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] }));
-  }
-
-  function removeLine(idx) {
-    setForm((f) => ({
-      ...f,
-      items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items,
-    }));
-  }
-
-  const formTotal = useMemo(
-    () => form.items.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0),
-    [form.items],
-  );
-
-  async function handleSubmit(e) {
+  async function handleCreate(e) {
     e.preventDefault();
-    if (!form.title.trim()) { alert('구매 제목을 입력해주세요.'); return; }
-    if (!form.siteId) {
-      alert(form.ownerType === 'hq' ? '본사 귀속 프로젝트를 선택해주세요.' : '귀속 프로젝트를 선택해주세요.');
-      return;
-    }
-    const lines = form.items.filter((ln) => (ln.name || '').trim());
-    if (lines.length === 0) { alert('품목을 1개 이상 입력해주세요.'); return; }
+    if (!form.title.trim()) { alert('제목을 입력해주세요.'); return; }
+    if (!form.siteId) { alert('프로젝트를 선택해주세요.'); return; }
 
-    // 마스터에 없는 품목은 자동 생성 후 itemId·코드 부여
-    const linesWithIds = [];
-    let masterBuf = [...itemMaster];
-    for (const ln of lines) {
-      let itemId = ln.itemId;
-      if (!itemId) {
-        const m = masterBuf.find((x) => x.name === ln.name.trim());
-        if (m) itemId = m.id;
-      }
-      if (!itemId) {
-        const code = nextItemCode(masterBuf, ln.name.trim());
-        const docRef = await addPurchaseItem({
-          code,
-          name: ln.name.trim(),
-          spec: ln.spec || '',
-          unit: ln.unit || '',
-          standardPrice: Number(ln.unitPrice) || 0,
-          priceHistory: [],
-        });
-        itemId = docRef.id;
-        masterBuf = [...masterBuf, { id: itemId, code, name: ln.name.trim() }];
-      }
-      linesWithIds.push({ ...ln, itemId });
-    }
-
-    const items = linesWithIds.map((ln) => ({
-      itemId: ln.itemId, name: ln.name, spec: ln.spec, unit: ln.unit,
-      qty: Number(ln.qty) || 0,
-      unitPrice: Number(ln.unitPrice) || 0,
-      amount: (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0),
-    }));
-    const totalAmount = items.reduce((s, it) => s + it.amount, 0);
-    const site = sites.find((s) => s.id === form.siteId);
-
-    const payload = {
-      title: form.title.trim(),
-      items,
-      supplierId: form.supplierId,
-      supplierName: suppliers.find((s) => s.id === form.supplierId)?.name || '',
-      ownerType: form.ownerType,
-      siteId: form.siteId,
-      siteName: site?.name || '',
-      totalAmount,
-      note: form.note,
-    };
-
+    setSubmitting(true);
     try {
-      if (editTarget) {
-        await updatePurchase(editTarget.id, payload);
-      } else {
-        await addPurchase({
-          ...payload,
-          requesterId: userProfile?.uid || '',
-          requesterName: userProfile?.name || '',
-        });
-      }
-      if (form.ownerType === 'hq' && form.siteId !== hqSiteId) {
+      const site = sites.find((s) => s.id === form.siteId);
+      const ref = await addPurchase({
+        title: form.title.trim(),
+        items: [],
+        siteId: form.siteId,
+        siteName: site?.name || '',
+        totalAmount: 0,
+        requesterId: userProfile?.uid || '',
+        requesterName: userProfile?.name || '',
+      });
+      if (form.siteId !== recentSiteId) {
         await setHqSite(form.siteId, site?.name || '');
-        setHqSiteId(form.siteId);
+        setRecentSiteId(form.siteId);
       }
       setFormModal(false);
-      await loadData();
+      navigate(`/admin/purchase/${ref.id}`);
     } catch (err) {
-      alert('저장 중 오류: ' + err.message);
-    }
-  }
-
-  // ---- 입고 / 정산 ----
-  function openReceive(p) {
-    setDetail(null);
-    setReceiveForm({ date: todayStr(), note: '' });
-    setReceiveModal(p);
-  }
-
-  async function submitReceive(e) {
-    e.preventDefault();
-    const p = receiveModal;
-    if (!p) return;
-    try {
-      await setPurchaseStatus(p.id, 'received', {
-        receivedAt: new Date(receiveForm.date),
-        receivedBy: userProfile?.name || '',
-        receiveNote: receiveForm.note,
-      });
-      setReceiveModal(null);
-      await loadData();
-    } catch (err) {
-      alert('입고 처리 중 오류: ' + err.message);
-    }
-  }
-
-  async function handleSettle(p) {
-    const where = p.siteName || '귀속 프로젝트';
-    if (!await confirm(
-      `"${p.title}" 건을 정산하시겠습니까?\n금액 ${Number(p.totalAmount || 0).toLocaleString()}원이 ${where} 지출로 자동 등록됩니다.`,
-    )) return;
-    try {
-      await settlePurchase(p, userProfile?.name || '');
-      setDetail(null);
-      await loadData();
-    } catch (err) {
-      alert('정산 중 오류: ' + err.message);
-    }
-  }
-
-  async function handleCancelSettle(p) {
-    if (!await confirm(
-      `"${p.title}" 정산을 취소하시겠습니까?\n등록된 지출 항목이 삭제되고, 품목 단가 이력에서도 이 구매 기록이 제거됩니다.\n구매 상태는 '입고'로 되돌아갑니다.`,
-    )) return;
-    try {
-      await cancelSettlePurchase(p);
-      setDetail(null);
-      await loadData();
-    } catch (err) {
-      alert('정산 취소 중 오류: ' + err.message);
-    }
-  }
-
-  async function handleDelete(p) {
-    if (!await confirm(`"${p.title}" 구매 건을 삭제하시겠습니까?`)) return;
-    try {
-      await deletePurchase(p.id);
-      setDetail(null);
-      await loadData();
-    } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      alert('등록 중 오류: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -350,15 +144,16 @@ export default function PurchaseListPage() {
           >
             {t.label}
             {counts[t.key] > 0 && (
-              <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{counts[t.key]}</span>
+              <span className="tab-nav-count">{counts[t.key]}</span>
             )}
           </button>
         ))}
       </div>
 
-      <div className="form-group" style={{ maxWidth: 320 }}>
+      <div className="purchase-search-row">
         <input
           type="text"
+          className="purchase-search-input"
           placeholder="제목 · 구매처 · 프로젝트 · 등록자 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -366,7 +161,7 @@ export default function PurchaseListPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-muted text-sm" style={{ padding: '12px 0' }}>
+        <p className="purchase-empty">
           {purchases.length === 0 ? '등록된 구매 건이 없습니다.' : '해당 조건의 구매 건이 없습니다.'}
         </p>
       ) : (
@@ -375,8 +170,8 @@ export default function PurchaseListPage() {
             <tr>
               <th>제목</th>
               <th>구매처</th>
-              <th>귀속</th>
-              <th>금액</th>
+              <th>프로젝트</th>
+              <th className="num-col">금액</th>
               <th>상태</th>
               <th>등록자</th>
               <th>발주일</th>
@@ -384,13 +179,15 @@ export default function PurchaseListPage() {
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} className="table-clickable-row" onClick={() => setDetail(p)} style={{ cursor: 'pointer' }}>
+              <tr
+                key={p.id}
+                className="table-clickable-row"
+                onClick={() => navigate(`/admin/purchase/${p.id}`)}
+              >
                 <td data-label="제목"><strong>{p.title}</strong></td>
-                <td data-label="구매처">{p.supplierName || '-'}</td>
-                <td data-label="귀속">
-                  {p.ownerType === 'hq' ? `본사 · ${p.siteName || '-'}` : (p.siteName || '프로젝트')}
-                </td>
-                <td data-label="금액">{Number(p.totalAmount || 0).toLocaleString()}원</td>
+                <td data-label="구매처">{p.supplierName || <span className="text-muted">-</span>}</td>
+                <td data-label="프로젝트">{p.siteName || '-'}</td>
+                <td data-label="금액" className="num-col">{Number(p.totalAmount || 0).toLocaleString()}원</td>
                 <td data-label="상태">
                   <span className={`purchase-badge purchase-badge-${STATUS[p.status]?.cls || 'ordered'}`}>
                     {STATUS[p.status]?.label || p.status}
@@ -404,247 +201,47 @@ export default function PurchaseListPage() {
         </table>
       )}
 
-      {/* 작성/수정 모달 */}
-      <Modal
-        isOpen={formModal}
-        onClose={() => setFormModal(false)}
-        title={editTarget ? '구매 수정' : '구매 등록'}
-      >
-        <form onSubmit={handleSubmit}>
+      <Modal isOpen={formModal} onClose={() => setFormModal(false)} title="구매 등록">
+        <form onSubmit={handleCreate}>
           <div className="form-group">
             <label>제목 *</label>
-            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="예) 4월 1주 자재 구매"
+              required
+              autoFocus
+            />
           </div>
 
           <div className="form-group">
-            <label>귀속</label>
-            <div className="purchase-owner-toggle">
-              <button
-                type="button"
-                className={`btn btn-sm ${form.ownerType === 'hq' ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setForm({ ...form, ownerType: 'hq', siteId: hqSiteId || form.siteId })}
-              >본사</button>
-              <button
-                type="button"
-                className={`btn btn-sm ${form.ownerType === 'site' ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setForm({ ...form, ownerType: 'site', siteId: '' })}
-              >프로젝트</button>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>{form.ownerType === 'hq' ? '본사 귀속 프로젝트 *' : '프로젝트 *'}</label>
-            <select value={form.siteId} onChange={(e) => setForm({ ...form, siteId: e.target.value })}>
+            <label>프로젝트 *</label>
+            <select
+              value={form.siteId}
+              onChange={(e) => setForm({ ...form, siteId: e.target.value })}
+              required
+            >
               <option value="">선택</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            {form.ownerType === 'hq' && (
-              <p className="field-hint">본사 업무 구매가 귀속될 프로젝트입니다. 선택값은 다음에도 기억됩니다.</p>
-            )}
+            <p className="field-hint">최근 선택한 프로젝트가 다음 등록 시 자동 입력됩니다.</p>
           </div>
 
-          <div className="form-group">
-            <label>구매처</label>
-            <select value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
-              <option value="">선택</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
+          <p className="field-hint">
+            등록 즉시 상세 페이지로 이동합니다. 거기서 품목·수량·단가를 추가하세요.
+            구매처는 첫 품목의 기본 구매처에서 자동 적용됩니다.
+          </p>
 
-          <div className="form-group">
-            <label>품목</label>
-            <p className="field-hint">검색해서 선택하거나 새 품목명을 직접 입력하세요. 등록 안 된 품목은 저장 시 자동 등록됩니다.</p>
-            {form.items.map((ln, idx) => {
-              const kw = (ln.name || '').toLowerCase().trim();
-              const matches = itemMaster.filter((m) => {
-                if (!kw) return true;
-                return (m.code || '').toLowerCase().includes(kw)
-                    || (m.name || '').toLowerCase().includes(kw)
-                    || (m.spec || '').toLowerCase().includes(kw);
-              }).slice(0, 50);
-              return (
-              <div className="purchase-line" key={idx}>
-                <div className="purchase-line-item-wrap">
-                  <input
-                    className="purchase-line-item"
-                    type="text"
-                    placeholder="품목명 검색·입력"
-                    value={ln.name}
-                    onChange={(e) => updateLineName(idx, e.target.value)}
-                    onFocus={() => setActiveLine(idx)}
-                    onBlur={() => setTimeout(() => setActiveLine((c) => (c === idx ? null : c)), 150)}
-                    autoComplete="off"
-                  />
-                  {activeLine === idx && (
-                    <div className="purchase-line-dropdown">
-                      {matches.length === 0 ? (
-                        <div className="purchase-line-option-empty">
-                          {kw ? `"${kw}"는 새 품목으로 등록됩니다` : '등록된 품목이 없습니다 — 직접 입력하세요'}
-                        </div>
-                      ) : (
-                        matches.map((m) => (
-                          <button
-                            type="button"
-                            key={m.id}
-                            className={`purchase-line-option ${m.id === ln.itemId ? 'is-selected' : ''}`}
-                            onMouseDown={(e) => { e.preventDefault(); pickItemForLine(idx, m); }}
-                          >
-                            <span className="opt-name">
-                              {m.code && <span className="opt-code">[{m.code}]</span>}
-                              {m.name}{m.spec ? ` (${m.spec})` : ''}
-                            </span>
-                            {m.standardPrice > 0 && (
-                              <span className="opt-price">{Number(m.standardPrice).toLocaleString()}원</span>
-                            )}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-                <input
-                  className="purchase-line-qty"
-                  type="number" min="0" placeholder="수량"
-                  value={ln.qty}
-                  onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                />
-                <input
-                  className="purchase-line-price"
-                  type="number" min="0" placeholder="단가"
-                  value={ln.unitPrice}
-                  onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                />
-                <span className="purchase-line-amount">
-                  {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
-                </span>
-                <button type="button" className="closing-delete" onClick={() => removeLine(idx)} aria-label="행 삭제">✕</button>
-              </div>
-              );
-            })}
-            <button type="button" className="btn btn-sm btn-outline" onClick={addLine} style={{ marginTop: 6 }}>
-              + 품목 추가
+          <div className="modal-actions">
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? '등록 중...' : '등록하고 품목 추가'}
             </button>
-          </div>
-
-          <div className="purchase-total-row">
-            <span>합계</span>
-            <strong>{formTotal.toLocaleString()}원</strong>
-          </div>
-
-          <div className="form-group">
-            <label>메모</label>
-            <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} />
-          </div>
-
-          <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editTarget ? '수정' : '등록'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setFormModal(false)}>취소</button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* 상세 모달 */}
-      <Modal isOpen={!!detail} onClose={() => setDetail(null)} title="구매 상세">
-        {detail && (
-          <div className="purchase-detail">
-            <div className="purchase-detail-head">
-              <strong className="purchase-detail-title">{detail.title}</strong>
-              <span className={`purchase-badge purchase-badge-${STATUS[detail.status]?.cls || 'ordered'}`}>
-                {STATUS[detail.status]?.label || detail.status}
-              </span>
-            </div>
-
-            <div className="purchase-detail-meta">
-              <div><span className="label">귀속</span>{detail.ownerType === 'hq' ? `본사 · ${detail.siteName || '-'}` : (detail.siteName || '프로젝트')}</div>
-              <div><span className="label">구매처</span>{detail.supplierName || '-'}</div>
-              <div><span className="label">등록자</span>{detail.requesterName || '-'}</div>
-              <div><span className="label">발주일</span>{fmtDate(detail.orderedAt || detail.createdAt)}</div>
-              {detail.receivedBy && <div><span className="label">입고</span>{detail.receivedBy} · {fmtDate(detail.receivedAt)}</div>}
-              {detail.settledBy && <div><span className="label">정산</span>{detail.settledBy} · {fmtDate(detail.settledAt)}</div>}
-            </div>
-
-            <table className="table purchase-detail-items">
-              <thead>
-                <tr><th>품목</th><th>수량</th><th>단가</th><th>금액</th></tr>
-              </thead>
-              <tbody>
-                {(detail.items || []).map((it, i) => (
-                  <tr key={i}>
-                    <td>{it.name}{it.spec ? ` (${it.spec})` : ''}</td>
-                    <td style={{ textAlign: 'right' }}>{Number(it.qty || 0).toLocaleString()}{it.unit || ''}</td>
-                    <td style={{ textAlign: 'right' }}>{Number(it.unitPrice || 0).toLocaleString()}</td>
-                    <td style={{ textAlign: 'right' }}>{Number(it.amount || 0).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="purchase-total-row">
-              <span>합계</span>
-              <strong>{Number(detail.totalAmount || 0).toLocaleString()}원</strong>
-            </div>
-
-            {detail.note && <p className="purchase-detail-note">{detail.note}</p>}
-            {detail.receiveNote && (
-              <p className="purchase-detail-note">검수 메모: {detail.receiveNote}</p>
-            )}
-
-            <div className="modal-actions purchase-detail-actions">
-              {detail.status === 'ordered' && (
-                <>
-                  <button className="btn btn-primary" onClick={() => openReceive(detail)}>입고 처리</button>
-                  <button className="btn btn-outline" onClick={() => openEdit(detail)}>수정</button>
-                  <button className="btn btn-outline" onClick={() => handleDelete(detail)}>삭제</button>
-                </>
-              )}
-              {detail.status === 'received' && (
-                <>
-                  <button className="btn btn-primary" onClick={() => handleSettle(detail)}>정산 처리</button>
-                  <button className="btn btn-outline" onClick={() => openEdit(detail)}>수정</button>
-                  <button className="btn btn-outline" onClick={() => handleDelete(detail)}>삭제</button>
-                </>
-              )}
-              {detail.status === 'settled' && (
-                <>
-                  <p className="field-hint" style={{ flex: '1 1 100%' }}>
-                    정산 완료 — {detail.siteName || '귀속 프로젝트'} 지출에 반영됨
-                  </p>
-                  <button className="btn btn-danger" onClick={() => handleCancelSettle(detail)}>정산 취소</button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* 입고 검수 모달 */}
-      <Modal isOpen={!!receiveModal} onClose={() => setReceiveModal(null)} title="입고 검수">
-        <form onSubmit={submitReceive}>
-          <div className="form-group">
-            <label>입고일 *</label>
-            <input
-              type="date"
-              value={receiveForm.date}
-              onChange={(e) => setReceiveForm({ ...receiveForm, date: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>검수 메모</label>
-            <textarea
-              value={receiveForm.note}
-              onChange={(e) => setReceiveForm({ ...receiveForm, note: e.target.value })}
-              rows={2}
-              placeholder="수량 확인 · 하자 여부 등"
-            />
-          </div>
-          <p className="field-hint">입고일이 속한 월의 지출로 정산됩니다.</p>
-          <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">입고 완료</button>
-            <button type="button" className="btn btn-outline" onClick={() => setReceiveModal(null)}>취소</button>
+            <button type="button" className="btn btn-outline" onClick={() => setFormModal(false)} disabled={submitting}>
+              취소
+            </button>
           </div>
         </form>
       </Modal>

@@ -22,6 +22,7 @@ import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import TotalClosingPage from './pages/admin/TotalClosingPage';
 import VehicleLogPage from './pages/admin/VehicleLogPage';
 import PurchaseListPage from './pages/admin/PurchaseListPage';
+import PurchaseDetailPage from './pages/admin/PurchaseDetailPage';
 import SupplierManagementPage from './pages/admin/SupplierManagementPage';
 import PurchaseItemPage from './pages/admin/PurchaseItemPage';
 import BomPage from './pages/admin/BomPage';
@@ -82,6 +83,7 @@ const router = createBrowserRouter([
           { path: '/admin/purchase/suppliers', element: <SupplierManagementPage /> },
           { path: '/admin/purchase/items', element: <PurchaseItemPage /> },
           { path: '/admin/purchase/bom', element: <BomPage /> },
+          { path: '/admin/purchase/:id', element: <PurchaseDetailPage /> },
         ],
       },
     ],
