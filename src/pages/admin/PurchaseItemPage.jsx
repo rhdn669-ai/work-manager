@@ -491,7 +491,7 @@ export default function PurchaseItemPage() {
                               <th>규격</th>
                               <th>분류</th>
                               <th>단위</th>
-                              <th>표준단가</th>
+                              <th>단가</th>
                               <th>기본 구매처</th>
                               <th style={{ minWidth: 160 }}>비고</th>
                               <th className="item-group-add-th">
@@ -569,11 +569,15 @@ export default function PurchaseItemPage() {
                                     onBlur={() => flushItem(it.id)}
                                   />
                                 </td>
-                                <td data-label="표준단가" className="item-cell-price">
+                                <td data-label="단가" className="item-cell-price">
                                   <input
-                                    type="number" min="0"
-                                    value={it.standardPrice || ''}
-                                    onChange={(e) => updateField(it.id, { standardPrice: Number(e.target.value) || 0 })}
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={it.standardPrice ? Number(it.standardPrice).toLocaleString() : ''}
+                                    onChange={(e) => {
+                                      const raw = e.target.value.replace(/[^0-9]/g, '');
+                                      updateField(it.id, { standardPrice: raw ? Number(raw) : 0 });
+                                    }}
                                     onBlur={() => flushItem(it.id)}
                                   />
                                   {it.priceHistory?.length > 0 && (
@@ -670,7 +674,7 @@ export default function PurchaseItemPage() {
         <div className="form-group">
           <label>엑셀에서 복사한 내용 붙여넣기</label>
           <p className="field-hint">
-            컬럼 순서: <strong>코드 · 품명 · 메이커 · 규격 · 단위 · 분류 · 표준단가</strong> (7개 열)<br />
+            컬럼 순서: <strong>코드 · 품명 · 메이커 · 규격 · 단위 · 분류 · 단가</strong> (7개 열)<br />
             엑셀에서 해당 열들을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 첫 줄이 머리글(코드/품명…)이면 자동 제외됩니다.
           </p>
           <textarea
@@ -686,7 +690,7 @@ export default function PurchaseItemPage() {
             <div className="bulk-preview-head">{parsedBulk.length}개 품목 인식됨</div>
             <table className="table">
               <thead>
-                <tr><th>코드</th><th>품명</th><th>메이커</th><th>규격</th><th>단위</th><th>분류</th><th>표준단가</th></tr>
+                <tr><th>코드</th><th>품명</th><th>메이커</th><th>규격</th><th>단위</th><th>분류</th><th>단가</th></tr>
               </thead>
               <tbody>
                 {parsedBulk.slice(0, 50).map((r, i) => (
