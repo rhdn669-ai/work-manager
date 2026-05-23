@@ -14,7 +14,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // 드래그 가능한 행 — useSortable 훅을 적용한 <tr>
-function SortableItemRow({ id, children }) {
+function SortableItemRow({ id, isHighlight, onActivate, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -26,7 +26,13 @@ function SortableItemRow({ id, children }) {
     position: isDragging ? 'relative' : undefined,
   };
   return (
-    <tr ref={setNodeRef} style={style}>
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={isHighlight ? 'is-newly-added' : undefined}
+      onPointerDown={isHighlight ? onActivate : undefined}
+      onFocusCapture={isHighlight ? onActivate : undefined}
+    >
       <td className="drag-handle-cell" data-label="">
         <button
           type="button"
@@ -87,6 +93,24 @@ export default function PurchaseItemPage() {
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   // 헤더 코드 입력 — 편집 중에는 로컬 state로 임시 보관 (items state 즉시 변경 X → 그룹 키 안 흔들림)
   const [editingHeaderCode, setEditingHeaderCode] = useState(null); // { repId, value } | null
+
+  // 복사/동일품명으로 추가된 행 강조 (사용자가 클릭하면 해제) — 스크롤은 따라가지 않음
+  const [highlightIds, setHighlightIds] = useState(() => new Set());
+  function markHighlight(id) {
+    setHighlightIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }
+  function clearHighlight(id) {
+    setHighlightIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
 
   // 엑셀 일괄 추가 모달
   const [bulkModal, setBulkModal] = useState(false);
@@ -243,6 +267,14 @@ export default function PurchaseItemPage() {
           next.add(ref.id);
           return next;
         });
+        // highlightIds가 이 tmp id를 갖고 있었다면 새 id로 이관 (사용자가 클릭할 때까지 깜빡임 유지)
+        setHighlightIds((prev) => {
+          if (!prev.has(id)) return prev;
+          const next = new Set(prev);
+          next.delete(id);
+          next.add(ref.id);
+          return next;
+        });
       } else {
         const { id: _id, createdAt: _c, updatedAt: _u, ...data } = payload;
         await updatePurchaseItem(id, data);
@@ -294,6 +326,7 @@ export default function PurchaseItemPage() {
       return [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)];
     });
     expandGroup(groupKey);
+    markHighlight(tmpId);
   }
 
   function addSameItem(parent) {
@@ -322,6 +355,7 @@ export default function PurchaseItemPage() {
       return [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)];
     });
     expandGroup(groupKey);
+    markHighlight(tmpId);
   }
 
   async function handleDeleteGroup(mainCode, groupItems) {
@@ -536,7 +570,11 @@ export default function PurchaseItemPage() {
                               const expanded = expandedId === it.id;
                               return (
                                 <Fragment key={it.id}>
-                                  <SortableItemRow id={it.id}>
+                                  <SortableItemRow
+                                    id={it.id}
+                                    isHighlight={highlightIds.has(it.id)}
+                                    onActivate={() => clearHighlight(it.id)}
+                                  >
                                 <td data-label="코드">
                                   <input
                                     type="text"
@@ -544,7 +582,7 @@ export default function PurchaseItemPage() {
                                     placeholder="코드"
                                     onChange={(e) => updateField(it.id, { code: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
-                                    autoFocus={String(it.id).startsWith('tmp-')}
+                                    autoFocus={String(it.id).startsWith('tmp-') && !highlightIds.has(it.id)}
                                   />
                                 </td>
                                 <td data-label="품명">

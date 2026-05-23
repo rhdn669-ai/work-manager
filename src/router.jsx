@@ -26,6 +26,7 @@ import PurchaseDetailPage from './pages/admin/PurchaseDetailPage';
 import SupplierManagementPage from './pages/admin/SupplierManagementPage';
 import PurchaseItemPage from './pages/admin/PurchaseItemPage';
 import BomPage from './pages/admin/BomPage';
+import BomDetailPage from './pages/admin/BomDetailPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 
@@ -83,6 +84,7 @@ const router = createBrowserRouter([
           { path: '/admin/purchase/suppliers', element: <SupplierManagementPage /> },
           { path: '/admin/purchase/items', element: <PurchaseItemPage /> },
           { path: '/admin/purchase/bom', element: <BomPage /> },
+          { path: '/admin/purchase/bom/:projectId', element: <BomDetailPage /> },
           { path: '/admin/purchase/:id', element: <PurchaseDetailPage /> },
         ],
       },

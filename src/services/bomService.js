@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -18,6 +18,12 @@ export async function getBomProjects() {
       .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
   }
+}
+
+export async function getBomProjectById(id) {
+  const snap = await getDoc(doc(db, 'bomProjects', id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
 }
 
 export async function addBomProject(name) {

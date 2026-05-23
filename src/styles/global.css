@@ -3159,10 +3159,50 @@ body {
 /* ===== 프로젝트별 BOM ===== */
 .bom-toolbar {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 12px;
+}
+.bom-search-input {
+  flex: 1 1 280px;
+  min-width: 200px;
+  max-width: 420px;
+}
+.bom-group-code {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.bom-group-name {
+  border: none;
+  background: transparent;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+.bom-group-total {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  background: var(--primary-softer);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
 }
 /* 프로젝트명 링크 (table 셀 안에서 클릭 가능한 텍스트) */
 .bom-project-link {
@@ -3964,6 +4004,25 @@ body {
 @media (max-width: 768px) {
   /* 모바일: thead 안 버튼 안 보이므로 toolbar 노출 */
   .item-group-detail-toolbar { display: flex; }
+}
+
+/* 새로 추가된 행 강조 — 사용자가 클릭(또는 포커스)하면 해제 */
+@keyframes newly-added-pulse {
+  0%   { background: rgba(245, 158, 11, 0.18); }
+  50%  { background: rgba(245, 158, 11, 0.04); }
+  100% { background: rgba(245, 158, 11, 0.18); }
+}
+tr.is-newly-added > td {
+  animation: newly-added-pulse 1.4s ease-in-out infinite;
+}
+@media (max-width: 768px) {
+  table.cards-sm tr.is-newly-added {
+    animation: newly-added-pulse 1.4s ease-in-out infinite;
+  }
+  table.cards-sm tr.is-newly-added > td {
+    animation: none;
+    background: transparent;
+  }
 }
 
 /* 드래그 핸들 (정렬 가능한 표 행) */
