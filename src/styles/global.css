@@ -3354,7 +3354,8 @@ body {
   color: var(--text);
 }
 
-.item-same-btn {
+.item-same-btn,
+.item-copy-btn {
   height: 28px;
   padding: 0 8px;
   border-radius: 6px;
@@ -3367,7 +3368,8 @@ body {
   font-family: inherit;
   white-space: nowrap;
 }
-.item-same-btn:hover {
+.item-same-btn:hover,
+.item-copy-btn:hover {
   border-color: var(--primary);
   color: var(--primary);
   background: var(--primary-softer);

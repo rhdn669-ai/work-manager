@@ -35,7 +35,6 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite }) {
     { key: 'admin-purchase-suppliers', to: '/admin/purchase/suppliers', label: '구매처 관리', show: isAdmin },
     { key: 'admin-purchase-items', to: '/admin/purchase/items', label: '구매 품목 관리', show: isAdmin },
     { key: 'admin-purchase-bom', to: '/admin/purchase/bom', label: '프로젝트별 BOM', show: isAdmin },
-    { key: 'admin-data-cleanup', to: '/admin/data-cleanup', label: '데이터 정리', show: isAdmin },
   ];
 }
 

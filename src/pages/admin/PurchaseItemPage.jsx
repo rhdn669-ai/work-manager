@@ -251,6 +251,33 @@ export default function PurchaseItemPage() {
     expandGroup(tmpId); // groupKey = own id (베어의 tmp id, flushItem에서 real id로 교체됨)
   }
 
+  function duplicateItem(item) {
+    const code = nextSubCode(items, item.code);
+    if (!code) { alert('코드 자동 부여 실패 — 부모 코드를 확인하세요.'); return; }
+    const tmpId = `tmp-${Date.now()}`;
+    const groupKey = item.groupKey || item.id;
+    const newItem = {
+      id: tmpId,
+      code,
+      name: item.name || '',
+      spec: item.spec || '',
+      maker: item.maker || '',
+      unit: item.unit || '',
+      category: item.category || '',
+      standardPrice: Number(item.standardPrice) || 0,
+      defaultSupplierId: item.defaultSupplierId || '',
+      note: item.note || '',
+      priceHistory: [],
+      groupKey,
+    };
+    setItems((prev) => {
+      const idx = prev.findIndex((x) => x.id === item.id);
+      if (idx < 0) return [...prev, newItem];
+      return [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)];
+    });
+    expandGroup(groupKey);
+  }
+
   function addSameItem(parent) {
     const code = nextSubCode(items, parent.code);
     if (!code) { alert('부모 코드가 잘못되어 동일품명을 추가할 수 없습니다.'); return; }
@@ -462,8 +489,8 @@ export default function PurchaseItemPage() {
                               <th style={{ minWidth: 160 }}>품명</th>
                               <th>메이커</th>
                               <th>규격</th>
-                              <th>단위</th>
                               <th>분류</th>
+                              <th>단위</th>
                               <th>표준단가</th>
                               <th>기본 구매처</th>
                               <th style={{ minWidth: 160 }}>비고</th>
@@ -525,20 +552,20 @@ export default function PurchaseItemPage() {
                                     onBlur={() => flushItem(it.id)}
                                   />
                                 </td>
+                                <td data-label="분류">
+                                  <input
+                                    type="text"
+                                    value={it.category || ''}
+                                    onChange={(e) => updateField(it.id, { category: e.target.value })}
+                                    onBlur={() => flushItem(it.id)}
+                                  />
+                                </td>
                                 <td data-label="단위">
                                   <input
                                     type="text"
                                     value={it.unit || ''}
                                     placeholder="개·m·kg"
                                     onChange={(e) => updateField(it.id, { unit: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                </td>
-                                <td data-label="분류">
-                                  <input
-                                    type="text"
-                                    value={it.category || ''}
-                                    onChange={(e) => updateField(it.id, { category: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
                                 </td>
@@ -575,6 +602,13 @@ export default function PurchaseItemPage() {
                                   />
                                 </td>
                                 <td className="item-actions-cell">
+                                  <button
+                                    type="button"
+                                    className="item-copy-btn"
+                                    onClick={() => duplicateItem(it)}
+                                    title="이 항목 복사"
+                                    aria-label="복사"
+                                  >복사</button>
                                   {Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
                                     <button
                                       type="button"
