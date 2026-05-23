@@ -77,8 +77,32 @@ export async function addPurchaseItem(data) {
     defaultSupplierId: data.defaultSupplierId || '',
     siteIds: data.siteIds || [],         // 사용 프로젝트 (다중)
     note: data.note || '',
+    groupKey: data.groupKey || null,     // 대분류 그룹 식별자 — 베어 메인의 doc id (베어 메인은 null)
     createdAt: new Date(),
     updatedAt: new Date(),
+  });
+}
+
+// 로드된 items에 groupKey 채워넣기 (백워드 호환 — 기존 데이터엔 groupKey 없음)
+// 베어 메인(IOPN-NNNNN): groupKey 없음 (own id가 anchor)
+// 소분류(IOPN-NNNNN-N): groupKey = 같은 메인 코드 베어의 id
+export function inferGroupKeys(items) {
+  const bareIdByCode = new Map();
+  for (const it of items) {
+    if (!it.groupKey) {
+      const m = (it.code || '').match(/^IOPN-(\d{5})$/);
+      if (m) bareIdByCode.set(it.code, it.id);
+    }
+  }
+  return items.map((it) => {
+    if (it.groupKey) return it;
+    const m = (it.code || '').match(/^IOPN-(\d{5})-(\d+)$/);
+    if (m) {
+      const mainCode = `IOPN-${m[1]}`;
+      const bareId = bareIdByCode.get(mainCode);
+      if (bareId) return { ...it, groupKey: bareId };
+    }
+    return it; // 베어 메인이거나 매칭 안 됨 — own id가 anchor
   });
 }
 
@@ -105,11 +129,21 @@ export function nextMainCode(items) {
   return `${PREFIX}${String(maxMain + 1).padStart(5, '0')}`;
 }
 
-// 그룹 안의 항목들을 새 순서대로 재할당 (드래그앤드롭 후 호출)
-// orderedIds: 새 순서대로 정렬된 doc id 배열
-// mainCode: 그룹 키 (예: "IOPN-00001")
-// 첫 번째 항목은 bare main code, 나머지는 -1, -2, ...
-// 변경 필요한 행만 batch update. 결과 [{ id, code }] 반환
+// 여러 품목 일괄 삭제 (대분류 그룹 전체 삭제용)
+export async function deletePurchaseItems(ids) {
+  const realIds = (ids || []).filter((id) => !String(id).startsWith('tmp-'));
+  if (realIds.length === 0) return;
+  const batch = writeBatch(db);
+  for (const id of realIds) {
+    batch.delete(doc(db, 'purchaseItems', id));
+  }
+  await batch.commit();
+}
+
+// 그룹 안의 서브 항목들을 새 순서대로 재할당 (드래그앤드롭 후 호출)
+// orderedIds: 새 순서대로 정렬된 sub doc id 배열 (베어 메인 제외)
+// mainCode: 그룹 키 (예: "IOPN-00001") — 베어 메인 코드는 변경 안 함
+// 서브들은 -1, -2, -3, ... 순서대로 부여
 export async function reorderGroupCodes(orderedIds, currentItems, mainCode) {
   const m = (mainCode || '').match(/^IOPN-(\d{5})/);
   if (!m) throw new Error('잘못된 그룹 코드');
@@ -122,7 +156,7 @@ export async function reorderGroupCodes(orderedIds, currentItems, mainCode) {
   orderedIds.forEach((id, idx) => {
     const it = byId.get(id);
     if (!it) return;
-    const newCode = idx === 0 ? prefix : `${prefix}-${idx}`;
+    const newCode = `${prefix}-${idx + 1}`;
     if (it.code !== newCode) {
       updates.push({ id, code: newCode });
     }
