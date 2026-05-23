@@ -2965,6 +2965,11 @@ body {
   table.cards-sm td:not([data-label])::before {
     display: none;
   }
+
+  /* 모바일 카드뷰 — 개별단가 셀 모바일 너비 해제 */
+  table.cards-sm td.item-cell-unit-price {
+    min-width: 0;
+  }
 }
 
 /* ===== 구매관리 ===== */
@@ -3330,6 +3335,19 @@ body {
 }
 .item-cell-price .price-since {
   white-space: nowrap;
+}
+
+/* 개별단가 / 단가 — 숫자 셀 공통: 다른 셀과 동일하게 좌측 정렬, 동일 박스 */
+.inline-edit-table .num-input {
+  text-align: left;
+}
+.inline-edit-table .num-input.is-readonly {
+  font-weight: 600;
+  color: var(--primary);
+  cursor: default;
+}
+.item-cell-unit-price {
+  min-width: 100px;
 }
 
 .item-actions-cell {

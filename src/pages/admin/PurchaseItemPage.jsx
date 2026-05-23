@@ -42,6 +42,23 @@ function SortableItemRow({ id, children }) {
   );
 }
 
+// 복합 단위 파싱 — 단위 문자열 안에 [숫자 + 단위문자] 패턴이 있으면 곱셈으로 인식
+// 슬래시(/)·공백·괄호·* ·x ·× ·- 는 분리자(통과 문자)로 취급, baseUnit에는 포함되지 않음
+// 인식 예: "2/개", "roll/610m", "Roll 610m", "BOX(24개)", "10EA", "Box*24개", "BOX/24개"
+function parseCompoundUnit(unitStr) {
+  if (!unitStr) return null;
+  const s = String(unitStr).trim();
+  const m = s.match(/(\d[\d,]*(?:\.\d+)?)[\s/()*x×\-]*([^\d\s/()*x×,\-]+)/);
+  if (!m) return null;
+  const qty = parseFloat(m[1].replace(/,/g, ''));
+  if (!qty || qty <= 1) return null;   // 1 이하는 곱셈 의미 없음 → 단순 단위 취급
+  return {
+    container: s.slice(0, m.index).trim(),
+    qty,
+    baseUnit: m[2].trim(),
+  };
+}
+
 function parseBulkText(text) {
   return (text || '')
     .split(/\r?\n/)
@@ -242,7 +259,7 @@ export default function PurchaseItemPage() {
       id: tmpId,
       code: newCode,
       name: '', spec: '', maker: '', unit: '', category: '',
-      standardPrice: 0, defaultSupplierId: '', note: '',
+      standardPrice: 0, unitPrice: 0, defaultSupplierId: '', note: '',
       priceHistory: [],
       // 베어 메인: groupKey 없음 (own id가 anchor)
     }, ...prev]);
@@ -265,6 +282,7 @@ export default function PurchaseItemPage() {
       unit: item.unit || '',
       category: item.category || '',
       standardPrice: Number(item.standardPrice) || 0,
+      unitPrice: Number(item.unitPrice) || 0,
       defaultSupplierId: item.defaultSupplierId || '',
       note: item.note || '',
       priceHistory: [],
@@ -292,6 +310,7 @@ export default function PurchaseItemPage() {
       unit: parent.unit || '',
       category: parent.category || '',
       standardPrice: 0,
+      unitPrice: 0,
       defaultSupplierId: parent.defaultSupplierId || '',
       note: '',
       priceHistory: [],
@@ -490,7 +509,8 @@ export default function PurchaseItemPage() {
                               <th>메이커</th>
                               <th>규격</th>
                               <th>분류</th>
-                              <th>단위</th>
+                              <th>moq/단위</th>
+                              <th>개별단가</th>
                               <th>단가</th>
                               <th>기본 구매처</th>
                               <th style={{ minWidth: 160 }}>비고</th>
@@ -507,7 +527,7 @@ export default function PurchaseItemPage() {
                           <tbody>
                             {subItems.length === 0 && (
                               <tr>
-                                <td colSpan={11} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                                <td colSpan={12} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                                   소분류가 없습니다 — 우측 상단 "+ 추가"로 등록하세요.
                                 </td>
                               </tr>
@@ -560,30 +580,78 @@ export default function PurchaseItemPage() {
                                     onBlur={() => flushItem(it.id)}
                                   />
                                 </td>
-                                <td data-label="단위">
+                                <td data-label="moq/단위">
                                   <input
                                     type="text"
                                     value={it.unit || ''}
-                                    placeholder="개·m·kg"
-                                    onChange={(e) => updateField(it.id, { unit: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                </td>
-                                <td data-label="단가" className="item-cell-price">
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={it.standardPrice ? Number(it.standardPrice).toLocaleString() : ''}
+                                    placeholder="개·m·2/개·roll/610m·박스 24개·10EA"
                                     onChange={(e) => {
-                                      const raw = e.target.value.replace(/[^0-9]/g, '');
-                                      updateField(it.id, { standardPrice: raw ? Number(raw) : 0 });
+                                      const newUnit = e.target.value;
+                                      const cu = parseCompoundUnit(newUnit);
+                                      const patch = { unit: newUnit };
+                                      // 복합 단위로 바뀌면 개별단가 기준 단가 재계산
+                                      if (cu && Number(it.unitPrice) > 0) {
+                                        patch.standardPrice = Math.round(Number(it.unitPrice) * cu.qty);
+                                      }
+                                      updateField(it.id, patch);
                                     }}
                                     onBlur={() => flushItem(it.id)}
                                   />
-                                  {it.priceHistory?.length > 0 && (
-                                    <span className="price-since">{it.priceHistory[it.priceHistory.length - 1].date}~</span>
-                                  )}
                                 </td>
+                                {(() => {
+                                  const cu = parseCompoundUnit(it.unit);
+                                  const qty = cu ? cu.qty : 1;            // 단순 단위는 qty=1로 취급
+                                  const unitPrice = Number(it.unitPrice) || 0;
+                                  return (
+                                    <td data-label="개별단가" className="item-cell-unit-price">
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        className="num-input"
+                                        value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
+                                        onChange={(e) => {
+                                          const raw = e.target.value.replace(/[^0-9]/g, '');
+                                          const up = raw ? Number(raw) : 0;
+                                          updateField(it.id, {
+                                            unitPrice: up,
+                                            standardPrice: Math.round(up * qty),
+                                          });
+                                        }}
+                                        onBlur={() => flushItem(it.id)}
+                                      />
+                                    </td>
+                                  );
+                                })()}
+                                {(() => {
+                                  const cu = parseCompoundUnit(it.unit);
+                                  const qty = cu ? cu.qty : 1;
+                                  const unitPrice = Number(it.unitPrice) || 0;
+                                  // 개별단가가 있으면 자동 계산값, 없으면 기존 standardPrice 직접 편집 가능
+                                  const isAuto = unitPrice > 0;
+                                  const total = isAuto
+                                    ? Math.round(unitPrice * qty)
+                                    : Number(it.standardPrice) || 0;
+                                  return (
+                                    <td data-label="단가" className="item-cell-price">
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        className={`num-input ${isAuto ? 'is-readonly' : ''}`}
+                                        value={total ? Number(total).toLocaleString() : ''}
+                                        readOnly={isAuto}
+                                        onChange={(e) => {
+                                          if (isAuto) return;
+                                          const raw = e.target.value.replace(/[^0-9]/g, '');
+                                          updateField(it.id, { standardPrice: raw ? Number(raw) : 0 });
+                                        }}
+                                        onBlur={() => flushItem(it.id)}
+                                      />
+                                      {it.priceHistory?.length > 0 && (
+                                        <span className="price-since">{it.priceHistory[it.priceHistory.length - 1].date}~</span>
+                                      )}
+                                    </td>
+                                  );
+                                })()}
                                 <td data-label="기본 구매처">
                                   <select
                                     value={it.defaultSupplierId || ''}
@@ -633,7 +701,7 @@ export default function PurchaseItemPage() {
                               </SortableItemRow>
                               {expanded && Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
                                 <tr className="item-detail-row">
-                                  <td colSpan={11}>
+                                  <td colSpan={12}>
                                     <div className="item-detail-body">
                                       <div className="item-detail-section">
                                         <label className="item-detail-label">단가 변경 이력</label>
@@ -674,7 +742,7 @@ export default function PurchaseItemPage() {
         <div className="form-group">
           <label>엑셀에서 복사한 내용 붙여넣기</label>
           <p className="field-hint">
-            컬럼 순서: <strong>코드 · 품명 · 메이커 · 규격 · 단위 · 분류 · 단가</strong> (7개 열)<br />
+            컬럼 순서: <strong>코드 · 품명 · 메이커 · 규격 · moq/단위 · 분류 · 단가</strong> (7개 열)<br />
             엑셀에서 해당 열들을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 첫 줄이 머리글(코드/품명…)이면 자동 제외됩니다.
           </p>
           <textarea
@@ -690,7 +758,7 @@ export default function PurchaseItemPage() {
             <div className="bulk-preview-head">{parsedBulk.length}개 품목 인식됨</div>
             <table className="table">
               <thead>
-                <tr><th>코드</th><th>품명</th><th>메이커</th><th>규격</th><th>단위</th><th>분류</th><th>단가</th></tr>
+                <tr><th>코드</th><th>품명</th><th>메이커</th><th>규격</th><th>moq/단위</th><th>분류</th><th>단가</th></tr>
               </thead>
               <tbody>
                 {parsedBulk.slice(0, 50).map((r, i) => (
