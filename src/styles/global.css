@@ -3169,6 +3169,23 @@ body {
   min-width: 200px;
   max-width: 420px;
 }
+
+/* BOM 검색 영역 — purchase-filters 클래스 위에 BOM 전용 보완 */
+.bom-filters {
+  align-items: center;
+}
+.bom-filters .bom-summary {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.bom-filters .bom-summary strong {
+  color: var(--text);
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
 .bom-group-code {
   font-family: inherit;
   font-size: 13px;
@@ -3204,6 +3221,47 @@ body {
   border-radius: 999px;
   font-variant-numeric: tabular-nums;
 }
+
+/* BOM 평면 표 — table-layout/너비는 .purchase-cols가 강제. 여기선 보완 스타일만 */
+.bom-flat-table th.bom-spacer-col,
+.bom-flat-table td.bom-spacer-col {
+  padding: 0 !important;
+  border-right: none;
+}
+.bom-flat-table th.bom-spacer-col { border-bottom: 1px solid var(--border); }
+.bom-flat-table tbody td {
+  vertical-align: middle;
+  padding: 4px 6px;
+}
+.bom-flat-table tbody td > input,
+.bom-flat-table tbody td > .cell-text {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bom-flat-table .bom-action-col {
+  text-align: right;
+  padding-right: 6px;
+}
+.bom-flat-table th.bom-action-col { border-bottom: 1px solid var(--border); }
+@media (max-width: 768px) {
+  /* 모바일 카드 뷰에서 스페이서 컬럼 숨김 */
+  table.cards-sm.bom-flat-table .bom-spacer-col {
+    display: none;
+  }
+  table.cards-sm.bom-flat-table .bom-action-col {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 0;
+    border: none;
+    min-height: 0;
+  }
+  table.cards-sm.bom-flat-table tbody tr { position: relative; }
+}
+
+/* 평면 BOM 그룹 카드 — 그룹 헤더가 없으므로 detail만 표시 */
+.bom-flat-group .item-group-detail { border-top: none; }
 /* 프로젝트명 링크 (table 셀 안에서 클릭 가능한 텍스트) */
 .bom-project-link {
   background: transparent;
@@ -3256,7 +3314,6 @@ body {
 .bom-table td { padding: 4px 6px; vertical-align: middle; }
 .bom-cell-amount {
   font-weight: 600;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 .bom-name-wrap { position: relative; }
@@ -3451,6 +3508,56 @@ body {
   border-color: var(--primary);
 }
 .inline-edit-table td { padding: 4px 6px; vertical-align: middle; }
+
+/* read-only 셀 텍스트를 input과 동일한 안쪽 여백·높이로 — 같은 표 안에서 오와열 정렬 */
+.inline-edit-table .cell-text {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 8px;
+  font-size: 13px;
+  line-height: 1.2;
+  box-sizing: border-box;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* BOM read-only input — PurchaseItem의 일반 input과 동일한 폭/패딩으로 자동 분배 일치 */
+.inline-edit-table input.bom-readonly-input {
+  cursor: default;
+  color: var(--text);
+  background: transparent;
+}
+.inline-edit-table input.bom-readonly-input:hover {
+  background: transparent;
+  border-color: transparent;
+}
+.inline-edit-table input.bom-readonly-input:focus {
+  background: transparent;
+  border-color: transparent;
+  outline: none;
+}
+.inline-edit-table input.bom-code-input {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.inline-edit-table input.bom-amount-input {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.inline-edit-table .cell-text > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inline-edit-table .cell-text-num {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
 
 .item-cell-price {
   display: flex;

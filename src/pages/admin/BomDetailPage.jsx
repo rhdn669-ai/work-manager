@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   getBomBySite, addBomItem, updateBomItem, deleteBomItem,
@@ -7,11 +7,6 @@ import {
 import { getPurchaseItems } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
-
-function codePrefix(code) {
-  const m = (code || '').match(/^IOPN-(\d{5})/);
-  return m ? `IOPN-${m[1]}` : (code || '__no-code__');
-}
 
 export default function BomDetailPage() {
   const { projectId } = useParams();
@@ -22,7 +17,6 @@ export default function BomDetailPage() {
   const [bomItems, setBomItems] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const [search, setSearch] = useState('');
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -72,55 +66,28 @@ export default function BomDetailPage() {
       unit: m?.unit || b.unit || '',
       maker: m?.maker || '',
       category: m?.category || '',
+      // 단가는 마스터의 표준단가를 우선 표시 (마스터 변경 시 BOM도 자동 반영)
+      unitPrice: m?.standardPrice ?? b.unitPrice ?? 0,
     };
   }), [bomItems, masterMap]);
 
-  const filtered = useMemo(() => {
-    const kw = search.trim().toLowerCase();
-    if (!kw) return displayItems;
-    return displayItems.filter((it) =>
-      [it.code, it.name, it.spec, it.maker, it.category, it.note]
-        .some((v) => (v || '').toLowerCase().includes(kw)),
-    );
-  }, [displayItems, search]);
-
-  const groups = useMemo(() => {
-    const map = new Map();
+  // 검색 필터 + 코드 자연 정렬
+  const rows = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-    for (const it of filtered) {
-      const key = codePrefix(it.code);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(it);
-    }
-    for (const arr of map.values()) {
-      arr.sort((a, b) => collator.compare(a.code || '', b.code || ''));
-    }
-    return [...map.entries()].sort(([a], [b]) => collator.compare(a, b));
-  }, [filtered]);
+    const kw = search.trim().toLowerCase();
+    const list = kw
+      ? displayItems.filter((it) =>
+        [it.code, it.name, it.spec, it.maker, it.category, it.note]
+          .some((v) => (v || '').toLowerCase().includes(kw)),
+      )
+      : displayItems;
+    return [...list].sort((a, b) => collator.compare(a.code || '', b.code || ''));
+  }, [displayItems, search]);
 
   const total = useMemo(
     () => displayItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
     [displayItems],
   );
-
-  function repItemForGroup(groupItems) {
-    return groupItems.find((it) => /^IOPN-\d{5}$/.test(it.code || '')) || groupItems[0];
-  }
-
-  function toggleGroup(key) {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  }
-
-  function expandAll() {
-    setExpandedGroups(new Set(groups.map(([k]) => k)));
-  }
-  function collapseAll() {
-    setExpandedGroups(new Set());
-  }
 
   function updateField(id, patch) {
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -145,17 +112,6 @@ export default function BomDetailPage() {
       setBomItems((prev) => prev.filter((b) => b.id !== id));
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
-    }
-  }
-
-  async function removeGroup(prefix, groupItems) {
-    if (!await confirm(`"${prefix}" 대분류의 BOM 항목 ${groupItems.length}개를 모두 삭제하시겠습니까?`)) return;
-    const ids = groupItems.map((it) => it.id);
-    try {
-      await Promise.all(ids.map((idd) => deleteBomItem(idd)));
-      setBomItems((prev) => prev.filter((b) => !ids.includes(b.id)));
-    } catch (err) {
-      alert('대분류 삭제 중 오류: ' + err.message);
     }
   }
 
@@ -191,7 +147,6 @@ export default function BomDetailPage() {
     let nextOrder = bomItems.length === 0
       ? 1 : Math.max(...bomItems.map((b) => Number(b.order) || 0)) + 1;
     const added = [];
-    const newGroupKeys = new Set();
     for (const itemId of picked) {
       const m = masterMap[itemId];
       if (!m) continue;
@@ -208,7 +163,6 @@ export default function BomDetailPage() {
       try {
         const ref = await addBomItem(projectId, data);
         added.push({ ...data, id: ref.id, siteId: projectId, code: m.code });
-        newGroupKeys.add(codePrefix(m.code));
       } catch (err) {
         console.error(err);
       }
@@ -216,11 +170,6 @@ export default function BomDetailPage() {
     setBomItems((prev) => [...prev, ...added]);
     setPicked(new Set());
     setPickerOpen(false);
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      for (const k of newGroupKeys) next.add(k);
-      return next;
-    });
   }
 
   if (loading || !project) return <div className="loading">로딩 중...</div>;
@@ -233,17 +182,15 @@ export default function BomDetailPage() {
           <h2>{project.name}</h2>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-outline" onClick={collapseAll}>전체 접기</button>
-          <button type="button" className="btn btn-outline" onClick={expandAll}>전체 펼치기</button>
           <button type="button" className="btn btn-primary" onClick={openPicker}>+ 품목 불러오기</button>
         </div>
       </div>
 
-      <div className="bom-toolbar">
+      <div className="purchase-filters bom-filters">
         <input
           type="text"
-          className="bom-search-input"
-          placeholder="코드 · 품명 · 규격 · 메이커 · 분류 · 메모 검색"
+          className="purchase-filter-search"
+          placeholder="코드 · 품명 · 규격 · 메이커 · 분류 · 비고 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -253,130 +200,143 @@ export default function BomDetailPage() {
         </div>
       </div>
 
-      {groups.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="purchase-empty">
           {bomItems.length === 0
             ? '품목이 없습니다 — 우측 상단 "+ 품목 불러오기"로 추가하세요.'
             : '검색 조건에 맞는 품목이 없습니다.'}
         </p>
       ) : (
-        <div className="item-group-list">
-          {groups.map(([prefix, groupItems]) => {
-            const isExpanded = expandedGroups.has(prefix);
-            const repItem = repItemForGroup(groupItems);
-            const subItems = repItem ? groupItems.filter((it) => it.id !== repItem.id) : groupItems;
-            const headerCode = repItem?.code || prefix;
-            const headerName = repItem?.name || '(품명 없음)';
-            const groupTotal = groupItems.reduce(
-              (s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0),
-              0,
-            );
-            const displayed = repItem && subItems.length > 0 ? [repItem, ...subItems] : groupItems;
-            return (
-              <div key={prefix} className={`item-group ${isExpanded ? 'is-expanded' : ''}`}>
-                <div
-                  className="item-group-header"
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={isExpanded}
-                  onClick={() => toggleGroup(prefix)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleGroup(prefix);
-                    }
-                  }}
-                >
-                  <span className="item-group-code-input bom-group-code">{headerCode}</span>
-                  <span className="item-group-name-input bom-group-name">{headerName}</span>
-                  <span className="item-group-count">{groupItems.length}개</span>
-                  <span className="bom-group-total">{groupTotal.toLocaleString()}원</span>
-                  <span className="item-group-arrow" aria-hidden="true">∨</span>
-                  <button
-                    type="button"
-                    className="item-group-delete-btn"
-                    onClick={(e) => { e.stopPropagation(); removeGroup(prefix, groupItems); }}
-                    aria-label="대분류 삭제"
-                    title="이 대분류의 BOM 항목 모두 삭제"
-                  >✕</button>
-                </div>
-                {isExpanded && (
-                  <div className="item-group-detail">
-                    <table className="table inline-edit-table cards-sm">
-                      <thead>
-                        <tr>
-                          <th style={{ minWidth: 100 }}>코드</th>
-                          <th style={{ minWidth: 160 }}>품명</th>
-                          <th>메이커</th>
-                          <th>규격</th>
-                          <th>분류</th>
-                          <th>단위</th>
-                          <th className="num-col">수량</th>
-                          <th className="num-col">단가</th>
-                          <th className="num-col">합계</th>
-                          <th>메모</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayed.map((it) => {
-                          const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
-                          return (
-                            <Fragment key={it.id}>
-                              <tr>
-                                <td data-label="코드"><code className="bom-code">{it.code || '-'}</code></td>
-                                <td data-label="품명"><strong>{it.name}</strong></td>
-                                <td data-label="메이커">{it.maker || '-'}</td>
-                                <td data-label="규격">{it.spec || '-'}</td>
-                                <td data-label="분류">{it.category || '-'}</td>
-                                <td data-label="단위">{it.unit || '-'}</td>
-                                <td data-label="수량">
-                                  <input
-                                    className="num-input"
-                                    type="number" min="0"
-                                    value={it.qty || ''}
-                                    onChange={(e) => updateField(it.id, { qty: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                </td>
-                                <td data-label="단가">
-                                  <input
-                                    className="num-input"
-                                    type="number" min="0"
-                                    value={it.unitPrice || ''}
-                                    onChange={(e) => updateField(it.id, { unitPrice: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                </td>
-                                <td data-label="합계" className="bom-cell-amount num-col">{amount.toLocaleString()}</td>
-                                <td data-label="메모">
-                                  <input
-                                    type="text"
-                                    value={it.note || ''}
-                                    placeholder="-"
-                                    onChange={(e) => updateField(it.id, { note: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                </td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="closing-delete"
-                                    onClick={() => removeRow(it.id)}
-                                    aria-label="삭제"
-                                  >✕</button>
-                                </td>
-                              </tr>
-                            </Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="item-group is-expanded bom-flat-group">
+          <div className="item-group-detail">
+            <table className="table inline-edit-table cards-sm bom-flat-table">
+              <thead>
+                <tr>
+                  <th className="bom-spacer-col" aria-hidden="true"></th>
+                  <th style={{ minWidth: 100 }}>코드</th>
+                  <th style={{ minWidth: 160 }}>품명</th>
+                  <th>메이커</th>
+                  <th>규격</th>
+                  <th>분류</th>
+                  <th>moq/단위</th>
+                  <th>수량</th>
+                  <th>단가</th>
+                  <th>합계</th>
+                  <th style={{ minWidth: 160 }}>비고</th>
+                  <th className="bom-action-col" aria-hidden="true"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((it) => {
+                  const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+                  return (
+                    <tr key={it.id}>
+                      <td className="bom-spacer-col" aria-hidden="true"></td>
+                      <td data-label="코드">
+                        <input
+                          type="text"
+                          className="bom-readonly-input bom-code-input"
+                          value={it.code || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="품명">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={it.name || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="메이커">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={it.maker || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="규격">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={it.spec || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="분류">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={it.category || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="moq/단위">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={it.unit || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="수량">
+                        <input
+                          className="num-input"
+                          type="number" min="0"
+                          value={it.qty || ''}
+                          onChange={(e) => updateField(it.id, { qty: e.target.value })}
+                          onBlur={() => flushItem(it.id)}
+                        />
+                      </td>
+                      <td data-label="단가">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="합계" className="bom-cell-amount">
+                        <input
+                          type="text"
+                          className="bom-readonly-input bom-amount-input"
+                          value={amount.toLocaleString()}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="비고">
+                        <input
+                          type="text"
+                          value={it.note || ''}
+                          placeholder="-"
+                          onChange={(e) => updateField(it.id, { note: e.target.value })}
+                          onBlur={() => flushItem(it.id)}
+                        />
+                      </td>
+                      <td className="bom-action-col">
+                        <button
+                          type="button"
+                          className="closing-delete"
+                          onClick={() => removeRow(it.id)}
+                          aria-label="삭제"
+                          title="삭제"
+                        >✕</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

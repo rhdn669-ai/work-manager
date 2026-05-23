@@ -546,7 +546,7 @@ export default function PurchaseItemPage() {
                               <th>moq/단위</th>
                               <th>개별단가</th>
                               <th>단가</th>
-                              <th>기본 구매처</th>
+                              <th style={{ minWidth: 140 }}>기본 구매처</th>
                               <th style={{ minWidth: 160 }}>비고</th>
                               <th className="item-group-add-th">
                                 <button
