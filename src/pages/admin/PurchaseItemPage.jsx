@@ -543,6 +543,7 @@ export default function PurchaseItemPage() {
                               <th>메이커</th>
                               <th>규격</th>
                               <th>분류</th>
+                              <th>인증</th>
                               <th>moq/단위</th>
                               <th>개별단가</th>
                               <th>단가</th>
@@ -561,7 +562,7 @@ export default function PurchaseItemPage() {
                           <tbody>
                             {subItems.length === 0 && (
                               <tr>
-                                <td colSpan={12} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                                <td colSpan={13} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                                   소분류가 없습니다 — 우측 상단 "+ 추가"로 등록하세요.
                                 </td>
                               </tr>
@@ -615,6 +616,15 @@ export default function PurchaseItemPage() {
                                     type="text"
                                     value={it.category || ''}
                                     onChange={(e) => updateField(it.id, { category: e.target.value })}
+                                    onBlur={() => flushItem(it.id)}
+                                  />
+                                </td>
+                                <td data-label="인증">
+                                  <input
+                                    type="text"
+                                    value={it.certification || ''}
+                                    placeholder="CE · KS …"
+                                    onChange={(e) => updateField(it.id, { certification: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
                                 </td>
@@ -739,7 +749,7 @@ export default function PurchaseItemPage() {
                               </SortableItemRow>
                               {expanded && Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
                                 <tr className="item-detail-row">
-                                  <td colSpan={12}>
+                                  <td colSpan={13}>
                                     <div className="item-detail-body">
                                       <div className="item-detail-section">
                                         <label className="item-detail-label">단가 변경 이력</label>

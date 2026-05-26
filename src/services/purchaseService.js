@@ -75,6 +75,7 @@ export async function addPurchaseItem(data) {
     standardPrice: Number(data.standardPrice) || 0,
     unitPrice: Number(data.unitPrice) || 0,        // 복합 단위(roll/610m)일 때 단위(m)당 단가
     priceHistory: data.priceHistory || [],   // [{ price, date: 'YYYY-MM-DD' }]
+    certification: data.certification || '',     // 인증 (CE/KS/UL 등 자유 텍스트)
     defaultSupplierId: data.defaultSupplierId || '',
     siteIds: data.siteIds || [],         // 사용 프로젝트 (다중)
     note: data.note || '',

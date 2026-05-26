@@ -429,144 +429,251 @@ export default function PurchaseDetailPage() {
 
       <div className="form-group">
         <label>품목</label>
-        <p className="field-hint">검색해서 선택하거나 새 품목명을 직접 입력하세요. 구매처는 첫 품목의 기본 구매처로 자동 적용됩니다.</p>
-        <div className="purchase-line-head purchase-line-head-with-recv">
-          <span className="purchase-line-head-item">품목명</span>
-          <span className="purchase-line-head-qty">수량</span>
-          <span className="purchase-line-head-price">단가</span>
-          <span className="purchase-line-head-amount">금액</span>
-          <span className="purchase-line-head-recv">입고</span>
-          <span className="purchase-line-head-del" aria-hidden="true"></span>
-        </div>
-        {form.items.map((ln, idx) => {
-          const kw = (ln.name || '').toLowerCase().trim();
-          const matches = itemMaster.filter((m) => {
-            if (!kw) return true;
-            return (m.code || '').toLowerCase().includes(kw)
-                || (m.name || '').toLowerCase().includes(kw)
-                || (m.spec || '').toLowerCase().includes(kw);
-          }).slice(0, 50);
-          // 입고 상태: 저장된 purchase.items 기준 (편집 중인 form은 미반영 — 저장 후 입고)
-          const savedLine = purchase.items?.[idx];
-          const savedQty = Number(savedLine?.qty) || 0;
-          const receivedQty = Number(savedLine?.receivedQty) || 0;
-          const isLineSaved = !!savedLine && !dirty;
-          const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
-          const isPartial = isLineSaved && receivedQty > 0 && receivedQty < savedQty;
-          return (
-            <div className="purchase-line purchase-line-with-recv" key={idx}>
-              <div className="purchase-line-item-wrap">
-                <input
-                  className="purchase-line-item"
-                  type="text"
-                  placeholder="품목명 검색·입력"
-                  value={ln.name}
-                  onChange={(e) => updateLineName(idx, e.target.value)}
-                  onFocus={() => setActiveLine(idx)}
-                  onBlur={() => setTimeout(() => setActiveLine((c) => (c === idx ? null : c)), 150)}
-                  autoComplete="off"
-                  disabled={isReadOnly}
-                />
-                {activeLine === idx && !isReadOnly && (
-                  <div className="purchase-line-dropdown">
-                    {matches.length === 0 ? (
-                      <div className="purchase-line-option-empty">
-                        {kw ? `"${kw}"는 새 품목으로 등록됩니다` : '등록된 품목이 없습니다 — 직접 입력하세요'}
-                      </div>
-                    ) : (
-                      matches.map((m) => (
+        <p className="field-hint">품명 칸에서 검색해 선택하면 코드·메이커·규격·분류·인증·moq/단위가 자동 채워집니다. 없는 품목은 품명을 직접 입력하면 저장 시 자동 등록됩니다. 구매처는 첫 품목의 기본 구매처로 자동 적용.</p>
+        <div className="item-group is-expanded bom-flat-group">
+          <div className="item-group-detail">
+            <table className="table inline-edit-table cards-sm bom-flat-table">
+              <thead>
+                <tr>
+                  <th className="bom-spacer-col" aria-hidden="true"></th>
+                  <th style={{ minWidth: 100 }}>코드</th>
+                  <th style={{ minWidth: 160 }}>품명</th>
+                  <th>메이커</th>
+                  <th>규격</th>
+                  <th>분류</th>
+                  <th>인증</th>
+                  <th>moq/단위</th>
+                  <th>수량</th>
+                  <th>단가</th>
+                  <th>합계</th>
+                  <th style={{ minWidth: 160 }}>비고</th>
+                  <th style={{ minWidth: 160 }}>입고</th>
+                  <th className="bom-action-col" aria-hidden="true"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {form.items.length === 0 && (
+                  <tr>
+                    <td colSpan={14} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                      품목이 없습니다 — 아래 "+ 품목 추가"로 시작하세요.
+                    </td>
+                  </tr>
+                )}
+                {form.items.map((ln, idx) => {
+                  const kw = (ln.name || '').toLowerCase().trim();
+                  const matches = itemMaster.filter((m) => {
+                    if (!kw) return true;
+                    return (m.code || '').toLowerCase().includes(kw)
+                        || (m.name || '').toLowerCase().includes(kw)
+                        || (m.spec || '').toLowerCase().includes(kw);
+                  }).slice(0, 50);
+                  const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+                  const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                  const savedLine = purchase.items?.[idx];
+                  const savedQty = Number(savedLine?.qty) || 0;
+                  const receivedQty = Number(savedLine?.receivedQty) || 0;
+                  const isLineSaved = !!savedLine && !dirty;
+                  const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
+                  const isPartial = isLineSaved && receivedQty > 0 && receivedQty < savedQty;
+                  return (
+                    <tr key={idx}>
+                      <td className="bom-spacer-col" aria-hidden="true"></td>
+                      <td data-label="코드">
+                        <input
+                          type="text"
+                          className="bom-readonly-input bom-code-input"
+                          value={master?.code || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="품명">
+                        <div className="purchase-line-item-wrap">
+                          <input
+                            className="purchase-line-item"
+                            type="text"
+                            placeholder="품목명 검색·입력"
+                            value={ln.name}
+                            onChange={(e) => updateLineName(idx, e.target.value)}
+                            onFocus={() => setActiveLine(idx)}
+                            onBlur={() => setTimeout(() => setActiveLine((c) => (c === idx ? null : c)), 150)}
+                            autoComplete="off"
+                            disabled={isReadOnly}
+                          />
+                          {activeLine === idx && !isReadOnly && (
+                            <div className="purchase-line-dropdown">
+                              {matches.length === 0 ? (
+                                <div className="purchase-line-option-empty">
+                                  {kw ? `"${kw}"는 새 품목으로 등록됩니다` : '등록된 품목이 없습니다 — 직접 입력하세요'}
+                                </div>
+                              ) : (
+                                matches.map((m) => (
+                                  <button
+                                    type="button"
+                                    key={m.id}
+                                    className={`purchase-line-option ${m.id === ln.itemId ? 'is-selected' : ''}`}
+                                    onMouseDown={(e) => { e.preventDefault(); pickItemForLine(idx, m); }}
+                                  >
+                                    <span className="opt-name">
+                                      {m.code && <span className="opt-code">[{m.code}]</span>}
+                                      {m.name}{m.spec ? ` (${m.spec})` : ''}
+                                    </span>
+                                    {m.standardPrice > 0 && (
+                                      <span className="opt-price">{Number(m.standardPrice).toLocaleString()}원</span>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td data-label="메이커">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={master?.maker || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="규격">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={master?.spec || ln.spec || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="분류">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={master?.category || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="인증">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={master?.certification || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="moq/단위">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={master?.unit || ln.unit || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="수량">
+                        <input
+                          className="num-input"
+                          type="number" min="0"
+                          value={ln.qty}
+                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                          disabled={isReadOnly}
+                        />
+                      </td>
+                      <td data-label="단가">
+                        <input
+                          className="num-input"
+                          type="number" min="0"
+                          value={ln.unitPrice}
+                          onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                          disabled={isReadOnly}
+                        />
+                      </td>
+                      <td data-label="합계">
+                        <input
+                          type="text"
+                          className="bom-readonly-input bom-amount-input"
+                          value={amount ? amount.toLocaleString() : ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="비고">
+                        <input
+                          type="text"
+                          value={ln.note || ''}
+                          placeholder="-"
+                          onChange={(e) => updateLine(idx, { note: e.target.value })}
+                          disabled={isReadOnly}
+                        />
+                      </td>
+                      <td data-label="입고">
+                        <div className="purchase-line-recv">
+                          {!isLineSaved ? (
+                            <span className="purchase-line-recv-hint">저장 후 입고</span>
+                          ) : isFullyReceived ? (
+                            <button
+                              type="button"
+                              className={`purchase-recv-chip is-full ${isReadOnly ? 'is-readonly' : ''}`}
+                              onClick={() => !isReadOnly && openReceive(idx)}
+                              title={isReadOnly ? '정산 완료' : '입고 수정'}
+                              disabled={isReadOnly}
+                            >
+                              <span className="purchase-recv-chip-qty">완료 {receivedQty}/{savedQty}</span>
+                              <span className="purchase-recv-chip-date">{fmtDate(savedLine.receivedAt)}</span>
+                            </button>
+                          ) : isPartial ? (
+                            <button
+                              type="button"
+                              className={`purchase-recv-chip is-partial ${isReadOnly ? 'is-readonly' : ''}`}
+                              onClick={() => !isReadOnly && openReceive(idx)}
+                              title={isReadOnly ? '정산 완료' : '입고 추가/수정'}
+                              disabled={isReadOnly}
+                            >
+                              <span className="purchase-recv-chip-qty">부분 {receivedQty}/{savedQty}</span>
+                              <span className="purchase-recv-chip-date">{fmtDate(savedLine.receivedAt)}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline purchase-recv-btn"
+                              onClick={() => openReceive(idx)}
+                              disabled={isReadOnly || savedQty <= 0}
+                              title={savedQty <= 0 ? '수량을 먼저 입력하세요' : ''}
+                            >
+                              입고
+                            </button>
+                          )}
+                          {isLineSaved && receivedQty > 0 && !isReadOnly && (
+                            <button
+                              type="button"
+                              className="purchase-recv-clear"
+                              onClick={() => clearLineReceive(idx)}
+                              aria-label="입고 취소"
+                              title="입고 기록 취소"
+                            >↺</button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="bom-action-col">
                         <button
                           type="button"
-                          key={m.id}
-                          className={`purchase-line-option ${m.id === ln.itemId ? 'is-selected' : ''}`}
-                          onMouseDown={(e) => { e.preventDefault(); pickItemForLine(idx, m); }}
-                        >
-                          <span className="opt-name">
-                            {m.code && <span className="opt-code">[{m.code}]</span>}
-                            {m.name}{m.spec ? ` (${m.spec})` : ''}
-                          </span>
-                          {m.standardPrice > 0 && (
-                            <span className="opt-price">{Number(m.standardPrice).toLocaleString()}원</span>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-              <input
-                className="purchase-line-qty num-input"
-                type="number" min="0" placeholder="수량"
-                value={ln.qty}
-                onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                disabled={isReadOnly}
-              />
-              <input
-                className="purchase-line-price num-input"
-                type="number" min="0" placeholder="단가"
-                value={ln.unitPrice}
-                onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                disabled={isReadOnly}
-              />
-              <span className="purchase-line-amount">
-                {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
-              </span>
-              <div className="purchase-line-recv">
-                {!isLineSaved ? (
-                  <span className="purchase-line-recv-hint">저장 후 입고</span>
-                ) : isFullyReceived ? (
-                  <button
-                    type="button"
-                    className={`purchase-recv-chip is-full ${isReadOnly ? 'is-readonly' : ''}`}
-                    onClick={() => !isReadOnly && openReceive(idx)}
-                    title={isReadOnly ? '정산 완료' : '입고 수정'}
-                    disabled={isReadOnly}
-                  >
-                    <span className="purchase-recv-chip-qty">완료 {receivedQty}/{savedQty}</span>
-                    <span className="purchase-recv-chip-date">{fmtDate(savedLine.receivedAt)}</span>
-                  </button>
-                ) : isPartial ? (
-                  <button
-                    type="button"
-                    className={`purchase-recv-chip is-partial ${isReadOnly ? 'is-readonly' : ''}`}
-                    onClick={() => !isReadOnly && openReceive(idx)}
-                    title={isReadOnly ? '정산 완료' : '입고 추가/수정'}
-                    disabled={isReadOnly}
-                  >
-                    <span className="purchase-recv-chip-qty">부분 {receivedQty}/{savedQty}</span>
-                    <span className="purchase-recv-chip-date">{fmtDate(savedLine.receivedAt)}</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline purchase-recv-btn"
-                    onClick={() => openReceive(idx)}
-                    disabled={isReadOnly || savedQty <= 0}
-                    title={savedQty <= 0 ? '수량을 먼저 입력하세요' : ''}
-                  >
-                    입고
-                  </button>
-                )}
-                {isLineSaved && receivedQty > 0 && !isReadOnly && (
-                  <button
-                    type="button"
-                    className="purchase-recv-clear"
-                    onClick={() => clearLineReceive(idx)}
-                    aria-label="입고 취소"
-                    title="입고 기록 취소"
-                  >↺</button>
-                )}
-              </div>
-              <button
-                type="button"
-                className="purchase-line-del"
-                onClick={() => removeLine(idx)}
-                aria-label="행 삭제"
-                disabled={isReadOnly}
-              >✕</button>
-            </div>
-          );
-        })}
+                          className="closing-delete"
+                          onClick={() => removeLine(idx)}
+                          aria-label="행 삭제"
+                          disabled={isReadOnly}
+                          title="삭제"
+                        >✕</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
         {!isReadOnly && (
           <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
             + 품목 추가
