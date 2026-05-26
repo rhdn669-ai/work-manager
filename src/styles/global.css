@@ -11001,6 +11001,13 @@ tr.is-newly-added > td {
   width: 90px;
   padding-right: 8px !important;
 }
+/* 2개 버튼이 들어가는 작업 컬럼 — 줄바꿈 없이 한 줄에 배치 */
+.supplier-management-page .bom-project-action-col {
+  width: 140px;
+}
+.supplier-management-page .bom-project-action-col .btn-group {
+  flex-wrap: nowrap;
+}
 @media (max-width: 768px) {
   table.cards-sm .bom-project-action-col {
     position: absolute;
