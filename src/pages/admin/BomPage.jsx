@@ -84,7 +84,7 @@ export default function BomPage() {
           <thead>
             <tr>
               <th>프로젝트명</th>
-              <th>작업</th>
+              <th className="bom-project-action-col">작업</th>
             </tr>
           </thead>
           <tbody>
@@ -95,7 +95,7 @@ export default function BomPage() {
                 onClick={() => navigate(`/admin/purchase/bom/${p.id}`)}
               >
                 <td data-label="프로젝트명"><strong>{p.name}</strong></td>
-                <td>
+                <td className="bom-project-action-col">
                   <button
                     className="btn btn-sm btn-danger"
                     onClick={(e) => handleDeleteProject(e, p)}

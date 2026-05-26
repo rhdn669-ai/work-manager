@@ -19,6 +19,29 @@ const STATUS = {
 
 const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0 };
 
+// 자사 정보 (IOPN_v4 양식 기준 — 발주서 PDF 상단 자사 박스에 표시)
+const SELF_INFO = {
+  companyAndCeo: '(주)아이오피엔 / 이종현',
+  businessNumber: '222-81-36621',
+  address: '충남 천안시 서북구 성환읍 율금1길 8-15',
+  telFax: '041-415-0766 / 041-415-0767',
+  email: 'iopn2024@naver.com',
+  contact: '손성욱 / 010-7704-0331',
+};
+const PO_DEFAULTS = {
+  validity: '협의',
+  payment: '납품완료후 익월말',
+  delivery: '긴급',
+};
+const PRINT_ROWS = 15; // 양식 표 빈 행 포함 총 행수 (A4 세로 한 페이지 기준)
+function poNumber(purchase) {
+  const d = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate() : (purchase.orderedAt ? new Date(purchase.orderedAt) : new Date(purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `IOPN${yyyy}${mm}${dd}`;
+}
+
 function fmtDate(ts) {
   if (!ts) return '-';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -378,8 +401,8 @@ export default function PurchaseDetailPage() {
   })();
 
   return (
-    <div className="purchase-detail-page">
-      <div className="page-header">
+    <div className="purchase-detail-page printable-page">
+      <div className="page-header screen-only">
         <div className="purchase-detail-header-left">
           <Link to="/admin/purchase" className="purchase-back-link">← 목록</Link>
           <h2>{purchase.title || '(제목 없음)'}</h2>
@@ -389,8 +412,148 @@ export default function PurchaseDetailPage() {
         </div>
       </div>
 
-      <div className="purchase-meta-bar">
+      <button
+        type="button"
+        className="pdf-print-fab no-print"
+        onClick={() => window.print()}
+        title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
+      >
+        PDF 출력
+      </button>
+
+      {/* 인쇄 전용 IOPN_v4 발주서 양식 */}
+      {(() => {
+        const supplier = suppliers.find((s) => s.id === purchase.supplierId);
+        const site = sites.find((s) => s.id === purchase.siteId);
+        const supplyAmount = form.items.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0);
+        const totalQty = form.items.reduce((s, ln) => s + (Number(ln.qty) || 0), 0);
+        const vat = Math.round(supplyAmount * 0.1);
+        const grandTotal = supplyAmount + vat;
+        const orderDate = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate()
+          : (purchase.orderedAt ? new Date(purchase.orderedAt)
+            : (purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
+        const orderDateKo = `${orderDate.getFullYear()}년 ${orderDate.getMonth() + 1}월 ${orderDate.getDate()}일`;
+        const rows = [...form.items];
+        while (rows.length < PRINT_ROWS) rows.push(null);
+        const supplierTitle = supplier?.name ? `${supplier.name} 귀하` : (derivedSupplier ? `${derivedSupplier} 귀하` : '');
+        return (
+          <div className="print-form-iopn print-only">
+            <div className="print-form-title">구 매 발 주 서</div>
+
+            <table className="iopn-info-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">수 신</th>
+                  <td className="val">{supplierTitle}</td>
+                  <th className="lbl">사업자등록번호</th>
+                  <td className="val">{SELF_INFO.businessNumber}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">현 장 명</th>
+                  <td className="val">{site?.name || purchase.siteName || ''}</td>
+                  <th className="lbl">회사명/대표</th>
+                  <td className="val">{SELF_INFO.companyAndCeo}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">납품장소</th>
+                  <td className="val">{purchase.deliveryPlace || SELF_INFO.address}</td>
+                  <th className="lbl">주 소</th>
+                  <td className="val">{SELF_INFO.address}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">발행번호</th>
+                  <td className="val">{poNumber(purchase)}</td>
+                  <th className="lbl">TEL/FAX</th>
+                  <td className="val">{SELF_INFO.telFax}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">발 주 일</th>
+                  <td className="val">{orderDateKo}</td>
+                  <th className="lbl">납품기일</th>
+                  <td className="val">{purchase.deliveryDue || PO_DEFAULTS.delivery}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">지불조건</th>
+                  <td className="val">{purchase.payment || PO_DEFAULTS.payment}</td>
+                  <th className="lbl">담당/연락처</th>
+                  <td className="val">{purchase.requesterName || ''}</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="iopn-amount-row">
+                    금 액 : ₩ {supplyAmount.toLocaleString()}원 / VAT 별도
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table className="iopn-items-table">
+              <thead>
+                <tr>
+                  <th className="c-no">NO</th>
+                  <th className="c-name">품목명</th>
+                  <th className="c-spec">규격</th>
+                  <th className="c-unit">단위</th>
+                  <th className="c-qty">수량</th>
+                  <th className="c-price">단가</th>
+                  <th className="c-amount">금액</th>
+                  <th className="c-note">비고</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((ln, idx) => {
+                  if (!ln) return (
+                    <tr key={`empty-${idx}`}>
+                      <td className="c-no">{idx + 1}</td>
+                      <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>
+                  );
+                  const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                  return (
+                    <tr key={idx}>
+                      <td className="c-no">{idx + 1}</td>
+                      <td className="c-name">{ln.name || ''}</td>
+                      <td className="c-spec">{ln.spec || ''}</td>
+                      <td className="c-unit">{ln.unit || ''}</td>
+                      <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
+                      <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
+                      <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
+                      <td className="c-note">{ln.note || ''}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <table className="iopn-notes-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">특이사항</th>
+                  <td className="val">{form.note || ''}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table className="iopn-total-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">수량</th>
+                  <td className="num">{totalQty.toLocaleString()}</td>
+                  <th className="lbl">공급가액</th>
+                  <td className="num">{supplyAmount.toLocaleString()}</td>
+                  <th className="lbl">VAT</th>
+                  <td className="num">{vat.toLocaleString()}</td>
+                  <th className="lbl">합계</th>
+                  <td className="num grand">{grandTotal.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
+
+      <div className="purchase-meta-bar screen-only">
         <div className="purchase-meta-items">
+          <span><em>프로젝트</em>{purchase.siteName || '-'}</span>
           <span><em>등록자</em>{purchase.requesterName || '-'}</span>
           <span><em>발주일</em>{fmtDate(purchase.orderedAt || purchase.createdAt)}</span>
           <span><em>구매처</em>{derivedSupplier || <span className="text-muted">자동 (품목 미선택)</span>}</span>
@@ -403,31 +566,7 @@ export default function PurchaseDetailPage() {
         </div>
       </div>
 
-      <div className="form-group">
-        <label>제목 *</label>
-        <input
-          type="text"
-          value={form.title}
-          onChange={(e) => patchForm({ title: e.target.value })}
-          disabled={isReadOnly}
-        />
-      </div>
-
-      <div className="form-group">
-        <label>프로젝트 *</label>
-        <select
-          value={form.siteId}
-          onChange={(e) => patchForm({ siteId: e.target.value })}
-          disabled={isReadOnly}
-        >
-          <option value="">선택</option>
-          {sites.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="form-group">
+      <div className="form-group screen-only">
         <label>품목</label>
         <p className="field-hint">품명 칸에서 검색해 선택하면 코드·메이커·규격·분류·인증·moq/단위가 자동 채워집니다. 없는 품목은 품명을 직접 입력하면 저장 시 자동 등록됩니다. 구매처는 첫 품목의 기본 구매처로 자동 적용.</p>
         <div className="item-group is-expanded bom-flat-group">
@@ -447,8 +586,8 @@ export default function PurchaseDetailPage() {
                   <th>단가</th>
                   <th>합계</th>
                   <th style={{ minWidth: 160 }}>비고</th>
-                  <th style={{ minWidth: 160 }}>입고</th>
-                  <th className="bom-action-col" aria-hidden="true"></th>
+                  <th style={{ minWidth: 160 }} className="no-print">입고</th>
+                  <th className="bom-action-col no-print" aria-hidden="true"></th>
                 </tr>
               </thead>
               <tbody>
@@ -609,7 +748,7 @@ export default function PurchaseDetailPage() {
                           disabled={isReadOnly}
                         />
                       </td>
-                      <td data-label="입고">
+                      <td data-label="입고" className="no-print">
                         <div className="purchase-line-recv">
                           {!isLineSaved ? (
                             <span className="purchase-line-recv-hint">저장 후 입고</span>
@@ -657,7 +796,7 @@ export default function PurchaseDetailPage() {
                           )}
                         </div>
                       </td>
-                      <td className="bom-action-col">
+                      <td className="bom-action-col no-print">
                         <button
                           type="button"
                           className="closing-delete"
@@ -675,18 +814,19 @@ export default function PurchaseDetailPage() {
           </div>
         </div>
         {!isReadOnly && (
-          <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
+          <button type="button" className="btn btn-sm btn-outline purchase-add-line no-print" onClick={addLine}>
             + 품목 추가
           </button>
         )}
       </div>
 
-      <div className="purchase-total-row">
+      <div className="purchase-total-row screen-only">
         <span>합계</span>
         <strong>{formTotal.toLocaleString()}원</strong>
       </div>
 
-      <div className="form-group">
+
+      <div className="form-group screen-only">
         <label>메모</label>
         <textarea
           value={form.note}
@@ -697,13 +837,13 @@ export default function PurchaseDetailPage() {
       </div>
 
       {purchase.receiveNote && (
-        <div className="form-group">
+        <div className="form-group screen-only">
           <label>검수 메모</label>
           <p className="purchase-readonly-text">{purchase.receiveNote}</p>
         </div>
       )}
 
-      <div className="purchase-detail-actions">
+      <div className="purchase-detail-actions no-print">
         {!isReadOnly && (
           <button
             type="button"

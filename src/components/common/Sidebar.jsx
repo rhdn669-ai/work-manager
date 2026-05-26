@@ -33,6 +33,7 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite }) {
     { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', show: isAdmin },
     { key: 'admin-purchase', to: '/admin/purchase', label: '구매 · 발주 현황', show: isAdmin, end: true },
     { key: 'admin-purchase-suppliers', to: '/admin/purchase/suppliers', label: '구매처 관리', show: isAdmin },
+    { key: 'admin-purchase-quotes', to: '/admin/purchase/quotes', label: '견적서 관리', show: isAdmin },
     { key: 'admin-purchase-items', to: '/admin/purchase/items', label: '구매 품목 관리', show: isAdmin },
     { key: 'admin-purchase-bom', to: '/admin/purchase/bom', label: '프로젝트별 BOM', show: isAdmin },
   ];

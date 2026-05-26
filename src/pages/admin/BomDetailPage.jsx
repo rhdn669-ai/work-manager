@@ -175,8 +175,8 @@ export default function BomDetailPage() {
   if (loading || !project) return <div className="loading">로딩 중...</div>;
 
   return (
-    <div className="bom-page">
-      <div className="page-header">
+    <div className="bom-page printable-page">
+      <div className="page-header screen-only">
         <div className="purchase-detail-header-left">
           <Link to="/admin/purchase/bom" className="purchase-back-link">← 프로젝트 목록</Link>
           <h2>{project.name}</h2>
@@ -186,7 +186,143 @@ export default function BomDetailPage() {
         </div>
       </div>
 
-      <div className="purchase-filters bom-filters">
+      <button
+        type="button"
+        className="pdf-print-fab no-print"
+        onClick={() => window.print()}
+        title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
+      >
+        PDF 출력
+      </button>
+
+      {/* 인쇄 전용 IOPN_v4 양식 (자재 명세서) */}
+      {(() => {
+        const today = new Date();
+        const docNo = `BOM${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        const todayKo = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+        const totalQty = rows.reduce((s, it) => s + (Number(it.qty) || 0), 0);
+        const PRINT_ROWS = 15;
+        const printRows = [...rows];
+        while (printRows.length < PRINT_ROWS) printRows.push(null);
+        const supplyAmount = total;
+        const vat = Math.round(supplyAmount * 0.1);
+        const grandTotal = supplyAmount + vat;
+        return (
+          <div className="print-form-iopn print-only">
+            <div className="print-form-title">B O M  리 스 트</div>
+
+            <table className="iopn-info-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">프로젝트명</th>
+                  <td className="val">{project.name || ''}</td>
+                  <th className="lbl">사업자등록번호</th>
+                  <td className="val">222-81-36621</td>
+                </tr>
+                <tr>
+                  <th className="lbl">문서번호</th>
+                  <td className="val">{docNo}</td>
+                  <th className="lbl">회사명/대표</th>
+                  <td className="val">(주)아이오피엔 / 이종현</td>
+                </tr>
+                <tr>
+                  <th className="lbl">작 성 일</th>
+                  <td className="val">{todayKo}</td>
+                  <th className="lbl">주 소</th>
+                  <td className="val">충남 천안시 서북구 성환읍 율금1길 8-15</td>
+                </tr>
+                <tr>
+                  <th className="lbl">항목 수</th>
+                  <td className="val">{bomItems.length}건</td>
+                  <th className="lbl">TEL/FAX</th>
+                  <td className="val">041-415-0766 / 041-415-0767</td>
+                </tr>
+                <tr>
+                  <th className="lbl">문서 종류</th>
+                  <td className="val">BOM 리스트</td>
+                  <th className="lbl">E-Mail</th>
+                  <td className="val">iopn2024@naver.com</td>
+                </tr>
+                <tr>
+                  <th className="lbl">용 도</th>
+                  <td className="val">자재 산출 / 견적</td>
+                  <th className="lbl">담당/연락처</th>
+                  <td className="val">손성욱 / 010-7704-0331</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="iopn-amount-row">
+                    예상 금액 : ₩ {supplyAmount.toLocaleString()}원 / VAT 별도
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table className="iopn-items-table">
+              <thead>
+                <tr>
+                  <th className="c-no">NO</th>
+                  <th className="c-name">품목명</th>
+                  <th className="c-spec">규격</th>
+                  <th className="c-unit">단위</th>
+                  <th className="c-qty">수량</th>
+                  <th className="c-price">단가</th>
+                  <th className="c-amount">금액</th>
+                  <th className="c-note">비고</th>
+                </tr>
+              </thead>
+              <tbody>
+                {printRows.map((it, idx) => {
+                  if (!it) return (
+                    <tr key={`empty-${idx}`}>
+                      <td className="c-no">{idx + 1}</td>
+                      <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>
+                  );
+                  const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+                  return (
+                    <tr key={idx}>
+                      <td className="c-no">{idx + 1}</td>
+                      <td className="c-name">{it.name || ''}</td>
+                      <td className="c-spec">{it.spec || ''}</td>
+                      <td className="c-unit">{it.unit || ''}</td>
+                      <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
+                      <td className="c-price">{Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}</td>
+                      <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
+                      <td className="c-note">{it.note || ''}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <table className="iopn-notes-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">특이사항</th>
+                  <td className="val"></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table className="iopn-total-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">수량</th>
+                  <td className="num">{totalQty.toLocaleString()}</td>
+                  <th className="lbl">공급가액</th>
+                  <td className="num">{supplyAmount.toLocaleString()}</td>
+                  <th className="lbl">VAT</th>
+                  <td className="num">{vat.toLocaleString()}</td>
+                  <th className="lbl">합계</th>
+                  <td className="num grand">{grandTotal.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
+
+      <div className="purchase-filters bom-filters no-print">
         <input
           type="text"
           className="purchase-filter-search"
@@ -223,7 +359,7 @@ export default function BomDetailPage() {
                   <th>단가</th>
                   <th>합계</th>
                   <th style={{ minWidth: 160 }}>비고</th>
-                  <th className="bom-action-col" aria-hidden="true"></th>
+                  <th className="bom-action-col no-print" aria-hidden="true"></th>
                 </tr>
               </thead>
               <tbody>
@@ -322,7 +458,7 @@ export default function BomDetailPage() {
                           onBlur={() => flushItem(it.id)}
                         />
                       </td>
-                      <td className="bom-action-col">
+                      <td className="bom-action-col no-print">
                         <button
                           type="button"
                           className="closing-delete"

@@ -128,13 +128,24 @@ export default function PurchaseListPage() {
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
-    <div className="purchase-list-page">
+    <div className="purchase-list-page printable-page">
       <div className="page-header">
         <h2>구매 · 발주 현황</h2>
-        <button className="btn btn-primary" onClick={openCreate}>구매 등록</button>
+        <div className="page-actions no-print">
+          <button className="btn btn-primary" onClick={openCreate}>구매 등록</button>
+        </div>
       </div>
 
-      <div className="tab-nav closing-tab-nav">
+      <button
+        type="button"
+        className="pdf-print-fab no-print"
+        onClick={() => window.print()}
+        title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
+      >
+        PDF 출력
+      </button>
+
+      <div className="tab-nav closing-tab-nav no-print">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -150,10 +161,10 @@ export default function PurchaseListPage() {
         ))}
       </div>
 
-      <div className="purchase-search-row">
+      <div className="purchase-filters no-print">
         <input
           type="text"
-          className="purchase-search-input"
+          className="purchase-filter-search"
           placeholder="제목 · 구매처 · 프로젝트 · 등록자 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

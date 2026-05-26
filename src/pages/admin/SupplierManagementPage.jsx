@@ -17,9 +17,7 @@ export default function SupplierManagementPage() {
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     try {
@@ -91,9 +89,10 @@ export default function SupplierManagementPage() {
         <button className="btn btn-primary" onClick={openCreate}>구매처 추가</button>
       </div>
 
-      <div className="form-group" style={{ maxWidth: 320 }}>
+      <div className="purchase-filters">
         <input
           type="text"
+          className="purchase-filter-search"
           placeholder="상호 · 대표 · 연락처 · 분류 · 비고 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -101,20 +100,16 @@ export default function SupplierManagementPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-muted text-sm" style={{ padding: '12px 0' }}>
+        <p className="purchase-empty">
           {suppliers.length === 0 ? '등록된 구매처가 없습니다.' : '검색 결과가 없습니다.'}
         </p>
       ) : (
         <table className="table cards-sm">
           <thead>
             <tr>
-              <th>상호</th>
-              <th>대표</th>
-              <th>연락처</th>
-              <th>사업자번호</th>
-              <th>분류</th>
-              <th>비고</th>
-              <th>작업</th>
+              <th>상호</th><th>대표</th><th>연락처</th><th>사업자번호</th>
+              <th>분류</th><th>비고</th>
+              <th className="bom-project-action-col">작업</th>
             </tr>
           </thead>
           <tbody>
@@ -126,7 +121,7 @@ export default function SupplierManagementPage() {
                 <td data-label="사업자번호">{s.businessNumber || '-'}</td>
                 <td data-label="분류">{s.category || '-'}</td>
                 <td data-label="비고" className="supplier-note-cell">{s.note || '-'}</td>
-                <td>
+                <td className="bom-project-action-col">
                   <div className="btn-group">
                     <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>수정</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>삭제</button>
