@@ -21,7 +21,7 @@ export default function BomDetailPage() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
-  const [picked, setPicked] = useState(new Set());
+  const [picked, setPicked] = useState(new Map()); // itemId -> 수량
 
   useEffect(() => {
     (async () => {
@@ -116,15 +116,25 @@ export default function BomDetailPage() {
   }
 
   function openPicker() {
-    setPicked(new Set());
+    setPicked(new Map());
     setPickerSearch('');
     setPickerOpen(true);
   }
 
   function togglePick(itemId) {
     setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      const next = new Map(prev);
+      if (next.has(itemId)) next.delete(itemId); else next.set(itemId, 1); // 체크 시 기본 수량 1
+      return next;
+    });
+  }
+
+  // 선택한 품목의 수량 입력값 변경
+  function setPickQty(itemId, value) {
+    setPicked((prev) => {
+      if (!prev.has(itemId)) return prev;
+      const next = new Map(prev);
+      next.set(itemId, value);
       return next;
     });
   }
@@ -147,7 +157,7 @@ export default function BomDetailPage() {
     let nextOrder = bomItems.length === 0
       ? 1 : Math.max(...bomItems.map((b) => Number(b.order) || 0)) + 1;
     const added = [];
-    for (const itemId of picked) {
+    for (const [itemId, qtyInput] of picked) {
       const m = masterMap[itemId];
       if (!m) continue;
       const data = {
@@ -155,7 +165,7 @@ export default function BomDetailPage() {
         name: m.name || '',
         spec: m.spec || '',
         unit: m.unit || '',
-        qty: 0,
+        qty: Number(qtyInput) || 0,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
         order: nextOrder++,
@@ -509,6 +519,22 @@ export default function BomDetailPage() {
                 </span>
                 {m.standardPrice > 0 && (
                   <span className="bom-picker-price">{Number(m.standardPrice).toLocaleString()}원</span>
+                )}
+                {picked.has(m.id) && (
+                  <span
+                    className="bom-picker-qty-wrap"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  >
+                    <input
+                      type="number"
+                      min="0"
+                      className="num-input bom-picker-qty"
+                      value={picked.get(m.id)}
+                      onChange={(e) => setPickQty(m.id, e.target.value)}
+                      aria-label={`${m.name} 수량`}
+                    />
+                    <span className="bom-picker-qty-unit">{m.unit || '개'}</span>
+                  </span>
                 )}
               </label>
             ))

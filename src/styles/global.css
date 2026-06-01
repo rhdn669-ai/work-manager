@@ -3401,6 +3401,32 @@ body {
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
+/* 품목 선택 시 수량 입력 */
+.bom-picker-qty-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.bom-picker-qty {
+  width: 64px;
+  height: 34px;
+  text-align: right;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  font-size: var(--font-md);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-card);
+  -moz-appearance: textfield;
+}
+.bom-picker-qty:focus { outline: none; box-shadow: var(--ring-primary); }
+.bom-picker-qty-unit {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 18px;
+}
 
 /* 다중 선택 드롭다운 */
 .multi-select {
