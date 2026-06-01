@@ -30,6 +30,7 @@ import BomPage from './pages/admin/BomPage';
 import BomDetailPage from './pages/admin/BomDetailPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
+import FileLibraryPage from './pages/library/FileLibraryPage';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
           { path: '/sites', element: <SiteListPage /> },
           { path: '/sites/:siteId/:year/:month', element: <SiteClosingPage /> },
           { path: '/manage/team', element: <ManageTeamPage /> },
+          { path: '/library', element: <FileLibraryPage /> },
         ],
       },
     ],

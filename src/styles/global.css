@@ -11398,3 +11398,150 @@ tr.is-newly-added > td {
     height: 18mm;
   }
 }
+
+/* ============================================================
+   자료실 (사내 파일 공유) — 폴더 리스트형 레이아웃
+   ============================================================ */
+.library-page { max-width: 960px; margin: 0 auto; }
+
+/* 업로드 진행률 */
+.library-uploads {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.library-upload-row { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-sm); }
+.library-upload-name {
+  flex: 0 0 38%; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; color: var(--text-light);
+}
+.library-upload-bar { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.library-upload-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width 0.2s; }
+.library-upload-pct { flex: 0 0 38px; text-align: right; color: var(--text-muted); }
+
+/* 2단 레이아웃 (PC) */
+.library-layout {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+/* 왼쪽: 폴더 리스트 */
+.library-sidebar {
+  flex: 0 0 240px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+.library-sidebar-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--font-sm); font-weight: 700; color: var(--text-muted);
+  padding: 0 var(--space-2) var(--space-2);
+}
+.library-edit-toggle {
+  border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+  border-radius: 99px; padding: 3px 10px; font-size: var(--font-xs); font-weight: 600; cursor: pointer;
+}
+.library-edit-toggle.active { border-color: var(--primary); color: var(--primary-hover); background: var(--primary-soft); }
+
+.library-folder-list { list-style: none; margin: 0; padding: 0; }
+.library-folder-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 10px var(--space-2); border-radius: var(--radius-sm);
+  cursor: pointer; transition: background 0.12s; user-select: none;
+}
+.library-folder-item:hover { background: var(--bg-subtle); }
+.library-folder-item.active { background: var(--primary-soft); }
+.library-folder-item.active .lf-name { color: var(--primary-hover); font-weight: 700; }
+.lf-icon { font-size: 17px; line-height: 1; flex-shrink: 0; }
+.lf-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--font-md); color: var(--text);
+}
+.lf-count {
+  flex-shrink: 0; font-size: var(--font-xs); color: var(--text-muted);
+  background: var(--bg-subtle); border-radius: 99px; padding: 1px 8px; min-width: 22px; text-align: center;
+}
+.lf-del {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; border: none;
+  background: #fef2f2; color: var(--danger); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.lf-del:hover { background: var(--danger); color: #fff; }
+.library-add-folder {
+  width: 100%; margin-top: var(--space-2); padding: 9px;
+  border: 1px dashed var(--border-strong); background: transparent; color: var(--text-light);
+  border-radius: var(--radius-sm); font-size: var(--font-sm); font-weight: 600; cursor: pointer;
+}
+.library-add-folder:hover { border-color: var(--primary); color: var(--primary-hover); background: var(--primary-softer); }
+
+/* 오른쪽: 파일 영역 */
+.library-main { flex: 1; min-width: 0; }
+.library-main-head {
+  display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3);
+}
+.library-main-title { margin: 0; font-size: var(--font-lg); font-weight: 700; color: var(--text); }
+.library-main-count { font-size: var(--font-sm); color: var(--text-muted); }
+.library-back-btn { display: none; }
+
+.library-search { margin-bottom: var(--space-3); }
+.library-search input {
+  width: 100%; height: var(--btn-h-md); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0 var(--space-3); font-size: var(--font-md); background: var(--bg-card);
+}
+.library-search input:focus { outline: none; border-color: var(--primary); box-shadow: var(--ring-primary); }
+
+.library-dropzone { border: 2px dashed transparent; border-radius: var(--radius-md); transition: all 0.15s; min-height: 120px; }
+.library-dropzone.drag-over { border-color: var(--primary); background: var(--primary-softer); }
+.library-empty {
+  text-align: center; color: var(--text-muted); font-size: var(--font-md);
+  padding: var(--space-8) var(--space-4); line-height: 1.7; white-space: pre-line;
+}
+
+.library-file-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.library-file-card {
+  display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: var(--space-3); box-shadow: var(--shadow-sm); transition: box-shadow 0.15s, border-color 0.15s;
+}
+.library-file-card:hover { box-shadow: var(--shadow); border-color: var(--border-strong); }
+.library-file-icon { font-size: 26px; flex-shrink: 0; line-height: 1; }
+.library-file-info { flex: 1; min-width: 0; }
+.library-file-name {
+  display: block; font-weight: 600; color: var(--text); font-size: var(--font-md);
+  text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.library-file-name:hover { color: var(--primary-hover); text-decoration: underline; }
+.library-file-meta {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px;
+  font-size: var(--font-sm); color: var(--text-muted);
+}
+.library-file-meta .dot { opacity: 0.5; }
+.library-file-actions { display: flex; gap: var(--space-1); flex-shrink: 0; }
+.library-file-btn {
+  width: 34px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--bg-card); display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; text-decoration: none; color: var(--text-light); transition: all 0.15s;
+}
+.library-file-btn.download:hover { border-color: var(--primary); color: var(--primary-hover); background: var(--primary-soft); }
+.library-file-btn.delete:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
+
+/* 모바일 (아이폰·갤럭시·폴더블) — 폴더목록 ↔ 파일목록 전환 */
+@media (max-width: 720px) {
+  .library-page { max-width: 100%; }
+  .library-layout { display: block; }
+  .library-sidebar { flex: none; width: 100%; }
+  .library-main { display: none; margin-top: var(--space-3); }
+  .library-layout.mobile-files-open .library-sidebar { display: none; }
+  .library-layout.mobile-files-open .library-main { display: block; }
+  .library-back-btn {
+    display: inline-flex; align-items: center;
+    border: 1px solid var(--border); background: var(--bg-card); color: var(--text-light);
+    border-radius: var(--radius-sm); padding: 6px 12px; font-size: var(--font-sm); font-weight: 600; cursor: pointer;
+  }
+  .library-folder-item { padding: 13px var(--space-2); }
+  .library-file-icon { font-size: 22px; }
+  .library-file-btn { width: 38px; height: 38px; }
+  .library-upload-name { flex-basis: 34%; }
+}

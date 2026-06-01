@@ -16,6 +16,7 @@ const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 function buildAllItems({ isAdmin, canApproveLeave, canCreateSite }) {
   return [
     { key: 'home', to: '/dashboard', label: '홈', show: true, end: false },
+    { key: 'library', to: '/library', label: '자료실', show: true, end: true },
     { key: 'admin-users', to: '/admin/users', label: '직원 관리', show: isAdmin },
     { key: 'admin-reports', to: '/admin/reports', label: '잔업 · 연차', show: isAdmin },
     { key: 'admin-leaves', to: '/admin/leaves', label: '연차/잔업 신청 목록', show: isAdmin },
