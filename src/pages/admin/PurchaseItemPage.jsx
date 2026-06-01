@@ -145,6 +145,8 @@ export default function PurchaseItemPage() {
     return [...set].sort();
   }, [items]);
 
+  const hasActiveFilter = !!(search.trim() || filterCategory || filterSupplier);
+
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     const result = items.filter((it) => {
@@ -453,11 +455,13 @@ export default function PurchaseItemPage() {
       ) : (
         <div className="item-group-list">
           {groups.map(([groupKey, groupItems]) => {
-            const isExpanded = expandedGroups.has(groupKey);
+            // 필터(검색·분류·구매처) 활성화 시 매칭된 그룹은 자동 펼침
+            const isExpanded = hasActiveFilter || expandedGroups.has(groupKey);
             const repItem = repItemForGroup(groupItems);
             const repName = repItem?.name || '';
             const repCode = repItem?.code || '';
-            const subItems = repItem
+            // 필터 활성화 시 매칭 항목 누락 없이 모두 행으로 표시 (rep도 포함)
+            const subItems = (repItem && !hasActiveFilter)
               ? groupItems.filter((it) => it.id !== repItem.id)
               : groupItems;
             return (
