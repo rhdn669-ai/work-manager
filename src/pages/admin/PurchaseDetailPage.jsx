@@ -6,6 +6,7 @@ import {
   getSuppliers, getPurchaseItems, addPurchaseItem, nextItemCode,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
+import { getBomProjects, getBomBySite } from '../../services/bomService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
@@ -94,6 +95,12 @@ export default function PurchaseDetailPage() {
   const [receiveForm, setReceiveForm] = useState({ qty: '', date: todayStr(), note: '' });
   const [bulkModal, setBulkModal] = useState(null); // { mode: 'remaining' | 'close-as-is' } | null
   const [bulkForm, setBulkForm] = useState({ date: todayStr(), note: '' });
+
+  // BOM 가져오기
+  const [bomModalOpen, setBomModalOpen] = useState(false);
+  const [bomProjects, setBomProjects] = useState([]);
+  const [bomLoading, setBomLoading] = useState(false);
+  const [bomImporting, setBomImporting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -198,6 +205,60 @@ export default function PurchaseDetailPage() {
       items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items,
     }));
     setDirty(true);
+  }
+
+  // BOM 가져오기 모달 열기 (프로젝트 목록 지연 로드)
+  async function openBomModal() {
+    setBomModalOpen(true);
+    if (bomProjects.length === 0) {
+      setBomLoading(true);
+      try {
+        const projs = await getBomProjects();
+        setBomProjects(projs);
+      } catch (err) {
+        alert('BOM 목록 불러오기 오류: ' + err.message);
+      } finally {
+        setBomLoading(false);
+      }
+    }
+  }
+
+  // 선택한 BOM의 품목을 발주 라인으로 불러오기 (수량·단가는 그대로, 이후 수정 가능)
+  async function importBom(bp) {
+    setBomImporting(true);
+    try {
+      const items = await getBomBySite(bp.id);
+      if (!items || items.length === 0) {
+        alert('해당 BOM에 품목이 없습니다.');
+        return;
+      }
+      const newLines = [...items]
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+        .map((b) => {
+          const m = b.itemId ? itemMaster.find((x) => x.id === b.itemId) : null;
+          return {
+            ...EMPTY_LINE,
+            itemId: b.itemId || '',
+            name: m?.name || b.name || '',
+            spec: m?.spec || b.spec || '',
+            unit: m?.unit || b.unit || '',
+            qty: Number(b.qty) || 1,
+            unitPrice: (m && m.standardPrice != null) ? Number(m.standardPrice) : (Number(b.unitPrice) || 0),
+            note: b.note || '',
+          };
+        });
+      setForm((f) => {
+        const existing = f.items.filter((ln) => (ln.name || '').trim()); // 빈 라인 제거 후 합치기
+        return { ...f, items: [...existing, ...newLines] };
+      });
+      setDirty(true);
+      setBomModalOpen(false);
+      alert(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 가져왔습니다.\n수량·단가 확인 후 저장하세요.`);
+    } catch (err) {
+      alert('BOM 가져오기 오류: ' + err.message);
+    } finally {
+      setBomImporting(false);
+    }
   }
 
   const formTotal = useMemo(
@@ -814,9 +875,14 @@ export default function PurchaseDetailPage() {
           </div>
         </div>
         {!isReadOnly && (
-          <button type="button" className="btn btn-sm btn-outline purchase-add-line no-print" onClick={addLine}>
-            + 품목 추가
-          </button>
+          <div className="purchase-add-actions no-print">
+            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
+              + 품목 추가
+            </button>
+            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={openBomModal}>
+              📋 BOM 가져오기
+            </button>
+          </div>
         )}
       </div>
 
@@ -1054,6 +1120,36 @@ export default function PurchaseDetailPage() {
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM에서 품목 가져오기">
+        <p className="field-hint">
+          선택한 BOM(프로젝트)의 품목·수량·단가를 이 발주에 불러옵니다.
+          불러온 뒤 목록·수량·단가(금액)를 수정할 수 있고, 저장해야 반영됩니다.
+        </p>
+        {bomLoading ? (
+          <p className="purchase-empty">불러오는 중...</p>
+        ) : bomProjects.length === 0 ? (
+          <p className="purchase-empty">등록된 BOM 프로젝트가 없습니다. (프로젝트별 BOM에서 먼저 만드세요)</p>
+        ) : (
+          <div className="bom-import-list">
+            {bomProjects.map((bp) => (
+              <button
+                type="button"
+                key={bp.id}
+                className="bom-import-row"
+                onClick={() => importBom(bp)}
+                disabled={bomImporting}
+              >
+                <span className="bom-import-name">{bp.name}</span>
+                <span className="bom-import-go">{bomImporting ? '가져오는 중...' : '가져오기 →'}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setBomModalOpen(false)}>닫기</button>
+        </div>
       </Modal>
     </div>
   );

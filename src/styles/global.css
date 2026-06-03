@@ -3239,6 +3239,90 @@ body {
   box-sizing: border-box;
 }
 
+/* 구매 상세 — 품목 추가 버튼 묶음 */
+.purchase-add-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* BOM 가져오기 — 프로젝트 선택 목록 */
+.bom-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 360px;
+  overflow-y: auto;
+  margin: 10px 0;
+}
+.bom-import-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.bom-import-row:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-softer); }
+.bom-import-row:disabled { opacity: 0.6; cursor: default; }
+.bom-import-name { font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bom-import-go { font-size: var(--font-sm); color: var(--primary); font-weight: 700; flex-shrink: 0; }
+
+/* BOM 프로젝트명 + 수정 버튼 */
+.bom-title-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.bom-title-edit {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bom-title-edit:hover { border-color: var(--primary); background: var(--primary-soft); }
+
+/* BOM 정렬 토글 (추가순 / 코드순) */
+.bom-sort {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.bom-sort-btn {
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-light);
+  padding: 6px 14px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bom-sort-btn + .bom-sort-btn { border-left: 1px solid var(--border); }
+.bom-sort-btn.active { background: var(--primary); color: #fff; }
+
+.bom-flat-table .bom-no-col {
+  width: 38px;
+  text-align: center;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+.bom-flat-table th.bom-no-col { border-bottom: 1px solid var(--border); }
 .bom-flat-table .bom-action-col {
   text-align: right;
   padding-right: 6px;
@@ -3427,6 +3511,52 @@ body {
   flex-shrink: 0;
   min-width: 18px;
 }
+/* 코드 붙여넣기 일괄 선택 */
+.bom-paste-box { margin: 8px 0 4px; }
+.bom-paste-toggle {
+  border: 1px dashed var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-light);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.bom-paste-toggle:hover { border-color: var(--primary); color: var(--primary-hover); }
+.bom-paste-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+.bom-paste-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: var(--font-md);
+  font-family: inherit;
+  resize: vertical;
+  background: var(--bg-card);
+  box-sizing: border-box;
+}
+.bom-paste-textarea:focus { outline: none; border-color: var(--primary); box-shadow: var(--ring-primary); }
+.bom-paste-actions { display: flex; gap: var(--space-2); margin-top: 8px; }
+.bom-paste-result {
+  margin-top: 10px;
+  font-size: var(--font-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bom-paste-result .ok { color: var(--success); font-weight: 700; }
+.bom-paste-result .dup { color: var(--text-muted); }
+.bom-paste-result .miss { color: var(--danger); }
+.bom-paste-result .miss-list { color: var(--text-light); font-weight: 600; word-break: break-all; }
 
 /* 다중 선택 드롭다운 */
 .multi-select {
@@ -10947,6 +11077,16 @@ tr.is-newly-added > td {
   font-size: 13px;
 }
 
+/* BOM 인쇄 — 페이지별 합계표 + 연속표제 + 푸터 */
+.bom-print-page { display: flex; flex-direction: column; }
+.iopn-pagetotal-table { margin-top: 8px; }
+.iopn-pagetotal-table .lbl { background: #f3f3f3; font-weight: 700; text-align: center; width: 18%; }
+.iopn-pagetotal-table .num { background: #fff; text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; }
+.iopn-pagetotal-table .grand { font-weight: 900; }
+.iopn-amount-sub { font-size: 11px; font-weight: 500; color: #444; letter-spacing: 0; }
+.bom-print-cont-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; padding-bottom: 3px; border-bottom: 2px solid #000; }
+.bom-print-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; border-top: 1.5px solid #000; padding-top: 4px; font-size: 11px; color: #000; }
+
 /* 견적서 폼 — 유효기간/납품기일/지불조건 3컬럼 */
 .form-row-3 {
   display: grid;
@@ -11295,6 +11435,31 @@ tr.is-newly-added > td {
     font-weight: 900;
     font-size: 11pt;
   }
+
+  /* BOM 인쇄 — 페이지 분할(각 페이지 1장) + 하단 푸터 고정 */
+  .bom-print-page {
+    page-break-after: always;
+    min-height: 255mm;
+    display: flex;
+    flex-direction: column;
+  }
+  .bom-print-page:last-child { page-break-after: auto; min-height: 0; }
+  .bom-print-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    border-top: 1.5px solid #000;
+    padding-top: 2mm;
+    font-size: 9pt;
+    color: #000;
+  }
+  .iopn-pagetotal-table { margin-top: 3mm; }
+  .iopn-pagetotal-table .lbl { background: #f3f3f3 !important; font-weight: 700; text-align: center; width: 18%; }
+  .iopn-pagetotal-table .num { background: #fff !important; text-align: right; padding-right: 3mm; font-variant-numeric: tabular-nums; }
+  .iopn-pagetotal-table .grand { font-weight: 900; font-size: 11pt; }
+  .iopn-amount-sub { font-size: 9pt; font-weight: 500; }
+  .bom-print-cont-title { font-weight: 700; font-size: 12pt; margin-bottom: 2mm; padding-bottom: 1mm; border-bottom: 1.5px solid #000; }
 
   /* 기존 print-form-header (이제 BomDetailPage에서만 사용) ===== */
   .print-form-header {

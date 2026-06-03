@@ -33,6 +33,13 @@ export async function addBomProject(name) {
   });
 }
 
+export async function updateBomProject(projectId, name) {
+  await updateDoc(doc(db, 'bomProjects', projectId), {
+    name: String(name || '').trim(),
+    updatedAt: new Date(),
+  });
+}
+
 export async function deleteBomProject(projectId) {
   const snap = await getDocs(query(bomRef, where('siteId', '==', projectId)));
   const batch = writeBatch(db);
