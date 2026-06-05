@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   getPurchaseById, updatePurchase, deletePurchase,
   settlePurchase, cancelSettlePurchase, receivePurchaseLine, bulkReceivePurchase,
@@ -10,6 +10,7 @@ import { getBomProjects, getBomBySite } from '../../services/bomService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
+import { specFontClass } from '../../utils/printText';
 
 const STATUS = {
   ordered: { label: '발주', cls: 'ordered' },
@@ -465,11 +466,13 @@ export default function PurchaseDetailPage() {
     <div className="purchase-detail-page printable-page">
       <div className="page-header screen-only">
         <div className="purchase-detail-header-left">
-          <Link to="/admin/purchase" className="purchase-back-link">← 목록</Link>
           <h2>{purchase.title || '(제목 없음)'}</h2>
           <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
             {STATUS[status]?.label || status}
           </span>
+        </div>
+        <div className="page-actions">
+          <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase')}>목록</button>
         </div>
       </div>
 
@@ -557,6 +560,7 @@ export default function PurchaseDetailPage() {
                   <th className="c-qty">수량</th>
                   <th className="c-price">단가</th>
                   <th className="c-amount">금액</th>
+                  <th className="c-recv">입고</th>
                   <th className="c-note">비고</th>
                 </tr>
               </thead>
@@ -565,20 +569,24 @@ export default function PurchaseDetailPage() {
                   if (!ln) return (
                     <tr key={`empty-${idx}`}>
                       <td className="c-no">{idx + 1}</td>
-                      <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                      <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     </tr>
                   );
                   const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                  const q = Number(ln.qty) || 0;
+                  const rq = Number(ln.receivedQty) || 0;
+                  const recvText = q <= 0 ? '' : (rq >= q ? '완료' : (rq > 0 ? `${rq}/${q}` : '미입고'));
                   return (
                     <tr key={idx}>
                       <td className="c-no">{idx + 1}</td>
-                      <td className="c-name">{ln.name || ''}</td>
-                      <td className="c-spec">{ln.spec || ''}</td>
+                      <td className={`c-name ${specFontClass(ln.name, 18)}`}>{ln.name || ''}</td>
+                      <td className={`c-spec ${specFontClass(ln.spec, 20)}`}>{ln.spec || ''}</td>
                       <td className="c-unit">{ln.unit || ''}</td>
                       <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
                       <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                       <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                      <td className="c-note">{ln.note || ''}</td>
+                      <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : (rq === 0 ? 'recv-none' : '')}`}>{recvText}</td>
+                      <td className={`c-note ${specFontClass(ln.note, 12)}`}>{ln.note || ''}</td>
                     </tr>
                   );
                 })}
@@ -608,6 +616,11 @@ export default function PurchaseDetailPage() {
                 </tr>
               </tbody>
             </table>
+
+            <div className="iopn-form-footer">
+              <span>(주)아이오피엔 · 구매발주서 · {poNumber(purchase)}</span>
+              <span>{SELF_INFO.contact}</span>
+            </div>
           </div>
         );
       })()}

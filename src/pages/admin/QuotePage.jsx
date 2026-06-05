@@ -3,6 +3,7 @@ import { getQuotes, addQuote, updateQuote, deleteQuote } from '../../services/qu
 import { getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
+import { specFontClass } from '../../utils/printText';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
 const DEFAULT_NOTE = '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.';
@@ -403,13 +404,13 @@ function QuotePrintForm({ quote, hostClass }) {
             return (
               <tr key={idx}>
                 <td className="c-no">{idx + 1}</td>
-                <td className="c-name">{ln.name || ''}</td>
-                <td className="c-spec">{ln.spec || ''}</td>
+                <td className={`c-name ${specFontClass(ln.name, 18)}`}>{ln.name || ''}</td>
+                <td className={`c-spec ${specFontClass(ln.spec, 20)}`}>{ln.spec || ''}</td>
                 <td className="c-unit">{ln.unit || ''}</td>
                 <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
                 <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                 <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                <td className="c-note">{ln.note || ''}</td>
+                <td className={`c-note ${specFontClass(ln.note, 12)}`}>{ln.note || ''}</td>
               </tr>
             );
           })}
@@ -439,6 +440,11 @@ function QuotePrintForm({ quote, hostClass }) {
           </tr>
         </tbody>
       </table>
+
+      <div className="iopn-form-footer">
+        <span>(주)아이오피엔 · 견적서 · {quoteNumber(quote)}</span>
+        <span>{SELF_INFO.contact}</span>
+      </div>
     </div>
   );
 }

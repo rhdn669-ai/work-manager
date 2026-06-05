@@ -273,6 +273,7 @@ export async function addPurchase(data) {
     status: 'ordered',                  // 등록 = 발주
     requesterId: data.requesterId || '',
     requesterName: data.requesterName || '',
+    deliveryDue: data.deliveryDue || '',  // 납기(납품기일)
     note: data.note || '',
     orderedAt: new Date(),
     createdAt: new Date(),

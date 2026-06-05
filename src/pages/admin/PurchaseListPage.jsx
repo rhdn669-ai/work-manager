@@ -24,7 +24,7 @@ const TABS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-const EMPTY_FORM = { title: '', siteId: '' };
+const EMPTY_FORM = { title: '', siteId: '', deliveryDue: '' };
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -109,6 +109,7 @@ export default function PurchaseListPage() {
         siteId: form.siteId,
         siteName: site?.name || '',
         totalAmount: 0,
+        deliveryDue: form.deliveryDue.trim(),
         requesterId: userProfile?.uid || '',
         requesterName: userProfile?.name || '',
       });
@@ -234,11 +235,24 @@ export default function PurchaseListPage() {
               required
             >
               <option value="">선택</option>
-              {sites.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sites
+                .filter((s) => (s.status || 'active') !== 'completed')
+                .map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
             </select>
             <p className="field-hint">최근 선택한 프로젝트가 다음 등록 시 자동 입력됩니다.</p>
+          </div>
+
+          <div className="form-group">
+            <label>납기 (납품기일)</label>
+            <input
+              type="text"
+              value={form.deliveryDue}
+              onChange={(e) => setForm({ ...form, deliveryDue: e.target.value })}
+              placeholder="예) 2026-06-15 · 협의 · 긴급"
+            />
+            <p className="field-hint">날짜 또는 "협의·긴급" 등 자유 입력. 비워두면 발주서에 "긴급"으로 표시됩니다.</p>
           </div>
 
           <p className="field-hint">

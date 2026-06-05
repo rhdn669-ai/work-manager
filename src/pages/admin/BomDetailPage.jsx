@@ -7,18 +7,10 @@ import {
 import { getPurchaseItems, getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
+import { specFontClass } from '../../utils/printText';
 
-// 글자가 길면 PDF 1줄에 맞게 글자 크기 자동 축소 (글자 수 기준)
-function specFontSize(s) {
-  const len = (s || '').length;
-  if (len <= 8) return undefined; // 기본 크기
-  if (len <= 12) return '8pt';
-  if (len <= 16) return '7pt';
-  if (len <= 20) return '6pt';
-  if (len <= 26) return '5.5pt';
-  return '5pt';
-}
-
+// 글자가 길면 PDF 1줄에 맞게 글자 크기 자동 축소
+// 한글·CJK는 라틴보다 폭이 넓으므로 가중치(1.8배)를 줘서 더 일찍·더 작게 축소
 export default function BomDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -375,11 +367,9 @@ export default function BomDetailPage() {
             i += size;
           }
         };
-        if (groupBySupplier) {
-          supplierGroups.forEach((g) => { if (g.items.length) pushPages(g.items, g.name, g.subtotal); });
-        } else {
-          pushPages(rows, null, supplyAmount);
-        }
+        // 구매처별이면 구매처 순서대로 정렬해 연속 출력 (페이지 분할 X)
+        const printRows = groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows;
+        pushPages(printRows, null, supplyAmount);
         if (pageData.length === 0) pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true, sectionSubtotal: 0 });
         const pageCount = pageData.length;
         return (
@@ -474,13 +464,13 @@ export default function BomDetailPage() {
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
-                            <td className="c-name" style={{ fontSize: specFontSize(it.name) }}>{it.name || ''}</td>
-                            <td className="c-spec" style={{ fontSize: specFontSize(it.spec) }}>{it.spec || ''}</td>
+                            <td className={`c-name ${specFontClass(it.name, 19)}`}>{it.name || ''}</td>
+                            <td className={`c-spec ${specFontClass(it.spec, 24)}`}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
                             <td className="c-price">{Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}</td>
                             <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                            <td className="c-supplier" style={{ fontSize: specFontSize(it.supplier) }}>{it.supplier || ''}</td>
-                            <td className="c-note" style={{ fontSize: specFontSize(it.note) }}>{it.note || ''}</td>
+                            <td className={`c-supplier ${specFontClass(it.supplier, 14)}`}>{it.supplier || ''}</td>
+                            <td className={`c-note ${specFontClass(it.note, 12)}`}>{it.note || ''}</td>
                           </tr>
                         );
                       })}
