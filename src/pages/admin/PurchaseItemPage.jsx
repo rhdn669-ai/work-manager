@@ -14,7 +14,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 // 드래그 가능한 행 — useSortable 훅을 적용한 <tr>
-function SortableItemRow({ id, isHighlight, onActivate, children }) {
+function SortableItemRow({ id, isHighlight, isFillTarget, onActivate, onMouseEnter, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -29,9 +29,10 @@ function SortableItemRow({ id, isHighlight, onActivate, children }) {
     <tr
       ref={setNodeRef}
       style={style}
-      className={isHighlight ? 'is-newly-added' : undefined}
+      className={`${isHighlight ? 'is-newly-added' : ''} ${isFillTarget ? 'is-fill-target' : ''}`.trim() || undefined}
       onPointerDown={isHighlight ? onActivate : undefined}
       onFocusCapture={isHighlight ? onActivate : undefined}
+      onMouseEnter={onMouseEnter}
     >
       <td className="drag-handle-cell" data-label="">
         <button
@@ -54,7 +55,7 @@ function SortableItemRow({ id, isHighlight, onActivate, children }) {
 function parseCompoundUnit(unitStr) {
   if (!unitStr) return null;
   const s = String(unitStr).trim();
-  const m = s.match(/(\d[\d,]*(?:\.\d+)?)[\s/()*x×\-]*([^\d\s/()*x×,\-]+)/);
+  const m = s.match(/(\d[\d,]*(?:\.\d+)?)[\s/()*x×-]*([^\d\s/()*x×,-]+)/);
   if (!m) return null;
   const qty = parseFloat(m[1].replace(/,/g, ''));
   if (!qty || qty <= 1) return null;   // 1 이하는 곱셈 의미 없음 → 단순 단위 취급
@@ -65,20 +66,30 @@ function parseCompoundUnit(unitStr) {
   };
 }
 
-function parseBulkText(text) {
+// 간단 모드 — "품명 + 개별단가" (엑셀 2열). 코드는 저장 시 자동 부여, 단가=개별단가(단순품목).
+// 엑셀 2열(탭) 또는 "품명 [공백] 개별단가". 줄 끝 숫자만 단가로 봄(품명 끝 숫자는 공백 없어 안전).
+function parseSimpleBulk(text) {
+  const cleanNum = (v) => (v || '').replace(/[^0-9.]/g, '');
   return (text || '')
     .split(/\r?\n/)
-    .map((line) => line.split('\t'))
-    .map((cols) => ({
-      code: (cols[0] || '').trim(),
-      name: (cols[1] || '').trim(),
-      maker: (cols[2] || '').trim(),
-      spec: (cols[3] || '').trim(),
-      unit: (cols[4] || '').trim(),
-      category: (cols[5] || '').trim(),
-      standardPrice: (cols[6] || '').replace(/[^0-9.]/g, ''),
-    }))
-    .filter((r) => r.name && r.name !== '품명' && r.code !== '코드');
+    .map((line) => {
+      const t = line.trim();
+      if (!t) return null;
+      if (t.includes('\t')) {
+        const cols = t.split('\t').map((c) => c.trim());
+        const name = cols[0];
+        const priceCol = cols.slice(1).find((c) => /\d/.test(c)) || '';
+        return name ? { name, unitPrice: cleanNum(priceCol) } : null;
+      }
+      const m = t.match(/\s+([\d,]+(?:\.\d+)?)\s*$/);
+      if (m) {
+        const name = t.slice(0, m.index).trim();
+        return name ? { name, unitPrice: m[1].replace(/,/g, '') } : null;
+      }
+      return { name: t, unitPrice: '' };
+    })
+    .filter(Boolean)
+    .filter((r) => r.name && r.name !== '품명');
 }
 
 export default function PurchaseItemPage() {
@@ -113,9 +124,13 @@ export default function PurchaseItemPage() {
   }
 
   // 엑셀 일괄 추가 모달
-  const [bulkModal, setBulkModal] = useState(false);
-  const [bulkText, setBulkText] = useState('');
-  const [bulkSaving, setBulkSaving] = useState(false);
+  // 엑셀식 셀 채우기 (드래그) — { field, value, rowIds:[], start, end } | null
+  const [fill, setFill] = useState(null);
+  // 그룹 안 일괄 추가 (규격·개별단가)
+  const [groupBulk, setGroupBulk] = useState(null); // { repItem } | null
+  const [groupBulkText, setGroupBulkText] = useState('');
+  const [groupBulkSupplier, setGroupBulkSupplier] = useState('');
+  const [groupBulkSaving, setGroupBulkSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -132,12 +147,6 @@ export default function PurchaseItemPage() {
       setLoading(false);
     }
   }
-
-  const supplierMap = useMemo(() => {
-    const m = {};
-    suppliers.forEach((s) => { m[s.id] = s.name; });
-    return m;
-  }, [suppliers]);
 
   const categories = useMemo(() => {
     const set = new Set();
@@ -177,10 +186,6 @@ export default function PurchaseItemPage() {
     // 베어 메인 = groupKey가 없는(또는 자신을 가리키는) 항목
     return groupItems.find((it) => !it.groupKey || it.groupKey === it.id) || groupItems[0];
   }
-  function repNameForGroup(groupItems) {
-    return repItemForGroup(groupItems)?.name || '';
-  }
-
   function toggleGroup(mainCode) {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
@@ -237,7 +242,8 @@ export default function PurchaseItemPage() {
     }
   }
 
-  const parsedBulk = useMemo(() => parseBulkText(bulkText), [bulkText]);
+  // 그룹 일괄: "규격 + 개별단가" 파싱 (parseSimpleBulk의 name을 규격으로 사용)
+  const parsedGroupBulk = useMemo(() => parseSimpleBulk(groupBulkText), [groupBulkText]);
 
   // ---- 인라인 편집 ----
   function updateField(id, patch) {
@@ -379,42 +385,144 @@ export default function PurchaseItemPage() {
       setItems((prev) => prev.filter((x) => x.id !== it.id));
       return;
     }
+    // 삭제 대상이 하위분류(-N)면, 같은 대분류의 뒷번호를 당겨 빈 번호를 채움
+    const subMatch = (it.code || '').match(/^(IOPN-\d{5})-(\d+)$/);
     try {
       await deletePurchaseItem(it.id);
-      setItems((prev) => prev.filter((x) => x.id !== it.id));
+      const remaining = items.filter((x) => x.id !== it.id);
+      setItems(remaining);
+
+      if (subMatch) {
+        const mainCode = subMatch[1];
+        const siblings = remaining
+          .filter((x) => {
+            const m = (x.code || '').match(/^(IOPN-\d{5})-(\d+)$/);
+            return m && m[1] === mainCode;
+          })
+          .sort((a, b) => {
+            const na = parseInt((a.code.match(/-(\d+)$/) || [])[1] || '0', 10);
+            const nb = parseInt((b.code.match(/-(\d+)$/) || [])[1] || '0', 10);
+            return na - nb;
+          });
+        if (siblings.length > 0) {
+          const updates = await reorderGroupCodes(siblings.map((x) => x.id), siblings, mainCode);
+          if (updates && updates.length > 0) {
+            const codeById = new Map(updates.map((u) => [u.id, u.code]));
+            setItems((prev) => prev.map((x) => (codeById.has(x.id) ? { ...x, code: codeById.get(x.id) } : x)));
+          }
+        }
+      }
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
+      await loadData(); // 코드 재정렬 실패 시 서버 상태로 복구
     }
   }
 
-  // ---- 엑셀 일괄 ----
-  function openBulk() {
-    setBulkText('');
-    setBulkModal(true);
+  // ---- 엑셀식 셀 채우기 (드래그) ----
+  function startFill(e, field, value, rowIds, startIndex) {
+    e.preventDefault();
+    e.stopPropagation();
+    setFill({ field, value, rowIds, start: startIndex, end: startIndex });
+  }
+  function fillEnter(idx) {
+    setFill((f) => (f ? { ...f, end: idx } : f));
+  }
+  function buildFillPatch(field, value, it) {
+    if (field === 'unitPrice') {
+      const cu = parseCompoundUnit(it.unit);
+      const qty = cu ? cu.qty : 1;
+      const up = Number(String(value).replace(/[^0-9]/g, '')) || 0;
+      return { unitPrice: up, standardPrice: Math.round(up * qty) };
+    }
+    if (field === 'standardPrice') {
+      return { standardPrice: Number(String(value).replace(/[^0-9]/g, '')) || 0 };
+    }
+    return { [field]: value };
+  }
+  async function applyFill(f) {
+    const lo = Math.min(f.start, f.end);
+    const hi = Math.max(f.start, f.end);
+    const patchById = new Map();
+    for (let i = lo; i <= hi; i++) {
+      const id = f.rowIds[i];
+      const it = items.find((x) => x.id === id);
+      if (!it) continue;
+      patchById.set(id, buildFillPatch(f.field, f.value, it));
+    }
+    if (patchById.size === 0) return;
+    // 로컬 반영
+    setItems((prev) => prev.map((x) => (patchById.has(x.id) ? { ...x, ...patchById.get(x.id) } : x)));
+    // 저장 (신규 tmp 행은 자체 flush로 저장됨 — 건너뜀)
+    for (const [id, patch] of patchById) {
+      if (String(id).startsWith('tmp-')) continue;
+      const it = items.find((x) => x.id === id);
+      if (!it) continue;
+      try {
+        const { id: _i, createdAt: _c, updatedAt: _u, ...data } = { ...it, ...patch };
+        await updatePurchaseItem(id, data);
+      } catch (err) {
+        console.error('셀 채우기 저장 오류:', err);
+      }
+    }
   }
 
-  async function handleBulkSubmit() {
-    if (parsedBulk.length === 0) { alert('인식된 품목이 없습니다. 붙여넣은 내용을 확인해주세요.'); return; }
-    if (!await confirm(`${parsedBulk.length}개 품목을 일괄 등록하시겠습니까?`)) return;
-    setBulkSaving(true);
+  useEffect(() => {
+    if (!fill) return undefined;
+    const onUp = () => {
+      if (fill.start !== fill.end) applyFill(fill);
+      setFill(null);
+    };
+    document.addEventListener('mouseup', onUp);
+    return () => document.removeEventListener('mouseup', onUp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fill]);
+
+  // ---- 그룹 안 일괄 추가 (규격·개별단가) ----
+  function openGroupBulk(repItem) {
+    if (!repItem) return;
+    setGroupBulkText('');
+    setGroupBulkSupplier(repItem.defaultSupplierId || '');
+    setGroupBulk({ repItem });
+  }
+
+  async function handleGroupBulkSubmit() {
+    if (!groupBulk) return;
+    const repItem = groupBulk.repItem;
+    if (!/^IOPN-\d{5}/.test(repItem.code || '')) {
+      alert('이 그룹은 IOPN 코드가 아니어서 일괄 추가할 수 없습니다.');
+      return;
+    }
+    if (parsedGroupBulk.length === 0) { alert('인식된 항목이 없습니다.'); return; }
+    setGroupBulkSaving(true);
     try {
-      // 빈 코드 행은 IOPN-XXXXX-N 자동 부여 (품명 기준 대분류/소분류, 기존 items + 누적 계산)
       let buf = [...items];
-      const withCodes = parsedBulk.map((r) => {
-        if (r.code) return r;
-        const code = nextItemCode(buf, r.name);
-        buf = [...buf, { code, name: r.name }];
-        return { ...r, code };
+      const payloads = parsedGroupBulk.map((r) => {
+        const code = nextSubCode(buf, repItem.code);
+        buf = [...buf, { code, name: repItem.name }];
+        return {
+          code,
+          name: r.name, // 붙여넣은 첫 칸 = 품명
+          spec: '',
+          maker: repItem.maker || '',
+          unit: repItem.unit || '',
+          category: repItem.category || '',
+          unitPrice: Number(r.unitPrice) || 0,
+          standardPrice: Number(r.unitPrice) || 0, // 단순 품목: 단가 = 개별단가
+          defaultSupplierId: groupBulkSupplier || '',
+          groupKey: repItem.groupKey || repItem.id,
+          priceHistory: [],
+        };
       });
-      await Promise.all(withCodes.map((r) => addPurchaseItem({ ...r, priceHistory: [] })));
-      setBulkModal(false);
-      setBulkText('');
+      await Promise.all(payloads.map((d) => addPurchaseItem(d)));
+      setGroupBulk(null);
+      setGroupBulkText('');
       await loadData();
-      alert(`${parsedBulk.length}개 품목이 등록되었습니다.`);
+      expandGroup(repItem.groupKey || repItem.id);
+      alert(`${payloads.length}개 규격을 추가했습니다.`);
     } catch (err) {
-      alert('일괄 등록 중 오류: ' + err.message);
+      alert('일괄 추가 중 오류: ' + err.message);
     } finally {
-      setBulkSaving(false);
+      setGroupBulkSaving(false);
     }
   }
 
@@ -425,7 +533,6 @@ export default function PurchaseItemPage() {
       <div className="page-header">
         <h2>구매 품목 관리</h2>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={openBulk}>엑셀 일괄 추가</button>
           <button className="btn btn-primary" onClick={addRow}>+ 품목 추가</button>
         </div>
       </div>
@@ -464,6 +571,7 @@ export default function PurchaseItemPage() {
             const subItems = (repItem && !hasActiveFilter)
               ? groupItems.filter((it) => it.id !== repItem.id)
               : groupItems;
+            const subIds = subItems.map((s) => s.id);
             return (
               <div key={groupKey} className={`item-group ${isExpanded ? 'is-expanded' : ''}`}>
                 <div
@@ -528,6 +636,12 @@ export default function PurchaseItemPage() {
                         onClick={(e) => { e.stopPropagation(); addSameItem(subItems[subItems.length - 1] || repItem); }}
                         title="같은 품명으로 다른 규격 추가 (소분류 -N)"
                       >+ 추가</button>
+                      <button
+                        type="button"
+                        className="item-group-add-btn"
+                        onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
+                        title="규격·금액 여러 개 붙여넣어 한 번에 추가"
+                      >📋 일괄</button>
                     </div>
                     <DndContext
                       sensors={sensors}
@@ -548,7 +662,7 @@ export default function PurchaseItemPage() {
                               <th>규격</th>
                               <th>분류</th>
                               <th>인증</th>
-                              <th>moq/단위</th>
+                              <th>수량/단위</th>
                               <th>개별단가</th>
                               <th>단가</th>
                               <th style={{ minWidth: 140 }}>기본 구매처</th>
@@ -560,6 +674,13 @@ export default function PurchaseItemPage() {
                                   onClick={(e) => { e.stopPropagation(); addSameItem(subItems[subItems.length - 1] || repItem); }}
                                   title="같은 품명으로 다른 규격 추가 (소분류 -N)"
                                 >+ 추가</button>
+                                <button
+                                  type="button"
+                                  className="item-group-add-btn"
+                                  style={{ marginLeft: 6 }}
+                                  onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
+                                  title="규격·금액 여러 개 붙여넣어 한 번에 추가"
+                                >📋 일괄</button>
                               </th>
                             </tr>
                           </thead>
@@ -571,14 +692,20 @@ export default function PurchaseItemPage() {
                                 </td>
                               </tr>
                             )}
-                            {subItems.map((it) => {
+                            {subItems.map((it, rowIdx) => {
                               const expanded = expandedId === it.id;
+                              const fillIdx = fill ? fill.rowIds.indexOf(it.id) : -1;
+                              const inFillRange = fillIdx >= 0
+                                && fillIdx >= Math.min(fill.start, fill.end)
+                                && fillIdx <= Math.max(fill.start, fill.end);
                               return (
                                 <Fragment key={it.id}>
                                   <SortableItemRow
                                     id={it.id}
                                     isHighlight={highlightIds.has(it.id)}
+                                    isFillTarget={inFillRange}
                                     onActivate={() => clearHighlight(it.id)}
+                                    onMouseEnter={fill ? () => { if (fillIdx >= 0) fillEnter(fillIdx); } : undefined}
                                   >
                                 <td data-label="코드">
                                   <input
@@ -606,6 +733,7 @@ export default function PurchaseItemPage() {
                                     onChange={(e) => updateField(it.id, { maker: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'maker', it.maker || '', subIds, rowIdx)} />
                                 </td>
                                 <td data-label="규격">
                                   <input
@@ -614,6 +742,7 @@ export default function PurchaseItemPage() {
                                     onChange={(e) => updateField(it.id, { spec: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'spec', it.spec || '', subIds, rowIdx)} />
                                 </td>
                                 <td data-label="분류">
                                   <input
@@ -622,6 +751,7 @@ export default function PurchaseItemPage() {
                                     onChange={(e) => updateField(it.id, { category: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'category', it.category || '', subIds, rowIdx)} />
                                 </td>
                                 <td data-label="인증">
                                   <input
@@ -631,8 +761,9 @@ export default function PurchaseItemPage() {
                                     onChange={(e) => updateField(it.id, { certification: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'certification', it.certification || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="moq/단위">
+                                <td data-label="수량/단위">
                                   <input
                                     type="text"
                                     value={it.unit || ''}
@@ -649,6 +780,7 @@ export default function PurchaseItemPage() {
                                     }}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'unit', it.unit || '', subIds, rowIdx)} />
                                 </td>
                                 {(() => {
                                   const cu = parseCompoundUnit(it.unit);
@@ -671,6 +803,7 @@ export default function PurchaseItemPage() {
                                         }}
                                         onBlur={() => flushItem(it.id)}
                                       />
+                                      <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'unitPrice', it.unitPrice || 0, subIds, rowIdx)} />
                                     </td>
                                   );
                                 })()}
@@ -701,6 +834,9 @@ export default function PurchaseItemPage() {
                                       {it.priceHistory?.length > 0 && (
                                         <span className="price-since">{it.priceHistory[it.priceHistory.length - 1].date}~</span>
                                       )}
+                                      {!isAuto && (
+                                        <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'standardPrice', total, subIds, rowIdx)} />
+                                      )}
                                     </td>
                                   );
                                 })()}
@@ -708,13 +844,19 @@ export default function PurchaseItemPage() {
                                   <select
                                     value={it.defaultSupplierId || ''}
                                     onChange={(e) => {
-                                      updateField(it.id, { defaultSupplierId: e.target.value });
-                                      setTimeout(() => flushItem(it.id), 0);
+                                      const val = e.target.value;
+                                      updateField(it.id, { defaultSupplierId: val });
+                                      // 신규(tmp) 행은 품명 저장 시 함께 저장됨 — 즉시 저장은 기존 행만
+                                      if (!String(it.id).startsWith('tmp-')) {
+                                        const { id: _i, createdAt: _c, updatedAt: _u, ...data } = { ...it, defaultSupplierId: val };
+                                        updatePurchaseItem(it.id, data).catch((err) => alert('구매처 저장 오류: ' + err.message));
+                                      }
                                     }}
                                   >
                                     <option value="">선택</option>
                                     {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                   </select>
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'defaultSupplierId', it.defaultSupplierId || '', subIds, rowIdx)} />
                                 </td>
                                 <td data-label="비고">
                                   <input
@@ -724,6 +866,7 @@ export default function PurchaseItemPage() {
                                     onChange={(e) => updateField(it.id, { note: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'note', it.note || '', subIds, rowIdx)} />
                                 </td>
                                 <td className="item-actions-cell">
                                   <button
@@ -789,48 +932,48 @@ export default function PurchaseItemPage() {
         </div>
       )}
 
-      {/* 엑셀 일괄 추가 모달 */}
-      <Modal isOpen={bulkModal} onClose={() => setBulkModal(false)} title="엑셀 일괄 추가">
+      {/* 그룹 안 일괄 추가 (규격·금액) */}
+      <Modal isOpen={!!groupBulk} onClose={() => setGroupBulk(null)} title={`일괄 추가 — ${groupBulk?.repItem?.name || ''}`}>
         <div className="form-group">
-          <label>엑셀에서 복사한 내용 붙여넣기</label>
+          <label>품명 · 개별단가 붙여넣기</label>
           <p className="field-hint">
-            컬럼 순서: <strong>코드 · 품명 · 메이커 · 규격 · moq/단위 · 분류 · 단가</strong> (7개 열)<br />
-            엑셀에서 해당 열들을 선택해 복사한 뒤 아래 칸에 붙여넣으세요. 첫 줄이 머리글(코드/품명…)이면 자동 제외됩니다.
+            이 그룹(<strong>{groupBulk?.repItem?.name}</strong>)에 <strong>품명 + 개별단가</strong>를 한 번에 추가합니다.
+            코드는 소분류(-N)로 자동 부여됩니다.<br />
+            엑셀 2열(품명·개별단가) 또는 한 줄에 <code>품명 [공백] 개별단가</code> 형식.
           </p>
           <textarea
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            rows={7}
-            placeholder="엑셀 셀 범위를 복사해 여기에 붙여넣기"
+            value={groupBulkText}
+            onChange={(e) => setGroupBulkText(e.target.value)}
+            rows={6}
+            placeholder={'예)\n케이블 타이	1500\n릴레이 G2RV	3000\n터미널 블록 800'}
           />
         </div>
 
-        {parsedBulk.length > 0 && (
+        <div className="form-group">
+          <label>구매처 선택 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+          <select value={groupBulkSupplier} onChange={(e) => setGroupBulkSupplier(e.target.value)}>
+            <option value="">구매처 미지정</option>
+            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <p className="field-hint">추가하는 규격들의 기본 구매처로 지정됩니다. (기본값: 대표 품목 구매처)</p>
+        </div>
+
+        {parsedGroupBulk.length > 0 && (
           <div className="bulk-preview">
-            <div className="bulk-preview-head">{parsedBulk.length}개 품목 인식됨</div>
+            <div className="bulk-preview-head">{parsedGroupBulk.length}개 인식됨</div>
             <table className="table">
               <thead>
-                <tr><th>코드</th><th>품명</th><th>메이커</th><th>규격</th><th>moq/단위</th><th>분류</th><th>단가</th></tr>
+                <tr><th>품명</th><th style={{ textAlign: 'right' }}>개별단가</th></tr>
               </thead>
               <tbody>
-                {parsedBulk.slice(0, 50).map((r, i) => (
+                {parsedGroupBulk.slice(0, 50).map((r, i) => (
                   <tr key={i}>
-                    <td>{r.code || '-'}</td>
                     <td>{r.name}</td>
-                    <td>{r.maker || '-'}</td>
-                    <td>{r.spec || '-'}</td>
-                    <td>{r.unit || '-'}</td>
-                    <td>{r.category || '-'}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      {r.standardPrice ? Number(r.standardPrice).toLocaleString() : '-'}
-                    </td>
+                    <td style={{ textAlign: 'right' }}>{r.unitPrice ? Number(r.unitPrice).toLocaleString() : '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {parsedBulk.length > 50 && (
-              <p className="field-hint">… 미리보기는 50건까지, 등록은 전체 {parsedBulk.length}건</p>
-            )}
           </div>
         )}
 
@@ -838,12 +981,12 @@ export default function PurchaseItemPage() {
           <button
             type="button"
             className="btn btn-primary"
-            onClick={handleBulkSubmit}
-            disabled={bulkSaving || parsedBulk.length === 0}
+            onClick={handleGroupBulkSubmit}
+            disabled={groupBulkSaving || parsedGroupBulk.length === 0}
           >
-            {bulkSaving ? '등록 중…' : `${parsedBulk.length}개 등록`}
+            {groupBulkSaving ? '추가 중…' : `${parsedGroupBulk.length}개 추가`}
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => setBulkModal(false)}>취소</button>
+          <button type="button" className="btn btn-outline" onClick={() => setGroupBulk(null)}>취소</button>
         </div>
       </Modal>
     </div>

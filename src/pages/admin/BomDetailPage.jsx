@@ -1,12 +1,23 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getBomBySite, addBomItem, updateBomItem, deleteBomItem,
   getBomProjectById, updateBomProject,
 } from '../../services/bomService';
-import { getPurchaseItems } from '../../services/purchaseService';
+import { getPurchaseItems, getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
+
+// 글자가 길면 PDF 1줄에 맞게 글자 크기 자동 축소 (글자 수 기준)
+function specFontSize(s) {
+  const len = (s || '').length;
+  if (len <= 8) return undefined; // 기본 크기
+  if (len <= 12) return '8pt';
+  if (len <= 16) return '7pt';
+  if (len <= 20) return '6pt';
+  if (len <= 26) return '5.5pt';
+  return '5pt';
+}
 
 export default function BomDetailPage() {
   const { projectId } = useParams();
@@ -16,9 +27,12 @@ export default function BomDetailPage() {
   const [project, setProject] = useState(null);
   const [bomItems, setBomItems] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('order'); // 'order'(추가/붙여넣기순) | 'code'(코드순)
+  const [groupBySupplier, setGroupBySupplier] = useState(false); // 구매처별 묶음 보기
+  const [supplierFilter, setSupplierFilter] = useState(''); // 특정 구매처만 (이름)
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -35,9 +49,10 @@ export default function BomDetailPage() {
     (async () => {
       try {
         setLoading(true);
-        const [p, im] = await Promise.all([
+        const [p, im, sp] = await Promise.all([
           getBomProjectById(projectId),
           getPurchaseItems(),
+          getSuppliers(),
         ]);
         if (!p) {
           alert('해당 프로젝트를 찾을 수 없습니다.');
@@ -47,6 +62,7 @@ export default function BomDetailPage() {
         const items = await getBomBySite(projectId);
         setProject(p);
         setItemMaster(im);
+        setSuppliers(sp);
         setBomItems(items);
       } catch (err) {
         console.error(err);
@@ -64,6 +80,12 @@ export default function BomDetailPage() {
     return m;
   }, [itemMaster]);
 
+  const supplierMap = useMemo(() => {
+    const m = {};
+    suppliers.forEach((s) => { m[s.id] = s.name; });
+    return m;
+  }, [suppliers]);
+
   const displayItems = useMemo(() => bomItems.map((b) => {
     const m = b.itemId ? masterMap[b.itemId] : null;
     return {
@@ -74,30 +96,56 @@ export default function BomDetailPage() {
       unit: m?.unit || b.unit || '',
       maker: m?.maker || '',
       category: m?.category || '',
+      supplier: m?.defaultSupplierId ? (supplierMap[m.defaultSupplierId] || '') : '',
       // 단가는 마스터의 표준단가를 우선 표시 (마스터 변경 시 BOM도 자동 반영)
       unitPrice: m?.standardPrice ?? b.unitPrice ?? 0,
     };
-  }), [bomItems, masterMap]);
+  }), [bomItems, masterMap, supplierMap]);
 
-  // 검색 필터 + 코드 자연 정렬
+  // 검색 + 구매처 필터 + 정렬
   const rows = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     const kw = search.trim().toLowerCase();
-    const list = kw
+    let list = kw
       ? displayItems.filter((it) =>
         [it.code, it.name, it.spec, it.maker, it.category, it.note]
           .some((v) => (v || '').toLowerCase().includes(kw)),
       )
       : displayItems;
+    if (supplierFilter) {
+      list = list.filter((it) => (it.supplier || '(구매처 미지정)') === supplierFilter);
+    }
     const sorted = [...list];
     if (sortBy === 'code') {
       sorted.sort((a, b) => collator.compare(a.code || '', b.code || ''));
     } else {
-      // 추가순(붙여넣기순) — order 필드 오름차순
       sorted.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
     }
     return sorted;
-  }, [displayItems, search, sortBy]);
+  }, [displayItems, search, sortBy, supplierFilter]);
+
+  // 화면에 보이는 구매처 목록 (필터 드롭다운용)
+  const supplierOptions = useMemo(() => {
+    const set = new Set(displayItems.map((it) => it.supplier || '(구매처 미지정)'));
+    return [...set].sort();
+  }, [displayItems]);
+
+  // 구매처별 그룹 [{ name, items, subtotal }]
+  const supplierGroups = useMemo(() => {
+    const map = new Map();
+    for (const it of rows) {
+      const key = it.supplier || '(구매처 미지정)';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(it);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, items]) => ({
+        name,
+        items,
+        subtotal: items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
+      }));
+  }, [rows]);
 
   const total = useMemo(
     () => displayItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
@@ -310,23 +358,35 @@ export default function BomDetailPage() {
         const vat = Math.round(supplyAmount * 0.1);
         const grandTotal = supplyAmount + vat;
         // 각 페이지 합계 표기를 위해 직접 페이지 분할 (브라우저 자동 분할로는 페이지별 합계 불가)
-        const FIRST_PAGE_ROWS = 14; // 1페이지는 상단 정보표가 있어 적게
-        const OTHER_PAGE_ROWS = 20;
+        const FIRST_PAGE_ROWS = 19; // 1페이지는 상단 정보표가 있어 적게
+        const OTHER_PAGE_ROWS = 26;
         const pageData = [];
-        let _p = 0;
-        while (_p < rows.length) {
-          const size = pageData.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-          pageData.push({ chunk: rows.slice(_p, _p + size), startNo: _p });
-          _p += size;
+        const pushPages = (list, secName, secSubtotal) => {
+          let i = 0;
+          while (i < list.length) {
+            const size = pageData.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+            const chunk = list.slice(i, i + size);
+            pageData.push({
+              chunk, startNo: i, size,
+              supplierName: secName,
+              isSectionLast: (i + size) >= list.length,
+              sectionSubtotal: secSubtotal,
+            });
+            i += size;
+          }
+        };
+        if (groupBySupplier) {
+          supplierGroups.forEach((g) => { if (g.items.length) pushPages(g.items, g.name, g.subtotal); });
+        } else {
+          pushPages(rows, null, supplyAmount);
         }
-        if (pageData.length === 0) pageData.push({ chunk: [], startNo: 0 });
+        if (pageData.length === 0) pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true, sectionSubtotal: 0 });
         const pageCount = pageData.length;
         return (
-          <div className="print-form-iopn print-only">
-            {pageData.map(({ chunk, startNo }, pageIdx) => {
+          <div className="print-form-iopn print-form-paged print-only">
+            {pageData.map(({ chunk, startNo, size, supplierName, isSectionLast, sectionSubtotal }, pageIdx) => {
               const isFirst = pageIdx === 0;
-              const isLast = pageIdx === pageCount - 1;
-              const targetRows = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+              const targetRows = size;
               const pageSubtotal = chunk.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
               const padded = [...chunk];
               while (padded.length < targetRows) padded.push(null);
@@ -334,7 +394,7 @@ export default function BomDetailPage() {
                 <div className="bom-print-page" key={pageIdx}>
                   {isFirst ? (
                     <>
-                      <div className="print-form-title">B O M  리 스 트</div>
+                      <div className="print-form-title bom-list-title">BOM 리스트</div>
 
                       <table className="iopn-info-table">
               <tbody>
@@ -385,16 +445,20 @@ export default function BomDetailPage() {
                     </>
                   ) : null}
 
+                  {supplierName && (
+                    <div className="bom-print-supplier-band">구매처 : {supplierName}</div>
+                  )}
+
                   <table className="iopn-items-table">
                     <thead>
                       <tr>
                         <th className="c-no">NO</th>
                         <th className="c-name">품목명</th>
                         <th className="c-spec">규격</th>
-                        <th className="c-unit">단위</th>
                         <th className="c-qty">수량</th>
                         <th className="c-price">단가</th>
                         <th className="c-amount">금액</th>
+                        <th className="c-supplier">구매처</th>
                         <th className="c-note">비고</th>
                       </tr>
                     </thead>
@@ -410,13 +474,13 @@ export default function BomDetailPage() {
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
-                            <td className="c-name">{it.name || ''}</td>
-                            <td className="c-spec">{it.spec || ''}</td>
-                            <td className="c-unit">{it.unit || ''}</td>
+                            <td className="c-name" style={{ fontSize: specFontSize(it.name) }}>{it.name || ''}</td>
+                            <td className="c-spec" style={{ fontSize: specFontSize(it.spec) }}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
                             <td className="c-price">{Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}</td>
                             <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                            <td className="c-note">{it.note || ''}</td>
+                            <td className="c-supplier" style={{ fontSize: specFontSize(it.supplier) }}>{it.supplier || ''}</td>
+                            <td className="c-note" style={{ fontSize: specFontSize(it.note) }}>{it.note || ''}</td>
                           </tr>
                         );
                       })}
@@ -428,13 +492,13 @@ export default function BomDetailPage() {
                       <tr>
                         <th className="lbl">이 페이지 합계</th>
                         <td className="num">₩ {pageSubtotal.toLocaleString()}원</td>
-                        {isLast && <th className="lbl grand-lbl">총 합계 (VAT 별도)</th>}
-                        {isLast && <td className="num grand">₩ {supplyAmount.toLocaleString()}원</td>}
+                        {isSectionLast && <th className="lbl grand-lbl">{supplierName ? `${supplierName} 소계` : '총 합계 (VAT 별도)'}</th>}
+                        {isSectionLast && <td className="num grand">₩ {sectionSubtotal.toLocaleString()}원</td>}
                       </tr>
                     </tbody>
                   </table>
 
-                  {isLast && (
+                  {isSectionLast && (
                     <table className="iopn-notes-table">
                       <tbody>
                         <tr>
@@ -476,6 +540,20 @@ export default function BomDetailPage() {
             onClick={() => setSortBy('code')}
           >코드순</button>
         </div>
+        <button
+          type="button"
+          className={`bom-sort-btn bom-supplier-toggle ${groupBySupplier ? 'active' : ''}`}
+          onClick={() => setGroupBySupplier((v) => !v)}
+          title="구매처별로 묶어서 보기/출력"
+        >구매처별 {groupBySupplier ? 'ON' : 'OFF'}</button>
+        <select
+          className="bom-supplier-select"
+          value={supplierFilter}
+          onChange={(e) => setSupplierFilter(e.target.value)}
+        >
+          <option value="">구매처 전체</option>
+          {supplierOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
         <div className="bom-summary">
           <span>항목 <strong>{bomItems.length}</strong>건</span>
           <span>예상 합계 <strong>{total.toLocaleString()}원</strong></span>
@@ -501,19 +579,32 @@ export default function BomDetailPage() {
                   <th>메이커</th>
                   <th>규격</th>
                   <th>분류</th>
-                  <th>moq/단위</th>
                   <th>수량</th>
                   <th>단가</th>
                   <th>합계</th>
+                  <th>구매처</th>
                   <th style={{ minWidth: 160 }}>비고</th>
                   <th className="bom-action-col no-print" aria-hidden="true"></th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((it, idx) => {
+                {(groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows).map((it, idx, arr) => {
                   const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+                  const sup = it.supplier || '(구매처 미지정)';
+                  const prevSup = idx > 0 ? (arr[idx - 1].supplier || '(구매처 미지정)') : null;
+                  const nextSup = idx < arr.length - 1 ? (arr[idx + 1].supplier || '(구매처 미지정)') : null;
+                  const isGroupStart = groupBySupplier && sup !== prevSup;
+                  const isGroupEnd = groupBySupplier && sup !== nextSup;
+                  const grp = isGroupEnd ? supplierGroups.find((g) => g.name === sup) : null;
                   return (
-                    <tr key={it.id}>
+                    <Fragment key={it.id}>
+                    {isGroupStart && (
+                      <tr className="bom-supplier-header">
+                        <td className="bom-spacer-col" aria-hidden="true"></td>
+                        <td colSpan={12}>🏷 {sup}</td>
+                      </tr>
+                    )}
+                    <tr>
                       <td className="bom-spacer-col" aria-hidden="true"></td>
                       <td className="bom-no-col" data-label="No">{idx + 1}</td>
                       <td data-label="코드">
@@ -561,15 +652,6 @@ export default function BomDetailPage() {
                           tabIndex={-1}
                         />
                       </td>
-                      <td data-label="moq/단위">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={it.unit || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
                       <td data-label="수량">
                         <input
                           className="num-input"
@@ -597,6 +679,15 @@ export default function BomDetailPage() {
                           tabIndex={-1}
                         />
                       </td>
+                      <td data-label="구매처">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={it.supplier || ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
                       <td data-label="비고">
                         <input
                           type="text"
@@ -616,6 +707,15 @@ export default function BomDetailPage() {
                         >✕</button>
                       </td>
                     </tr>
+                    {isGroupEnd && grp && (
+                      <tr className="bom-supplier-subtotal">
+                        <td className="bom-spacer-col" aria-hidden="true"></td>
+                        <td colSpan={8} style={{ textAlign: 'right' }}>{sup} 소계</td>
+                        <td>{grp.subtotal.toLocaleString()}원</td>
+                        <td colSpan={3}></td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>

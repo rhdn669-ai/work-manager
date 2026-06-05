@@ -3239,6 +3239,29 @@ body {
   box-sizing: border-box;
 }
 
+/* 엑셀식 셀 채우기 (드래그 fill-down) */
+.inline-edit-table.sortable-rows tbody td { position: relative; }
+.cell-fill {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 9px;
+  height: 9px;
+  background: var(--primary);
+  border: 1px solid #fff;
+  border-radius: 1px;
+  cursor: crosshair;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 3;
+}
+.inline-edit-table.sortable-rows tbody td:hover .cell-fill { opacity: 1; }
+.inline-edit-table.sortable-rows tbody tr.is-fill-target { background: var(--primary-soft); }
+.inline-edit-table.sortable-rows tbody tr.is-fill-target td { background: transparent; }
+@media (max-width: 768px) {
+  .cell-fill { display: none; } /* 모바일은 드래그 채우기 비활성 */
+}
+
 /* 구매 상세 — 품목 추가 버튼 묶음 */
 .purchase-add-actions {
   display: flex;
@@ -3274,6 +3297,47 @@ body {
 .bom-import-row:disabled { opacity: 0.6; cursor: default; }
 .bom-import-name { font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bom-import-go { font-size: var(--font-sm); color: var(--primary); font-weight: 700; flex-shrink: 0; }
+
+/* BOM 구매처별 보기 — 토글·드롭다운·그룹행 */
+.bom-supplier-toggle {
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--bg-card);
+  color: var(--text-light);
+}
+.bom-supplier-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.bom-supplier-select {
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  background: var(--bg-card);
+  font-size: var(--font-sm);
+}
+.bom-flat-table tr.bom-supplier-header td {
+  background: var(--primary-soft);
+  font-weight: 800;
+  color: var(--primary-hover);
+  font-size: var(--font-md);
+  padding: 9px 12px !important;
+}
+.bom-flat-table tr.bom-supplier-subtotal td {
+  background: var(--bg-subtle);
+  font-weight: 700;
+  color: var(--text);
+  padding: 6px 8px !important;
+}
+.bom-flat-table tr.bom-supplier-subtotal td:nth-child(3) { color: var(--primary-hover); font-weight: 900; text-align: right; }
+
+/* 인쇄 — 구매처 밴드 */
+.bom-print-supplier-band {
+  font-weight: 800;
+  font-size: 12pt;
+  padding: 2mm 3mm;
+  margin-bottom: 2mm;
+  background: #f3f3f3;
+  border: 1px solid #000;
+}
 
 /* BOM 프로젝트명 + 수정 버튼 */
 .bom-title-wrap { display: inline-flex; align-items: center; gap: 8px; }
@@ -10981,6 +11045,7 @@ tr.is-newly-added > td {
   border: none;
   color: #000;
 }
+.print-form-iopn .print-form-title.bom-list-title { letter-spacing: 0.08em; }
 .print-form-iopn table {
   width: 100%;
   border-collapse: collapse;
@@ -11030,15 +11095,15 @@ tr.is-newly-added > td {
   text-align: center;
   font-weight: 700;
 }
-.iopn-items-table .c-no { width: 6%; text-align: center; }
-.iopn-items-table .c-name { width: 18%; text-align: center; }
-.iopn-items-table .c-spec { width: 18%; text-align: left; padding-left: 8px; }
-.iopn-items-table .c-unit { width: 7%; text-align: center; }
-.iopn-items-table .c-qty { width: 9%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
-.iopn-items-table .c-price { width: 12%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
-.iopn-items-table .c-amount { width: 14%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
-.iopn-items-table .c-note { width: 16%; text-align: left; padding-left: 8px; }
-.iopn-items-table tbody td { height: 22px; }
+.iopn-items-table .c-no { width: 5%; text-align: center; }
+.iopn-items-table .c-name { width: 19%; text-align: center; }
+.iopn-items-table .c-spec { width: 17%; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; }
+.iopn-items-table .c-qty { width: 8%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
+.iopn-items-table .c-price { width: 11%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
+.iopn-items-table .c-amount { width: 13%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
+.iopn-items-table .c-supplier { width: 14%; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; }
+.iopn-items-table .c-note { width: 13%; text-align: left; padding-left: 8px; }
+.iopn-items-table tbody td { height: 22px; vertical-align: middle; white-space: nowrap; overflow: hidden; }
 
 /* 특이사항 */
 .iopn-notes-table { margin-top: 10px; margin-bottom: 0; }
@@ -11079,6 +11144,9 @@ tr.is-newly-added > td {
 
 /* BOM 인쇄 — 페이지별 합계표 + 연속표제 + 푸터 */
 .bom-print-page { display: flex; flex-direction: column; }
+/* 페이지별 테두리 — 전체 폼 테두리 대신 각 페이지가 완결된 박스 (페이지 경계서 안 잘림) */
+.print-form-iopn.print-form-paged { border: none; padding: 0; }
+.print-form-paged .bom-print-page { border: 2px solid #000; padding: 12px 14px; }
 .iopn-pagetotal-table { margin-top: 8px; }
 .iopn-pagetotal-table .lbl { background: #f3f3f3; font-weight: 700; text-align: center; width: 18%; }
 .iopn-pagetotal-table .num { background: #fff; text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; }
@@ -11338,6 +11406,7 @@ tr.is-newly-added > td {
     margin: 0;
     border: none;
   }
+  .print-form-iopn .print-form-title.bom-list-title { letter-spacing: 0.08em; }
   .print-form-iopn table {
     width: 100%;
     border-collapse: collapse;
@@ -11387,15 +11456,15 @@ tr.is-newly-added > td {
     text-align: center;
     font-weight: 700;
   }
-  .iopn-items-table .c-no { width: 6%; text-align: center; }
-  .iopn-items-table .c-name { width: 18%; text-align: center; }
-  .iopn-items-table .c-spec { width: 18%; text-align: left; padding-left: 2.5mm; }
-  .iopn-items-table .c-unit { width: 7%; text-align: center; }
-  .iopn-items-table .c-qty { width: 9%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
-  .iopn-items-table .c-price { width: 12%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
-  .iopn-items-table .c-amount { width: 14%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
-  .iopn-items-table .c-note { width: 16%; text-align: left; padding-left: 2.5mm; }
-  .iopn-items-table tbody td { height: 6.5mm; }
+  .iopn-items-table .c-no { width: 5%; text-align: center; }
+  .iopn-items-table .c-name { width: 19%; text-align: center; }
+  .iopn-items-table .c-spec { width: 17%; text-align: left; padding-left: 2.5mm; white-space: nowrap; overflow: hidden; }
+  .iopn-items-table .c-qty { width: 8%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
+  .iopn-items-table .c-price { width: 11%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
+  .iopn-items-table .c-amount { width: 13%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
+  .iopn-items-table .c-supplier { width: 14%; text-align: left; padding-left: 2.5mm; white-space: nowrap; overflow: hidden; }
+  .iopn-items-table .c-note { width: 13%; text-align: left; padding-left: 2.5mm; }
+  .iopn-items-table tbody td { height: 6.5mm; vertical-align: middle; white-space: nowrap; overflow: hidden; }
 
   /* 특이사항 */
   .iopn-notes-table { margin-top: 3mm; margin-bottom: 0; }
@@ -11439,16 +11508,18 @@ tr.is-newly-added > td {
   /* BOM 인쇄 — 페이지 분할(각 페이지 1장) + 하단 푸터 고정 */
   .bom-print-page {
     page-break-after: always;
-    min-height: 255mm;
     display: flex;
     flex-direction: column;
   }
-  .bom-print-page:last-child { page-break-after: auto; min-height: 0; }
+  .bom-print-page:last-child { page-break-after: auto; }
+  /* 페이지별 테두리 (전체 폼 테두리 대신) */
+  .print-form-iopn.print-form-paged { border: none !important; padding: 0 !important; }
+  .print-form-paged .bom-print-page { border: 2px solid #000; padding: 3mm 4mm; }
   .bom-print-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: auto;
+    margin-top: 2mm;
     border-top: 1.5px solid #000;
     padding-top: 2mm;
     font-size: 9pt;
