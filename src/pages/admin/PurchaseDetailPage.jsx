@@ -10,6 +10,7 @@ import { getBomProjects, getBomBySite } from '../../services/bomService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
+import MoneyInput from '../../components/common/MoneyInput';
 import { specFontClass } from '../../utils/printText';
 
 const STATUS = {
@@ -35,7 +36,6 @@ const PO_DEFAULTS = {
   payment: '납품완료후 익월말',
   delivery: '긴급',
 };
-const PRINT_ROWS = 15; // 양식 표 빈 행 포함 총 행수 (A4 세로 한 페이지 기준)
 function poNumber(purchase) {
   const d = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate() : (purchase.orderedAt ? new Date(purchase.orderedAt) : new Date(purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
   const yyyy = d.getFullYear();
@@ -97,6 +97,9 @@ export default function PurchaseDetailPage() {
   const [bulkModal, setBulkModal] = useState(null); // { mode: 'remaining' | 'close-as-is' } | null
   const [bulkForm, setBulkForm] = useState({ date: todayStr(), note: '' });
 
+  // 출력 시 구매처별로 묶어서 정렬
+  const [groupBySupplier, setGroupBySupplier] = useState(false);
+
   // BOM 가져오기
   const [bomModalOpen, setBomModalOpen] = useState(false);
   const [bomProjects, setBomProjects] = useState([]);
@@ -108,9 +111,9 @@ export default function PurchaseDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function loadData() {
+  async function loadData({ silent = false } = {}) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [p, st, sp, im] = await Promise.all([
         getPurchaseById(id), getAllSites(), getSuppliers(), getPurchaseItems(),
       ]);
@@ -136,7 +139,7 @@ export default function PurchaseDetailPage() {
       console.error(err);
       alert('불러오기 오류: ' + err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -321,7 +324,7 @@ export default function PurchaseDetailPage() {
         supplierName,
         note: form.note,
       });
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
       alert('저장 중 오류: ' + err.message);
     }
@@ -354,7 +357,7 @@ export default function PurchaseDetailPage() {
         receivedBy: userProfile?.name || '',
       });
       setReceiveModal(null);
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
       alert('입고 처리 중 오류: ' + err.message);
     }
@@ -394,7 +397,7 @@ export default function PurchaseDetailPage() {
         receivedBy: userProfile?.name || '',
       });
       setBulkModal(null);
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
       alert('일괄 입고 처리 중 오류: ' + err.message);
     }
@@ -410,7 +413,7 @@ export default function PurchaseDetailPage() {
       await receivePurchaseLine(purchase, lineIdx, {
         qty: 0, date: null, note: '', receivedBy: '',
       });
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
       alert('입고 취소 중 오류: ' + err.message);
     }
@@ -424,7 +427,7 @@ export default function PurchaseDetailPage() {
     )) return;
     try {
       await settlePurchase(purchase, userProfile?.name || '');
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
       alert('정산 중 오류: ' + err.message);
     }
@@ -437,7 +440,7 @@ export default function PurchaseDetailPage() {
     )) return;
     try {
       await cancelSettlePurchase(purchase);
-      await loadData();
+      await loadData({ silent: true });
     } catch (err) {
       alert('정산 취소 중 오류: ' + err.message);
     }
@@ -471,8 +474,61 @@ export default function PurchaseDetailPage() {
             {STATUS[status]?.label || status}
           </span>
         </div>
-        <div className="page-actions">
+        <div className="page-actions purchase-detail-top-actions">
           <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase')}>목록</button>
+          <button
+            type="button"
+            className={`btn ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setGroupBySupplier((v) => !v)}
+            title="출력 시 구매처별로 묶어서 정렬"
+          >구매처별 {groupBySupplier ? 'ON' : 'OFF'}</button>
+          {!isReadOnly && (
+            <button
+              type="button"
+              className={`btn ${dirty ? 'btn-primary' : 'btn-outline'}`}
+              onClick={handleSave}
+              disabled={!dirty}
+            >{dirty ? '저장' : '저장됨'}</button>
+          )}
+          {(status === 'ordered' || status === 'partial') && (() => {
+            const remainingCount = (purchase.items || []).filter((it) => {
+              const r = Number(it.receivedQty) || 0;
+              const q = Number(it.qty) || 0;
+              return q > 0 && r < q;
+            }).length;
+            const hasAnyReceived = (purchase.items || []).some((it) => Number(it.receivedQty) > 0);
+            return (
+              <>
+                {remainingCount > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => openBulk('remaining')}
+                    disabled={dirty}
+                    title={dirty ? '먼저 저장하세요' : '잔여 라인 일괄 입고'}
+                  >일괄 입고</button>
+                )}
+                {status === 'partial' && hasAnyReceived && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => openBulk('close-as-is')}
+                    disabled={dirty}
+                    title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
+                  >잔여 무시하고 종결</button>
+                )}
+              </>
+            );
+          })()}
+          {status === 'received' && (
+            <button type="button" className="btn btn-primary" onClick={handleSettle} disabled={dirty} title={dirty ? '먼저 저장하세요' : ''}>정산 처리</button>
+          )}
+          {status === 'settled' && (
+            <button type="button" className="btn btn-danger" onClick={handleCancelSettle}>정산 취소</button>
+          )}
+          {status !== 'settled' && (
+            <button type="button" className="btn btn-danger" onClick={handleDelete}>삭제</button>
+          )}
         </div>
       </div>
 
@@ -497,130 +553,179 @@ export default function PurchaseDetailPage() {
           : (purchase.orderedAt ? new Date(purchase.orderedAt)
             : (purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
         const orderDateKo = `${orderDate.getFullYear()}년 ${orderDate.getMonth() + 1}월 ${orderDate.getDate()}일`;
-        const rows = [...form.items];
-        while (rows.length < PRINT_ROWS) rows.push(null);
         const supplierTitle = supplier?.name ? `${supplier.name} 귀하` : (derivedSupplier ? `${derivedSupplier} 귀하` : '');
+
+        // 라인별 구매처명 (마스터 품목의 기본 구매처)
+        const supplierNameOf = (ln) => {
+          const mst = itemMaster.find((x) => x.id === ln.itemId);
+          const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
+          return sup?.name || '';
+        };
+        let printItems = form.items.map((ln) => ({ ...ln, _supplier: supplierNameOf(ln) }));
+        if (groupBySupplier) {
+          printItems = [...printItems].sort((a, b) =>
+            (a._supplier || '￿').localeCompare(b._supplier || '￿'));
+        }
+
+        // 페이지별 테두리가 닫히도록 직접 분할 (단일 div border는 페이지 경계에서 끊김)
+        const FIRST_PAGE_ROWS = 16; // 1페이지는 상단 정보표가 있어 적게
+        const OTHER_PAGE_ROWS = 24;
+        const TOTALS_RESERVE = 3;   // 마지막 페이지 합계·특이사항 표 공간(행 환산)
+        const allRows = printItems;
+        const pages = [];
+        let pi = 0;
+        while (pi < allRows.length) {
+          const cap = pages.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+          pages.push({ chunk: allRows.slice(pi, pi + cap), startNo: pi });
+          pi += cap;
+        }
+        if (pages.length === 0) pages.push({ chunk: [], startNo: 0 });
+        const lastCap = pages.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+        if (pages[pages.length - 1].chunk.length > lastCap - TOTALS_RESERVE) {
+          pages.push({ chunk: [], startNo: pi });
+        }
+        const pageCount = pages.length;
+
         return (
-          <div className="print-form-iopn print-only">
-            <div className="print-form-title">구 매 발 주 서</div>
+          <div className="print-form-iopn print-form-paged print-only">
+            {pages.map((pg, pageIdx) => {
+              const isFirst = pageIdx === 0;
+              const isLast = pageIdx === pageCount - 1;
+              const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+              const padTarget = isLast ? Math.max(pg.chunk.length, cap - TOTALS_RESERVE) : cap;
+              const padded = [...pg.chunk];
+              while (padded.length < padTarget) padded.push(null);
+              return (
+                <div className="bom-print-page" key={pageIdx}>
+                  {isFirst && <div className="print-form-title">구 매 발 주 서</div>}
 
-            <table className="iopn-info-table">
-              <tbody>
-                <tr>
-                  <th className="lbl">수 신</th>
-                  <td className="val">{supplierTitle}</td>
-                  <th className="lbl">사업자등록번호</th>
-                  <td className="val">{SELF_INFO.businessNumber}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">현 장 명</th>
-                  <td className="val">{site?.name || purchase.siteName || ''}</td>
-                  <th className="lbl">회사명/대표</th>
-                  <td className="val">{SELF_INFO.companyAndCeo}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">납품장소</th>
-                  <td className="val">{purchase.deliveryPlace || SELF_INFO.address}</td>
-                  <th className="lbl">주 소</th>
-                  <td className="val">{SELF_INFO.address}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">발행번호</th>
-                  <td className="val">{poNumber(purchase)}</td>
-                  <th className="lbl">TEL/FAX</th>
-                  <td className="val">{SELF_INFO.telFax}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">발 주 일</th>
-                  <td className="val">{orderDateKo}</td>
-                  <th className="lbl">납품기일</th>
-                  <td className="val">{purchase.deliveryDue || PO_DEFAULTS.delivery}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">지불조건</th>
-                  <td className="val">{purchase.payment || PO_DEFAULTS.payment}</td>
-                  <th className="lbl">담당/연락처</th>
-                  <td className="val">{purchase.requesterName || ''}</td>
-                </tr>
-                <tr>
-                  <td colSpan={4} className="iopn-amount-row">
-                    금 액 : ₩ {supplyAmount.toLocaleString()}원 / VAT 별도
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  {isFirst && (
+                    <table className="iopn-info-table">
+                      <tbody>
+                        <tr>
+                          <th className="lbl">수 신</th>
+                          <td className="val">{supplierTitle}</td>
+                          <th className="lbl">사업자등록번호</th>
+                          <td className="val">{SELF_INFO.businessNumber}</td>
+                        </tr>
+                        <tr>
+                          <th className="lbl">현 장 명</th>
+                          <td className="val">{site?.name || purchase.siteName || ''}</td>
+                          <th className="lbl">회사명/대표</th>
+                          <td className="val">{SELF_INFO.companyAndCeo}</td>
+                        </tr>
+                        <tr>
+                          <th className="lbl">납품장소</th>
+                          <td className="val">{purchase.deliveryPlace || SELF_INFO.address}</td>
+                          <th className="lbl">주 소</th>
+                          <td className="val">{SELF_INFO.address}</td>
+                        </tr>
+                        <tr>
+                          <th className="lbl">발행번호</th>
+                          <td className="val">{poNumber(purchase)}</td>
+                          <th className="lbl">TEL/FAX</th>
+                          <td className="val">{SELF_INFO.telFax}</td>
+                        </tr>
+                        <tr>
+                          <th className="lbl">발 주 일</th>
+                          <td className="val">{orderDateKo}</td>
+                          <th className="lbl">납품기일</th>
+                          <td className="val">{purchase.deliveryDue || PO_DEFAULTS.delivery}</td>
+                        </tr>
+                        <tr>
+                          <th className="lbl">지불조건</th>
+                          <td className="val">{purchase.payment || PO_DEFAULTS.payment}</td>
+                          <th className="lbl">담당/연락처</th>
+                          <td className="val">{purchase.requesterName || ''}</td>
+                        </tr>
+                        <tr>
+                          <td colSpan={4} className="iopn-amount-row">
+                            총 금액(VAT 포함) : ₩ {grandTotal.toLocaleString()}원
+                            <span className="iopn-amount-sub"> (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
 
-            <table className="iopn-items-table">
-              <thead>
-                <tr>
-                  <th className="c-no">NO</th>
-                  <th className="c-name">품목명</th>
-                  <th className="c-spec">규격</th>
-                  <th className="c-unit">단위</th>
-                  <th className="c-qty">수량</th>
-                  <th className="c-price">단가</th>
-                  <th className="c-amount">금액</th>
-                  <th className="c-recv">입고</th>
-                  <th className="c-note">비고</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((ln, idx) => {
-                  if (!ln) return (
-                    <tr key={`empty-${idx}`}>
-                      <td className="c-no">{idx + 1}</td>
-                      <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                    </tr>
-                  );
-                  const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
-                  const q = Number(ln.qty) || 0;
-                  const rq = Number(ln.receivedQty) || 0;
-                  const recvText = q <= 0 ? '' : (rq >= q ? '완료' : (rq > 0 ? `${rq}/${q}` : '미입고'));
-                  return (
-                    <tr key={idx}>
-                      <td className="c-no">{idx + 1}</td>
-                      <td className={`c-name ${specFontClass(ln.name, 18)}`}>{ln.name || ''}</td>
-                      <td className={`c-spec ${specFontClass(ln.spec, 20)}`}>{ln.spec || ''}</td>
-                      <td className="c-unit">{ln.unit || ''}</td>
-                      <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
-                      <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
-                      <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                      <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : (rq === 0 ? 'recv-none' : '')}`}>{recvText}</td>
-                      <td className={`c-note ${specFontClass(ln.note, 12)}`}>{ln.note || ''}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  <table className="iopn-items-table po-cols">
+                    <thead>
+                      <tr>
+                        <th className="c-no">NO</th>
+                        <th className="c-name">품목명</th>
+                        <th className="c-spec">규격</th>
+                        <th className="c-qty">수량</th>
+                        <th className="c-price">단가</th>
+                        <th className="c-amount">금액</th>
+                        <th className="c-recv">입고</th>
+                        <th className="c-supplier">구매처</th>
+                        <th className="c-note">비고</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {padded.map((ln, r) => {
+                        if (!ln) return (
+                          <tr key={`e-${r}`}>
+                            <td className="c-no"></td>
+                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                          </tr>
+                        );
+                        const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                        const q = Number(ln.qty) || 0;
+                        const rq = Number(ln.receivedQty) || 0;
+                        const recvText = q <= 0 ? '' : (rq >= q ? '완료' : (rq > 0 ? `${rq}/${q}` : '미입고'));
+                        return (
+                          <tr key={r}>
+                            <td className="c-no">{pg.startNo + r + 1}</td>
+                            <td className={`c-name ${specFontClass(ln.name, 11)}`}>{ln.name || ''}</td>
+                            <td className={`c-spec ${specFontClass(ln.spec, 28)}`}>{ln.spec || ''}</td>
+                            <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
+                            <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
+                            <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
+                            <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : (rq === 0 ? 'recv-none' : '')}`}>{recvText}</td>
+                            <td className={`c-supplier ${specFontClass(ln._supplier, 11)}`}>{ln._supplier || ''}</td>
+                            <td className={`c-note ${specFontClass(ln.note, 11)}`}>{ln.note || ''}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
 
-            <table className="iopn-notes-table">
-              <tbody>
-                <tr>
-                  <th className="lbl">특이사항</th>
-                  <td className="val">{form.note || ''}</td>
-                </tr>
-              </tbody>
-            </table>
+                  {isLast && (
+                    <>
+                      <table className="iopn-notes-table">
+                        <tbody>
+                          <tr>
+                            <th className="lbl">특이사항</th>
+                            <td className="val">{form.note || ''}</td>
+                          </tr>
+                        </tbody>
+                      </table>
 
-            <table className="iopn-total-table">
-              <tbody>
-                <tr>
-                  <th className="lbl">수량</th>
-                  <td className="num">{totalQty.toLocaleString()}</td>
-                  <th className="lbl">공급가액</th>
-                  <td className="num">{supplyAmount.toLocaleString()}</td>
-                  <th className="lbl">VAT</th>
-                  <td className="num">{vat.toLocaleString()}</td>
-                  <th className="lbl">합계</th>
-                  <td className="num grand">{grandTotal.toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
+                      <table className="iopn-total-table">
+                        <tbody>
+                          <tr>
+                            <th className="lbl">수량</th>
+                            <td className="num">{totalQty.toLocaleString()}</td>
+                            <th className="lbl">공급가액</th>
+                            <td className="num">{supplyAmount.toLocaleString()}</td>
+                            <th className="lbl">VAT</th>
+                            <td className="num">{vat.toLocaleString()}</td>
+                            <th className="lbl">합계</th>
+                            <td className="num grand">{grandTotal.toLocaleString()}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </>
+                  )}
 
-            <div className="iopn-form-footer">
-              <span>(주)아이오피엔 · 구매발주서 · {poNumber(purchase)}</span>
-              <span>{SELF_INFO.contact}</span>
-            </div>
+                  <div className="iopn-form-footer">
+                    <span>(주)아이오피엔 · 구매발주서 · {poNumber(purchase)}</span>
+                    <span>페이지 {pageIdx + 1} / {pageCount}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })()}
@@ -796,9 +901,8 @@ export default function PurchaseDetailPage() {
                         />
                       </td>
                       <td data-label="단가">
-                        <input
+                        <MoneyInput
                           className="num-input"
-                          type="number" min="0"
                           value={ln.unitPrice}
                           onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
                           disabled={isReadOnly}
@@ -922,68 +1026,18 @@ export default function PurchaseDetailPage() {
         </div>
       )}
 
-      <div className="purchase-detail-actions no-print">
-        {!isReadOnly && (
-          <button
-            type="button"
-            className={`btn ${dirty ? 'btn-primary' : 'btn-outline'}`}
-            onClick={handleSave}
-            disabled={!dirty}
-          >
-            {dirty ? '저장' : '저장됨'}
-          </button>
-        )}
-        {(status === 'ordered' || status === 'partial') && (() => {
-          const remainingCount = (purchase.items || []).filter((it) => {
-            const r = Number(it.receivedQty) || 0;
-            const q = Number(it.qty) || 0;
-            return q > 0 && r < q;
-          }).length;
-          const hasAnyReceived = (purchase.items || []).some((it) => Number(it.receivedQty) > 0);
-          return (
-            <>
-              <span className="purchase-status-hint">
-                {status === 'partial'
-                  ? `부분 입고 진행 중 — 잔여 ${remainingCount}개 라인. 일괄 처리하거나 잔여 무시하고 종결할 수 있습니다`
-                  : '품목별로 입고 처리하거나 일괄 입고로 전체 완료 처리하세요'}
-              </span>
-              {remainingCount > 0 && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => openBulk('remaining')}
-                  disabled={dirty}
-                  title={dirty ? '먼저 저장하세요' : '잔여 라인 일괄 입고'}
-                >일괄 입고</button>
-              )}
-              {status === 'partial' && hasAnyReceived && (
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => openBulk('close-as-is')}
-                  disabled={dirty}
-                  title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
-                >잔여 무시하고 종결</button>
-              )}
-              <button type="button" className="btn btn-danger" onClick={handleDelete}>삭제</button>
-            </>
-          );
-        })()}
-        {status === 'received' && (
-          <>
-            <button type="button" className="btn btn-primary" onClick={handleSettle} disabled={dirty} title={dirty ? '먼저 저장하세요' : ''}>정산 처리</button>
-            <button type="button" className="btn btn-danger" onClick={handleDelete}>삭제</button>
-          </>
-        )}
-        {status === 'settled' && (
-          <>
-            <span className="purchase-settled-note">
-              정산 완료 — {purchase.siteName || '귀속 프로젝트'} 지출에 반영됨
-            </span>
-            <button type="button" className="btn btn-danger" onClick={handleCancelSettle}>정산 취소</button>
-          </>
-        )}
-      </div>
+      {(status === 'ordered' || status === 'partial') && (
+        <p className="purchase-status-hint screen-only">
+          {status === 'partial'
+            ? '부분 입고 진행 중 — 상단의 “일괄 입고” 또는 “잔여 무시하고 종결” 버튼을 사용하세요'
+            : '품목별로 입고 처리하거나 상단 “일괄 입고”로 전체 완료 처리하세요'}
+        </p>
+      )}
+      {status === 'settled' && (
+        <p className="purchase-settled-note screen-only">
+          정산 완료 — {purchase.siteName || '귀속 프로젝트'} 지출에 반영됨
+        </p>
+      )}
 
       <Modal
         isOpen={!!bulkModal}
