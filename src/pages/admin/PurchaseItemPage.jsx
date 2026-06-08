@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   getPurchaseItems, addPurchaseItem, updatePurchaseItem, deletePurchaseItem, deletePurchaseItems,
-  getSuppliers, nextMainCode, nextSubCode, reorderGroupCodes, inferGroupKeys,
+  getSuppliers, nextMainCode, nextSubCode, reorderGroupCodes, inferGroupKeys, repadItemCodes,
 } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
@@ -139,7 +139,9 @@ export default function PurchaseItemPage() {
   async function loadData() {
     try {
       const [it, sp] = await Promise.all([getPurchaseItems(), getSuppliers()]);
-      setItems(inferGroupKeys(it));
+      // 기존 5자리 코드(IOPN-00001)를 3자리(IOPN-001)로 1회 재패딩 (변경분만 저장)
+      const repadded = await repadItemCodes(it);
+      setItems(inferGroupKeys(repadded));
       setSuppliers(sp);
     } catch (err) {
       console.error(err);
@@ -217,7 +219,7 @@ export default function PurchaseItemPage() {
     const newIndex = groupItems.findIndex((it) => it.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    const m = (mainCode || '').match(/^IOPN-(\d{5})/);
+    const m = (mainCode || '').match(/^IOPN-(\d+)/);
     if (!m) return;
     const prefix = `IOPN-${m[1]}`;
 
@@ -386,7 +388,7 @@ export default function PurchaseItemPage() {
       return;
     }
     // 삭제 대상이 하위분류(-N)면, 같은 대분류의 뒷번호를 당겨 빈 번호를 채움
-    const subMatch = (it.code || '').match(/^(IOPN-\d{5})-(\d+)$/);
+    const subMatch = (it.code || '').match(/^(IOPN-\d+)-(\d+)$/);
     try {
       await deletePurchaseItem(it.id);
       const remaining = items.filter((x) => x.id !== it.id);
@@ -396,7 +398,7 @@ export default function PurchaseItemPage() {
         const mainCode = subMatch[1];
         const siblings = remaining
           .filter((x) => {
-            const m = (x.code || '').match(/^(IOPN-\d{5})-(\d+)$/);
+            const m = (x.code || '').match(/^(IOPN-\d+)-(\d+)$/);
             return m && m[1] === mainCode;
           })
           .sort((a, b) => {
@@ -488,7 +490,7 @@ export default function PurchaseItemPage() {
   async function handleGroupBulkSubmit() {
     if (!groupBulk) return;
     const repItem = groupBulk.repItem;
-    if (!/^IOPN-\d{5}/.test(repItem.code || '')) {
+    if (!/^IOPN-\d+/.test(repItem.code || '')) {
       alert('이 그룹은 IOPN 코드가 아니어서 일괄 추가할 수 없습니다.');
       return;
     }
@@ -523,6 +525,33 @@ export default function PurchaseItemPage() {
       alert('일괄 추가 중 오류: ' + err.message);
     } finally {
       setGroupBulkSaving(false);
+    }
+  }
+
+  // ---- 그룹 하위 코드 재정렬 (대분류-1, -2 … 로 다시 매김) ----
+  async function reorderGroup(repCode, subItems) {
+    if (!subItems || subItems.length === 0) {
+      alert('재정렬할 하위 품목이 없습니다.');
+      return;
+    }
+    const mainCode = (repCode || '').match(/^IOPN-\d+/)?.[0];
+    if (!mainCode) {
+      alert('대분류 코드(IOPN-NNNNN)가 올바르지 않아 재정렬할 수 없습니다.');
+      return;
+    }
+    // 변경될 코드 미리 계산 (확인 문구용) — 이미 순서대로면 변경 없음
+    const willChange = subItems.filter((s, idx) => s.code !== `${mainCode}-${idx + 1}`);
+    if (willChange.length === 0) {
+      alert('이미 코드가 순서대로 정렬되어 있습니다.');
+      return;
+    }
+    if (!window.confirm(`하위 ${willChange.length}개 품목의 코드를 ${mainCode}-1 부터 다시 매깁니다. 진행할까요?`)) return;
+    try {
+      const updates = await reorderGroupCodes(subItems.map((s) => s.id), subItems, mainCode);
+      await loadData();
+      alert(`${updates.length}개 코드를 재정렬했습니다.`);
+    } catch (err) {
+      alert('코드 재정렬 중 오류: ' + err.message);
     }
   }
 
@@ -642,6 +671,12 @@ export default function PurchaseItemPage() {
                         onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
                         title="규격·금액 여러 개 붙여넣어 한 번에 추가"
                       >📋 일괄</button>
+                      <button
+                        type="button"
+                        className="item-group-add-btn"
+                        onClick={(e) => { e.stopPropagation(); reorderGroup(repCode, subItems); }}
+                        title="하위 코드를 -1부터 순서대로 다시 매김"
+                      >🔢 코드정리</button>
                     </div>
                     <DndContext
                       sensors={sensors}
@@ -681,6 +716,13 @@ export default function PurchaseItemPage() {
                                   onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
                                   title="규격·금액 여러 개 붙여넣어 한 번에 추가"
                                 >📋 일괄</button>
+                                <button
+                                  type="button"
+                                  className="item-group-add-btn"
+                                  style={{ marginLeft: 6 }}
+                                  onClick={(e) => { e.stopPropagation(); reorderGroup(repCode, subItems); }}
+                                  title="하위 코드를 -1부터 순서대로 다시 매김"
+                                >🔢 코드정리</button>
                               </th>
                             </tr>
                           </thead>
@@ -725,6 +767,7 @@ export default function PurchaseItemPage() {
                                     onChange={(e) => updateField(it.id, { name: e.target.value })}
                                     onBlur={() => flushItem(it.id)}
                                   />
+                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)} />
                                 </td>
                                 <td data-label="메이커">
                                   <input

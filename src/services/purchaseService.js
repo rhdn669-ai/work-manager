@@ -92,13 +92,13 @@ export function inferGroupKeys(items) {
   const bareIdByCode = new Map();
   for (const it of items) {
     if (!it.groupKey) {
-      const m = (it.code || '').match(/^IOPN-(\d{5})$/);
+      const m = (it.code || '').match(/^IOPN-(\d+)$/);
       if (m) bareIdByCode.set(it.code, it.id);
     }
   }
   return items.map((it) => {
     if (it.groupKey) return it;
-    const m = (it.code || '').match(/^IOPN-(\d{5})-(\d+)$/);
+    const m = (it.code || '').match(/^IOPN-(\d+)-(\d+)$/);
     if (m) {
       const mainCode = `IOPN-${m[1]}`;
       const bareId = bareIdByCode.get(mainCode);
@@ -106,6 +106,29 @@ export function inferGroupKeys(items) {
     }
     return it; // 베어 메인이거나 매칭 안 됨 — own id가 anchor
   });
+}
+
+// 코드 자릿수 마이그레이션 — 기존 5자리(IOPN-00001)를 3자리(IOPN-001)로 재패딩
+// 대분류 번호 부분만 3자리로 정규화, 소분류(-N)는 그대로. groupKey(id 기반)는 영향 없음.
+// 변경분만 batch commit 후, 코드가 갱신된 items 배열을 반환.
+export async function repadItemCodes(items) {
+  const list = items || [];
+  const updates = [];
+  const next = list.map((it) => {
+    const m = (it.code || '').match(/^IOPN-(\d+)(-\d+)?$/);
+    if (!m) return it;
+    const newMain = String(parseInt(m[1], 10)).padStart(3, '0');
+    if (newMain === m[1]) return it; // 이미 3자리(또는 동일)면 변경 없음
+    const newCode = `IOPN-${newMain}${m[2] || ''}`;
+    if (!String(it.id).startsWith('tmp-')) updates.push({ id: it.id, code: newCode });
+    return { ...it, code: newCode };
+  });
+  if (updates.length > 0) {
+    const batch = writeBatch(db);
+    for (const u of updates) batch.update(doc(db, 'purchaseItems', u.id), { code: u.code, updatedAt: new Date() });
+    await batch.commit();
+  }
+  return next;
 }
 
 export async function updatePurchaseItem(id, data) {
@@ -122,13 +145,13 @@ export function nextMainCode(items) {
   let maxMain = 0;
   for (const it of items || []) {
     const code = (it && it.code) || '';
-    const m = code.match(/^IOPN-(\d{5})/);
+    const m = code.match(/^IOPN-(\d+)/);
     if (m) {
       const n = parseInt(m[1], 10);
       if (n > maxMain) maxMain = n;
     }
   }
-  return `${PREFIX}${String(maxMain + 1).padStart(5, '0')}`;
+  return `${PREFIX}${String(maxMain + 1).padStart(3, '0')}`;
 }
 
 // 여러 품목 일괄 삭제 (대분류 그룹 전체 삭제용)
@@ -147,7 +170,7 @@ export async function deletePurchaseItems(ids) {
 // mainCode: 그룹 키 (예: "IOPN-00001") — 베어 메인 코드는 변경 안 함
 // 서브들은 -1, -2, -3, ... 순서대로 부여
 export async function reorderGroupCodes(orderedIds, currentItems, mainCode) {
-  const m = (mainCode || '').match(/^IOPN-(\d{5})/);
+  const m = (mainCode || '').match(/^IOPN-(\d+)/);
   if (!m) throw new Error('잘못된 그룹 코드');
   const mainNum = m[1];
   const prefix = `IOPN-${mainNum}`;
@@ -178,19 +201,19 @@ export async function reorderGroupCodes(orderedIds, currentItems, mainCode) {
 // 부모 코드의 다음 소분류 (IOPN-00001-1, -2, ...)
 export function nextSubCode(items, parentCode) {
   const PREFIX = 'IOPN-';
-  const m = (parentCode || '').match(/^IOPN-(\d{5})/);
+  const m = (parentCode || '').match(/^IOPN-(\d+)/);
   if (!m) return null;
   const mainNum = parseInt(m[1], 10);
   let maxSub = 0;
   for (const it of items || []) {
     const code = (it && it.code) || '';
-    const cm = code.match(/^IOPN-(\d{5})(?:-(\d+))?$/);
+    const cm = code.match(/^IOPN-(\d+)(?:-(\d+))?$/);
     if (cm && parseInt(cm[1], 10) === mainNum && cm[2]) {
       const sub = parseInt(cm[2], 10);
       if (sub > maxSub) maxSub = sub;
     }
   }
-  return `${PREFIX}${String(mainNum).padStart(5, '0')}-${maxSub + 1}`;
+  return `${PREFIX}${String(mainNum).padStart(3, '0')}-${maxSub + 1}`;
 }
 
 // 다음 IOPN- 코드 생성 (엑셀 일괄·구매 등록 자동 생성용 — 같은 품명 그룹화)
@@ -208,7 +231,7 @@ export function nextItemCode(items, name = '') {
     if (sameName.length > 0) {
       const mainNumbers = sameName
         .map((it) => {
-          const m = (it.code || '').match(/^IOPN-(\d{5})/);
+          const m = (it.code || '').match(/^IOPN-(\d+)/);
           return m ? parseInt(m[1], 10) : 0;
         })
         .filter((n) => n > 0);
@@ -217,13 +240,13 @@ export function nextItemCode(items, name = '') {
         // 소분류 있는 것만 카운트 — 대분류만 있는 첫 행 다음은 -1부터
         let maxSub = 0;
         for (const it of list) {
-          const m = (it && it.code ? it.code : '').match(/^IOPN-(\d{5})(?:-(\d+))?$/);
+          const m = (it && it.code ? it.code : '').match(/^IOPN-(\d+)(?:-(\d+))?$/);
           if (m && parseInt(m[1], 10) === mainNum && m[2]) {
             const sub = parseInt(m[2], 10);
             if (sub > maxSub) maxSub = sub;
           }
         }
-        return `${PREFIX}${String(mainNum).padStart(5, '0')}-${maxSub + 1}`;
+        return `${PREFIX}${String(mainNum).padStart(3, '0')}-${maxSub + 1}`;
       }
     }
   }

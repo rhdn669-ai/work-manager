@@ -83,12 +83,14 @@ function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay,
     if (dow === 0 || dow === 6) continue;
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     if (holidaySet.has(iso)) continue;
-    if (leaveMap && leaveMap[d]) continue;
+    // 휴가일: 전일 휴가(연차·병가)는 빈칸(0), 반차/반반차는 근무비율(0.5/0.75)만큼 자동채움
+    const leaveFrac = leaveMap && leaveMap[d] ? leaveWorkFraction(leaveMap[d]) : 1;
+    if (leaveFrac <= 0) continue;
     const cur = newDq[d];
     if (cur === undefined || cur === null || cur === '') {
-      // 다른 프로젝트에 이미 들어간 공수만큼 빼고 남은 만큼만 채움 (없으면 1)
+      // 다른 프로젝트에 이미 들어간 공수만큼 빼고, 휴가 근무비율 한도 내에서 채움
       const otherTotal = Number(otherDailyByDay[d]?.total) || 0;
-      const allowed = Math.max(0, 1 - otherTotal);
+      const allowed = Math.min(leaveFrac, Math.max(0, 1 - otherTotal));
       if (allowed > 0) {
         newDq[d] = allowed;
         changed = true;
@@ -125,6 +127,10 @@ export default function SiteClosingPage() {
   const [otherSitesEmployeeDaily, setOtherSitesEmployeeDaily] = useState({});
   // 같은 월에 다른 양산형 프로젝트에도 항목으로 존재하는 직원 이름 set ({name: true})
   const [employeesInOtherSites, setEmployeesInOtherSites] = useState({});
+  // 다른 프로젝트의 같은 직원 항목 목록 — { 이름: [{ id, siteName, total }] } (중복 배정 경고·자동채움 끄기용)
+  const [otherSitesEmployeeItems, setOtherSitesEmployeeItems] = useState({});
+  // 중복 배정 직원 추가 확인 모달 — { user, others:[{id,siteName,total}] }
+  const [dupAddModal, setDupAddModal] = useState(null);
   // 휴무일(주말 + 회사 공휴일 + 한국 공휴일) 집합 — 'YYYY-MM-DD'
   const [holidaySet, setHolidaySet] = useState(new Set());
   // 이 사이트 같은 월의 직원 잔업일 집합 — { 이름: Set<day> } (휴무일에 잔업 신청 → 출근으로 표시)
@@ -247,6 +253,7 @@ export default function SiteClosingPage() {
       const currentClosingId = `${siteId}_${y}_${String(m).padStart(2, '0')}`;
       const otherDaily = {};
       const inOtherSites = {};
+      const otherItemsByName = {};
       allEmpItemsThisMonth.forEach((it) => {
         // closingId 포맷: `{siteId}_{year}_{MM}` — siteId 필드가 누락된 legacy 항목의 출처 복원용
         const effectiveSiteId = it.siteId || (it.closingId ? String(it.closingId).split('_')[0] : '');
@@ -256,19 +263,27 @@ export default function SiteClosingPage() {
         const name = it.detail || '';
         if (!name) return;
         const siteName = allSitesNameMap[effectiveSiteId] || '(삭제된 프로젝트)';
-        inOtherSites[name] = true;
         if (!otherDaily[name]) otherDaily[name] = {};
         const dq = it.dailyQuantities || {};
+        let itemTotal = 0;
         for (const [day, qty] of Object.entries(dq)) {
           const q = Number(qty) || 0;
           if (q <= 0) continue;
+          itemTotal += q;
+          // 실제 공수(>0)가 있는 경우에만 '다른 현장 배정'으로 간주 → 빈 껍데기 항목은 자동채움 막지 않음
+          inOtherSites[name] = true;
           if (!otherDaily[name][day]) otherDaily[name][day] = { total: 0, sources: [] };
           otherDaily[name][day].total += q;
           otherDaily[name][day].sources.push({ siteName, qty: q });
         }
+        if (itemTotal > 0) {
+          if (!otherItemsByName[name]) otherItemsByName[name] = [];
+          otherItemsByName[name].push({ id: it.id, siteName, total: itemTotal });
+        }
       });
       setOtherSitesEmployeeDaily(otherDaily);
       setEmployeesInOtherSites(inOtherSites);
+      setOtherSitesEmployeeItems(otherItemsByName);
       setSite(s);
       setAssignedNames(assigned);
       setFinances(fins);
@@ -770,6 +785,21 @@ export default function SiteClosingPage() {
     });
     setShowEmployeeSelect(false);
     await loadAll({ silent: true });
+  }
+
+  // 중복 배정 직원 추가 — disableOthers=true면 기존 프로젝트 항목의 자동채움만 끄고(값 유지) 추가
+  async function confirmDupAdd(disableOthers) {
+    if (!dupAddModal) return;
+    const { user, others } = dupAddModal;
+    setDupAddModal(null);
+    try {
+      if (disableOthers && others.length > 0) {
+        await Promise.all(others.map((o) => updateClosingItem(o.id, { autofillDisabled: true })));
+      }
+      await handleAddEmployee(user);
+    } catch (err) {
+      alert('직원 추가 중 오류: ' + err.message);
+    }
   }
 
   async function toggleEmployeeAutofill(itemId) {
@@ -2293,8 +2323,15 @@ export default function SiteClosingPage() {
                     <ul className="vendor-picker-list">
                       {assignedElsewhere.map((u) => (
                         <li key={u.uid} style={{ opacity: 0.6 }}>
-                          <button type="button" onClick={() => handleAddEmployee(u)}>
-                            <strong>{u.name}</strong>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const others = otherSitesEmployeeItems[u.name] || [];
+                              if (others.length === 0) { handleAddEmployee(u); return; }
+                              setDupAddModal({ user: u, others });
+                            }}
+                          >
+                            <strong>{u.name} <span className="dup-warn-badge">⚠️ 중복</span></strong>
                             <span>{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
                           </button>
                         </li>
@@ -2327,6 +2364,43 @@ export default function SiteClosingPage() {
           </Modal>
         );
       })()}
+
+      {/* 중복 배정 직원 추가 확인 — 기존 프로젝트 자동채움 끄기 선택 */}
+      {dupAddModal && (
+        <Modal isOpen={!!dupAddModal} onClose={() => setDupAddModal(null)} title="이미 배정된 직원">
+          <div className="dup-add-modal">
+            <p>
+              <strong>{dupAddModal.user.name}</strong> 직원은 이번 달 이미 다른 프로젝트에 배정되어 있습니다.
+            </p>
+            <ul className="dup-add-list">
+              {dupAddModal.others.map((o) => (
+                <li key={o.id}>
+                  <span className="dup-add-site">{o.siteName}</span>
+                  <span className="dup-add-qty">{o.total}공수</span>
+                </li>
+              ))}
+            </ul>
+            <p className="dup-add-note">
+              직원의 하루 공수 합은 최대 <strong>1</strong>로 제한됩니다.
+              같은 날 중복 입력 시 먼저 입력된 현장이 우선되고, 이 현장은 남는 만큼만 수동 입력해야 합니다.
+            </p>
+            <p className="dup-add-note">
+              "기존 자동채움 끄고 추가"를 선택하면 위 프로젝트의 <strong>자동채움만 끄고 기존 입력값은 그대로 유지</strong>합니다(앞으로 자동으로 다시 채우지 않음).
+            </p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={() => confirmDupAdd(true)}>
+                기존 자동채움 끄고 추가
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => confirmDupAdd(false)}>
+                그냥 추가
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setDupAddModal(null)}>
+                취소
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
