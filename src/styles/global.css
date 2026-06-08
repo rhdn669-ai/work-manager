@@ -11147,6 +11147,12 @@ tr.is-newly-added > td {
 .iopn-items-table .c-amount { width: 13%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
 .iopn-items-table .c-supplier { width: 14%; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; }
 .iopn-items-table .c-note { width: 11%; text-align: left; padding-left: 8px; }
+/* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
+.iopn-items-table.bom-no-price .c-name { width: 13%; text-align: center; }
+.iopn-items-table.bom-no-price .c-spec { width: 43%; text-align: center; padding-left: 0; }
+.iopn-items-table.bom-no-price .c-qty { width: 8%; text-align: center; padding-right: 0; }
+.iopn-items-table.bom-no-price .c-supplier { width: 18%; text-align: center; padding-left: 0; }
+.iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
 .iopn-items-table tbody td { height: 22px; vertical-align: middle; white-space: nowrap; overflow: hidden; }
 /* 긴 글자 자동 축소 (인쇄 9pt !important를 이기도록 !important) */
 .iopn-items-table .fs-8 { font-size: 8pt !important; }
@@ -11530,6 +11536,12 @@ tr.is-newly-added > td {
   .iopn-items-table .c-amount { width: 13%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
   .iopn-items-table .c-supplier { width: 14%; text-align: left; padding-left: 2.5mm; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .c-note { width: 11%; text-align: left; padding-left: 2.5mm; }
+  /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
+  .iopn-items-table.bom-no-price .c-name { width: 13%; text-align: center; }
+  .iopn-items-table.bom-no-price .c-spec { width: 43%; text-align: center; padding-left: 0; }
+  .iopn-items-table.bom-no-price .c-qty { width: 8%; text-align: center; padding-right: 0; }
+  .iopn-items-table.bom-no-price .c-supplier { width: 18%; text-align: center; padding-left: 0; }
+  .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
   .iopn-items-table tbody td { height: 6.5mm; vertical-align: middle; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .fs-8 { font-size: 8pt !important; }
   .iopn-items-table .fs-7 { font-size: 7pt !important; }

@@ -346,14 +346,11 @@ export default function BomDetailPage() {
         const today = new Date();
         const docNo = `BOM${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
         const todayKo = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-        const supplyAmount = total;
-        const vat = Math.round(supplyAmount * 0.1);
-        const grandTotal = supplyAmount + vat;
-        // 각 페이지 합계 표기를 위해 직접 페이지 분할 (브라우저 자동 분할로는 페이지별 합계 불가)
+        // 페이지 직접 분할 (구매처 밴드·섹션 경계 표기를 위해 브라우저 자동 분할 대신)
         const FIRST_PAGE_ROWS = 19; // 1페이지는 상단 정보표가 있어 적게
         const OTHER_PAGE_ROWS = 26;
         const pageData = [];
-        const pushPages = (list, secName, secSubtotal) => {
+        const pushPages = (list, secName) => {
           let i = 0;
           while (i < list.length) {
             const size = pageData.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
@@ -362,22 +359,20 @@ export default function BomDetailPage() {
               chunk, startNo: i, size,
               supplierName: secName,
               isSectionLast: (i + size) >= list.length,
-              sectionSubtotal: secSubtotal,
             });
             i += size;
           }
         };
         // 구매처별이면 구매처 순서대로 정렬해 연속 출력 (페이지 분할 X)
         const printRows = groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows;
-        pushPages(printRows, null, supplyAmount);
-        if (pageData.length === 0) pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true, sectionSubtotal: 0 });
+        pushPages(printRows, null);
+        if (pageData.length === 0) pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true });
         const pageCount = pageData.length;
         return (
           <div className="print-form-iopn print-form-paged print-only">
-            {pageData.map(({ chunk, startNo, size, supplierName, isSectionLast, sectionSubtotal }, pageIdx) => {
+            {pageData.map(({ chunk, startNo, size, supplierName, isSectionLast }, pageIdx) => {
               const isFirst = pageIdx === 0;
               const targetRows = size;
-              const pageSubtotal = chunk.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
               const padded = [...chunk];
               while (padded.length < targetRows) padded.push(null);
               return (
@@ -424,12 +419,6 @@ export default function BomDetailPage() {
                   <th className="lbl">담당/연락처</th>
                   <td className="val">손성욱 / 010-7704-0331</td>
                 </tr>
-                <tr>
-                  <td colSpan={4} className="iopn-amount-row">
-                    총 합계금액 : ₩ {grandTotal.toLocaleString()}원
-                    <span className="iopn-amount-sub"> (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})</span>
-                  </td>
-                </tr>
               </tbody>
             </table>
                     </>
@@ -439,15 +428,13 @@ export default function BomDetailPage() {
                     <div className="bom-print-supplier-band">구매처 : {supplierName}</div>
                   )}
 
-                  <table className="iopn-items-table">
+                  <table className="iopn-items-table bom-no-price">
                     <thead>
                       <tr>
                         <th className="c-no">NO</th>
                         <th className="c-name">품목명</th>
                         <th className="c-spec">규격</th>
                         <th className="c-qty">수량</th>
-                        <th className="c-price">단가</th>
-                        <th className="c-amount">금액</th>
                         <th className="c-supplier">구매처</th>
                         <th className="c-note">비고</th>
                       </tr>
@@ -457,34 +444,20 @@ export default function BomDetailPage() {
                         if (!it) return (
                           <tr key={`e-${r}`}>
                             <td className="c-no"></td>
-                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td></td><td></td><td></td><td></td><td></td>
                           </tr>
                         );
-                        const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
-                            <td className={`c-name ${specFontClass(it.name, 19)}`}>{it.name || ''}</td>
-                            <td className={`c-spec ${specFontClass(it.spec, 24)}`}>{it.spec || ''}</td>
+                            <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
+                            <td className={`c-spec ${specFontClass(it.spec, 43)}`}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
-                            <td className="c-price">{Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}</td>
-                            <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                            <td className={`c-supplier ${specFontClass(it.supplier, 14)}`}>{it.supplier || ''}</td>
-                            <td className={`c-note ${specFontClass(it.note, 12)}`}>{it.note || ''}</td>
+                            <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
+                            <td className={`c-note ${specFontClass(it.note, 14)}`}>{it.note || ''}</td>
                           </tr>
                         );
                       })}
-                    </tbody>
-                  </table>
-
-                  <table className="iopn-pagetotal-table">
-                    <tbody>
-                      <tr>
-                        <th className="lbl">이 페이지 합계</th>
-                        <td className="num">₩ {pageSubtotal.toLocaleString()}원</td>
-                        {isSectionLast && <th className="lbl grand-lbl">{supplierName ? `${supplierName} 소계` : '총 합계 (VAT 별도)'}</th>}
-                        {isSectionLast && <td className="num grand">₩ {sectionSubtotal.toLocaleString()}원</td>}
-                      </tr>
                     </tbody>
                   </table>
 

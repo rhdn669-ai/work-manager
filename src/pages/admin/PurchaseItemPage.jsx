@@ -503,8 +503,8 @@ export default function PurchaseItemPage() {
         buf = [...buf, { code, name: repItem.name }];
         return {
           code,
-          name: r.name, // 붙여넣은 첫 칸 = 품명
-          spec: '',
+          name: repItem.name || '', // 품명은 대표 품목명 유지
+          spec: r.name, // 붙여넣은 첫 칸 = 규격
           maker: repItem.maker || '',
           unit: repItem.unit || '',
           category: repItem.category || '',
@@ -552,6 +552,28 @@ export default function PurchaseItemPage() {
       alert(`${updates.length}개 코드를 재정렬했습니다.`);
     } catch (err) {
       alert('코드 재정렬 중 오류: ' + err.message);
+    }
+  }
+
+  // ---- 그룹 하위: 품명에 든 내용을 규격으로 이동 (예전 일괄추가 데이터 정리) ----
+  // 규격이 비어있고 품명이 대표 품목명과 다른 하위만 대상: spec ← name, name ← 대표 품목명
+  async function moveNameToSpec(repItem, subItems) {
+    if (!repItem) return;
+    const repName = repItem.name || '';
+    const targets = (subItems || []).filter(
+      (s) => !(s.spec || '').trim() && (s.name || '').trim() && (s.name || '').trim() !== repName.trim(),
+    );
+    if (targets.length === 0) {
+      alert('이동할 항목이 없습니다. (규격이 비어있고 품명이 대표 품목명과 다른 하위 품목만 대상)');
+      return;
+    }
+    if (!window.confirm(`하위 ${targets.length}개 품목의 품명 내용을 규격으로 옮기고, 품명은 "${repName}"으로 통일합니다. 진행할까요?`)) return;
+    try {
+      await Promise.all(targets.map((s) => updatePurchaseItem(s.id, { spec: (s.name || '').trim(), name: repName })));
+      await loadData();
+      alert(`${targets.length}개 품목을 정리했습니다.`);
+    } catch (err) {
+      alert('품명→규격 이동 중 오류: ' + err.message);
     }
   }
 
@@ -677,6 +699,12 @@ export default function PurchaseItemPage() {
                         onClick={(e) => { e.stopPropagation(); reorderGroup(repCode, subItems); }}
                         title="하위 코드를 -1부터 순서대로 다시 매김"
                       >🔢 코드정리</button>
+                      <button
+                        type="button"
+                        className="item-group-add-btn"
+                        onClick={(e) => { e.stopPropagation(); moveNameToSpec(repItem, subItems); }}
+                        title="하위 품명에 든 내용을 규격으로 이동 (품명은 대표 품목명으로 통일)"
+                      >↪ 품명→규격</button>
                     </div>
                     <DndContext
                       sensors={sensors}
@@ -723,6 +751,13 @@ export default function PurchaseItemPage() {
                                   onClick={(e) => { e.stopPropagation(); reorderGroup(repCode, subItems); }}
                                   title="하위 코드를 -1부터 순서대로 다시 매김"
                                 >🔢 코드정리</button>
+                                <button
+                                  type="button"
+                                  className="item-group-add-btn"
+                                  style={{ marginLeft: 6 }}
+                                  onClick={(e) => { e.stopPropagation(); moveNameToSpec(repItem, subItems); }}
+                                  title="하위 품명에 든 내용을 규격으로 이동 (품명은 대표 품목명으로 통일)"
+                                >↪ 품명→규격</button>
                               </th>
                             </tr>
                           </thead>
@@ -978,11 +1013,11 @@ export default function PurchaseItemPage() {
       {/* 그룹 안 일괄 추가 (규격·금액) */}
       <Modal isOpen={!!groupBulk} onClose={() => setGroupBulk(null)} title={`일괄 추가 — ${groupBulk?.repItem?.name || ''}`}>
         <div className="form-group">
-          <label>품명 · 개별단가 붙여넣기</label>
+          <label>규격 · 개별단가 붙여넣기</label>
           <p className="field-hint">
-            이 그룹(<strong>{groupBulk?.repItem?.name}</strong>)에 <strong>품명 + 개별단가</strong>를 한 번에 추가합니다.
-            코드는 소분류(-N)로 자동 부여됩니다.<br />
-            엑셀 2열(품명·개별단가) 또는 한 줄에 <code>품명 [공백] 개별단가</code> 형식.
+            이 그룹(<strong>{groupBulk?.repItem?.name}</strong>)에 <strong>규격 + 개별단가</strong>를 한 번에 추가합니다.
+            품명은 대표 품목명(<strong>{groupBulk?.repItem?.name}</strong>)으로 동일하게 들어가고, 코드는 소분류(-N)로 자동 부여됩니다.<br />
+            엑셀 2열(규격·개별단가) 또는 한 줄에 <code>규격 [공백] 개별단가</code> 형식.
           </p>
           <textarea
             value={groupBulkText}
@@ -1006,7 +1041,7 @@ export default function PurchaseItemPage() {
             <div className="bulk-preview-head">{parsedGroupBulk.length}개 인식됨</div>
             <table className="table">
               <thead>
-                <tr><th>품명</th><th style={{ textAlign: 'right' }}>개별단가</th></tr>
+                <tr><th>규격</th><th style={{ textAlign: 'right' }}>개별단가</th></tr>
               </thead>
               <tbody>
                 {parsedGroupBulk.slice(0, 50).map((r, i) => (
