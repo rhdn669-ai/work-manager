@@ -4,7 +4,7 @@ import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
 
 const EMPTY_FORM = {
-  name: '', representative: '', contact: '', businessNumber: '',
+  name: '', representative: '', contact: '', email: '', businessNumber: '',
   bankName: '', bankAccount: '', category: '', note: '',
 };
 
@@ -33,7 +33,7 @@ export default function SupplierManagementPage() {
     const kw = search.trim().toLowerCase();
     if (!kw) return suppliers;
     return suppliers.filter((s) =>
-      [s.name, s.representative, s.contact, s.category, s.note]
+      [s.name, s.representative, s.contact, s.email, s.category, s.note]
         .some((v) => (v || '').toLowerCase().includes(kw)),
     );
   }, [suppliers, search]);
@@ -48,7 +48,7 @@ export default function SupplierManagementPage() {
     setEditTarget(s);
     setForm({
       name: s.name || '', representative: s.representative || '', contact: s.contact || '',
-      businessNumber: s.businessNumber || '', bankName: s.bankName || '',
+      email: s.email || '', businessNumber: s.businessNumber || '', bankName: s.bankName || '',
       bankAccount: s.bankAccount || '', category: s.category || '', note: s.note || '',
     });
     setShowModal(true);
@@ -146,6 +146,10 @@ export default function SupplierManagementPage() {
           <div className="form-group">
             <label>연락처</label>
             <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>이메일</label>
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="예: sales@company.com" />
           </div>
           <div className="form-group">
             <label>사업자번호</label>

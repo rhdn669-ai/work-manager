@@ -11,7 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
-import { specFontClass } from '../../utils/printText';
+import { specFontClass, effLen } from '../../utils/printText';
 
 const STATUS = {
   ordered: { label: '발주', cls: 'ordered' },
@@ -555,34 +555,61 @@ export default function PurchaseDetailPage() {
         const orderDateKo = `${orderDate.getFullYear()}년 ${orderDate.getMonth() + 1}월 ${orderDate.getDate()}일`;
         const supplierTitle = supplier?.name ? `${supplier.name} 귀하` : (derivedSupplier ? `${derivedSupplier} 귀하` : '');
 
-        // 라인별 구매처명 (마스터 품목의 기본 구매처)
-        const supplierNameOf = (ln) => {
+        // 라인을 마스터 품목과 매칭해 현재(최신) 명칭·규격·구매처를 우선 사용
+        // (라인은 추가 시점 스냅샷이라, 품목 관리에서 수정한 값이 출력에 반영되도록)
+        let printItems = form.items.map((ln) => {
           const mst = itemMaster.find((x) => x.id === ln.itemId);
           const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
-          return sup?.name || '';
-        };
-        let printItems = form.items.map((ln) => ({ ...ln, _supplier: supplierNameOf(ln) }));
+          return {
+            ...ln,
+            _supplier: sup?.name || '',
+            _name: mst?.name || ln.name,
+            _spec: mst?.spec || ln.spec,
+          };
+        });
         if (groupBySupplier) {
           printItems = [...printItems].sort((a, b) =>
             (a._supplier || '￿').localeCompare(b._supplier || '￿'));
         }
 
-        // 페이지별 테두리가 닫히도록 직접 분할 (단일 div border는 페이지 경계에서 끊김)
-        const FIRST_PAGE_ROWS = 16; // 1페이지는 상단 정보표가 있어 적게
-        const OTHER_PAGE_ROWS = 24;
-        const TOTALS_RESERVE = 3;   // 마지막 페이지 합계·특이사항 표 공간(행 환산)
+        // 페이지별 테두리가 닫히도록 직접 분할 — 행 높이(규격 줄바꿈 반영)를 추정해 페이지를 꽉 채움
+        const CHARS_PER_LINE = 30; // 규격 칸 8pt 한 줄 대략 글자수
+        const LINE1_MM = 6.4;      // 1줄 행 높이(mm)
+        const EXTRA_LINE_MM = 3.4; // 규격 추가 줄당(mm)
+        const HEADER_MM = 7;       // 표 헤더
+        const FOOTER_MM = 11;      // 하단 푸터 밴드
+        const INFO_MM = 60;        // 1페이지 제목+정보표
+        const TOTALS_MM = 18;      // 특이사항+합계 표
+        const PAGE_MM = 262;       // 프레임 내부 가용 높이(여유 포함)
+        const rowH = (ln) => {
+          const lines = Math.max(1, Math.ceil(effLen(ln?._spec || '') / CHARS_PER_LINE));
+          return LINE1_MM + (lines - 1) * EXTRA_LINE_MM;
+        };
+        const budgetFor = (isFirst) => PAGE_MM - (isFirst ? INFO_MM : 0) - HEADER_MM - FOOTER_MM;
+
         const allRows = printItems;
         const pages = [];
-        let pi = 0;
-        while (pi < allRows.length) {
-          const cap = pages.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-          pages.push({ chunk: allRows.slice(pi, pi + cap), startNo: pi });
-          pi += cap;
+        let cur = { chunk: [], startNo: 0 };
+        let used = 0;
+        for (let idx = 0; idx < allRows.length; idx++) {
+          const h = rowH(allRows[idx]);
+          const budget = budgetFor(pages.length === 0);
+          if (used + h > budget && cur.chunk.length > 0) {
+            pages.push(cur);
+            cur = { chunk: [], startNo: idx };
+            used = 0;
+          }
+          cur.chunk.push(allRows[idx]);
+          used += h;
         }
-        if (pages.length === 0) pages.push({ chunk: [], startNo: 0 });
-        const lastCap = pages.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-        if (pages[pages.length - 1].chunk.length > lastCap - TOTALS_RESERVE) {
-          pages.push({ chunk: [], startNo: pi });
+        pages.push(cur);
+        // 마지막 페이지에 합계가 안 들어가면 빈 페이지 추가
+        {
+          const isFirstLast = pages.length === 1;
+          const lastUsed = pages[pages.length - 1].chunk.reduce((s, ln) => s + rowH(ln), 0);
+          if (lastUsed + TOTALS_MM > budgetFor(isFirstLast)) {
+            pages.push({ chunk: [], startNo: allRows.length });
+          }
         }
         const pageCount = pages.length;
 
@@ -591,10 +618,11 @@ export default function PurchaseDetailPage() {
             {pages.map((pg, pageIdx) => {
               const isFirst = pageIdx === 0;
               const isLast = pageIdx === pageCount - 1;
-              const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-              const padTarget = isLast ? Math.max(pg.chunk.length, cap - TOTALS_RESERVE) : cap;
+              const fillBudget = budgetFor(isFirst) - (isLast ? TOTALS_MM : 0);
+              const usedH = pg.chunk.reduce((s, ln) => s + rowH(ln), 0);
+              const padCount = Math.max(0, Math.floor((fillBudget - usedH) / LINE1_MM));
               const padded = [...pg.chunk];
-              while (padded.length < padTarget) padded.push(null);
+              for (let k = 0; k < padCount; k++) padded.push(null);
               return (
                 <div className="bom-print-page" key={pageIdx}>
                   {isFirst && <div className="print-form-title">구 매 발 주 서</div>}
@@ -677,8 +705,8 @@ export default function PurchaseDetailPage() {
                         return (
                           <tr key={r}>
                             <td className="c-no">{pg.startNo + r + 1}</td>
-                            <td className={`c-name ${specFontClass(ln.name, 11)}`}>{ln.name || ''}</td>
-                            <td className={`c-spec ${specFontClass(ln.spec, 28)}`}>{ln.spec || ''}</td>
+                            <td className={`c-name ${specFontClass(ln._name, 11)}`}>{ln._name || ''}</td>
+                            <td className="c-spec">{ln._spec || ''}</td>
                             <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
                             <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                             <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>

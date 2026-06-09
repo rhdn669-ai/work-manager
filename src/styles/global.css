@@ -11133,32 +11133,41 @@ tr.is-newly-added > td {
 }
 .iopn-items-table .c-no { width: 7%; text-align: center; white-space: nowrap; font-size: 10pt; }
 .iopn-items-table .c-name { width: 19%; text-align: center; }
-.iopn-items-table .c-spec { width: 21%; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; }
+.iopn-items-table .c-spec { width: 22%; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; }
 .iopn-items-table .c-unit { width: 7%; text-align: center; white-space: nowrap; overflow: hidden; }
 .iopn-items-table .c-recv { width: 9%; text-align: center; white-space: nowrap; overflow: hidden; }
 .iopn-items-table .c-recv.recv-done { color: #166534; font-weight: 700; }
 .iopn-items-table .c-recv.recv-none { color: #9ca3af; }
-.iopn-items-table .c-qty { width: 6%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
+.iopn-items-table .c-qty { width: 5%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
 .iopn-items-table .c-price { width: 11%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
 .iopn-items-table .c-amount { width: 13%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 8px; }
 .iopn-items-table .c-supplier { width: 14%; text-align: left; padding-left: 8px; white-space: nowrap; overflow: hidden; }
 .iopn-items-table .c-note { width: 11%; text-align: left; padding-left: 8px; }
 /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
 .iopn-items-table.bom-no-price .c-name { width: 13%; text-align: center; }
-.iopn-items-table.bom-no-price .c-spec { width: 43%; text-align: center; padding-left: 0; }
-.iopn-items-table.bom-no-price .c-qty { width: 8%; text-align: center; padding-right: 0; }
+.iopn-items-table.bom-no-price .c-spec { width: 45%; text-align: center; padding-left: 0; }
+.iopn-items-table.bom-no-price .c-qty { width: 6%; text-align: center; padding-right: 0; }
 .iopn-items-table.bom-no-price .c-supplier { width: 18%; text-align: center; padding-left: 0; }
 .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
 /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
 .iopn-items-table.po-cols .c-no { width: 6%; }
 .iopn-items-table.po-cols .c-name { width: 11%; }
-.iopn-items-table.po-cols .c-spec { width: 26%; }
-.iopn-items-table.po-cols .c-qty { width: 6%; }
+.iopn-items-table.po-cols .c-spec { width: 27%; }
+.iopn-items-table.po-cols .c-qty { width: 5%; }
 .iopn-items-table.po-cols .c-price { width: 11%; }
 .iopn-items-table.po-cols .c-amount { width: 12%; }
 .iopn-items-table.po-cols .c-recv { width: 7%; }
 .iopn-items-table.po-cols .c-supplier { width: 12%; }
 .iopn-items-table.po-cols .c-note { width: 9%; }
+/* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
+.iopn-items-table.po-cols .c-spec {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  line-height: 1.2;
+  font-size: 8pt !important;
+  vertical-align: middle;
+}
 .iopn-items-table tbody td { height: 22px; vertical-align: middle; white-space: nowrap; overflow: hidden; }
 /* 긴 글자 자동 축소 (인쇄 9pt !important를 이기도록 !important) */
 .iopn-items-table .fs-8 { font-size: 8pt !important; }
@@ -11533,32 +11542,41 @@ tr.is-newly-added > td {
   }
   .iopn-items-table .c-no { width: 7%; text-align: center; white-space: nowrap; font-size: 10pt !important; }
   .iopn-items-table .c-name { width: 19%; text-align: center; }
-  .iopn-items-table .c-spec { width: 21%; text-align: left; padding-left: 2.5mm; white-space: nowrap; overflow: hidden; }
+  .iopn-items-table .c-spec { width: 22%; text-align: left; padding-left: 2.5mm; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .c-unit { width: 7%; text-align: center; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .c-recv { width: 9%; text-align: center; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .c-recv.recv-done { color: #166534 !important; font-weight: 700; }
   .iopn-items-table .c-recv.recv-none { color: #9ca3af !important; }
-  .iopn-items-table .c-qty { width: 6%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
+  .iopn-items-table .c-qty { width: 5%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
   .iopn-items-table .c-price { width: 11%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
   .iopn-items-table .c-amount { width: 13%; text-align: right; font-variant-numeric: tabular-nums; padding-right: 2.5mm; }
   .iopn-items-table .c-supplier { width: 14%; text-align: left; padding-left: 2.5mm; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .c-note { width: 11%; text-align: left; padding-left: 2.5mm; }
   /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
   .iopn-items-table.bom-no-price .c-name { width: 13%; text-align: center; }
-  .iopn-items-table.bom-no-price .c-spec { width: 43%; text-align: center; padding-left: 0; }
-  .iopn-items-table.bom-no-price .c-qty { width: 8%; text-align: center; padding-right: 0; }
+  .iopn-items-table.bom-no-price .c-spec { width: 45%; text-align: center; padding-left: 0; }
+  .iopn-items-table.bom-no-price .c-qty { width: 6%; text-align: center; padding-right: 0; }
   .iopn-items-table.bom-no-price .c-supplier { width: 18%; text-align: center; padding-left: 0; }
   .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
   /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
   .iopn-items-table.po-cols .c-no { width: 6%; }
   .iopn-items-table.po-cols .c-name { width: 11%; }
-  .iopn-items-table.po-cols .c-spec { width: 26%; }
-  .iopn-items-table.po-cols .c-qty { width: 6%; }
+  .iopn-items-table.po-cols .c-spec { width: 27%; }
+  .iopn-items-table.po-cols .c-qty { width: 5%; }
   .iopn-items-table.po-cols .c-price { width: 11%; }
   .iopn-items-table.po-cols .c-amount { width: 12%; }
   .iopn-items-table.po-cols .c-recv { width: 7%; }
   .iopn-items-table.po-cols .c-supplier { width: 12%; }
   .iopn-items-table.po-cols .c-note { width: 9%; }
+  /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
+  .iopn-items-table.po-cols .c-spec {
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+    line-height: 1.2;
+    font-size: 8pt !important;
+    vertical-align: middle;
+  }
   .iopn-items-table tbody td { height: 6.5mm; vertical-align: middle; white-space: nowrap; overflow: hidden; }
   .iopn-items-table .fs-8 { font-size: 8pt !important; }
   .iopn-items-table .fs-7 { font-size: 7pt !important; }
