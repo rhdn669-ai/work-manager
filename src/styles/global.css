@@ -2756,6 +2756,7 @@ body {
 
 .form-row .form-group {
   flex: 1;
+  min-width: 0;
 }
 
 /* ===== 테이블 ===== */
@@ -3280,6 +3281,8 @@ body {
 }
 
 /* 엑셀식 셀 채우기 (드래그 fill-down) */
+/* 고정 레이아웃 — 소분류 유무(추가 전·후)와 무관하게 컬럼 위치 동일 유지 */
+.inline-edit-table.sortable-rows { table-layout: fixed; }
 .inline-edit-table.sortable-rows tbody td { position: relative; }
 .cell-fill {
   position: absolute;
@@ -3309,6 +3312,42 @@ body {
   flex-wrap: wrap;
   margin-top: var(--space-2);
 }
+/* 품목 영역 헤더 — 라벨(좌) + 추가 버튼(우측 상단) */
+.purchase-items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.purchase-items-head > label { margin: 0; }
+.purchase-items-head .purchase-add-actions { margin-top: 0; justify-content: flex-end; }
+/* 자동 저장 상태 표시 */
+.purchase-save-indicator {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 8px;
+  white-space: nowrap;
+  align-self: center;
+}
+.purchase-save-indicator.saved { color: #16a34a; }
+.purchase-save-indicator.saving { color: var(--text-muted); }
+.purchase-save-indicator.error { color: #dc2626; }
+/* 발주서 출력 이력 뱃지 (구매 현황 리스트) */
+.purchase-print-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 
 /* BOM 가져오기 — 프로젝트 선택 목록 */
 .bom-import-list {
@@ -3337,6 +3376,37 @@ body {
 .bom-import-row:disabled { opacity: 0.6; cursor: default; }
 .bom-import-name { font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bom-import-go { font-size: var(--font-sm); color: var(--primary); font-weight: 700; flex-shrink: 0; }
+
+/* 품목 불러오기 모달 — BOM 가져오기 모달과 동일 스타일 (bom-import-row 패딩/폰트 그대로) */
+.item-picker-search {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.item-picker-search:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
+/* 결과 개수와 무관하게 모달 크기 고정 — 고정 높이 + 스크롤 */
+.item-picker-list {
+  height: 56vh;
+  max-height: 440px;
+  min-height: 260px;
+  overflow-y: auto;
+}
+.item-picker-empty {
+  margin: auto 0;
+  text-align: center;
+  width: 100%;
+}
 
 /* BOM 구매처별 보기 — 토글·드롭다운·그룹행 */
 .bom-supplier-toggle {
@@ -3450,6 +3520,10 @@ body {
 
 /* 평면 BOM 그룹 카드 — 그룹 헤더가 없으므로 detail만 표시 */
 .bom-flat-group .item-group-detail { border-top: none; }
+/* 품명 검색 드롭다운이 잘리지 않도록 — 발주/BOM 평면 그룹은 overflow 해제 */
+.bom-flat-group.item-group { overflow: visible; }
+.bom-flat-group .item-group-detail { overflow: visible; }
+.bom-flat-group .item-group-detail .table { overflow: visible; }
 /* 프로젝트명 링크 (table 셀 안에서 클릭 가능한 텍스트) */
 .bom-project-link {
   background: transparent;
@@ -11159,6 +11233,9 @@ tr.is-newly-added > td {
 .iopn-items-table.po-cols .c-recv { width: 7%; }
 .iopn-items-table.po-cols .c-supplier { width: 12%; }
 .iopn-items-table.po-cols .c-note { width: 9%; }
+/* 발주서 출력 목록 전체 중앙정렬 */
+.iopn-items-table.po-cols th,
+.iopn-items-table.po-cols td { text-align: center; padding-left: 3px; padding-right: 3px; }
 /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
 .iopn-items-table.po-cols .c-spec {
   white-space: normal;
@@ -11568,6 +11645,9 @@ tr.is-newly-added > td {
   .iopn-items-table.po-cols .c-recv { width: 7%; }
   .iopn-items-table.po-cols .c-supplier { width: 12%; }
   .iopn-items-table.po-cols .c-note { width: 9%; }
+  /* 발주서 출력 목록 전체 중앙정렬 */
+  .iopn-items-table.po-cols th,
+  .iopn-items-table.po-cols td { text-align: center; padding-left: 1mm; padding-right: 1mm; }
   /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
   .iopn-items-table.po-cols .c-spec {
     white-space: normal;
@@ -11635,6 +11715,8 @@ tr.is-newly-added > td {
     overflow: hidden;
   }
   .bom-print-page:last-child { page-break-after: auto; break-after: auto; }
+  /* 발주서 페이지 — 고정 높이로 캡해 하단(합계·푸터)이 다음 페이지로 넘치지 않게 */
+  .po-doc-page { height: 250mm; min-height: 250mm; }
   /* 페이지별 테두리 (전체 폼 테두리 대신) */
   .print-form-iopn.print-form-paged { border: none !important; padding: 0 !important; }
   .print-form-paged .bom-print-page { border: 2px solid #000; padding: 3mm 4mm; }

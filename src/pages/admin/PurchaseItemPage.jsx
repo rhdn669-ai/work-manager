@@ -719,18 +719,18 @@ export default function PurchaseItemPage() {
                           <thead>
                             <tr>
                               <th style={{ width: 32 }} aria-label="순서 변경"></th>
-                              <th style={{ minWidth: 100 }}>코드</th>
-                              <th style={{ minWidth: 160 }}>품명</th>
-                              <th>메이커</th>
-                              <th>규격</th>
-                              <th>분류</th>
-                              <th>인증</th>
-                              <th>수량/단위</th>
-                              <th>개별단가</th>
-                              <th>단가</th>
-                              <th style={{ minWidth: 140 }}>기본 구매처</th>
-                              <th style={{ minWidth: 160 }}>비고</th>
-                              <th className="item-group-add-th">
+                              <th style={{ width: 110 }}>코드</th>
+                              <th style={{ width: 150 }}>품명</th>
+                              <th style={{ width: 110 }}>메이커</th>
+                              <th style={{ width: 150 }}>규격</th>
+                              <th style={{ width: 90 }}>분류</th>
+                              <th style={{ width: 90 }}>인증</th>
+                              <th style={{ width: 130 }}>수량/단위</th>
+                              <th style={{ width: 100 }}>개별단가</th>
+                              <th style={{ width: 100 }}>단가</th>
+                              <th style={{ width: 150 }}>기본 구매처</th>
+                              <th style={{ width: 150 }}>비고</th>
+                              <th className="item-group-add-th" style={{ width: 300 }}>
                                 <button
                                   type="button"
                                   className="item-group-add-btn"

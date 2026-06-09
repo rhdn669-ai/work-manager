@@ -1,6 +1,6 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
-  query, orderBy, arrayUnion, writeBatch,
+  query, orderBy, where, arrayUnion, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
@@ -8,7 +8,28 @@ import { addFinanceItem, deleteFinanceItem } from './siteService';
 const suppliersRef = collection(db, 'suppliers');
 const itemsRef = collection(db, 'purchaseItems');
 const purchasesRef = collection(db, 'purchases');
+const printLogsRef = collection(db, 'purchasePrintLogs');
 const configDoc = doc(db, 'appConfig', 'purchase');
+
+// ---------- 발주서 출력 이력(스냅샷) ----------
+// 출력 시점의 발주서 상태를 그대로 저장 → 나중에 그 시점 그대로 재출력/PDF 저장
+export async function addPurchasePrintLog(purchaseId, snapshot, byName) {
+  return addDoc(printLogsRef, {
+    purchaseId,
+    by: byName || '',
+    snapshot: snapshot || {},
+    at: new Date(),
+  });
+}
+
+export async function getPurchasePrintLogs(purchaseId) {
+  const q = query(printLogsRef, where('purchaseId', '==', purchaseId));
+  const snap = await getDocs(q);
+  const logs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const ms = (x) => (x?.toDate ? x.toDate().getTime() : (x ? new Date(x).getTime() : 0));
+  logs.sort((a, b) => ms(b.at) - ms(a.at)); // 최신순
+  return logs;
+}
 
 // ---------- 구매 설정 (본사 귀속 프로젝트 등) ----------
 
@@ -297,6 +318,8 @@ export async function addPurchase(data) {
     requesterId: data.requesterId || '',
     requesterName: data.requesterName || '',
     deliveryDue: data.deliveryDue || '',  // 납기(납품기일)
+    contactName: data.contactName || '',  // 담당자
+    contactPhone: data.contactPhone || '', // 연락처
     note: data.note || '',
     orderedAt: new Date(),
     createdAt: new Date(),

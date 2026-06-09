@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getPurchaseById, updatePurchase, deletePurchase,
   settlePurchase, cancelSettlePurchase, receivePurchaseLine, bulkReceivePurchase,
-  getSuppliers, getPurchaseItems, addPurchaseItem, nextItemCode,
+  getSuppliers, getPurchaseItems, addPurchasePrintLog, getPurchasePrintLogs,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { getBomProjects, getBomBySite } from '../../services/bomService';
@@ -56,6 +56,14 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function fmtDateTime(ts) {
+  if (!ts) return '-';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '-';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // 첫 품목의 defaultSupplierId 자동 추출 — 모두 같은 구매처면 그 값, 혼합/없음이면 빈값
 function deriveSupplier(lines, itemMaster, suppliers) {
   const ids = lines
@@ -84,13 +92,12 @@ export default function PurchaseDetailPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeLine, setActiveLine] = useState(null);
 
-  // 편집 가능한 폼 상태 (자동 저장 X, 명시 저장 버튼 사용)
+  // 편집 가능한 폼 상태 (실시간 자동 저장 — 저장 버튼 없음)
   const [form, setForm] = useState({
     title: '', siteId: '', items: [{ ...EMPTY_LINE }], note: '',
   });
-  const [dirty, setDirty] = useState(false);
+  const [saveState, setSaveState] = useState('saved'); // 'saving' | 'saved' | 'error'
 
   const [receiveModal, setReceiveModal] = useState(null); // { lineIdx, line } | null
   const [receiveForm, setReceiveForm] = useState({ qty: '', date: todayStr(), note: '' });
@@ -102,9 +109,18 @@ export default function PurchaseDetailPage() {
 
   // BOM 가져오기
   const [bomModalOpen, setBomModalOpen] = useState(false);
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
+  const [itemPickerSearch, setItemPickerSearch] = useState('');
+  const [itemPicked, setItemPicked] = useState(new Map()); // itemId -> 수량
   const [bomProjects, setBomProjects] = useState([]);
   const [bomLoading, setBomLoading] = useState(false);
   const [bomImporting, setBomImporting] = useState(false);
+
+  // 출력 이력(스냅샷)
+  const [printLogsOpen, setPrintLogsOpen] = useState(false);
+  const [printLogs, setPrintLogs] = useState([]);
+  const [printLogsLoading, setPrintLogsLoading] = useState(false);
+  const [viewSnapshot, setViewSnapshot] = useState(null); // 이력 보기 중인 스냅샷
 
   useEffect(() => {
     loadData();
@@ -134,7 +150,6 @@ export default function PurchaseDetailPage() {
           : [{ ...EMPTY_LINE }],
         note: p.note || '',
       });
-      setDirty(false);
     } catch (err) {
       console.error(err);
       alert('불러오기 오류: ' + err.message);
@@ -145,7 +160,7 @@ export default function PurchaseDetailPage() {
 
   function patchForm(patch) {
     setForm((f) => ({ ...f, ...patch }));
-    setDirty(true);
+    scheduleAutoSave();
   }
 
   function updateLine(idx, patch) {
@@ -153,26 +168,7 @@ export default function PurchaseDetailPage() {
       ...f,
       items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)),
     }));
-    setDirty(true);
-  }
-
-  function pickItemForLine(idx, m) {
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((ln, i) => {
-        if (i !== idx) return ln;
-        return {
-          ...ln,
-          itemId: m.id,
-          name: m.name,
-          spec: m.spec || ln.spec,
-          unit: m.unit || ln.unit,
-          unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : (Number(m.standardPrice) || 0),
-        };
-      }),
-    }));
-    setActiveLine(null);
-    setDirty(true);
+    scheduleAutoSave();
   }
 
   function updateLineName(idx, name) {
@@ -195,12 +191,56 @@ export default function PurchaseDetailPage() {
         return { ...ln, itemId: '', name: trimmed };
       }),
     }));
-    setDirty(true);
+    scheduleAutoSave();
   }
 
-  function addLine() {
-    setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] }));
-    setDirty(true);
+
+  // ---- 품목 불러오기 (BOM 상세 「품목 선택」 피커와 동일: 체크박스 다중선택 + 수량) ----
+  function openItemPicker() {
+    setItemPickerSearch('');
+    setItemPicked(new Map());
+    setItemPickerOpen(true);
+  }
+  function toggleItemPick(itemId) {
+    setItemPicked((prev) => {
+      const next = new Map(prev);
+      if (next.has(itemId)) next.delete(itemId); else next.set(itemId, 1);
+      return next;
+    });
+  }
+  function setItemPickQty(itemId, value) {
+    setItemPicked((prev) => {
+      if (!prev.has(itemId)) return prev;
+      const next = new Map(prev);
+      next.set(itemId, value);
+      return next;
+    });
+  }
+  function addPickedToPO(e) {
+    if (e) e.preventDefault();
+    if (itemPicked.size === 0) { setItemPickerOpen(false); return; }
+    const newLines = [];
+    for (const [itemId, qtyInput] of itemPicked) {
+      const m = itemMaster.find((x) => x.id === itemId);
+      if (!m) continue;
+      newLines.push({
+        itemId: m.id,
+        name: m.name || '',
+        spec: m.spec || '',
+        unit: m.unit || '',
+        qty: Number(qtyInput) || 0,
+        unitPrice: Number(m.standardPrice) || 0,
+      });
+    }
+    if (newLines.length === 0) { setItemPickerOpen(false); return; }
+    setForm((f) => {
+      const first = f.items[0];
+      const onlyEmpty = f.items.length === 1 && !first?.name && !first?.itemId;
+      return { ...f, items: onlyEmpty ? newLines : [...f.items, ...newLines] };
+    });
+    scheduleAutoSave();
+    setItemPicked(new Map());
+    setItemPickerOpen(false);
   }
 
   function removeLine(idx) {
@@ -208,7 +248,7 @@ export default function PurchaseDetailPage() {
       ...f,
       items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items,
     }));
-    setDirty(true);
+    scheduleAutoSave();
   }
 
   // BOM 가져오기 모달 열기 (프로젝트 목록 지연 로드)
@@ -255,9 +295,9 @@ export default function PurchaseDetailPage() {
         const existing = f.items.filter((ln) => (ln.name || '').trim()); // 빈 라인 제거 후 합치기
         return { ...f, items: [...existing, ...newLines] };
       });
-      setDirty(true);
+      scheduleAutoSave();
       setBomModalOpen(false);
-      alert(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 가져왔습니다.\n수량·단가 확인 후 저장하세요.`);
+      alert(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 가져왔습니다.\n수량·단가는 자동 저장됩니다.`);
     } catch (err) {
       alert('BOM 가져오기 오류: ' + err.message);
     } finally {
@@ -272,70 +312,148 @@ export default function PurchaseDetailPage() {
 
   const isReadOnly = purchase?.status === 'settled';
 
-  async function handleSave() {
-    if (!form.title.trim()) { alert('제목을 입력해주세요.'); return; }
-    if (!form.siteId) { alert('프로젝트를 선택해주세요.'); return; }
+  // ---- 실시간 자동 저장 (저장 버튼 없음) ----
+  const formRef = useRef(form);
+  useEffect(() => { formRef.current = form; }, [form]);
+  const purchaseRef = useRef(purchase); // 입고 액션에서 최신 purchase 참조용
+  useEffect(() => { purchaseRef.current = purchase; }, [purchase]);
+  const autoSaveRef = useRef(null);
 
-    const lines = form.items.filter((ln) => (ln.name || '').trim());
-
-    // 마스터에 없는 품목은 자동 생성
-    const linesWithIds = [];
-    let masterBuf = [...itemMaster];
-    for (const ln of lines) {
-      let itemId = ln.itemId;
-      if (!itemId) {
-        const m = masterBuf.find((x) => x.name === ln.name.trim());
-        if (m) itemId = m.id;
-      }
-      if (!itemId) {
-        const code = nextItemCode(masterBuf, ln.name.trim());
-        const docRef = await addPurchaseItem({
-          code,
-          name: ln.name.trim(),
-          spec: ln.spec || '',
-          unit: ln.unit || '',
-          standardPrice: Number(ln.unitPrice) || 0,
-          priceHistory: [],
-        });
-        itemId = docRef.id;
-        masterBuf = [...masterBuf, { id: itemId, code, name: ln.name.trim() }];
-      }
-      linesWithIds.push({ ...ln, itemId });
-    }
-
-    const items = linesWithIds.map((ln) => ({
-      itemId: ln.itemId, name: ln.name, spec: ln.spec, unit: ln.unit,
+  // 현재 폼을 Firestore에 저장 (입고/수정값 보존, 화면 리로드 없이 로컬 동기화)
+  async function persistPO() {
+    const f = formRef.current;
+    if (!f || !f.title?.trim() || !f.siteId) return;
+    if (purchase?.status === 'settled') return; // 정산완료는 잠금
+    const lines = f.items.filter((ln) => (ln.name || '').trim());
+    const items = lines.map((ln) => ({
+      ...ln, // itemId·입고수량(receivedQty)·입고일 등 기존 필드 보존
       qty: Number(ln.qty) || 0,
       unitPrice: Number(ln.unitPrice) || 0,
       amount: (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0),
     }));
     const totalAmount = items.reduce((s, it) => s + it.amount, 0);
-    const site = sites.find((s) => s.id === form.siteId);
-    const { supplierId, supplierName } = deriveSupplier(items, masterBuf, suppliers);
-
+    const site = sites.find((s) => s.id === f.siteId);
+    const { supplierId, supplierName } = deriveSupplier(items, itemMaster, suppliers);
     try {
+      setSaveState('saving');
       await updatePurchase(id, {
-        title: form.title.trim(),
-        siteId: form.siteId,
-        siteName: site?.name || '',
-        items,
-        totalAmount,
-        supplierId,
-        supplierName,
-        note: form.note,
+        title: f.title.trim(), siteId: f.siteId, siteName: site?.name || '',
+        items, totalAmount, supplierId, supplierName, note: f.note,
       });
-      await loadData({ silent: true });
+      const updated = {
+        ...(purchaseRef.current || {}),
+        items, totalAmount, supplierId, supplierName, note: f.note,
+        title: f.title.trim(), siteId: f.siteId, siteName: site?.name || '',
+      };
+      purchaseRef.current = updated; // 동기 갱신 → flush 직후 입고 액션이 최신 사용
+      setPurchase(updated);
+      setSaveState('saved');
     } catch (err) {
-      alert('저장 중 오류: ' + err.message);
+      setSaveState('error');
+      console.error('자동 저장 오류:', err);
     }
   }
 
-  function openReceive(lineIdx) {
-    if (dirty) {
-      alert('먼저 변경 사항을 저장한 후 입고 처리를 진행해 주세요.');
-      return;
+  function scheduleAutoSave() {
+    setSaveState('saving');
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => { persistPO(); }, 700);
+  }
+
+  async function flushAutoSave() {
+    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); autoSaveRef.current = null; }
+    await persistPO();
+  }
+
+  // 라인을 마스터와 매칭해 출력용 명칭·규격·구매처 부여
+  function mapPrintItems(items) {
+    return (items || []).map((ln) => {
+      const mst = itemMaster.find((x) => x.id === ln.itemId);
+      const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
+      return { ...ln, _supplier: sup?.name || '', _name: mst?.name || ln.name, _spec: mst?.spec || ln.spec };
+    });
+  }
+
+  // 출력 시점 발주서 상태 스냅샷
+  function buildPrintSnapshot() {
+    const od = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate()
+      : (purchase.orderedAt ? new Date(purchase.orderedAt)
+        : (purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
+    const supplier = suppliers.find((s) => s.id === purchase.supplierId);
+    return {
+      title: purchase.title || '',
+      siteName: sites.find((s) => s.id === purchase.siteId)?.name || purchase.siteName || '',
+      deliveryPlace: purchase.deliveryPlace || SELF_INFO.address,
+      deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
+      payment: purchase.payment || PO_DEFAULTS.payment,
+      contactName: purchase.contactName || purchase.requesterName || '',
+      contactPhone: purchase.contactPhone || '',
+      supplierName: supplier?.name || derivedSupplier || '',
+      note: form.note || '',
+      orderDateKo: `${od.getFullYear()}년 ${od.getMonth() + 1}월 ${od.getDate()}일`,
+      poNumber: poNumber(purchase),
+      groupBySupplier,
+      items: mapPrintItems(form.items.filter((ln) => (ln.name || '').trim())).map((ln) => ({
+        itemId: ln.itemId || '', _name: ln._name || '', _spec: ln._spec || '', _supplier: ln._supplier || '',
+        qty: Number(ln.qty) || 0, unitPrice: Number(ln.unitPrice) || 0,
+        receivedQty: Number(ln.receivedQty) || 0, note: ln.note || '',
+      })),
+    };
+  }
+
+  // 발주서 출력 이력 기록 (PDF 출력 시 — 스냅샷 저장 + 횟수 갱신)
+  function recordPrint() {
+    if (!id) return;
+    const snapshot = buildPrintSnapshot();
+    const next = {
+      lastPrintedAt: new Date(),
+      lastPrintedBy: userProfile?.name || '',
+      printCount: (Number(purchaseRef.current?.printCount) || 0) + 1,
+    };
+    setPurchase((p) => ({ ...(p || {}), ...next }));
+    purchaseRef.current = { ...(purchaseRef.current || {}), ...next };
+    Promise.all([
+      updatePurchase(id, next),
+      addPurchasePrintLog(id, snapshot, userProfile?.name || ''),
+    ]).catch((e) => console.error('출력 이력 저장 오류:', e));
+  }
+
+  async function openPrintLogs() {
+    setPrintLogsOpen(true);
+    setPrintLogsLoading(true);
+    try {
+      setPrintLogs(await getPurchasePrintLogs(id));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPrintLogsLoading(false);
     }
-    const line = purchase.items?.[lineIdx];
+  }
+
+  // 이력 스냅샷을 그 시점 그대로 재출력
+  function printSnapshot(log) {
+    setPrintLogsOpen(false);
+    setViewSnapshot(log.snapshot || null);
+  }
+  // viewSnapshot 렌더 완료 후 인쇄 → 라이브로 복원
+  useEffect(() => {
+    if (!viewSnapshot) return;
+    const t = setTimeout(() => {
+      window.print();
+      setViewSnapshot(null);
+    }, 180);
+    return () => clearTimeout(t);
+  }, [viewSnapshot]);
+
+  // 페이지 이탈 시 미저장분 flush
+  useEffect(() => () => {
+    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); persistPO(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function openReceive(lineIdx) {
+    await flushAutoSave();
+    const line = purchaseRef.current?.items?.[lineIdx];
     if (!line) return;
     const remaining = Math.max(0, (Number(line.qty) || 0) - (Number(line.receivedQty) || 0));
     setReceiveForm({
@@ -350,7 +468,7 @@ export default function PurchaseDetailPage() {
     e.preventDefault();
     if (!receiveModal) return;
     try {
-      await receivePurchaseLine(purchase, receiveModal.lineIdx, {
+      await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
         qty: receiveForm.qty,
         date: receiveForm.date,
         note: receiveForm.note,
@@ -363,11 +481,8 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  function openBulk(mode) {
-    if (dirty) {
-      alert('먼저 변경 사항을 저장해 주세요.');
-      return;
-    }
+  async function openBulk(mode) {
+    await flushAutoSave();
     setBulkForm({ date: todayStr(), note: '' });
     setBulkModal({ mode });
   }
@@ -376,7 +491,8 @@ export default function PurchaseDetailPage() {
     e.preventDefault();
     if (!bulkModal) return;
     const mode = bulkModal.mode;
-    const remainingCount = (purchase.items || []).filter((it) => {
+    const cur = purchaseRef.current || purchase;
+    const remainingCount = (cur.items || []).filter((it) => {
       const r = Number(it.receivedQty) || 0;
       const q = Number(it.qty) || 0;
       return q > 0 && r < q;
@@ -390,7 +506,7 @@ export default function PurchaseDetailPage() {
       : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
     if (!await confirm(msg)) return;
     try {
-      await bulkReceivePurchase(purchase, {
+      await bulkReceivePurchase(purchaseRef.current, {
         mode,
         date: bulkForm.date,
         note: bulkForm.note,
@@ -404,13 +520,10 @@ export default function PurchaseDetailPage() {
   }
 
   async function clearLineReceive(lineIdx) {
-    if (dirty) {
-      alert('먼저 변경 사항을 저장해 주세요.');
-      return;
-    }
+    await flushAutoSave();
     if (!await confirm('이 라인의 입고 기록을 취소하시겠습니까?')) return;
     try {
-      await receivePurchaseLine(purchase, lineIdx, {
+      await receivePurchaseLine(purchaseRef.current, lineIdx, {
         qty: 0, date: null, note: '', receivedBy: '',
       });
       await loadData({ silent: true });
@@ -421,6 +534,7 @@ export default function PurchaseDetailPage() {
 
   async function handleSettle() {
     if (!purchase) return;
+    await flushAutoSave();
     const where = purchase.siteName || '귀속 프로젝트';
     if (!await confirm(
       `"${purchase.title}" 건을 정산하시겠습니까?\n금액 ${Number(purchase.totalAmount || 0).toLocaleString()}원이 ${where} 지출로 자동 등록됩니다.`,
@@ -476,19 +590,21 @@ export default function PurchaseDetailPage() {
         </div>
         <div className="page-actions purchase-detail-top-actions">
           <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase')}>목록</button>
+          <button type="button" className="btn btn-outline" onClick={openPrintLogs}>출력 이력{purchase.printCount > 0 ? ` (${purchase.printCount})` : ''}</button>
+          {!isReadOnly && (
+            <>
+              <button type="button" className="btn btn-primary" onClick={openItemPicker}>+ 품목 불러오기</button>
+              <button type="button" className="btn btn-outline" onClick={openBomModal}>BOM 가져오기</button>
+            </>
+          )}
           <button
             type="button"
             className={`btn ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setGroupBySupplier((v) => !v)}
-            title="출력 시 구매처별로 묶어서 정렬"
+            title="ON: 출력 시 구매처별로 각각 별도 발주서 생성"
           >구매처별 {groupBySupplier ? 'ON' : 'OFF'}</button>
-          {!isReadOnly && (
-            <button
-              type="button"
-              className={`btn ${dirty ? 'btn-primary' : 'btn-outline'}`}
-              onClick={handleSave}
-              disabled={!dirty}
-            >{dirty ? '저장' : '저장됨'}</button>
+          {!isReadOnly && saveState === 'error' && (
+            <span className="purchase-save-indicator error" aria-live="polite">⚠ 저장 실패</span>
           )}
           {(status === 'ordered' || status === 'partial') && (() => {
             const remainingCount = (purchase.items || []).filter((it) => {
@@ -504,8 +620,7 @@ export default function PurchaseDetailPage() {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => openBulk('remaining')}
-                    disabled={dirty}
-                    title={dirty ? '먼저 저장하세요' : '잔여 라인 일괄 입고'}
+                    title="잔여 라인 일괄 입고"
                   >일괄 입고</button>
                 )}
                 {status === 'partial' && hasAnyReceived && (
@@ -513,7 +628,6 @@ export default function PurchaseDetailPage() {
                     type="button"
                     className="btn btn-outline"
                     onClick={() => openBulk('close-as-is')}
-                    disabled={dirty}
                     title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
                   >잔여 무시하고 종결</button>
                 )}
@@ -521,7 +635,7 @@ export default function PurchaseDetailPage() {
             );
           })()}
           {status === 'received' && (
-            <button type="button" className="btn btn-primary" onClick={handleSettle} disabled={dirty} title={dirty ? '먼저 저장하세요' : ''}>정산 처리</button>
+            <button type="button" className="btn btn-primary" onClick={handleSettle}>정산 처리</button>
           )}
           {status === 'settled' && (
             <button type="button" className="btn btn-danger" onClick={handleCancelSettle}>정산 취소</button>
@@ -535,7 +649,7 @@ export default function PurchaseDetailPage() {
       <button
         type="button"
         className="pdf-print-fab no-print"
-        onClick={() => window.print()}
+        onClick={() => { recordPrint(); window.print(); }}
         title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
       >
         PDF 출력
@@ -545,86 +659,117 @@ export default function PurchaseDetailPage() {
       {(() => {
         const supplier = suppliers.find((s) => s.id === purchase.supplierId);
         const site = sites.find((s) => s.id === purchase.siteId);
-        const supplyAmount = form.items.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0);
-        const totalQty = form.items.reduce((s, ln) => s + (Number(ln.qty) || 0), 0);
-        const vat = Math.round(supplyAmount * 0.1);
-        const grandTotal = supplyAmount + vat;
-        const orderDate = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate()
+        const liveOrderDate = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate()
           : (purchase.orderedAt ? new Date(purchase.orderedAt)
             : (purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
-        const orderDateKo = `${orderDate.getFullYear()}년 ${orderDate.getMonth() + 1}월 ${orderDate.getDate()}일`;
-        const supplierTitle = supplier?.name ? `${supplier.name} 귀하` : (derivedSupplier ? `${derivedSupplier} 귀하` : '');
+        const liveOrderDateKo = `${liveOrderDate.getFullYear()}년 ${liveOrderDate.getMonth() + 1}월 ${liveOrderDate.getDate()}일`;
+        const liveSupplierTitle = supplier?.name ? `${supplier.name} 귀하` : (derivedSupplier ? `${derivedSupplier} 귀하` : '');
 
-        // 라인을 마스터 품목과 매칭해 현재(최신) 명칭·규격·구매처를 우선 사용
-        // (라인은 추가 시점 스냅샷이라, 품목 관리에서 수정한 값이 출력에 반영되도록)
-        let printItems = form.items.map((ln) => {
-          const mst = itemMaster.find((x) => x.id === ln.itemId);
-          const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
-          return {
-            ...ln,
-            _supplier: sup?.name || '',
-            _name: mst?.name || ln.name,
-            _spec: mst?.spec || ln.spec,
-          };
-        });
-        if (groupBySupplier) {
-          printItems = [...printItems].sort((a, b) =>
-            (a._supplier || '￿').localeCompare(b._supplier || '￿'));
+        // 출력 소스: 이력 보기 중이면 그 시점 스냅샷, 아니면 현재(라이브) 데이터
+        const src = viewSnapshot ? {
+          siteName: viewSnapshot.siteName || '',
+          deliveryPlace: viewSnapshot.deliveryPlace || SELF_INFO.address,
+          deliveryDue: viewSnapshot.deliveryDue || PO_DEFAULTS.delivery,
+          payment: viewSnapshot.payment || PO_DEFAULTS.payment,
+          contactLine: [viewSnapshot.contactName || '', viewSnapshot.contactPhone || ''].filter(Boolean).join(' / '),
+          note: viewSnapshot.note || '',
+          orderDateKo: viewSnapshot.orderDateKo || liveOrderDateKo,
+          poNum: viewSnapshot.poNumber || poNumber(purchase),
+          grouped: !!viewSnapshot.groupBySupplier,
+          supplierTitle: viewSnapshot.supplierName ? `${viewSnapshot.supplierName} 귀하` : '',
+          items: viewSnapshot.items || [],
+        } : {
+          siteName: site?.name || purchase.siteName || '',
+          deliveryPlace: purchase.deliveryPlace || SELF_INFO.address,
+          deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
+          payment: purchase.payment || PO_DEFAULTS.payment,
+          contactLine: [purchase.contactName || purchase.requesterName || '', purchase.contactPhone || ''].filter(Boolean).join(' / '),
+          note: form.note,
+          orderDateKo: liveOrderDateKo,
+          poNum: poNumber(purchase),
+          grouped: groupBySupplier,
+          supplierTitle: liveSupplierTitle,
+          items: mapPrintItems(form.items),
+        };
+
+        // 문서 단위: 구매처별이면 구매처별로 각각 별도 발주서, 아니면 전체 1장
+        let docs;
+        if (src.grouped) {
+          const gmap = new Map();
+          for (const it of src.items) {
+            if (!(it._name || it.name || '').trim()) continue;
+            const key = it._supplier || '(구매처 미지정)';
+            if (!gmap.has(key)) gmap.set(key, []);
+            gmap.get(key).push(it);
+          }
+          docs = [...gmap.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([name, items]) => ({
+              recvTitle: name !== '(구매처 미지정)' ? `${name} 귀하` : '',
+              supplierLabel: name,
+              items,
+            }));
+          if (docs.length === 0) docs = [{ recvTitle: src.supplierTitle, supplierLabel: '', items: [] }];
+        } else {
+          docs = [{ recvTitle: src.supplierTitle, supplierLabel: '', items: src.items.filter((ln) => (ln._name || ln.name || '').trim()) }];
         }
 
-        // 페이지별 테두리가 닫히도록 직접 분할 — 행 높이(규격 줄바꿈 반영)를 추정해 페이지를 꽉 채움
-        const CHARS_PER_LINE = 30; // 규격 칸 8pt 한 줄 대략 글자수
-        const LINE1_MM = 6.4;      // 1줄 행 높이(mm)
-        const EXTRA_LINE_MM = 3.4; // 규격 추가 줄당(mm)
-        const HEADER_MM = 7;       // 표 헤더
-        const FOOTER_MM = 11;      // 하단 푸터 밴드
-        const INFO_MM = 60;        // 1페이지 제목+정보표
-        const TOTALS_MM = 18;      // 특이사항+합계 표
-        const PAGE_MM = 262;       // 프레임 내부 가용 높이(여유 포함)
+        // 페이지 추정 상수 — 프레임 고정 높이 250mm 안에서 합계까지 안전히 들어가도록 보수적
+        const CHARS_PER_LINE = 26;
+        const LINE1_MM = 7.2;
+        const EXTRA_LINE_MM = 3.9;
+        const HEADER_MM = 9;
+        const FOOTER_MM = 13;
+        const INFO_MM = 68;
+        const TOTALS_MM = 30;
+        const PAGE_MM = 238;  // 분할 기준(프레임 250mm보다 작게)
+        const FILL_MM = 244;  // 빈 행 패딩 목표(프레임 하단까지)
         const rowH = (ln) => {
           const lines = Math.max(1, Math.ceil(effLen(ln?._spec || '') / CHARS_PER_LINE));
           return LINE1_MM + (lines - 1) * EXTRA_LINE_MM;
         };
         const budgetFor = (isFirst) => PAGE_MM - (isFirst ? INFO_MM : 0) - HEADER_MM - FOOTER_MM;
 
-        const allRows = printItems;
-        const pages = [];
-        let cur = { chunk: [], startNo: 0 };
-        let used = 0;
-        for (let idx = 0; idx < allRows.length; idx++) {
-          const h = rowH(allRows[idx]);
-          const budget = budgetFor(pages.length === 0);
-          if (used + h > budget && cur.chunk.length > 0) {
-            pages.push(cur);
-            cur = { chunk: [], startNo: idx };
-            used = 0;
+        // 한 문서(구매처)를 페이지 div 배열로 렌더
+        const renderDoc = (rows, recvTitle, supplierLabel, docKey) => {
+          const supplyAmount = rows.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0);
+          const totalQty = rows.reduce((s, ln) => s + (Number(ln.qty) || 0), 0);
+          const vat = Math.round(supplyAmount * 0.1);
+          const grandTotal = supplyAmount + vat;
+          const pages = [];
+          let cur = { chunk: [], startNo: 0 };
+          let used = 0;
+          for (let idx = 0; idx < rows.length; idx++) {
+            const h = rowH(rows[idx]);
+            const budget = budgetFor(pages.length === 0);
+            if (used + h > budget && cur.chunk.length > 0) {
+              pages.push(cur);
+              cur = { chunk: [], startNo: idx };
+              used = 0;
+            }
+            cur.chunk.push(rows[idx]);
+            used += h;
           }
-          cur.chunk.push(allRows[idx]);
-          used += h;
-        }
-        pages.push(cur);
-        // 마지막 페이지에 합계가 안 들어가면 빈 페이지 추가
-        {
-          const isFirstLast = pages.length === 1;
-          const lastUsed = pages[pages.length - 1].chunk.reduce((s, ln) => s + rowH(ln), 0);
-          if (lastUsed + TOTALS_MM > budgetFor(isFirstLast)) {
-            pages.push({ chunk: [], startNo: allRows.length });
+          pages.push(cur);
+          {
+            const isFirstLast = pages.length === 1;
+            const lastUsed = pages[pages.length - 1].chunk.reduce((s, ln) => s + rowH(ln), 0);
+            if (lastUsed + TOTALS_MM > budgetFor(isFirstLast)) {
+              pages.push({ chunk: [], startNo: rows.length });
+            }
           }
-        }
-        const pageCount = pages.length;
+          const pageCount = pages.length;
 
-        return (
-          <div className="print-form-iopn print-form-paged print-only">
-            {pages.map((pg, pageIdx) => {
+          return pages.map((pg, pageIdx) => {
               const isFirst = pageIdx === 0;
               const isLast = pageIdx === pageCount - 1;
-              const fillBudget = budgetFor(isFirst) - (isLast ? TOTALS_MM : 0);
+              const fillBudget = FILL_MM - (isFirst ? INFO_MM : 0) - HEADER_MM - FOOTER_MM - (isLast ? TOTALS_MM : 0);
               const usedH = pg.chunk.reduce((s, ln) => s + rowH(ln), 0);
               const padCount = Math.max(0, Math.floor((fillBudget - usedH) / LINE1_MM));
               const padded = [...pg.chunk];
               for (let k = 0; k < padCount; k++) padded.push(null);
               return (
-                <div className="bom-print-page" key={pageIdx}>
+                <div className="bom-print-page po-doc-page" key={`${docKey}-${pageIdx}`}>
                   {isFirst && <div className="print-form-title">구 매 발 주 서</div>}
 
                   {isFirst && (
@@ -632,39 +777,39 @@ export default function PurchaseDetailPage() {
                       <tbody>
                         <tr>
                           <th className="lbl">수 신</th>
-                          <td className="val">{supplierTitle}</td>
+                          <td className="val">{recvTitle}</td>
                           <th className="lbl">사업자등록번호</th>
                           <td className="val">{SELF_INFO.businessNumber}</td>
                         </tr>
                         <tr>
                           <th className="lbl">현 장 명</th>
-                          <td className="val">{site?.name || purchase.siteName || ''}</td>
+                          <td className="val">{src.siteName}</td>
                           <th className="lbl">회사명/대표</th>
                           <td className="val">{SELF_INFO.companyAndCeo}</td>
                         </tr>
                         <tr>
                           <th className="lbl">납품장소</th>
-                          <td className="val">{purchase.deliveryPlace || SELF_INFO.address}</td>
+                          <td className="val">{src.deliveryPlace}</td>
                           <th className="lbl">주 소</th>
                           <td className="val">{SELF_INFO.address}</td>
                         </tr>
                         <tr>
                           <th className="lbl">발행번호</th>
-                          <td className="val">{poNumber(purchase)}</td>
+                          <td className="val">{src.poNum}</td>
                           <th className="lbl">TEL/FAX</th>
                           <td className="val">{SELF_INFO.telFax}</td>
                         </tr>
                         <tr>
                           <th className="lbl">발 주 일</th>
-                          <td className="val">{orderDateKo}</td>
+                          <td className="val">{src.orderDateKo}</td>
                           <th className="lbl">납품기일</th>
-                          <td className="val">{purchase.deliveryDue || PO_DEFAULTS.delivery}</td>
+                          <td className="val">{src.deliveryDue}</td>
                         </tr>
                         <tr>
                           <th className="lbl">지불조건</th>
-                          <td className="val">{purchase.payment || PO_DEFAULTS.payment}</td>
+                          <td className="val">{src.payment}</td>
                           <th className="lbl">담당/연락처</th>
-                          <td className="val">{purchase.requesterName || ''}</td>
+                          <td className="val">{src.contactLine}</td>
                         </tr>
                         <tr>
                           <td colSpan={4} className="iopn-amount-row">
@@ -725,7 +870,7 @@ export default function PurchaseDetailPage() {
                         <tbody>
                           <tr>
                             <th className="lbl">특이사항</th>
-                            <td className="val">{form.note || ''}</td>
+                            <td className="val">{src.note || ''}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -748,12 +893,17 @@ export default function PurchaseDetailPage() {
                   )}
 
                   <div className="iopn-form-footer">
-                    <span>(주)아이오피엔 · 구매발주서 · {poNumber(purchase)}</span>
+                    <span>(주)아이오피엔 · 구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}</span>
                     <span>페이지 {pageIdx + 1} / {pageCount}</span>
                   </div>
                 </div>
               );
-            })}
+          });
+        };
+
+        return (
+          <div className="print-form-iopn print-form-paged print-only">
+            {docs.map((d, di) => renderDoc(d.items, d.recvTitle, d.supplierLabel, `doc${di}`))}
           </div>
         );
       })()}
@@ -775,7 +925,7 @@ export default function PurchaseDetailPage() {
 
       <div className="form-group screen-only">
         <label>품목</label>
-        <p className="field-hint">품명 칸에서 검색해 선택하면 코드·메이커·규격·분류·인증·moq/단위가 자동 채워집니다. 없는 품목은 품명을 직접 입력하면 저장 시 자동 등록됩니다. 구매처는 첫 품목의 기본 구매처로 자동 적용.</p>
+        <p className="field-hint">우측 상단 「품목 불러오기」로 구매 품목을 선택해 추가하세요. 입력 즉시 자동 저장됩니다. 구매처는 첫 품목의 기본 구매처로 자동 적용.</p>
         <div className="item-group is-expanded bom-flat-group">
           <div className="item-group-detail">
             <table className="table inline-edit-table cards-sm bom-flat-table">
@@ -806,19 +956,12 @@ export default function PurchaseDetailPage() {
                   </tr>
                 )}
                 {form.items.map((ln, idx) => {
-                  const kw = (ln.name || '').toLowerCase().trim();
-                  const matches = itemMaster.filter((m) => {
-                    if (!kw) return true;
-                    return (m.code || '').toLowerCase().includes(kw)
-                        || (m.name || '').toLowerCase().includes(kw)
-                        || (m.spec || '').toLowerCase().includes(kw);
-                  }).slice(0, 50);
                   const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
                   const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
-                  const savedLine = purchase.items?.[idx];
-                  const savedQty = Number(savedLine?.qty) || 0;
-                  const receivedQty = Number(savedLine?.receivedQty) || 0;
-                  const isLineSaved = !!savedLine && !dirty;
+                  // 입고 상태는 라인 자체 데이터로 — 삭제·인덱스 변동에 영향받지 않음 (입고 클릭 시 자동저장 flush)
+                  const savedQty = Number(ln.qty) || 0;
+                  const receivedQty = Number(ln.receivedQty) || 0;
+                  const isLineSaved = (ln.name || '').trim().length > 0;
                   const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
                   const isPartial = isLineSaved && receivedQty > 0 && receivedQty < savedQty;
                   return (
@@ -838,40 +981,12 @@ export default function PurchaseDetailPage() {
                           <input
                             className="purchase-line-item"
                             type="text"
-                            placeholder="품목명 검색·입력"
+                            placeholder="품목 불러오기 또는 직접 입력"
                             value={ln.name}
                             onChange={(e) => updateLineName(idx, e.target.value)}
-                            onFocus={() => setActiveLine(idx)}
-                            onBlur={() => setTimeout(() => setActiveLine((c) => (c === idx ? null : c)), 150)}
                             autoComplete="off"
                             disabled={isReadOnly}
                           />
-                          {activeLine === idx && !isReadOnly && (
-                            <div className="purchase-line-dropdown">
-                              {matches.length === 0 ? (
-                                <div className="purchase-line-option-empty">
-                                  {kw ? `"${kw}"는 새 품목으로 등록됩니다` : '등록된 품목이 없습니다 — 직접 입력하세요'}
-                                </div>
-                              ) : (
-                                matches.map((m) => (
-                                  <button
-                                    type="button"
-                                    key={m.id}
-                                    className={`purchase-line-option ${m.id === ln.itemId ? 'is-selected' : ''}`}
-                                    onMouseDown={(e) => { e.preventDefault(); pickItemForLine(idx, m); }}
-                                  >
-                                    <span className="opt-name">
-                                      {m.code && <span className="opt-code">[{m.code}]</span>}
-                                      {m.name}{m.spec ? ` (${m.spec})` : ''}
-                                    </span>
-                                    {m.standardPrice > 0 && (
-                                      <span className="opt-price">{Number(m.standardPrice).toLocaleString()}원</span>
-                                    )}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
                         </div>
                       </td>
                       <td data-label="메이커">
@@ -967,7 +1082,7 @@ export default function PurchaseDetailPage() {
                               disabled={isReadOnly}
                             >
                               <span className="purchase-recv-chip-qty">완료 {receivedQty}/{savedQty}</span>
-                              <span className="purchase-recv-chip-date">{fmtDate(savedLine.receivedAt)}</span>
+                              <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
                             </button>
                           ) : isPartial ? (
                             <button
@@ -978,7 +1093,7 @@ export default function PurchaseDetailPage() {
                               disabled={isReadOnly}
                             >
                               <span className="purchase-recv-chip-qty">부분 {receivedQty}/{savedQty}</span>
-                              <span className="purchase-recv-chip-date">{fmtDate(savedLine.receivedAt)}</span>
+                              <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
                             </button>
                           ) : (
                             <button
@@ -1019,16 +1134,6 @@ export default function PurchaseDetailPage() {
             </table>
           </div>
         </div>
-        {!isReadOnly && (
-          <div className="purchase-add-actions no-print">
-            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
-              + 품목 추가
-            </button>
-            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={openBomModal}>
-              📋 BOM 가져오기
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="purchase-total-row screen-only">
@@ -1244,6 +1349,112 @@ export default function PurchaseDetailPage() {
         )}
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setBomModalOpen(false)}>닫기</button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={itemPickerOpen} onClose={() => setItemPickerOpen(false)} title="품목 선택">
+        <form onSubmit={addPickedToPO}>
+          <p className="field-hint">구매 품목 관리에 등록된 품목 중에서 선택해 발주에 추가합니다. 체크 후 수량을 입력하세요. (대분류 제외)</p>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="코드 · 품명 · 규격 · 분류 검색"
+              value={itemPickerSearch}
+              onChange={(e) => setItemPickerSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="bom-picker-list">
+            {(() => {
+              const kw = itemPickerSearch.trim().toLowerCase();
+              const list = itemMaster
+                .filter((m) => !/^IOPN-\d+$/.test(m.code || '')) // 대분류(베어 메인) 제외
+                .filter((m) => {
+                  if (!kw) return true;
+                  return [m.code, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw));
+                });
+              const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+              const sorted = list.sort((a, b) => collator.compare(a.code || '', b.code || ''));
+              if (sorted.length === 0) {
+                return <p className="purchase-empty">{itemMaster.length === 0 ? '등록된 구매 품목이 없습니다.' : '검색 결과가 없습니다.'}</p>;
+              }
+              return sorted.map((m) => (
+                <label key={m.id} className={`bom-picker-row ${itemPicked.has(m.id) ? 'is-checked' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={itemPicked.has(m.id)}
+                    onChange={() => toggleItemPick(m.id)}
+                  />
+                  <span className="bom-picker-code">{m.code || '-'}</span>
+                  <span className="bom-picker-name">
+                    <strong>{m.name}</strong>
+                    {m.spec && <span className="bom-picker-spec"> ({m.spec})</span>}
+                  </span>
+                  {m.standardPrice > 0 && (
+                    <span className="bom-picker-price">{Number(m.standardPrice).toLocaleString()}원</span>
+                  )}
+                  {itemPicked.has(m.id) && (
+                    <span
+                      className="bom-picker-qty-wrap"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    >
+                      <input
+                        type="number"
+                        min="0"
+                        className="num-input bom-picker-qty"
+                        value={itemPicked.get(m.id)}
+                        onChange={(e) => setItemPickQty(m.id, e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        autoFocus
+                        aria-label={`${m.name} 수량`}
+                      />
+                      <span className="bom-picker-qty-unit">{m.unit || '개'}</span>
+                    </span>
+                  )}
+                </label>
+              ));
+            })()}
+          </div>
+          <div className="modal-actions">
+            <button type="submit" className="btn btn-primary" disabled={itemPicked.size === 0}>
+              {itemPicked.size}개 추가
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setItemPickerOpen(false)}>취소</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={printLogsOpen} onClose={() => setPrintLogsOpen(false)} title="발주서 출력 이력">
+        <p className="field-hint">출력했던 시점의 발주서 상태가 저장되어 있습니다. 「이 시점 PDF 출력」을 누르면 그때 모습 그대로 다시 출력·PDF 저장할 수 있습니다.</p>
+        {printLogsLoading ? (
+          <p className="purchase-empty">불러오는 중...</p>
+        ) : printLogs.length === 0 ? (
+          <p className="purchase-empty">출력 이력이 없습니다.</p>
+        ) : (
+          <div className="bom-import-list" style={{ maxHeight: 420 }}>
+            {printLogs.map((log) => {
+              const snap = log.snapshot || {};
+              const items = snap.items || [];
+              const total = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+              const vat = Math.round(total * 0.1);
+              return (
+                <div key={log.id} className="bom-import-row" style={{ cursor: 'default' }}>
+                  <span className="bom-import-name">
+                    <strong>{fmtDateTime(log.at)}</strong>
+                    <span className="text-muted" style={{ marginLeft: 8, fontWeight: 400, fontSize: 12 }}>
+                      {log.by || '-'} · {items.length}품목 · ₩{(total + vat).toLocaleString()}{snap.groupBySupplier ? ' · 구매처별' : ''}
+                    </span>
+                  </span>
+                  <button type="button" className="btn btn-sm btn-primary" style={{ flexShrink: 0 }} onClick={() => printSnapshot(log)}>
+                    이 시점 PDF 출력
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setPrintLogsOpen(false)}>닫기</button>
         </div>
       </Modal>
     </div>

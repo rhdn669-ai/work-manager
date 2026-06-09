@@ -22,9 +22,10 @@ const TABS = [
   { key: 'partial', label: '부분입고' },
   { key: 'received', label: '입고완료' },
   { key: 'settled', label: '정산완료' },
+  { key: 'printed', label: '출력이력' },
 ];
 
-const EMPTY_FORM = { title: '', siteId: '', deliveryDue: '' };
+const EMPTY_FORM = { title: '', siteId: '', deliveryDue: '', contactName: '', contactPhone: '' };
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -77,17 +78,30 @@ export default function PurchaseListPage() {
   const counts = useMemo(() => {
     const c = { all: purchases.length };
     for (const p of purchases) c[p.status] = (c[p.status] || 0) + 1;
+    c.printed = purchases.filter((p) => Number(p.printCount) > 0).length;
     return c;
   }, [purchases]);
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    return purchases.filter((p) => {
-      if (tab !== 'all' && p.status !== tab) return false;
+    const list = purchases.filter((p) => {
+      if (tab === 'printed') {
+        if (!(Number(p.printCount) > 0)) return false;
+      } else if (tab !== 'all' && p.status !== tab) {
+        return false;
+      }
       if (!kw) return true;
       return [p.title, p.supplierName, p.siteName, p.requesterName]
         .some((v) => (v || '').toLowerCase().includes(kw));
     });
+    if (tab === 'printed') {
+      const t = (p) => {
+        const d = p.lastPrintedAt?.toDate ? p.lastPrintedAt.toDate() : (p.lastPrintedAt ? new Date(p.lastPrintedAt) : null);
+        return d ? d.getTime() : 0;
+      };
+      list.sort((a, b) => t(b) - t(a)); // 최근 출력순
+    }
+    return list;
   }, [purchases, tab, search]);
 
   function openCreate() {
@@ -110,6 +124,8 @@ export default function PurchaseListPage() {
         siteName: site?.name || '',
         totalAmount: 0,
         deliveryDue: form.deliveryDue.trim(),
+        contactName: form.contactName.trim(),
+        contactPhone: form.contactPhone.trim(),
         requesterId: userProfile?.uid || '',
         requesterName: userProfile?.name || '',
       });
@@ -196,7 +212,14 @@ export default function PurchaseListPage() {
                 className="table-clickable-row"
                 onClick={() => navigate(`/admin/purchase/${p.id}`)}
               >
-                <td data-label="제목"><strong>{p.title}</strong></td>
+                <td data-label="제목">
+                  <strong>{p.title}</strong>
+                  {Number(p.printCount) > 0 && (
+                    <span className="purchase-print-badge" title={`최근 출력: ${fmtDate(p.lastPrintedAt)}${p.lastPrintedBy ? ` · ${p.lastPrintedBy}` : ''}`}>
+                      🖨 {p.printCount}회 · {fmtDate(p.lastPrintedAt)}
+                    </span>
+                  )}
+                </td>
                 <td data-label="구매처">{p.supplierName || <span className="text-muted">-</span>}</td>
                 <td data-label="프로젝트">{p.siteName || '-'}</td>
                 <td data-label="금액" className="num-col">{Number(p.totalAmount || 0).toLocaleString()}원</td>
@@ -221,7 +244,6 @@ export default function PurchaseListPage() {
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="예) 4월 1주 자재 구매"
               required
               autoFocus
             />
@@ -250,9 +272,27 @@ export default function PurchaseListPage() {
               type="text"
               value={form.deliveryDue}
               onChange={(e) => setForm({ ...form, deliveryDue: e.target.value })}
-              placeholder="예) 2026-06-15 · 협의 · 긴급"
             />
             <p className="field-hint">날짜 또는 "협의·긴급" 등 자유 입력. 비워두면 발주서에 "긴급"으로 표시됩니다.</p>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>담당자</label>
+              <input
+                type="text"
+                value={form.contactName}
+                onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>연락처</label>
+              <input
+                type="text"
+                value={form.contactPhone}
+                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+              />
+            </div>
           </div>
 
           <p className="field-hint">
