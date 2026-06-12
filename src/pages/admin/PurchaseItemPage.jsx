@@ -227,7 +227,8 @@ export default function PurchaseItemPage() {
     const orderedIds = newOrder.map((it) => it.id);
     const newCodeById = new Map();
     orderedIds.forEach((id, idx) => {
-      newCodeById.set(id, idx === 0 ? prefix : `${prefix}-${idx}`);
+      // 하위 항목은 모두 -1, -2 … (대분류 prefix는 대표 품목 전용) — 서버 reorderGroupCodes와 동일
+      newCodeById.set(id, `${prefix}-${idx + 1}`);
     });
 
     // 낙관적 로컬 업데이트
@@ -528,54 +529,6 @@ export default function PurchaseItemPage() {
     }
   }
 
-  // ---- 그룹 하위 코드 재정렬 (대분류-1, -2 … 로 다시 매김) ----
-  async function reorderGroup(repCode, subItems) {
-    if (!subItems || subItems.length === 0) {
-      alert('재정렬할 하위 품목이 없습니다.');
-      return;
-    }
-    const mainCode = (repCode || '').match(/^IOPN-\d+/)?.[0];
-    if (!mainCode) {
-      alert('대분류 코드(IOPN-NNNNN)가 올바르지 않아 재정렬할 수 없습니다.');
-      return;
-    }
-    // 변경될 코드 미리 계산 (확인 문구용) — 이미 순서대로면 변경 없음
-    const willChange = subItems.filter((s, idx) => s.code !== `${mainCode}-${idx + 1}`);
-    if (willChange.length === 0) {
-      alert('이미 코드가 순서대로 정렬되어 있습니다.');
-      return;
-    }
-    if (!window.confirm(`하위 ${willChange.length}개 품목의 코드를 ${mainCode}-1 부터 다시 매깁니다. 진행할까요?`)) return;
-    try {
-      const updates = await reorderGroupCodes(subItems.map((s) => s.id), subItems, mainCode);
-      await loadData();
-      alert(`${updates.length}개 코드를 재정렬했습니다.`);
-    } catch (err) {
-      alert('코드 재정렬 중 오류: ' + err.message);
-    }
-  }
-
-  // ---- 그룹 하위: 품명에 든 내용을 규격으로 이동 (예전 일괄추가 데이터 정리) ----
-  // 규격이 비어있고 품명이 대표 품목명과 다른 하위만 대상: spec ← name, name ← 대표 품목명
-  async function moveNameToSpec(repItem, subItems) {
-    if (!repItem) return;
-    const repName = repItem.name || '';
-    const targets = (subItems || []).filter(
-      (s) => !(s.spec || '').trim() && (s.name || '').trim() && (s.name || '').trim() !== repName.trim(),
-    );
-    if (targets.length === 0) {
-      alert('이동할 항목이 없습니다. (규격이 비어있고 품명이 대표 품목명과 다른 하위 품목만 대상)');
-      return;
-    }
-    if (!window.confirm(`하위 ${targets.length}개 품목의 품명 내용을 규격으로 옮기고, 품명은 "${repName}"으로 통일합니다. 진행할까요?`)) return;
-    try {
-      await Promise.all(targets.map((s) => updatePurchaseItem(s.id, { spec: (s.name || '').trim(), name: repName })));
-      await loadData();
-      alert(`${targets.length}개 품목을 정리했습니다.`);
-    } catch (err) {
-      alert('품명→규격 이동 중 오류: ' + err.message);
-    }
-  }
 
   if (loading) return <div className="loading">로딩 중...</div>;
 
@@ -632,6 +585,8 @@ export default function PurchaseItemPage() {
                   aria-expanded={isExpanded}
                   onClick={() => toggleGroup(groupKey)}
                   onKeyDown={(e) => {
+                    // 내부 입력칸에서 올라온 키는 무시 (스페이스 띄어쓰기 보존)
+                    if (e.target !== e.currentTarget) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       toggleGroup(groupKey);
@@ -693,18 +648,6 @@ export default function PurchaseItemPage() {
                         onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
                         title="규격·금액 여러 개 붙여넣어 한 번에 추가"
                       >📋 일괄</button>
-                      <button
-                        type="button"
-                        className="item-group-add-btn"
-                        onClick={(e) => { e.stopPropagation(); reorderGroup(repCode, subItems); }}
-                        title="하위 코드를 -1부터 순서대로 다시 매김"
-                      >🔢 코드정리</button>
-                      <button
-                        type="button"
-                        className="item-group-add-btn"
-                        onClick={(e) => { e.stopPropagation(); moveNameToSpec(repItem, subItems); }}
-                        title="하위 품명에 든 내용을 규격으로 이동 (품명은 대표 품목명으로 통일)"
-                      >↪ 품명→규격</button>
                     </div>
                     <DndContext
                       sensors={sensors}
@@ -744,20 +687,6 @@ export default function PurchaseItemPage() {
                                   onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
                                   title="규격·금액 여러 개 붙여넣어 한 번에 추가"
                                 >📋 일괄</button>
-                                <button
-                                  type="button"
-                                  className="item-group-add-btn"
-                                  style={{ marginLeft: 6 }}
-                                  onClick={(e) => { e.stopPropagation(); reorderGroup(repCode, subItems); }}
-                                  title="하위 코드를 -1부터 순서대로 다시 매김"
-                                >🔢 코드정리</button>
-                                <button
-                                  type="button"
-                                  className="item-group-add-btn"
-                                  style={{ marginLeft: 6 }}
-                                  onClick={(e) => { e.stopPropagation(); moveNameToSpec(repItem, subItems); }}
-                                  title="하위 품명에 든 내용을 규격으로 이동 (품명은 대표 품목명으로 통일)"
-                                >↪ 품명→규격</button>
                               </th>
                             </tr>
                           </thead>

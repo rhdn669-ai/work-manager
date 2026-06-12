@@ -254,7 +254,11 @@ export default function BomDetailPage() {
   const filteredMaster = useMemo(() => {
     const kw = pickerSearch.trim().toLowerCase();
     const inBomIds = new Set(bomItems.map((b) => b.itemId).filter(Boolean));
-    let list = itemMaster.filter((m) => !inBomIds.has(m.id));
+    // 대분류(베어 메인) 제외: 코드 형식 + 하위 품목의 groupKey가 가리키는 id 양쪽으로
+    const mainIds = new Set(itemMaster.map((m) => m.groupKey).filter(Boolean));
+    let list = itemMaster.filter(
+      (m) => !inBomIds.has(m.id) && !/^IOPN-\d+$/.test(m.code || '') && !mainIds.has(m.id),
+    );
     if (kw) {
       list = list.filter((m) =>
         [m.code, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw)),

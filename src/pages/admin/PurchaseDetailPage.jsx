@@ -1367,8 +1367,10 @@ export default function PurchaseDetailPage() {
           <div className="bom-picker-list">
             {(() => {
               const kw = itemPickerSearch.trim().toLowerCase();
+              // 대분류(베어 메인) id 집합: 다른 하위 품목의 groupKey가 가리키는 id
+              const mainIds = new Set(itemMaster.map((m) => m.groupKey).filter(Boolean));
               const list = itemMaster
-                .filter((m) => !/^IOPN-\d+$/.test(m.code || '')) // 대분류(베어 메인) 제외
+                .filter((m) => !/^IOPN-\d+$/.test(m.code || '') && !mainIds.has(m.id)) // 대분류(베어 메인) 제외
                 .filter((m) => {
                   if (!kw) return true;
                   return [m.code, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw));
