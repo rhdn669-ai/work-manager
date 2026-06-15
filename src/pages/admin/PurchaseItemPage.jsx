@@ -495,7 +495,7 @@ export default function PurchaseItemPage() {
       <div className="page-header">
         <h2>구매 품목 관리</h2>
         <div className="page-actions">
-          <button className="btn btn-primary" onClick={addRow}>+ 품목 추가</button>
+          <button className="btn btn-sm btn-primary" onClick={addRow}>+ 품목 추가</button>
         </div>
       </div>
 

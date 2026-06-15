@@ -165,8 +165,8 @@ export default function PurchaseListPage() {
       <div className="page-header">
         <h2>구매 · 발주 현황</h2>
         <div className="page-actions no-print">
-          <button className="btn btn-outline" onClick={() => navigate('/admin/purchase/trash?type=purchase')}>🗑 휴지통</button>
-          <button className="btn btn-primary" onClick={openCreate}>구매 등록</button>
+          <button className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/trash?type=purchase')}>🗑 휴지통</button>
+          <button className="btn btn-sm btn-primary" onClick={openCreate}>구매 등록</button>
         </div>
       </div>
 

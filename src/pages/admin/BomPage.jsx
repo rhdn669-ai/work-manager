@@ -75,8 +75,8 @@ export default function BomPage() {
       <div className="page-header">
         <h2>프로젝트별 BOM</h2>
         <div className="page-actions">
-          <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase/trash?type=bomProject')}>🗑 휴지통</button>
-          <button type="button" className="btn btn-primary" onClick={openAddProject}>+ 프로젝트 추가</button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/trash?type=bomProject')}>🗑 휴지통</button>
+          <button type="button" className="btn btn-sm btn-primary" onClick={openAddProject}>+ 프로젝트 추가</button>
         </div>
       </div>
 
