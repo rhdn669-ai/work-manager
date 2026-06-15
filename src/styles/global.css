@@ -3619,7 +3619,10 @@ body {
 
 /* 품목 선택 모달 */
 .bom-picker-list {
-  max-height: 360px;
+  /* 검색 결과 수가 바뀌어도 모달 크기가 출렁이지 않도록 높이 고정 (56vh, 260~440 사이) */
+  height: 56vh;
+  max-height: 440px;
+  min-height: 260px;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -11266,9 +11269,10 @@ tr.is-newly-added > td {
 .iopn-items-table .c-note { width: 11%; text-align: left; padding-left: 8px; }
 /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
 .iopn-items-table.bom-no-price .c-name { width: 13%; text-align: center; }
-.iopn-items-table.bom-no-price .c-spec { width: 45%; text-align: center; padding-left: 0; }
+.iopn-items-table.bom-no-price .c-maker { width: 11%; text-align: center; }
+.iopn-items-table.bom-no-price .c-spec { width: 33%; text-align: center; padding-left: 0; }
 .iopn-items-table.bom-no-price .c-qty { width: 6%; text-align: center; padding-right: 0; }
-.iopn-items-table.bom-no-price .c-supplier { width: 18%; text-align: center; padding-left: 0; }
+.iopn-items-table.bom-no-price .c-supplier { width: 17%; text-align: center; padding-left: 0; }
 .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
 /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
 .iopn-items-table.po-cols .c-no { width: 6%; }
@@ -11677,9 +11681,10 @@ tr.is-newly-added > td {
   .iopn-items-table .c-note { width: 11%; text-align: left; padding-left: 2.5mm; }
   /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
   .iopn-items-table.bom-no-price .c-name { width: 13%; text-align: center; }
-  .iopn-items-table.bom-no-price .c-spec { width: 45%; text-align: center; padding-left: 0; }
+  .iopn-items-table.bom-no-price .c-maker { width: 11%; text-align: center; }
+  .iopn-items-table.bom-no-price .c-spec { width: 33%; text-align: center; padding-left: 0; }
   .iopn-items-table.bom-no-price .c-qty { width: 6%; text-align: center; padding-right: 0; }
-  .iopn-items-table.bom-no-price .c-supplier { width: 18%; text-align: center; padding-left: 0; }
+  .iopn-items-table.bom-no-price .c-supplier { width: 17%; text-align: center; padding-left: 0; }
   .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
   /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
   .iopn-items-table.po-cols .c-no { width: 6%; }

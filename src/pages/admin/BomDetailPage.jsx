@@ -459,6 +459,7 @@ export default function BomDetailPage() {
                       <tr>
                         <th className="c-no">NO</th>
                         <th className="c-name">품목명</th>
+                        <th className="c-maker">메이커</th>
                         <th className="c-spec">규격</th>
                         <th className="c-qty">수량</th>
                         <th className="c-supplier">구매처</th>
@@ -470,14 +471,20 @@ export default function BomDetailPage() {
                         if (!it) return (
                           <tr key={`e-${r}`}>
                             <td className="c-no"></td>
-                            <td></td><td></td><td></td><td></td><td></td>
+                            <td className="c-name"></td>
+                            <td className="c-maker"></td>
+                            <td className="c-spec"></td>
+                            <td className="c-qty"></td>
+                            <td className="c-supplier"></td>
+                            <td className="c-note"></td>
                           </tr>
                         );
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
                             <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
-                            <td className={`c-spec ${specFontClass(it.spec, 43)}`}>{it.spec || ''}</td>
+                            <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
+                            <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
                             <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
                             <td className={`c-note ${specFontClass(it.note, 14)}`}>{it.note || ''}</td>
