@@ -665,29 +665,15 @@ export default function PurchaseItemPage() {
                               <th style={{ width: 110 }}>코드</th>
                               <th style={{ width: 150 }}>품명</th>
                               <th style={{ width: 110 }}>메이커</th>
-                              <th style={{ width: 150 }}>규격</th>
-                              <th style={{ width: 90 }}>분류</th>
-                              <th style={{ width: 90 }}>인증</th>
-                              <th style={{ width: 130 }}>수량/단위</th>
+                              <th style={{ width: 240 }}>규격</th>
+                              <th style={{ width: 170 }}>분류</th>
+                              <th style={{ width: 170 }}>인증</th>
+                              <th style={{ width: 100 }}>수량/단위</th>
                               <th style={{ width: 100 }}>개별단가</th>
                               <th style={{ width: 100 }}>단가</th>
-                              <th style={{ width: 150 }}>기본 구매처</th>
-                              <th style={{ width: 150 }}>비고</th>
-                              <th className="item-group-add-th" style={{ width: 300 }}>
-                                <button
-                                  type="button"
-                                  className="item-group-add-btn"
-                                  onClick={(e) => { e.stopPropagation(); addSameItem(subItems[subItems.length - 1] || repItem); }}
-                                  title="같은 품명으로 다른 규격 추가 (소분류 -N)"
-                                >+ 추가</button>
-                                <button
-                                  type="button"
-                                  className="item-group-add-btn"
-                                  style={{ marginLeft: 6 }}
-                                  onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
-                                  title="규격·금액 여러 개 붙여넣어 한 번에 추가"
-                                >📋 일괄</button>
-                              </th>
+                              <th style={{ width: 120 }}>기본 구매처</th>
+                              <th style={{ width: 110 }}>비고</th>
+                              <th style={{ width: 110 }} aria-label="관리"></th>
                             </tr>
                           </thead>
                           <tbody>

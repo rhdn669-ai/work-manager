@@ -3920,6 +3920,7 @@ body {
 
 .item-actions-cell {
   white-space: nowrap;
+  text-align: right;
 }
 .item-actions-cell > * { margin-right: 4px; }
 .item-actions-cell > *:last-child { margin-right: 0; }
@@ -4393,6 +4394,7 @@ body {
   border-top: 1px solid var(--border);
   background: var(--bg-subtle);
   padding: 12px;
+  overflow-x: auto; /* 칼럼 합이 넓어 표가 넘칠 때 우측(복사·✕) 잘리지 않게 가로 스크롤 */
 }
 .item-group-detail .table {
   background: #fff;
@@ -4400,16 +4402,18 @@ body {
   overflow: hidden;
 }
 
-/* "+ 추가" 버튼 — PC: thead 작업 컬럼 / 모바일(cards-sm thead 숨김): 표 위 toolbar */
+/* "+ 추가 · 일괄" 버튼 — 표 위 toolbar(우측). thead에서 빼서 액션 칸(복사·✕)이 잘리지 않게 함 */
 .item-group-detail-toolbar {
-  display: none; /* PC에선 숨김 — thead 버튼 사용 */
+  display: flex;
   justify-content: flex-end;
+  gap: 6px;
   margin-bottom: 6px;
 }
 .item-group-add-th {
   text-align: right;
   padding: 4px 6px !important;
   vertical-align: middle;
+  white-space: nowrap;
 }
 .item-group-add-btn {
   display: inline-flex;
