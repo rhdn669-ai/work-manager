@@ -7,6 +7,7 @@ import {
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { getBomProjects, getBomBySite } from '../../services/bomService';
+import { trashPurchase } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
@@ -562,8 +563,9 @@ export default function PurchaseDetailPage() {
 
   async function handleDelete() {
     if (!purchase) return;
-    if (!await confirm(`"${purchase.title}" 구매 건을 삭제하시겠습니까?`)) return;
+    if (!await confirm(`"${purchase.title}" 구매 건을 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`)) return;
     try {
+      await trashPurchase(id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
       await deletePurchase(id);
       navigate('/admin/purchase');
     } catch (err) {

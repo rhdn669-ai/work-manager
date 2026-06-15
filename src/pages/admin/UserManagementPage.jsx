@@ -21,7 +21,7 @@ export default function UserManagementPage() {
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
     name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
-    leaveRemaining: '', canViewSalary: false, canCreateSite: false,
+    leaveRemaining: '', canViewSalary: false, canCreateSite: false, canViewArchive: false,
     usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '',
   });
 
@@ -54,7 +54,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, canCreateSite: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
+    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, canCreateSite: false, canViewArchive: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
     setShowModal(true);
   }
 
@@ -68,6 +68,7 @@ export default function UserManagementPage() {
       leaveRemaining: bal ? String(bal.remainingDays) : '',
       canViewSalary: !!user.canViewSalary,
       canCreateSite: !!user.canCreateSite,
+      canViewArchive: !!user.canViewArchive,
       usesVehicle: !!user.usesVehicle,
       vehiclePlate: user.vehiclePlate || '',
       vehicleMonthlyCost: user.vehicleMonthlyCost ? Number(user.vehicleMonthlyCost).toLocaleString() : '',
@@ -88,6 +89,7 @@ export default function UserManagementPage() {
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
           canCreateSite: !!form.canCreateSite,
+          canViewArchive: !!form.canViewArchive,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle
@@ -107,6 +109,7 @@ export default function UserManagementPage() {
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
           canCreateSite: !!form.canCreateSite,
+          canViewArchive: !!form.canViewArchive,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle
@@ -450,6 +453,33 @@ export default function UserManagementPage() {
                       checked={on}
                       disabled={autoGranted}
                       onChange={(e) => setForm({ ...form, canCreateSite: e.target.checked })}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            );
+          })()}
+          {(() => {
+            const autoGranted = form.role === 'admin' || ['대표', '부사장'].includes(form.position);
+            const on = autoGranted || !!form.canViewArchive;
+            return (
+              <div className="form-group">
+                <div className="toggle-row">
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">자료실 열람 권한</span>
+                    <small className="text-muted">
+                      {autoGranted
+                        ? '관리자·대표/부사장은 자동으로 부여됩니다.'
+                        : '일반 직원은 기본 미공개입니다. 켜면 자료실 메뉴가 보입니다.'}
+                    </small>
+                  </div>
+                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={autoGranted}
+                      onChange={(e) => setForm({ ...form, canViewArchive: e.target.checked })}
                     />
                     <span className="toggle-slider" />
                   </label>

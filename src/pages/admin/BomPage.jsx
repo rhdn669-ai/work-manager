@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   getBomProjects, addBomProject, deleteBomProject,
 } from '../../services/bomService';
+import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function BomPage() {
   const { confirm, alert } = useDialog();
+  const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +58,9 @@ export default function BomPage() {
 
   async function handleDeleteProject(e, project) {
     e.stopPropagation();
-    if (!await confirm(`"${project.name}" 프로젝트와 등록된 BOM을 모두 삭제하시겠습니까?`)) return;
+    if (!await confirm(`"${project.name}" 프로젝트와 등록된 BOM을 모두 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`)) return;
     try {
+      await trashBomProject(project.id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
       await deleteBomProject(project.id);
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
     } catch (err) {
@@ -71,6 +75,7 @@ export default function BomPage() {
       <div className="page-header">
         <h2>프로젝트별 BOM</h2>
         <div className="page-actions">
+          <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase/trash?type=bomProject')}>🗑 휴지통</button>
           <button type="button" className="btn btn-primary" onClick={openAddProject}>+ 프로젝트 추가</button>
         </div>
       </div>

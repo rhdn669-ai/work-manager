@@ -13,10 +13,10 @@ const LS_KEY_PREFIX = 'sidebar-order-v1:';
 const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 
 // 기본 메뉴 정의
-function buildAllItems({ isAdmin, canApproveLeave, canCreateSite }) {
+function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }) {
   return [
     { key: 'home', to: '/dashboard', label: '홈', show: true, end: false },
-    { key: 'library', to: '/library', label: '자료실', show: true, end: true },
+    { key: 'library', to: '/library', label: '자료실', show: canViewArchive, end: true },
     { key: 'admin-users', to: '/admin/users', label: '직원 관리', show: isAdmin },
     { key: 'admin-reports', to: '/admin/reports', label: '잔업 · 연차', show: isAdmin },
     { key: 'admin-leaves', to: '/admin/leaves', label: '연차/잔업 신청 목록', show: isAdmin },
@@ -41,7 +41,7 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite }) {
 }
 
 export default function Sidebar({ isOpen }) {
-  const { userProfile, isAdmin, canApproveLeave, canCreateSite } = useAuth();
+  const { userProfile, isAdmin, canApproveLeave, canCreateSite, canViewArchive } = useAuth();
   const { confirm } = useDialog();
   const [editing, setEditing] = useState(false);
   const [order, setOrder] = useState(null);
@@ -116,8 +116,8 @@ export default function Sidebar({ isOpen }) {
   }, [userProfile?.uid, isAdmin]);
 
   const allItems = useMemo(
-    () => buildAllItems({ isAdmin, canApproveLeave, canCreateSite }),
-    [isAdmin, canApproveLeave, canCreateSite],
+    () => buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }),
+    [isAdmin, canApproveLeave, canCreateSite, canViewArchive],
   );
 
   // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬

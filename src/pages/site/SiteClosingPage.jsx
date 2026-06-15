@@ -1259,7 +1259,29 @@ export default function SiteClosingPage() {
   return (
     <div className="site-closing-page">
       <div className="page-header">
-        <h2>{site.name} <span className="closing-period">{y}년 {m}월</span></h2>
+        <h2>
+          {site.name}
+          <span className="closing-period-select">
+            <select
+              value={y}
+              onChange={(e) => navigate(`/sites/${siteId}/${e.target.value}/${m}`)}
+              aria-label="연도 선택"
+            >
+              {[2024, 2025, 2026, 2027, 2028].map((yy) => (
+                <option key={yy} value={yy}>{yy}년</option>
+              ))}
+            </select>
+            <select
+              value={m}
+              onChange={(e) => navigate(`/sites/${siteId}/${y}/${e.target.value}`)}
+              aria-label="월 선택"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => (
+                <option key={mm} value={mm}>{mm}월</option>
+              ))}
+            </select>
+          </span>
+        </h2>
         <div className="page-actions">
           {canEdit && saveStatus}
           {canEdit && items.length > 0 && (

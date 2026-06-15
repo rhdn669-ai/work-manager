@@ -184,8 +184,8 @@ export default function BomDetailPage() {
   //    띄어쓰기·하이픈(-) 차이 정도만 무시한 "완전 일치"까지만 허용.
   function findMasterByToken(token) {
     const norm = (v) => String(v || '').trim().toLowerCase().replace(/^["']+|["']+$/g, '');
-    // 느슨한 정규화: 공백·하이픈만 제거 (그 외 문자는 보존 → 다른 품목과 섞이지 않음)
-    const loose = (v) => norm(v).replace(/[\s-]+/g, '');
+    // 느슨한 정규화: 공백·하이픈·쉼표·괄호만 제거 (그 외 문자는 보존 → 다른 품목과 섞이지 않음)
+    const loose = (v) => norm(v).replace(/[\s,()-]+/g, '');
     const t = norm(token);
     if (!t) return null;
     // 1차: 정확 일치 (코드 → 품명 → 규격)
@@ -212,31 +212,47 @@ export default function BomDetailPage() {
     return null;
   }
 
-  // 붙여넣은 코드 목록을 일괄 매칭해 선택에 추가
-  function applyPaste() {
+  // 붙여넣은 코드 목록을 "입력 순서 그대로" BOM에 바로 추가 (중복도 그대로 추가)
+  async function applyPaste() {
     const lines = pasteText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-    const inBomIds = new Set(bomItems.map((b) => b.itemId).filter(Boolean));
     const notFound = [];
-    const already = [];
-    const toSelect = new Map(); // itemId -> 수량
+    const matched = []; // { m, qty } — 입력 순서 유지, 중복 허용
     for (const line of lines) {
       // 줄 끝의 "공백/탭 + 숫자"를 수량으로 인식 (엑셀 2열 복사 = 탭 구분 포함).
       // 코드 끝 숫자(예: SS-130, 4797.0015)는 앞에 공백이 없어 수량으로 오인식되지 않음.
       const qm = line.match(/\s+(\d+(?:\.\d+)?)\s*$/);
       const qty = qm ? Number(qm[1]) : 0;
       const codeToken = qm ? line.slice(0, qm.index).trim() : line;
+      if (!codeToken) continue; // 모델명 없이 숫자만 있는 빈 줄은 건너뜀
       const m = findMasterByToken(codeToken);
       if (!m) { notFound.push(line); continue; }
-      if (inBomIds.has(m.id)) { already.push(line); continue; }
-      toSelect.set(m.id, qty > 0 ? qty : 1);
+      matched.push({ m, qty: qty > 0 ? qty : 1 });
     }
-    setPicked((prev) => {
-      const next = new Map(prev);
-      toSelect.forEach((q, id) => { next.set(id, q); }); // 붙여넣은 수량으로 설정(기존 선택도 갱신)
-      return next;
-    });
-    setPickerSearch(''); // 선택된 항목이 목록에 다 보이도록 검색 초기화
-    setPasteResult({ added: toSelect.size, already, notFound });
+    if (matched.length === 0) { setPasteResult({ added: 0, notFound }); return; }
+    let nextOrder = bomItems.length === 0
+      ? 1 : Math.max(...bomItems.map((b) => Number(b.order) || 0)) + 1;
+    const added = [];
+    for (const { m, qty } of matched) {
+      const data = {
+        itemId: m.id,
+        name: m.name || '',
+        spec: m.spec || '',
+        unit: m.unit || '',
+        qty,
+        unitPrice: Number(m.standardPrice) || 0,
+        note: '',
+        order: nextOrder++,
+      };
+      try {
+        const ref = await addBomItem(projectId, data);
+        added.push({ ...data, id: ref.id, siteId: projectId, code: m.code });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setBomItems((prev) => [...prev, ...added]);
+    setPasteText('');
+    setPasteResult({ added: added.length, notFound });
   }
 
   function togglePick(itemId) {
@@ -708,7 +724,7 @@ export default function BomDetailPage() {
             className="bom-paste-toggle"
             onClick={() => setPasteOpen((v) => !v)}
           >
-            {pasteOpen ? '▴ 코드 붙여넣기 닫기' : '▾ 코드(+수량) 여러 개 붙여넣어 한 번에 찾기'}
+            {pasteOpen ? '▴ 코드 붙여넣기 닫기' : '▾ 코드(+수량) 여러 개 붙여넣어 한 번에 추가'}
           </button>
           {pasteOpen && (
             <div className="bom-paste-panel">
@@ -725,7 +741,7 @@ export default function BomDetailPage() {
                   className="btn btn-primary btn-sm"
                   onClick={applyPaste}
                   disabled={!pasteText.trim()}
-                >코드로 찾아 선택</button>
+                >코드로 찾아 추가</button>
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
@@ -734,14 +750,15 @@ export default function BomDetailPage() {
               </div>
               {pasteResult && (
                 <div className="bom-paste-result">
-                  <span className="ok">✅ {pasteResult.added}개 선택됨</span>
-                  {pasteResult.already.length > 0 && (
-                    <span className="dup">이미 BOM에 있음 {pasteResult.already.length}개</span>
-                  )}
+                  <span className="ok">✅ {pasteResult.added}개 추가됨</span>
                   {pasteResult.notFound.length > 0 && (
                     <div className="miss">
                       ⚠️ 못 찾은 코드 {pasteResult.notFound.length}개:
-                      <span className="miss-list"> {pasteResult.notFound.join(', ')}</span>
+                      <ul className="miss-list">
+                        {pasteResult.notFound.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>

@@ -44,7 +44,7 @@ function fileIcon(name = '', contentType = '') {
 }
 
 export default function FileLibraryPage() {
-  const { userProfile } = useAuth();
+  const { userProfile, canViewArchive } = useAuth();
   const { confirm, alert } = useDialog();
 
   const [folders, setFolders] = useState([]);
@@ -160,6 +160,16 @@ export default function FileLibraryPage() {
     } catch (err) {
       alert('파일 삭제 오류: ' + err.message);
     }
+  }
+
+  // 자료실 미공개 권한 직원: 직접 URL 접근 차단
+  if (!canViewArchive) {
+    return (
+      <div className="library-page">
+        <div className="page-header"><h2>자료실</h2></div>
+        <p className="purchase-empty">자료실 열람 권한이 없습니다. 관리자에게 문의하세요.</p>
+      </div>
+    );
   }
 
   return (

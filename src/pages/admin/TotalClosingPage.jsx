@@ -93,8 +93,13 @@ export default function TotalClosingPage() {
       if (s.status !== 'completed') return true;
       const ey = Number(s.endYear) || 0;
       const em = Number(s.endMonth) || 0;
-      if (!ey || !em) return true;
-      const endIdx = ey * 12 + em;
+      const endIdx = (ey && em) ? ey * 12 + em : 0;
+      // 단발성(once): 마감되면 끝 — 종료월 이후 또는 종료월 미설정이면 숨김 (이번 달 데이터 없을 때)
+      if ((s.projectType || 'recurring') === 'once') {
+        return endIdx ? endIdx >= curIdx : false;
+      }
+      // 양산형(recurring): 종료월 미설정이면 계속 표시, 설정 시 종료월 이후 숨김
+      if (!endIdx) return true;
       return endIdx >= curIdx;
     });
   }, [sites, stats, year, month]);

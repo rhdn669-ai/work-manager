@@ -28,6 +28,7 @@ import QuotePage from './pages/admin/QuotePage';
 import PurchaseItemPage from './pages/admin/PurchaseItemPage';
 import BomPage from './pages/admin/BomPage';
 import BomDetailPage from './pages/admin/BomDetailPage';
+import PurchaseTrashPage from './pages/admin/PurchaseTrashPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 import FileLibraryPage from './pages/library/FileLibraryPage';
@@ -89,6 +90,7 @@ const router = createBrowserRouter([
           { path: '/admin/purchase/items', element: <PurchaseItemPage /> },
           { path: '/admin/purchase/bom', element: <BomPage /> },
           { path: '/admin/purchase/bom/:projectId', element: <BomDetailPage /> },
+          { path: '/admin/purchase/trash', element: <PurchaseTrashPage /> },
           { path: '/admin/purchase/:id', element: <PurchaseDetailPage /> },
         ],
       },
