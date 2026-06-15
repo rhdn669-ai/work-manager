@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getPurchases, addPurchase, setPurchaseStatus,
-  getPurchaseConfig, setHqSite,
+  getPurchaseConfig, setHqSite, deletePurchase,
 } from '../../services/purchaseService';
+import { trashPurchase } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
+import { getUsers } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
@@ -36,11 +38,12 @@ function fmtDate(ts) {
 
 export default function PurchaseListPage() {
   const { userProfile } = useAuth();
-  const { alert } = useDialog();
+  const { alert, confirm } = useDialog();
   const navigate = useNavigate();
 
   const [purchases, setPurchases] = useState([]);
   const [sites, setSites] = useState([]);
+  const [users, setUsers] = useState([]);
   const [recentSiteId, setRecentSiteId] = useState('');
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
@@ -56,9 +59,10 @@ export default function PurchaseListPage() {
 
   async function loadData() {
     try {
-      const [p, st, cfg] = await Promise.all([
-        getPurchases(), getAllSites(), getPurchaseConfig(),
+      const [p, st, cfg, us] = await Promise.all([
+        getPurchases(), getAllSites(), getPurchaseConfig(), getUsers(),
       ]);
+      setUsers(us);
       const validStatus = ['ordered', 'partial', 'received', 'settled'];
       const legacy = p.filter((x) => !validStatus.includes(x.status));
       if (legacy.length > 0) {
@@ -142,6 +146,18 @@ export default function PurchaseListPage() {
     }
   }
 
+  async function handleDelete(e, p) {
+    e.stopPropagation();
+    if (!await confirm(`"${p.title}" 구매 건을 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`)) return;
+    try {
+      await trashPurchase(p.id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
+      await deletePurchase(p.id);
+      setPurchases((prev) => prev.filter((x) => x.id !== p.id));
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
@@ -204,6 +220,7 @@ export default function PurchaseListPage() {
               <th>상태</th>
               <th>등록자</th>
               <th>발주일</th>
+              <th style={{ textAlign: 'right' }}>작업</th>
             </tr>
           </thead>
           <tbody>
@@ -231,6 +248,13 @@ export default function PurchaseListPage() {
                 </td>
                 <td data-label="등록자">{p.requesterName || '-'}</td>
                 <td data-label="발주일">{fmtDate(p.orderedAt || p.createdAt)}</td>
+                <td data-label="작업" style={{ textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    onClick={(e) => handleDelete(e, p)}
+                  >삭제</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -275,6 +299,24 @@ export default function PurchaseListPage() {
               onChange={(e) => setForm({ ...form, deliveryDue: e.target.value })}
             />
             <p className="field-hint">날짜 또는 "협의·긴급" 등 자유 입력. 비워두면 발주서에 "긴급"으로 표시됩니다.</p>
+          </div>
+
+          <div className="form-group">
+            <label>직원에서 불러오기</label>
+            <select
+              value=""
+              onChange={(e) => {
+                const u = users.find((x) => x.id === e.target.value);
+                if (u) setForm({ ...form, contactName: u.name || '', contactPhone: u.phone || '' });
+              }}
+            >
+              <option value="">직원 선택 (담당자·연락처 자동 입력)</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}{u.position ? ` · ${u.position}` : ''}{u.phone ? ` · ${u.phone}` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-row">

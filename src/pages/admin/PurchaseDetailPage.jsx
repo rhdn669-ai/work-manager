@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  getPurchaseById, updatePurchase, deletePurchase,
+  getPurchaseById, updatePurchase,
   settlePurchase, cancelSettlePurchase, receivePurchaseLine, bulkReceivePurchase,
   getSuppliers, getPurchaseItems, addPurchasePrintLog, getPurchasePrintLogs,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { getBomProjects, getBomBySite } from '../../services/bomService';
-import { trashPurchase } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
@@ -561,18 +560,6 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  async function handleDelete() {
-    if (!purchase) return;
-    if (!await confirm(`"${purchase.title}" 구매 건을 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`)) return;
-    try {
-      await trashPurchase(id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
-      await deletePurchase(id);
-      navigate('/admin/purchase');
-    } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
-    }
-  }
-
   if (loading || !purchase) return <div className="loading">로딩 중...</div>;
 
   const status = purchase.status || 'ordered';
@@ -591,17 +578,16 @@ export default function PurchaseDetailPage() {
           </span>
         </div>
         <div className="page-actions purchase-detail-top-actions">
-          <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase')}>목록</button>
-          <button type="button" className="btn btn-outline" onClick={openPrintLogs}>출력 이력{purchase.printCount > 0 ? ` (${purchase.printCount})` : ''}</button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={openPrintLogs}>출력 이력{purchase.printCount > 0 ? ` (${purchase.printCount})` : ''}</button>
           {!isReadOnly && (
             <>
-              <button type="button" className="btn btn-primary" onClick={openItemPicker}>+ 품목 불러오기</button>
-              <button type="button" className="btn btn-outline" onClick={openBomModal}>BOM 가져오기</button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={openItemPicker}>+ 품목 불러오기</button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={openBomModal}>BOM 가져오기</button>
             </>
           )}
           <button
             type="button"
-            className={`btn ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
+            className={`btn btn-sm ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setGroupBySupplier((v) => !v)}
             title="ON: 출력 시 구매처별로 각각 별도 발주서 생성"
           >구매처별 {groupBySupplier ? 'ON' : 'OFF'}</button>
@@ -620,7 +606,7 @@ export default function PurchaseDetailPage() {
                 {remainingCount > 0 && (
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="btn btn-sm btn-outline"
                     onClick={() => openBulk('remaining')}
                     title="잔여 라인 일괄 입고"
                   >일괄 입고</button>
@@ -628,7 +614,7 @@ export default function PurchaseDetailPage() {
                 {status === 'partial' && hasAnyReceived && (
                   <button
                     type="button"
-                    className="btn btn-outline"
+                    className="btn btn-sm btn-outline"
                     onClick={() => openBulk('close-as-is')}
                     title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
                   >잔여 무시하고 종결</button>
@@ -637,14 +623,12 @@ export default function PurchaseDetailPage() {
             );
           })()}
           {status === 'received' && (
-            <button type="button" className="btn btn-primary" onClick={handleSettle}>정산 처리</button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={handleSettle}>정산 처리</button>
           )}
           {status === 'settled' && (
-            <button type="button" className="btn btn-danger" onClick={handleCancelSettle}>정산 취소</button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={handleCancelSettle}>정산 취소</button>
           )}
-          {status !== 'settled' && (
-            <button type="button" className="btn btn-danger" onClick={handleDelete}>삭제</button>
-          )}
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase')}>목록</button>
         </div>
       </div>
 
@@ -833,7 +817,6 @@ export default function PurchaseDetailPage() {
                         <th className="c-price">단가</th>
                         <th className="c-amount">금액</th>
                         <th className="c-recv">입고</th>
-                        <th className="c-supplier">구매처</th>
                         <th className="c-note">비고</th>
                       </tr>
                     </thead>
@@ -842,7 +825,7 @@ export default function PurchaseDetailPage() {
                         if (!ln) return (
                           <tr key={`e-${r}`}>
                             <td className="c-no"></td>
-                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                           </tr>
                         );
                         const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
@@ -858,7 +841,6 @@ export default function PurchaseDetailPage() {
                             <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                             <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
                             <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : (rq === 0 ? 'recv-none' : '')}`}>{recvText}</td>
-                            <td className={`c-supplier ${specFontClass(ln._supplier, 11)}`}>{ln._supplier || ''}</td>
                             <td className={`c-note ${specFontClass(ln.note, 11)}`}>{ln.note || ''}</td>
                           </tr>
                         );
@@ -933,7 +915,7 @@ export default function PurchaseDetailPage() {
             <table className="table inline-edit-table cards-sm bom-flat-table">
               <thead>
                 <tr>
-                  <th className="bom-spacer-col" aria-hidden="true"></th>
+                  <th className="bom-no-col">No</th>
                   <th style={{ minWidth: 100 }}>코드</th>
                   <th style={{ minWidth: 160 }}>품명</th>
                   <th>메이커</th>
@@ -944,15 +926,16 @@ export default function PurchaseDetailPage() {
                   <th>수량</th>
                   <th>단가</th>
                   <th>합계</th>
+                  <th>기본 구매처</th>
                   <th style={{ minWidth: 160 }}>비고</th>
-                  <th style={{ minWidth: 160 }} className="no-print">입고</th>
+                  <th style={{ minWidth: 130 }} className="no-print">입고</th>
                   <th className="bom-action-col no-print" aria-hidden="true"></th>
                 </tr>
               </thead>
               <tbody>
                 {form.items.length === 0 && (
                   <tr>
-                    <td colSpan={14} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                    <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                       품목이 없습니다 — 아래 "+ 품목 추가"로 시작하세요.
                     </td>
                   </tr>
@@ -960,6 +943,9 @@ export default function PurchaseDetailPage() {
                 {form.items.map((ln, idx) => {
                   const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
                   const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                  const lineSupplierName = master?.defaultSupplierId
+                    ? (suppliers.find((s) => s.id === master.defaultSupplierId)?.name || '')
+                    : '';
                   // 입고 상태는 라인 자체 데이터로 — 삭제·인덱스 변동에 영향받지 않음 (입고 클릭 시 자동저장 flush)
                   const savedQty = Number(ln.qty) || 0;
                   const receivedQty = Number(ln.receivedQty) || 0;
@@ -968,7 +954,7 @@ export default function PurchaseDetailPage() {
                   const isPartial = isLineSaved && receivedQty > 0 && receivedQty < savedQty;
                   return (
                     <tr key={idx}>
-                      <td className="bom-spacer-col" aria-hidden="true"></td>
+                      <td className="bom-no-col" data-label="No">{idx + 1}</td>
                       <td data-label="코드">
                         <input
                           type="text"
@@ -1058,6 +1044,15 @@ export default function PurchaseDetailPage() {
                           type="text"
                           className="bom-readonly-input bom-amount-input"
                           value={amount ? amount.toLocaleString() : ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                      </td>
+                      <td data-label="기본 구매처">
+                        <input
+                          type="text"
+                          className="bom-readonly-input"
+                          value={lineSupplierName}
                           readOnly
                           tabIndex={-1}
                         />

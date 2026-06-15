@@ -21,6 +21,7 @@ export default function UserManagementPage() {
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
     name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '',
+    phone: '',
     leaveRemaining: '', canViewSalary: false, canCreateSite: false, canViewArchive: false,
     usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '',
   });
@@ -54,7 +55,7 @@ export default function UserManagementPage() {
 
   function openCreate() {
     setEditUser(null);
-    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', leaveRemaining: '', canViewSalary: false, canCreateSite: false, canViewArchive: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
+    setForm({ name: '', code: '', password: '', role: 'employee', position: '', departmentId: '', joinDate: '', fixedCost: '', hourlyRate: '', phone: '', leaveRemaining: '', canViewSalary: false, canCreateSite: false, canViewArchive: false, usesVehicle: false, vehiclePlate: '', vehicleMonthlyCost: '' });
     setShowModal(true);
   }
 
@@ -65,6 +66,7 @@ export default function UserManagementPage() {
       name: user.name, code: user.code || '', password: '',
       role: user.role, position: user.position || '', departmentId: user.departmentId || '', joinDate: user.joinDate || '',
       fixedCost: user.fixedCost || '', hourlyRate: user.hourlyRate || '',
+      phone: user.phone || '',
       leaveRemaining: bal ? String(bal.remainingDays) : '',
       canViewSalary: !!user.canViewSalary,
       canCreateSite: !!user.canCreateSite,
@@ -85,6 +87,7 @@ export default function UserManagementPage() {
         const updateData = {
           name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
+          phone: (form.phone || '').trim(),
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
@@ -105,6 +108,7 @@ export default function UserManagementPage() {
         await createUser(userId, {
           uid: userId, name: form.name, code: form.code, role: form.role,
           position: form.position, departmentId: form.departmentId, joinDate: form.joinDate,
+          phone: (form.phone || '').trim(),
           fixedCost: Number(form.fixedCost) || 0,
           hourlyRate: Number(form.hourlyRate) || 0,
           canViewSalary: !!form.canViewSalary,
@@ -391,6 +395,10 @@ export default function UserManagementPage() {
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
+          </div>
+          <div className="form-group">
+            <label>연락처</label>
+            <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="예: 010-1234-5678" inputMode="tel" />
           </div>
           <div className="form-group">
             <label>고정비용 (월급, 원)</label>

@@ -3477,9 +3477,7 @@ body {
 /* BOM 정렬 토글 (추가순 / 코드순) */
 .bom-sort {
   display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  overflow: hidden;
+  gap: 6px;
   flex-shrink: 0;
 }
 .bom-sort-btn {
@@ -4252,16 +4250,21 @@ body {
 .item-group-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.item-group {
-  position: relative;
+  gap: 0;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
+.item-group {
+  position: relative;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  transition: background 0.15s ease;
+}
+.item-group:last-child { border-bottom: none; }
 .item-group::before {
   content: '';
   position: absolute;
@@ -4271,13 +4274,11 @@ body {
   transition: background 0.18s ease;
 }
 .item-group:hover {
-  border-color: var(--border);
-  box-shadow: none;
+  background: var(--bg-subtle, #f8fafc);
 }
 .item-group:hover::before { background: transparent; }
 .item-group.is-expanded {
-  border-color: var(--border);
-  box-shadow: none;
+  background: #fff;
 }
 .item-group.is-expanded::before { background: transparent; }
 
@@ -4424,15 +4425,16 @@ body {
   overflow: hidden;
 }
 
-/* "+ 추가 · 일괄" 버튼 — 표 위 toolbar(우측). thead에서 빼서 액션 칸(복사·✕)이 잘리지 않게 함 */
+/* "+ 추가 · 일괄" 버튼 — PC: thead 액션 칸(비고 옆) / 모바일(cards-sm thead 숨김): 표 위 toolbar */
 .item-group-detail-toolbar {
-  display: flex;
+  display: none;
   justify-content: flex-end;
   gap: 6px;
   margin-bottom: 6px;
 }
+.table th.item-group-add-th,
 .item-group-add-th {
-  text-align: right;
+  text-align: right !important;
   padding: 4px 6px !important;
   vertical-align: middle;
   white-space: nowrap;
@@ -11270,13 +11272,12 @@ tr.is-newly-added > td {
 .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
 /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
 .iopn-items-table.po-cols .c-no { width: 6%; }
-.iopn-items-table.po-cols .c-name { width: 11%; }
-.iopn-items-table.po-cols .c-spec { width: 27%; }
+.iopn-items-table.po-cols .c-name { width: 15%; }
+.iopn-items-table.po-cols .c-spec { width: 35%; }
 .iopn-items-table.po-cols .c-qty { width: 5%; }
 .iopn-items-table.po-cols .c-price { width: 11%; }
 .iopn-items-table.po-cols .c-amount { width: 12%; }
 .iopn-items-table.po-cols .c-recv { width: 7%; }
-.iopn-items-table.po-cols .c-supplier { width: 12%; }
 .iopn-items-table.po-cols .c-note { width: 9%; }
 /* 발주서 출력 목록 전체 중앙정렬 */
 .iopn-items-table.po-cols th,
@@ -11682,13 +11683,12 @@ tr.is-newly-added > td {
   .iopn-items-table.bom-no-price .c-note { width: 13%; text-align: center; padding-left: 0; }
   /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
   .iopn-items-table.po-cols .c-no { width: 6%; }
-  .iopn-items-table.po-cols .c-name { width: 11%; }
-  .iopn-items-table.po-cols .c-spec { width: 27%; }
+  .iopn-items-table.po-cols .c-name { width: 15%; }
+  .iopn-items-table.po-cols .c-spec { width: 35%; }
   .iopn-items-table.po-cols .c-qty { width: 5%; }
   .iopn-items-table.po-cols .c-price { width: 11%; }
   .iopn-items-table.po-cols .c-amount { width: 12%; }
   .iopn-items-table.po-cols .c-recv { width: 7%; }
-  .iopn-items-table.po-cols .c-supplier { width: 12%; }
   .iopn-items-table.po-cols .c-note { width: 9%; }
   /* 발주서 출력 목록 전체 중앙정렬 */
   .iopn-items-table.po-cols th,

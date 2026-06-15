@@ -353,8 +353,8 @@ export default function BomDetailPage() {
           <button type="button" className="bom-title-edit" onClick={openNameModal} title="프로젝트명 수정" aria-label="프로젝트명 수정">✏️</button>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary" onClick={openPicker}>+ 품목 불러오기</button>
-          <button type="button" className="btn btn-outline" onClick={() => navigate('/admin/purchase/bom')}>목록</button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={openPicker}>+ 품목 불러오기</button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/bom')}>목록</button>
         </div>
       </div>
 
@@ -520,18 +520,18 @@ export default function BomDetailPage() {
         <div className="bom-sort" role="group" aria-label="정렬 방식">
           <button
             type="button"
-            className={`bom-sort-btn ${sortBy === 'order' ? 'active' : ''}`}
+            className={`btn btn-sm ${sortBy === 'order' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setSortBy('order')}
           >추가순</button>
           <button
             type="button"
-            className={`bom-sort-btn ${sortBy === 'code' ? 'active' : ''}`}
+            className={`btn btn-sm ${sortBy === 'code' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setSortBy('code')}
           >코드순</button>
         </div>
         <button
           type="button"
-          className={`bom-sort-btn bom-supplier-toggle ${groupBySupplier ? 'active' : ''}`}
+          className={`btn btn-sm ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setGroupBySupplier((v) => !v)}
           title="구매처별로 묶어서 보기/출력"
         >구매처별 {groupBySupplier ? 'ON' : 'OFF'}</button>
