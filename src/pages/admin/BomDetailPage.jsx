@@ -180,8 +180,12 @@ export default function BomDetailPage() {
   }
 
   // 붙여넣은 코드 한 줄을 마스터 품목과 매칭 (코드/품명/규격 순, 괄호 메모·따옴표 무시)
+  // ※ 다른 품목이 잘못 붙지 않도록 "부분 포함" 매칭은 하지 않음.
+  //    띄어쓰기·하이픈(-) 차이 정도만 무시한 "완전 일치"까지만 허용.
   function findMasterByToken(token) {
     const norm = (v) => String(v || '').trim().toLowerCase().replace(/^["']+|["']+$/g, '');
+    // 느슨한 정규화: 공백·하이픈만 제거 (그 외 문자는 보존 → 다른 품목과 섞이지 않음)
+    const loose = (v) => norm(v).replace(/[\s-]+/g, '');
     const t = norm(token);
     if (!t) return null;
     // 1차: 정확 일치 (코드 → 품명 → 규격)
@@ -197,10 +201,12 @@ export default function BomDetailPage() {
         || itemMaster.find((m) => norm(m.spec) === base);
       if (hit) return hit;
     }
-    // 3차: 포함 검색 (코드/품명/규격에 토큰이 들어있는 경우)
-    const key = base || t;
-    if (key.length >= 3) {
-      hit = itemMaster.find((m) => norm(m.code).includes(key) || norm(m.name).includes(key) || norm(m.spec).includes(key));
+    // 3차: 띄어쓰기/하이픈 차이만 무시한 완전 일치 (부분 일치 아님)
+    const lt = loose(base || t);
+    if (lt) {
+      hit = itemMaster.find((m) => loose(m.code) === lt)
+        || itemMaster.find((m) => loose(m.name) === lt)
+        || itemMaster.find((m) => loose(m.spec) === lt);
       if (hit) return hit;
     }
     return null;

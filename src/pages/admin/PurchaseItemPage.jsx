@@ -430,54 +430,12 @@ export default function PurchaseItemPage() {
   function fillEnter(idx) {
     setFill((f) => (f ? { ...f, end: idx } : f));
   }
-  function buildFillPatch(field, value, it) {
-    if (field === 'unitPrice') {
-      const cu = parseCompoundUnit(it.unit);
-      const qty = cu ? cu.qty : 1;
-      const up = Number(String(value).replace(/[^0-9]/g, '')) || 0;
-      return { unitPrice: up, standardPrice: Math.round(up * qty) };
-    }
-    if (field === 'standardPrice') {
-      return { standardPrice: Number(String(value).replace(/[^0-9]/g, '')) || 0 };
-    }
-    return { [field]: value };
-  }
-  async function applyFill(f) {
-    const lo = Math.min(f.start, f.end);
-    const hi = Math.max(f.start, f.end);
-    const patchById = new Map();
-    for (let i = lo; i <= hi; i++) {
-      const id = f.rowIds[i];
-      const it = items.find((x) => x.id === id);
-      if (!it) continue;
-      patchById.set(id, buildFillPatch(f.field, f.value, it));
-    }
-    if (patchById.size === 0) return;
-    // 로컬 반영
-    setItems((prev) => prev.map((x) => (patchById.has(x.id) ? { ...x, ...patchById.get(x.id) } : x)));
-    // 저장 (신규 tmp 행은 자체 flush로 저장됨 — 건너뜀)
-    for (const [id, patch] of patchById) {
-      if (String(id).startsWith('tmp-')) continue;
-      const it = items.find((x) => x.id === id);
-      if (!it) continue;
-      try {
-        const { id: _i, createdAt: _c, updatedAt: _u, ...data } = { ...it, ...patch };
-        await updatePurchaseItem(id, data);
-      } catch (err) {
-        console.error('셀 채우기 저장 오류:', err);
-      }
-    }
-  }
-
   useEffect(() => {
     if (!fill) return undefined;
-    const onUp = () => {
-      if (fill.start !== fill.end) applyFill(fill);
-      setFill(null);
-    };
+    // 값 복사 없이 색상 하이라이트만 — 마우스를 떼면 선택만 해제
+    const onUp = () => { setFill(null); };
     document.addEventListener('mouseup', onUp);
     return () => document.removeEventListener('mouseup', onUp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill]);
 
   // ---- 그룹 안 일괄 추가 (규격·개별단가) ----
@@ -690,12 +648,13 @@ export default function PurchaseItemPage() {
                               const inFillRange = fillIdx >= 0
                                 && fillIdx >= Math.min(fill.start, fill.end)
                                 && fillIdx <= Math.max(fill.start, fill.end);
+                              // 드래그 중인 "그 열"의 셀에만 색상 — 행 전체 X
+                              const fillCol = (field) => (inFillRange && fill?.field === field ? 'cell-fill-on' : undefined);
                               return (
                                 <Fragment key={it.id}>
                                   <SortableItemRow
                                     id={it.id}
                                     isHighlight={highlightIds.has(it.id)}
-                                    isFillTarget={inFillRange}
                                     onActivate={() => clearHighlight(it.id)}
                                     onMouseEnter={fill ? () => { if (fillIdx >= 0) fillEnter(fillIdx); } : undefined}
                                   >
@@ -709,7 +668,7 @@ export default function PurchaseItemPage() {
                                     autoFocus={String(it.id).startsWith('tmp-') && !highlightIds.has(it.id)}
                                   />
                                 </td>
-                                <td data-label="품명">
+                                <td data-label="품명" className={fillCol('name')}>
                                   <input
                                     type="text"
                                     value={it.name || ''}
@@ -719,7 +678,7 @@ export default function PurchaseItemPage() {
                                   />
                                   <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="메이커">
+                                <td data-label="메이커" className={fillCol('maker')}>
                                   <input
                                     type="text"
                                     value={it.maker || ''}
@@ -728,7 +687,7 @@ export default function PurchaseItemPage() {
                                   />
                                   <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'maker', it.maker || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="규격">
+                                <td data-label="규격" className={fillCol('spec')}>
                                   <input
                                     type="text"
                                     value={it.spec || ''}
@@ -737,7 +696,7 @@ export default function PurchaseItemPage() {
                                   />
                                   <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'spec', it.spec || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="분류">
+                                <td data-label="분류" className={fillCol('category')}>
                                   <input
                                     type="text"
                                     value={it.category || ''}
@@ -746,7 +705,7 @@ export default function PurchaseItemPage() {
                                   />
                                   <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'category', it.category || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="인증">
+                                <td data-label="인증" className={fillCol('certification')}>
                                   <input
                                     type="text"
                                     value={it.certification || ''}
@@ -756,7 +715,7 @@ export default function PurchaseItemPage() {
                                   />
                                   <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'certification', it.certification || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="수량/단위">
+                                <td data-label="수량/단위" className={fillCol('unit')}>
                                   <input
                                     type="text"
                                     value={it.unit || ''}
@@ -780,7 +739,7 @@ export default function PurchaseItemPage() {
                                   const qty = cu ? cu.qty : 1;            // 단순 단위는 qty=1로 취급
                                   const unitPrice = Number(it.unitPrice) || 0;
                                   return (
-                                    <td data-label="개별단가" className="item-cell-unit-price">
+                                    <td data-label="개별단가" className={`item-cell-unit-price ${fillCol('unitPrice') || ''}`}>
                                       <input
                                         type="text"
                                         inputMode="numeric"
@@ -810,7 +769,7 @@ export default function PurchaseItemPage() {
                                     ? Math.round(unitPrice * qty)
                                     : Number(it.standardPrice) || 0;
                                   return (
-                                    <td data-label="단가" className="item-cell-price">
+                                    <td data-label="단가" className={`item-cell-price ${fillCol('standardPrice') || ''}`}>
                                       <input
                                         type="text"
                                         inputMode="numeric"
@@ -833,7 +792,7 @@ export default function PurchaseItemPage() {
                                     </td>
                                   );
                                 })()}
-                                <td data-label="기본 구매처">
+                                <td data-label="기본 구매처" className={fillCol('defaultSupplierId')}>
                                   <select
                                     value={it.defaultSupplierId || ''}
                                     onChange={(e) => {
@@ -851,7 +810,7 @@ export default function PurchaseItemPage() {
                                   </select>
                                   <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'defaultSupplierId', it.defaultSupplierId || '', subIds, rowIdx)} />
                                 </td>
-                                <td data-label="비고">
+                                <td data-label="비고" className={fillCol('note')}>
                                   <input
                                     type="text"
                                     value={it.note || ''}

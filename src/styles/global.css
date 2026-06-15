@@ -3292,15 +3292,22 @@ body {
   height: 9px;
   background: var(--primary);
   border: 1px solid #fff;
-  border-radius: 1px;
+  border-radius: 50%;
   cursor: crosshair;
   opacity: 0;
   transition: opacity 0.12s;
   z-index: 3;
 }
 .inline-edit-table.sortable-rows tbody td:hover .cell-fill { opacity: 1; }
-.inline-edit-table.sortable-rows tbody tr.is-fill-target { background: var(--primary-soft); }
-.inline-edit-table.sortable-rows tbody tr.is-fill-target td { background: transparent; }
+/* 드래그한 "그 열"의 셀에만 색상 (행 전체 X, 값 복사 X) — 둥근 소프트 하이라이트 */
+.inline-edit-table.sortable-rows tbody td.cell-fill-on input:not([type="checkbox"]):not([type="radio"]),
+.inline-edit-table.sortable-rows tbody td.cell-fill-on select,
+.inline-edit-table.sortable-rows tbody td.cell-fill-on textarea {
+  background: rgba(245, 158, 11, 0.12);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.28);
+  border-radius: 7px;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
 @media (max-width: 768px) {
   .cell-fill { display: none; } /* 모바일은 드래그 채우기 비활성 */
 }
