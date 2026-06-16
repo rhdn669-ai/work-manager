@@ -11,7 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
-import { specFontClass, effLen } from '../../utils/printText';
+import { specFontClass } from '../../utils/printText';
 
 const STATUS = {
   ordered: { label: '발주', cls: 'ordered' },
@@ -121,6 +121,7 @@ export default function PurchaseDetailPage() {
   const [printLogs, setPrintLogs] = useState([]);
   const [printLogsLoading, setPrintLogsLoading] = useState(false);
   const [viewSnapshot, setViewSnapshot] = useState(null); // 이력 보기 중인 스냅샷
+  const [printStamp, setPrintStamp] = useState(''); // 출력물 하단에 표시할 출력 시각
 
   useEffect(() => {
     loadData();
@@ -333,7 +334,10 @@ export default function PurchaseDetailPage() {
     }));
     const totalAmount = items.reduce((s, it) => s + it.amount, 0);
     const site = sites.find((s) => s.id === f.siteId);
-    const { supplierId, supplierName } = deriveSupplier(items, itemMaster, suppliers);
+    // 품목에서 구매처가 도출되면 그 값으로, 아니면 기존(등록 시 수동 선택) 구매처 유지
+    const derived = deriveSupplier(items, itemMaster, suppliers);
+    const supplierId = derived.supplierId || (purchaseRef.current?.supplierId || '');
+    const supplierName = derived.supplierId ? derived.supplierName : (purchaseRef.current?.supplierName || '');
     try {
       setSaveState('saving');
       await updatePurchase(id, {
@@ -438,6 +442,7 @@ export default function PurchaseDetailPage() {
   // viewSnapshot 렌더 완료 후 인쇄 → 라이브로 복원
   useEffect(() => {
     if (!viewSnapshot) return;
+    setPrintStamp(fmtDateTime(new Date()));
     const t = setTimeout(() => {
       window.print();
       setViewSnapshot(null);
@@ -635,7 +640,7 @@ export default function PurchaseDetailPage() {
       <button
         type="button"
         className="pdf-print-fab no-print"
-        onClick={() => { recordPrint(); window.print(); }}
+        onClick={() => { setPrintStamp(fmtDateTime(new Date())); recordPrint(); setTimeout(() => window.print(), 120); }}
         title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
       >
         PDF 출력
@@ -700,21 +705,12 @@ export default function PurchaseDetailPage() {
           docs = [{ recvTitle: src.supplierTitle, supplierLabel: '', items: src.items.filter((ln) => (ln._name || ln.name || '').trim()) }];
         }
 
-        // 페이지 추정 상수 — 프레임 고정 높이 250mm 안에서 합계까지 안전히 들어가도록 보수적
-        const CHARS_PER_LINE = 26;
-        const LINE1_MM = 7.2;
-        const EXTRA_LINE_MM = 3.9;
-        const HEADER_MM = 9;
-        const FOOTER_MM = 13;
-        const INFO_MM = 68;
-        const TOTALS_MM = 30;
-        const PAGE_MM = 238;  // 분할 기준(프레임 250mm보다 작게)
-        const FILL_MM = 244;  // 빈 행 패딩 목표(프레임 하단까지)
-        const rowH = (ln) => {
-          const lines = Math.max(1, Math.ceil(effLen(ln?._spec || '') / CHARS_PER_LINE));
-          return LINE1_MM + (lines - 1) * EXTRA_LINE_MM;
-        };
-        const budgetFor = (isFirst) => PAGE_MM - (isFirst ? INFO_MM : 0) - HEADER_MM - FOOTER_MM;
+        // 행 개수 기반 페이지 분할 — 페이지를 거의 채우고 하단엔 합계·특이사항 크기(TOTALS_ROWS)만큼만 공백을 남김.
+        // 1페이지는 상단 정보표 높이(INFO_ROWS)만큼 행을 줄여 다른 페이지와 하단 공백을 동일하게 맞춤.
+        const OTHER_PAGE_ROWS = 33;     // 일반 페이지(페이지를 거의 채우는 행수)
+        const INFO_ROWS = 11;           // 1페이지 상단 제목+정보표가 차지하는 행수
+        const TOTALS_ROWS = 5;          // 마지막 페이지 합계+특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
+        const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
 
         // 한 문서(구매처)를 페이지 div 배열로 렌더
         const renderDoc = (rows, recvTitle, supplierLabel, docKey) => {
@@ -722,38 +718,30 @@ export default function PurchaseDetailPage() {
           const totalQty = rows.reduce((s, ln) => s + (Number(ln.qty) || 0), 0);
           const vat = Math.round(supplyAmount * 0.1);
           const grandTotal = supplyAmount + vat;
+          // 행 개수로 페이지 분할
           const pages = [];
-          let cur = { chunk: [], startNo: 0 };
-          let used = 0;
-          for (let idx = 0; idx < rows.length; idx++) {
-            const h = rowH(rows[idx]);
-            const budget = budgetFor(pages.length === 0);
-            if (used + h > budget && cur.chunk.length > 0) {
-              pages.push(cur);
-              cur = { chunk: [], startNo: idx };
-              used = 0;
-            }
-            cur.chunk.push(rows[idx]);
-            used += h;
+          let i = 0;
+          while (i < rows.length) {
+            const size = pages.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+            pages.push({ chunk: rows.slice(i, i + size), startNo: i });
+            i += size;
           }
-          pages.push(cur);
-          {
-            const isFirstLast = pages.length === 1;
-            const lastUsed = pages[pages.length - 1].chunk.reduce((s, ln) => s + rowH(ln), 0);
-            if (lastUsed + TOTALS_MM > budgetFor(isFirstLast)) {
-              pages.push({ chunk: [], startNo: rows.length });
-            }
+          if (pages.length === 0) pages.push({ chunk: [], startNo: 0 });
+          // 합계는 마지막 내용 페이지의 남는 공간에 그대로 출력 (별도 페이지 추가 안 함).
+          // 단, 마지막 페이지가 물리적으로 꽉 차서 합계가 안 들어갈 때만 전용 페이지 추가.
+          const lastFill = (pages.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS) + TOTALS_ROWS;
+          if (pages[pages.length - 1].chunk.length + TOTALS_ROWS > lastFill) {
+            pages.push({ chunk: [], startNo: rows.length });
           }
           const pageCount = pages.length;
 
           return pages.map((pg, pageIdx) => {
               const isFirst = pageIdx === 0;
               const isLast = pageIdx === pageCount - 1;
-              const fillBudget = FILL_MM - (isFirst ? INFO_MM : 0) - HEADER_MM - FOOTER_MM - (isLast ? TOTALS_MM : 0);
-              const usedH = pg.chunk.reduce((s, ln) => s + rowH(ln), 0);
-              const padCount = Math.max(0, Math.floor((fillBudget - usedH) / LINE1_MM));
+              const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+              const targetRows = cap - (isLast ? TOTALS_ROWS : 0);
               const padded = [...pg.chunk];
-              for (let k = 0; k < padCount; k++) padded.push(null);
+              while (padded.length < targetRows) padded.push(null);
               return (
                 <div className="bom-print-page po-doc-page" key={`${docKey}-${pageIdx}`}>
                   {isFirst && <div className="print-form-title">구 매 발 주 서</div>}
@@ -876,8 +864,9 @@ export default function PurchaseDetailPage() {
                     </>
                   )}
 
-                  <div className="iopn-form-footer">
+                  <div className="bom-print-footer">
                     <span>(주)아이오피엔 · 구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}</span>
+                    <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
                     <span>페이지 {pageIdx + 1} / {pageCount}</span>
                   </div>
                 </div>

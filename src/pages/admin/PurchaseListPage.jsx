@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getPurchases, addPurchase, setPurchaseStatus,
-  getPurchaseConfig, setHqSite, deletePurchase, updatePurchase,
+  getPurchaseConfig, setHqSite, deletePurchase, updatePurchase, getSuppliers,
 } from '../../services/purchaseService';
 import { trashPurchase } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
@@ -26,7 +26,7 @@ const TABS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-const EMPTY_FORM = { title: '', siteId: '', deliveryDue: '', contactName: '', contactPhone: '' };
+const EMPTY_FORM = { title: '', siteId: '', supplierId: '', deliveryDue: '', contactName: '', contactPhone: '' };
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -43,6 +43,7 @@ export default function PurchaseListPage() {
   const [purchases, setPurchases] = useState([]);
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [recentSiteId, setRecentSiteId] = useState('');
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
@@ -59,10 +60,11 @@ export default function PurchaseListPage() {
 
   async function loadData() {
     try {
-      const [p, st, cfg, us] = await Promise.all([
-        getPurchases(), getAllSites(), getPurchaseConfig(), getUsers(),
+      const [p, st, cfg, us, sup] = await Promise.all([
+        getPurchases(), getAllSites(), getPurchaseConfig(), getUsers(), getSuppliers(),
       ]);
       setUsers(us);
+      setSuppliers(sup);
       const validStatus = ['ordered', 'partial', 'received', 'settled'];
       const legacy = p.filter((x) => !validStatus.includes(x.status));
       if (legacy.length > 0) {
@@ -120,6 +122,7 @@ export default function PurchaseListPage() {
     setForm({
       title: p.title || '',
       siteId: p.siteId || '',
+      supplierId: p.supplierId || '',
       deliveryDue: p.deliveryDue || '',
       contactName: p.contactName || '',
       contactPhone: p.contactPhone || '',
@@ -135,10 +138,13 @@ export default function PurchaseListPage() {
     setSubmitting(true);
     try {
       const site = sites.find((s) => s.id === form.siteId);
+      const supplier = suppliers.find((s) => s.id === form.supplierId);
       const base = {
         title: form.title.trim(),
         siteId: form.siteId,
         siteName: site?.name || '',
+        supplierId: form.supplierId || '',
+        supplierName: supplier?.name || '',
         deliveryDue: form.deliveryDue.trim(),
         contactName: form.contactName.trim(),
         contactPhone: form.contactPhone.trim(),
@@ -319,6 +325,19 @@ export default function PurchaseListPage() {
                 ))}
             </select>
             <p className="field-hint">최근 선택한 프로젝트가 다음 등록 시 자동 입력됩니다.</p>
+          </div>
+
+          <div className="form-group">
+            <label>구매처</label>
+            <select
+              value={form.supplierId}
+              onChange={(e) => setForm({ ...form, supplierId: e.target.value })}
+            >
+              <option value="">선택 (미지정 시 첫 품목 기본 구매처 자동 적용)</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="form-group">

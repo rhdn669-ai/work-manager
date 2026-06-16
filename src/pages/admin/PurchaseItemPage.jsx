@@ -430,12 +430,54 @@ export default function PurchaseItemPage() {
   function fillEnter(idx) {
     setFill((f) => (f ? { ...f, end: idx } : f));
   }
+  function buildFillPatch(field, value, it) {
+    if (field === 'unitPrice') {
+      const cu = parseCompoundUnit(it.unit);
+      const qty = cu ? cu.qty : 1;
+      const up = Number(String(value).replace(/[^0-9]/g, '')) || 0;
+      return { unitPrice: up, standardPrice: Math.round(up * qty) };
+    }
+    if (field === 'standardPrice') {
+      return { standardPrice: Number(String(value).replace(/[^0-9]/g, '')) || 0 };
+    }
+    return { [field]: value };
+  }
+  async function applyFill(f) {
+    const lo = Math.min(f.start, f.end);
+    const hi = Math.max(f.start, f.end);
+    const patchById = new Map();
+    for (let i = lo; i <= hi; i++) {
+      const id = f.rowIds[i];
+      const it = items.find((x) => x.id === id);
+      if (!it) continue;
+      patchById.set(id, buildFillPatch(f.field, f.value, it));
+    }
+    if (patchById.size === 0) return;
+    // 로컬 즉시 반영
+    setItems((prev) => prev.map((x) => (patchById.has(x.id) ? { ...x, ...patchById.get(x.id) } : x)));
+    // 저장 (신규 tmp 행은 자체 flush로 저장됨 — 건너뜀)
+    for (const [id, patch] of patchById) {
+      if (String(id).startsWith('tmp-')) continue;
+      const it = items.find((x) => x.id === id);
+      if (!it) continue;
+      try {
+        const { id: _i, createdAt: _c, updatedAt: _u, ...data } = { ...it, ...patch };
+        await updatePurchaseItem(id, data);
+      } catch (err) {
+        console.error('셀 채우기 저장 오류:', err);
+      }
+    }
+  }
   useEffect(() => {
     if (!fill) return undefined;
-    // 값 복사 없이 색상 하이라이트만 — 마우스를 떼면 선택만 해제
-    const onUp = () => { setFill(null); };
+    // 드래그한 범위에 값 복사(아래로 채우기) — 마우스를 떼면 실행
+    const onUp = () => {
+      if (fill.start !== fill.end) applyFill(fill);
+      setFill(null);
+    };
     document.addEventListener('mouseup', onUp);
     return () => document.removeEventListener('mouseup', onUp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill]);
 
   // ---- 그룹 안 일괄 추가 (규격·개별단가) ----

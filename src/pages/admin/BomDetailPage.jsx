@@ -9,6 +9,11 @@ import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
 import { specFontClass } from '../../utils/printText';
 
+function fmtDateTime(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // 글자가 길면 PDF 1줄에 맞게 글자 크기 자동 축소
 // 한글·CJK는 라틴보다 폭이 넓으므로 가중치(1.8배)를 줘서 더 일찍·더 작게 축소
 export default function BomDetailPage() {
@@ -25,6 +30,7 @@ export default function BomDetailPage() {
   const [sortBy, setSortBy] = useState('order'); // 'order'(추가/붙여넣기순) | 'code'(코드순)
   const [groupBySupplier, setGroupBySupplier] = useState(false); // 구매처별 묶음 보기
   const [supplierFilter, setSupplierFilter] = useState(''); // 특정 구매처만 (이름)
+  const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -361,7 +367,7 @@ export default function BomDetailPage() {
       <button
         type="button"
         className="pdf-print-fab no-print"
-        onClick={() => window.print()}
+        onClick={() => { setPrintStamp(fmtDateTime(new Date())); setTimeout(() => window.print(), 120); }}
         title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
       >
         PDF 출력
@@ -372,9 +378,12 @@ export default function BomDetailPage() {
         const today = new Date();
         const docNo = `BOM${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
         const todayKo = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
-        // 페이지 직접 분할 (구매처 밴드·섹션 경계 표기를 위해 브라우저 자동 분할 대신)
-        const FIRST_PAGE_ROWS = 19; // 1페이지는 상단 정보표가 있어 적게
-        const OTHER_PAGE_ROWS = 26;
+        // 페이지 직접 분할 — 페이지를 거의 채우고 하단엔 특이사항 크기(NOTES_ROWS)만큼만 공백을 남김.
+        // 1페이지는 상단 정보표 높이(INFO_ROWS)만큼 행을 줄여 다른 페이지와 하단 공백을 동일하게 맞춤.
+        const OTHER_PAGE_ROWS = 33;     // 일반 페이지(페이지를 거의 채우는 행수)
+        const INFO_ROWS = 9;            // 1페이지 상단 제목+정보표가 차지하는 행수
+        const NOTES_ROWS = 2;           // 섹션 마지막 페이지 특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
+        const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
         const pageData = [];
         const pushPages = (list, secName) => {
           let i = 0;
@@ -393,12 +402,21 @@ export default function BomDetailPage() {
         const printRows = groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows;
         pushPages(printRows, null);
         if (pageData.length === 0) pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true });
+        // 특이사항은 마지막 내용 페이지의 남는 공간에 그대로 출력. 물리적으로 꽉 찼을 때만 전용 페이지 추가.
+        {
+          const lastP = pageData[pageData.length - 1];
+          const lastFill = (pageData.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS) + NOTES_ROWS;
+          if (lastP && lastP.chunk.length + NOTES_ROWS > lastFill) {
+            lastP.isSectionLast = false;
+            pageData.push({ chunk: [], startNo: printRows.length, size: OTHER_PAGE_ROWS, supplierName: null, isSectionLast: true });
+          }
+        }
         const pageCount = pageData.length;
         return (
           <div className="print-form-iopn print-form-paged print-only">
             {pageData.map(({ chunk, startNo, size, supplierName, isSectionLast }, pageIdx) => {
               const isFirst = pageIdx === 0;
-              const targetRows = size;
+              const targetRows = size - (isSectionLast ? NOTES_ROWS : 0);
               const padded = [...chunk];
               while (padded.length < targetRows) padded.push(null);
               return (
@@ -507,6 +525,7 @@ export default function BomDetailPage() {
 
                   <div className="bom-print-footer">
                     <span>(주)아이오피엔 · BOM 리스트 · {docNo}</span>
+                    <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
                     <span>페이지 {pageIdx + 1} / {pageCount}</span>
                   </div>
                 </div>
