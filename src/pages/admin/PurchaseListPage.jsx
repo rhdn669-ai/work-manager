@@ -1,8 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   getPurchases, addPurchase, setPurchaseStatus,
-  getPurchaseConfig, setHqSite, deletePurchase, updatePurchase, getSuppliers,
+  getPurchaseConfig, setHqSite, deletePurchase, updatePurchase, getSuppliers, savePurchasesOrder,
 } from '../../services/purchaseService';
 import { trashPurchase } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
@@ -35,9 +42,47 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 드래그 가능한 발주 행 (전체 탭에서만 활성)
+function SortablePurchaseRow({ p, dragEnabled, onOpen, onEdit, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id, disabled: !dragEnabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    background: isDragging ? 'var(--bg-card)' : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style} className="table-clickable-row" onClick={() => onOpen(p)}>
+      {dragEnabled && (
+        <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="drag-handle-btn" aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경" {...attributes} {...listeners}>≡</button>
+        </td>
+      )}
+      <td data-label="제목">
+        <strong>{p.title}</strong>
+      </td>
+      <td data-label="구매처">{p.supplierName || <span className="text-muted">-</span>}</td>
+      <td data-label="프로젝트">{p.siteName || '-'}</td>
+      <td data-label="금액" className="num-col">{Number(p.totalAmount || 0).toLocaleString()}원</td>
+      <td data-label="상태">
+        <span className={`purchase-badge purchase-badge-${STATUS[p.status]?.cls || 'ordered'}`}>
+          {STATUS[p.status]?.label || p.status}
+        </span>
+      </td>
+      <td data-label="등록자">{p.requesterName || '-'}</td>
+      <td data-label="발주일">{fmtDate(p.orderedAt || p.createdAt)}</td>
+      <td data-label="작업" style={{ textAlign: 'right' }}>
+        <button type="button" className="btn btn-sm btn-outline" style={{ marginRight: 6 }} onClick={(e) => onEdit(e, p)}>수정</button>
+        <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>삭제</button>
+      </td>
+    </tr>
+  );
+}
+
 export default function PurchaseListPage() {
   const { userProfile } = useAuth();
   const { alert, confirm } = useDialog();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const navigate = useNavigate();
 
   const [purchases, setPurchases] = useState([]);
@@ -106,6 +151,14 @@ export default function PurchaseListPage() {
         return d ? d.getTime() : 0;
       };
       list.sort((a, b) => t(b) - t(a)); // 최근 출력순
+    } else if (tab === 'all') {
+      // 전체 탭: 수동 순서(order)대로 — 드래그앤드롭 순서변경 반영, 없으면 최신순
+      const ord = (p) => (typeof p.order === 'number' ? p.order : 1e9);
+      list.sort((a, b) => {
+        const ao = ord(a); const bo = ord(b);
+        if (ao !== bo) return ao - bo;
+        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      });
     }
     return list;
   }, [purchases, tab, search]);
@@ -188,6 +241,26 @@ export default function PurchaseListPage() {
     }
   }
 
+  const dragEnabled = tab === 'all' && !search.trim();
+
+  async function handleReorder(e) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = filtered.map((p) => p.id);
+    const oldIndex = ids.indexOf(active.id);
+    const newIndex = ids.indexOf(over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const newOrderIds = arrayMove(ids, oldIndex, newIndex);
+    // 전체 목록 order 재계산 — 화면 순서대로 0..n
+    const orderMap = new Map(newOrderIds.map((id, idx) => [id, idx]));
+    setPurchases((prev) => prev.map((p) => (orderMap.has(p.id) ? { ...p, order: orderMap.get(p.id) } : p)));
+    try {
+      await savePurchasesOrder(newOrderIds);
+    } catch (err) {
+      alert('순서 저장 오류: ' + err.message);
+    }
+  }
+
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
@@ -240,61 +313,40 @@ export default function PurchaseListPage() {
           {purchases.length === 0 ? '등록된 구매 건이 없습니다.' : '해당 조건의 구매 건이 없습니다.'}
         </p>
       ) : (
-        <table className="table cards-sm">
-          <thead>
-            <tr>
-              <th>제목</th>
-              <th>구매처</th>
-              <th>프로젝트</th>
-              <th className="num-col">금액</th>
-              <th>상태</th>
-              <th>등록자</th>
-              <th>발주일</th>
-              <th style={{ textAlign: 'right' }}>작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p) => (
-              <tr
-                key={p.id}
-                className="table-clickable-row"
-                onClick={() => navigate(`/admin/purchase/${p.id}`)}
-              >
-                <td data-label="제목">
-                  <strong>{p.title}</strong>
-                  {Number(p.printCount) > 0 && (
-                    <span className="purchase-print-badge" title={`최근 출력: ${fmtDate(p.lastPrintedAt)}${p.lastPrintedBy ? ` · ${p.lastPrintedBy}` : ''}`}>
-                      🖨 {p.printCount}회 · {fmtDate(p.lastPrintedAt)}
-                    </span>
-                  )}
-                </td>
-                <td data-label="구매처">{p.supplierName || <span className="text-muted">-</span>}</td>
-                <td data-label="프로젝트">{p.siteName || '-'}</td>
-                <td data-label="금액" className="num-col">{Number(p.totalAmount || 0).toLocaleString()}원</td>
-                <td data-label="상태">
-                  <span className={`purchase-badge purchase-badge-${STATUS[p.status]?.cls || 'ordered'}`}>
-                    {STATUS[p.status]?.label || p.status}
-                  </span>
-                </td>
-                <td data-label="등록자">{p.requesterName || '-'}</td>
-                <td data-label="발주일">{fmtDate(p.orderedAt || p.createdAt)}</td>
-                <td data-label="작업" style={{ textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    style={{ marginRight: 6 }}
-                    onClick={(e) => openEdit(e, p)}
-                  >수정</button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    onClick={(e) => handleDelete(e, p)}
-                  >삭제</button>
-                </td>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleReorder}>
+          <table className={`table cards-sm ${dragEnabled ? 'sortable-rows' : ''}`}>
+            <thead>
+              <tr>
+                {dragEnabled && <th style={{ width: 36 }} aria-label="순서 변경"></th>}
+                <th>제목</th>
+                <th>구매처</th>
+                <th>프로젝트</th>
+                <th className="num-col">금액</th>
+                <th>상태</th>
+                <th>등록자</th>
+                <th>발주일</th>
+                <th style={{ textAlign: 'right' }}>작업</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <SortableContext items={filtered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
+                {filtered.map((p) => (
+                  <SortablePurchaseRow
+                    key={p.id}
+                    p={p}
+                    dragEnabled={dragEnabled}
+                    onOpen={(pp) => navigate(`/admin/purchase/${pp.id}`)}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
+      )}
+      {dragEnabled && filtered.length > 1 && (
+        <p className="field-hint no-print" style={{ marginTop: 8 }}>≡ 핸들을 끌어 순서를 변경할 수 있습니다. (전체 탭·검색 없을 때)</p>
       )}
 
       <Modal isOpen={formModal} onClose={() => setFormModal(false)} title={editingId ? '구매 수정' : '구매 등록'}>

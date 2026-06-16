@@ -8,16 +8,29 @@ const bomRef = collection(db, 'bom');
 const projectsRef = collection(db, 'bomProjects');
 
 // ---- 프로젝트 (BOM 그룹) ----
+// order(수동 순서)가 있으면 그 순서로, 없으면 최신 등록순
 export async function getBomProjects() {
-  try {
-    const snap = await getDocs(query(projectsRef, orderBy('createdAt', 'desc')));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  } catch {
-    const snap = await getDocs(projectsRef);
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  const snap = await getDocs(projectsRef);
+  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const hasOrder = list.some((p) => typeof p.order === 'number');
+  if (hasOrder) {
+    return list.sort((a, b) => {
+      const ao = typeof a.order === 'number' ? a.order : 1e9;
+      const bo = typeof b.order === 'number' ? b.order : 1e9;
+      if (ao !== bo) return ao - bo;
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    });
   }
+  return list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+}
+
+// 드래그 순서변경 — 전달된 id 순서대로 order 저장
+export async function saveBomProjectsOrder(orderedIds) {
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, idx) => {
+    batch.update(doc(db, 'bomProjects', id), { order: idx, updatedAt: new Date() });
+  });
+  await batch.commit();
 }
 
 export async function getBomProjectById(id) {

@@ -1,17 +1,62 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  getBomProjects, addBomProject, deleteBomProject,
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  getBomProjects, addBomProject, deleteBomProject, saveBomProjectsOrder,
 } from '../../services/bomService';
 import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useAuth } from '../../contexts/AuthContext';
 
+// 드래그 가능한 프로젝트 행
+function SortableProjectRow({ p, onOpen, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    background: isDragging ? 'var(--bg-card)' : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style} className="table-clickable-row" onClick={() => onOpen(p)}>
+      <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="drag-handle-btn" aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경" {...attributes} {...listeners}>≡</button>
+      </td>
+      <td data-label="프로젝트명"><strong>{p.name}</strong></td>
+      <td className="bom-project-action-col">
+        <button className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>삭제</button>
+      </td>
+    </tr>
+  );
+}
+
 export default function BomPage() {
   const { confirm, alert } = useDialog();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  async function handleDragEnd(e) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = projects.findIndex((p) => p.id === active.id);
+    const newIndex = projects.findIndex((p) => p.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const next = arrayMove(projects, oldIndex, newIndex);
+    setProjects(next);
+    try {
+      await saveBomProjectsOrder(next.map((p) => p.id));
+    } catch (err) {
+      alert('순서 저장 오류: ' + err.message);
+    }
+  }
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,31 +130,29 @@ export default function BomPage() {
           등록된 프로젝트가 없습니다 — 우측 상단 "+ 프로젝트 추가"로 시작하세요.
         </p>
       ) : (
-        <table className="table cards-sm">
-          <thead>
-            <tr>
-              <th>프로젝트명</th>
-              <th className="bom-project-action-col">작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map((p) => (
-              <tr
-                key={p.id}
-                className="table-clickable-row"
-                onClick={() => navigate(`/admin/purchase/bom/${p.id}`)}
-              >
-                <td data-label="프로젝트명"><strong>{p.name}</strong></td>
-                <td className="bom-project-action-col">
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={(e) => handleDeleteProject(e, p)}
-                  >삭제</button>
-                </td>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <table className="table cards-sm sortable-rows">
+            <thead>
+              <tr>
+                <th style={{ width: 36 }} aria-label="순서 변경"></th>
+                <th>프로젝트명</th>
+                <th className="bom-project-action-col">작업</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
+                {projects.map((p) => (
+                  <SortableProjectRow
+                    key={p.id}
+                    p={p}
+                    onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
+                    onDelete={handleDeleteProject}
+                  />
+                ))}
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
       )}
 
       <Modal isOpen={addProjectOpen} onClose={() => setAddProjectOpen(false)} title="프로젝트 추가">

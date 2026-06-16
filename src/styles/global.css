@@ -3929,9 +3929,9 @@ body {
 .inline-edit-table .num-input {
   text-align: left;
 }
-/* 발주·BOM 편집 표 — 수량·단가·합계 우측 정렬 통일 (단가 MoneyInput과 줄 맞춤) */
+/* 발주·BOM 편집 표 — 수량·단가·합계도 헤더(좌정렬)에 맞춰 좌측 정렬 통일 */
 .bom-flat-table .num-input,
-.bom-flat-table .bom-amount-input { text-align: right; }
+.bom-flat-table .bom-amount-input { text-align: left; }
 .inline-edit-table .num-input.is-readonly {
   font-weight: 600;
   color: var(--primary);
@@ -7246,7 +7246,7 @@ tr.is-newly-added > td {
 .field-hint {
   font-size: var(--font-sm);
   color: var(--text-muted);
-  margin-top: -4px;
+  margin-top: 5px;
   margin-bottom: var(--space-2);
   line-height: 1.5;
 }

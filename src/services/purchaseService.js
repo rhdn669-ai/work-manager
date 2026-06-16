@@ -298,6 +298,15 @@ export async function getPurchases() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// 드래그 순서변경 — 전달된 id 순서대로 order 저장
+export async function savePurchasesOrder(orderedIds) {
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, idx) => {
+    batch.update(doc(db, 'purchases', id), { order: idx, updatedAt: new Date() });
+  });
+  await batch.commit();
+}
+
 export async function getPurchaseById(id) {
   const snap = await getDoc(doc(db, 'purchases', id));
   if (!snap.exists()) return null;
