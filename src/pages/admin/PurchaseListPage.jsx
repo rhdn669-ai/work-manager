@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getPurchases, addPurchase, setPurchaseStatus,
-  getPurchaseConfig, setHqSite, deletePurchase,
+  getPurchaseConfig, setHqSite, deletePurchase, updatePurchase,
 } from '../../services/purchaseService';
 import { trashPurchase } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
@@ -24,7 +24,6 @@ const TABS = [
   { key: 'partial', label: '부분입고' },
   { key: 'received', label: '입고완료' },
   { key: 'settled', label: '정산완료' },
-  { key: 'printed', label: '출력이력' },
 ];
 
 const EMPTY_FORM = { title: '', siteId: '', deliveryDue: '', contactName: '', contactPhone: '' };
@@ -50,6 +49,7 @@ export default function PurchaseListPage() {
   const [search, setSearch] = useState('');
 
   const [formModal, setFormModal] = useState(false);
+  const [editingId, setEditingId] = useState(null); // null=등록, id=수정
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
@@ -109,11 +109,25 @@ export default function PurchaseListPage() {
   }, [purchases, tab, search]);
 
   function openCreate() {
+    setEditingId(null);
     setForm({ ...EMPTY_FORM, siteId: recentSiteId || '' });
     setFormModal(true);
   }
 
-  async function handleCreate(e) {
+  function openEdit(e, p) {
+    e.stopPropagation();
+    setEditingId(p.id);
+    setForm({
+      title: p.title || '',
+      siteId: p.siteId || '',
+      deliveryDue: p.deliveryDue || '',
+      contactName: p.contactName || '',
+      contactPhone: p.contactPhone || '',
+    });
+    setFormModal(true);
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!form.title.trim()) { alert('제목을 입력해주세요.'); return; }
     if (!form.siteId) { alert('프로젝트를 선택해주세요.'); return; }
@@ -121,26 +135,36 @@ export default function PurchaseListPage() {
     setSubmitting(true);
     try {
       const site = sites.find((s) => s.id === form.siteId);
-      const ref = await addPurchase({
+      const base = {
         title: form.title.trim(),
-        items: [],
         siteId: form.siteId,
         siteName: site?.name || '',
-        totalAmount: 0,
         deliveryDue: form.deliveryDue.trim(),
         contactName: form.contactName.trim(),
         contactPhone: form.contactPhone.trim(),
-        requesterId: userProfile?.uid || '',
-        requesterName: userProfile?.name || '',
-      });
-      if (form.siteId !== recentSiteId) {
-        await setHqSite(form.siteId, site?.name || '');
-        setRecentSiteId(form.siteId);
+      };
+      if (editingId) {
+        // 수정 — 기본정보만 갱신 (품목·금액은 상세에서 관리)
+        await updatePurchase(editingId, base);
+        setPurchases((prev) => prev.map((x) => (x.id === editingId ? { ...x, ...base } : x)));
+        setFormModal(false);
+      } else {
+        const ref = await addPurchase({
+          ...base,
+          items: [],
+          totalAmount: 0,
+          requesterId: userProfile?.uid || '',
+          requesterName: userProfile?.name || '',
+        });
+        if (form.siteId !== recentSiteId) {
+          await setHqSite(form.siteId, site?.name || '');
+          setRecentSiteId(form.siteId);
+        }
+        setFormModal(false);
+        navigate(`/admin/purchase/${ref.id}`);
       }
-      setFormModal(false);
-      navigate(`/admin/purchase/${ref.id}`);
     } catch (err) {
-      alert('등록 중 오류: ' + err.message);
+      alert((editingId ? '수정' : '등록') + ' 중 오류: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -251,6 +275,12 @@ export default function PurchaseListPage() {
                 <td data-label="작업" style={{ textAlign: 'right' }}>
                   <button
                     type="button"
+                    className="btn btn-sm btn-outline"
+                    style={{ marginRight: 6 }}
+                    onClick={(e) => openEdit(e, p)}
+                  >수정</button>
+                  <button
+                    type="button"
                     className="btn btn-sm btn-danger"
                     onClick={(e) => handleDelete(e, p)}
                   >삭제</button>
@@ -261,8 +291,8 @@ export default function PurchaseListPage() {
         </table>
       )}
 
-      <Modal isOpen={formModal} onClose={() => setFormModal(false)} title="구매 등록">
-        <form onSubmit={handleCreate}>
+      <Modal isOpen={formModal} onClose={() => setFormModal(false)} title={editingId ? '구매 수정' : '구매 등록'}>
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>제목 *</label>
             <input
@@ -339,13 +369,14 @@ export default function PurchaseListPage() {
           </div>
 
           <p className="field-hint">
-            등록 즉시 상세 페이지로 이동합니다. 거기서 품목·수량·단가를 추가하세요.
-            구매처는 첫 품목의 기본 구매처에서 자동 적용됩니다.
+            {editingId
+              ? '제목·프로젝트·납기·담당자 등 기본정보를 수정합니다. 품목·수량·단가는 상세 페이지에서 관리합니다.'
+              : '등록 즉시 상세 페이지로 이동합니다. 거기서 품목·수량·단가를 추가하세요. 구매처는 첫 품목의 기본 구매처에서 자동 적용됩니다.'}
           </p>
 
           <div className="modal-actions">
             <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? '등록 중...' : '등록하고 품목 추가'}
+              {submitting ? (editingId ? '저장 중...' : '등록 중...') : (editingId ? '수정 저장' : '등록하고 품목 추가')}
             </button>
             <button type="button" className="btn btn-outline" onClick={() => setFormModal(false)} disabled={submitting}>
               취소
