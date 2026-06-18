@@ -59,6 +59,7 @@ export async function addSupplier(data) {
     name: data.name || '',
     representative: data.representative || '',
     contact: data.contact || '',
+    email: data.email || '',
     businessNumber: data.businessNumber || '',
     bankName: data.bankName || '',
     bankAccount: data.bankAccount || '',

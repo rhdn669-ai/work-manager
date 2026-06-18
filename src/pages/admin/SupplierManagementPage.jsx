@@ -1,5 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { getSuppliers, addSupplier, updateSupplier, deleteSupplier } from '../../services/purchaseService';
+import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
+import { extractBizInfo, normalizeCompany } from '../../utils/bizPdf';
+import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/DialogProvider';
 
@@ -10,12 +13,19 @@ const EMPTY_FORM = {
 
 export default function SupplierManagementPage() {
   const { confirm, alert } = useDialog();
+  const { userProfile } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [pdfFiles, setPdfFiles] = useState([]); // 자료실에 보관할 PDF들 (사업자등록증·통장사본 등)
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState(''); // 진행 상태 문구
+  const [pdfDragOver, setPdfDragOver] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const pdfInputRef = useRef(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -41,6 +51,8 @@ export default function SupplierManagementPage() {
   function openCreate() {
     setEditTarget(null);
     setForm(EMPTY_FORM);
+    setPdfFiles([]);
+    setPdfStatus('');
     setShowModal(true);
   }
 
@@ -51,22 +63,89 @@ export default function SupplierManagementPage() {
       email: s.email || '', businessNumber: s.businessNumber || '', bankName: s.bankName || '',
       bankAccount: s.bankAccount || '', category: s.category || '', note: s.note || '',
     });
+    setPdfFiles([]);
+    setPdfStatus('');
     setShowModal(true);
+  }
+
+  // PDF(여러 개 가능) 처리 → 텍스트/OCR 자동 입력 + 자료실 보관용 보관
+  // 사업자등록증·통장사본을 한 번에 붙이면 각자에서 잡힌 값을 합쳐 채움
+  async function handlePdfFiles(fileList) {
+    const files = Array.from(fileList || []).filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    if (files.length === 0) { alert('PDF 파일만 가능합니다.'); return; }
+    setPdfBusy(true);
+    setPdfFiles((prev) => [...prev, ...files]);
+    setPdfStatus('PDF 읽는 중…');
+    try {
+      const merged = { name: '', representative: '', businessNumber: '', bankName: '', bankAccount: '' };
+      let usedOcr = false;
+      for (let i = 0; i < files.length; i += 1) {
+        const label = files.length > 1 ? `(${i + 1}/${files.length}) ` : '';
+        const { parsed, usedOcr: o } = await extractBizInfo(files[i], (stage, progress) => {
+          if (stage === 'reading') setPdfStatus(`${label}PDF 읽는 중…`);
+          else if (stage === 'rendering') setPdfStatus(`${label}스캔 감지 — 이미지 변환 중…`);
+          else if (stage === 'ocr') setPdfStatus(`${label}OCR 인식 중… ${Math.round((progress || 0) * 100)}%`);
+        });
+        usedOcr = usedOcr || o;
+        Object.keys(merged).forEach((k) => { if (!merged[k] && parsed[k]) merged[k] = parsed[k]; });
+      }
+      setForm((f) => ({
+        ...f,
+        name: merged.name || f.name,
+        representative: merged.representative || f.representative,
+        businessNumber: merged.businessNumber || f.businessNumber,
+        bankName: merged.bankName || f.bankName,
+        bankAccount: merged.bankAccount || f.bankAccount,
+      }));
+      const got = merged.name || merged.businessNumber || merged.bankName || merged.bankAccount;
+      if (!got) {
+        setPdfStatus('');
+        alert(`정보를 충분히 읽지 못했습니다${usedOcr ? ' (OCR 시도함)' : ''}. 직접 확인·입력해 주세요. 파일은 자료실에 보관됩니다.`);
+      } else {
+        setPdfStatus(usedOcr ? '✅ OCR로 자동 입력됨 (값 확인 권장)' : '✅ 자동 입력됨');
+      }
+    } catch (err) {
+      setPdfStatus('');
+      alert('PDF 처리 오류: ' + err.message);
+    } finally {
+      setPdfBusy(false);
+    }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
     if (!form.name.trim()) { alert('상호를 입력해주세요.'); return; }
+    const supplierName = normalizeCompany(form.name) || form.name.trim(); // 주식회사 → (주) 통일
+    const filesToUpload = pdfFiles;
+    const data = { ...form, name: supplierName };
+    setSubmitting(true);
     try {
       if (editTarget) {
-        await updateSupplier(editTarget.id, form);
+        await updateSupplier(editTarget.id, data);
       } else {
-        await addSupplier(form);
+        await addSupplier(data);
       }
+      // 저장 완료 → 모달 즉시 닫고 목록 갱신 (PDF 업로드를 기다리지 않음)
       setShowModal(false);
+      setPdfFiles([]);
       await loadData();
     } catch (err) {
       alert('처리 중 오류: ' + err.message);
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
+    // 첨부 PDF들은 모달 닫은 뒤 백그라운드로 자료실 "거래처 정보/{업체명}" 폴더에 보관
+    if (filesToUpload.length > 0) {
+      try {
+        const folderId = await ensureFolderPath(['거래처 정보', supplierName], userProfile);
+        for (let i = 0; i < filesToUpload.length; i += 1) {
+          await uploadFile(filesToUpload[i], folderId, userProfile, undefined, `${supplierName}_${filesToUpload[i].name}`);
+        }
+      } catch (err) {
+        alert('PDF 자료실 보관 중 오류: ' + err.message);
+      }
     }
   }
 
@@ -136,6 +215,31 @@ export default function SupplierManagementPage() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editTarget ? '구매처 수정' : '구매처 추가'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
+            <label>PDF 첨부 — 사업자등록증·통장사본 (자동 입력 + 자료실 보관)</label>
+            <div
+              className={`pdf-dropzone ${pdfDragOver ? 'is-over' : ''} ${pdfBusy ? 'is-busy' : ''}`}
+              onClick={() => !pdfBusy && pdfInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); if (!pdfBusy) setPdfDragOver(true); }}
+              onDragLeave={() => setPdfDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setPdfDragOver(false); if (e.dataTransfer.files?.length) handlePdfFiles(e.dataTransfer.files); }}
+            >
+              <input
+                ref={pdfInputRef} type="file" accept="application/pdf,.pdf" multiple
+                style={{ display: 'none' }} disabled={pdfBusy}
+                onChange={(e) => { const fl = e.target.files; e.target.value = ''; if (fl?.length) handlePdfFiles(fl); }}
+              />
+              <span className="pdf-dropzone-icon">📄</span>
+              <span>{pdfFiles.length ? `${pdfFiles.length}개 첨부됨 (클릭/드롭으로 더 추가)` : 'PDF를 끌어다 놓거나 클릭해서 선택 (여러 개 가능)'}</span>
+            </div>
+            <p className="field-hint">
+              {pdfBusy
+                ? (pdfStatus || 'PDF 처리 중…')
+                : (pdfFiles.length
+                  ? `${pdfStatus ? pdfStatus + ' · ' : ''}${pdfFiles.map((f) => f.name).join(', ')} — 저장 시 자료실 "거래처 정보/${(normalizeCompany(form.name) || form.name.trim()) || '상호'}" 폴더에 보관됩니다.`
+                  : '사업자등록증·통장사본을 한 번에 첨부하면 둘 다 인식해 상호·대표자·사업자번호·은행·계좌를 채웁니다. 텍스트·스캔 PDF 모두 가능(스캔은 OCR).')}
+            </p>
+          </div>
+          <div className="form-group">
             <label>상호 *</label>
             <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
@@ -172,8 +276,10 @@ export default function SupplierManagementPage() {
             <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} />
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editTarget ? '수정' : '추가'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? '저장 중…' : (editTarget ? '수정' : '추가')}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)} disabled={submitting}>취소</button>
           </div>
         </form>
       </Modal>

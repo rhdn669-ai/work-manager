@@ -2894,9 +2894,9 @@ body {
   width: 90%;
   max-width: 480px;
   max-height: 90vh;
-  overflow-y: auto;
-  /* 스크롤이 끝에 도달해도 뒷 배경이 따라 움직이지 않도록 */
-  overscroll-behavior: contain;
+  overflow: hidden; /* 둥근 모서리 안으로 스크롤 클립 (스크롤바가 밖으로 튀지 않게) */
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -2905,6 +2905,7 @@ body {
   justify-content: space-between;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -2923,6 +2924,25 @@ body {
 
 .modal-body {
   padding: 14px 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain; /* 끝 도달 시 뒷 배경 스크롤 방지 */
+  /* 스크롤바 스타일 통일 (모든 모달 공통) */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong, #cbd5e1) transparent;
+}
+.modal-body::-webkit-scrollbar { width: 9px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong, #cbd5e1);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted, #94a3b8);
+  background-clip: padding-box;
 }
 
 .modal-actions {
@@ -7250,6 +7270,31 @@ tr.is-newly-added > td {
   margin-bottom: var(--space-2);
   line-height: 1.5;
 }
+
+/* PDF 드래그앤드롭 업로드 영역 */
+.pdf-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border: 1.5px dashed var(--border-strong, #cbd5e1);
+  border-radius: 10px;
+  background: var(--bg-subtle, #f8fafc);
+  color: var(--text-light);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.pdf-dropzone:hover { border-color: var(--primary); color: var(--text); }
+.pdf-dropzone.is-over {
+  border-color: var(--primary);
+  background: var(--primary-soft, #fff7ed);
+  color: var(--primary);
+}
+.pdf-dropzone.is-busy { opacity: 0.6; cursor: default; }
+.pdf-dropzone-icon { font-size: 18px; line-height: 1; }
 
 .empty-state {
   display: flex;
@@ -11946,7 +11991,26 @@ tr.is-newly-added > td {
 /* ============================================================
    자료실 (사내 파일 공유) — 폴더 리스트형 레이아웃
    ============================================================ */
-.library-page { max-width: 960px; margin: 0 auto; }
+.library-page { width: 100%; }
+
+/* 자료실 폴더 트리 — 펼침/접힘 */
+.library-folder-sublist { list-style: none; margin: 0; padding: 0; }
+.lf-caret {
+  flex: 0 0 14px;
+  width: 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.lf-caret.is-leaf { cursor: default; }
+.library-folder-empty {
+  padding: 10px 12px;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  text-align: center;
+}
 
 /* 업로드 진행률 */
 .library-uploads {

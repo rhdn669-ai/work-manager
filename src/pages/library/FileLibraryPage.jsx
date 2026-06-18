@@ -70,26 +70,41 @@ export default function FileLibraryPage() {
     return () => { unsubF(); unsubFiles(); };
   }, []);
 
-  // 현재 폴더 + 검색어로 필터링한 파일
+  // 현재 폴더의 파일 (검색어 있으면 전체에서 검색)
   const visibleFiles = useMemo(() => {
     const kw = search.trim().toLowerCase();
     return files.filter((f) => {
-      if (activeFolder !== null && (f.folderId || null) !== activeFolder) return false;
-      if (kw && !(f.name || '').toLowerCase().includes(kw)) return false;
-      return true;
+      if (kw) return (f.name || '').toLowerCase().includes(kw);
+      return (f.folderId || null) === (activeFolder || null);
     });
   }, [files, activeFolder, search]);
 
-  // 폴더별 파일 개수
-  const countFor = (folderId) => files.filter((f) => (f.folderId || null) === folderId).length;
+  const folderById = useMemo(() => Object.fromEntries(folders.map((f) => [f.id, f])), [folders]);
 
-  // 현재 선택된 폴더 이름 (헤더 표시용)
-  const activeFolderName = activeFolder === null
-    ? '전체'
-    : (folders.find((f) => f.id === activeFolder)?.name || '폴더');
+  // 현재 폴더의 하위 폴더들
+  const subFolders = useMemo(
+    () => folders.filter((f) => (f.parentId || null) === (activeFolder || null)),
+    [folders, activeFolder],
+  );
+
+  // 트리 펼침 상태
+  const [expanded, setExpanded] = useState(new Set());
+  const toggleExpand = (id) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const hasChildren = (id) => folders.some((f) => (f.parentId || null) === id);
+
+  // 폴더별 직접 파일 개수
+  const countFor = (folderId) => files.filter((f) => (f.folderId || null) === folderId).length;
+  const subCountFor = (folderId) => folders.filter((f) => (f.parentId || null) === folderId).length;
+
+  const activeFolderName = activeFolder === null ? '전체' : (folderById[activeFolder]?.name || '폴더');
 
   function selectFolder(id) {
     setActiveFolder(id);
+    setSearch('');
     setMobileFilesOpen(true); // 모바일에서 파일 목록으로 전환
   }
 
@@ -125,12 +140,13 @@ export default function FileLibraryPage() {
   async function handleCreateFolder() {
     const name = folderName.trim();
     if (!name) return;
-    if (folders.some((f) => f.name === name)) {
-      alert('같은 이름의 폴더가 이미 있습니다.');
+    // 같은 레벨(현재 폴더 하위)에 같은 이름이 있으면 거부
+    if (subFolders.some((f) => f.name === name)) {
+      alert('이 폴더 안에 같은 이름의 폴더가 이미 있습니다.');
       return;
     }
     try {
-      await createFolder(name, userProfile);
+      await createFolder(name, userProfile, activeFolder); // activeFolder의 하위로 생성
       setFolderModalOpen(false);
       setFolderName('');
     } catch (err) {
@@ -141,13 +157,15 @@ export default function FileLibraryPage() {
   async function handleDeleteFolder(folder, e) {
     if (e) e.stopPropagation();
     const n = countFor(folder.id);
-    const msg = n > 0
-      ? `"${folder.name}" 폴더와 그 안의 파일 ${n}개가 모두 삭제됩니다. 계속할까요?`
+    const subN = subCountFor(folder.id);
+    const extra = subN > 0 ? `하위 폴더 ${subN}개와 ` : '';
+    const msg = (n > 0 || subN > 0)
+      ? `"${folder.name}" 폴더와 ${extra}그 안의 파일이 모두 삭제됩니다. 계속할까요?`
       : `"${folder.name}" 폴더를 삭제할까요?`;
     if (!await confirm(msg)) return;
     try {
-      await deleteFolder(folder.id);
-      if (activeFolder === folder.id) { setActiveFolder(null); setMobileFilesOpen(false); }
+      await deleteFolder(folder.id); // 하위 폴더·파일 재귀 삭제
+      if (activeFolder === folder.id) { setActiveFolder(folder.parentId || null); setMobileFilesOpen(false); }
     } catch (err) {
       alert('폴더 삭제 오류: ' + err.message);
     }
@@ -161,6 +179,38 @@ export default function FileLibraryPage() {
       alert('파일 삭제 오류: ' + err.message);
     }
   }
+
+  // 폴더 트리 렌더 — 클릭 시 펼침(하위 폴더 표시) + 선택(파일 표시)
+  const renderTree = (parentId, depth) => folders
+    .filter((f) => (f.parentId || null) === parentId)
+    .map((f) => {
+      const kids = hasChildren(f.id);
+      const isOpen = expanded.has(f.id);
+      return (
+        <li key={f.id}>
+          <div
+            className={`library-folder-item ${activeFolder === f.id ? 'active' : ''}`}
+            style={{ paddingLeft: 8 + depth * 16 }}
+            onClick={() => { selectFolder(f.id); if (kids) toggleExpand(f.id); }}
+          >
+            <span
+              className={`lf-caret ${kids ? '' : 'is-leaf'}`}
+              onClick={(e) => { e.stopPropagation(); if (kids) toggleExpand(f.id); }}
+            >{kids ? (isOpen ? '▾' : '▸') : ''}</span>
+            <span className="lf-icon">📁</span>
+            <span className="lf-name">{f.name}</span>
+            {editMode ? (
+              <button className="lf-del" title="폴더 삭제" onClick={(e) => handleDeleteFolder(f, e)}>✕</button>
+            ) : (
+              <span className="lf-count">{countFor(f.id) || ''}</span>
+            )}
+          </div>
+          {isOpen && kids && (
+            <ul className="library-folder-sublist">{renderTree(f.id, depth + 1)}</ul>
+          )}
+        </li>
+      );
+    });
 
   // 자료실 미공개 권한 직원: 직접 URL 접근 차단
   if (!canViewArchive) {
@@ -222,32 +272,17 @@ export default function FileLibraryPage() {
               className={`library-folder-item ${activeFolder === null ? 'active' : ''}`}
               onClick={() => selectFolder(null)}
             >
+              <span className="lf-caret is-leaf" />
               <span className="lf-icon">🗂️</span>
               <span className="lf-name">전체</span>
               <span className="lf-count">{files.length}</span>
             </li>
-            {folders.map((f) => (
-              <li
-                key={f.id}
-                className={`library-folder-item ${activeFolder === f.id ? 'active' : ''}`}
-                onClick={() => selectFolder(f.id)}
-              >
-                <span className="lf-icon">📁</span>
-                <span className="lf-name">{f.name}</span>
-                {editMode ? (
-                  <button
-                    className="lf-del"
-                    title="폴더 삭제"
-                    onClick={(e) => handleDeleteFolder(f, e)}
-                  >✕</button>
-                ) : (
-                  <span className="lf-count">{countFor(f.id)}</span>
-                )}
-              </li>
-            ))}
+            {renderTree(null, 0)}
           </ul>
 
-          <button className="library-add-folder" onClick={() => setFolderModalOpen(true)}>+ 폴더 추가</button>
+          <button className="library-add-folder" onClick={() => setFolderModalOpen(true)}>
+            {activeFolder === null ? '+ 폴더 추가' : '+ 하위폴더 추가'}
+          </button>
         </aside>
 
         {/* 오른쪽: 파일 목록 */}
@@ -323,7 +358,7 @@ export default function FileLibraryPage() {
       </div>
 
       {/* 폴더 추가 모달 */}
-      <Modal isOpen={folderModalOpen} onClose={() => setFolderModalOpen(false)} title="폴더 추가">
+      <Modal isOpen={folderModalOpen} onClose={() => setFolderModalOpen(false)} title={activeFolder === null ? '폴더 추가' : '하위폴더 추가'}>
         <div className="form-group">
           <label>폴더 이름</label>
           <input
@@ -336,7 +371,9 @@ export default function FileLibraryPage() {
             maxLength={30}
           />
           <p className="field-hint" style={{ marginTop: 6 }}>
-            모든 직원이 함께 사용하는 폴더입니다.
+            {activeFolder === null
+              ? '최상위에 폴더를 만듭니다. 모든 직원이 함께 사용합니다.'
+              : `"${activeFolderName}" 폴더 안에 하위폴더를 만듭니다.`}
           </p>
         </div>
         <div className="modal-actions">

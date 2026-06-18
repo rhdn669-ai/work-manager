@@ -11,12 +11,14 @@ import {
   getAllClosingItems,
 } from '../../services/outsourceService';
 import { getAllSites } from '../../services/siteService';
+import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
+import { extractBizInfo, normalizeCompany } from '../../utils/bizPdf';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import { useDialog } from '../../components/common/DialogProvider';
 
 export default function OutsourceManagementPage() {
-  const { isAdmin, canViewSalary } = useAuth();
+  const { isAdmin, canViewSalary, userProfile } = useAuth();
   const { confirm, alert } = useDialog();
   const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
   const [freelancers, setFreelancers] = useState([]);
@@ -35,6 +37,12 @@ export default function OutsourceManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({});
+  const [pdfFiles, setPdfFiles] = useState([]); // 업체 PDF들 (사업자등록증·통장사본 등)
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState('');
+  const [pdfDragOver, setPdfDragOver] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const pdfInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [detailVendor, setDetailVendor] = useState(null);
@@ -216,37 +224,106 @@ export default function OutsourceManagementPage() {
   function openCreate() {
     setEditItem(null);
     if (tab === 'vendor') {
-      setForm({ name: '', representative: '', contact: '', businessNumber: '', bankName: '', bankAccount: '' });
+      setForm({ name: '', representative: '', contact: '', email: '', businessNumber: '', category: '', bankName: '', bankAccount: '', note: '' });
     } else {
       // freelancer / daily 공통 (workerType만 탭에 맞게 설정)
       setForm({ name: '', vendor: '', dailyRate: 0, contact: '', note: '', workerType: tab });
     }
+    setPdfFiles([]);
+    setPdfStatus('');
     setShowModal(true);
   }
 
   function openEdit(item) {
     setEditItem(item);
     setForm({ ...item });
+    setPdfFiles([]);
+    setPdfStatus('');
     setShowModal(true);
+  }
+
+  // 업체 PDF(여러 개 가능) → 텍스트/OCR 자동 입력 + 자료실 보관용 보관 (사업자등록증·통장사본 합산)
+  async function handlePdfFiles(fileList) {
+    const files = Array.from(fileList || []).filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    if (files.length === 0) { alert('PDF 파일만 가능합니다.'); return; }
+    setPdfBusy(true);
+    setPdfFiles((prev) => [...prev, ...files]);
+    setPdfStatus('PDF 읽는 중…');
+    try {
+      const merged = { name: '', representative: '', businessNumber: '', bankName: '', bankAccount: '' };
+      let usedOcr = false;
+      for (let i = 0; i < files.length; i += 1) {
+        const label = files.length > 1 ? `(${i + 1}/${files.length}) ` : '';
+        const { parsed, usedOcr: o } = await extractBizInfo(files[i], (stage, progress) => {
+          if (stage === 'reading') setPdfStatus(`${label}PDF 읽는 중…`);
+          else if (stage === 'rendering') setPdfStatus(`${label}스캔 감지 — 이미지 변환 중…`);
+          else if (stage === 'ocr') setPdfStatus(`${label}OCR 인식 중… ${Math.round((progress || 0) * 100)}%`);
+        });
+        usedOcr = usedOcr || o;
+        Object.keys(merged).forEach((k) => { if (!merged[k] && parsed[k]) merged[k] = parsed[k]; });
+      }
+      setForm((f) => ({
+        ...f,
+        name: merged.name || f.name,
+        representative: merged.representative || f.representative,
+        businessNumber: merged.businessNumber || f.businessNumber,
+        bankName: merged.bankName || f.bankName,
+        bankAccount: merged.bankAccount || f.bankAccount,
+      }));
+      const got = merged.name || merged.businessNumber || merged.bankName || merged.bankAccount;
+      if (!got) {
+        setPdfStatus('');
+        alert(`정보를 충분히 읽지 못했습니다${usedOcr ? ' (OCR 시도함)' : ''}. 직접 확인·입력해 주세요. 파일은 자료실에 보관됩니다.`);
+      } else {
+        setPdfStatus(usedOcr ? '✅ OCR로 자동 입력됨 (값 확인 권장)' : '✅ 자동 입력됨');
+      }
+    } catch (err) {
+      setPdfStatus('');
+      alert('PDF 처리 오류: ' + err.message);
+    } finally {
+      setPdfBusy(false);
+    }
   }
 
   async function handleSave(e) {
     e.preventDefault();
+    if (submitting) return;
     if (!form.name?.trim()) { alert('이름을 입력해주세요.'); return; }
+    const isVendor = tab === 'vendor';
+    const filesToUpload = isVendor ? pdfFiles : [];
+    // 업체는 회사명 통일(주식회사 → (주)), 사람(프리랜서/일용직) 이름은 그대로
+    const vendorName = isVendor ? (normalizeCompany(form.name) || form.name.trim()) : form.name.trim();
+    setSubmitting(true);
     try {
-      if (tab === 'vendor') {
-        if (editItem) await updateVendor(editItem.id, form);
-        else await addVendor(form);
+      if (isVendor) {
+        const data = { ...form, name: vendorName };
+        if (editItem) await updateVendor(editItem.id, data);
+        else await addVendor(data);
       } else {
-        // freelancer / daily
         const payload = { ...form, workerType: form.workerType || tab };
         if (editItem) await updateFreelancer(editItem.id, payload);
         else await addFreelancer(payload);
       }
+      // 저장 완료 → 모달 즉시 닫고 목록 갱신 (PDF 업로드를 기다리지 않음)
       setShowModal(false);
+      setPdfFiles([]);
       await loadAll();
     } catch (err) {
       alert('저장 실패: ' + err.message);
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
+    // 첨부 PDF들은 모달 닫은 뒤 백그라운드로 자료실 "거래처 정보/{업체명}" 폴더에 보관
+    if (filesToUpload.length > 0) {
+      try {
+        const folderId = await ensureFolderPath(['거래처 정보', vendorName], userProfile);
+        for (let i = 0; i < filesToUpload.length; i += 1) {
+          await uploadFile(filesToUpload[i], folderId, userProfile, undefined, `${vendorName}_${filesToUpload[i].name}`);
+        }
+      } catch (err) {
+        alert('PDF 자료실 보관 중 오류: ' + err.message);
+      }
     }
   }
 
@@ -507,6 +584,33 @@ export default function OutsourceManagementPage() {
         title={`${tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서'} ${editItem ? '수정' : '추가'}`}
       >
         <form onSubmit={handleSave}>
+          {tab === 'vendor' && (
+            <div className="form-group">
+              <label>PDF 첨부 — 사업자등록증·통장사본 (자동 입력 + 자료실 보관)</label>
+              <div
+                className={`pdf-dropzone ${pdfDragOver ? 'is-over' : ''} ${pdfBusy ? 'is-busy' : ''}`}
+                onClick={() => !pdfBusy && pdfInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); if (!pdfBusy) setPdfDragOver(true); }}
+                onDragLeave={() => setPdfDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setPdfDragOver(false); if (e.dataTransfer.files?.length) handlePdfFiles(e.dataTransfer.files); }}
+              >
+                <input
+                  ref={pdfInputRef} type="file" accept="application/pdf,.pdf" multiple
+                  style={{ display: 'none' }} disabled={pdfBusy}
+                  onChange={(e) => { const fl = e.target.files; e.target.value = ''; if (fl?.length) handlePdfFiles(fl); }}
+                />
+                <span className="pdf-dropzone-icon">📄</span>
+                <span>{pdfFiles.length ? `${pdfFiles.length}개 첨부됨 (클릭/드롭으로 더 추가)` : 'PDF를 끌어다 놓거나 클릭해서 선택 (여러 개 가능)'}</span>
+              </div>
+              <p className="field-hint">
+                {pdfBusy
+                  ? (pdfStatus || 'PDF 처리 중…')
+                  : (pdfFiles.length
+                    ? `${pdfStatus ? pdfStatus + ' · ' : ''}${pdfFiles.map((f) => f.name).join(', ')} — 저장 시 자료실 "거래처 정보/${(normalizeCompany(form.name) || (form.name || '').trim()) || '업체명'}" 폴더에 보관됩니다.`
+                    : '사업자등록증·통장사본을 한 번에 첨부하면 둘 다 인식. 스캔 PDF는 OCR.')}
+              </p>
+            </div>
+          )}
           <div className="form-group">
             <label>이름 *</label>
             <input
@@ -532,14 +636,12 @@ export default function OutsourceManagementPage() {
           ) : (
             <>
               <div className="form-group">
-                <label>대표자 이름</label>
+                <label>대표자</label>
                 <input
                   value={form.representative || ''}
                   onChange={(e) => setForm({ ...form, representative: e.target.value })}
                   placeholder="대표자 성함"
-                  lang="ko"
-                  autoComplete="off"
-                  spellCheck={false}
+                  lang="ko" autoComplete="off" spellCheck={false}
                 />
               </div>
               <div className="form-group">
@@ -547,9 +649,15 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.contact || ''}
                   onChange={(e) => setForm({ ...form, contact: e.target.value })}
-                  placeholder="010-0000-0000"
-                  inputMode="tel"
-                  autoComplete="off"
+                  placeholder="010-0000-0000" inputMode="tel" autoComplete="off"
+                />
+              </div>
+              <div className="form-group">
+                <label>이메일</label>
+                <input
+                  type="email" value={form.email || ''}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="예: sales@company.com" autoComplete="off"
                 />
               </div>
               <div className="form-group">
@@ -557,32 +665,36 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.businessNumber || ''}
                   onChange={(e) => setForm({ ...form, businessNumber: e.target.value })}
-                  placeholder="000-00-00000"
-                  inputMode="numeric"
-                  autoComplete="off"
+                  placeholder="000-00-00000" inputMode="numeric" autoComplete="off"
                 />
               </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>은행명</label>
-                  <input
-                    value={form.bankName || ''}
-                    onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-                    placeholder="예: 국민은행"
-                    lang="ko"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                </div>
-                <div className="form-group" style={{ flex: 2 }}>
-                  <label>계좌번호</label>
-                  <input
-                    value={form.bankAccount || ''}
-                    onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
-                    placeholder="계좌번호 · 예금주"
-                    autoComplete="off"
-                  />
-                </div>
+              <div className="form-group">
+                <label>분류</label>
+                <input
+                  value={form.category || ''}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  placeholder="예: 자재, 공구, 소모품" autoComplete="off"
+                />
+              </div>
+              <div className="form-group">
+                <label>은행</label>
+                <input
+                  value={form.bankName || ''}
+                  onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+                  placeholder="예: 국민은행" lang="ko" autoComplete="off" spellCheck={false}
+                />
+              </div>
+              <div className="form-group">
+                <label>계좌번호</label>
+                <input
+                  value={form.bankAccount || ''}
+                  onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
+                  placeholder="계좌번호 · 예금주" autoComplete="off"
+                />
+              </div>
+              <div className="form-group">
+                <label>메모</label>
+                <textarea rows={2} value={form.note || ''} onChange={(e) => setForm({ ...form, note: e.target.value })} />
               </div>
             </>
           )}
@@ -607,8 +719,10 @@ export default function OutsourceManagementPage() {
             </>
           )}
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editItem ? '수정' : '추가'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? '저장 중…' : (editItem ? '수정' : '추가')}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)} disabled={submitting}>취소</button>
           </div>
         </form>
       </Modal>

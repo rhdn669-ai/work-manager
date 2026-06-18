@@ -1,7 +1,7 @@
 {
   "name": "work-manager",
   "private": true,
-  "version": "43.0",
+  "version": "44.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,11 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^12.11.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.14.0"
+    "react-router-dom": "^7.14.0",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

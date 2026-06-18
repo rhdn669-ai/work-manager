@@ -70,7 +70,7 @@ function SortablePurchaseRow({ p, dragEnabled, onOpen, onEdit, onDelete }) {
         </span>
       </td>
       <td data-label="등록자">{p.requesterName || '-'}</td>
-      <td data-label="발주일">{fmtDate(p.orderedAt || p.createdAt)}</td>
+      <td data-label="발주서 등록일">{fmtDate(p.createdAt || p.orderedAt)}</td>
       <td data-label="작업" style={{ textAlign: 'right' }}>
         <button type="button" className="btn btn-sm btn-outline" style={{ marginRight: 6 }} onClick={(e) => onEdit(e, p)}>수정</button>
         <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>삭제</button>
@@ -324,7 +324,7 @@ export default function PurchaseListPage() {
                 <th className="num-col">금액</th>
                 <th>상태</th>
                 <th>등록자</th>
-                <th>발주일</th>
+                <th>발주서 등록일</th>
                 <th style={{ textAlign: 'right' }}>작업</th>
               </tr>
             </thead>

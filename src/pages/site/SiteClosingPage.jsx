@@ -249,7 +249,9 @@ export default function SiteClosingPage() {
       setSiteOvertimeDays(otMap);
       // 다른 프로젝트(현재 사이트 제외) 같은 월의 직원 일별 공수 분포
       // { 이름: { day: { total, sources: [{siteName, qty}] } } }
-      const allSitesNameMap = Object.fromEntries((await getAllSites()).map((x) => [x.id, x.name]));
+      const allSitesList = await getAllSites();
+      const allSitesNameMap = Object.fromEntries(allSitesList.map((x) => [x.id, x.name]));
+      const allSitesTypeMap = Object.fromEntries(allSitesList.map((x) => [x.id, x.projectType || 'recurring']));
       const currentClosingId = `${siteId}_${y}_${String(m).padStart(2, '0')}`;
       const otherDaily = {};
       const inOtherSites = {};
@@ -263,6 +265,8 @@ export default function SiteClosingPage() {
         const name = it.detail || '';
         if (!name) return;
         const siteName = allSitesNameMap[effectiveSiteId] || '(삭제된 프로젝트)';
+        // 자동채움을 끄는 "중복 배정"은 양산↔양산 끼리만 — 단발성 추가는 양산 기본 자동채움을 막지 않음
+        const isOtherRecurring = (allSitesTypeMap[effectiveSiteId] || 'recurring') === 'recurring';
         if (!otherDaily[name]) otherDaily[name] = {};
         const dq = it.dailyQuantities || {};
         let itemTotal = 0;
@@ -270,13 +274,14 @@ export default function SiteClosingPage() {
           const q = Number(qty) || 0;
           if (q <= 0) continue;
           itemTotal += q;
-          // 실제 공수(>0)가 있는 경우에만 '다른 현장 배정'으로 간주 → 빈 껍데기 항목은 자동채움 막지 않음
-          inOtherSites[name] = true;
+          // 양산 현장에 실제 공수가 있을 때만 '중복 배정'으로 보고 자동채움 끔
+          if (isOtherRecurring) inOtherSites[name] = true;
+          // 일별 합 누적은 단발 포함 모든 현장 — 같은 날 1공수 초과 방지(남는 만큼만 자동채움)
           if (!otherDaily[name][day]) otherDaily[name][day] = { total: 0, sources: [] };
           otherDaily[name][day].total += q;
           otherDaily[name][day].sources.push({ siteName, qty: q });
         }
-        if (itemTotal > 0) {
+        if (itemTotal > 0 && isOtherRecurring) {
           if (!otherItemsByName[name]) otherItemsByName[name] = [];
           otherItemsByName[name].push({ id: it.id, siteName, total: itemTotal });
         }
@@ -291,8 +296,7 @@ export default function SiteClosingPage() {
       // 합산 대상 프로젝트들의 지출/공수를 읽기 전용으로 가져오기
       const mirrorIds = s?.mirrorFromSiteIds || [];
       if (mirrorIds.length > 0) {
-        const allSitesList = await getAllSites();
-        const siteNameMap = Object.fromEntries(allSitesList.map((x) => [x.id, x.name]));
+        const siteNameMap = allSitesNameMap;
         const results = await Promise.all(mirrorIds.map(async (srcId) => {
           const [srcFins, srcItems] = await Promise.all([
             getFinanceItems(srcId, y, m),
