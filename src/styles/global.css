@@ -34,46 +34,78 @@
 
 /* ===== CSS 변수 ===== */
 :root {
+  /* ===== 포인트색 (테마 = 주황, 토스 시그니처 자리에 주황 이식) ===== */
   --primary: #F59E0B;
-  --primary-hover: #D97706;
+  --primary-hover: #E08D08;     /* 누름/호버 */
+  --primary-press: #C77806;     /* 강한 누름 */
   --primary-soft: #FFF7ED;
   --primary-softer: #FFFBEB;
-  --secondary: #64748b;
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --danger: #dc2626;
-  --caution: #ea580c;
+  --primary-tint: #FFF3E0;      /* 연한 배경칩 */
+  --secondary: #6B7684;
+  --success: #15803D;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+  --danger-tint: #FDEBEC;
+  --caution: #EA580C;
 
-  --bg: #F6F7F9;
-  --bg-card: #ffffff;
-  --bg-sidebar: #F59E0B;
-  --bg-header: #ffffff;
-  --bg-subtle: #FAFAFA;
+  /* ===== 중립 회색 스케일 (토스 grey scale) ===== */
+  --grey-50:  #F9FAFB;
+  --grey-100: #F2F4F6;
+  --grey-200: #E5E8EB;
+  --grey-300: #D1D6DB;
+  --grey-400: #B0B8C1;
+  --grey-500: #8B95A1;
+  --grey-600: #6B7684;
+  --grey-700: #4E5968;
+  --grey-800: #333D4B;
+  --grey-900: #191F28;
 
-  --text: #111827;
-  --text-light: #4b5563;
-  --text-muted: #9ca3af;
+  /* ===== 배경/표면 ===== */
+  --bg: #F2F4F6;                /* 토스 회색 배경 — 카드가 떠 보이게 */
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #F59E0B;        /* (Phase 2에서 화이트 리디자인 예정) */
+  --bg-header: #FFFFFF;
+  --bg-subtle: #F2F4F6;
+
+  /* ===== 텍스트 ===== */
+  --text: #191F28;
+  --text-light: #4E5968;
+  --text-muted: #8B95A1;
   --text-sidebar: #1C1917;
 
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  /* ===== 구분선 ===== */
+  --border: #E5E8EB;
+  --border-strong: #D1D6DB;
 
-  /* 모서리 반경 체계 (B 컨셉: 더 둥글게) */
-  --radius-sm: 10px;
+  /* ===== 상태 배지 (의미색 연한톤 = palm) ===== */
+  --status-wait-bg: #F2F4F6;     --status-wait-fg: #6B7684;   /* 대기 = 회색 */
+  --status-progress-bg: #E8F2FE; --status-progress-fg: #2272EB; /* 진행중 = 파랑 */
+  --status-done-bg: #E7F4EC;     --status-done-fg: #15803D;   /* 완료 = 초록 */
+  --status-cancel-bg: #FDEBEC;   --status-cancel-fg: #D6303F; /* 취소/경고 = 빨강 */
+
+  /* 모서리 반경 체계 (토스: 카드 18 / 버튼·칩 12~14 / 모달 24) */
+  --radius-sm: 12px;
   --radius-md: 14px;
   --radius-lg: 18px;
   --radius-xl: 24px;
   --border-radius: var(--radius-md); /* 기존 호환 */
 
-  /* 그림자 체계 (중립 확산 그림자) */
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
-  --shadow: 0 2px 8px rgba(17, 24, 39, 0.06), 0 1px 3px rgba(17, 24, 39, 0.04);
-  --shadow-lg: 0 12px 28px rgba(17, 24, 39, 0.1), 0 4px 10px rgba(17, 24, 39, 0.04);
-  --shadow-primary: 0 6px 16px rgba(245, 158, 11, 0.28);
-  --ring-primary: 0 0 0 3px rgba(245, 158, 11, 0.22);
+  /* 그림자 체계 (토스 2층 soft shadow — 거의 검은 따뜻한 톤 저투명) */
+  --shadow-sm: 0 1px 3px rgba(0, 23, 51, 0.04);
+  --shadow: 0 1px 2px rgba(0, 23, 51, 0.05), 0 1px 3px rgba(0, 23, 51, 0.04);
+  --shadow-lg: 0 8px 28px rgba(0, 23, 51, 0.12), 0 2px 6px rgba(0, 23, 51, 0.06);
+  --shadow-primary: 0 6px 16px rgba(245, 158, 11, 0.24);
+  --ring-primary: 0 0 0 3px rgba(245, 158, 11, 0.20);
   --ring-danger: 0 0 0 3px rgba(220, 38, 38, 0.18);
 
-  /* 간격 토큰 */
+  /* 모션 (토스 표준 감속 곡선) */
+  --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 0.12s;
+  --dur: 0.2s;
+  --dur-slow: 0.32s;
+
+  /* 간격 토큰 (4px 그리드) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -90,14 +122,72 @@
   --font-lg: 16px;
   --font-xl: 20px;
   --font-2xl: 24px;
+  --font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 
   /* 버튼 높이 체계 (터치 안전) */
-  --btn-h-sm: 32px;
-  --btn-h-md: 38px;
-  --btn-h-lg: 46px;
+  --btn-h-sm: 34px;
+  --btn-h-md: 40px;
+  --btn-h-lg: 52px;
 
   --header-height: 60px;
   --sidebar-width: 168px;
+
+  color-scheme: light;
+}
+
+/* ===== 다크모드 토큰 (라이트가 기본 · [data-theme="dark"]로 전환) ===== */
+[data-theme="dark"] {
+  --primary: #FBA63C;
+  --primary-hover: #FFB454;
+  --primary-press: #E0902C;
+  --primary-soft: #2A2418;
+  --primary-softer: #221E15;
+  --primary-tint: #332A1A;
+  --secondary: #8B95A1;
+  --success: #4ADE80;
+  --warning: #FBA63C;
+  --danger: #F87171;
+  --danger-tint: #3A2122;
+  --caution: #FB923C;
+
+  --grey-50:  #1B1B21;
+  --grey-100: #24242B;
+  --grey-200: #2E2F37;
+  --grey-300: #3A3B44;
+  --grey-400: #565862;
+  --grey-500: #7C828D;
+  --grey-600: #9BA1AC;
+  --grey-700: #B7BCC5;
+  --grey-800: #D5D8DE;
+  --grey-900: #EAEBEF;
+
+  --bg: #16161A;
+  --bg-card: #1E1E24;
+  --bg-sidebar: #1E1E24;
+  --bg-header: #1E1E24;
+  --bg-subtle: #24242B;
+
+  --text: #EAEBEF;
+  --text-light: #B7BCC5;
+  --text-muted: #7C828D;
+  --text-sidebar: #EAEBEF;
+
+  --border: #2E2F37;
+  --border-strong: #3A3B44;
+
+  --status-wait-bg: #24242B;     --status-wait-fg: #9BA1AC;
+  --status-progress-bg: #15243A; --status-progress-fg: #5AA0FF;
+  --status-done-bg: #14271C;     --status-done-fg: #5FD68A;
+  --status-cancel-bg: #3A2122;   --status-cancel-fg: #F87171;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-primary: 0 6px 16px rgba(251, 166, 60, 0.28);
+  --ring-primary: 0 0 0 3px rgba(251, 166, 60, 0.28);
+  --ring-danger: 0 0 0 3px rgba(248, 113, 113, 0.28);
+
+  color-scheme: dark;
 }
 
 /* ===== 리셋 ===== */

@@ -16,6 +16,18 @@ function normalize(input) {
 export function DialogProvider({ children }) {
   const [dialog, setDialog] = useState(null);
   const resolverRef = useRef(null);
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
+
+  // 결과 알림 토스트 — toast('저장됐습니다') / toast('실패', 'error')
+  const toast = useCallback((input, type = 'success', duration = 2400) => {
+    const opts = normalize(input);
+    const id = ++toastIdRef.current;
+    setToasts((list) => [...list, { id, message: opts.message || String(input || ''), type: opts.type || type }]);
+    setTimeout(() => {
+      setToasts((list) => list.filter((t) => t.id !== id));
+    }, opts.duration || duration);
+  }, []);
 
   const close = useCallback((result) => {
     setDialog(null);
@@ -64,8 +76,22 @@ export function DialogProvider({ children }) {
   }, [dialog, close]);
 
   return (
-    <DialogContext.Provider value={{ confirm, alert }}>
+    <DialogContext.Provider value={{ confirm, alert, toast }}>
       {children}
+      {toasts.length > 0 && (
+        <div className="toast-viewport" aria-live="polite">
+          {toasts.map((t) => (
+            <div key={t.id} className={`toast toast--${t.type === 'error' ? 'error' : 'success'}`} role="status">
+              <svg className="toast__icon" viewBox="0 0 24 24" aria-hidden="true">
+                {t.type === 'error'
+                  ? <><circle cx="12" cy="12" r="9" /><path d="M12 8v5" /><path d="M12 16h.01" /></>
+                  : <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></>}
+              </svg>
+              <span>{t.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {dialog && (
         <div
           className="modal-overlay"
