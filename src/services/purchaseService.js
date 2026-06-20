@@ -369,8 +369,10 @@ export async function deletePurchase(id) {
   await deleteDoc(doc(db, 'purchases', id));
 }
 
-// 발주번호 생성 — IOPN{YYYYMMDD} 뒤에 "당일 부여 순서"(-1, -2 …)를 붙인다.
-// 같은 날짜 prefix를 가진 기존 poNo의 최대 순번 +1 (삭제가 있어도 번호 충돌 없음)
+// 발행번호(발주번호) 생성 — IOPN{YYYYMMDD} 뒤에 "그날 발행 통산 순서"(-1, -2 …).
+// 발행번호는 업체별 발주완료 단위로 부여되며, 같은 날짜 prefix의 모든 발행번호
+// (발주 건 poNo + 업체별 supplierSent.poNo)의 최대 순번 +1로 매긴다.
+// 삭제·취소가 있어도 번호가 겹치지 않는다.
 async function nextPoNo(dateObj) {
   const yyyy = dateObj.getFullYear();
   const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -380,50 +382,49 @@ async function nextPoNo(dateObj) {
   const re = new RegExp(`^${prefix}-(\\d+)$`);
   let maxSeq = 0;
   snap.forEach((d) => {
-    const m = re.exec(d.data().poNo || '');
-    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+    const data = d.data();
+    const m1 = re.exec(data.poNo || '');
+    if (m1) maxSeq = Math.max(maxSeq, parseInt(m1[1], 10));
+    const ss = data.supplierSent || {};
+    for (const k in ss) {
+      const m2 = re.exec(ss[k]?.poNo || '');
+      if (m2) maxSeq = Math.max(maxSeq, parseInt(m2[1], 10));
+    }
   });
   return `${prefix}-${maxSeq + 1}`;
 }
 
-// 상태 전이 — extra에 단계별 담당자·일시 등 기록.
-// draft를 벗어나는데 아직 발주번호가 없으면 당일 순번으로 부여 (칸반 드래그 등 모든 경로 커버)
+// 상태 전이 — extra에 단계별 담당자·일시 등 기록 (발행번호는 발주완료 시 업체별로 부여)
 export async function setPurchaseStatus(id, status, extra = {}) {
-  const ref = doc(db, 'purchases', id);
-  const update = { status, ...extra, updatedAt: new Date() };
-  if (status && status !== 'draft' && !('poNo' in extra)) {
-    const snap = await getDoc(ref);
-    const d = snap.exists() ? snap.data() : {};
-    if (!d.poNo) {
-      const base = d.orderedAt?.toDate
-        ? d.orderedAt.toDate()
-        : d.orderedAt
-          ? new Date(d.orderedAt)
-          : new Date();
-      update.poNo = await nextPoNo(base);
-    }
-  }
-  await updateDoc(ref, update);
+  await updateDoc(doc(db, 'purchases', id), { status, ...extra, updatedAt: new Date() });
 }
 
-// 초안 → 발주 확정 (draft → ordered). 첫 확정 시 당일 순번 발주번호 부여 (이미 있으면 유지)
+// 초안 → 발주 확정 (draft → ordered). 발행번호는 업체별 발주완료(markSupplierSent)에서 부여
 export async function confirmPurchase(id, confirmedBy = '') {
-  const ref = doc(db, 'purchases', id);
-  const snap = await getDoc(ref);
-  const existing = snap.exists() ? snap.data() : {};
-  const now = new Date();
-  const update = { status: 'ordered', orderedAt: now, confirmedBy, updatedAt: now };
-  if (!existing.poNo) update.poNo = await nextPoNo(now);
-  await updateDoc(ref, update);
-}
-
-// 업체별 발주 완료 마킹
-export async function markSupplierSent(purchaseId, supplierName, sentBy = '') {
-  await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierSent.${supplierName.replace(/\./g, '_')}.sentAt`]: new Date(),
-    [`supplierSent.${supplierName.replace(/\./g, '_')}.sentBy`]: sentBy,
+  await updateDoc(doc(db, 'purchases', id), {
+    status: 'ordered',
+    orderedAt: new Date(),
+    confirmedBy,
     updatedAt: new Date(),
   });
+}
+
+// 업체별 발주 완료 마킹 — 그 업체에 '발행번호'를 그날 통산 순번으로 부여(없을 때만).
+// 반환: 그 업체의 발행번호(poNo)
+export async function markSupplierSent(purchaseId, supplierName, sentBy = '') {
+  const key = supplierName.replace(/\./g, '_');
+  const ref = doc(db, 'purchases', purchaseId);
+  const snap = await getDoc(ref);
+  const data = snap.exists() ? snap.data() : {};
+  const existing = data.supplierSent?.[key];
+  const poNo = existing?.poNo || (await nextPoNo(new Date()));
+  await updateDoc(ref, {
+    [`supplierSent.${key}.sentAt`]: new Date(),
+    [`supplierSent.${key}.sentBy`]: sentBy,
+    [`supplierSent.${key}.poNo`]: poNo,
+    updatedAt: new Date(),
+  });
+  return poNo;
 }
 
 // 업체별 발주 완료 마킹 취소

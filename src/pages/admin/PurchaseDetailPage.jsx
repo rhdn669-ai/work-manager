@@ -54,10 +54,25 @@ const PO_DEFAULTS = {
   payment: '납품완료후 익월말',
   delivery: '긴급',
 };
+// 발행번호 순번(-N)의 숫자만 추출 (정렬용)
+function poSeqOf(po) {
+  const m = (po || '').match(/-(\d+)$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+// 발주 건에 발행번호가 하나라도 부여됐는지 (업체별 발행 or 구버전 건 단위)
+function hasIssuedPo(purchase) {
+  const ss = purchase.supplierSent || {};
+  return Object.values(ss).some((s) => s && s.poNo) || !!purchase.poNo;
+}
+// 발주 건 '대표' 발행번호 — 업체별 발행번호 중 가장 빠른(작은 순번) 것
 function poNumber(purchase) {
-  // 확정 시 부여된 발주번호(IOPN…-순번)가 있으면 그대로 사용
-  if (purchase.poNo) return purchase.poNo;
-  // 미부여(초안/구버전) — 날짜 기반 fallback (순번 없음)
+  const ss = purchase.supplierSent || {};
+  const nums = Object.values(ss)
+    .map((s) => s && s.poNo)
+    .filter(Boolean);
+  if (nums.length > 0) return nums.sort((a, b) => poSeqOf(a) - poSeqOf(b))[0];
+  if (purchase.poNo) return purchase.poNo; // 구버전(발주 건 단위) 호환
+  // 미발행 — 날짜 기반 fallback (순번 없음)
   const d = purchase.orderedAt?.toDate
     ? purchase.orderedAt.toDate()
     : purchase.orderedAt
@@ -164,8 +179,6 @@ export default function PurchaseDetailPage() {
   const [pdfFolders, setPdfFolders] = useState([]); // [{ id, label }] 경로 라벨 포함 평면 목록
   const [pdfFolderId, setPdfFolderId] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
-  const [pdfSaving, setPdfSaving] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState('');
 
   useEffect(() => {
     loadData();
@@ -666,38 +679,43 @@ export default function PurchaseDetailPage() {
     const no = poNumber(purchase);
     const safeTitle = (purchase.title || '발주서').replace(/[/\\]/g, '_');
     setPdfFileName(`${no}_${safeTitle}`);
-    setPdfStatus('');
     setPdfModalOpen(true);
   }
 
-  // 현재 발주서 양식을 PDF로 캡처 → 자료실에 업로드
-  async function handleSavePdfToLibrary() {
+  // 「PDF 출력」 — 대표님이 가장 선명하다고 하신 브라우저 인쇄(window.print)를 그대로 유지.
+  function handlePdfOutput() {
+    setPrintStamp(fmtDateTime(new Date()));
+    recordPrint();
+    setTimeout(() => window.print(), 120);
+  }
+
+  // 자료실 저장 — 버튼 누르면 즉시 모달을 닫고 PDF 생성·업로드는 백그라운드로 진행.
+  // 대표님은 대기하지 않고 바로 다른 작업을 할 수 있으며, 완료/실패는 토스트로만 알린다.
+  function handleSavePdfToLibrary() {
     const el = printRef.current;
     if (!el) {
       alert('인쇄 양식을 찾을 수 없습니다.');
       return;
     }
-    setPdfSaving(true);
-    try {
-      await flushAutoSave();
-      setPdfStatus('PDF 생성 중… (서버 렌더, 최초 호출은 수 초 걸릴 수 있어요)');
-      setPrintStamp(fmtDateTime(new Date()));
-      // 스탬프 반영을 위해 다음 페인트까지 한 틱 대기
-      await new Promise((r) => setTimeout(r, 80));
-      const blob = await captureToPdfBlob(el, `${pdfFileName || '발주서'}.pdf`);
-      setPdfStatus('자료실 업로드 중…');
-      await uploadPdfToLibrary(blob, pdfFileName, pdfFolderId || null, userProfile, (p) =>
-        setPdfStatus(`업로드 중… ${p}%`),
-      );
-      recordPrint();
-      setPdfModalOpen(false);
-      alert('자료실에 PDF로 저장되었습니다.');
-    } catch (err) {
-      alert('PDF 자료실 저장 중 오류: ' + err.message);
-    } finally {
-      setPdfSaving(false);
-      setPdfStatus('');
-    }
+    const fileName = `${pdfFileName || '발주서'}.pdf`;
+    const folderId = pdfFolderId || null;
+    // 모달 즉시 닫기 + 백그라운드 시작 알림
+    setPdfModalOpen(false);
+    toast(`"${fileName}" 자료실 저장을 시작했습니다…`);
+    // fire-and-forget — await로 화면을 막지 않음
+    (async () => {
+      try {
+        await flushAutoSave();
+        setPrintStamp(fmtDateTime(new Date()));
+        await new Promise((r) => setTimeout(r, 80));
+        const blob = await captureToPdfBlob(el, fileName);
+        await uploadPdfToLibrary(blob, pdfFileName, folderId, userProfile);
+        recordPrint();
+        toast(`자료실에 저장되었습니다: ${fileName}`);
+      } catch (err) {
+        toast(`자료실 저장 실패: ${err?.message || err}`, 'error');
+      }
+    })();
   }
 
   // 페이지 이탈 시 미저장분 flush
@@ -895,11 +913,12 @@ export default function PurchaseDetailPage() {
   // 발주완료 마킹 (확인창 없이 바로 — 메일 발송 후 자동 호출용)
   async function markSent(supplierName) {
     try {
-      await markSupplierSent(id, supplierName, userProfile?.name || '');
+      const poNo = await markSupplierSent(id, supplierName, userProfile?.name || '');
       const sentKey = supplierName.replace(/\./g, '_');
+      const prevEntry = purchaseRef.current?.supplierSent?.[sentKey];
       const nextSent = {
         ...(purchaseRef.current?.supplierSent || {}),
-        [sentKey]: { sentAt: new Date(), sentBy: userProfile?.name || '' },
+        [sentKey]: { sentAt: new Date(), sentBy: userProfile?.name || '', poNo: prevEntry?.poNo || poNo },
       };
       purchaseRef.current = { ...(purchaseRef.current || {}), supplierSent: nextSent };
       setPurchase((prev) => ({ ...prev, supplierSent: nextSent }));
@@ -985,7 +1004,7 @@ export default function PurchaseDetailPage() {
           <h2>{purchase.title || '(제목 없음)'}</h2>
           <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
             {STATUS[status]?.label || status}
-            {status !== 'draft' && <span className="purchase-badge-pono">{poNumber(purchase)}</span>}
+            {hasIssuedPo(purchase) && <span className="purchase-badge-pono">{poNumber(purchase)}</span>}
           </span>
         </div>
         <div
@@ -1081,12 +1100,8 @@ export default function PurchaseDetailPage() {
         <button
           type="button"
           className="pdf-print-fab"
-          onClick={() => {
-            setPrintStamp(fmtDateTime(new Date()));
-            recordPrint();
-            setTimeout(() => window.print(), 120);
-          }}
-          title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
+          onClick={handlePdfOutput}
+          title="브라우저 인쇄로 발주서를 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
         >
           PDF 출력
         </button>
@@ -1137,7 +1152,10 @@ export default function PurchaseDetailPage() {
                 .join(' / '),
               note: form.note,
               orderDateKo: liveOrderDateKo,
-              poNum: poNumber(purchase),
+              // 업체별 출력이면 그 업체 발행번호, 전체 출력이면 발주 건 대표 발행번호
+              poNum: printSupplierFilter
+                ? purchase.supplierSent?.[printSupplierFilter.replace(/\./g, '_')]?.poNo || poNumber(purchase)
+                : poNumber(purchase),
               supplierTitle: printSupplierFilter ? `${printSupplierFilter} 귀하` : liveSupplierTitle,
               supplierLabel: printSupplierFilter || '',
               // 특정 업체 출력이면 그 업체 품목만
@@ -1733,7 +1751,12 @@ export default function PurchaseDetailPage() {
                             <td data-label="발주 상태" style={{ paddingLeft: 24 }}>
                               {sent ? (
                                 <span className="purchase-badge purchase-badge-received">
-                                  발주완료 · {fmtDate(sent.sentAt)} · {sent.sentBy}
+                                  발주완료 · {fmtDate(sent.sentAt)}
+                                  {sent.poNo ? (
+                                    <strong className="purchase-sup-pono"> · {sent.poNo}</strong>
+                                  ) : (
+                                    ''
+                                  )}
                                 </span>
                               ) : (
                                 <span className="purchase-badge purchase-badge-draft">미발주</span>
@@ -2173,7 +2196,7 @@ export default function PurchaseDetailPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={pdfModalOpen} onClose={() => !pdfSaving && setPdfModalOpen(false)} title="PDF로 자료실 저장">
+      <Modal isOpen={pdfModalOpen} onClose={() => setPdfModalOpen(false)} title="PDF로 자료실 저장">
         <p className="field-hint">
           현재 발주서 양식을 PDF 파일로 만들어 사내 자료실에 보관합니다. 저장 위치 폴더와 파일명을 지정하세요.
         </p>
@@ -2184,7 +2207,6 @@ export default function PurchaseDetailPage() {
             value={pdfFileName}
             onChange={(e) => setPdfFileName(e.target.value)}
             placeholder="예: IOPN20260620_발주서"
-            disabled={pdfSaving}
           />
           <p className="field-hint">확장자(.pdf)는 자동으로 붙습니다.</p>
         </div>
@@ -2198,26 +2220,20 @@ export default function PurchaseDetailPage() {
             ariaLabel="저장 폴더 선택"
           />
         </div>
-        {pdfStatus && (
-          <p className="field-hint" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-            {pdfStatus}
-          </p>
-        )}
+        <p className="field-hint">
+          「자료실에 저장」을 누르면 <strong>바로 닫히고</strong>, 생성·업로드는 뒤에서 진행됩니다. 완료되면 알림으로
+          알려드려요 — 기다리실 필요 없습니다.
+        </p>
         <div className="modal-actions">
           <button
             type="button"
             className="btn btn-primary"
             onClick={handleSavePdfToLibrary}
-            disabled={pdfSaving || !pdfFileName.trim()}
+            disabled={!pdfFileName.trim()}
           >
-            {pdfSaving ? '저장 중…' : '자료실에 저장'}
+            자료실에 저장
           </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() => setPdfModalOpen(false)}
-            disabled={pdfSaving}
-          >
+          <button type="button" className="btn btn-outline" onClick={() => setPdfModalOpen(false)}>
             취소
           </button>
         </div>
