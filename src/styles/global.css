@@ -14813,8 +14813,9 @@ tr.is-newly-added > td {
 /* ===== 페이지 상단/하단 이동 플로팅 버튼 ===== */
 .scroll-jump-btn {
   position: fixed;
-  right: 24px;
-  bottom: 140px; /* PDF FAB 그룹(~122px) 위에 위치 */
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
   z-index: 89;
   width: 40px;
   height: 40px;
@@ -14833,7 +14834,7 @@ tr.is-newly-added > td {
   background: var(--primary);
   color: #fff;
   box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
-  transform: scale(1.08);
+  transform: translateX(-50%) scale(1.08);
 }
 .scroll-jump-btn svg {
   width: 20px;
@@ -14842,8 +14843,7 @@ tr.is-newly-added > td {
 }
 @media (max-width: 768px) {
   .scroll-jump-btn {
-    bottom: 130px;
-    right: 16px;
+    bottom: 70px; /* BottomNav 위 */
   }
 }
 
