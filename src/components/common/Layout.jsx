@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import HintReminderBanner from './HintReminderBanner';
 import VehicleMileageModal from './VehicleMileageModal';
-import Icon from './Icon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 import { getMileage } from '../../services/vehicleMileageService';
@@ -35,21 +34,6 @@ export default function Layout() {
   // 새 버전 배포 감지 — 토스트로 알림 후 사용자가 새로고침
   const { hasNewVersion, latestVersion, latestBuildTime } = useVersionCheck();
 
-  // 페이지 상단/하단 이동 버튼 — 스크롤 위치 50% 기준으로 방향 전환
-  const [scrollDir, setScrollDir] = useState('down'); // 'up' | 'down'
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const onScroll = useCallback(() => {
-    const scrollY = window.scrollY;
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    if (maxScroll < 100) { setShowScrollBtn(false); return; }
-    setShowScrollBtn(true);
-    setScrollDir(scrollY / maxScroll >= 0.5 ? 'up' : 'down');
-  }, []);
-  useEffect(() => {
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [location.pathname, onScroll]);
 
   // 차량 운행자 — 이번달 키로수 미입력 시 자동 안내 모달 (1회 체크 / 로그인당 1회)
   // 자동 안내 시작일 — 이 날짜 이전에는 자동 모달이 뜨지 않음 (수동 메뉴 입력은 항상 가능)
@@ -173,19 +157,6 @@ export default function Layout() {
         onClose={() => setVehicleModalOpen(false)}
         onSaved={() => setVehicleModalOpen(false)}
       />
-      {showScrollBtn && (
-        <button
-          type="button"
-          className="scroll-jump-btn no-print"
-          aria-label={scrollDir === 'up' ? '페이지 상단으로' : '페이지 하단으로'}
-          onClick={() => {
-            if (scrollDir === 'up') window.scrollTo({ top: 0, behavior: 'smooth' });
-            else window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-          }}
-        >
-          <Icon name="chevronDown" style={{ transform: scrollDir === 'up' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-        </button>
-      )}
     </div>
   );
 }

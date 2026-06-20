@@ -1,4 +1,6 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import Icon from '../../components/common/Icon';
 
 const TABS = [
   { key: 'orders', label: '발주 현황', path: '/admin/purchase' },
@@ -13,13 +15,35 @@ function getActiveTab(pathname) {
   if (pathname.startsWith('/admin/purchase/items')) return 'items';
   if (pathname.startsWith('/admin/purchase/suppliers')) return 'suppliers';
   if (pathname.startsWith('/admin/purchase/quotes')) return 'quotes';
-  return 'orders'; // /admin/purchase, /admin/purchase/:id, /admin/purchase/trash
+  return 'orders';
 }
 
 export default function PurchaseLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const active = getActiveTab(pathname);
+
+  const [scrollDir, setScrollDir] = useState('down');
+  const [showBtn, setShowBtn] = useState(false);
+
+  const check = useCallback(() => {
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxScroll < 80) { setShowBtn(false); return; }
+    setShowBtn(true);
+    setScrollDir(window.scrollY / maxScroll >= 0.5 ? 'up' : 'down');
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('scroll', check, { passive: true });
+    // 콘텐츠 로드 후 높이 재확인
+    const t1 = setTimeout(check, 100);
+    const t2 = setTimeout(check, 600);
+    return () => {
+      window.removeEventListener('scroll', check);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [pathname, check]);
 
   return (
     <>
@@ -36,6 +60,22 @@ export default function PurchaseLayout() {
         ))}
       </div>
       <Outlet />
+      {showBtn && (
+        <button
+          type="button"
+          className="scroll-jump-btn no-print"
+          aria-label={scrollDir === 'up' ? '페이지 상단으로' : '페이지 하단으로'}
+          onClick={() => {
+            if (scrollDir === 'up') window.scrollTo({ top: 0, behavior: 'smooth' });
+            else window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+          }}
+        >
+          <Icon
+            name="chevronDown"
+            style={{ transform: scrollDir === 'up' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+          />
+        </button>
+      )}
     </>
   );
 }

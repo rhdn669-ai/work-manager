@@ -14814,7 +14814,7 @@ tr.is-newly-added > td {
 .scroll-jump-btn {
   position: fixed;
   right: 24px;
-  bottom: 80px;
+  bottom: 140px; /* PDF FAB 그룹(~122px) 위에 위치 */
   z-index: 89;
   width: 40px;
   height: 40px;
@@ -14842,7 +14842,7 @@ tr.is-newly-added > td {
 }
 @media (max-width: 768px) {
   .scroll-jump-btn {
-    bottom: 70px; /* BottomNav 위 */
+    bottom: 130px;
     right: 16px;
   }
 }
