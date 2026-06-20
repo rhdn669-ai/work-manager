@@ -14900,6 +14900,11 @@ tr.is-newly-added > td {
     print-color-adjust: exact !important;
   }
 
+  /* 인쇄 배경 흰색 강제 — body 회색 배경이 마지막 페이지 하단에 비치는 현상 방지 */
+  html, body {
+    background: #fff !important;
+  }
+
   /* 네비게이션·헤더·사이드바·하단·토스트·모달 숨김 */
   .app-header,
   .app-layout > header,
