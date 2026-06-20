@@ -4,8 +4,11 @@ export function effLen(s) {
   let len = 0;
   for (const ch of String(s || '')) {
     const c = ch.charCodeAt(0);
-    const wide = (c >= 0x1100 && c <= 0x11ff) || (c >= 0x3000 && c <= 0x9fff)
-      || (c >= 0xac00 && c <= 0xd7af) || (c >= 0xff00 && c <= 0xffef);
+    const wide =
+      (c >= 0x1100 && c <= 0x11ff) ||
+      (c >= 0x3000 && c <= 0x9fff) ||
+      (c >= 0xac00 && c <= 0xd7af) ||
+      (c >= 0xff00 && c <= 0xffef);
     len += wide ? 1.8 : 1;
   }
   return len;

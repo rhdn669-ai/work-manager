@@ -2,10 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  getSite, getClosingItems, addClosingItem, updateClosingItem, deleteClosingItem,
-  getFinanceItems, addFinanceItem, updateFinanceItem, deleteFinanceItem,
-  initRosterFromPreviousMonth, updateSite, getAssignedEmployeeIds,
-  getAllSites, getEmployeeClosingItemsByMonth,
+  getSite,
+  getClosingItems,
+  addClosingItem,
+  updateClosingItem,
+  deleteClosingItem,
+  getFinanceItems,
+  addFinanceItem,
+  updateFinanceItem,
+  deleteFinanceItem,
+  initRosterFromPreviousMonth,
+  updateSite,
+  getAssignedEmployeeIds,
+  getAllSites,
+  getEmployeeClosingItemsByMonth,
 } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -16,6 +26,8 @@ import { getFreelancers, getVendors, getRateForDate, addFreelancer } from '../..
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
+import Select from '../../components/common/Select';
+import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
 
 function daysInMonth(yr, mo) {
@@ -71,7 +83,17 @@ function autofillUpToDayForSite(site, year, month) {
 // 직원 dailyQuantities에서 평일 빈 칸을 자동 채움 (수동값/연차일/공휴일/주말 보존)
 // fromDay: 채우기 시작일 (기본 1) — 직원 신규 추가 시 추가 당일부터 채울 때 사용
 // otherDailyByDay: { [day]: { total, sources } } — 다른 프로젝트의 같은 직원·같은 날 공수 합. 1일 합 1 초과 방지
-function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay, fromDay = 1, otherDailyByDay = {}, skipAutofill = false }) {
+function autofillEmployeeDq({
+  oldDq,
+  year,
+  month,
+  holidaySet,
+  leaveMap,
+  upToDay,
+  fromDay = 1,
+  otherDailyByDay = {},
+  skipAutofill = false,
+}) {
   // 같은 직원이 다른 양산형 프로젝트에도 배정돼 있으면 자동 채움 스킵
   // (직원은 하루에 한 프로젝트만 수행 — 어느 프로젝트에서 일했는지는 사용자가 직접 입력)
   if (skipAutofill) return { newDq: oldDq || {}, changed: false };
@@ -103,6 +125,16 @@ function autofillEmployeeDq({ oldDq, year, month, holidaySet, leaveMap, upToDay,
 
 const AUTO_SAVE_DELAY_MS = 800;
 
+function useViewportWidth() {
+  const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
+  useEffect(() => {
+    const handler = () => setVw(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return vw;
+}
+
 export default function SiteClosingPage() {
   const { siteId, year, month } = useParams();
   const y = Number(year);
@@ -110,6 +142,8 @@ export default function SiteClosingPage() {
   const { isAdmin, isExecutive, canViewSalary, userProfile } = useAuth();
   const { confirm, alert } = useDialog();
   const navigate = useNavigate();
+  const vw = useViewportWidth();
+  const isXSmall = vw <= 360;
 
   const [site, setSite] = useState(null);
   const [userMap, setUserMap] = useState({});
@@ -169,7 +203,9 @@ export default function SiteClosingPage() {
         const [fs, vs] = await Promise.all([getFreelancers(), getVendors()]);
         setFreelancers(fs);
         setVendors(vs);
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error(err);
+      }
     })();
   }, []);
 
@@ -185,7 +221,9 @@ export default function SiteClosingPage() {
   const dayCount = daysInMonth(y, m);
   const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
-  useEffect(() => { loadAll(); }, [siteId, y, m]);
+  useEffect(() => {
+    loadAll();
+  }, [siteId, y, m]);
 
   useEffect(() => {
     return () => {
@@ -202,36 +240,43 @@ export default function SiteClosingPage() {
       const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
       const totalDaysInMonth = new Date(y, m, 0).getDate();
       const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(totalDaysInMonth).padStart(2, '0')}`;
-      const [s, its, fins, users, approvedLeaves, assigned, allEmpItemsThisMonth, eventList, allOvertime] = await Promise.all([
-        getSite(siteId),
-        getClosingItems(siteId, y, m),
-        getFinanceItems(siteId, y, m),
-        getUsers(),
-        getApprovedLeavesByMonth(y, m),
-        getAssignedEmployeeIds(y, m),
-        getEmployeeClosingItemsByMonth(y, m),
-        getEvents().catch(() => []),
-        getAllOvertimeRecords(monthStart, monthEnd).catch(() => []),
-      ]);
+      const [s, its, fins, users, approvedLeaves, assigned, allEmpItemsThisMonth, eventList, allOvertime] =
+        await Promise.all([
+          getSite(siteId),
+          getClosingItems(siteId, y, m),
+          getFinanceItems(siteId, y, m),
+          getUsers(),
+          getApprovedLeavesByMonth(y, m),
+          getAssignedEmployeeIds(y, m),
+          getEmployeeClosingItemsByMonth(y, m),
+          getEvents().catch(() => []),
+          getAllOvertimeRecords(monthStart, monthEnd).catch(() => []),
+        ]);
 
       // 휴무일 집합 — 한국 공휴일 + Firestore 등록 휴일 (해당 월만)
       const hSet = new Set();
       try {
         const koreanHolidays = getKoreanHolidayDates(y) || [];
-        koreanHolidays.forEach((iso) => { if (iso.startsWith(`${y}-${String(m).padStart(2, '0')}`)) hSet.add(iso); });
-      } catch { /* 무시 */ }
-      eventList.filter((e) => e.type === 'holiday').forEach((e) => {
-        const start = new Date(e.startDate);
-        const end = new Date(e.endDate || e.startDate);
-        const cur = new Date(start);
-        while (cur <= end) {
-          if (cur.getFullYear() === y && cur.getMonth() + 1 === m) {
-            const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
-            hSet.add(iso);
+        koreanHolidays.forEach((iso) => {
+          if (iso.startsWith(`${y}-${String(m).padStart(2, '0')}`)) hSet.add(iso);
+        });
+      } catch {
+        /* 무시 */
+      }
+      eventList
+        .filter((e) => e.type === 'holiday')
+        .forEach((e) => {
+          const start = new Date(e.startDate);
+          const end = new Date(e.endDate || e.startDate);
+          const cur = new Date(start);
+          while (cur <= end) {
+            if (cur.getFullYear() === y && cur.getMonth() + 1 === m) {
+              const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+              hSet.add(iso);
+            }
+            cur.setDate(cur.getDate() + 1);
           }
-          cur.setDate(cur.getDate() + 1);
-        }
-      });
+        });
       setHolidaySet(hSet);
 
       // 이 사이트의 승인된 잔업 — 직원 이름별 잔업일 집합 (휴무일 출근 표시용)
@@ -297,18 +342,17 @@ export default function SiteClosingPage() {
       const mirrorIds = s?.mirrorFromSiteIds || [];
       if (mirrorIds.length > 0) {
         const siteNameMap = allSitesNameMap;
-        const results = await Promise.all(mirrorIds.map(async (srcId) => {
-          const [srcFins, srcItems] = await Promise.all([
-            getFinanceItems(srcId, y, m),
-            getClosingItems(srcId, y, m),
-          ]);
-          const srcName = siteNameMap[srcId] || '(삭제된 프로젝트)';
-          const expenseFins = srcFins
-            .filter((f) => f.type === 'expense')
-            .map((f) => ({ ...f, _mirrored: true, _sourceName: srcName, _sourceSiteId: srcId }));
-          const labor = srcItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
-          return { expenseFins, labor };
-        }));
+        const results = await Promise.all(
+          mirrorIds.map(async (srcId) => {
+            const [srcFins, srcItems] = await Promise.all([getFinanceItems(srcId, y, m), getClosingItems(srcId, y, m)]);
+            const srcName = siteNameMap[srcId] || '(삭제된 프로젝트)';
+            const expenseFins = srcFins
+              .filter((f) => f.type === 'expense')
+              .map((f) => ({ ...f, _mirrored: true, _sourceName: srcName, _sourceSiteId: srcId }));
+            const labor = srcItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+            return { expenseFins, labor };
+          }),
+        );
         setMirroredFinances(results.flatMap((r) => r.expenseFins));
         setMirroredLabor(results.reduce((sum, r) => sum + r.labor, 0));
       } else {
@@ -415,7 +459,11 @@ export default function SiteClosingPage() {
         return { ...it, closings: migrated, dailyQuantities: {}, quantity, amount };
       });
       if (migrationUpdates.length > 0) {
-        try { await Promise.all(migrationUpdates); } catch (e) { console.error('vendor_case 마이그레이션 일부 실패', e); }
+        try {
+          await Promise.all(migrationUpdates);
+        } catch (e) {
+          console.error('vendor_case 마이그레이션 일부 실패', e);
+        }
       }
 
       setItems(finalItems);
@@ -429,9 +477,10 @@ export default function SiteClosingPage() {
       });
       setEditBuf(buf);
       const fbuf = {};
-      fins.forEach((f) => { fbuf[f.id] = { ...f }; });
+      fins.forEach((f) => {
+        fbuf[f.id] = { ...f };
+      });
       setFinanceBuf(fbuf);
-
     } catch (err) {
       console.error(err);
     } finally {
@@ -440,7 +489,12 @@ export default function SiteClosingPage() {
   }
 
   async function handleCopyPrevMonth() {
-    if (!await confirm('전월 직원/프리랜서 명단을 복사합니다.\n(수량·금액은 0으로 초기화, 매출/지출은 복사되지 않습니다)\n\n계속하시겠습니까?')) return;
+    if (
+      !(await confirm(
+        '전월 직원/프리랜서 명단을 복사합니다.\n(수량·금액은 0으로 초기화, 매출/지출은 복사되지 않습니다)\n\n계속하시겠습니까?',
+      ))
+    )
+      return;
     setCopying(true);
     try {
       const count = await initRosterFromPreviousMonth(siteId, y, m);
@@ -454,7 +508,12 @@ export default function SiteClosingPage() {
   }
 
   async function handleClearItems() {
-    if (!await confirm(`공수표 항목 ${items.length}건을 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?`)) return;
+    if (
+      !(await confirm(
+        `공수표 항목 ${items.length}건을 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?`,
+      ))
+    )
+      return;
     setClearing(true);
     try {
       for (const item of items) {
@@ -473,7 +532,12 @@ export default function SiteClosingPage() {
   }
 
   async function handleCloseProject() {
-    if (!await confirm(`"${site.name}" 프로젝트를 마감 처리하시겠습니까?\n\n마감 후 수정이 불가하며, 프로젝트 목록에서 재활성할 수 있습니다.`)) return;
+    if (
+      !(await confirm(
+        `"${site.name}" 프로젝트를 마감 처리하시겠습니까?\n\n마감 후 수정이 불가하며, 프로젝트 목록에서 재활성할 수 있습니다.`,
+      ))
+    )
+      return;
     try {
       await updateSite(siteId, { status: 'completed' });
       await loadAll({ silent: true });
@@ -573,7 +637,7 @@ export default function SiteClosingPage() {
   // 프리랜서/일용직 직접 입력 모달 열기 (picker 모달 닫고 입력 폼 표시)
   function openDirectInput(itemType) {
     setFreelancerPickerMode(null);
-    const vendorSuggestion = itemType === 'freelancer' ? (site?.defaultVendors?.[items.length] || '') : '';
+    const vendorSuggestion = itemType === 'freelancer' ? site?.defaultVendors?.[items.length] || '' : '';
     setDirectInputModal({ type: itemType, name: '', vendor: vendorSuggestion, dailyRate: 0 });
   }
 
@@ -582,9 +646,15 @@ export default function SiteClosingPage() {
     const m_ = directInputModal;
     if (!m_) return;
     const name = (m_.name || '').trim();
-    if (!name) { alert('이름을 입력해주세요.'); return; }
+    if (!name) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
     const dup = items.some((it) => it.itemType === m_.type && (it.detail || '').trim() === name);
-    if (dup) { alert(`${name}은(는) 이미 추가되어 있습니다.`); return; }
+    if (dup) {
+      alert(`${name}은(는) 이미 추가되어 있습니다.`);
+      return;
+    }
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     const vendor = (m_.vendor || '').trim();
@@ -618,8 +688,11 @@ export default function SiteClosingPage() {
 
   // 프리랜서 선택 시 — 이름/업체/단가 자동 입력
   async function handlePickFreelancer(f, itemType) {
-    const alreadyExists = items.some((it) => (it.itemType === itemType) && it.detail === f.name);
-    if (alreadyExists) { alert(`${f.name}은(는) 이미 추가되어 있습니다.`); return; }
+    const alreadyExists = items.some((it) => it.itemType === itemType && it.detail === f.name);
+    if (alreadyExists) {
+      alert(`${f.name}은(는) 이미 추가되어 있습니다.`);
+      return;
+    }
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
@@ -648,7 +721,14 @@ export default function SiteClosingPage() {
     setPickedVendor(null);
   }
 
-  async function addVendorRow({ itemType, vendorName, projectName = '', unitPrice = 0, vendorLocked = false, detailLocked = false }) {
+  async function addVendorRow({
+    itemType,
+    vendorName,
+    projectName = '',
+    unitPrice = 0,
+    vendorLocked = false,
+    detailLocked = false,
+  }) {
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     await addClosingItem(siteId, y, m, {
@@ -679,8 +759,16 @@ export default function SiteClosingPage() {
   }
 
   async function handlePickMember(f) {
-    const dup = items.some((it) => it.itemType === 'vendor' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === (f?.name || ''));
-    if (dup) { alert(`${pickedVendor?.name} · ${f?.name}는 이미 추가되어 있습니다.`); return; }
+    const dup = items.some(
+      (it) =>
+        it.itemType === 'vendor' &&
+        (it.vendor || '') === (pickedVendor?.name || '') &&
+        (it.detail || '') === (f?.name || ''),
+    );
+    if (dup) {
+      alert(`${pickedVendor?.name} · ${f?.name}는 이미 추가되어 있습니다.`);
+      return;
+    }
     const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
     const rate = getRateForDate(f, targetDate) || Number(pickedVendor?.dailyRate) || 0;
     await addVendorRow({
@@ -707,8 +795,16 @@ export default function SiteClosingPage() {
   }
 
   async function handlePickProject(p) {
-    const dup = items.some((it) => it.itemType === 'vendor_case' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === (p?.name || ''));
-    if (dup) { alert(`${pickedVendor?.name} · ${p?.name}는 이미 추가되어 있습니다.`); return; }
+    const dup = items.some(
+      (it) =>
+        it.itemType === 'vendor_case' &&
+        (it.vendor || '') === (pickedVendor?.name || '') &&
+        (it.detail || '') === (p?.name || ''),
+    );
+    if (dup) {
+      alert(`${pickedVendor?.name} · ${p?.name}는 이미 추가되어 있습니다.`);
+      return;
+    }
     await addVendorRow({
       itemType: 'vendor_case',
       vendorName: pickedVendor?.name || '',
@@ -736,7 +832,10 @@ export default function SiteClosingPage() {
   async function handleAddEmployee(user) {
     const resolvedType = 'employee';
     const alreadyExists = items.some((it) => it.itemType === resolvedType && it.detail === user.name);
-    if (alreadyExists) { alert(`${user.name}은(는) 이미 추가되어 있습니다.`); return; }
+    if (alreadyExists) {
+      alert(`${user.name}은(는) 이미 추가되어 있습니다.`);
+      return;
+    }
     const nextOrder = items.length ? Math.max(...items.map((i) => i.order || 0)) + 1 : 1;
     const nextNo = items.length ? Math.max(...items.map((i) => i.no || 0)) + 1 : 1;
     const monthlySalary = Number(user.fixedCost) || 0;
@@ -820,7 +919,7 @@ export default function SiteClosingPage() {
   }
 
   async function handleDeleteRow(itemId) {
-    if (!await confirm('이 항목을 삭제하시겠습니까?')) return;
+    if (!(await confirm('이 항목을 삭제하시겠습니까?'))) return;
     if (timersRef.current[itemId]) {
       clearTimeout(timersRef.current[itemId]);
       delete timersRef.current[itemId];
@@ -1016,8 +1115,14 @@ export default function SiteClosingPage() {
       const today = new Date();
       const tYear = today.getFullYear();
       const tMonth = today.getMonth() + 1;
-      let yyyy = tYear, mm = tMonth, dd = today.getDate();
-      if (tYear !== y || tMonth !== m) { yyyy = y; mm = m; dd = 1; }
+      let yyyy = tYear,
+        mm = tMonth,
+        dd = today.getDate();
+      if (tYear !== y || tMonth !== m) {
+        yyyy = y;
+        mm = m;
+        dd = 1;
+      }
       const dateStr = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
       closings.push({ id: `c-${Date.now()}`, date: dateStr, count: 0, units: '' });
       cur.closings = closings;
@@ -1070,7 +1175,7 @@ export default function SiteClosingPage() {
     let date = '';
     if (type === 'expense') {
       const today = new Date();
-      if (today.getFullYear() === y && (today.getMonth() + 1) === m) {
+      if (today.getFullYear() === y && today.getMonth() + 1 === m) {
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         date = `${today.getFullYear()}-${mm}-${dd}`;
@@ -1168,7 +1273,11 @@ export default function SiteClosingPage() {
         });
         setLastSavedAt(new Date());
         setSaveError(null);
-        setDirtyFinances((s) => { const n = new Set(s); n.delete(id); return n; });
+        setDirtyFinances((s) => {
+          const n = new Set(s);
+          n.delete(id);
+          return n;
+        });
       } catch (err) {
         setSaveError(err.message || '저장 실패');
       } finally {
@@ -1195,7 +1304,10 @@ export default function SiteClosingPage() {
     if (cur) {
       setSavingCount((c) => c + 1);
       updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note, date: cur.date || '' })
-        .then(() => { setLastSavedAt(new Date()); setSaveError(null); })
+        .then(() => {
+          setLastSavedAt(new Date());
+          setSaveError(null);
+        })
         .catch((err) => setSaveError(err.message))
         .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
     }
@@ -1205,9 +1317,12 @@ export default function SiteClosingPage() {
     const msg = isOvertime
       ? '잔업 지출 항목을 삭제합니다.\n(원본 잔업 기록은 남아있을 수 있으니, 필요 시 잔업 관리에서도 정리하세요.)\n\n계속하시겠습니까?'
       : '이 항목을 삭제하시겠습니까?';
-    if (!await confirm(msg)) return;
+    if (!(await confirm(msg))) return;
     const key = 'fin_' + id;
-    if (timersRef.current[key]) { clearTimeout(timersRef.current[key]); delete timersRef.current[key]; }
+    if (timersRef.current[key]) {
+      clearTimeout(timersRef.current[key]);
+      delete timersRef.current[key];
+    }
     try {
       await deleteFinanceItem(id);
       await loadAll({ silent: true });
@@ -1223,23 +1338,38 @@ export default function SiteClosingPage() {
       <div className="card">
         <div className="card-body">
           <p>이 프로젝트에 접근 권한이 없습니다.</p>
-          <button className="btn btn-outline" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>목록으로</button>
+          <button className="btn btn-outline" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
+            목록으로
+          </button>
         </div>
       </div>
     );
   }
 
-  const employeeTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType === 'employee' ? (Number(it.amount) || 0) : 0), 0);
-  const freelancerTotal = Object.values(editBuf).reduce((s, it) => s + (it.itemType !== 'employee' ? (Number(it.amount) || 0) : 0), 0);
+  const employeeTotal = Object.values(editBuf).reduce(
+    (s, it) => s + (it.itemType === 'employee' ? Number(it.amount) || 0 : 0),
+    0,
+  );
+  const freelancerTotal = Object.values(editBuf).reduce(
+    (s, it) => s + (it.itemType !== 'employee' ? Number(it.amount) || 0 : 0),
+    0,
+  );
   const itemCount = items.length;
 
   const revenueItems = finances.filter((f) => f.type === 'revenue');
   const expenseItems = finances.filter((f) => f.type === 'expense');
-  const isOvertimeDesc = (desc) => { const d = (desc || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
+  const isOvertimeDesc = (desc) => {
+    const d = (desc || '').trim();
+    return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-');
+  };
   const isOvertimeFinance = (f) => isOvertimeDesc(financeBuf[f.id]?.description ?? f.description);
   const totalRevenue = revenueItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
-  const ownExpense = expenseItems.filter((f) => canViewSalary || !isOvertimeFinance(f)).reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
-  const mirroredExpenseSum = mirroredFinances.filter((f) => canViewSalary || !isOvertimeDesc(f.description)).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+  const ownExpense = expenseItems
+    .filter((f) => canViewSalary || !isOvertimeFinance(f))
+    .reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
+  const mirroredExpenseSum = mirroredFinances
+    .filter((f) => canViewSalary || !isOvertimeDesc(f.description))
+    .reduce((s, f) => s + (Number(f.amount) || 0), 0);
   const mirroredLaborSum = canViewSalary ? mirroredLabor : 0;
   const totalExpense = ownExpense + mirroredExpenseSum + mirroredLaborSum;
   const hideRevenue = !!site?.hideRevenue;
@@ -1248,44 +1378,67 @@ export default function SiteClosingPage() {
 
   let saveStatus;
   if (saveError) {
-    saveStatus = <span className="save-status save-status-error">⚠ 저장 실패</span>;
+    saveStatus = (
+      <span className="save-status save-status-error">
+        <Icon name="alert" size={14} /> 저장 실패
+      </span>
+    );
   } else if (savingCount > 0) {
-    saveStatus = <span className="save-status save-status-saving">● 저장 중</span>;
+    saveStatus = (
+      <span className="save-status save-status-saving">
+        <Icon name="clock" size={14} /> 저장 중
+      </span>
+    );
   } else if (lastSavedAt) {
     const t = lastSavedAt;
     const hh = String(t.getHours()).padStart(2, '0');
     const mm = String(t.getMinutes()).padStart(2, '0');
-    saveStatus = <span className="save-status save-status-saved">✓ {hh}:{mm} 저장됨</span>;
+    saveStatus = (
+      <span className="save-status save-status-saved">
+        <Icon name="check" size={14} /> {hh}:{mm} 저장됨
+      </span>
+    );
   } else {
     saveStatus = null;
   }
 
   return (
     <div className="site-closing-page">
-      <div className="page-header">
-        <h2>
+      <div
+        className="page-header"
+        style={{
+          flexWrap: 'wrap',
+          alignItems: isXSmall ? 'stretch' : 'center',
+          gap: 6,
+          ...(isXSmall ? { flexDirection: 'column' } : {}),
+        }}
+      >
+        <h2 style={{ minWidth: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }} title={site.name}>
           {site.name}
-          <span className="closing-period-select">
-            <select
-              value={y}
-              onChange={(e) => navigate(`/sites/${siteId}/${e.target.value}/${m}`)}
-              aria-label="연도 선택"
-            >
-              {[2024, 2025, 2026, 2027, 2028].map((yy) => (
-                <option key={yy} value={yy}>{yy}년</option>
-              ))}
-            </select>
-            <select
-              value={m}
-              onChange={(e) => navigate(`/sites/${siteId}/${y}/${e.target.value}`)}
-              aria-label="월 선택"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => (
-                <option key={mm} value={mm}>{mm}월</option>
-              ))}
-            </select>
-          </span>
         </h2>
+        <span
+          className="closing-period-select closing-period-select-responsive"
+          style={{
+            display: 'flex',
+            gap: 4,
+            alignItems: 'center',
+            flexShrink: 0,
+            ...(isXSmall ? { width: '100%', justifyContent: 'space-between' } : {}),
+          }}
+        >
+          <Select
+            value={y}
+            onChange={(v) => navigate(`/sites/${siteId}/${v}/${m}`)}
+            options={[2024, 2025, 2026, 2027, 2028].map((yy) => ({ value: yy, label: `${yy}년` }))}
+            ariaLabel="연도 선택"
+          />
+          <Select
+            value={m}
+            onChange={(v) => navigate(`/sites/${siteId}/${y}/${v}`)}
+            options={Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => ({ value: mm, label: `${mm}월` }))}
+            ariaLabel="월 선택"
+          />
+        </span>
         <div className="page-actions">
           {canEdit && saveStatus}
           {canEdit && items.length > 0 && (
@@ -1294,14 +1447,18 @@ export default function SiteClosingPage() {
             </button>
           )}
           {canEdit && items.length === 0 && (
-            <button className="btn btn-outline" onClick={handleCopyPrevMonth} disabled={copying}>
+            <button className="btn btn-outline btn-sm" onClick={handleCopyPrevMonth} disabled={copying}>
               {copying ? '복사 중...' : '전월 복사'}
             </button>
           )}
           {canEditSite(site) && !isCompleted && (
-            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>프로젝트 마감</button>
+            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>
+              프로젝트 마감
+            </button>
           )}
-          <button className="btn btn-outline" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>목록</button>
+          <button className="btn btn-outline btn-sm" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
+            목록
+          </button>
         </div>
       </div>
 
@@ -1318,7 +1475,22 @@ export default function SiteClosingPage() {
         </div>
         <div className="closing-summary-item">
           <span className="label">담당</span>
-          <strong>{managerNames()}</strong>
+          <strong
+            title={managerNames()}
+            className="u-wrap"
+            style={{
+              wordBreak: 'break-word',
+              whiteSpace: 'normal',
+              overflowWrap: 'break-word',
+              minWidth: 0,
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {managerNames()}
+          </strong>
         </div>
         <div className="closing-summary-item">
           <span className="label">항목</span>
@@ -1327,23 +1499,27 @@ export default function SiteClosingPage() {
         {canViewSalary && !hideRevenue && (
           <div className="closing-summary-item">
             <span className="label">매출</span>
-            <strong style={{ color: 'var(--success, #16a34a)' }}>{totalRevenue.toLocaleString()}원</strong>
+            <strong style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}>
+              {totalRevenue.toLocaleString()}원
+            </strong>
           </div>
         )}
         {canViewSalary && (
           <div className="closing-summary-item">
             <span className="label">지출</span>
-            <strong style={{ color: 'var(--danger, #dc2626)' }}>{totalExpense.toLocaleString()}원</strong>
+            <strong style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}>
+              {totalExpense.toLocaleString()}원
+            </strong>
           </div>
         )}
         {canViewSalary && (
-          <div className="closing-summary-item closing-summary-total">
+          <div className="closing-summary-item closing-summary-total closing-summary-secondary">
             <span className="label">외주 합계</span>
             <strong>{freelancerTotal.toLocaleString()}원</strong>
           </div>
         )}
         {canViewSalary && (
-          <div className="closing-summary-item closing-summary-total">
+          <div className="closing-summary-item closing-summary-total closing-summary-secondary">
             <span className="label">직원 합계</span>
             <strong>{employeeTotal.toLocaleString()}원</strong>
           </div>
@@ -1351,8 +1527,9 @@ export default function SiteClosingPage() {
         {canViewSalary && !hideRevenue && (
           <div className="closing-summary-item closing-summary-net">
             <span className="label">합계</span>
-            <strong style={{ color: netTotal >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-              {netTotal >= 0 ? '+' : ''}{netTotal.toLocaleString()}원
+            <strong style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}>
+              {netTotal >= 0 ? '+' : ''}
+              {netTotal.toLocaleString()}원
             </strong>
           </div>
         )}
@@ -1361,16 +1538,29 @@ export default function SiteClosingPage() {
       {/* 매출 섹션 (hideRevenue 프로젝트는 숨김) */}
       {!hideRevenue && (
         <div className="finance-section">
-          <div className="finance-section-header">
-            <h3 className="finance-title finance-revenue">매출</h3>
+          <div className="finance-section-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3
+              className="finance-title finance-revenue"
+              style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', margin: 0, lineHeight: '36px' }}
+            >
+              매출
+            </h3>
             {canEdit && (
               <div className="finance-actions">
-                <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('revenue')}>+ 추가</button>
+                <button
+                  className="btn btn-sm btn-outline"
+                  style={{ height: 36 }}
+                  onClick={() => handleAddFinance('revenue')}
+                >
+                  + 추가
+                </button>
               </div>
             )}
           </div>
           {revenueItems.length === 0 ? (
-            <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 매출 항목이 없습니다.</p>
+            <p className="text-muted text-sm" style={{ padding: '8px 0' }}>
+              등록된 매출 항목이 없습니다.
+            </p>
           ) : (
             <div className="revenue-list">
               {revenueItems.map((f) => {
@@ -1382,11 +1572,12 @@ export default function SiteClosingPage() {
                 const totalAmount = (Number(buf.unitPrice) || 0) * totalQty;
                 return (
                   <div className="revenue-card" key={f.id}>
-                    <div className="revenue-card-head">
+                    <div className="revenue-card-head revenue-card-head-responsive">
                       <input
                         className="revenue-desc"
                         value={buf.description || ''}
                         placeholder="항목명 (예: A설비)"
+                        title={buf.description || ''}
                         onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
                         onBlur={() => flushFinance(f.id)}
                         disabled={!canEdit}
@@ -1403,7 +1594,9 @@ export default function SiteClosingPage() {
                         <span className="label">원</span>
                       </div>
                       {canEdit && (
-                        <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">✕</button>
+                        <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">
+                          <Icon name="trash" size={16} />
+                        </button>
                       )}
                     </div>
 
@@ -1413,9 +1606,7 @@ export default function SiteClosingPage() {
                         <span>호기</span>
                         <span></span>
                       </div>
-                      {closings.length === 0 && (
-                        <div className="revenue-row-empty">마감 일자를 추가해주세요.</div>
-                      )}
+                      {closings.length === 0 && <div className="revenue-row-empty">마감 일자를 추가해주세요.</div>}
                       {closings.map((c, idx) => (
                         <div className="revenue-row" key={c.id || idx}>
                           <input
@@ -1434,12 +1625,23 @@ export default function SiteClosingPage() {
                             placeholder="예: 1호기, 2호기 (콤마로 구분 → 자동 카운트)"
                           />
                           {canEdit && (
-                            <button type="button" className="closing-delete" onClick={() => removeClosingRow(f.id, idx)} aria-label="행 삭제">✕</button>
+                            <button
+                              type="button"
+                              className="closing-delete"
+                              onClick={() => removeClosingRow(f.id, idx)}
+                              aria-label="행 삭제"
+                            >
+                              <Icon name="trash" size={16} />
+                            </button>
                           )}
                         </div>
                       ))}
                       {canEdit && (
-                        <button type="button" className="btn btn-sm btn-outline revenue-add-row" onClick={() => addClosingRow(f.id)}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline revenue-add-row"
+                          onClick={() => addClosingRow(f.id)}
+                        >
                           + 마감 추가
                         </button>
                       )}
@@ -1465,72 +1667,141 @@ export default function SiteClosingPage() {
 
       {/* 지출 섹션 */}
       <div className="finance-section">
-        <div className="finance-section-header">
-          <h3 className="finance-title finance-expense">지출</h3>
+        <div className="finance-section-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3
+            className="finance-title finance-expense"
+            style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', margin: 0, lineHeight: '36px' }}
+          >
+            지출
+          </h3>
           {canEdit && (
             <div className="finance-actions">
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense')}>+ 추가</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '식대')}>+ 식대</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>+ 교통비</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>+ 자재비</button>
-              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '운송비')}>+ 운송비</button>
+              <button
+                className="btn btn-sm btn-outline"
+                style={{ height: 36 }}
+                onClick={() => handleAddFinance('expense')}
+              >
+                + 추가
+              </button>
+              <button
+                className="btn btn-sm btn-outline"
+                style={{ height: 36 }}
+                onClick={() => handleAddFinance('expense', '식대')}
+              >
+                + 식대
+              </button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>
+                + 교통비
+              </button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>
+                + 자재비
+              </button>
+              <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '운송비')}>
+                + 운송비
+              </button>
             </div>
           )}
         </div>
         {expenseItems.length === 0 && mirroredFinances.length === 0 && mirroredLaborSum === 0 ? (
-          <p className="text-muted text-sm" style={{ padding: '8px 0' }}>등록된 지출 항목이 없습니다.</p>
+          <p className="text-muted text-sm" style={{ padding: '8px 0' }}>
+            등록된 지출 항목이 없습니다.
+          </p>
         ) : (
           <div className="finance-list">
             {/* 비잔업 지출 항목은 개별 렌더 */}
-            {expenseItems.filter((f) => !isOvertimeFinance(f)).map((f) => {
-              const buf = financeBuf[f.id] || f;
-              const desc = (buf.description || '').trim();
-              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '운송비': 'shipping' };
-              const chipKey = chipMap[desc];
-              return (
-                <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
-                  <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
-                    {desc || '지출'}
-                  </span>
-                  <input
-                    type="date"
-                    className="expense-input-date"
-                    value={buf.date || ''}
-                    onChange={(e) => updateFinanceField(f.id, 'date', e.target.value)}
-                    onBlur={() => flushFinance(f.id)}
-                    disabled={!canEdit}
-                    aria-label="발생일"
-                  />
-                  <input className="expense-input-desc" value={buf.description || ''} placeholder="항목명" onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit || !!chipKey} />
-                  <input className="expense-input-note" value={buf.note || ''} placeholder="비고" onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  <MoneyInput className={`expense-input-amount ${!dirtyFinances.has(f.id) && lastSavedAt && (buf.amount || 0) > 0 ? 'is-saved' : ''}`} value={buf.amount || 0} onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)} onBlur={() => flushFinance(f.id)} disabled={!canEdit} />
-                  <span className="expense-won">원</span>
-                  {canEdit && (
-                    <button type="button" className="closing-delete" onClick={() => handleDeleteFinance(f.id, false)} aria-label="삭제">✕</button>
-                  )}
-                </div>
-              );
-            })}
+            {expenseItems
+              .filter((f) => !isOvertimeFinance(f))
+              .map((f) => {
+                const buf = financeBuf[f.id] || f;
+                const desc = (buf.description || '').trim();
+                const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
+                const chipKey = chipMap[desc];
+                return (
+                  <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
+                    <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+                      {chipKey ? desc : '지출'}
+                    </span>
+                    <input
+                      type="date"
+                      className="expense-input-date"
+                      value={buf.date || ''}
+                      onChange={(e) => updateFinanceField(f.id, 'date', e.target.value)}
+                      onBlur={() => flushFinance(f.id)}
+                      disabled={!canEdit}
+                      aria-label="발생일"
+                    />
+                    <input
+                      className="expense-input-desc"
+                      value={buf.description || ''}
+                      placeholder="항목명"
+                      onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
+                      onBlur={() => flushFinance(f.id)}
+                      disabled={!canEdit || !!chipKey}
+                    />
+                    <input
+                      className="expense-input-note"
+                      value={buf.note || ''}
+                      placeholder="비고"
+                      onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)}
+                      onBlur={() => flushFinance(f.id)}
+                      disabled={!canEdit}
+                    />
+                    <MoneyInput
+                      className={`expense-input-amount ${!dirtyFinances.has(f.id) && lastSavedAt && (buf.amount || 0) > 0 ? 'is-saved' : ''}`}
+                      value={buf.amount || 0}
+                      onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)}
+                      onBlur={() => flushFinance(f.id)}
+                      disabled={!canEdit}
+                    />
+                    <span className="expense-won">원</span>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="closing-delete"
+                        onClick={() => handleDeleteFinance(f.id, false)}
+                        aria-label="삭제"
+                      >
+                        <Icon name="trash" size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             {/* 잔업 항목은 한 줄로 합산 + 상세 모달 */}
-            {canViewSalary && (() => {
-              const ownOvertimeItems = expenseItems.filter((f) => isOvertimeFinance(f));
-              if (ownOvertimeItems.length === 0) return null;
-              const sum = ownOvertimeItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount ?? f.amount) || 0), 0);
-              return (
-                <div className="expense-card expense-card-overtime expense-card-readonly" key="local-overtime-summary">
-                  <span className="expense-tag expense-chip-overtime">잔업</span>
-                  <span className="expense-input-desc expense-readonly-text">잔업 합계 ({ownOvertimeItems.length}건)</span>
-                  <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
-                  <span className="expense-won">원</span>
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowOvertimeDetail(true)}>상세 보기</button>
-                </div>
-              );
-            })()}
+            {canViewSalary &&
+              (() => {
+                const ownOvertimeItems = expenseItems.filter((f) => isOvertimeFinance(f));
+                if (ownOvertimeItems.length === 0) return null;
+                const sum = ownOvertimeItems.reduce(
+                  (s, f) => s + (Number(financeBuf[f.id]?.amount ?? f.amount) || 0),
+                  0,
+                );
+                return (
+                  <div
+                    className="expense-card expense-card-overtime expense-card-readonly"
+                    key="local-overtime-summary"
+                  >
+                    <span className="expense-tag expense-chip-overtime">잔업</span>
+                    <span className="expense-input-desc expense-readonly-text">
+                      잔업 합계 ({ownOvertimeItems.length}건)
+                    </span>
+                    <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
+                    <span className="expense-won">원</span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => setShowOvertimeDetail(true)}
+                    >
+                      상세 보기
+                    </button>
+                  </div>
+                );
+              })()}
             {/* 합산 대상 프로젝트의 비잔업 지출 (카테고리별 합산, 읽기 전용) */}
             {(() => {
               const nonOvertimeItems = mirroredFinances.filter((f) => !isOvertimeDesc(f.description));
               if (nonOvertimeItems.length === 0) return null;
-              const chipMap = { '식대': 'meal', '교통비': 'transport', '자재비': 'material', '운송비': 'shipping' };
+              const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
               // description 단위로 그룹핑
               const groups = new Map();
               for (const f of nonOvertimeItems) {
@@ -1545,109 +1816,163 @@ export default function SiteClosingPage() {
                 const chipKey = chipMap[desc];
                 const sourceNames = [...g.sources].join(', ');
                 return (
-                  <div className={`expense-card expense-card-readonly expense-card-mirror ${chipKey ? `expense-card-${chipKey}` : ''}`} key={`mirror-group-${desc}`}>
-                    <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>{desc}</span>
-                    <span className="expense-input-desc expense-readonly-text">합산 프로젝트 {desc} 합계 ({g.items.length}건)</span>
+                  <div
+                    className={`expense-card expense-card-readonly expense-card-mirror ${chipKey ? `expense-card-${chipKey}` : ''}`}
+                    key={`mirror-group-${desc}`}
+                  >
+                    <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+                      {desc}
+                    </span>
+                    <span className="expense-input-desc expense-readonly-text">
+                      합산 프로젝트 {desc} 합계 ({g.items.length}건)
+                    </span>
                     <MoneyInput className="expense-input-amount" value={g.sum} onChange={() => {}} disabled />
                     <span className="expense-won">원</span>
-                    <span className="expense-readonly-badge" title={`${sourceNames} 프로젝트의 ${desc}`}>↗ {sourceNames}</span>
+                    <span className="expense-readonly-badge" title={`${sourceNames} 프로젝트의 ${desc}`}>
+                      <Icon name="chevronRight" size={13} /> {sourceNames}
+                    </span>
                   </div>
                 );
               });
             })()}
             {/* 합산 대상 프로젝트의 잔업 내역 합산 (읽기 전용, 급여 열람 권한자만) */}
-            {canViewSalary && (() => {
-              const overtimeItems = mirroredFinances.filter((f) => isOvertimeDesc(f.description));
-              if (overtimeItems.length === 0) return null;
-              const sum = overtimeItems.reduce((s, f) => s + (Number(f.amount) || 0), 0);
-              const sourceNames = [...new Set(overtimeItems.map((f) => f._sourceName))].join(', ');
-              return (
-                <div className="expense-card expense-card-readonly expense-card-mirror expense-card-overtime" key="mirror-overtime-total">
-                  <span className="expense-tag expense-chip-overtime">잔업</span>
-                  <span className="expense-input-desc expense-readonly-text">합산 프로젝트 잔업 합계 ({overtimeItems.length}건)</span>
-                  <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
-                  <span className="expense-won">원</span>
-                  <span className="expense-readonly-badge" title={`${sourceNames} 프로젝트의 잔업`}>↗ {sourceNames}</span>
-                </div>
-              );
-            })()}
+            {canViewSalary &&
+              (() => {
+                const overtimeItems = mirroredFinances.filter((f) => isOvertimeDesc(f.description));
+                if (overtimeItems.length === 0) return null;
+                const sum = overtimeItems.reduce((s, f) => s + (Number(f.amount) || 0), 0);
+                const sourceNames = [...new Set(overtimeItems.map((f) => f._sourceName))].join(', ');
+                return (
+                  <div
+                    className="expense-card expense-card-readonly expense-card-mirror expense-card-overtime"
+                    key="mirror-overtime-total"
+                  >
+                    <span className="expense-tag expense-chip-overtime">잔업</span>
+                    <span className="expense-input-desc expense-readonly-text">
+                      합산 프로젝트 잔업 합계 ({overtimeItems.length}건)
+                    </span>
+                    <MoneyInput className="expense-input-amount" value={sum} onChange={() => {}} disabled />
+                    <span className="expense-won">원</span>
+                    <span className="expense-readonly-badge" title={`${sourceNames} 프로젝트의 잔업`}>
+                      <Icon name="chevronRight" size={13} /> {sourceNames}
+                    </span>
+                  </div>
+                );
+              })()}
             {/* 합산 대상 프로젝트의 인건비 (읽기 전용, 급여 열람 권한자만) */}
-            {canViewSalary && mirroredLaborSum > 0 && (() => {
-              const laborSourceNames = [...new Set((mirroredFinances || []).map((f) => f._sourceName).filter(Boolean))].join(', ') || '합산 합계';
-              return (
-                <div className="expense-card expense-card-readonly expense-card-mirror" key="mirror-labor-total">
-                  <span className="expense-tag expense-chip-default">인건비</span>
-                  <span className="expense-input-desc expense-readonly-text">합산 프로젝트 인건비 합계</span>
-                  <MoneyInput className="expense-input-amount" value={mirroredLaborSum} onChange={() => {}} disabled />
-                  <span className="expense-won">원</span>
-                  <span className="expense-readonly-badge" title={`${laborSourceNames} 프로젝트의 인건비`}>↗ {laborSourceNames}</span>
-                </div>
-              );
-            })()}
+            {canViewSalary &&
+              mirroredLaborSum > 0 &&
+              (() => {
+                const laborSourceNames =
+                  [...new Set((mirroredFinances || []).map((f) => f._sourceName).filter(Boolean))].join(', ') ||
+                  '합산 합계';
+                return (
+                  <div className="expense-card expense-card-readonly expense-card-mirror" key="mirror-labor-total">
+                    <span className="expense-tag expense-chip-default">인건비</span>
+                    <span className="expense-input-desc expense-readonly-text">합산 프로젝트 인건비 합계</span>
+                    <MoneyInput
+                      className="expense-input-amount"
+                      value={mirroredLaborSum}
+                      onChange={() => {}}
+                      disabled
+                    />
+                    <span className="expense-won">원</span>
+                    <span className="expense-readonly-badge" title={`${laborSourceNames} 프로젝트의 인건비`}>
+                      <Icon name="chevronRight" size={13} /> {laborSourceNames}
+                    </span>
+                  </div>
+                );
+              })()}
           </div>
         )}
       </div>
 
       {/* 공수표 섹션 */}
-      <div className="finance-section-header" style={{ marginTop: 16 }}>
-        <h3 className="finance-title">공수표</h3>
+      <div className="finance-section-header" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h3 className="finance-title" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', margin: 0, lineHeight: '36px' }}>
+          공수표
+        </h3>
         {canEdit && (
           <div className="finance-actions">
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>+ 직원</button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('freelancer')}>+ 프리랜서</button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>+ 일용직</button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>+ 업체(공수)</button>
-            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>+ 업체(프로젝트)</button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>
+              + 직원
+            </button>
+            <button
+              className="btn btn-sm btn-outline closing-add-btn"
+              onClick={() => openFreelancerPicker('freelancer')}
+            >
+              + 프리랜서
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>
+              + 일용직
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>
+              + 업체(공수)
+            </button>
+            <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>
+              + 업체(프로젝트)
+            </button>
           </div>
         )}
       </div>
       {/* 공수표 탭 필터 */}
-      {items.length > 0 && (() => {
-        const cnt = (types) => items.filter((i) => types.includes(i.itemType || 'freelancer')).length;
-        const tabs = [
-          { key: 'all', label: '전체', count: items.length },
-          { key: 'employee', label: '직원', count: cnt(['employee']) },
-          { key: 'freelancer', label: '프리랜서', count: cnt(['freelancer']) },
-          { key: 'daily', label: '일용직', count: cnt(['daily']) },
-          { key: 'vendor', label: '업체(공수)', count: cnt(['vendor']) },
-          { key: 'vendor_case', label: '업체(프로젝트)', count: cnt(['vendor_case']) },
-        ];
-        return (
-          <div className="tab-nav closing-tab-nav">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                className={`tab-nav-item ${closingTab === t.key ? 'active' : ''}`}
-                onClick={() => setClosingTab(t.key)}
-              >
-                {t.label}
-                {t.count > 0 && <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{t.count}</span>}
-              </button>
-            ))}
-          </div>
-        );
-      })()}
+      {items.length > 0 &&
+        (() => {
+          const cnt = (types) => items.filter((i) => types.includes(i.itemType || 'freelancer')).length;
+          const tabs = [
+            { key: 'all', label: '전체', count: items.length },
+            { key: 'employee', label: '직원', count: cnt(['employee']) },
+            { key: 'freelancer', label: '프리랜서', count: cnt(['freelancer']) },
+            { key: 'daily', label: '일용직', count: cnt(['daily']) },
+            { key: 'vendor', label: '업체(공수)', count: cnt(['vendor']) },
+            { key: 'vendor_case', label: '업체(프로젝트)', count: cnt(['vendor_case']) },
+          ];
+          return (
+            <div
+              className="tab-nav closing-tab-nav"
+              style={{ overflowX: 'auto', flexWrap: 'nowrap', WebkitOverflowScrolling: 'touch' }}
+            >
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`tab-nav-item ${closingTab === t.key ? 'active' : ''}`}
+                  style={{ flexShrink: 0 }}
+                  onClick={() => setClosingTab(t.key)}
+                >
+                  {t.label}
+                  {t.count > 0 && <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{t.count}</span>}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
       {/* 외주관리 연동 datalist */}
       <datalist id="closing-freelancer-list">
         {freelancers.map((f) => (
           <option key={f.id} value={f.name}>
-            {f.vendor ? `${f.vendor}` : ''}{canViewSalary && f.dailyRate ? `${f.vendor ? ' · ' : ''}${Number(f.dailyRate).toLocaleString()}원` : ''}
+            {f.vendor ? `${f.vendor}` : ''}
+            {canViewSalary && f.dailyRate ? `${f.vendor ? ' · ' : ''}${Number(f.dailyRate).toLocaleString()}원` : ''}
           </option>
         ))}
       </datalist>
       <datalist id="closing-vendor-list">
         {vendors.map((v) => (
-          <option key={v.id} value={v.name}>{v.representative || ''}</option>
+          <option key={v.id} value={v.name}>
+            {v.representative || ''}
+          </option>
         ))}
       </datalist>
       <datalist id="closing-vendor-project-list">
-        {vendors.flatMap((v) => (v.projects || []).map((p) => (
-          <option key={`${v.id}-${p.name}`} value={p.name}>
-            {v.name}{canViewSalary && p.unitPrice > 0 ? ` · 건당 ${Number(p.unitPrice).toLocaleString()}원` : ''}
-          </option>
-        )))}
+        {vendors.flatMap((v) =>
+          (v.projects || []).map((p) => (
+            <option key={`${v.id}-${p.name}`} value={p.name}>
+              {v.name}
+              {canViewSalary && p.unitPrice > 0 ? ` · 건당 ${Number(p.unitPrice).toLocaleString()}원` : ''}
+            </option>
+          )),
+        )}
       </datalist>
 
       {(() => {
@@ -1669,727 +1994,950 @@ export default function SiteClosingPage() {
           return t === closingTab;
         });
 
-        if (items.length === 0) return (
-          <div className="card">
-            <div className="card-body empty-state">
-              항목이 없습니다.{canEdit && ' 우측 상단 "+ 항목 추가" 버튼으로 시작하세요.'}
+        if (items.length === 0)
+          return (
+            <div className="card">
+              <div className="card-body empty-state">
+                항목이 없습니다.{canEdit && ' 우측 상단 "+ 항목 추가" 버튼으로 시작하세요.'}
+              </div>
             </div>
-          </div>
-        );
-        if (filtered.length === 0) return (
-          <div className="card">
-            <div className="card-body empty-state">이 유형의 항목이 없습니다.</div>
-          </div>
-        );
+          );
+        if (filtered.length === 0)
+          return (
+            <div className="card">
+              <div className="card-body empty-state">이 유형의 항목이 없습니다.</div>
+            </div>
+          );
 
         return (
-        <div className="closing-cards">
-          {filtered.map((it) => {
-            const buf = editBuf[it.id] || it;
-            const cardType = it.itemType || buf.itemType || 'freelancer';
-            const isDaily = cardType === 'daily';
-            const isVendorCase = cardType === 'vendor_case';
-            const unitLabel = isDaily ? '시간' : isVendorCase ? '대' : '일';
-            const priceLabel = isDaily ? '시급' : isVendorCase ? '1대당' : '단가';
-            // 모달 전용 생성 유형은 과거 데이터도 파생 잠금.
-            // - employee: 항상 모달 → 업체/이름 둘 다 잠금
-            // - vendor / vendor_case: 업체는 항상 모달 → 업체 잠금. 이름은 값 있을 때만(모달 선택) 잠금.
-            // - freelancer / daily: 직접 입력 경로 있음 → 플래그만 사용
-            const isEmployee = cardType === 'employee';
-            const isVendorType = cardType === 'vendor' || cardType === 'vendor_case';
-            const vendorLocked = !!buf.vendorLocked || isEmployee || (isVendorType && !!(buf.vendor || '').trim());
-            const detailLocked = !!buf.detailLocked || isEmployee || (isVendorType && !!(buf.detail || '').trim());
-            return (
-              <div className={`closing-card closing-card-${cardType}`} key={it.id}>
-                <div className="closing-card-head">
-                  <span className="closing-no">#{buf.no || '-'}</span>
-                  <input
-                    className="closing-vendor"
-                    value={buf.vendor || ''}
-                    placeholder="업체명"
-                    list={!vendorLocked && cardType !== 'employee' ? 'closing-vendor-list' : undefined}
-                    onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
-                    onBlur={() => flushRow(it.id)}
-                    disabled={!canEdit}
-                    readOnly={vendorLocked}
-                    title={vendorLocked ? '모달에서 선택된 값은 수정 불가 (삭제 후 재추가)' : undefined}
-                  />
-                  <input
-                    className="closing-name"
-                    value={buf.detail || ''}
-                    placeholder={cardType === 'vendor_case' ? '프로젝트명' : '이름'}
-                    list={
-                      detailLocked ? undefined :
-                      cardType === 'vendor_case' ? 'closing-vendor-project-list' :
-                      cardType !== 'employee' ? 'closing-freelancer-list' : undefined
-                    }
-                    onChange={(e) => updateField(it.id, 'detail', e.target.value)}
-                    onBlur={() => flushRow(it.id)}
-                    disabled={!canEdit}
-                    readOnly={detailLocked}
-                    title={detailLocked ? '모달에서 선택된 값은 수정 불가 (삭제 후 재추가)' : undefined}
-                  />
-                  {canEdit && isEmployee && site?.projectType === 'recurring' && (
-                    <button
-                      type="button"
-                      className={`closing-autofill-btn ${buf.autofillDisabled ? 'is-disabled' : ''}`}
-                      onClick={() => toggleEmployeeAutofill(it.id)}
-                      title={buf.autofillDisabled
-                        ? '자동 채움 꺼짐 — 클릭해서 켜기'
-                        : '자동 채움 켜짐 — 클릭해서 끄기'}
-                    >
-                      {buf.autofillDisabled ? '자동⛔' : '자동✓'}
-                    </button>
-                  )}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      className="closing-delete"
-                      onClick={() => handleDeleteRow(it.id)}
-                      aria-label="삭제"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
+          <div className="closing-cards">
+            {filtered.map((it) => {
+              const buf = editBuf[it.id] || it;
+              const cardType = it.itemType || buf.itemType || 'freelancer';
+              const isDaily = cardType === 'daily';
+              const isVendorCase = cardType === 'vendor_case';
+              const unitLabel = isDaily ? '시간' : isVendorCase ? '대' : '일';
+              const priceLabel = isDaily ? '시급' : isVendorCase ? '1대당' : '단가';
+              // 모달 전용 생성 유형은 과거 데이터도 파생 잠금.
+              // - employee: 항상 모달 → 업체/이름 둘 다 잠금
+              // - vendor / vendor_case: 업체는 항상 모달 → 업체 잠금. 이름은 값 있을 때만(모달 선택) 잠금.
+              // - freelancer / daily: 직접 입력 경로 있음 → 플래그만 사용
+              const isEmployee = cardType === 'employee';
+              const isVendorType = cardType === 'vendor' || cardType === 'vendor_case';
+              const vendorLocked = !!buf.vendorLocked || isEmployee || (isVendorType && !!(buf.vendor || '').trim());
+              const detailLocked = !!buf.detailLocked || isEmployee || (isVendorType && !!(buf.detail || '').trim());
+              return (
+                <div className={`closing-card closing-card-${cardType}`} key={it.id}>
+                  <div className="closing-card-head">
+                    <span className="closing-no">#{buf.no || '-'}</span>
+                    <input
+                      className="closing-vendor"
+                      value={buf.vendor || ''}
+                      placeholder="업체명"
+                      list={!vendorLocked && cardType !== 'employee' ? 'closing-vendor-list' : undefined}
+                      onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
+                      disabled={!canEdit}
+                      readOnly={vendorLocked}
+                      title={
+                        vendorLocked
+                          ? `${buf.vendor || ''}${buf.vendor ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
+                          : buf.vendor || undefined
+                      }
+                    />
+                    <input
+                      className="closing-name"
+                      value={buf.detail || ''}
+                      placeholder={cardType === 'vendor_case' ? '프로젝트명' : '이름'}
+                      list={
+                        detailLocked
+                          ? undefined
+                          : cardType === 'vendor_case'
+                            ? 'closing-vendor-project-list'
+                            : cardType !== 'employee'
+                              ? 'closing-freelancer-list'
+                              : undefined
+                      }
+                      onChange={(e) => updateField(it.id, 'detail', e.target.value)}
+                      onBlur={() => flushRow(it.id)}
+                      disabled={!canEdit}
+                      readOnly={detailLocked}
+                      title={
+                        detailLocked
+                          ? `${buf.detail || ''}${buf.detail ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
+                          : buf.detail || undefined
+                      }
+                    />
+                    {canEdit && isEmployee && site?.projectType === 'recurring' && (
+                      <button
+                        type="button"
+                        className={`closing-autofill-btn ${buf.autofillDisabled ? 'is-disabled' : ''}`}
+                        onClick={() => toggleEmployeeAutofill(it.id)}
+                        title={
+                          buf.autofillDisabled ? '자동 채움 꺼짐 — 클릭해서 켜기' : '자동 채움 켜짐 — 클릭해서 끄기'
+                        }
+                      >
+                        {buf.autofillDisabled ? '자동 OFF' : '자동 ON'}
+                      </button>
+                    )}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="closing-delete"
+                        onClick={() => handleDeleteRow(it.id)}
+                        aria-label="삭제"
+                      >
+                        <Icon name="trash" size={16} />
+                      </button>
+                    )}
+                  </div>
 
-                {isVendorCase ? (
-                  (() => {
-                    const closings = Array.isArray(buf.closings) ? buf.closings : [];
-                    return (
-                      <div className="vendor-case-rows">
-                        <div className="vendor-case-row vendor-case-row-head">
-                          <span>납기일</span>
-                          <span>호기</span>
-                          <span className="vendor-case-count-head">댓수</span>
-                          <span></span>
-                        </div>
-                        {closings.length === 0 && (
-                          <div className="vendor-case-row-empty">납기일 행을 추가해주세요.</div>
-                        )}
-                        {closings.map((c, idx) => (
-                          <div className="vendor-case-row" key={c.id || idx}>
-                            <input
-                              type="date"
-                              value={c.date || ''}
-                              onChange={(e) => updateRowClosing(it.id, idx, 'date', e.target.value)}
-                              onBlur={() => flushRow(it.id)}
-                              disabled={!canEdit}
-                            />
-                            <input
-                              type="text"
-                              value={c.units || ''}
-                              onChange={(e) => updateRowClosing(it.id, idx, 'units', e.target.value)}
-                              onBlur={() => flushRow(it.id)}
-                              disabled={!canEdit}
-                              placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
-                            />
-                            <span className="vendor-case-count">{Number(c.count) || 0}대</span>
-                            {canEdit && (
-                              <button type="button" className="closing-delete" onClick={() => removeRowClosing(it.id, idx)} aria-label="행 삭제">✕</button>
+                  {isVendorCase
+                    ? (() => {
+                        const closings = Array.isArray(buf.closings) ? buf.closings : [];
+                        return (
+                          <div className="vendor-case-rows">
+                            <div className="vendor-case-row vendor-case-row-head">
+                              <span>납기일</span>
+                              <span>호기</span>
+                              <span className="vendor-case-count-head">댓수</span>
+                              <span></span>
+                            </div>
+                            {closings.length === 0 && (
+                              <div className="vendor-case-row-empty">납기일 행을 추가해주세요.</div>
                             )}
-                          </div>
-                        ))}
-                        {canEdit && (
-                          <button type="button" className="btn btn-sm btn-outline vendor-case-add-row" onClick={() => addRowClosing(it.id)}>
-                            + 납기 추가
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()
-                ) : (() => {
-                  // 캘린더 형식 생성
-                  const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
-                  const totalDays = daysInMonth(y, m);
-                  const weeks = [];
-                  let week = new Array(firstDow).fill(null);
-                  for (let d = 1; d <= totalDays; d++) {
-                    week.push(d);
-                    if (week.length === 7) { weeks.push(week); week = []; }
-                  }
-                  if (week.length > 0) {
-                    while (week.length < 7) week.push(null);
-                    weeks.push(week);
-                  }
-                  return (
-                    <div className="day-calendar">
-                      <div className="day-calendar-header">
-                        {['일','월','화','수','목','금','토'].map((dn, i) => (
-                          <div key={dn} className={`day-calendar-dow ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}>{dn}</div>
-                        ))}
-                      </div>
-                      {weeks.map((wk, wi) => (
-                        <div className="day-calendar-row" key={wi}>
-                          {wk.map((d, di) => {
-                            if (d === null) return <div className="day-cal-cell day-cal-empty" key={di} />;
-                            const v = buf.dailyQuantities?.[d];
-                            const hasValue = v !== undefined && v !== null && v !== '';
-                            const isSunday = di === 0;
-                            const isSaturday = di === 6;
-                            const isEmployee = cardType === 'employee';
-                            const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                            const isHoliday = holidaySet.has(dayIso);
-                            // 직원 공수표: 토/일/공휴일 = 입력 차단 (잔업 별도 등록 영역)
-                            const isEmpRest = isEmployee && (isSaturday || isSunday || isHoliday);
-                            // 휴무일에 잔업 신청 있으면 자동으로 "출근" 표시
-                            const hasSiteOvertime = isEmployee && siteOvertimeDays[buf.detail]?.has(d);
-                            const showAttendance = isEmpRest && hasSiteOvertime;
-                            const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
-                            const isOnLeave = !!leaveType;
-                            const workFraction = leaveWorkFraction(leaveType);
-                            const isFullLeave = isOnLeave && workFraction === 0;
-                            const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
-                            // CS 프로젝트: 셀 탭 → 모달로 공수+현장명 입력
-                            const isCSMode = !!site?.isCS && !isVendorCase;
-                            const csSiteName = isCSMode ? (buf.dailySites?.[d] || '') : '';
-                            return (
-                              <div className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''} ${isCSMode ? 'is-cs-cell' : ''}`} key={di}>
-                                <label>{d}</label>
-                                {isEmpRest ? (
-                                  showAttendance ? (
-                                    <div className="emp-rest-attendance" title="잔업 신청에 따라 자동 출근 표시">출근</div>
-                                  ) : (
-                                    <div className="emp-rest-blocked" title="휴무일은 잔업 신청 시 자동 출근 표시됩니다" />
-                                  )
-                                ) : isFullLeave ? (
-                                  <div
-                                    className={`leave-badge-input leave-badge-${leaveType}`}
-                                    title={`${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`}
-                                  >
-                                    {leaveBadgeLabel(leaveType)}
-                                  </div>
-                                ) : isCSMode ? (
+                            {closings.map((c, idx) => (
+                              <div className="vendor-case-row" key={c.id || idx}>
+                                <input
+                                  type="date"
+                                  value={c.date || ''}
+                                  onChange={(e) => updateRowClosing(it.id, idx, 'date', e.target.value)}
+                                  onBlur={() => flushRow(it.id)}
+                                  disabled={!canEdit}
+                                />
+                                <input
+                                  type="text"
+                                  value={c.units || ''}
+                                  onChange={(e) => updateRowClosing(it.id, idx, 'units', e.target.value)}
+                                  onBlur={() => flushRow(it.id)}
+                                  disabled={!canEdit}
+                                  placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
+                                />
+                                <span className="vendor-case-count">{Number(c.count) || 0}대</span>
+                                {canEdit && (
                                   <button
                                     type="button"
-                                    className={`cs-cell-btn ${hasValue ? 'has-value' : ''}`}
-                                    onClick={() => canEdit && openCsCellModal(it.id, d)}
-                                    disabled={!canEdit}
-                                    title={canEdit ? '탭하여 공수·현장 입력' : (csSiteName ? `${csSiteName} · ${v}공수` : '')}
+                                    className="closing-delete"
+                                    onClick={() => removeRowClosing(it.id, idx)}
+                                    aria-label="행 삭제"
                                   >
-                                    <span className="cs-cell-qty">{hasValue ? v : '+'}</span>
-                                    {csSiteName && <span className="cs-cell-site">{csSiteName}</span>}
+                                    <Icon name="trash" size={16} />
                                   </button>
-                                ) : (
-                                  <div className="day-cal-input-wrap">
-                                    <input
-                                      type="number"
-                                      step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
-                                      min="0"
-                                      max={isDaily ? '24' : isVendorCase ? '99' : (
-                                        // 직원 휴가일 최대값: 반차 0.5 / 반반차 0.75 / 그 외 1
-                                        (leaveType === 'half_am' || leaveType === 'half_pm') ? '0.5'
-                                          : QUARTER_LEAVE_TYPES.includes(leaveType) ? '0.75'
-                                          : '1'
-                                      )}
-                                      value={v ?? ''}
-                                      onChange={(e) => updateDay(it.id, d, e.target.value)}
-                                      onBlur={() => flushRow(it.id)}
-                                      disabled={!canEdit}
-                                      title={isOnLeave ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})` : (isDaily ? '시간 입력' : isVendorCase ? '납품 건수' : '')}
-                                    />
-                                    {isOnLeave && (
-                                      <span className={`leave-badge-tag leave-badge-${leaveType}`}>
-                                        {leaveBadgeLabel(leaveType)}
-                                      </span>
-                                    )}
-                                  </div>
                                 )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                            ))}
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline vendor-case-add-row"
+                                onClick={() => addRowClosing(it.id)}
+                              >
+                                + 납기 추가
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()
+                    : (() => {
+                        // 캘린더 형식 생성
+                        const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
+                        const totalDays = daysInMonth(y, m);
+                        const weeks = [];
+                        let week = new Array(firstDow).fill(null);
+                        for (let d = 1; d <= totalDays; d++) {
+                          week.push(d);
+                          if (week.length === 7) {
+                            weeks.push(week);
+                            week = [];
+                          }
+                        }
+                        if (week.length > 0) {
+                          while (week.length < 7) week.push(null);
+                          weeks.push(week);
+                        }
+                        return (
+                          <div className="day-calendar">
+                            <div className="day-calendar-header">
+                              {['일', '월', '화', '수', '목', '금', '토'].map((dn, i) => (
+                                <div
+                                  key={dn}
+                                  className={`day-calendar-dow ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}
+                                >
+                                  {dn}
+                                </div>
+                              ))}
+                            </div>
+                            {weeks.map((wk, wi) => (
+                              <div className="day-calendar-row" key={wi}>
+                                {wk.map((d, di) => {
+                                  if (d === null) return <div className="day-cal-cell day-cal-empty" key={di} />;
+                                  const v = buf.dailyQuantities?.[d];
+                                  const hasValue = v !== undefined && v !== null && v !== '';
+                                  const isSunday = di === 0;
+                                  const isSaturday = di === 6;
+                                  const isEmployee = cardType === 'employee';
+                                  const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                  const isHoliday = holidaySet.has(dayIso);
+                                  // 직원 공수표: 토/일/공휴일 = 입력 차단 (잔업 별도 등록 영역)
+                                  const isEmpRest = isEmployee && (isSaturday || isSunday || isHoliday);
+                                  // 휴무일에 잔업 신청 있으면 자동으로 "출근" 표시
+                                  const hasSiteOvertime = isEmployee && siteOvertimeDays[buf.detail]?.has(d);
+                                  const showAttendance = isEmpRest && hasSiteOvertime;
+                                  const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
+                                  const isOnLeave = !!leaveType;
+                                  const workFraction = leaveWorkFraction(leaveType);
+                                  const isFullLeave = isOnLeave && workFraction === 0;
+                                  const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
+                                  // CS 프로젝트: 셀 탭 → 모달로 공수+현장명 입력
+                                  const isCSMode = !!site?.isCS && !isVendorCase;
+                                  const csSiteName = isCSMode ? buf.dailySites?.[d] || '' : '';
+                                  return (
+                                    <div
+                                      className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''} ${isCSMode ? 'is-cs-cell' : ''}`}
+                                      key={di}
+                                    >
+                                      <label>{d}</label>
+                                      {isEmpRest ? (
+                                        showAttendance ? (
+                                          <div className="emp-rest-attendance" title="잔업 신청에 따라 자동 출근 표시">
+                                            출근
+                                          </div>
+                                        ) : (
+                                          <div
+                                            className="emp-rest-blocked"
+                                            title="휴무일은 잔업 신청 시 자동 출근 표시됩니다"
+                                          />
+                                        )
+                                      ) : isFullLeave ? (
+                                        <div
+                                          className={`leave-badge-input leave-badge-${leaveType}`}
+                                          title={`${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`}
+                                        >
+                                          {leaveBadgeLabel(leaveType)}
+                                        </div>
+                                      ) : isCSMode ? (
+                                        <button
+                                          type="button"
+                                          className={`cs-cell-btn ${hasValue ? 'has-value' : ''}`}
+                                          onClick={() => canEdit && openCsCellModal(it.id, d)}
+                                          disabled={!canEdit}
+                                          title={
+                                            canEdit
+                                              ? '탭하여 공수·현장 입력'
+                                              : csSiteName
+                                                ? `${csSiteName} · ${v}공수`
+                                                : ''
+                                          }
+                                        >
+                                          <span className="cs-cell-qty">{hasValue ? v : '+'}</span>
+                                          {csSiteName && <span className="cs-cell-site">{csSiteName}</span>}
+                                        </button>
+                                      ) : (
+                                        <div className="day-cal-input-wrap">
+                                          <input
+                                            type="number"
+                                            style={{
+                                              textAlign: 'right',
+                                              fontVariantNumeric: 'tabular-nums',
+                                              minHeight: 32,
+                                              outline: 'none',
+                                            }}
+                                            step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
+                                            min="0"
+                                            max={
+                                              isDaily
+                                                ? '24'
+                                                : isVendorCase
+                                                  ? '99'
+                                                  : // 직원 휴가일 최대값: 반차 0.5 / 반반차 0.75 / 그 외 1
+                                                    leaveType === 'half_am' || leaveType === 'half_pm'
+                                                    ? '0.5'
+                                                    : QUARTER_LEAVE_TYPES.includes(leaveType)
+                                                      ? '0.75'
+                                                      : '1'
+                                            }
+                                            value={v ?? ''}
+                                            onChange={(e) => updateDay(it.id, d, e.target.value)}
+                                            onBlur={() => flushRow(it.id)}
+                                            disabled={!canEdit}
+                                            title={
+                                              isOnLeave
+                                                ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`
+                                                : isDaily
+                                                  ? '시간 입력'
+                                                  : isVendorCase
+                                                    ? '납품 건수'
+                                                    : ''
+                                            }
+                                          />
+                                          {isOnLeave && (
+                                            <span className={`leave-badge-tag leave-badge-${leaveType}`}>
+                                              {leaveBadgeLabel(leaveType)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
 
-                <div className="closing-card-foot">
-                  <div className="foot-field">
-                    <span className="label">수량</span>
-                    <strong>{Number(buf.quantity || 0)}{unitLabel}</strong>
+                  <div className="closing-card-foot">
+                    <div className="foot-field">
+                      <span className="label">수량</span>
+                      <strong>
+                        {Number(buf.quantity || 0)}
+                        {unitLabel}
+                      </strong>
+                    </div>
+                    {canViewSalary && (
+                      <>
+                        <div className="foot-field">
+                          <span className="label">{priceLabel}</span>
+                          <MoneyInput
+                            className="closing-price"
+                            value={buf.unitPrice || 0}
+                            onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
+                            onBlur={() => flushRow(it.id)}
+                            disabled={!canEdit || cardType === 'employee'}
+                          />
+                        </div>
+                        <div className="foot-field closing-amount">
+                          <span className="label">금액</span>
+                          <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  {canViewSalary && (
-                    <>
-                      <div className="foot-field">
-                        <span className="label">{priceLabel}</span>
-                        <MoneyInput
-                          className="closing-price"
-                          value={buf.unitPrice || 0}
-                          onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
-                          onBlur={() => flushRow(it.id)}
-                          disabled={!canEdit || cardType === 'employee'}
-                        />
-                      </div>
-                      <div className="foot-field closing-amount">
-                        <span className="label">금액</span>
-                        <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
-                      </div>
-                    </>
-                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         );
       })()}
 
       {/* CS 셀 입력 모달 — 공수 + 현장명 */}
-      {csCellModal && (() => {
-        const buf = editBuf[csCellModal.itemId];
-        const personName = buf?.detail || '담당자';
-        const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(csCellModal.day).padStart(2, '0')}`;
-        // 이번 달 이미 방문한 현장 목록 — 자동완성 후보
-        const visitedSites = Array.from(new Set(
-          items.flatMap((it) => Object.values(it.dailySites || {}))
-        )).filter((s) => s && s.trim()).sort();
-        return (
-          <Modal isOpen={!!csCellModal} onClose={() => setCsCellModal(null)} title={`${m}/${csCellModal.day} 공수 입력 — ${personName}`}>
-            <div className="cs-cell-modal-body">
-              <div className="form-group">
-                <label>현장명</label>
-                <input
-                  type="text"
-                  value={csCellModal.siteName}
-                  onChange={(e) => setCsCellModal({ ...csCellModal, siteName: e.target.value })}
-                  placeholder="예: 삼성 SDS 본사"
-                  list="cs-cell-visited-sites"
-                  autoFocus
-                />
-                <datalist id="cs-cell-visited-sites">
-                  {visitedSites.map((s) => <option key={s} value={s} />)}
-                </datalist>
-                <p className="field-hint" style={{ marginTop: 4 }}>
-                  이번 달 방문 이력이 있는 현장명은 자동으로 추천됩니다.
-                </p>
-              </div>
-              <div className="form-group">
-                <label>공수 ({dayIso})</label>
-                <div className="cs-cell-modal-qty-row">
-                  {[0.25, 0.5, 0.75, 1].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      className={`btn btn-sm ${Number(csCellModal.qty) === preset ? 'btn-primary' : 'btn-outline'}`}
-                      onClick={() => setCsCellModal({ ...csCellModal, qty: preset })}
-                    >
-                      {preset}
-                    </button>
-                  ))}
+      {csCellModal &&
+        (() => {
+          const buf = editBuf[csCellModal.itemId];
+          const personName = buf?.detail || '담당자';
+          const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(csCellModal.day).padStart(2, '0')}`;
+          // 이번 달 이미 방문한 현장 목록 — 자동완성 후보
+          const visitedSites = Array.from(new Set(items.flatMap((it) => Object.values(it.dailySites || {}))))
+            .filter((s) => s && s.trim())
+            .sort();
+          return (
+            <Modal
+              isOpen={!!csCellModal}
+              onClose={() => setCsCellModal(null)}
+              title={`${m}/${csCellModal.day} 공수 입력 — ${personName}`}
+            >
+              <div className="cs-cell-modal-body" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
+                <div className="form-group" style={{ maxWidth: '100%' }}>
+                  <label>현장명</label>
                   <input
-                    type="number"
-                    step="0.25"
-                    min="0"
-                    max="1"
-                    value={csCellModal.qty}
-                    onChange={(e) => setCsCellModal({ ...csCellModal, qty: e.target.value })}
-                    placeholder="직접 입력"
+                    type="text"
+                    value={csCellModal.siteName}
+                    onChange={(e) => setCsCellModal({ ...csCellModal, siteName: e.target.value })}
+                    placeholder="예: 삼성 SDS 본사"
+                    list="cs-cell-visited-sites"
+                    autoFocus
                   />
+                  <datalist id="cs-cell-visited-sites">
+                    {visitedSites.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                  <p className="field-hint" style={{ marginTop: 4 }}>
+                    이번 달 방문 이력이 있는 현장명은 자동으로 추천됩니다.
+                  </p>
+                </div>
+                <div className="form-group">
+                  <label>공수 ({dayIso})</label>
+                  <div className="cs-cell-modal-qty-row">
+                    {[0.25, 0.5, 0.75, 1].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        className={`btn btn-sm ${Number(csCellModal.qty) === preset ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setCsCellModal({ ...csCellModal, qty: preset })}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      max="1"
+                      value={csCellModal.qty}
+                      onChange={(e) => setCsCellModal({ ...csCellModal, qty: e.target.value })}
+                      placeholder="직접 입력"
+                    />
+                  </div>
+                </div>
+                <div className="modal-actions" style={{ flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ whiteSpace: 'nowrap', minWidth: 60 }}
+                    onClick={saveCsCellModal}
+                  >
+                    저장
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    style={{ whiteSpace: 'nowrap', minWidth: 60 }}
+                    onClick={() => setCsCellModal({ ...csCellModal, qty: '', siteName: '' })}
+                    title="이 날 입력 비우기"
+                  >
+                    비우기
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    style={{ whiteSpace: 'nowrap', minWidth: 60 }}
+                    onClick={() => setCsCellModal(null)}
+                  >
+                    취소
+                  </button>
                 </div>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-primary" onClick={saveCsCellModal}>저장</button>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setCsCellModal({ ...csCellModal, qty: '', siteName: '' })}
-                  title="이 날 입력 비우기"
-                >
-                  비우기
-                </button>
-                <button type="button" className="btn btn-outline" onClick={() => setCsCellModal(null)}>취소</button>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
+            </Modal>
+          );
+        })()}
 
       {/* 1일 공수 1 초과 경고 모달 */}
-      {overflowAlert && (() => {
-        const ratio = Math.min(100, Math.round(overflowAlert.otherTotal * 100));
-        return (
-        <Modal isOpen={!!overflowAlert} onClose={() => setOverflowAlert(null)} title="1일 공수가 한도(1)를 넘습니다">
-          <div className="overflow-alert-body">
-            <div className="overflow-alert-headline">
-              <span className="overflow-alert-who">{overflowAlert.name}</span>
-              <span className="overflow-alert-when">{m}/{overflowAlert.day}</span>
-            </div>
+      {overflowAlert &&
+        (() => {
+          const ratio = Math.min(100, Math.round(overflowAlert.otherTotal * 100));
+          return (
+            <Modal
+              isOpen={!!overflowAlert}
+              onClose={() => setOverflowAlert(null)}
+              title="1일 공수가 한도(1)를 넘습니다"
+            >
+              <div className="overflow-alert-body">
+                <div className="overflow-alert-headline">
+                  <span className="overflow-alert-who">{overflowAlert.name}</span>
+                  <span className="overflow-alert-when">
+                    {m}/{overflowAlert.day}
+                  </span>
+                </div>
 
-            <div className="overflow-alert-meter">
-              <div className="overflow-alert-meter-bar"><span style={{ width: `${ratio}%` }} /></div>
-              <div className="overflow-alert-meter-label">
-                다른 프로젝트 합계 <strong>{overflowAlert.otherTotal}</strong> · 남은 가능량 <strong className="text-danger">{overflowAlert.allowed}</strong>
+                <div className="overflow-alert-meter">
+                  <div className="overflow-alert-meter-bar">
+                    <span style={{ width: `${ratio}%` }} />
+                  </div>
+                  <div className="overflow-alert-meter-label">
+                    다른 프로젝트 합계 <strong>{overflowAlert.otherTotal}</strong> · 남은 가능량{' '}
+                    <strong className="text-danger">{overflowAlert.allowed}</strong>
+                  </div>
+                </div>
+
+                {overflowAlert.sources.length > 0 && (
+                  <ul className="overflow-alert-list">
+                    {overflowAlert.sources.map((s, i) => (
+                      <li key={i}>
+                        <span>{s.siteName}</span>
+                        <strong>{s.qty}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <div className="overflow-alert-note">
+                  잔업은 신청한 프로젝트에 자동으로 집계되니, 1일 공수는 다른 프로젝트와 나눠서 입력하면 됩니다.
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => setOverflowAlert(null)}>
+                    확인
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {overflowAlert.sources.length > 0 && (
-              <ul className="overflow-alert-list">
-                {overflowAlert.sources.map((s, i) => (
-                  <li key={i}>
-                    <span>{s.siteName}</span>
-                    <strong>{s.qty}</strong>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="overflow-alert-note">
-              💡 잔업은 신청한 프로젝트에 자동으로 집계되니, 1일 공수는 다른 프로젝트와 나눠서 입력하면 됩니다.
-            </div>
-
-            <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={() => setOverflowAlert(null)}>확인</button>
-            </div>
-          </div>
-        </Modal>
-        );
-      })()}
+            </Modal>
+          );
+        })()}
 
       {/* 잔업 상세 모달 */}
-      {showOvertimeDetail && (() => {
-        const ownOvertimeItems = expenseItems
-          .filter((f) => isOvertimeFinance(f))
-          .sort((a, b) => (a.description || '').localeCompare(b.description || ''));
-        const sum = ownOvertimeItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount ?? f.amount) || 0), 0);
-        return (
-          <Modal isOpen={showOvertimeDetail} onClose={() => setShowOvertimeDetail(false)} title={`잔업 내역 (${ownOvertimeItems.length}건 · ${sum.toLocaleString()}원)`}>
-            {ownOvertimeItems.length === 0 ? (
-              <p className="empty-state">등록된 잔업이 없습니다.</p>
-            ) : (
-              <div className="overtime-detail-list">
-                {ownOvertimeItems.map((f) => {
-                  const desc = (f.description || '').replace(/^잔업\s*-\s*/, '');
-                  return (
-                    <div className="overtime-detail-row" key={f.id}>
-                      <div className="overtime-detail-info">
-                        <strong>{desc}</strong>
-                        <span className="overtime-detail-amount">{Number(f.amount || 0).toLocaleString()}원</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Modal>
-        );
-      })()}
-
-      {/* 업체(공수/프로젝트) 추가 — 2단계 선택 모달 */}
-      {vendorPickerMode && (() => {
-        const modalTitle =
-          vendorPickerStep === 'vendor'
-            ? (vendorPickerMode === 'vendor' ? '업체 선택 (공수)' : '업체 선택 (프로젝트)')
-            : vendorPickerStep === 'member'
-              ? `직원 선택 — ${pickedVendor?.name || ''}`
-              : `프로젝트 선택 — ${pickedVendor?.name || ''}`;
-        const vendorMembers = pickedVendor
-          ? freelancers.filter((f) => (f.vendor || '').trim() === pickedVendor.name.trim())
-          : [];
-        const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
-        return (
-          <Modal isOpen={!!vendorPickerMode} onClose={resetVendorPicker} title={modalTitle}>
-            {vendorPickerStep === 'vendor' && (
-              vendors.length === 0 ? (
-                <p className="empty-state">등록된 업체가 없습니다. 먼저 외주관리에 업체를 등록해주세요.</p>
+      {showOvertimeDetail &&
+        (() => {
+          const ownOvertimeItems = expenseItems
+            .filter((f) => isOvertimeFinance(f))
+            .sort((a, b) => (a.description || '').localeCompare(b.description || ''));
+          const sum = ownOvertimeItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount ?? f.amount) || 0), 0);
+          return (
+            <Modal
+              isOpen={showOvertimeDetail}
+              onClose={() => setShowOvertimeDetail(false)}
+              title={`잔업 내역 (${ownOvertimeItems.length}건 · ${sum.toLocaleString()}원)`}
+            >
+              {ownOvertimeItems.length === 0 ? (
+                <p className="empty-state">등록된 잔업이 없습니다.</p>
               ) : (
-                <ul className="vendor-picker-list">
-                  {vendors.map((v) => (
-                    <li key={v.id}>
-                      <button type="button" onClick={() => handlePickVendor(v)}>
-                        <strong>{v.name}</strong>
-                        <span>
-                          {canViewSalary && vendorPickerMode === 'vendor' && v.dailyRate > 0 && `공수 ${Number(v.dailyRate).toLocaleString()}원`}
-                          {canViewSalary && vendorPickerMode === 'vendor_case' && v.caseRate > 0 && `건당 ${Number(v.caseRate).toLocaleString()}원`}
-                          {v.representative && `${canViewSalary && (v.dailyRate > 0 || v.caseRate > 0) ? ' · ' : ''}${v.representative}`}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )
-            )}
-
-            {vendorPickerStep === 'member' && (
-              vendorMembers.length === 0 ? (
-                <>
-                  <p className="empty-state">이 업체에 등록된 소속 직원이 없습니다.</p>
-                  <div className="modal-actions">
-                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
-                    <button type="button" className="btn btn-primary" onClick={handlePickMemberBlank}>직원 없이 추가</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <ul className="vendor-picker-list">
-                    {vendorMembers.map((f) => {
-                      const rate = getRateForDate(f, targetDate);
-                      const already = items.some((it) => it.itemType === 'vendor' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === f.name);
-                      return (
-                        <li key={f.id} style={already ? { opacity: 0.4 } : undefined}>
-                          <button type="button" onClick={() => handlePickMember(f)} disabled={already} style={already ? { cursor: 'default' } : undefined}>
-                            <strong>{f.name}</strong>
-                            <span>{already ? '이미 등록됨' : (canViewSalary ? (rate > 0 ? `공수 ${rate.toLocaleString()}원` : '단가 미입력') : '')}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="modal-actions">
-                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
-                    <button type="button" className="btn btn-outline" onClick={handlePickMemberBlank}>직원 없이 추가</button>
-                  </div>
-                </>
-              )
-            )}
-
-            {vendorPickerStep === 'project' && (
-              (pickedVendor?.projects || []).length === 0 ? (
-                <>
-                  <p className="empty-state">이 업체에 등록된 프로젝트가 없습니다.</p>
-                  <div className="modal-actions">
-                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
-                    <button type="button" className="btn btn-primary" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <ul className="vendor-picker-list">
-                    {pickedVendor.projects.map((p) => {
-                      const already = items.some((it) => it.itemType === 'vendor_case' && (it.vendor || '') === (pickedVendor?.name || '') && (it.detail || '') === p.name);
-                      return (
-                        <li key={p.name} style={already ? { opacity: 0.4 } : undefined}>
-                          <button type="button" onClick={() => handlePickProject(p)} disabled={already} style={already ? { cursor: 'default' } : undefined}>
-                            <strong>{p.name}</strong>
-                            <span>{already ? '이미 등록됨' : (canViewSalary ? (p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력') : '')}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="modal-actions">
-                    <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>이전</button>
-                    <button type="button" className="btn btn-outline" onClick={handlePickProjectBlank}>프로젝트 없이 추가</button>
-                  </div>
-                </>
-              )
-            )}
-          </Modal>
-        );
-      })()}
-
-      {/* 프리랜서/일용직 선택 모달 */}
-      {freelancerPickerMode && (() => {
-        const isDaily = freelancerPickerMode === 'daily';
-        const title = isDaily ? '일용직 선택' : '프리랜서 선택';
-        // 업체 소속이 아닌 개인 인력 + workerType 매칭 (undefined는 freelancer로 간주)
-        const pool = freelancers.filter((f) => {
-          if ((f.vendor || '').trim()) return false;
-          const wt = f.workerType || 'freelancer';
-          return isDaily ? wt === 'daily' : wt === 'freelancer';
-        });
-        const currentDetails = new Set(
-          items
-            .filter((it) => it.itemType === freelancerPickerMode)
-            .map((it) => (it.detail || '').trim())
-        );
-        const available = pool.filter((f) => !currentDetails.has((f.name || '').trim()));
-        const already = pool.filter((f) => currentDetails.has((f.name || '').trim()));
-        const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
-        return (
-          <Modal isOpen={!!freelancerPickerMode} onClose={() => setFreelancerPickerMode(null)} title={title}>
-            {pool.length === 0 ? (
-              <>
-                <p className="empty-state">외주관리에 등록된 {isDaily ? '일용직' : '프리랜서'}이 없습니다.</p>
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-primary" onClick={() => openDirectInput(freelancerPickerMode)}>직접 입력으로 추가</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <ul className="vendor-picker-list">
-                  {available.map((f) => {
-                    const rate = getRateForDate(f, targetDate);
+                <div className="overtime-detail-list">
+                  {ownOvertimeItems.map((f) => {
+                    const desc = (f.description || '').replace(/^잔업\s*-\s*/, '');
                     return (
-                      <li key={f.id}>
-                        <button type="button" onClick={() => handlePickFreelancer(f, freelancerPickerMode)}>
-                          <strong>{f.name}</strong>
-                          <span>{canViewSalary ? (rate > 0 ? `${isDaily ? '시급' : '공수'} ${rate.toLocaleString()}원` : '단가 미입력') : ''}</span>
-                        </button>
-                      </li>
+                      <div className="overtime-detail-row" key={f.id}>
+                        <div className="overtime-detail-info">
+                          <strong>{desc}</strong>
+                          <span className="overtime-detail-amount">{Number(f.amount || 0).toLocaleString()}원</span>
+                        </div>
+                      </div>
                     );
                   })}
-                  {already.length > 0 && available.length === 0 && (
-                    <li style={{ listStyle: 'none', padding: '12px', color: '#64748b', fontSize: 13, textAlign: 'center' }}>
-                      모든 {isDaily ? '일용직' : '프리랜서'}이 이미 등록되었습니다.
-                    </li>
-                  )}
-                  {already.map((f) => (
-                    <li key={f.id} style={{ opacity: 0.4 }}>
-                      <button type="button" disabled style={{ cursor: 'default' }}>
-                        <strong>{f.name}</strong>
-                        <span>이미 등록됨</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="modal-actions">
-                  <button type="button" className="btn btn-outline" onClick={() => openDirectInput(freelancerPickerMode)}>직접 입력으로 추가</button>
                 </div>
-              </>
-            )}
-          </Modal>
-        );
-      })()}
+              )}
+            </Modal>
+          );
+        })()}
+
+      {/* 업체(공수/프로젝트) 추가 — 2단계 선택 모달 */}
+      {vendorPickerMode &&
+        (() => {
+          const modalTitle =
+            vendorPickerStep === 'vendor'
+              ? vendorPickerMode === 'vendor'
+                ? '업체 선택 (공수)'
+                : '업체 선택 (프로젝트)'
+              : vendorPickerStep === 'member'
+                ? `직원 선택 — ${pickedVendor?.name || ''}`
+                : `프로젝트 선택 — ${pickedVendor?.name || ''}`;
+          const vendorMembers = pickedVendor
+            ? freelancers.filter((f) => (f.vendor || '').trim() === pickedVendor.name.trim())
+            : [];
+          const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+          return (
+            <Modal isOpen={!!vendorPickerMode} onClose={resetVendorPicker} title={modalTitle}>
+              {vendorPickerStep === 'vendor' &&
+                (vendors.length === 0 ? (
+                  <p className="empty-state">등록된 업체가 없습니다. 먼저 외주관리에 업체를 등록해주세요.</p>
+                ) : (
+                  <ul className="vendor-picker-list">
+                    {vendors.map((v) => (
+                      <li key={v.id}>
+                        <button type="button" onClick={() => handlePickVendor(v)}>
+                          <strong>{v.name}</strong>
+                          <span>
+                            {canViewSalary &&
+                              vendorPickerMode === 'vendor' &&
+                              v.dailyRate > 0 &&
+                              `공수 ${Number(v.dailyRate).toLocaleString()}원`}
+                            {canViewSalary &&
+                              vendorPickerMode === 'vendor_case' &&
+                              v.caseRate > 0 &&
+                              `건당 ${Number(v.caseRate).toLocaleString()}원`}
+                            {v.representative &&
+                              `${canViewSalary && (v.dailyRate > 0 || v.caseRate > 0) ? ' · ' : ''}${v.representative}`}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ))}
+
+              {vendorPickerStep === 'member' &&
+                (vendorMembers.length === 0 ? (
+                  <>
+                    <p className="empty-state">이 업체에 등록된 소속 직원이 없습니다.</p>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>
+                        이전
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={handlePickMemberBlank}>
+                        직원 없이 추가
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ul className="vendor-picker-list">
+                      {vendorMembers.map((f) => {
+                        const rate = getRateForDate(f, targetDate);
+                        const already = items.some(
+                          (it) =>
+                            it.itemType === 'vendor' &&
+                            (it.vendor || '') === (pickedVendor?.name || '') &&
+                            (it.detail || '') === f.name,
+                        );
+                        return (
+                          <li key={f.id} style={already ? { opacity: 0.4 } : undefined}>
+                            <button
+                              type="button"
+                              onClick={() => handlePickMember(f)}
+                              disabled={already}
+                              style={already ? { cursor: 'default' } : undefined}
+                            >
+                              <strong>{f.name}</strong>
+                              <span>
+                                {already
+                                  ? '이미 등록됨'
+                                  : canViewSalary
+                                    ? rate > 0
+                                      ? `공수 ${rate.toLocaleString()}원`
+                                      : '단가 미입력'
+                                    : ''}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>
+                        이전
+                      </button>
+                      <button type="button" className="btn btn-outline" onClick={handlePickMemberBlank}>
+                        직원 없이 추가
+                      </button>
+                    </div>
+                  </>
+                ))}
+
+              {vendorPickerStep === 'project' &&
+                ((pickedVendor?.projects || []).length === 0 ? (
+                  <>
+                    <p className="empty-state">이 업체에 등록된 프로젝트가 없습니다.</p>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>
+                        이전
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={handlePickProjectBlank}>
+                        프로젝트 없이 추가
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ul className="vendor-picker-list">
+                      {pickedVendor.projects.map((p) => {
+                        const already = items.some(
+                          (it) =>
+                            it.itemType === 'vendor_case' &&
+                            (it.vendor || '') === (pickedVendor?.name || '') &&
+                            (it.detail || '') === p.name,
+                        );
+                        return (
+                          <li key={p.name} style={already ? { opacity: 0.4 } : undefined}>
+                            <button
+                              type="button"
+                              onClick={() => handlePickProject(p)}
+                              disabled={already}
+                              style={already ? { cursor: 'default' } : undefined}
+                            >
+                              <strong>{p.name}</strong>
+                              <span>
+                                {already
+                                  ? '이미 등록됨'
+                                  : canViewSalary
+                                    ? p.unitPrice > 0
+                                      ? `건당 ${Number(p.unitPrice).toLocaleString()}원`
+                                      : '단가 미입력'
+                                    : ''}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="modal-actions">
+                      <button type="button" className="btn btn-outline" onClick={() => setVendorPickerStep('vendor')}>
+                        이전
+                      </button>
+                      <button type="button" className="btn btn-outline" onClick={handlePickProjectBlank}>
+                        프로젝트 없이 추가
+                      </button>
+                    </div>
+                  </>
+                ))}
+            </Modal>
+          );
+        })()}
+
+      {/* 프리랜서/일용직 선택 모달 */}
+      {freelancerPickerMode &&
+        (() => {
+          const isDaily = freelancerPickerMode === 'daily';
+          const title = isDaily ? '일용직 선택' : '프리랜서 선택';
+          // 업체 소속이 아닌 개인 인력 + workerType 매칭 (undefined는 freelancer로 간주)
+          const pool = freelancers.filter((f) => {
+            if ((f.vendor || '').trim()) return false;
+            const wt = f.workerType || 'freelancer';
+            return isDaily ? wt === 'daily' : wt === 'freelancer';
+          });
+          const currentDetails = new Set(
+            items.filter((it) => it.itemType === freelancerPickerMode).map((it) => (it.detail || '').trim()),
+          );
+          const available = pool.filter((f) => !currentDetails.has((f.name || '').trim()));
+          const already = pool.filter((f) => currentDetails.has((f.name || '').trim()));
+          const targetDate = `${y}-${String(m).padStart(2, '0')}-01`;
+          return (
+            <Modal isOpen={!!freelancerPickerMode} onClose={() => setFreelancerPickerMode(null)} title={title}>
+              {pool.length === 0 ? (
+                <>
+                  <p className="empty-state">외주관리에 등록된 {isDaily ? '일용직' : '프리랜서'}이 없습니다.</p>
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => openDirectInput(freelancerPickerMode)}
+                    >
+                      직접 입력으로 추가
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ul className="vendor-picker-list">
+                    {available.map((f) => {
+                      const rate = getRateForDate(f, targetDate);
+                      return (
+                        <li key={f.id}>
+                          <button type="button" onClick={() => handlePickFreelancer(f, freelancerPickerMode)}>
+                            <strong>{f.name}</strong>
+                            <span>
+                              {canViewSalary
+                                ? rate > 0
+                                  ? `${isDaily ? '시급' : '공수'} ${rate.toLocaleString()}원`
+                                  : '단가 미입력'
+                                : ''}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {already.length > 0 && available.length === 0 && (
+                      <li
+                        style={{
+                          listStyle: 'none',
+                          padding: '12px',
+                          color: '#64748b',
+                          fontSize: 13,
+                          textAlign: 'center',
+                        }}
+                      >
+                        모든 {isDaily ? '일용직' : '프리랜서'}이 이미 등록되었습니다.
+                      </li>
+                    )}
+                    {already.map((f) => (
+                      <li key={f.id} style={{ opacity: 0.4 }}>
+                        <button type="button" disabled style={{ cursor: 'default' }}>
+                          <strong>{f.name}</strong>
+                          <span>이미 등록됨</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => openDirectInput(freelancerPickerMode)}
+                    >
+                      직접 입력으로 추가
+                    </button>
+                  </div>
+                </>
+              )}
+            </Modal>
+          );
+        })()}
 
       {/* 프리랜서/일용직 직접 입력 모달 */}
-      {directInputModal && (() => {
-        const isDaily = directInputModal.type === 'daily';
-        const title = `${isDaily ? '일용직' : '프리랜서'} 직접 입력`;
-        return (
-          <Modal isOpen={!!directInputModal} onClose={() => setDirectInputModal(null)} title={title}>
-            <div className="direct-input-form">
-              <label className="direct-input-row">
-                <span className="direct-input-label">이름 <em>*</em></span>
-                <input
-                  type="text"
-                  className="direct-input-text"
-                  value={directInputModal.name}
-                  onChange={(e) => setDirectInputModal({ ...directInputModal, name: e.target.value })}
-                  placeholder={`${isDaily ? '일용직' : '프리랜서'} 이름`}
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') submitDirectInput(); }}
-                />
-              </label>
-              <label className="direct-input-row">
-                <span className="direct-input-label">소속 업체</span>
-                <input
-                  type="text"
-                  className="direct-input-text"
-                  value={directInputModal.vendor}
-                  onChange={(e) => setDirectInputModal({ ...directInputModal, vendor: e.target.value })}
-                  placeholder="없으면 비워두세요"
-                  onKeyDown={(e) => { if (e.key === 'Enter') submitDirectInput(); }}
-                />
-              </label>
-              {canViewSalary && (
+      {directInputModal &&
+        (() => {
+          const isDaily = directInputModal.type === 'daily';
+          const title = `${isDaily ? '일용직' : '프리랜서'} 직접 입력`;
+          return (
+            <Modal isOpen={!!directInputModal} onClose={() => setDirectInputModal(null)} title={title}>
+              <div className="direct-input-form" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
                 <label className="direct-input-row">
-                  <span className="direct-input-label">{isDaily ? '시급/일급' : '공수 단가'}</span>
-                  <MoneyInput
+                  <span className="direct-input-label">
+                    이름 <em>*</em>
+                  </span>
+                  <input
+                    type="text"
                     className="direct-input-text"
-                    value={directInputModal.dailyRate}
-                    onChange={(e) => setDirectInputModal({ ...directInputModal, dailyRate: Number(e.target.value) || 0 })}
+                    value={directInputModal.name}
+                    onChange={(e) => setDirectInputModal({ ...directInputModal, name: e.target.value })}
+                    placeholder={`${isDaily ? '일용직' : '프리랜서'} 이름`}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitDirectInput();
+                    }}
                   />
                 </label>
-              )}
-              <p className="direct-input-hint">외주관리에 미등록된 이름이면 자동 등록됩니다.</p>
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-outline" onClick={() => setDirectInputModal(null)}>취소</button>
-              <button type="button" className="btn btn-primary" onClick={submitDirectInput}>추가</button>
-            </div>
-          </Modal>
-        );
-      })()}
+                <label className="direct-input-row">
+                  <span className="direct-input-label">소속 업체</span>
+                  <input
+                    type="text"
+                    className="direct-input-text"
+                    value={directInputModal.vendor}
+                    onChange={(e) => setDirectInputModal({ ...directInputModal, vendor: e.target.value })}
+                    placeholder="없으면 비워두세요"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitDirectInput();
+                    }}
+                  />
+                </label>
+                {canViewSalary && (
+                  <label className="direct-input-row">
+                    <span className="direct-input-label">{isDaily ? '시급/일급' : '공수 단가'}</span>
+                    <MoneyInput
+                      className="direct-input-text"
+                      value={directInputModal.dailyRate}
+                      onChange={(e) =>
+                        setDirectInputModal({ ...directInputModal, dailyRate: Number(e.target.value) || 0 })
+                      }
+                    />
+                  </label>
+                )}
+                <p className="direct-input-hint">외주관리에 미등록된 이름이면 자동 등록됩니다.</p>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setDirectInputModal(null)}>
+                  취소
+                </button>
+                <button type="button" className="btn btn-primary" onClick={submitDirectInput}>
+                  추가
+                </button>
+              </div>
+            </Modal>
+          );
+        })()}
 
       {/* 직원 선택 모달 */}
-      {showEmployeeSelect && canEdit && (() => {
-        const currentNames = new Set(items.filter((it) => it.itemType === 'employee').map((it) => it.detail));
-        const allWithCost = Object.values(userMap).filter((u) => u.fixedCost);
-        const unassigned = allWithCost.filter((u) => !assignedNames.has(u.name) && !currentNames.has(u.name));
-        const assignedElsewhere = allWithCost.filter((u) => assignedNames.has(u.name) && !currentNames.has(u.name));
-        const alreadyHere = allWithCost.filter((u) => currentNames.has(u.name));
+      {showEmployeeSelect &&
+        canEdit &&
+        (() => {
+          const currentNames = new Set(items.filter((it) => it.itemType === 'employee').map((it) => it.detail));
+          const allWithCost = Object.values(userMap).filter((u) => u.fixedCost);
+          const unassigned = allWithCost.filter((u) => !assignedNames.has(u.name) && !currentNames.has(u.name));
+          const assignedElsewhere = allWithCost.filter((u) => assignedNames.has(u.name) && !currentNames.has(u.name));
+          const alreadyHere = allWithCost.filter((u) => currentNames.has(u.name));
 
-        async function handleAddAllUnassigned() {
-          if (unassigned.length === 0) return;
-          if (!await confirm(`미배정 인원 ${unassigned.length}명을 일괄 추가하시겠습니까?`)) return;
-          setAddingAll(true);
-          try {
-            for (const u of unassigned) { await handleAddEmployee(u); }
-            setShowEmployeeSelect(false);
-          } finally { setAddingAll(false); }
-        }
+          async function handleAddAllUnassigned() {
+            if (unassigned.length === 0) return;
+            if (!(await confirm(`미배정 인원 ${unassigned.length}명을 일괄 추가하시겠습니까?`))) return;
+            setAddingAll(true);
+            try {
+              for (const u of unassigned) {
+                await handleAddEmployee(u);
+              }
+              setShowEmployeeSelect(false);
+            } finally {
+              setAddingAll(false);
+            }
+          }
 
-        return (
-          <Modal isOpen={showEmployeeSelect} onClose={() => setShowEmployeeSelect(false)} title="직원 선택">
-            {allWithCost.length === 0 ? (
-              <p className="empty-state">고정비용이 등록된 직원이 없습니다. 직원 관리에서 설정하세요.</p>
-            ) : (
-              <div className="employee-picker">
-                {unassigned.length > 0 && (
-                  <>
-                    <div className="employee-picker-group-head employee-picker-group-head--unassigned">
-                      <span>미배정 인원 ({unassigned.length}명)</span>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        onClick={handleAddAllUnassigned}
-                        disabled={addingAll}
-                      >
-                        {addingAll ? '추가 중...' : '일괄 추가'}
-                      </button>
-                    </div>
-                    <ul className="vendor-picker-list">
-                      {unassigned.map((u) => (
-                        <li key={u.uid}>
-                          <button type="button" onClick={() => handleAddEmployee(u)}>
-                            <strong>{u.name}</strong>
-                            <span>{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {assignedElsewhere.length > 0 && (
-                  <>
-                    <div className="employee-picker-group-head employee-picker-group-head--assigned">
-                      <span>다른 프로젝트 배정 ({assignedElsewhere.length}명)</span>
-                    </div>
-                    <ul className="vendor-picker-list">
-                      {assignedElsewhere.map((u) => (
-                        <li key={u.uid} style={{ opacity: 0.6 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const others = otherSitesEmployeeItems[u.name] || [];
-                              if (others.length === 0) { handleAddEmployee(u); return; }
-                              setDupAddModal({ user: u, others });
-                            }}
-                          >
-                            <strong>{u.name} <span className="dup-warn-badge">⚠️ 중복</span></strong>
-                            <span>{u.position || ''}{canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {alreadyHere.length > 0 && (
-                  <>
-                    <div className="employee-picker-group-head employee-picker-group-head--done">
-                      <span>이미 등록됨 ({alreadyHere.length}명)</span>
-                    </div>
-                    <ul className="vendor-picker-list">
-                      {alreadyHere.map((u) => (
-                        <li key={u.uid} style={{ opacity: 0.4 }}>
-                          <button type="button" disabled style={{ cursor: 'default' }}>
-                            <strong>{u.name}</strong>
-                            <span>{u.position || ''}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {unassigned.length === 0 && assignedElsewhere.length === 0 && alreadyHere.length > 0 && (
-                  <p className="empty-state">모든 직원이 이미 등록되었습니다.</p>
-                )}
-              </div>
-            )}
-          </Modal>
-        );
-      })()}
+          return (
+            <Modal isOpen={showEmployeeSelect} onClose={() => setShowEmployeeSelect(false)} title="직원 선택">
+              {allWithCost.length === 0 ? (
+                <p className="empty-state">고정비용이 등록된 직원이 없습니다. 직원 관리에서 설정하세요.</p>
+              ) : (
+                <div className="employee-picker">
+                  {unassigned.length > 0 && (
+                    <>
+                      <div className="employee-picker-group-head employee-picker-group-head--unassigned">
+                        <span>미배정 인원 ({unassigned.length}명)</span>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={handleAddAllUnassigned}
+                          disabled={addingAll}
+                        >
+                          {addingAll ? '추가 중...' : '일괄 추가'}
+                        </button>
+                      </div>
+                      <ul className="vendor-picker-list">
+                        {unassigned.map((u) => (
+                          <li key={u.uid}>
+                            <button type="button" onClick={() => handleAddEmployee(u)}>
+                              <strong>{u.name}</strong>
+                              <span>
+                                {u.position || ''}
+                                {canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {assignedElsewhere.length > 0 && (
+                    <>
+                      <div className="employee-picker-group-head employee-picker-group-head--assigned">
+                        <span>다른 프로젝트 배정 ({assignedElsewhere.length}명)</span>
+                      </div>
+                      <ul className="vendor-picker-list">
+                        {assignedElsewhere.map((u) => (
+                          <li key={u.uid} style={{ opacity: 0.6 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const others = otherSitesEmployeeItems[u.name] || [];
+                                if (others.length === 0) {
+                                  handleAddEmployee(u);
+                                  return;
+                                }
+                                setDupAddModal({ user: u, others });
+                              }}
+                            >
+                              <strong>
+                                {u.name} <span className="dup-warn-badge">중복</span>
+                              </strong>
+                              <span>
+                                {u.position || ''}
+                                {canViewSalary ? ` · 월 ${Number(u.fixedCost).toLocaleString()}원` : ''}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {alreadyHere.length > 0 && (
+                    <>
+                      <div className="employee-picker-group-head employee-picker-group-head--done">
+                        <span>이미 등록됨 ({alreadyHere.length}명)</span>
+                      </div>
+                      <ul className="vendor-picker-list">
+                        {alreadyHere.map((u) => (
+                          <li key={u.uid} style={{ opacity: 0.4 }}>
+                            <button type="button" disabled style={{ cursor: 'default' }}>
+                              <strong>{u.name}</strong>
+                              <span>{u.position || ''}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {unassigned.length === 0 && assignedElsewhere.length === 0 && alreadyHere.length > 0 && (
+                    <p className="empty-state">모든 직원이 이미 등록되었습니다.</p>
+                  )}
+                </div>
+              )}
+            </Modal>
+          );
+        })()}
 
       {/* 중복 배정 직원 추가 확인 — 기존 프로젝트 자동채움 끄기 선택 */}
       {dupAddModal && (
@@ -2407,11 +2955,12 @@ export default function SiteClosingPage() {
               ))}
             </ul>
             <p className="dup-add-note">
-              직원의 하루 공수 합은 최대 <strong>1</strong>로 제한됩니다.
-              같은 날 중복 입력 시 먼저 입력된 현장이 우선되고, 이 현장은 남는 만큼만 수동 입력해야 합니다.
+              직원의 하루 공수 합은 최대 <strong>1</strong>로 제한됩니다. 같은 날 중복 입력 시 먼저 입력된 현장이
+              우선되고, 이 현장은 남는 만큼만 수동 입력해야 합니다.
             </p>
             <p className="dup-add-note">
-              "기존 자동채움 끄고 추가"를 선택하면 위 프로젝트의 <strong>자동채움만 끄고 기존 입력값은 그대로 유지</strong>합니다(앞으로 자동으로 다시 채우지 않음).
+              "기존 자동채움 끄고 추가"를 선택하면 위 프로젝트의{' '}
+              <strong>자동채움만 끄고 기존 입력값은 그대로 유지</strong>합니다(앞으로 자동으로 다시 채우지 않음).
             </p>
             <div className="modal-actions">
               <button type="button" className="btn btn-primary" onClick={() => confirmDupAdd(true)}>

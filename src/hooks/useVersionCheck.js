@@ -16,7 +16,9 @@ export function useVersionCheck() {
   useEffect(() => {
     let cancelled = false;
 
-    const markActive = () => { lastActivityRef.current = Date.now(); };
+    const markActive = () => {
+      lastActivityRef.current = Date.now();
+    };
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
     activityEvents.forEach((ev) => window.addEventListener(ev, markActive, { passive: true }));
 
@@ -37,7 +39,9 @@ export function useVersionCheck() {
       try {
         const last = sessionStorage.getItem(RELOAD_KEY);
         if (last && Date.now() - Number(last) < RELOAD_COOLDOWN_MS) return false;
-      } catch { /* sessionStorage 접근 실패는 무시 */ }
+      } catch {
+        /* sessionStorage 접근 실패는 무시 */
+      }
       return true;
     }
 
@@ -53,7 +57,11 @@ export function useVersionCheck() {
         if (data.version === currentVersion) return;
         setLatestVersion(data.version);
         if (canAutoReload()) {
-          try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())); } catch { /* 무시 */ }
+          try {
+            sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+          } catch {
+            /* 무시 */
+          }
           window.location.reload();
         }
       } catch {

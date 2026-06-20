@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAllSites, getSitesByManager, getSite, getFinanceItems, getClosingItems, createSite, updateSite, deleteSite } from '../../services/siteService';
+import {
+  getAllSites,
+  getSitesByManager,
+  getSite,
+  getFinanceItems,
+  getClosingItems,
+  createSite,
+  updateSite,
+} from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
+import Select from '../../components/common/Select';
+import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
+import TrashModal from '../../components/common/TrashModal';
+import { trashGeneric } from '../../services/trashService';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
 const CS_BADGE_LABEL = 'CS';
@@ -14,14 +26,14 @@ const STATUS_LABELS = { active: '진행 중', completed: '완료' };
 
 // 아이콘 배경색 팔레트 — { key, label, bg, fg }
 const ICON_COLORS = [
-  { key: '',       label: '기본',   bg: '',         fg: '' },
-  { key: 'amber',  label: '앰버',   bg: '#fef3c7',  fg: '#92400e' },
-  { key: 'sky',    label: '스카이', bg: '#e0f2fe',  fg: '#075985' },
-  { key: 'green',  label: '그린',   bg: '#dcfce7',  fg: '#166534' },
-  { key: 'rose',   label: '로즈',   bg: '#ffe4e6',  fg: '#9f1239' },
+  { key: '', label: '기본', bg: '', fg: '' },
+  { key: 'amber', label: '앰버', bg: '#fef3c7', fg: '#92400e' },
+  { key: 'sky', label: '스카이', bg: '#e0f2fe', fg: '#075985' },
+  { key: 'green', label: '그린', bg: '#dcfce7', fg: '#166534' },
+  { key: 'rose', label: '로즈', bg: '#ffe4e6', fg: '#9f1239' },
   { key: 'violet', label: '바이올렛', bg: '#ede9fe', fg: '#5b21b6' },
-  { key: 'teal',   label: '틸',     bg: '#ccfbf1',  fg: '#115e59' },
-  { key: 'slate',  label: '슬레이트', bg: '#e2e8f0', fg: '#334155' },
+  { key: 'teal', label: '틸', bg: '#ccfbf1', fg: '#115e59' },
+  { key: 'slate', label: '슬레이트', bg: '#e2e8f0', fg: '#334155' },
 ];
 function getIconColor(key) {
   return ICON_COLORS.find((c) => c.key === key) || ICON_COLORS[0];
@@ -40,8 +52,8 @@ export default function SiteListPage() {
   const now = new Date();
   const urlY = Number(searchParams.get('y'));
   const urlM = Number(searchParams.get('m'));
-  const year = (urlY >= 2024 && urlY <= 2030) ? urlY : now.getFullYear();
-  const month = (urlM >= 1 && urlM <= 12) ? urlM : (now.getMonth() + 1);
+  const year = urlY >= 2024 && urlY <= 2030 ? urlY : now.getFullYear();
+  const month = urlM >= 1 && urlM <= 12 ? urlM : now.getMonth() + 1;
   function updateParams(next) {
     const merged = {
       ...(searchParams.get('filter') ? { filter: searchParams.get('filter') } : {}),
@@ -49,7 +61,9 @@ export default function SiteListPage() {
       ...(searchParams.get('m') ? { m: searchParams.get('m') } : {}),
       ...next,
     };
-    Object.keys(merged).forEach((k) => { if (merged[k] === '' || merged[k] == null) delete merged[k]; });
+    Object.keys(merged).forEach((k) => {
+      if (merged[k] === '' || merged[k] == null) delete merged[k];
+    });
     setSearchParams(merged, { replace: false });
   }
   const setYear = (v) => updateParams({ y: String(v) });
@@ -61,14 +75,23 @@ export default function SiteListPage() {
   const [showModal, setShowModal] = useState(false);
   const [editSite, setEditSite] = useState(null);
   const [form, setForm] = useState({
-    name: '', team: '', managerIds: [],
-    projectType: 'recurring', status: 'active',
-    startYear: null, startMonth: null, endYear: null, endMonth: null,
-    mirrorFromSiteIds: [], hideRevenue: false, isCS: false,
+    name: '',
+    team: '',
+    managerIds: [],
+    projectType: 'recurring',
+    status: 'active',
+    startYear: null,
+    startMonth: null,
+    endYear: null,
+    endMonth: null,
+    mirrorFromSiteIds: [],
+    hideRevenue: false,
+    isCS: false,
   });
   const [managerListOpen, setManagerListOpen] = useState(false);
   const [mirrorListOpen, setMirrorListOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [trashOpen, setTrashOpen] = useState(false);
 
   useEffect(() => {
     if (!userProfile) return;
@@ -100,7 +123,10 @@ export default function SiteListPage() {
       const uMap = Object.fromEntries(userList.map((u) => [u.uid, u]));
       setUserMap(uMap);
 
-      const isOvertimeItem = (f) => { const d = (f.description || '').trim(); return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-'); };
+      const isOvertimeItem = (f) => {
+        const d = (f.description || '').trim();
+        return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-');
+      };
 
       // 미러 소스 중 list에 없는 사이트들도 통계용으로 추가 조회 (팀장이 담당하지 않는 합산 대상 포함)
       const listIds = new Set(list.map((x) => x.id));
@@ -110,24 +136,31 @@ export default function SiteListPage() {
           if (!listIds.has(srcId)) missingMirrorIds.add(srcId);
         }
       }
-      const extraMirrorSites = missingMirrorIds.size > 0
-        ? (await Promise.all([...missingMirrorIds].map((id) => getSite(id).catch(() => null)))).filter(Boolean)
-        : [];
+      const extraMirrorSites =
+        missingMirrorIds.size > 0
+          ? (await Promise.all([...missingMirrorIds].map((id) => getSite(id).catch(() => null)))).filter(Boolean)
+          : [];
       const statsList = [...list, ...extraMirrorSites];
 
       // 1단계: 모든 대상 사이트(담당 + 미러 소스) 자체 finance/공수 집계
       const rawStats = {};
-      await Promise.all(statsList.map(async (s) => {
-        const [fins, items] = await Promise.all([
-          getFinanceItems(s.id, year, month),
-          getClosingItems(s.id, year, month),
-        ]);
-        const revenue = fins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-        const expense = fins.filter((f) => f.type === 'expense' && !isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-        const overtime = fins.filter((f) => f.type === 'expense' && isOvertimeItem(f)).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-        const labor = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
-        rawStats[s.id] = { revenue, expense, overtime, labor };
-      }));
+      await Promise.all(
+        statsList.map(async (s) => {
+          const [fins, items] = await Promise.all([
+            getFinanceItems(s.id, year, month),
+            getClosingItems(s.id, year, month),
+          ]);
+          const revenue = fins.filter((f) => f.type === 'revenue').reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+          const expense = fins
+            .filter((f) => f.type === 'expense' && !isOvertimeItem(f))
+            .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+          const overtime = fins
+            .filter((f) => f.type === 'expense' && isOvertimeItem(f))
+            .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+          const labor = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+          rawStats[s.id] = { revenue, expense, overtime, labor };
+        }),
+      );
 
       // 2단계: mirrorFromSiteIds로 지출 합산 (미러 소스의 expense + overtime + labor 을 타겟의 expense에 추가)
       const stats = {};
@@ -200,8 +233,16 @@ export default function SiteListPage() {
       if (isAfterEnd(s)) return false;
       return true;
     }).length,
-    recurring: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && (s.projectType || 'recurring') === 'recurring' && (s.status || 'active') === 'active').length,
-    once: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.projectType === 'once' && (s.status || 'active') === 'active').length,
+    recurring: sites.filter(
+      (s) =>
+        !isBeforeStart(s) &&
+        !isAfterEnd(s) &&
+        (s.projectType || 'recurring') === 'recurring' &&
+        (s.status || 'active') === 'active',
+    ).length,
+    once: sites.filter(
+      (s) => !isBeforeStart(s) && !isAfterEnd(s) && s.projectType === 'once' && (s.status || 'active') === 'active',
+    ).length,
     completed: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.status === 'completed').length,
   };
 
@@ -210,10 +251,16 @@ export default function SiteListPage() {
     const names = ids.map((uid) => userMap[uid]?.name).filter(Boolean);
     return names.length ? names.join(', ') : '-';
   }
+  function managerNameArr(site) {
+    const ids = site.managerIds || [];
+    return ids.map((uid) => userMap[uid]?.name).filter(Boolean);
+  }
 
   function periodLabel(site) {
-    const sy = site.startYear; const sm = site.startMonth;
-    const ey = site.endYear; const em = site.endMonth;
+    const sy = site.startYear;
+    const sm = site.startMonth;
+    const ey = site.endYear;
+    const em = site.endMonth;
     if (!sy) return '';
     let label = `${sy}.${String(sm).padStart(2, '0')}~`;
     if (ey) label += `${ey}.${String(em).padStart(2, '0')}`;
@@ -224,11 +271,20 @@ export default function SiteListPage() {
   function openCreate() {
     setEditSite(null);
     setForm({
-      name: '', team: '', managerIds: [],
-      projectType: 'recurring', status: 'active',
-      startYear: year, startMonth: month, endYear: null, endMonth: null,
-      mirrorFromSiteIds: [], hideRevenue: false, isCS: false,
-      icon: '', iconColor: '',
+      name: '',
+      team: '',
+      managerIds: [],
+      projectType: 'recurring',
+      status: 'active',
+      startYear: year,
+      startMonth: month,
+      endYear: null,
+      endMonth: null,
+      mirrorFromSiteIds: [],
+      hideRevenue: false,
+      isCS: false,
+      icon: '',
+      iconColor: '',
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -238,13 +294,20 @@ export default function SiteListPage() {
   function openEdit(site) {
     setEditSite(site);
     setForm({
-      name: site.name, team: site.team || '', managerIds: site.managerIds || [],
-      projectType: site.projectType || 'recurring', status: site.status || 'active',
-      startYear: site.startYear || null, startMonth: site.startMonth || null,
-      endYear: site.endYear || null, endMonth: site.endMonth || null,
-      mirrorFromSiteIds: site.mirrorFromSiteIds || [], hideRevenue: !!site.hideRevenue,
+      name: site.name,
+      team: site.team || '',
+      managerIds: site.managerIds || [],
+      projectType: site.projectType || 'recurring',
+      status: site.status || 'active',
+      startYear: site.startYear || null,
+      startMonth: site.startMonth || null,
+      endYear: site.endYear || null,
+      endMonth: site.endMonth || null,
+      mirrorFromSiteIds: site.mirrorFromSiteIds || [],
+      hideRevenue: !!site.hideRevenue,
       isCS: !!site.isCS,
-      icon: site.icon || '', iconColor: site.iconColor || '',
+      icon: site.icon || '',
+      iconColor: site.iconColor || '',
     });
     setManagerListOpen(false);
     setMirrorListOpen(false);
@@ -269,9 +332,9 @@ export default function SiteListPage() {
   async function handleDelete(site, e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!await confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
+    if (!(await confirm(`"${site.name}" 프로젝트를 휴지통으로 이동하시겠습니까?\n(기존 마감 데이터는 남습니다)`))) return;
     try {
-      await deleteSite(site.id);
+      await trashGeneric('sites', site.id, { title: site.name }, userProfile?.name || '');
       await loadData();
     } catch (err) {
       alert('삭제 오류: ' + err.message);
@@ -282,8 +345,11 @@ export default function SiteListPage() {
     e.preventDefault();
     e.stopPropagation();
     const next = (site.status || 'active') === 'active' ? 'completed' : 'active';
-    const msg = next === 'completed' ? `"${site.name}" 프로젝트를 완료 처리하시겠습니까?` : `"${site.name}" 프로젝트를 다시 활성화하시겠습니까?`;
-    if (!await confirm(msg)) return;
+    const msg =
+      next === 'completed'
+        ? `"${site.name}" 프로젝트를 완료 처리하시겠습니까?`
+        : `"${site.name}" 프로젝트를 다시 활성화하시겠습니까?`;
+    if (!(await confirm(msg))) return;
     try {
       await updateSite(site.id, { status: next });
       await loadData();
@@ -295,9 +361,7 @@ export default function SiteListPage() {
   function toggleManager(uid) {
     setForm((f) => ({
       ...f,
-      managerIds: f.managerIds.includes(uid)
-        ? f.managerIds.filter((x) => x !== uid)
-        : [...f.managerIds, uid],
+      managerIds: f.managerIds.includes(uid) ? f.managerIds.filter((x) => x !== uid) : [...f.managerIds, uid],
     }));
   }
 
@@ -318,7 +382,18 @@ export default function SiteListPage() {
     <div className="site-list-page">
       <div className="page-header">
         <h2>프로젝트</h2>
-        {(isAdmin || canCreateSite) && <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>}
+        {(isAdmin || canCreateSite) && (
+          <div className="page-actions">
+            {isAdmin && (
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+                <Icon name="trash" className="btn-ic" />휴지통
+              </button>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={openCreate}>
+              <Icon name="plus" className="btn-ic" />프로젝트 추가
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 필터 탭 */}
@@ -334,196 +409,416 @@ export default function SiteListPage() {
             className={`tab-nav-item ${filter === t.key ? 'active' : ''}`}
             onClick={() => setFilter(t.key)}
           >
-            {t.label} {filterCounts[t.key] > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{filterCounts[t.key]}</span>}
+            {t.label}{' '}
+            {filterCounts[t.key] > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{filterCounts[t.key]}</span>}
           </button>
         ))}
       </div>
 
       <div className="filters">
-        <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-          {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
-        </select>
-        <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => <option key={m} value={m}>{m}월</option>)}
-        </select>
+        <Select
+          value={year}
+          onChange={(v) => setYear(Number(v))}
+          options={[2024, 2025, 2026, 2027, 2028].map((y) => ({ value: y, label: `${y}년` }))}
+          ariaLabel="년 선택"
+        />
+        <Select
+          value={month}
+          onChange={(v) => setMonth(Number(v))}
+          options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => ({ value: m, label: `${m}월` }))}
+          ariaLabel="월 선택"
+        />
       </div>
 
-      {(isAdmin || canViewSalary) && filtered.length > 0 && (() => {
-        const allRevenue = filtered.reduce((s, site) => {
-          if (site.hideRevenue) return s;
-          return s + ((siteStats[site.id] || {}).revenue || 0);
-        }, 0);
-        const allExpense = filtered.reduce((s, site) => {
-          const v = siteStats[site.id] || {};
-          const ov = canViewSalary ? (v.overtime || 0) : 0;
-          const lb = canViewSalary ? (v.labor || 0) : 0;
-          return s + (v.expense || 0) + ov + lb;
-        }, 0);
-        const allBalance = allRevenue - allExpense;
-        return (
-          <div className="total-summary-bar">
-            <div className="total-summary-item">
-              <span className="label">{filter === 'completed' ? '누적 매출' : '전체 매출'}</span>
-              <strong className="stat-revenue">{allRevenue.toLocaleString()}원</strong>
+      {(isAdmin || canViewSalary) &&
+        filtered.length > 0 &&
+        (() => {
+          const allRevenue = filtered.reduce((s, site) => {
+            if (site.hideRevenue) return s;
+            return s + ((siteStats[site.id] || {}).revenue || 0);
+          }, 0);
+          const allExpense = filtered.reduce((s, site) => {
+            const v = siteStats[site.id] || {};
+            const ov = canViewSalary ? v.overtime || 0 : 0;
+            const lb = canViewSalary ? v.labor || 0 : 0;
+            return s + (v.expense || 0) + ov + lb;
+          }, 0);
+          const allBalance = allRevenue - allExpense;
+          return (
+            <div
+              className="total-summary-bar"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 4,
+                marginBottom: 8,
+                ...(typeof window !== 'undefined' && window.innerWidth <= 360
+                  ? { flexDirection: 'column', gap: 2 }
+                  : {}),
+              }}
+            >
+              <div className="total-summary-item" style={{ flex: '1 1 auto' }}>
+                <span className="label">{filter === 'completed' ? '누적 매출' : '전체 매출'}</span>
+                <strong
+                  className="stat-revenue"
+                  style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {allRevenue.toLocaleString()}원
+                </strong>
+              </div>
+              <div className="total-summary-item" style={{ flex: '1 1 auto' }}>
+                <span className="label">{filter === 'completed' ? '누적 지출' : '전체 지출'}</span>
+                <strong
+                  className="stat-expense"
+                  style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {allExpense.toLocaleString()}원
+                </strong>
+              </div>
+              <div className="total-summary-item" style={{ flex: '1 1 auto' }}>
+                <span className="label">합계</span>
+                <strong
+                  className={allBalance >= 0 ? 'stat-balance positive' : 'stat-balance negative'}
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {allBalance.toLocaleString()}원
+                </strong>
+              </div>
             </div>
-            <div className="total-summary-item">
-              <span className="label">{filter === 'completed' ? '누적 지출' : '전체 지출'}</span>
-              <strong className="stat-expense">{allExpense.toLocaleString()}원</strong>
-            </div>
-            <div className="total-summary-item">
-              <span className="label">합계</span>
-              <strong className={allBalance >= 0 ? 'stat-balance positive' : 'stat-balance negative'}>{allBalance.toLocaleString()}원</strong>
-            </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {filtered.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
-            {filter === 'completed' ? '완료된 프로젝트가 없습니다.' :
-             isAdmin ? '등록된 프로젝트가 없습니다. 상단 "프로젝트 추가" 버튼으로 추가하세요.' : '담당 프로젝트가 없습니다. 관리자에게 문의해주세요.'}
+            {filter === 'completed'
+              ? '완료된 프로젝트가 없습니다.'
+              : isAdmin
+                ? '등록된 프로젝트가 없습니다. 상단 "프로젝트 추가" 버튼으로 추가하세요.'
+                : '담당 프로젝트가 없습니다. 관리자에게 문의해주세요.'}
           </div>
         </div>
       ) : (
         <div className="site-list">
-          {[...filtered].sort((a, b) => {
-            // 핀 고정 카드 — 항상 최상단, 정의된 순서대로 (띄어쓰기 변형 모두 매칭)
-            const PINNED = ['본사업무', '프로버지원'];
-            const normalize = (s) => (s || '').replace(/\s+/g, '');
-            const aPin = PINNED.indexOf(normalize(a.name));
-            const bPin = PINNED.indexOf(normalize(b.name));
-            if (aPin !== -1 && bPin !== -1) return aPin - bPin;
-            if (aPin !== -1) return -1;
-            if (bPin !== -1) return 1;
-            return 0;
-          }).map((s) => {
-            const pt = s.projectType || 'recurring';
-            const st = s.status || 'active';
-            const hideRev = !!s.hideRevenue;
-            const period = periodLabel(s);
-            const isOnce = pt === 'once';
+          {[...filtered]
+            .sort((a, b) => {
+              // 핀 고정 카드 — 항상 최상단, 정의된 순서대로 (띄어쓰기 변형 모두 매칭)
+              const PINNED = ['본사업무', '프로버지원'];
+              const normalize = (s) => (s || '').replace(/\s+/g, '');
+              const aPin = PINNED.indexOf(normalize(a.name));
+              const bPin = PINNED.indexOf(normalize(b.name));
+              if (aPin !== -1 && bPin !== -1) return aPin - bPin;
+              if (aPin !== -1) return -1;
+              if (bPin !== -1) return 1;
+              return 0;
+            })
+            .map((s) => {
+              const pt = s.projectType || 'recurring';
+              const st = s.status || 'active';
+              const hideRev = !!s.hideRevenue;
+              const period = periodLabel(s);
+              const isOnce = pt === 'once';
 
-            // 단발성: 전체 누적 통계 / 양산: 선택 월 통계
-            const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
-            const overtimeShown = canViewSalary ? (raw.overtime || 0) : 0;
-            const laborShown = canViewSalary ? raw.labor : 0;
-            const expenseOnly = raw.expense + overtimeShown;
-            const totalExpense = expenseOnly + laborShown;
-            const revenueShown = hideRev ? 0 : raw.revenue;
-            const balance = revenueShown - totalExpense;
-            // 흑자/적자 색 표식용은 권한 무관하게 전체 데이터로 계산 (숫자 자체는 비공개여도 부호는 표시)
-            const fullBalance = (hideRev ? 0 : (raw.revenue || 0))
-              - ((raw.expense || 0) + (raw.overtime || 0) + (raw.labor || 0));
+              // 단발성: 전체 누적 통계 / 양산: 선택 월 통계
+              const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };
+              const overtimeShown = canViewSalary ? raw.overtime || 0 : 0;
+              const laborShown = canViewSalary ? raw.labor : 0;
+              const expenseOnly = raw.expense + overtimeShown;
+              const totalExpense = expenseOnly + laborShown;
+              const revenueShown = hideRev ? 0 : raw.revenue;
+              const balance = revenueShown - totalExpense;
+              // 흑자/적자 색 표식용은 권한 무관하게 전체 데이터로 계산 (숫자 자체는 비공개여도 부호는 표시)
+              const fullBalance =
+                (hideRev ? 0 : raw.revenue || 0) - ((raw.expense || 0) + (raw.overtime || 0) + (raw.labor || 0));
 
-            return (
-              <div key={s.id} className="site-row-wrapper">
-                <Link
-                  to={`/sites/${s.id}/${year}/${month}`}
-                  className={`site-row ${st === 'completed' ? 'site-row-completed' : ''} ${!hideRev ? (fullBalance >= 0 ? 'site-row-balance-pos' : 'site-row-balance-neg') : ''}`}
-                >
-                  <div
-                    className="site-row-icon"
-                    style={(() => {
-                      const c = getIconColor(s.iconColor);
-                      return c.bg ? { background: c.bg, color: c.fg } : undefined;
-                    })()}
+              return (
+                <div key={s.id} className="site-row-wrapper">
+                  <Link
+                    to={`/sites/${s.id}/${year}/${month}`}
+                    className={`site-row ${st === 'completed' ? 'site-row-completed' : ''} ${!hideRev ? (fullBalance >= 0 ? 'site-row-balance-pos' : 'site-row-balance-neg') : ''}`}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      {(() => {
-                        const customIcon = s.icon ? getProjectIcon(s.icon) : null;
-                        if (customIcon) return customIcon.paths;
-                        return pt === 'once' ? (
-                          <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>
-                        ) : (
-                          <><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h.01"/><path d="M9 13h.01"/><path d="M9 17h.01"/><path d="M15 9h.01"/><path d="M15 13h.01"/><path d="M15 17h.01"/></>
-                        );
+                    <div
+                      className="site-row-icon site-row-icon-responsive"
+                      style={(() => {
+                        const c = getIconColor(s.iconColor);
+                        return {
+                          width: 44,
+                          height: 44,
+                          flexShrink: 0,
+                          ...(c.bg ? { background: c.bg, color: c.fg } : {}),
+                        };
                       })()}
-                    </svg>
-                  </div>
-                  <div className="site-row-body">
-                    <div className="site-row-name">
-                      {s.name}
-                      <span className={`site-type-badge site-type-${pt}`}>{TYPE_LABELS[pt]}</span>
-                      {s.isCS && <span className="site-type-badge site-type-cs" title="CS업무: 매일 다른 현장 방문">{CS_BADGE_LABEL}</span>}
-                      {st === 'completed' && <span className="site-status-badge site-status-completed">{STATUS_LABELS[st]}</span>}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        {(() => {
+                          const customIcon = s.icon ? getProjectIcon(s.icon) : null;
+                          if (customIcon) return customIcon.paths;
+                          return pt === 'once' ? (
+                            <>
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                              <line x1="16" y1="13" x2="8" y2="13" />
+                              <line x1="16" y1="17" x2="8" y2="17" />
+                            </>
+                          ) : (
+                            <>
+                              <path d="M3 21h18" />
+                              <path d="M5 21V7l7-4 7 4v14" />
+                              <path d="M9 9h.01" />
+                              <path d="M9 13h.01" />
+                              <path d="M9 17h.01" />
+                              <path d="M15 9h.01" />
+                              <path d="M15 13h.01" />
+                              <path d="M15 17h.01" />
+                            </>
+                          );
+                        })()}
+                      </svg>
                     </div>
-                    <div className="site-row-meta">
-                      <span className="chip chip-team">{s.team || '팀 미지정'}</span>
-                      <span className="chip chip-manager">담당 {managerNames(s)}</span>
-                      {period && <span className="chip chip-period">{period}</span>}
-                    </div>
-                  </div>
-                  {(canViewSalary || isAdmin) && (st !== 'completed' || hasMonthData(s)) && (
-                    <div className="site-row-stats-panel">
-                      {!hideRev && (
-                        <div className="stat-row">
-                          <span>매출</span>
-                          <strong className="stat-revenue">{raw.revenue.toLocaleString()}원</strong>
-                        </div>
-                      )}
-                      <div className="stat-row">
-                        <span>지출</span>
-                        <strong className="stat-expense">{expenseOnly.toLocaleString()}원</strong>
+                    <div className="site-row-body">
+                      <div className="site-row-name">
+                        <span
+                          className="site-row-name-text"
+                          title={s.name}
+                          style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            wordBreak: 'keep-all',
+                            overflowWrap: 'anywhere',
+                            minWidth: 0,
+                          }}
+                        >
+                          {s.name}
+                        </span>
                       </div>
-                      {canViewSalary && raw.labor > 0 && (
-                        <div className="stat-row">
-                          <span>인건비</span>
-                          <strong className="stat-expense">{raw.labor.toLocaleString()}원</strong>
-                        </div>
-                      )}
-                      {!hideRev && (
-                        <div className="stat-row stat-balance-row">
-                          <span>합계</span>
-                          <strong className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}>
-                            {balance >= 0 ? '+' : ''}{balance.toLocaleString()}원
+                      <div className="site-row-badges">
+                        <span className={`site-type-badge site-type-${pt}`}>{TYPE_LABELS[pt]}</span>
+                        {s.isCS && (
+                          <span className="site-type-badge site-type-cs" title="CS업무: 매일 다른 현장 방문">
+                            {CS_BADGE_LABEL}
+                          </span>
+                        )}
+                        {st === 'completed' && (
+                          <span className="site-status-badge site-status-completed">{STATUS_LABELS[st]}</span>
+                        )}
+                      </div>
+                      <div className="site-row-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, minWidth: 0 }}>
+                        <span
+                          className="chip chip-team"
+                          title={s.team || '팀 미지정'}
+                          style={{ padding: '2px 6px', minWidth: 0 }}
+                        >
+                          {s.team || '팀 미지정'}
+                        </span>
+                        {managerNameArr(s).length > 0 ? (
+                          managerNameArr(s).map((name) => (
+                            <span
+                              key={name}
+                              className="chip chip-manager"
+                              title={name}
+                              style={{ padding: '2px 6px', whiteSpace: 'nowrap' }}
+                            >
+                              {name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="chip chip-manager" style={{ padding: '2px 6px' }}>
+                            담당 미지정
+                          </span>
+                        )}
+                        {period && (
+                          <span className="chip chip-period" title={period} style={{ padding: '2px 6px' }}>
+                            {period}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {(canViewSalary || isAdmin) && (st !== 'completed' || hasMonthData(s)) && (
+                      <div className="site-row-stats-panel site-row-stats-responsive">
+                        {!hideRev && (
+                          <div className="stat-row" style={{ minHeight: 24, display: 'flex', alignItems: 'center' }}>
+                            <span>매출</span>
+                            <strong
+                              className="stat-revenue"
+                              style={{
+                                textAlign: 'right',
+                                color: 'var(--primary, #002050)',
+                                fontVariantNumeric: 'tabular-nums',
+                                lineHeight: 1,
+                              }}
+                            >
+                              {raw.revenue.toLocaleString()}원
+                            </strong>
+                          </div>
+                        )}
+                        <div className="stat-row" style={{ minHeight: 24, display: 'flex', alignItems: 'center' }}>
+                          <span>지출</span>
+                          <strong
+                            className="stat-expense"
+                            style={{
+                              textAlign: 'right',
+                              color: 'var(--primary, #002050)',
+                              fontVariantNumeric: 'tabular-nums',
+                              lineHeight: 1,
+                            }}
+                          >
+                            {expenseOnly.toLocaleString()}원
                           </strong>
+                        </div>
+                        {canViewSalary && raw.labor > 0 && (
+                          <div
+                            className="stat-row stat-row-labor-hide"
+                            style={{ minHeight: 24, display: 'flex', alignItems: 'center' }}
+                          >
+                            <span>인건비</span>
+                            <strong
+                              className="stat-expense"
+                              style={{
+                                textAlign: 'right',
+                                color: 'var(--primary, #002050)',
+                                fontVariantNumeric: 'tabular-nums',
+                                lineHeight: 1,
+                              }}
+                            >
+                              {raw.labor.toLocaleString()}원
+                            </strong>
+                          </div>
+                        )}
+                        {!hideRev && (
+                          <div
+                            className="stat-row stat-balance-row"
+                            style={{ minHeight: 24, display: 'flex', alignItems: 'center' }}
+                          >
+                            <span>합계</span>
+                            <strong
+                              className={`stat-balance ${balance >= 0 ? 'positive' : 'negative'}`}
+                              style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}
+                            >
+                              {balance >= 0 ? '+' : ''}
+                              {balance.toLocaleString()}원
+                            </strong>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="site-row-period">
+                      <div className="period-y">{year}</div>
+                      <div className="period-m">{String(month).padStart(2, '0')}월</div>
+                    </div>
+                    <div className="site-row-arrow" style={{ flexShrink: 0 }}>
+                      <Icon name="chevronRight" size={16} />
+                    </div>
+                  </Link>
+                  {isAdmin && (
+                    <div className="site-row-actions">
+                      <button
+                        type="button"
+                        className="site-row-menu-btn"
+                        aria-label="관리 메뉴"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === s.id ? null : s.id);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                          <circle cx="12" cy="5" r="1.8" />
+                          <circle cx="12" cy="12" r="1.8" />
+                          <circle cx="12" cy="19" r="1.8" />
+                        </svg>
+                      </button>
+                      {openMenuId === s.id && (
+                        <div
+                          className="site-row-menu"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="site-row-menu-item"
+                            style={{
+                              minHeight: 36,
+                              padding: '8px 12px',
+                              fontSize: 13,
+                              lineHeight: 1.2,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              openEdit(s);
+                            }}
+                          >
+                            수정
+                          </button>
+                          {st === 'completed' && (
+                            <button
+                              type="button"
+                              className="site-row-menu-item"
+                              style={{
+                                minHeight: 36,
+                                padding: '8px 12px',
+                                fontSize: 13,
+                                lineHeight: 1.2,
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                              onClick={(e) => {
+                                setOpenMenuId(null);
+                                handleToggleStatus(s, e);
+                              }}
+                            >
+                              재활성
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="site-row-menu-item site-row-menu-danger"
+                            style={{
+                              minHeight: 36,
+                              padding: '8px 12px',
+                              fontSize: 13,
+                              lineHeight: 1.2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                            onClick={(e) => {
+                              setOpenMenuId(null);
+                              handleDelete(s, e);
+                            }}
+                          >
+                            <Icon name="trash" className="btn-ic" />삭제
+                          </button>
                         </div>
                       )}
                     </div>
                   )}
-                  <div className="site-row-period">
-                    <div className="period-y">{year}</div>
-                    <div className="period-m">{String(month).padStart(2, '0')}월</div>
-                  </div>
-                  <div className="site-row-arrow">&rarr;</div>
-                </Link>
-                {isAdmin && (
-                  <div className="site-row-actions">
-                    <button
-                      type="button"
-                      className="site-row-menu-btn"
-                      aria-label="관리 메뉴"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setOpenMenuId(openMenuId === s.id ? null : s.id);
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-                        <circle cx="12" cy="5" r="1.8" />
-                        <circle cx="12" cy="12" r="1.8" />
-                        <circle cx="12" cy="19" r="1.8" />
-                      </svg>
-                    </button>
-                    {openMenuId === s.id && (
-                      <div className="site-row-menu" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                        <button type="button" className="site-row-menu-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMenuId(null); openEdit(s); }}>수정</button>
-                        {st === 'completed' && (
-                          <button type="button" className="site-row-menu-item" onClick={(e) => { setOpenMenuId(null); handleToggleStatus(s, e); }}>재활성</button>
-                        )}
-                        <button type="button" className="site-row-menu-item site-row-menu-danger" onClick={(e) => { setOpenMenuId(null); handleDelete(s, e); }}>삭제</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
         </div>
       )}
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editSite ? '프로젝트 수정' : '프로젝트 추가'}>
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['sites']}
+        title="프로젝트 휴지통"
+        onChange={() => loadData()}
+      />
+
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editSite ? '프로젝트 수정' : '프로젝트 추가'}
+      >
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>프로젝트명 *</label>
@@ -531,16 +826,31 @@ export default function SiteListPage() {
           </div>
           <div className="form-group">
             <label>팀</label>
-            <select value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
-              <option value="">팀 선택</option>
-              {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-            </select>
+            <Select
+              value={form.team}
+              onChange={(v) => setForm({ ...form, team: v })}
+              options={departments.map((d) => ({ value: d.name, label: d.name }))}
+              placeholder="팀 선택"
+              ariaLabel="팀 선택"
+            />
           </div>
           <div className="form-group">
             <label>프로젝트 유형</label>
             <div className="btn-group">
-              <button type="button" className={`btn btn-sm ${form.projectType === 'recurring' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'recurring' })}>양산형</button>
-              <button type="button" className={`btn btn-sm ${form.projectType === 'once' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setForm({ ...form, projectType: 'once' })}>단발성</button>
+              <button
+                type="button"
+                className={`btn btn-sm ${form.projectType === 'recurring' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setForm({ ...form, projectType: 'recurring' })}
+              >
+                양산형
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${form.projectType === 'once' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setForm({ ...form, projectType: 'once' })}
+              >
+                단발성
+              </button>
             </div>
           </div>
           <div className="form-group">
@@ -558,7 +868,9 @@ export default function SiteListPage() {
             </p>
           </div>
           <div className="form-group">
-            <label>아이콘 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택, 미선택 시 유형별 기본)</span></label>
+            <label>
+              아이콘 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택, 미선택 시 유형별 기본)</span>
+            </label>
             <div className="icon-picker-grid">
               <button
                 type="button"
@@ -589,7 +901,9 @@ export default function SiteListPage() {
             </div>
           </div>
           <div className="form-group">
-            <label>아이콘 배경색 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+            <label>
+              아이콘 배경색 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span>
+            </label>
             <div className="color-picker-grid">
               {ICON_COLORS.map((c) => (
                 <button
@@ -610,35 +924,58 @@ export default function SiteListPage() {
             <div className="form-group">
               <label>시작 년/월</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <select value={form.startYear || ''} onChange={(e) => setForm({ ...form, startYear: e.target.value ? Number(e.target.value) : null })}>
-                  <option value="">-</option>
-                  {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <select value={form.startMonth || ''} onChange={(e) => setForm({ ...form, startMonth: e.target.value ? Number(e.target.value) : null })}>
-                  <option value="">-</option>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => <option key={m} value={m}>{m}월</option>)}
-                </select>
+                <Select
+                  value={form.startYear || ''}
+                  onChange={(v) => setForm({ ...form, startYear: v ? Number(v) : null })}
+                  options={[2024, 2025, 2026, 2027, 2028].map((y) => ({ value: y, label: String(y) }))}
+                  placeholder="-"
+                  ariaLabel="시작 년"
+                />
+                <Select
+                  value={form.startMonth || ''}
+                  onChange={(v) => setForm({ ...form, startMonth: v ? Number(v) : null })}
+                  options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => ({ value: m, label: `${m}월` }))}
+                  placeholder="-"
+                  ariaLabel="시작 월"
+                />
               </div>
             </div>
             <div className="form-group">
-              <label>종료 년/월 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+              <label>
+                종료 년/월 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span>
+              </label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <select value={form.endYear || ''} onChange={(e) => setForm({ ...form, endYear: e.target.value ? Number(e.target.value) : null })}>
-                  <option value="">미정</option>
-                  {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <select value={form.endMonth || ''} onChange={(e) => setForm({ ...form, endMonth: e.target.value ? Number(e.target.value) : null })}>
-                  <option value="">-</option>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => <option key={m} value={m}>{m}월</option>)}
-                </select>
+                <Select
+                  value={form.endYear || ''}
+                  onChange={(v) => setForm({ ...form, endYear: v ? Number(v) : null })}
+                  options={[2024, 2025, 2026, 2027, 2028].map((y) => ({ value: y, label: String(y) }))}
+                  placeholder="미정"
+                  ariaLabel="종료 년"
+                />
+                <Select
+                  value={form.endMonth || ''}
+                  onChange={(v) => setForm({ ...form, endMonth: v ? Number(v) : null })}
+                  options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => ({ value: m, label: `${m}월` }))}
+                  placeholder="-"
+                  ariaLabel="종료 월"
+                />
               </div>
             </div>
           </div>
           <div className="form-group">
             <label>담당자 선택</label>
-            <button type="button" className="select-dropdown-toggle" onClick={() => setManagerListOpen(!managerListOpen)}>
+            <button
+              type="button"
+              className="select-dropdown-toggle"
+              onClick={() => setManagerListOpen(!managerListOpen)}
+            >
               <span>{form.managerIds.length > 0 ? `${form.managerIds.length}명 선택됨` : '담당자를 선택하세요'}</span>
-              <span className="select-dropdown-arrow">{managerListOpen ? '▲' : '▼'}</span>
+              <span
+                className="select-dropdown-arrow"
+                style={{ display: 'inline-flex', transform: managerListOpen ? 'rotate(180deg)' : 'none' }}
+              >
+                <Icon name="chevronDown" size={16} />
+              </span>
             </button>
             {managerListOpen && (
               <div className="select-dropdown-list">
@@ -648,7 +985,10 @@ export default function SiteListPage() {
                     <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
                       <input type="checkbox" checked={checked} onChange={() => toggleManager(u.uid)} />
                       <span className="select-list-name">{u.name}</span>
-                      <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
+                      <span className="select-list-sub">
+                        {u.code}
+                        {u.position && ` · ${u.position}`}
+                      </span>
                     </label>
                   );
                 })}
@@ -656,28 +996,43 @@ export default function SiteListPage() {
             )}
           </div>
           <div className="form-group">
-            <label>지출 합산 대상 프로젝트 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
+            <label>
+              지출 합산 대상 프로젝트 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span>
+            </label>
             <p className="field-hint" style={{ marginTop: 0, marginBottom: 6 }}>
               선택한 프로젝트의 지출이 이 프로젝트 화면에 읽기 전용으로 표시되고 합계에 포함됩니다.
             </p>
             <button type="button" className="select-dropdown-toggle" onClick={() => setMirrorListOpen(!mirrorListOpen)}>
-              <span>{form.mirrorFromSiteIds.length > 0 ? `${form.mirrorFromSiteIds.length}개 선택됨` : '합산할 프로젝트를 선택하세요'}</span>
-              <span className="select-dropdown-arrow">{mirrorListOpen ? '▲' : '▼'}</span>
+              <span>
+                {form.mirrorFromSiteIds.length > 0
+                  ? `${form.mirrorFromSiteIds.length}개 선택됨`
+                  : '합산할 프로젝트를 선택하세요'}
+              </span>
+              <span
+                className="select-dropdown-arrow"
+                style={{ display: 'inline-flex', transform: mirrorListOpen ? 'rotate(180deg)' : 'none' }}
+              >
+                <Icon name="chevronDown" size={16} />
+              </span>
             </button>
             {mirrorListOpen && (
               <div className="select-dropdown-list">
-                {sites.filter((s) => s.id !== editSite?.id).map((s) => {
-                  const checked = form.mirrorFromSiteIds.includes(s.id);
-                  return (
-                    <label key={s.id} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleMirrorSite(s.id)} />
-                      <span className="select-list-name">{s.name}</span>
-                      <span className="select-list-sub">{s.team || '팀 미지정'}</span>
-                    </label>
-                  );
-                })}
+                {sites
+                  .filter((s) => s.id !== editSite?.id)
+                  .map((s) => {
+                    const checked = form.mirrorFromSiteIds.includes(s.id);
+                    return (
+                      <label key={s.id} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleMirrorSite(s.id)} />
+                        <span className="select-list-name">{s.name}</span>
+                        <span className="select-list-sub">{s.team || '팀 미지정'}</span>
+                      </label>
+                    );
+                  })}
                 {sites.filter((s) => s.id !== editSite?.id).length === 0 && (
-                  <div className="select-list-item" style={{ color: '#9ca3af' }}>선택할 다른 프로젝트가 없습니다.</div>
+                  <div className="select-list-item" style={{ color: '#9ca3af' }}>
+                    선택할 다른 프로젝트가 없습니다.
+                  </div>
                 )}
               </div>
             )}
@@ -697,8 +1052,12 @@ export default function SiteListPage() {
             </p>
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editSite ? '수정' : '추가'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+            <button type="submit" className="btn btn-primary">
+              {editSite ? '수정' : '추가'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
+              취소
+            </button>
           </div>
         </form>
       </Modal>

@@ -18,9 +18,7 @@ export const ROLES = {
 };
 
 // 직급 (관리자는 직급이 아니라 role이므로 제외)
-export const POSITIONS = [
-  '사원', '주임', '대리', '과장', '차장', '부장', '팀장', '이사', '부사장', '대표',
-];
+export const POSITIONS = ['사원', '주임', '대리', '과장', '차장', '부장', '팀장', '이사', '부사장', '대표'];
 
 // 출퇴근 상태
 export const ATTENDANCE_STATUS = {
@@ -54,9 +52,7 @@ export const LEAVE_TYPE_LABELS = {
 };
 
 // 반반차(0.25일) 타입 판별용 집합
-export const QUARTER_LEAVE_TYPES = [
-  'quarter_1', 'quarter_2', 'quarter_3', 'quarter_4',
-];
+export const QUARTER_LEAVE_TYPES = ['quarter_1', 'quarter_2', 'quarter_3', 'quarter_4'];
 
 // 연차 신청 상태
 export const LEAVE_STATUS = {

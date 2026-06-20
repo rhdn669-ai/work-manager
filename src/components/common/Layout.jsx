@@ -49,8 +49,12 @@ export default function Layout() {
     const y = now.getFullYear();
     const m = now.getMonth() + 1;
     getMileage(userProfile.uid, y, m)
-      .then((rec) => { if (!rec) setVehicleModalOpen(true); })
-      .catch(() => { /* 무시 — 다음 로그인 때 재확인 */ });
+      .then((rec) => {
+        if (!rec) setVehicleModalOpen(true);
+      })
+      .catch(() => {
+        /* 무시 — 다음 로그인 때 재확인 */
+      });
   }, [userProfile?.uid, userProfile?.usesVehicle]);
 
   // 모바일 뒤로가기 두 번 → 앱 종료 (대시보드 루트에서만 작동, iOS 제외)
@@ -124,11 +128,7 @@ export default function Layout() {
             - 비관리자 모바일: 미표시 (BottomNav만 사용) */}
         {(isAdmin || !isMobile) && <Sidebar isOpen={sidebarOpen} />}
         {isAdmin && isMobile && sidebarOpen && (
-          <div
-            className="sidebar-backdrop"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
+          <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         )}
         <main className={`main-content ${(isAdmin || !isMobile) && sidebarOpen ? '' : 'expanded'}`}>
           <Outlet />
@@ -146,11 +146,7 @@ export default function Layout() {
             새 버전(v{latestVersion}) 배포됨
             {latestBuildTime && <span className="update-toast-rel"> · {formatRelativeKo(latestBuildTime)}</span>}
           </span>
-          <button
-            type="button"
-            className="update-toast-btn"
-            onClick={() => window.location.reload()}
-          >
+          <button type="button" className="update-toast-btn" onClick={() => window.location.reload()}>
             새로고침
           </button>
         </div>

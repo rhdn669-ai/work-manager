@@ -1,19 +1,33 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  getPurchaseById, updatePurchase,
-  settlePurchase, cancelSettlePurchase, receivePurchaseLine, bulkReceivePurchase,
-  getSuppliers, getPurchaseItems, addPurchasePrintLog, getPurchasePrintLogs,
+  getPurchaseById,
+  updatePurchase,
+  settlePurchase,
+  cancelSettlePurchase,
+  receivePurchaseLine,
+  bulkReceivePurchase,
+  getSuppliers,
+  subscribePurchaseItems,
+  addPurchasePrintLog,
+  getPurchasePrintLogs,
+  confirmPurchase,
+  markSupplierSent,
+  unmarkSupplierSent,
+  getPurchaseConfig,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
+import { trashPurchase } from '../../services/trashService';
 import { getBomProjects, getBomBySite } from '../../services/bomService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
+import Icon from '../../components/common/Icon';
 import { specFontClass } from '../../utils/printText';
 
 const STATUS = {
+  draft: { label: '발주이전', cls: 'draft' },
   ordered: { label: '발주', cls: 'ordered' },
   partial: { label: '부분입고', cls: 'partial' },
   received: { label: '입고완료', cls: 'received' },
@@ -37,7 +51,11 @@ const PO_DEFAULTS = {
   delivery: '긴급',
 };
 function poNumber(purchase) {
-  const d = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate() : (purchase.orderedAt ? new Date(purchase.orderedAt) : new Date(purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
+  const d = purchase.orderedAt?.toDate
+    ? purchase.orderedAt.toDate()
+    : purchase.orderedAt
+      ? new Date(purchase.orderedAt)
+      : new Date(purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date());
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -91,11 +109,17 @@ export default function PurchaseDetailPage() {
   const [sites, setSites] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
+  const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // 편집 가능한 폼 상태 (실시간 자동 저장 — 저장 버튼 없음)
   const [form, setForm] = useState({
-    title: '', siteId: '', items: [{ ...EMPTY_LINE }], note: '',
+    title: '',
+    siteId: '',
+    factoryKey: '',
+    deliveryPlace: '',
+    items: [{ ...EMPTY_LINE }],
+    note: '',
   });
   const [saveState, setSaveState] = useState('saved'); // 'saving' | 'saved' | 'error'
 
@@ -106,6 +130,9 @@ export default function PurchaseDetailPage() {
 
   // 출력 시 구매처별로 묶어서 정렬
   const [groupBySupplier, setGroupBySupplier] = useState(false);
+
+  // 품목 검색 (표시 필터 — 데이터는 보존, 원본 인덱스 유지)
+  const [itemSearch, setItemSearch] = useState('');
 
   // BOM 가져오기
   const [bomModalOpen, setBomModalOpen] = useState(false);
@@ -125,14 +152,50 @@ export default function PurchaseDetailPage() {
 
   useEffect(() => {
     loadData();
+    const unsub = subscribePurchaseItems(setItemMaster);
+    return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // 품목 마스터 변경 시 form.items의 연결된 품목 필드 실시간 동기화 (명칭·규격·단위·단가)
+  useEffect(() => {
+    if (!itemMaster.length) return;
+    setForm((prev) => {
+      let changed = false;
+      const items = prev.items.map((ln) => {
+        if (!ln.itemId) return ln;
+        const m = itemMaster.find((x) => x.id === ln.itemId);
+        if (!m) return ln;
+        const newName = m.name || ln.name;
+        const newSpec = m.spec || ln.spec;
+        const newUnit = m.unit || ln.unit;
+        const newUnitPrice = m.standardPrice != null ? Number(m.standardPrice) : ln.unitPrice;
+        if (
+          newName === ln.name &&
+          newSpec === ln.spec &&
+          newUnit === ln.unit &&
+          newUnitPrice === Number(ln.unitPrice)
+        )
+          return ln;
+        changed = true;
+        return { ...ln, name: newName, spec: newSpec, unit: newUnit, unitPrice: newUnitPrice };
+      });
+      if (!changed) return prev;
+      skipUndoPushRef.current = true;
+      setTimeout(() => { scheduleAutoSave(); skipUndoPushRef.current = false; }, 0);
+      return { ...prev, items };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemMaster]);
 
   async function loadData({ silent = false } = {}) {
     try {
       if (!silent) setLoading(true);
-      const [p, st, sp, im] = await Promise.all([
-        getPurchaseById(id), getAllSites(), getSuppliers(), getPurchaseItems(),
+      const [p, st, sp, cfg] = await Promise.all([
+        getPurchaseById(id),
+        getAllSites(),
+        getSuppliers(),
+        getPurchaseConfig(),
       ]);
       if (!p) {
         alert('해당 구매 건을 찾을 수 없습니다.');
@@ -142,13 +205,13 @@ export default function PurchaseDetailPage() {
       setPurchase(p);
       setSites(st);
       setSuppliers(sp);
-      setItemMaster(im);
+      setFactories(cfg.factories || []);
       setForm({
         title: p.title || '',
         siteId: p.siteId || '',
-        items: (p.items && p.items.length > 0)
-          ? p.items.map((it) => ({ ...EMPTY_LINE, ...it }))
-          : [{ ...EMPTY_LINE }],
+        factoryKey: p.factoryKey || '',
+        deliveryPlace: p.deliveryPlace || '',
+        items: p.items && p.items.length > 0 ? p.items.map((it) => ({ ...EMPTY_LINE, ...it })) : [{ ...EMPTY_LINE }],
         note: p.note || '',
       });
     } catch (err) {
@@ -186,7 +249,7 @@ export default function PurchaseDetailPage() {
             name: m.name,
             spec: m.spec || ln.spec,
             unit: m.unit || ln.unit,
-            unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : (Number(m.standardPrice) || 0),
+            unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : Number(m.standardPrice) || 0,
           };
         }
         return { ...ln, itemId: '', name: trimmed };
@@ -194,7 +257,6 @@ export default function PurchaseDetailPage() {
     }));
     scheduleAutoSave();
   }
-
 
   // ---- 품목 불러오기 (BOM 상세 「품목 선택」 피커와 동일: 체크박스 다중선택 + 수량) ----
   function openItemPicker() {
@@ -205,7 +267,8 @@ export default function PurchaseDetailPage() {
   function toggleItemPick(itemId) {
     setItemPicked((prev) => {
       const next = new Map(prev);
-      if (next.has(itemId)) next.delete(itemId); else next.set(itemId, 1);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.set(itemId, 1);
       return next;
     });
   }
@@ -219,7 +282,10 @@ export default function PurchaseDetailPage() {
   }
   function addPickedToPO(e) {
     if (e) e.preventDefault();
-    if (itemPicked.size === 0) { setItemPickerOpen(false); return; }
+    if (itemPicked.size === 0) {
+      setItemPickerOpen(false);
+      return;
+    }
     const newLines = [];
     for (const [itemId, qtyInput] of itemPicked) {
       const m = itemMaster.find((x) => x.id === itemId);
@@ -233,7 +299,10 @@ export default function PurchaseDetailPage() {
         unitPrice: Number(m.standardPrice) || 0,
       });
     }
-    if (newLines.length === 0) { setItemPickerOpen(false); return; }
+    if (newLines.length === 0) {
+      setItemPickerOpen(false);
+      return;
+    }
     setForm((f) => {
       const first = f.items[0];
       const onlyEmpty = f.items.length === 1 && !first?.name && !first?.itemId;
@@ -244,7 +313,22 @@ export default function PurchaseDetailPage() {
     setItemPickerOpen(false);
   }
 
-  function removeLine(idx) {
+  // 품목 검색 매칭 (코드·품명·메이커·규격·분류·구매처·비고)
+  function lineMatchesSearch(ln) {
+    const kw = itemSearch.trim().toLowerCase();
+    if (!kw) return true;
+    const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+    const supName = master?.defaultSupplierId
+      ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
+      : '';
+    const dispName = ln.itemId && master ? master.name : ln.name;
+    return [master?.code, dispName, master?.maker, master?.spec || ln.spec, master?.category, supName, ln.note].some(
+      (v) => (v || '').toLowerCase().includes(kw),
+    );
+  }
+
+  async function removeLine(idx) {
+    if (!(await confirm('이 품목 행을 삭제하시겠습니까?'))) return;
     setForm((f) => ({
       ...f,
       items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items,
@@ -288,7 +372,7 @@ export default function PurchaseDetailPage() {
             spec: m?.spec || b.spec || '',
             unit: m?.unit || b.unit || '',
             qty: Number(b.qty) || 1,
-            unitPrice: (m && m.standardPrice != null) ? Number(m.standardPrice) : (Number(b.unitPrice) || 0),
+            unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             note: b.note || '',
           };
         });
@@ -315,10 +399,49 @@ export default function PurchaseDetailPage() {
 
   // ---- 실시간 자동 저장 (저장 버튼 없음) ----
   const formRef = useRef(form);
-  useEffect(() => { formRef.current = form; }, [form]);
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
   const purchaseRef = useRef(purchase); // 입고 액션에서 최신 purchase 참조용
-  useEffect(() => { purchaseRef.current = purchase; }, [purchase]);
+  useEffect(() => {
+    purchaseRef.current = purchase;
+  }, [purchase]);
   const autoSaveRef = useRef(null);
+
+  // ---- Ctrl+Z 실행취소 ----
+  const undoStackRef = useRef([]); // 폼 스냅샷 스택 (최대 30개)
+  const skipUndoPushRef = useRef(false); // 마스터 자동 동기화 시 push 방지
+  const handleUndoRef = useRef(null);
+
+  function pushUndo() {
+    if (skipUndoPushRef.current) return;
+    const clone = JSON.parse(JSON.stringify(formRef.current));
+    undoStackRef.current.push(clone);
+    if (undoStackRef.current.length > 30) undoStackRef.current.shift();
+  }
+
+  function handleUndo() {
+    const s = undoStackRef.current;
+    if (s.length === 0) return;
+    const prev = s.pop();
+    setForm(prev);
+    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); autoSaveRef.current = null; }
+    setSaveState('saving');
+    autoSaveRef.current = setTimeout(() => persistPO(), 700);
+  }
+  handleUndoRef.current = handleUndo;
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== 'z' || e.shiftKey) return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      handleUndoRef.current?.();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   // 현재 폼을 Firestore에 저장 (입고/수정값 보존, 화면 리로드 없이 로컬 동기화)
   async function persistPO() {
@@ -336,18 +459,34 @@ export default function PurchaseDetailPage() {
     const site = sites.find((s) => s.id === f.siteId);
     // 품목에서 구매처가 도출되면 그 값으로, 아니면 기존(등록 시 수동 선택) 구매처 유지
     const derived = deriveSupplier(items, itemMaster, suppliers);
-    const supplierId = derived.supplierId || (purchaseRef.current?.supplierId || '');
-    const supplierName = derived.supplierId ? derived.supplierName : (purchaseRef.current?.supplierName || '');
+    const supplierId = derived.supplierId || purchaseRef.current?.supplierId || '';
+    const supplierName = derived.supplierId ? derived.supplierName : purchaseRef.current?.supplierName || '';
     try {
       setSaveState('saving');
       await updatePurchase(id, {
-        title: f.title.trim(), siteId: f.siteId, siteName: site?.name || '',
-        items, totalAmount, supplierId, supplierName, note: f.note,
+        title: f.title.trim(),
+        siteId: f.siteId,
+        siteName: site?.name || '',
+        factoryKey: f.factoryKey || '',
+        deliveryPlace: f.deliveryPlace || '',
+        items,
+        totalAmount,
+        supplierId,
+        supplierName,
+        note: f.note,
       });
       const updated = {
         ...(purchaseRef.current || {}),
-        items, totalAmount, supplierId, supplierName, note: f.note,
-        title: f.title.trim(), siteId: f.siteId, siteName: site?.name || '',
+        items,
+        totalAmount,
+        supplierId,
+        supplierName,
+        note: f.note,
+        title: f.title.trim(),
+        siteId: f.siteId,
+        siteName: site?.name || '',
+        factoryKey: f.factoryKey || '',
+        deliveryPlace: f.deliveryPlace || '',
       };
       purchaseRef.current = updated; // 동기 갱신 → flush 직후 입고 액션이 최신 사용
       setPurchase(updated);
@@ -359,13 +498,19 @@ export default function PurchaseDetailPage() {
   }
 
   function scheduleAutoSave() {
+    pushUndo(); // 변경 직전 상태를 스냅샷 (formRef.current는 아직 이전 값)
     setSaveState('saving');
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
-    autoSaveRef.current = setTimeout(() => { persistPO(); }, 700);
+    autoSaveRef.current = setTimeout(() => {
+      persistPO();
+    }, 700);
   }
 
   async function flushAutoSave() {
-    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); autoSaveRef.current = null; }
+    if (autoSaveRef.current) {
+      clearTimeout(autoSaveRef.current);
+      autoSaveRef.current = null;
+    }
     await persistPO();
   }
 
@@ -380,9 +525,13 @@ export default function PurchaseDetailPage() {
 
   // 출력 시점 발주서 상태 스냅샷
   function buildPrintSnapshot() {
-    const od = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate()
-      : (purchase.orderedAt ? new Date(purchase.orderedAt)
-        : (purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
+    const od = purchase.orderedAt?.toDate
+      ? purchase.orderedAt.toDate()
+      : purchase.orderedAt
+        ? new Date(purchase.orderedAt)
+        : purchase.createdAt?.toDate
+          ? purchase.createdAt.toDate()
+          : new Date();
     const supplier = suppliers.find((s) => s.id === purchase.supplierId);
     return {
       title: purchase.title || '',
@@ -398,9 +547,14 @@ export default function PurchaseDetailPage() {
       poNumber: poNumber(purchase),
       groupBySupplier,
       items: mapPrintItems(form.items.filter((ln) => (ln.name || '').trim())).map((ln) => ({
-        itemId: ln.itemId || '', _name: ln._name || '', _spec: ln._spec || '', _supplier: ln._supplier || '',
-        qty: Number(ln.qty) || 0, unitPrice: Number(ln.unitPrice) || 0,
-        receivedQty: Number(ln.receivedQty) || 0, note: ln.note || '',
+        itemId: ln.itemId || '',
+        _name: ln._name || '',
+        _spec: ln._spec || '',
+        _supplier: ln._supplier || '',
+        qty: Number(ln.qty) || 0,
+        unitPrice: Number(ln.unitPrice) || 0,
+        receivedQty: Number(ln.receivedQty) || 0,
+        note: ln.note || '',
       })),
     };
   }
@@ -416,10 +570,9 @@ export default function PurchaseDetailPage() {
     };
     setPurchase((p) => ({ ...(p || {}), ...next }));
     purchaseRef.current = { ...(purchaseRef.current || {}), ...next };
-    Promise.all([
-      updatePurchase(id, next),
-      addPurchasePrintLog(id, snapshot, userProfile?.name || ''),
-    ]).catch((e) => console.error('출력 이력 저장 오류:', e));
+    Promise.all([updatePurchase(id, next), addPurchasePrintLog(id, snapshot, userProfile?.name || '')]).catch((e) =>
+      console.error('출력 이력 저장 오류:', e),
+    );
   }
 
   async function openPrintLogs() {
@@ -451,10 +604,15 @@ export default function PurchaseDetailPage() {
   }, [viewSnapshot]);
 
   // 페이지 이탈 시 미저장분 flush
-  useEffect(() => () => {
-    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); persistPO(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(
+    () => () => {
+      if (autoSaveRef.current) {
+        clearTimeout(autoSaveRef.current);
+        persistPO();
+      }
+    },
+    [],
+  );
 
   async function openReceive(lineIdx) {
     await flushAutoSave();
@@ -506,10 +664,11 @@ export default function PurchaseDetailPage() {
       alert('잔여 입고할 라인이 없습니다.');
       return;
     }
-    const msg = mode === 'close-as-is'
-      ? '현재 입고된 수량으로 발주 수량을 정정하고 입고를 종결합니다.\n미입고 라인은 수량 0으로 처리됩니다. 계속할까요?'
-      : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
-    if (!await confirm(msg)) return;
+    const msg =
+      mode === 'close-as-is'
+        ? '현재 입고된 수량으로 발주 수량을 정정하고 입고를 종결합니다.\n미입고 라인은 수량 0으로 처리됩니다. 계속할까요?'
+        : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
+    if (!(await confirm(msg))) return;
     try {
       await bulkReceivePurchase(purchaseRef.current, {
         mode,
@@ -526,10 +685,13 @@ export default function PurchaseDetailPage() {
 
   async function clearLineReceive(lineIdx) {
     await flushAutoSave();
-    if (!await confirm('이 라인의 입고 기록을 취소하시겠습니까?')) return;
+    if (!(await confirm('이 라인의 입고 기록을 취소하시겠습니까?'))) return;
     try {
       await receivePurchaseLine(purchaseRef.current, lineIdx, {
-        qty: 0, date: null, note: '', receivedBy: '',
+        qty: 0,
+        date: null,
+        note: '',
+        receivedBy: '',
       });
       await loadData({ silent: true });
     } catch (err) {
@@ -541,9 +703,12 @@ export default function PurchaseDetailPage() {
     if (!purchase) return;
     await flushAutoSave();
     const where = purchase.siteName || '귀속 프로젝트';
-    if (!await confirm(
-      `"${purchase.title}" 건을 정산하시겠습니까?\n금액 ${Number(purchase.totalAmount || 0).toLocaleString()}원이 ${where} 지출로 자동 등록됩니다.`,
-    )) return;
+    if (
+      !(await confirm(
+        `"${purchase.title}" 건을 정산하시겠습니까?\n금액 ${Number(purchase.totalAmount || 0).toLocaleString()}원이 ${where} 지출로 자동 등록됩니다.`,
+      ))
+    )
+      return;
     try {
       await settlePurchase(purchase, userProfile?.name || '');
       await loadData({ silent: true });
@@ -554,9 +719,12 @@ export default function PurchaseDetailPage() {
 
   async function handleCancelSettle() {
     if (!purchase) return;
-    if (!await confirm(
-      `"${purchase.title}" 정산을 취소하시겠습니까?\n등록된 지출 항목이 삭제되고, 품목 단가 이력에서도 이 구매 기록이 제거됩니다.\n구매 상태는 '입고'로 되돌아갑니다.`,
-    )) return;
+    if (
+      !(await confirm(
+        `"${purchase.title}" 정산을 취소하시겠습니까?\n등록된 지출 항목이 삭제되고, 품목 단가 이력에서도 이 구매 기록이 제거됩니다.\n구매 상태는 '입고'로 되돌아갑니다.`,
+      ))
+    )
+      return;
     try {
       await cancelSettlePurchase(purchase);
       await loadData({ silent: true });
@@ -565,29 +733,139 @@ export default function PurchaseDetailPage() {
     }
   }
 
+  async function handleTrashPurchase() {
+    if (!(await confirm(`"${purchase.title}" 발주 건을 휴지통으로 이동하시겠습니까?`))) return;
+    try {
+      await flushAutoSave();
+      await trashPurchase(id, userProfile?.name || '');
+      navigate('/admin/purchase');
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
+  async function handleConfirmPurchase() {
+    if (!(await confirm(`"${purchase.title}" 발주를 확정하시겠습니까?\n초안(발주이전) → 발주 상태로 변경됩니다.`))) return;
+    try {
+      await flushAutoSave();
+      await confirmPurchase(id, userProfile?.name || '');
+      await loadData({ silent: true });
+    } catch (err) {
+      alert('발주 확정 중 오류: ' + err.message);
+    }
+  }
+
+  // 발주완료 마킹 (확인창 없이 바로 — 메일 발송 후 자동 호출용)
+  async function markSent(supplierName) {
+    try {
+      await markSupplierSent(id, supplierName, userProfile?.name || '');
+      const sentKey = supplierName.replace(/\./g, '_');
+      setPurchase((prev) => ({
+        ...prev,
+        supplierSent: {
+          ...(prev.supplierSent || {}),
+          [sentKey]: { sentAt: new Date(), sentBy: userProfile?.name || '' },
+        },
+      }));
+    } catch (err) {
+      alert('처리 중 오류: ' + err.message);
+    }
+  }
+
+  async function handleMarkSupplierSent(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체에 발주 완료 표시하시겠습니까?`))) return;
+    await markSent(supplierName);
+  }
+
+  // 메일 발송 → 메일 클라이언트 열고 발주완료 자동 표시
+  function handleSendMail(supplierName, mailtoHref) {
+    window.location.href = mailtoHref; // 메일 클라이언트 열기
+    const sentKey = supplierName.replace(/\./g, '_');
+    if (!purchase.supplierSent?.[sentKey]) {
+      markSent(supplierName); // 아직 미발주면 완료 표시
+    }
+  }
+
+  async function handleUnmarkSupplierSent(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체의 발주 완료 표시를 취소하시겠습니까?`))) return;
+    try {
+      await unmarkSupplierSent(id, supplierName);
+      const sentKey = supplierName.replace(/\./g, '_');
+      setPurchase((prev) => {
+        const next = { ...(prev.supplierSent || {}) };
+        delete next[sentKey];
+        return { ...prev, supplierSent: next };
+      });
+    } catch (err) {
+      alert('취소 중 오류: ' + err.message);
+    }
+  }
+
   if (loading || !purchase) return <div className="loading">로딩 중...</div>;
 
   const status = purchase.status || 'ordered';
-  const derivedSupplier = purchase.supplierName || (() => {
-    const { supplierName } = deriveSupplier(form.items, itemMaster, suppliers);
-    return supplierName;
-  })();
+  const derivedSupplier =
+    purchase.supplierName ||
+    (() => {
+      const { supplierName } = deriveSupplier(form.items, itemMaster, suppliers);
+      return supplierName;
+    })();
 
   return (
     <div className="purchase-detail-page printable-page">
+      <style>{`
+        @media (max-width: 480px) {
+          .purchase-recv-bulk-list li { flex-direction: column; gap: 4px; }
+          .purchase-recv-bulk-qty { align-self: flex-start; }
+          .inline-edit-table td input, .inline-edit-table td[data-label] { min-width: 60px; word-break: break-word; overflow-wrap: break-word; }
+          .bom-flat-table { font-size: 12px; }
+          .bom-flat-table th, .bom-flat-table td { padding: 6px 4px; }
+          .bom-flat-table tbody tr { min-height: 36px !important; }
+          .purchase-detail-top-actions { gap: 2px !important; }
+          .purchase-detail-top-actions .btn { font-size: 12px; padding: 0 10px; }
+        }
+        @media (max-width: 390px) {
+          .purchase-detail-top-actions { flex-wrap: nowrap !important; overflow-x: auto; }
+          .purchase-detail-top-actions .btn { font-size: 11px !important; padding: 0 6px !important; white-space: nowrap; flex-shrink: 0; }
+          .bom-flat-table tbody tr { min-height: 36px !important; }
+          .u-right-numeric input { min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        }
+        @media (max-width: 360px) {
+          .bom-flat-table th { padding: 4px 2px !important; font-size: 10px; min-width: 35px; }
+          .bom-flat-table td { padding: 4px 2px !important; }
+          .bom-flat-table tbody tr { min-height: 34px !important; }
+        }
+        .page-actions.purchase-detail-top-actions .btn { height: var(--btn-h-sm, 36px); min-height: var(--btn-h-sm, 36px); }
+        .bom-flat-table tbody tr { vertical-align: middle; min-height: 38px; }
+        .bom-flat-table th { padding: 6px !important; }
+        .bom-flat-table td { padding: 6px !important; }
+        .purchase-detail-page { padding-bottom: 60px; }
+        .purchase-line-item-wrap { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .purchase-line-item-wrap .purchase-line-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+      `}</style>
       <div className="page-header screen-only">
-        <div className="purchase-detail-header-left">
+        <div className="purchase-detail-header-left" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h2>{purchase.title || '(제목 없음)'}</h2>
           <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
             {STATUS[status]?.label || status}
           </span>
         </div>
-        <div className="page-actions purchase-detail-top-actions">
-          <button type="button" className="btn btn-sm btn-outline" onClick={openPrintLogs}>출력 이력{purchase.printCount > 0 ? ` (${purchase.printCount})` : ''}</button>
+        <div
+          className="page-actions purchase-detail-top-actions"
+          style={{ flexWrap: 'wrap', gap: 4, alignItems: 'center', overflowX: 'auto' }}
+        >
+          <button type="button" className="btn btn-sm btn-outline" onClick={openPrintLogs}>
+            출력 이력{purchase.printCount > 0 ? ` (${purchase.printCount})` : ''}
+          </button>
           {!isReadOnly && (
             <>
-              <button type="button" className="btn btn-sm btn-outline" onClick={openItemPicker}>+ 품목 불러오기</button>
-              <button type="button" className="btn btn-sm btn-outline" onClick={openBomModal}>BOM 가져오기</button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={openItemPicker}>
+                <Icon name="plus" className="btn-ic" />
+                품목 불러오기
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={openBomModal}>
+                BOM 가져오기
+              </button>
             </>
           )}
           <button
@@ -595,52 +873,80 @@ export default function PurchaseDetailPage() {
             className={`btn btn-sm ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setGroupBySupplier((v) => !v)}
             title="ON: 출력 시 구매처별로 각각 별도 발주서 생성"
-          >구매처별 {groupBySupplier ? 'ON' : 'OFF'}</button>
+          >
+            구매처별 {groupBySupplier ? 'ON' : 'OFF'}
+          </button>
           {!isReadOnly && saveState === 'error' && (
-            <span className="purchase-save-indicator error" aria-live="polite">⚠ 저장 실패</span>
+            <span className="purchase-save-indicator error" aria-live="polite">
+              <Icon name="alert" className="btn-ic" /> 저장 실패
+            </span>
           )}
-          {(status === 'ordered' || status === 'partial') && (() => {
-            const remainingCount = (purchase.items || []).filter((it) => {
-              const r = Number(it.receivedQty) || 0;
-              const q = Number(it.qty) || 0;
-              return q > 0 && r < q;
-            }).length;
-            const hasAnyReceived = (purchase.items || []).some((it) => Number(it.receivedQty) > 0);
-            return (
-              <>
-                {remainingCount > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={() => openBulk('remaining')}
-                    title="잔여 라인 일괄 입고"
-                  >일괄 입고</button>
-                )}
-                {status === 'partial' && hasAnyReceived && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={() => openBulk('close-as-is')}
-                    title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
-                  >잔여 무시하고 종결</button>
-                )}
-              </>
-            );
-          })()}
+          {(status === 'ordered' || status === 'partial') &&
+            (() => {
+              const remainingCount = (purchase.items || []).filter((it) => {
+                const r = Number(it.receivedQty) || 0;
+                const q = Number(it.qty) || 0;
+                return q > 0 && r < q;
+              }).length;
+              const hasAnyReceived = (purchase.items || []).some((it) => Number(it.receivedQty) > 0);
+              return (
+                <>
+                  {remainingCount > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => openBulk('remaining')}
+                      title="잔여 라인 일괄 입고"
+                    >
+                      일괄 입고
+                    </button>
+                  )}
+                  {status === 'partial' && hasAnyReceived && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => openBulk('close-as-is')}
+                      title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
+                    >
+                      잔여 무시하고 종결
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+          {status === 'draft' && (
+            <button type="button" className="btn btn-sm btn-primary" onClick={handleConfirmPurchase}>
+              발주 확정
+            </button>
+          )}
           {status === 'received' && (
-            <button type="button" className="btn btn-sm btn-outline" onClick={handleSettle}>정산 처리</button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={handleSettle}>
+              정산 처리
+            </button>
           )}
           {status === 'settled' && (
-            <button type="button" className="btn btn-sm btn-outline" onClick={handleCancelSettle}>정산 취소</button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={handleCancelSettle}>
+              정산 취소
+            </button>
           )}
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase')}>목록</button>
+          <button type="button" className="btn btn-sm btn-danger" onClick={handleTrashPurchase}>
+            <Icon name="trash" className="btn-ic" />
+            삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase')}>
+            목록
+          </button>
         </div>
       </div>
 
       <button
         type="button"
         className="pdf-print-fab no-print"
-        onClick={() => { setPrintStamp(fmtDateTime(new Date())); recordPrint(); setTimeout(() => window.print(), 120); }}
+        onClick={() => {
+          setPrintStamp(fmtDateTime(new Date()));
+          recordPrint();
+          setTimeout(() => window.print(), 120);
+        }}
         title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
       >
         PDF 출력
@@ -650,38 +956,52 @@ export default function PurchaseDetailPage() {
       {(() => {
         const supplier = suppliers.find((s) => s.id === purchase.supplierId);
         const site = sites.find((s) => s.id === purchase.siteId);
-        const liveOrderDate = purchase.orderedAt?.toDate ? purchase.orderedAt.toDate()
-          : (purchase.orderedAt ? new Date(purchase.orderedAt)
-            : (purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date()));
+        const liveOrderDate = purchase.orderedAt?.toDate
+          ? purchase.orderedAt.toDate()
+          : purchase.orderedAt
+            ? new Date(purchase.orderedAt)
+            : purchase.createdAt?.toDate
+              ? purchase.createdAt.toDate()
+              : new Date();
         const liveOrderDateKo = `${liveOrderDate.getFullYear()}년 ${liveOrderDate.getMonth() + 1}월 ${liveOrderDate.getDate()}일`;
-        const liveSupplierTitle = supplier?.name ? `${supplier.name} 귀하` : (derivedSupplier ? `${derivedSupplier} 귀하` : '');
+        const liveSupplierTitle = supplier?.name
+          ? `${supplier.name} 귀하`
+          : derivedSupplier
+            ? `${derivedSupplier} 귀하`
+            : '';
 
         // 출력 소스: 이력 보기 중이면 그 시점 스냅샷, 아니면 현재(라이브) 데이터
-        const src = viewSnapshot ? {
-          siteName: viewSnapshot.siteName || '',
-          deliveryPlace: viewSnapshot.deliveryPlace || SELF_INFO.address,
-          deliveryDue: viewSnapshot.deliveryDue || PO_DEFAULTS.delivery,
-          payment: viewSnapshot.payment || PO_DEFAULTS.payment,
-          contactLine: [viewSnapshot.contactName || '', viewSnapshot.contactPhone || ''].filter(Boolean).join(' / '),
-          note: viewSnapshot.note || '',
-          orderDateKo: viewSnapshot.orderDateKo || liveOrderDateKo,
-          poNum: viewSnapshot.poNumber || poNumber(purchase),
-          grouped: !!viewSnapshot.groupBySupplier,
-          supplierTitle: viewSnapshot.supplierName ? `${viewSnapshot.supplierName} 귀하` : '',
-          items: viewSnapshot.items || [],
-        } : {
-          siteName: site?.name || purchase.siteName || '',
-          deliveryPlace: purchase.deliveryPlace || SELF_INFO.address,
-          deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
-          payment: purchase.payment || PO_DEFAULTS.payment,
-          contactLine: [purchase.contactName || purchase.requesterName || '', purchase.contactPhone || ''].filter(Boolean).join(' / '),
-          note: form.note,
-          orderDateKo: liveOrderDateKo,
-          poNum: poNumber(purchase),
-          grouped: groupBySupplier,
-          supplierTitle: liveSupplierTitle,
-          items: mapPrintItems(form.items),
-        };
+        const src = viewSnapshot
+          ? {
+              siteName: viewSnapshot.siteName || '',
+              deliveryPlace: viewSnapshot.deliveryPlace || SELF_INFO.address,
+              deliveryDue: viewSnapshot.deliveryDue || PO_DEFAULTS.delivery,
+              payment: viewSnapshot.payment || PO_DEFAULTS.payment,
+              contactLine: [viewSnapshot.contactName || '', viewSnapshot.contactPhone || '']
+                .filter(Boolean)
+                .join(' / '),
+              note: viewSnapshot.note || '',
+              orderDateKo: viewSnapshot.orderDateKo || liveOrderDateKo,
+              poNum: viewSnapshot.poNumber || poNumber(purchase),
+              grouped: !!viewSnapshot.groupBySupplier,
+              supplierTitle: viewSnapshot.supplierName ? `${viewSnapshot.supplierName} 귀하` : '',
+              items: viewSnapshot.items || [],
+            }
+          : {
+              siteName: site?.name || purchase.siteName || '',
+              deliveryPlace: purchase.deliveryPlace || SELF_INFO.address,
+              deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
+              payment: purchase.payment || PO_DEFAULTS.payment,
+              contactLine: [purchase.contactName || purchase.requesterName || '', purchase.contactPhone || '']
+                .filter(Boolean)
+                .join(' / '),
+              note: form.note,
+              orderDateKo: liveOrderDateKo,
+              poNum: poNumber(purchase),
+              grouped: groupBySupplier,
+              supplierTitle: liveSupplierTitle,
+              items: mapPrintItems(form.items),
+            };
 
         // 문서 단위: 구매처별이면 구매처별로 각각 별도 발주서, 아니면 전체 1장
         let docs;
@@ -702,14 +1022,20 @@ export default function PurchaseDetailPage() {
             }));
           if (docs.length === 0) docs = [{ recvTitle: src.supplierTitle, supplierLabel: '', items: [] }];
         } else {
-          docs = [{ recvTitle: src.supplierTitle, supplierLabel: '', items: src.items.filter((ln) => (ln._name || ln.name || '').trim()) }];
+          docs = [
+            {
+              recvTitle: src.supplierTitle,
+              supplierLabel: '',
+              items: src.items.filter((ln) => (ln._name || ln.name || '').trim()),
+            },
+          ];
         }
 
         // 행 개수 기반 페이지 분할 — 페이지를 거의 채우고 하단엔 합계·특이사항 크기(TOTALS_ROWS)만큼만 공백을 남김.
         // 1페이지는 상단 정보표 높이(INFO_ROWS)만큼 행을 줄여 다른 페이지와 하단 공백을 동일하게 맞춤.
-        const OTHER_PAGE_ROWS = 33;     // 일반 페이지(페이지를 거의 채우는 행수)
-        const INFO_ROWS = 11;           // 1페이지 상단 제목+정보표가 차지하는 행수
-        const TOTALS_ROWS = 5;          // 마지막 페이지 합계+특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
+        const OTHER_PAGE_ROWS = 33; // 일반 페이지(페이지를 거의 채우는 행수)
+        const INFO_ROWS = 11; // 1페이지 상단 제목+정보표가 차지하는 행수
+        const TOTALS_ROWS = 5; // 마지막 페이지 합계+특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
         const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
 
         // 한 문서(구매처)를 페이지 div 배열로 렌더
@@ -736,141 +1062,165 @@ export default function PurchaseDetailPage() {
           const pageCount = pages.length;
 
           return pages.map((pg, pageIdx) => {
-              const isFirst = pageIdx === 0;
-              const isLast = pageIdx === pageCount - 1;
-              const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-              const targetRows = cap - (isLast ? TOTALS_ROWS : 0);
-              const padded = [...pg.chunk];
-              while (padded.length < targetRows) padded.push(null);
-              return (
-                <div className="bom-print-page po-doc-page" key={`${docKey}-${pageIdx}`}>
-                  {isFirst && <div className="print-form-title">구 매 발 주 서</div>}
+            const isFirst = pageIdx === 0;
+            const isLast = pageIdx === pageCount - 1;
+            const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+            const targetRows = cap - (isLast ? TOTALS_ROWS : 0);
+            const padded = [...pg.chunk];
+            while (padded.length < targetRows) padded.push(null);
+            return (
+              <div className="bom-print-page po-doc-page" key={`${docKey}-${pageIdx}`}>
+                {isFirst && <div className="print-form-title">구 매 발 주 서</div>}
 
-                  {isFirst && (
-                    <table className="iopn-info-table">
+                {isFirst && (
+                  <table className="iopn-info-table">
+                    <tbody>
+                      <tr>
+                        <th className="lbl">수 신</th>
+                        <td className="val">{recvTitle}</td>
+                        <th className="lbl">사업자등록번호</th>
+                        <td className="val">{SELF_INFO.businessNumber}</td>
+                      </tr>
+                      <tr>
+                        <th className="lbl">현 장 명</th>
+                        <td className="val">{src.siteName}</td>
+                        <th className="lbl">회사명/대표</th>
+                        <td className="val">{SELF_INFO.companyAndCeo}</td>
+                      </tr>
+                      <tr>
+                        <th className="lbl">납품장소</th>
+                        <td className="val">{src.deliveryPlace}</td>
+                        <th className="lbl">주 소</th>
+                        <td className="val">{SELF_INFO.address}</td>
+                      </tr>
+                      <tr>
+                        <th className="lbl">발행번호</th>
+                        <td className="val">{src.poNum}</td>
+                        <th className="lbl">TEL/FAX</th>
+                        <td className="val">{SELF_INFO.telFax}</td>
+                      </tr>
+                      <tr>
+                        <th className="lbl">발 주 일</th>
+                        <td className="val">{src.orderDateKo}</td>
+                        <th className="lbl">납품기일</th>
+                        <td className="val">{src.deliveryDue}</td>
+                      </tr>
+                      <tr>
+                        <th className="lbl">지불조건</th>
+                        <td className="val">{src.payment}</td>
+                        <th className="lbl">담당/연락처</th>
+                        <td className="val">{src.contactLine}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="iopn-amount-row">
+                          총 금액(VAT 포함) : ₩ {grandTotal.toLocaleString()}원
+                          <span className="iopn-amount-sub">
+                            {' '}
+                            (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+
+                <table className="iopn-items-table po-cols">
+                  <thead>
+                    <tr>
+                      <th className="c-no">NO</th>
+                      <th className="c-name">품목명</th>
+                      <th className="c-spec">규격</th>
+                      <th className="c-qty">수량</th>
+                      <th className="c-price">단가</th>
+                      <th className="c-amount">금액</th>
+                      <th className="c-recv">입고</th>
+                      <th className="c-note">비고</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {padded.map((ln, r) => {
+                      if (!ln)
+                        return (
+                          <tr key={`e-${r}`}>
+                            <td className="c-no"></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                          </tr>
+                        );
+                      const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                      const q = Number(ln.qty) || 0;
+                      const rq = Number(ln.receivedQty) || 0;
+                      const recvText = q <= 0 ? '' : rq >= q ? '완료' : rq > 0 ? `${rq}/${q}` : '미입고';
+                      return (
+                        <tr key={r}>
+                          <td className="c-no">{pg.startNo + r + 1}</td>
+                          <td className={`c-name ${specFontClass(ln._name, 11)}`} title={ln._name || ''}>
+                            {ln._name || ''}
+                          </td>
+                          <td className="c-spec" title={ln._spec || ''}>
+                            {ln._spec || ''}
+                          </td>
+                          <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
+                          <td className="c-price">
+                            {Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}
+                          </td>
+                          <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
+                          <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : rq === 0 ? 'recv-none' : ''}`}>
+                            {recvText}
+                          </td>
+                          <td className={`c-note ${specFontClass(ln.note, 11)}`} title={ln.note || ''}>
+                            {ln.note || ''}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {isLast && (
+                  <>
+                    <table className="iopn-notes-table">
                       <tbody>
                         <tr>
-                          <th className="lbl">수 신</th>
-                          <td className="val">{recvTitle}</td>
-                          <th className="lbl">사업자등록번호</th>
-                          <td className="val">{SELF_INFO.businessNumber}</td>
-                        </tr>
-                        <tr>
-                          <th className="lbl">현 장 명</th>
-                          <td className="val">{src.siteName}</td>
-                          <th className="lbl">회사명/대표</th>
-                          <td className="val">{SELF_INFO.companyAndCeo}</td>
-                        </tr>
-                        <tr>
-                          <th className="lbl">납품장소</th>
-                          <td className="val">{src.deliveryPlace}</td>
-                          <th className="lbl">주 소</th>
-                          <td className="val">{SELF_INFO.address}</td>
-                        </tr>
-                        <tr>
-                          <th className="lbl">발행번호</th>
-                          <td className="val">{src.poNum}</td>
-                          <th className="lbl">TEL/FAX</th>
-                          <td className="val">{SELF_INFO.telFax}</td>
-                        </tr>
-                        <tr>
-                          <th className="lbl">발 주 일</th>
-                          <td className="val">{src.orderDateKo}</td>
-                          <th className="lbl">납품기일</th>
-                          <td className="val">{src.deliveryDue}</td>
-                        </tr>
-                        <tr>
-                          <th className="lbl">지불조건</th>
-                          <td className="val">{src.payment}</td>
-                          <th className="lbl">담당/연락처</th>
-                          <td className="val">{src.contactLine}</td>
-                        </tr>
-                        <tr>
-                          <td colSpan={4} className="iopn-amount-row">
-                            총 금액(VAT 포함) : ₩ {grandTotal.toLocaleString()}원
-                            <span className="iopn-amount-sub"> (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})</span>
-                          </td>
+                          <th className="lbl">특이사항</th>
+                          <td className="val">{src.note || ''}</td>
                         </tr>
                       </tbody>
                     </table>
-                  )}
 
-                  <table className="iopn-items-table po-cols">
-                    <thead>
-                      <tr>
-                        <th className="c-no">NO</th>
-                        <th className="c-name">품목명</th>
-                        <th className="c-spec">규격</th>
-                        <th className="c-qty">수량</th>
-                        <th className="c-price">단가</th>
-                        <th className="c-amount">금액</th>
-                        <th className="c-recv">입고</th>
-                        <th className="c-note">비고</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {padded.map((ln, r) => {
-                        if (!ln) return (
-                          <tr key={`e-${r}`}>
-                            <td className="c-no"></td>
-                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                          </tr>
-                        );
-                        const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
-                        const q = Number(ln.qty) || 0;
-                        const rq = Number(ln.receivedQty) || 0;
-                        const recvText = q <= 0 ? '' : (rq >= q ? '완료' : (rq > 0 ? `${rq}/${q}` : '미입고'));
-                        return (
-                          <tr key={r}>
-                            <td className="c-no">{pg.startNo + r + 1}</td>
-                            <td className={`c-name ${specFontClass(ln._name, 11)}`}>{ln._name || ''}</td>
-                            <td className="c-spec">{ln._spec || ''}</td>
-                            <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
-                            <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
-                            <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                            <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : (rq === 0 ? 'recv-none' : '')}`}>{recvText}</td>
-                            <td className={`c-note ${specFontClass(ln.note, 11)}`}>{ln.note || ''}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                    <table className="iopn-total-table">
+                      <tbody>
+                        <tr>
+                          <th className="lbl">수량</th>
+                          <td className="num">{totalQty.toLocaleString()}</td>
+                          <th className="lbl">공급가액</th>
+                          <td className="num">{supplyAmount.toLocaleString()}</td>
+                          <th className="lbl">VAT</th>
+                          <td className="num">{vat.toLocaleString()}</td>
+                          <th className="lbl">합계</th>
+                          <td className="num grand">{grandTotal.toLocaleString()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </>
+                )}
 
-                  {isLast && (
-                    <>
-                      <table className="iopn-notes-table">
-                        <tbody>
-                          <tr>
-                            <th className="lbl">특이사항</th>
-                            <td className="val">{src.note || ''}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-
-                      <table className="iopn-total-table">
-                        <tbody>
-                          <tr>
-                            <th className="lbl">수량</th>
-                            <td className="num">{totalQty.toLocaleString()}</td>
-                            <th className="lbl">공급가액</th>
-                            <td className="num">{supplyAmount.toLocaleString()}</td>
-                            <th className="lbl">VAT</th>
-                            <td className="num">{vat.toLocaleString()}</td>
-                            <th className="lbl">합계</th>
-                            <td className="num grand">{grandTotal.toLocaleString()}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </>
-                  )}
-
-                  <div className="bom-print-footer">
-                    <span>(주)아이오피엔 · 구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}</span>
-                    <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
-                    <span>페이지 {pageIdx + 1} / {pageCount}</span>
-                  </div>
+                <div className="bom-print-footer">
+                  <span>
+                    (주)아이오피엔 · 구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}
+                  </span>
+                  <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
+                  <span>
+                    페이지 {pageIdx + 1} / {pageCount}
+                  </span>
                 </div>
-              );
+              </div>
+            );
           });
         };
 
@@ -883,241 +1233,346 @@ export default function PurchaseDetailPage() {
 
       <div className="purchase-meta-bar screen-only">
         <div className="purchase-meta-items">
-          <span><em>프로젝트</em>{purchase.siteName || '-'}</span>
-          <span><em>등록자</em>{purchase.requesterName || '-'}</span>
-          <span><em>발주일</em>{fmtDate(purchase.orderedAt || purchase.createdAt)}</span>
-          <span><em>구매처</em>{derivedSupplier || <span className="text-muted">자동 (품목 미선택)</span>}</span>
+          <span title={purchase.siteName || ''}>
+            <em>프로젝트</em>
+            {purchase.siteName || '-'}
+          </span>
+          <span title={purchase.requesterName || ''}>
+            <em>등록자</em>
+            {purchase.requesterName || '-'}
+          </span>
+          <span title={fmtDate(purchase.orderedAt || purchase.createdAt)}>
+            <em>발주일</em>
+            {fmtDate(purchase.orderedAt || purchase.createdAt)}
+          </span>
+          <span title={derivedSupplier || ''}>
+            <em>구매처</em>
+            {derivedSupplier || <span className="text-muted">자동 (품목 미선택)</span>}
+          </span>
           {purchase.receivedBy && (
-            <span><em>입고</em>{purchase.receivedBy} · {fmtDate(purchase.receivedAt)}</span>
+            <span title={`${purchase.receivedBy} · ${fmtDate(purchase.receivedAt)}`}>
+              <em>입고</em>
+              {purchase.receivedBy} · {fmtDate(purchase.receivedAt)}
+            </span>
           )}
           {purchase.settledBy && (
-            <span><em>정산</em>{purchase.settledBy} · {fmtDate(purchase.settledAt)}</span>
+            <span title={`${purchase.settledBy} · ${fmtDate(purchase.settledAt)}`}>
+              <em>정산</em>
+              {purchase.settledBy} · {fmtDate(purchase.settledAt)}
+            </span>
           )}
         </div>
       </div>
 
+      {/* 납품 공장 선택 */}
+      {factories.length > 0 && !isReadOnly && (
+        <div className="form-group screen-only" style={{ marginBottom: 8 }}>
+          <label>납품 공장</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select
+              value={form.factoryKey}
+              onChange={(e) => {
+                const factory = factories.find((f) => f.name === e.target.value);
+                setForm((prev) => ({
+                  ...prev,
+                  factoryKey: e.target.value,
+                  deliveryPlace: factory?.address || prev.deliveryPlace,
+                }));
+                scheduleAutoSave();
+              }}
+              style={{ width: 120, flexShrink: 0 }}
+            >
+              <option value="">선택</option>
+              {factories.map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="납품 장소 주소"
+              value={form.deliveryPlace}
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, deliveryPlace: e.target.value }));
+                scheduleAutoSave();
+              }}
+              style={{ flex: 1, minWidth: 180 }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="form-group screen-only">
         <label>품목</label>
-        <p className="field-hint">우측 상단 「품목 불러오기」로 구매 품목을 선택해 추가하세요. 입력 즉시 자동 저장됩니다. 구매처는 첫 품목의 기본 구매처로 자동 적용.</p>
+        <p className="field-hint">
+          우측 상단 「품목 불러오기」로 구매 품목을 선택해 추가하세요. 입력 즉시 자동 저장됩니다. 구매처는 첫 품목의
+          기본 구매처로 자동 적용.
+        </p>
+        {form.items.length > 0 && (
+          <input
+            type="text"
+            className="purchase-filter-search"
+            style={{ width: '100%', maxWidth: 340, marginBottom: 8 }}
+            placeholder="품목 검색 (코드 · 품명 · 메이커 · 규격 · 분류 · 구매처)"
+            value={itemSearch}
+            onChange={(e) => setItemSearch(e.target.value)}
+          />
+        )}
         <div className="item-group is-expanded bom-flat-group">
           <div className="item-group-detail">
-            <table className="table inline-edit-table cards-sm bom-flat-table">
-              <thead>
-                <tr>
-                  <th className="bom-no-col">No</th>
-                  <th style={{ minWidth: 100 }}>코드</th>
-                  <th style={{ minWidth: 160 }}>품명</th>
-                  <th>메이커</th>
-                  <th>규격</th>
-                  <th>분류</th>
-                  <th>인증</th>
-                  <th>moq/단위</th>
-                  <th>수량</th>
-                  <th>단가</th>
-                  <th>합계</th>
-                  <th>기본 구매처</th>
-                  <th style={{ minWidth: 160 }}>비고</th>
-                  <th style={{ minWidth: 130 }} className="no-print">입고</th>
-                  <th className="bom-action-col no-print" aria-hidden="true"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {form.items.length === 0 && (
+            <div className="table-scroll-x">
+              <table className="table inline-edit-table cards-sm bom-flat-table">
+                <thead>
                   <tr>
-                    <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
-                      품목이 없습니다 — 아래 "+ 품목 추가"로 시작하세요.
-                    </td>
+                    <th className="bom-no-col">No</th>
+                    <th style={{ minWidth: 90 }}>코드</th>
+                    <th style={{ minWidth: 120 }}>품명</th>
+                    <th>메이커</th>
+                    <th>규격</th>
+                    <th>분류</th>
+                    <th>인증</th>
+                    <th>moq/단위</th>
+                    <th>수량</th>
+                    <th>단가</th>
+                    <th>합계</th>
+                    <th>기본 구매처</th>
+                    <th style={{ minWidth: 120 }}>비고</th>
+                    <th style={{ minWidth: 130 }} className="no-print">
+                      입고
+                    </th>
+                    <th className="bom-action-col no-print" aria-hidden="true"></th>
                   </tr>
-                )}
-                {form.items.map((ln, idx) => {
-                  const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
-                  const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
-                  const lineSupplierName = master?.defaultSupplierId
-                    ? (suppliers.find((s) => s.id === master.defaultSupplierId)?.name || '')
-                    : '';
-                  // 입고 상태는 라인 자체 데이터로 — 삭제·인덱스 변동에 영향받지 않음 (입고 클릭 시 자동저장 flush)
-                  const savedQty = Number(ln.qty) || 0;
-                  const receivedQty = Number(ln.receivedQty) || 0;
-                  const isLineSaved = (ln.name || '').trim().length > 0;
-                  const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
-                  const isPartial = isLineSaved && receivedQty > 0 && receivedQty < savedQty;
-                  return (
-                    <tr key={idx}>
-                      <td className="bom-no-col" data-label="No">{idx + 1}</td>
-                      <td data-label="코드">
-                        <input
-                          type="text"
-                          className="bom-readonly-input bom-code-input"
-                          value={master?.code || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="품명">
-                        <div className="purchase-line-item-wrap">
-                          <input
-                            className="purchase-line-item"
-                            type="text"
-                            placeholder="품목 불러오기 또는 직접 입력"
-                            value={ln.name}
-                            onChange={(e) => updateLineName(idx, e.target.value)}
-                            autoComplete="off"
-                            disabled={isReadOnly}
-                          />
-                        </div>
-                      </td>
-                      <td data-label="메이커">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={master?.maker || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="규격">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={master?.spec || ln.spec || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="분류">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={master?.category || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="인증">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={master?.certification || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="moq/단위">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={master?.unit || ln.unit || ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="수량">
-                        <input
-                          className="num-input"
-                          type="number" min="0"
-                          value={ln.qty}
-                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                          disabled={isReadOnly}
-                        />
-                      </td>
-                      <td data-label="단가">
-                        <MoneyInput
-                          className="num-input"
-                          value={ln.unitPrice}
-                          onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                          disabled={isReadOnly}
-                        />
-                      </td>
-                      <td data-label="합계">
-                        <input
-                          type="text"
-                          className="bom-readonly-input bom-amount-input"
-                          value={amount ? amount.toLocaleString() : ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="기본 구매처">
-                        <input
-                          type="text"
-                          className="bom-readonly-input"
-                          value={lineSupplierName}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      </td>
-                      <td data-label="비고">
-                        <input
-                          type="text"
-                          value={ln.note || ''}
-                          placeholder="-"
-                          onChange={(e) => updateLine(idx, { note: e.target.value })}
-                          disabled={isReadOnly}
-                        />
-                      </td>
-                      <td data-label="입고" className="no-print">
-                        <div className="purchase-line-recv">
-                          {!isLineSaved ? (
-                            <span className="purchase-line-recv-hint">저장 후 입고</span>
-                          ) : isFullyReceived ? (
-                            <button
-                              type="button"
-                              className={`purchase-recv-chip is-full ${isReadOnly ? 'is-readonly' : ''}`}
-                              onClick={() => !isReadOnly && openReceive(idx)}
-                              title={isReadOnly ? '정산 완료' : '입고 수정'}
-                              disabled={isReadOnly}
-                            >
-                              <span className="purchase-recv-chip-qty">완료 {receivedQty}/{savedQty}</span>
-                              <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
-                            </button>
-                          ) : isPartial ? (
-                            <button
-                              type="button"
-                              className={`purchase-recv-chip is-partial ${isReadOnly ? 'is-readonly' : ''}`}
-                              onClick={() => !isReadOnly && openReceive(idx)}
-                              title={isReadOnly ? '정산 완료' : '입고 추가/수정'}
-                              disabled={isReadOnly}
-                            >
-                              <span className="purchase-recv-chip-qty">부분 {receivedQty}/{savedQty}</span>
-                              <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline purchase-recv-btn"
-                              onClick={() => openReceive(idx)}
-                              disabled={isReadOnly || savedQty <= 0}
-                              title={savedQty <= 0 ? '수량을 먼저 입력하세요' : ''}
-                            >
-                              입고
-                            </button>
-                          )}
-                          {isLineSaved && receivedQty > 0 && !isReadOnly && (
-                            <button
-                              type="button"
-                              className="purchase-recv-clear"
-                              onClick={() => clearLineReceive(idx)}
-                              aria-label="입고 취소"
-                              title="입고 기록 취소"
-                            >↺</button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="bom-action-col no-print">
-                        <button
-                          type="button"
-                          className="closing-delete"
-                          onClick={() => removeLine(idx)}
-                          aria-label="행 삭제"
-                          disabled={isReadOnly}
-                          title="삭제"
-                        >✕</button>
+                </thead>
+                <tbody>
+                  {form.items.length === 0 && (
+                    <tr>
+                      <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                        품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  )}
+                  {form.items.length > 0 && itemSearch.trim() && !form.items.some(lineMatchesSearch) && (
+                    <tr>
+                      <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                        "{itemSearch}" 검색 결과가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                  {form.items.map((ln, idx) => {
+                    if (!lineMatchesSearch(ln)) return null;
+                    const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+                    const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                    const lineSupplierName = master?.defaultSupplierId
+                      ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
+                      : '';
+                    // 입고 상태는 라인 자체 데이터로 — 삭제·인덱스 변동에 영향받지 않음 (입고 클릭 시 자동저장 flush)
+                    const savedQty = Number(ln.qty) || 0;
+                    const receivedQty = Number(ln.receivedQty) || 0;
+                    const isLineSaved = (ln.name || '').trim().length > 0;
+                    const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
+                    const isPartial = isLineSaved && receivedQty > 0 && receivedQty < savedQty;
+                    return (
+                      <tr key={idx}>
+                        <td className="bom-no-col" data-label="No">
+                          {idx + 1}
+                        </td>
+                        <td data-label="코드">
+                          <input
+                            type="text"
+                            className="bom-readonly-input bom-code-input"
+                            value={master?.code || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="품명" title={(ln.itemId && master) ? master.name : (ln.name || '')} style={{ minWidth: 90, maxWidth: 200 }}>
+                          <div className="purchase-line-item-wrap">
+                            <input
+                              className="purchase-line-item"
+                              type="text"
+                              placeholder="품목 불러오기 또는 직접 입력"
+                              value={(ln.itemId && master) ? master.name : ln.name}
+                              title={(ln.itemId && master) ? master.name : (ln.name || '')}
+                              onChange={(e) => updateLineName(idx, e.target.value)}
+                              autoComplete="off"
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                        </td>
+                        <td data-label="메이커" title={master?.maker || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={master?.maker || ''}
+                            title={master?.maker || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="규격" title={master?.spec || ln.spec || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={master?.spec || ln.spec || ''}
+                            title={master?.spec || ln.spec || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="분류" title={master?.category || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={master?.category || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="인증" title={master?.certification || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={master?.certification || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="moq/단위" title={master?.unit || ln.unit || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={master?.unit || ln.unit || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="수량">
+                          <input
+                            className="num-input"
+                            type="number"
+                            min="0"
+                            value={ln.qty}
+                            onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                            disabled={isReadOnly}
+                          />
+                        </td>
+                        <td data-label="단가">
+                          <MoneyInput
+                            className="num-input"
+                            value={ln.unitPrice}
+                            onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                            disabled={isReadOnly}
+                          />
+                        </td>
+                        <td data-label="합계" title={amount ? amount.toLocaleString() : ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input bom-amount-input"
+                            value={amount ? amount.toLocaleString() : ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="기본 구매처" title={lineSupplierName}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={lineSupplierName}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="비고" title={ln.note || ''} style={{ minWidth: 90 }}>
+                          <input
+                            type="text"
+                            value={ln.note || ''}
+                            title={ln.note || ''}
+                            placeholder="-"
+                            onChange={(e) => updateLine(idx, { note: e.target.value })}
+                            disabled={isReadOnly}
+                          />
+                        </td>
+                        <td data-label="입고" className="no-print">
+                          <div
+                            className="purchase-line-recv"
+                            style={{ minHeight: 36, display: 'flex', alignItems: 'center' }}
+                          >
+                            {!isLineSaved ? (
+                              <span
+                                className="purchase-line-recv-hint"
+                                style={{ display: 'inline-flex', alignItems: 'center', height: 32 }}
+                              >
+                                저장 후 입고
+                              </span>
+                            ) : isFullyReceived ? (
+                              <button
+                                type="button"
+                                className={`purchase-recv-chip is-full ${isReadOnly ? 'is-readonly' : ''}`}
+                                onClick={() => !isReadOnly && openReceive(idx)}
+                                title={isReadOnly ? '정산 완료' : '입고 수정'}
+                                disabled={isReadOnly}
+                              >
+                                <span className="purchase-recv-chip-qty">
+                                  완료 {receivedQty}/{savedQty}
+                                </span>
+                                <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
+                              </button>
+                            ) : isPartial ? (
+                              <button
+                                type="button"
+                                className={`purchase-recv-chip is-partial ${isReadOnly ? 'is-readonly' : ''}`}
+                                onClick={() => !isReadOnly && openReceive(idx)}
+                                title={isReadOnly ? '정산 완료' : '입고 추가/수정'}
+                                disabled={isReadOnly}
+                              >
+                                <span className="purchase-recv-chip-qty">
+                                  부분 {receivedQty}/{savedQty}
+                                </span>
+                                <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline purchase-recv-btn"
+                                onClick={() => openReceive(idx)}
+                                disabled={isReadOnly || savedQty <= 0}
+                                title={savedQty <= 0 ? '수량을 먼저 입력하세요' : ''}
+                              >
+                                입고
+                              </button>
+                            )}
+                            {isLineSaved && receivedQty > 0 && !isReadOnly && (
+                              <button
+                                type="button"
+                                className="purchase-recv-clear"
+                                onClick={() => clearLineReceive(idx)}
+                                aria-label="입고 취소"
+                                title="입고 기록 취소"
+                              >
+                                <Icon name="restore" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="bom-action-col no-print">
+                          <button
+                            type="button"
+                            className="closing-delete"
+                            onClick={() => removeLine(idx)}
+                            aria-label="행 삭제"
+                            disabled={isReadOnly}
+                            title="삭제"
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -1127,6 +1582,110 @@ export default function PurchaseDetailPage() {
         <strong>{formTotal.toLocaleString()}원</strong>
       </div>
 
+      {/* 업체별 발주 현황 — 메일 발송·발주 완료 추적 (품목 아래) */}
+      {(() => {
+        const fallbackSup = purchase.supplierId ? suppliers.find((s) => s.id === purchase.supplierId) : null;
+        const supMap = new Map();
+        for (const ln of form.items) {
+          if (!(ln.name || '').trim()) continue;
+          const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+          const supId = master?.defaultSupplierId || '';
+          const sup = (supId ? suppliers.find((s) => s.id === supId) : null) || fallbackSup || null;
+          const supName = sup?.name || purchase.supplierName || '(구매처 미지정)';
+          if (!supMap.has(supName)) supMap.set(supName, { name: supName, email: sup?.email || '', count: 0 });
+          supMap.get(supName).count++;
+        }
+        const supList = [...supMap.values()];
+        if (supList.length === 0) return null;
+        const sentCount = supList.filter((s) => purchase.supplierSent?.[s.name.replace(/\./g, '_')]).length;
+        return (
+          <div className="form-group screen-only">
+            <label>
+              업체별 발주 현황
+              <span className="text-muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 13 }}>
+                {supList.length}개 업체 · {sentCount}개 발주완료
+              </span>
+            </label>
+            <p className="field-hint">
+              메일 발송 시 자동으로 발주 완료 표시됩니다. 잘못 표시되면 「발주 취소」로 되돌리세요.
+            </p>
+            <div className="table-scroll-x">
+              <table className="table inline-edit-table cards-sm">
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: 140 }}>구매처</th>
+                    <th style={{ width: 80 }}>품목</th>
+                    <th style={{ width: 210 }}>발주 상태</th>
+                    <th className="col-action" style={{ width: '100%' }}>
+                      작업
+                    </th>
+                  </tr>
+                </thead>
+                    <tbody>
+                      {supList.map((sup) => {
+                        const sentKey = sup.name.replace(/\./g, '_');
+                        const sent = purchase.supplierSent?.[sentKey];
+                        const mailSubject = `[발주] ${purchase.title || ''} - ${purchase.siteName || ''}`;
+                        const mailBody = `안녕하세요,\n\n발주서를 첨부하여 보내드립니다.\n\n프로젝트: ${purchase.siteName || ''}\n발주 건명: ${purchase.title || ''}\n\n감사합니다.\n\n(주)아이오피엔`;
+                        return (
+                          <tr key={sup.name}>
+                            <td data-label="구매처" title={sup.name}>
+                              <strong>{sup.name}</strong>
+                            </td>
+                            <td data-label="품목">{sup.count}품목</td>
+                            <td data-label="발주 상태">
+                              {sent ? (
+                                <span className="purchase-badge purchase-badge-received">
+                                  발주완료 · {fmtDate(sent.sentAt)} · {sent.sentBy}
+                                </span>
+                              ) : (
+                                <span className="purchase-badge purchase-badge-draft">미발주</span>
+                              )}
+                            </td>
+                            <td data-label="작업" className="col-action">
+                              <div className="row-actions">
+                                {sup.email && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    onClick={() =>
+                                      handleSendMail(
+                                        sup.name,
+                                        `mailto:${sup.email}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`,
+                                      )
+                                    }
+                                  >
+                                    메일 발송
+                                  </button>
+                                )}
+                                {sent ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => handleUnmarkSupplierSent(sup.name)}
+                                  >
+                                    발주 취소
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    onClick={() => handleMarkSupplierSent(sup.name)}
+                                  >
+                                    발주 완료 표시
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+          </div>
+        );
+      })()}
 
       <div className="form-group screen-only">
         <label>메모</label>
@@ -1163,101 +1722,125 @@ export default function PurchaseDetailPage() {
         onClose={() => setBulkModal(null)}
         title={bulkModal?.mode === 'close-as-is' ? '잔여 무시하고 입고 종결' : '일괄 입고 처리'}
       >
-        {bulkModal && (() => {
-          const isClose = bulkModal.mode === 'close-as-is';
-          const lines = purchase.items || [];
-          const affected = isClose
-            ? lines.filter((it) => (Number(it.receivedQty) || 0) > 0)
-            : lines.filter((it) => {
-              const r = Number(it.receivedQty) || 0;
-              const q = Number(it.qty) || 0;
-              return q > 0 && r < q;
-            });
-          return (
-            <form onSubmit={submitBulk}>
-              <div className="purchase-recv-modal-summary">
-                <strong className="purchase-recv-modal-name">
-                  {isClose ? '현재 입고된 수량으로 종결' : `잔여 ${affected.length}개 라인 일괄 입고`}
-                </strong>
-                <span className="purchase-recv-modal-meta">
-                  {isClose
-                    ? `미입고 라인은 수량 0으로 정리됩니다. 발주 금액이 입고 기준으로 재계산됩니다.`
-                    : `각 라인의 잔여 수량만큼 동일한 입고일로 받습니다.`}
-                </span>
-              </div>
+        {bulkModal &&
+          (() => {
+            const isClose = bulkModal.mode === 'close-as-is';
+            const lines = purchase.items || [];
+            const affected = isClose
+              ? lines.filter((it) => (Number(it.receivedQty) || 0) > 0)
+              : lines.filter((it) => {
+                  const r = Number(it.receivedQty) || 0;
+                  const q = Number(it.qty) || 0;
+                  return q > 0 && r < q;
+                });
+            return (
+              <form onSubmit={submitBulk}>
+                <div className="purchase-recv-modal-summary">
+                  <strong className="purchase-recv-modal-name">
+                    {isClose ? '현재 입고된 수량으로 종결' : `잔여 ${affected.length}개 라인 일괄 입고`}
+                  </strong>
+                  <span className="purchase-recv-modal-meta">
+                    {isClose
+                      ? `미입고 라인은 수량 0으로 정리됩니다. 발주 금액이 입고 기준으로 재계산됩니다.`
+                      : `각 라인의 잔여 수량만큼 동일한 입고일로 받습니다.`}
+                  </span>
+                </div>
 
-              {!isClose && (
-                <>
-                  <div className="form-group">
-                    <label>입고일 *</label>
-                    <input
-                      type="date"
-                      value={bulkForm.date}
-                      onChange={(e) => setBulkForm({ ...bulkForm, date: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>검수 메모</label>
-                    <textarea
-                      value={bulkForm.note}
-                      onChange={(e) => setBulkForm({ ...bulkForm, note: e.target.value })}
-                      rows={2}
-                      placeholder="수량 확인 · 하자 여부 등"
-                    />
-                  </div>
-                </>
-              )}
+                {!isClose && (
+                  <>
+                    <div className="form-group">
+                      <label>입고일 *</label>
+                      <input
+                        type="date"
+                        value={bulkForm.date}
+                        onChange={(e) => setBulkForm({ ...bulkForm, date: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>검수 메모</label>
+                      <textarea
+                        value={bulkForm.note}
+                        onChange={(e) => setBulkForm({ ...bulkForm, note: e.target.value })}
+                        rows={2}
+                        placeholder="수량 확인 · 하자 여부 등"
+                      />
+                    </div>
+                  </>
+                )}
 
-              <div className="form-group">
-                <label>{isClose ? '종결 대상 라인' : '대상 라인'}</label>
-                <ul className="purchase-recv-bulk-list">
-                  {affected.length === 0 ? (
-                    <li className="purchase-recv-bulk-empty">대상 라인이 없습니다.</li>
-                  ) : (
-                    affected.map((it, i) => {
-                      const r = Number(it.receivedQty) || 0;
-                      const q = Number(it.qty) || 0;
-                      return (
-                        <li key={i}>
-                          <span className="purchase-recv-bulk-name">{it.name || '(이름 없음)'}{it.spec ? ` (${it.spec})` : ''}</span>
-                          <span className="purchase-recv-bulk-qty">
-                            {isClose ? `${r}${it.unit || ''} 종결` : `${r}/${q}${it.unit || ''} → ${q}${it.unit || ''}`}
-                          </span>
-                        </li>
-                      );
-                    })
-                  )}
-                </ul>
-              </div>
+                <div className="form-group">
+                  <label>{isClose ? '종결 대상 라인' : '대상 라인'}</label>
+                  <ul className="purchase-recv-bulk-list">
+                    {affected.length === 0 ? (
+                      <li className="purchase-recv-bulk-empty">대상 라인이 없습니다.</li>
+                    ) : (
+                      affected.map((it, i) => {
+                        const r = Number(it.receivedQty) || 0;
+                        const q = Number(it.qty) || 0;
+                        return (
+                          <li
+                            key={i}
+                            style={{ display: 'flex', gap: 6, alignItems: 'flex-start', flexWrap: 'wrap', minWidth: 0 }}
+                          >
+                            <span
+                              className="purchase-recv-bulk-name u-wrap"
+                              title={`${it.name || '(이름 없음)'}${it.spec ? ` (${it.spec})` : ''}`}
+                              style={{
+                                overflowWrap: 'break-word',
+                                wordBreak: 'break-all',
+                                minWidth: 0,
+                                flex: '1 1 auto',
+                              }}
+                            >
+                              {it.name || '(이름 없음)'}
+                              {it.spec ? ` (${it.spec})` : ''}
+                            </span>
+                            <span className="purchase-recv-bulk-qty">
+                              {isClose
+                                ? `${r}${it.unit || ''} 종결`
+                                : `${r}/${q}${it.unit || ''} → ${q}${it.unit || ''}`}
+                            </span>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ul>
+                </div>
 
-              <div className="modal-actions">
-                <button type="submit" className={`btn ${isClose ? 'btn-danger' : 'btn-primary'}`}>
-                  {isClose ? '종결 처리' : '일괄 입고'}
-                </button>
-                <button type="button" className="btn btn-outline" onClick={() => setBulkModal(null)}>취소</button>
-              </div>
-            </form>
-          );
-        })()}
+                <div className="modal-actions">
+                  <button type="submit" className={`btn ${isClose ? 'btn-danger' : 'btn-primary'}`}>
+                    {isClose ? '종결 처리' : '일괄 입고'}
+                  </button>
+                  <button type="button" className="btn btn-outline" onClick={() => setBulkModal(null)}>
+                    취소
+                  </button>
+                </div>
+              </form>
+            );
+          })()}
       </Modal>
 
-      <Modal
-        isOpen={!!receiveModal}
-        onClose={() => setReceiveModal(null)}
-        title="입고 검수"
-      >
+      <Modal isOpen={!!receiveModal} onClose={() => setReceiveModal(null)} title="입고 검수">
         {receiveModal && (
           <form onSubmit={submitReceive}>
             <div className="purchase-recv-modal-summary">
-              <strong className="purchase-recv-modal-name">
+              <strong
+                className="purchase-recv-modal-name"
+                title={`${receiveModal.line.name || ''}${receiveModal.line.spec ? ` (${receiveModal.line.spec})` : ''}`}
+              >
                 {receiveModal.line.name}
                 {receiveModal.line.spec ? ` (${receiveModal.line.spec})` : ''}
               </strong>
               <span className="purchase-recv-modal-meta">
-                발주 {Number(receiveModal.line.qty) || 0}{receiveModal.line.unit || ''}
+                발주 {Number(receiveModal.line.qty) || 0}
+                {receiveModal.line.unit || ''}
                 {Number(receiveModal.line.receivedQty) > 0 && (
-                  <> · 이전 입고 {Number(receiveModal.line.receivedQty)}{receiveModal.line.unit || ''}</>
+                  <>
+                    {' '}
+                    · 이전 입고 {Number(receiveModal.line.receivedQty)}
+                    {receiveModal.line.unit || ''}
+                  </>
                 )}
               </span>
             </div>
@@ -1275,7 +1858,8 @@ export default function PurchaseDetailPage() {
                 autoFocus
               />
               <p className="field-hint">
-                전체 {Number(receiveModal.line.qty) || 0}{receiveModal.line.unit || ''} 중 실제 입고된 수량을 입력하세요. 부분 입고 가능.
+                전체 {Number(receiveModal.line.qty) || 0}
+                {receiveModal.line.unit || ''} 중 실제 입고된 수량을 입력하세요. 부분 입고 가능.
               </p>
             </div>
             <div className="form-group">
@@ -1297,12 +1881,16 @@ export default function PurchaseDetailPage() {
               />
             </div>
             <p className="field-hint">
-              모든 라인이 발주 수량만큼 입고되면 전체 상태가 '입고완료'로 자동 전환됩니다.
-              일부만 입고되면 '부분입고'로 표시됩니다.
+              모든 라인이 발주 수량만큼 입고되면 전체 상태가 '입고완료'로 자동 전환됩니다. 일부만 입고되면 '부분입고'로
+              표시됩니다.
             </p>
             <div className="modal-actions">
-              <button type="submit" className="btn btn-primary">저장</button>
-              <button type="button" className="btn btn-outline" onClick={() => setReceiveModal(null)}>취소</button>
+              <button type="submit" className="btn btn-primary">
+                저장
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setReceiveModal(null)}>
+                취소
+              </button>
             </div>
           </form>
         )}
@@ -1310,8 +1898,8 @@ export default function PurchaseDetailPage() {
 
       <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM에서 품목 가져오기">
         <p className="field-hint">
-          선택한 BOM(프로젝트)의 품목·수량·단가를 이 발주에 불러옵니다.
-          불러온 뒤 목록·수량·단가(금액)를 수정할 수 있고, 저장해야 반영됩니다.
+          선택한 BOM(프로젝트)의 품목·수량·단가를 이 발주에 불러옵니다. 불러온 뒤 목록·수량·단가(금액)를 수정할 수 있고,
+          저장해야 반영됩니다.
         </p>
         {bomLoading ? (
           <p className="purchase-empty">불러오는 중...</p>
@@ -1328,22 +1916,36 @@ export default function PurchaseDetailPage() {
                 disabled={bomImporting}
               >
                 <span className="bom-import-name">{bp.name}</span>
-                <span className="bom-import-go">{bomImporting ? '가져오는 중...' : '가져오기 →'}</span>
+                <span className="bom-import-go">
+                  {bomImporting ? (
+                    '가져오는 중...'
+                  ) : (
+                    <>
+                      가져오기 <Icon name="chevronRight" className="btn-ic" />
+                    </>
+                  )}
+                </span>
               </button>
             ))}
           </div>
         )}
         <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setBomModalOpen(false)}>닫기</button>
+          <button type="button" className="btn btn-outline" onClick={() => setBomModalOpen(false)}>
+            닫기
+          </button>
         </div>
       </Modal>
 
       <Modal isOpen={itemPickerOpen} onClose={() => setItemPickerOpen(false)} title="품목 선택">
         <form onSubmit={addPickedToPO}>
-          <p className="field-hint">구매 품목 관리에 등록된 품목 중에서 선택해 발주에 추가합니다. 체크 후 수량을 입력하세요. (대분류 제외)</p>
+          <p className="field-hint">
+            구매 품목 관리에 등록된 품목 중에서 선택해 발주에 추가합니다. 체크 후 수량을 입력하세요. (대분류 제외)
+          </p>
           <div className="form-group">
             <input
               type="text"
+              className="purchase-filter-search"
+              style={{ width: '100%' }}
               placeholder="코드 · 품명 · 규격 · 분류 검색"
               value={itemPickerSearch}
               onChange={(e) => setItemPickerSearch(e.target.value)}
@@ -1364,15 +1966,15 @@ export default function PurchaseDetailPage() {
               const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
               const sorted = list.sort((a, b) => collator.compare(a.code || '', b.code || ''));
               if (sorted.length === 0) {
-                return <p className="purchase-empty">{itemMaster.length === 0 ? '등록된 구매 품목이 없습니다.' : '검색 결과가 없습니다.'}</p>;
+                return (
+                  <p className="purchase-empty">
+                    {itemMaster.length === 0 ? '등록된 구매 품목이 없습니다.' : '검색 결과가 없습니다.'}
+                  </p>
+                );
               }
               return sorted.map((m) => (
                 <label key={m.id} className={`bom-picker-row ${itemPicked.has(m.id) ? 'is-checked' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={itemPicked.has(m.id)}
-                    onChange={() => toggleItemPick(m.id)}
-                  />
+                  <input type="checkbox" checked={itemPicked.has(m.id)} onChange={() => toggleItemPick(m.id)} />
                   <span className="bom-picker-code">{m.code || '-'}</span>
                   <span className="bom-picker-name">
                     <strong>{m.name}</strong>
@@ -1384,7 +1986,10 @@ export default function PurchaseDetailPage() {
                   {itemPicked.has(m.id) && (
                     <span
                       className="bom-picker-qty-wrap"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                     >
                       <input
                         type="number"
@@ -1407,13 +2012,18 @@ export default function PurchaseDetailPage() {
             <button type="submit" className="btn btn-primary" disabled={itemPicked.size === 0}>
               {itemPicked.size}개 추가
             </button>
-            <button type="button" className="btn btn-outline" onClick={() => setItemPickerOpen(false)}>취소</button>
+            <button type="button" className="btn btn-outline" onClick={() => setItemPickerOpen(false)}>
+              취소
+            </button>
           </div>
         </form>
       </Modal>
 
       <Modal isOpen={printLogsOpen} onClose={() => setPrintLogsOpen(false)} title="발주서 출력 이력">
-        <p className="field-hint">출력했던 시점의 발주서 상태가 저장되어 있습니다. 「이 시점 PDF 출력」을 누르면 그때 모습 그대로 다시 출력·PDF 저장할 수 있습니다.</p>
+        <p className="field-hint">
+          출력했던 시점의 발주서 상태가 저장되어 있습니다. 「이 시점 PDF 출력」을 누르면 그때 모습 그대로 다시 출력·PDF
+          저장할 수 있습니다.
+        </p>
         {printLogsLoading ? (
           <p className="purchase-empty">불러오는 중...</p>
         ) : printLogs.length === 0 ? (
@@ -1430,10 +2040,16 @@ export default function PurchaseDetailPage() {
                   <span className="bom-import-name">
                     <strong>{fmtDateTime(log.at)}</strong>
                     <span className="text-muted" style={{ marginLeft: 8, fontWeight: 400, fontSize: 12 }}>
-                      {log.by || '-'} · {items.length}품목 · ₩{(total + vat).toLocaleString()}{snap.groupBySupplier ? ' · 구매처별' : ''}
+                      {log.by || '-'} · {items.length}품목 · ₩{(total + vat).toLocaleString()}
+                      {snap.groupBySupplier ? ' · 구매처별' : ''}
                     </span>
                   </span>
-                  <button type="button" className="btn btn-sm btn-primary" style={{ flexShrink: 0 }} onClick={() => printSnapshot(log)}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    style={{ flexShrink: 0 }}
+                    onClick={() => printSnapshot(log)}
+                  >
                     이 시점 PDF 출력
                   </button>
                 </div>
@@ -1442,7 +2058,9 @@ export default function PurchaseDetailPage() {
           </div>
         )}
         <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setPrintLogsOpen(false)}>닫기</button>
+          <button type="button" className="btn btn-outline" onClick={() => setPrintLogsOpen(false)}>
+            닫기
+          </button>
         </div>
       </Modal>
     </div>

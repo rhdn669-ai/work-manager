@@ -65,7 +65,6 @@ export default function MoneyInput({ value, onChange, onBlur, className, disable
       onBlur={onBlur}
       disabled={disabled}
       placeholder={placeholder}
-      style={{ textAlign: 'right' }}
     />
   );
 }

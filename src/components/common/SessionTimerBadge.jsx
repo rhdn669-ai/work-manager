@@ -30,7 +30,17 @@ export default function SessionTimerBadge() {
   return (
     <div className={`session-timer ${isUrgent ? 'urgent' : ''}`} title="무활동 30분 시 자동 로그아웃">
       <span className="session-timer-text" aria-label={`자동 로그아웃까지 ${timeLabel} 남음`}>
-        <svg className="session-timer-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          className="session-timer-icon"
+          viewBox="0 0 24 24"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         </svg>

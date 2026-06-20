@@ -14,8 +14,14 @@ export default function SetPasswordPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (pw.length < 4) { setError('비밀번호는 4자 이상이어야 합니다.'); return; }
-    if (pw !== pw2) { setError('비밀번호가 일치하지 않습니다.'); return; }
+    if (pw.length < 4) {
+      setError('비밀번호는 4자 이상이어야 합니다.');
+      return;
+    }
+    if (pw !== pw2) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
     setLoading(true);
     try {
       await updateUser(userProfile.uid, { password: pw });
@@ -52,7 +58,11 @@ export default function SetPasswordPage() {
           처음 로그인하셨습니다. 사용할 비밀번호를 설정해 주세요.
         </p>
         <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-          {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+          {error && (
+            <div className="alert alert-error" style={{ marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
           <div className="login-field">
             <label>새 비밀번호</label>
             <input

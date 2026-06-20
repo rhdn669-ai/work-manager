@@ -1,23 +1,33 @@
 import { useState, useEffect } from 'react';
-import { getAllSites, createSite, updateSite, deleteSite } from '../../services/siteService';
+import { getAllSites, createSite, updateSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
+import { trashGeneric } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
+import TrashModal from '../../components/common/TrashModal';
+import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
 
 export default function SiteManagementPage() {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
+  const { userProfile } = useAuth();
   const [sites, setSites] = useState([]);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editSite, setEditSite] = useState(null);
   const [form, setForm] = useState({
-    name: '', team: '', managerIds: [],
+    name: '',
+    team: '',
+    managerIds: [],
   });
   const [vendorText, setVendorText] = useState('');
   const [managerListOpen, setManagerListOpen] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   async function loadData() {
     try {
@@ -54,7 +64,9 @@ export default function SiteManagementPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     const defaultVendors = vendorText
-      .split(',').map((s) => s.trim()).filter(Boolean);
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     try {
       if (editSite) {
         await updateSite(editSite.id, { ...form, defaultVendors });
@@ -69,9 +81,10 @@ export default function SiteManagementPage() {
   }
 
   async function handleDelete(site) {
-    if (!await confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n(기존 마감 데이터는 남습니다)`)) return;
+    if (!(await confirm(`"${site.name}" 프로젝트를 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
     try {
-      await deleteSite(site.id);
+      await trashGeneric('sites', site.id, { title: site.name, summary: '' }, userProfile?.name || '');
+      toast('휴지통으로 이동했습니다.');
       await loadData();
     } catch (err) {
       alert('삭제 오류: ' + err.message);
@@ -81,9 +94,7 @@ export default function SiteManagementPage() {
   function toggleManager(uid) {
     setForm((f) => ({
       ...f,
-      managerIds: f.managerIds.includes(uid)
-        ? f.managerIds.filter((x) => x !== uid)
-        : [...f.managerIds, uid],
+      managerIds: f.managerIds.includes(uid) ? f.managerIds.filter((x) => x !== uid) : [...f.managerIds, uid],
     }));
   }
 
@@ -97,79 +108,129 @@ export default function SiteManagementPage() {
     <div className="site-management-page">
       <div className="page-header">
         <h2>프로젝트 관리</h2>
-        <button className="btn btn-primary" onClick={openCreate}>프로젝트 추가</button>
+        <div className="page-actions">
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+            <Icon name="trash" className="btn-ic" />
+            휴지통
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
+            <Icon name="plus" className="btn-ic" />
+            프로젝트 추가
+          </button>
+        </div>
       </div>
 
-      <table className="table cards-sm">
-        <thead>
-          <tr>
-            <th>프로젝트명</th>
-            <th>팀</th>
-            <th>담당자</th>
-            <th>작업</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sites.map((s) => (
-            <tr key={s.id}>
-              <td data-label="프로젝트명">{s.name}</td>
-              <td data-label="팀">{s.team || '-'}</td>
-              <td data-label="담당자">
-                {(s.managerIds || []).map((uid) => userMap[uid]?.name || uid).join(', ') || '-'}
-              </td>
-              <td>
-                <div className="btn-group">
-                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>수정</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>삭제</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {sites.length === 0 && (
-            <tr><td colSpan="4"><div className="text-muted text-center">등록된 프로젝트이 없습니다.</div></td></tr>
-          )}
-        </tbody>
-      </table>
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['sites']}
+        title="프로젝트 휴지통"
+        onChange={loadData}
+      />
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editSite ? '프로젝트 수정' : '프로젝트 추가'}>
+      <div className="table-scroll-x">
+        <table className="table cards-sm">
+          <thead>
+            <tr>
+              <th>프로젝트명</th>
+              <th>팀</th>
+              <th>담당자</th>
+              <th className="col-action">작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sites.map((s) => (
+              <tr key={s.id}>
+                <td data-label="프로젝트명" title={s.name} style={{ wordBreak: 'break-word', minWidth: 80 }}>
+                  {s.name}
+                </td>
+                <td data-label="팀">{s.team || '-'}</td>
+                <td
+                  data-label="담당자"
+                  title={(s.managerIds || []).map((uid) => userMap[uid]?.name || uid).join(', ')}
+                  style={{ maxWidth: 140, wordBreak: 'break-word', whiteSpace: 'normal', minWidth: 0 }}
+                >
+                  {(s.managerIds || []).map((uid) => userMap[uid]?.name || uid).join(', ') || '-'}
+                </td>
+                <td className="action-cell col-action">
+                  <div className="btn-group">
+                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(s)}>
+                      수정
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>
+                      <Icon name="trash" className="btn-ic" />삭제
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {sites.length === 0 && (
+              <tr>
+                <td colSpan="4">
+                  <div className="text-muted text-center">등록된 프로젝트이 없습니다.</div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editSite ? '프로젝트 수정' : '프로젝트 추가'}
+      >
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>프로젝트명 *</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="예: 메티스 프로버" />
+            <input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+              placeholder="예: 메티스 프로버"
+            />
           </div>
           <div className="form-group">
             <label>팀</label>
-            <input value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} placeholder="예: 전장 2팀" />
+            <input
+              value={form.team}
+              onChange={(e) => setForm({ ...form, team: e.target.value })}
+              placeholder="예: 전장 2팀"
+            />
           </div>
           <div className="form-group">
             <label>담당자 선택</label>
-            <p className="field-hint">
-              관리자는 항상 모든 프로젝트에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.
-            </p>
+            <p className="field-hint">관리자는 항상 모든 프로젝트에 접근 가능합니다. 그 외 담당 사용자만 체크하세요.</p>
             <button
               type="button"
               className="select-dropdown-toggle"
               onClick={() => setManagerListOpen(!managerListOpen)}
             >
               <span>{form.managerIds.length > 0 ? `${form.managerIds.length}명 선택됨` : '담당자를 선택하세요'}</span>
-              <span className="select-dropdown-arrow">{managerListOpen ? '▲' : '▼'}</span>
+              <span
+                className="select-dropdown-arrow"
+                style={{ display: 'inline-flex', transform: managerListOpen ? 'rotate(180deg)' : 'none' }}
+              >
+                <Icon name="chevronDown" size={16} />
+              </span>
             </button>
             {managerListOpen && (
               <div className="select-dropdown-list">
                 {candidates.length === 0 && (
-                  <p className="empty-state" style={{ padding: '12px', margin: 0 }}>선택 가능한 사용자가 없습니다.</p>
+                  <p className="empty-state" style={{ padding: '12px', margin: 0 }}>
+                    선택 가능한 사용자가 없습니다.
+                  </p>
                 )}
                 {candidates.map((u) => {
                   const checked = form.managerIds.includes(u.uid);
                   return (
                     <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleManager(u.uid)}
-                      />
+                      <input type="checkbox" checked={checked} onChange={() => toggleManager(u.uid)} />
                       <span className="select-list-name">{u.name}</span>
-                      <span className="select-list-sub">{u.code}{u.position && ` · ${u.position}`}</span>
+                      <span className="select-list-sub">
+                        {u.code}
+                        {u.position && ` · ${u.position}`}
+                      </span>
                     </label>
                   );
                 })}
@@ -186,8 +247,12 @@ export default function SiteManagementPage() {
             />
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editSite ? '수정' : '추가'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+            <button type="submit" className="btn btn-primary">
+              {editSite ? '수정' : '추가'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
+              취소
+            </button>
           </div>
         </form>
       </Modal>

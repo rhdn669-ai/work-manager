@@ -1,15 +1,39 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  getPurchaseItems, addPurchaseItem, updatePurchaseItem, deletePurchaseItem, deletePurchaseItems,
-  getSuppliers, nextMainCode, nextSubCode, reorderGroupCodes, inferGroupKeys, repadItemCodes,
+  getPurchaseItems,
+  addPurchaseItem,
+  updatePurchaseItem,
+  deletePurchaseItems,
+  getSuppliers,
+  nextMainCode,
+  nextSubCode,
+  reorderGroupCodes,
+  inferGroupKeys,
+  repadItemCodes,
 } from '../../services/purchaseService';
+import { trashGeneric } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
+import Icon from '../../components/common/Icon';
+import TrashModal from '../../components/common/TrashModal';
+import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/DialogProvider';
 import {
-  DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor, useSensor, useSensors,
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import {
-  SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates, arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -42,7 +66,9 @@ function SortableItemRow({ id, isHighlight, isFillTarget, onActivate, onMouseEnt
           title="드래그하여 순서 변경"
           {...attributes}
           {...listeners}
-        >≡</button>
+        >
+          <Icon name="move" />
+        </button>
       </td>
       {children}
     </tr>
@@ -58,7 +84,7 @@ function parseCompoundUnit(unitStr) {
   const m = s.match(/(\d[\d,]*(?:\.\d+)?)[\s/()*x×-]*([^\d\s/()*x×,-]+)/);
   if (!m) return null;
   const qty = parseFloat(m[1].replace(/,/g, ''));
-  if (!qty || qty <= 1) return null;   // 1 이하는 곱셈 의미 없음 → 단순 단위 취급
+  if (!qty || qty <= 1) return null; // 1 이하는 곱셈 의미 없음 → 단순 단위 취급
   return {
     container: s.slice(0, m.index).trim(),
     qty,
@@ -93,11 +119,14 @@ function parseSimpleBulk(text) {
 }
 
 export default function PurchaseItemPage() {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
+  const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
   const [filterCategory, setFilterCategory] = useState('');
   const [filterSupplier, setFilterSupplier] = useState('');
   const [expandedId, setExpandedId] = useState(null);
@@ -136,6 +165,12 @@ export default function PurchaseItemPage() {
     loadData();
   }, []);
 
+  // BOM 등에서 ?focus=코드 로 진입하면 해당 품목으로 검색 필터
+  useEffect(() => {
+    const f = searchParams.get('focus');
+    if (f) setSearch(f);
+  }, [searchParams]);
+
   async function loadData() {
     try {
       const [it, sp] = await Promise.all([getPurchaseItems(), getSuppliers()]);
@@ -152,7 +187,9 @@ export default function PurchaseItemPage() {
 
   const categories = useMemo(() => {
     const set = new Set();
-    items.forEach((it) => { if (it.category) set.add(it.category); });
+    items.forEach((it) => {
+      if (it.category) set.add(it.category);
+    });
     return [...set].sort();
   }, [items]);
 
@@ -161,7 +198,8 @@ export default function PurchaseItemPage() {
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     const result = items.filter((it) => {
-      if (kw && ![it.code, it.name, it.spec, it.maker, it.category].some((v) => (v || '').toLowerCase().includes(kw))) return false;
+      if (kw && ![it.code, it.name, it.spec, it.maker, it.category].some((v) => (v || '').toLowerCase().includes(kw)))
+        return false;
       if (filterCategory && it.category !== filterCategory) return false;
       if (filterSupplier && it.defaultSupplierId !== filterSupplier) return false;
       return true;
@@ -191,7 +229,8 @@ export default function PurchaseItemPage() {
   function toggleGroup(mainCode) {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(mainCode)) next.delete(mainCode); else next.add(mainCode);
+      if (next.has(mainCode)) next.delete(mainCode);
+      else next.add(mainCode);
       return next;
     });
   }
@@ -232,10 +271,12 @@ export default function PurchaseItemPage() {
     });
 
     // 낙관적 로컬 업데이트
-    setItems((prev) => prev.map((it) => {
-      const nc = newCodeById.get(it.id);
-      return nc && nc !== it.code ? { ...it, code: nc } : it;
-    }));
+    setItems((prev) =>
+      prev.map((it) => {
+        const nc = newCodeById.get(it.id);
+        return nc && nc !== it.code ? { ...it, code: nc } : it;
+      }),
+    );
 
     try {
       await reorderGroupCodes(orderedIds, groupItems, mainCode);
@@ -264,11 +305,13 @@ export default function PurchaseItemPage() {
     try {
       if (isNew) {
         const ref = await addPurchaseItem({ ...payload, priceHistory: [] });
-        setItems((prev) => prev.map((x) => {
-          if (x.id === id) return { ...x, id: ref.id, code: payload.code };
-          if (x.groupKey === id) return { ...x, groupKey: ref.id }; // 베어 메인 tmp id를 가리키던 서브들도 새 id로 갱신
-          return x;
-        }));
+        setItems((prev) =>
+          prev.map((x) => {
+            if (x.id === id) return { ...x, id: ref.id, code: payload.code };
+            if (x.groupKey === id) return { ...x, groupKey: ref.id }; // 베어 메인 tmp id를 가리키던 서브들도 새 id로 갱신
+            return x;
+          }),
+        );
         if (expandedId === id) setExpandedId(ref.id);
         // expandedGroups가 이 tmp id를 anchor로 갖고 있었다면 새 id로 교체
         setExpandedGroups((prev) => {
@@ -298,22 +341,37 @@ export default function PurchaseItemPage() {
   function addRow() {
     const tmpId = `tmp-${Date.now()}`;
     const newCode = nextMainCode(items);
-    setItems((prev) => [{
-      id: tmpId,
-      code: newCode,
-      name: '', spec: '', maker: '', unit: '', category: '',
-      standardPrice: 0, unitPrice: 0, defaultSupplierId: '', note: '',
-      priceHistory: [],
-      // 베어 메인: groupKey 없음 (own id가 anchor)
-    }, ...prev]);
+    setItems((prev) => [
+      {
+        id: tmpId,
+        code: newCode,
+        name: '',
+        spec: '',
+        maker: '',
+        unit: '',
+        category: '',
+        standardPrice: 0,
+        unitPrice: 0,
+        defaultSupplierId: '',
+        note: '',
+        priceHistory: [],
+        // 베어 메인: groupKey 없음 (own id가 anchor)
+      },
+      ...prev,
+    ]);
     setExpandedId(null);
-    setSearch(''); setFilterCategory(''); setFilterSupplier('');
+    setSearch('');
+    setFilterCategory('');
+    setFilterSupplier('');
     expandGroup(tmpId); // groupKey = own id (베어의 tmp id, flushItem에서 real id로 교체됨)
   }
 
   function duplicateItem(item) {
     const code = nextSubCode(items, item.code);
-    if (!code) { alert('코드 자동 부여 실패 — 부모 코드를 확인하세요.'); return; }
+    if (!code) {
+      alert('코드 자동 부여 실패 — 부모 코드를 확인하세요.');
+      return;
+    }
     const tmpId = `tmp-${Date.now()}`;
     const groupKey = item.groupKey || item.id;
     const newItem = {
@@ -342,7 +400,10 @@ export default function PurchaseItemPage() {
 
   function addSameItem(parent) {
     const code = nextSubCode(items, parent.code);
-    if (!code) { alert('부모 코드가 잘못되어 동일품명을 추가할 수 없습니다.'); return; }
+    if (!code) {
+      alert('부모 코드가 잘못되어 동일품명을 추가할 수 없습니다.');
+      return;
+    }
     const tmpId = `tmp-${Date.now()}`;
     const groupKey = parent.groupKey || parent.id; // 부모가 베어면 own id, 서브면 부모의 groupKey
     const newItem = {
@@ -372,7 +433,8 @@ export default function PurchaseItemPage() {
   async function handleDeleteGroup(mainCode, groupItems) {
     if (!groupItems || groupItems.length === 0) return;
     const count = groupItems.length;
-    if (!await confirm(`"${mainCode}" 대분류와 하위 항목 ${count}개를 모두 삭제하시겠습니까?\n(되돌릴 수 없습니다)`)) return;
+    if (!(await confirm(`"${mainCode}" 대분류와 하위 항목 ${count}개를 모두 삭제하시겠습니까?\n(되돌릴 수 없습니다)`)))
+      return;
     const ids = groupItems.map((it) => it.id);
     try {
       await deletePurchaseItems(ids);
@@ -383,7 +445,7 @@ export default function PurchaseItemPage() {
   }
 
   async function handleDelete(it) {
-    if (!await confirm(`"${it.name || '이 항목'}"을(를) 삭제하시겠습니까?`)) return;
+    if (!(await confirm(`"${it.name || '이 항목'}"을(를) 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
     if (String(it.id).startsWith('tmp-')) {
       setItems((prev) => prev.filter((x) => x.id !== it.id));
       return;
@@ -391,7 +453,16 @@ export default function PurchaseItemPage() {
     // 삭제 대상이 하위분류(-N)면, 같은 대분류의 뒷번호를 당겨 빈 번호를 채움
     const subMatch = (it.code || '').match(/^(IOPN-\d+)-(\d+)$/);
     try {
-      await deletePurchaseItem(it.id);
+      await trashGeneric(
+        'purchaseItems',
+        it.id,
+        {
+          title: it.name || '(품명 없음)',
+          summary: [it.code, it.spec].filter(Boolean).join(' · '),
+        },
+        userProfile?.name || '',
+      );
+      toast('휴지통으로 이동했습니다.');
       const remaining = items.filter((x) => x.id !== it.id);
       setItems(remaining);
 
@@ -408,7 +479,11 @@ export default function PurchaseItemPage() {
             return na - nb;
           });
         if (siblings.length > 0) {
-          const updates = await reorderGroupCodes(siblings.map((x) => x.id), siblings, mainCode);
+          const updates = await reorderGroupCodes(
+            siblings.map((x) => x.id),
+            siblings,
+            mainCode,
+          );
           if (updates && updates.length > 0) {
             const codeById = new Map(updates.map((u) => [u.id, u.code]));
             setItems((prev) => prev.map((x) => (codeById.has(x.id) ? { ...x, code: codeById.get(x.id) } : x)));
@@ -495,7 +570,10 @@ export default function PurchaseItemPage() {
       alert('이 그룹은 IOPN 코드가 아니어서 일괄 추가할 수 없습니다.');
       return;
     }
-    if (parsedGroupBulk.length === 0) { alert('인식된 항목이 없습니다.'); return; }
+    if (parsedGroupBulk.length === 0) {
+      alert('인식된 항목이 없습니다.');
+      return;
+    }
     setGroupBulkSaving(true);
     try {
       let buf = [...items];
@@ -529,17 +607,68 @@ export default function PurchaseItemPage() {
     }
   }
 
-
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
     <div className="purchase-item-page">
+      <style>{`
+        @media (max-width: 480px) {
+          .inline-edit-table th, .inline-edit-table td { padding: 8px 6px; font-size: 12px; }
+          .inline-edit-table th { min-width: 50px; }
+          .inline-edit-table td input, .inline-edit-table td[data-label] { min-width: 60px; word-break: break-word; overflow-wrap: break-word; }
+          .inline-edit-table td { min-width: 0; }
+        }
+        @media (max-width: 390px) {
+          .inline-edit-table th, .inline-edit-table td { padding: 6px 4px; font-size: 11px; }
+          .inline-edit-table th { min-width: 40px; }
+        }
+        @media (max-width: 360px) {
+          .item-group-header { flex-direction: column !important; gap: 8px !important; }
+          .item-group-code-input, .item-group-name-input { width: 100% !important; flex: 1 1 auto; }
+          .inline-edit-table td input, .inline-edit-table td[data-label] { min-width: 35px; word-break: break-word; overflow-wrap: break-word; }
+          .inline-edit-table td { min-width: 0; }
+        }
+        .inline-edit-table td input { min-width: 0; overflow-wrap: break-word; word-break: break-word; }
+        .inline-edit-table td[data-label="규격"] input,
+        .inline-edit-table td[data-label="품명"] input,
+        .inline-edit-table td[data-label="비고"] input {
+          display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+          overflow: hidden; white-space: normal; word-break: break-word;
+        }
+        /* 작업 셀 — table-cell 유지(헤더 +추가/일괄 컬럼과 정렬 일치). flex 금지 */
+        .item-actions-cell { text-align: center; white-space: nowrap; vertical-align: middle; min-height: 36px; overflow: visible; }
+        .item-actions-cell > * + * { margin-left: 6px; }
+        .item-actions-cell .btn { min-height: var(--btn-h-sm); }
+        .item-actions-cell .item-expand-btn { min-height: var(--btn-h-sm); }
+        .item-group-name-input { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        /* 기본 구매처 드롭다운 — 컬럼(고정폭) 가득 채워 펼친 폭과 트리거 폭 통일 */
+        .po-supplier-select { width: 100%; }
+        /* 트리거 높이를 dense 행(36px)에 고정 — 행 높이 들뜸/세로 어긋남 방지. 드롭다운 패널은 별도 오버레이라 영향 없음 */
+        .po-supplier-select .ds-select__trigger { width: 100%; min-height: 36px; height: 36px; }
+        /* 검색 중에는 그룹 헤더(대분류 윗줄) 숨김 — 아이템 행과 중복 제거 */
+        .item-group-header.is-search-hidden { display: none !important; }
+      `}</style>
       <div className="page-header">
         <h2>구매 품목 관리</h2>
         <div className="page-actions">
-          <button className="btn btn-sm btn-primary" onClick={addRow}>+ 품목 추가</button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+            <Icon name="trash" className="btn-ic" />
+            휴지통
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={addRow}>
+            <Icon name="plus" className="btn-ic" />
+            품목 추가
+          </button>
         </div>
       </div>
+
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['purchaseItems']}
+        title="품목 휴지통"
+        onChange={loadData}
+      />
 
       <div className="purchase-filters">
         <input
@@ -549,19 +678,19 @@ export default function PurchaseItemPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-          <option value="">분류 전체</option>
-          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filterSupplier} onChange={(e) => setFilterSupplier(e.target.value)}>
-          <option value="">구매처 전체</option>
-          {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <Select
+          value={filterSupplier}
+          onChange={(v) => setFilterSupplier(v)}
+          options={[{ value: '', label: '구매처 전체' }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
+          ariaLabel="구매처 필터"
+        />
       </div>
 
       {groups.length === 0 ? (
         <p className="text-muted text-sm" style={{ padding: '20px 0', textAlign: 'center' }}>
-          {items.length === 0 ? '등록된 품목이 없습니다 — 우측 상단 "+ 품목 추가" 또는 "엑셀 일괄 추가"' : '조건에 맞는 품목이 없습니다.'}
+          {items.length === 0
+            ? '등록된 품목이 없습니다 — 우측 상단 "+ 품목 추가" 또는 "엑셀 일괄 추가"'
+            : '조건에 맞는 품목이 없습니다.'}
         </p>
       ) : (
         <div className="item-group-list">
@@ -572,17 +701,20 @@ export default function PurchaseItemPage() {
             const repName = repItem?.name || '';
             const repCode = repItem?.code || '';
             // 필터 활성화 시 매칭 항목 누락 없이 모두 행으로 표시 (rep도 포함)
-            const subItems = (repItem && !hasActiveFilter)
-              ? groupItems.filter((it) => it.id !== repItem.id)
-              : groupItems;
+            // 검색 중에도 하위품목이 있으면 대분류(베어 메인)는 결과에서 제외 — 단, 그룹에 대분류 하나뿐이면 표시
+            const subItems =
+              repItem && (!hasActiveFilter || groupItems.length > 1)
+                ? groupItems.filter((it) => it.id !== repItem.id)
+                : groupItems;
             const subIds = subItems.map((s) => s.id);
             return (
               <div key={groupKey} className={`item-group ${isExpanded ? 'is-expanded' : ''}`}>
                 <div
-                  className="item-group-header"
+                  className={`item-group-header${hasActiveFilter ? ' is-search-hidden' : ''}`}
                   role="button"
                   tabIndex={0}
                   aria-expanded={isExpanded}
+                  style={{ minHeight: 42, padding: '10px 12px', gap: 12 }}
                   onClick={() => toggleGroup(groupKey)}
                   onKeyDown={(e) => {
                     // 내부 입력칸에서 올라온 키는 무시 (스페이스 띄어쓰기 보존)
@@ -597,6 +729,7 @@ export default function PurchaseItemPage() {
                     type="text"
                     className="item-group-code-input"
                     value={editingHeaderCode?.repId === repItem?.id ? editingHeaderCode.value : repCode}
+                    title={repCode || ''}
                     placeholder="코드"
                     onFocus={() => repItem && setEditingHeaderCode({ repId: repItem.id, value: repItem.code || '' })}
                     onChange={(e) => setEditingHeaderCode((prev) => (prev ? { ...prev, value: e.target.value } : prev))}
@@ -609,327 +742,500 @@ export default function PurchaseItemPage() {
                       }
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                    }}
                     disabled={!repItem}
                   />
                   <input
                     type="text"
                     className="item-group-name-input"
                     value={repName}
+                    title={repName || ''}
                     placeholder="(품명 없음)"
                     onChange={(e) => repItem && updateField(repItem.id, { name: e.target.value })}
                     onBlur={() => repItem && flushItem(repItem.id)}
                     onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                    }}
                     disabled={!repItem}
                   />
-                  <span className="item-group-count" aria-hidden="true">{subItems.length}개</span>
-                  <span className="item-group-arrow" aria-hidden="true">∨</span>
+                  <span className="item-group-count" aria-hidden="true">
+                    {subItems.length}개
+                  </span>
+                  <span className="item-group-arrow" aria-hidden="true">
+                    <Icon name="chevronDown" />
+                  </span>
                   <button
                     type="button"
-                    className="item-group-delete-btn"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteGroup(repCode || '(코드 없음)', groupItems); }}
+                    className="btn btn-sm btn-danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGroup(repCode || '(코드 없음)', groupItems);
+                    }}
                     aria-label="대분류 삭제"
                     title="대분류와 모든 하위 항목 삭제"
-                  >✕</button>
+                  >
+                    <Icon name="trash" className="btn-ic" />삭제
+                  </button>
                 </div>
                 {isExpanded && (
                   <div className="item-group-detail">
                     <div className="item-group-detail-toolbar">
                       <button
                         type="button"
-                        className="item-group-add-btn"
-                        onClick={(e) => { e.stopPropagation(); addSameItem(subItems[subItems.length - 1] || repItem); }}
+                        className="btn btn-sm btn-outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addSameItem(subItems[subItems.length - 1] || repItem);
+                        }}
                         title="같은 품명으로 다른 규격 추가 (소분류 -N)"
-                      >+ 추가</button>
+                      >
+                        <Icon name="plus" className="btn-ic" />
+                        추가
+                      </button>
                       <button
                         type="button"
-                        className="item-group-add-btn"
-                        onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
+                        className="btn btn-sm btn-outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openGroupBulk(repItem);
+                        }}
                         title="규격·금액 여러 개 붙여넣어 한 번에 추가"
-                      >📋 일괄</button>
+                      >
+                        일괄
+                      </button>
                     </div>
                     <DndContext
                       sensors={sensors}
                       collisionDetection={closestCenter}
                       onDragEnd={(e) => handleDragEnd(e, repCode, subItems)}
                     >
-                      <SortableContext
-                        items={subItems.map((it) => it.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <table className="table inline-edit-table cards-sm sortable-rows">
-                          <thead>
-                            <tr>
-                              <th style={{ width: 32 }} aria-label="순서 변경"></th>
-                              <th style={{ width: 110 }}>코드</th>
-                              <th style={{ width: 150 }}>품명</th>
-                              <th style={{ width: 110 }}>메이커</th>
-                              <th style={{ width: 240 }}>규격</th>
-                              <th style={{ width: 170 }}>분류</th>
-                              <th style={{ width: 170 }}>인증</th>
-                              <th style={{ width: 100 }}>수량/단위</th>
-                              <th style={{ width: 100 }}>개별단가</th>
-                              <th style={{ width: 100 }}>단가</th>
-                              <th style={{ width: 120 }}>기본 구매처</th>
-                              <th style={{ width: 110 }}>비고</th>
-                              <th className="item-group-add-th" style={{ width: 200 }}>
-                                <button
-                                  type="button"
-                                  className="item-group-add-btn"
-                                  onClick={(e) => { e.stopPropagation(); addSameItem(subItems[subItems.length - 1] || repItem); }}
-                                  title="같은 품명으로 다른 규격 추가 (소분류 -N)"
-                                >+ 추가</button>
-                                <button
-                                  type="button"
-                                  className="item-group-add-btn"
-                                  style={{ marginLeft: 6 }}
-                                  onClick={(e) => { e.stopPropagation(); openGroupBulk(repItem); }}
-                                  title="규격·금액 여러 개 붙여넣어 한 번에 추가"
-                                >📋 일괄</button>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {subItems.length === 0 && (
+                      <SortableContext items={subItems.map((it) => it.id)} strategy={verticalListSortingStrategy}>
+                        <div className="table-scroll-x">
+                          <table className="table inline-edit-table cards-sm sortable-rows">
+                            <thead>
                               <tr>
-                                <td colSpan={13} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
-                                  소분류가 없습니다 — 우측 상단 "+ 추가"로 등록하세요.
-                                </td>
+                                <th style={{ width: 32 }} aria-label="순서 변경"></th>
+                                <th style={{ width: 110 }}>코드</th>
+                                <th style={{ width: 150 }}>품명</th>
+                                <th style={{ width: 110 }}>메이커</th>
+                                <th style={{ width: 240 }}>규격</th>
+                                <th style={{ width: 170 }}>분류</th>
+                                <th style={{ width: 170 }}>인증</th>
+                                <th style={{ width: 100 }}>수량/단위</th>
+                                <th style={{ width: 100 }}>개별단가</th>
+                                <th style={{ width: 100 }}>단가</th>
+                                <th style={{ width: 150 }}>기본 구매처</th>
+                                <th style={{ width: 110 }}>비고</th>
+                                <th className="item-group-add-th" style={{ width: 160 }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addSameItem(subItems[subItems.length - 1] || repItem);
+                                    }}
+                                    title="같은 품명으로 다른 규격 추가 (소분류 -N)"
+                                  >
+                                    <Icon name="plus" className="btn-ic" />
+                                    추가
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    style={{ marginLeft: 6 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openGroupBulk(repItem);
+                                    }}
+                                    title="규격·금액 여러 개 붙여넣어 한 번에 추가"
+                                  >
+                                    일괄
+                                  </button>
+                                </th>
                               </tr>
-                            )}
-                            {subItems.map((it, rowIdx) => {
-                              const expanded = expandedId === it.id;
-                              const fillIdx = fill ? fill.rowIds.indexOf(it.id) : -1;
-                              const inFillRange = fillIdx >= 0
-                                && fillIdx >= Math.min(fill.start, fill.end)
-                                && fillIdx <= Math.max(fill.start, fill.end);
-                              // 드래그 중인 "그 열"의 셀에만 색상 — 행 전체 X
-                              const fillCol = (field) => (inFillRange && fill?.field === field ? 'cell-fill-on' : undefined);
-                              return (
-                                <Fragment key={it.id}>
-                                  <SortableItemRow
-                                    id={it.id}
-                                    isHighlight={highlightIds.has(it.id)}
-                                    onActivate={() => clearHighlight(it.id)}
-                                    onMouseEnter={fill ? () => { if (fillIdx >= 0) fillEnter(fillIdx); } : undefined}
+                            </thead>
+                            <tbody>
+                              {subItems.length === 0 && (
+                                <tr>
+                                  <td
+                                    colSpan={13}
+                                    className="text-muted text-sm"
+                                    style={{ textAlign: 'center', padding: 16 }}
                                   >
-                                <td data-label="코드">
-                                  <input
-                                    type="text"
-                                    value={it.code || ''}
-                                    placeholder="코드"
-                                    onChange={(e) => updateField(it.id, { code: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                    autoFocus={String(it.id).startsWith('tmp-') && !highlightIds.has(it.id)}
-                                  />
-                                </td>
-                                <td data-label="품명" className={fillCol('name')}>
-                                  <input
-                                    type="text"
-                                    value={it.name || ''}
-                                    placeholder="품명"
-                                    onChange={(e) => updateField(it.id, { name: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)} />
-                                </td>
-                                <td data-label="메이커" className={fillCol('maker')}>
-                                  <input
-                                    type="text"
-                                    value={it.maker || ''}
-                                    onChange={(e) => updateField(it.id, { maker: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'maker', it.maker || '', subIds, rowIdx)} />
-                                </td>
-                                <td data-label="규격" className={fillCol('spec')}>
-                                  <input
-                                    type="text"
-                                    value={it.spec || ''}
-                                    onChange={(e) => updateField(it.id, { spec: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'spec', it.spec || '', subIds, rowIdx)} />
-                                </td>
-                                <td data-label="분류" className={fillCol('category')}>
-                                  <input
-                                    type="text"
-                                    value={it.category || ''}
-                                    onChange={(e) => updateField(it.id, { category: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'category', it.category || '', subIds, rowIdx)} />
-                                </td>
-                                <td data-label="인증" className={fillCol('certification')}>
-                                  <input
-                                    type="text"
-                                    value={it.certification || ''}
-                                    placeholder="CE · KS …"
-                                    onChange={(e) => updateField(it.id, { certification: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'certification', it.certification || '', subIds, rowIdx)} />
-                                </td>
-                                <td data-label="수량/단위" className={fillCol('unit')}>
-                                  <input
-                                    type="text"
-                                    value={it.unit || ''}
-                                    placeholder="개·m·2/개·roll/610m·박스 24개·10EA"
-                                    onChange={(e) => {
-                                      const newUnit = e.target.value;
-                                      const cu = parseCompoundUnit(newUnit);
-                                      const patch = { unit: newUnit };
-                                      // 복합 단위로 바뀌면 개별단가 기준 단가 재계산
-                                      if (cu && Number(it.unitPrice) > 0) {
-                                        patch.standardPrice = Math.round(Number(it.unitPrice) * cu.qty);
-                                      }
-                                      updateField(it.id, patch);
-                                    }}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'unit', it.unit || '', subIds, rowIdx)} />
-                                </td>
-                                {(() => {
-                                  const cu = parseCompoundUnit(it.unit);
-                                  const qty = cu ? cu.qty : 1;            // 단순 단위는 qty=1로 취급
-                                  const unitPrice = Number(it.unitPrice) || 0;
-                                  return (
-                                    <td data-label="개별단가" className={`item-cell-unit-price ${fillCol('unitPrice') || ''}`}>
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        className="num-input"
-                                        value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
-                                        onChange={(e) => {
-                                          const raw = e.target.value.replace(/[^0-9]/g, '');
-                                          const up = raw ? Number(raw) : 0;
-                                          updateField(it.id, {
-                                            unitPrice: up,
-                                            standardPrice: Math.round(up * qty),
-                                          });
-                                        }}
-                                        onBlur={() => flushItem(it.id)}
-                                      />
-                                      <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'unitPrice', it.unitPrice || 0, subIds, rowIdx)} />
-                                    </td>
-                                  );
-                                })()}
-                                {(() => {
-                                  const cu = parseCompoundUnit(it.unit);
-                                  const qty = cu ? cu.qty : 1;
-                                  const unitPrice = Number(it.unitPrice) || 0;
-                                  // 개별단가가 있으면 자동 계산값, 없으면 기존 standardPrice 직접 편집 가능
-                                  const isAuto = unitPrice > 0;
-                                  const total = isAuto
-                                    ? Math.round(unitPrice * qty)
-                                    : Number(it.standardPrice) || 0;
-                                  return (
-                                    <td data-label="단가" className={`item-cell-price ${fillCol('standardPrice') || ''}`}>
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        className={`num-input ${isAuto ? 'is-readonly' : ''}`}
-                                        value={total ? Number(total).toLocaleString() : ''}
-                                        readOnly={isAuto}
-                                        onChange={(e) => {
-                                          if (isAuto) return;
-                                          const raw = e.target.value.replace(/[^0-9]/g, '');
-                                          updateField(it.id, { standardPrice: raw ? Number(raw) : 0 });
-                                        }}
-                                        onBlur={() => flushItem(it.id)}
-                                      />
-                                      {it.priceHistory?.length > 0 && (
-                                        <span className="price-since">{it.priceHistory[it.priceHistory.length - 1].date}~</span>
-                                      )}
-                                      {!isAuto && (
-                                        <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'standardPrice', total, subIds, rowIdx)} />
-                                      )}
-                                    </td>
-                                  );
-                                })()}
-                                <td data-label="기본 구매처" className={fillCol('defaultSupplierId')}>
-                                  <select
-                                    value={it.defaultSupplierId || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      updateField(it.id, { defaultSupplierId: val });
-                                      // 신규(tmp) 행은 품명 저장 시 함께 저장됨 — 즉시 저장은 기존 행만
-                                      if (!String(it.id).startsWith('tmp-')) {
-                                        const { id: _i, createdAt: _c, updatedAt: _u, ...data } = { ...it, defaultSupplierId: val };
-                                        updatePurchaseItem(it.id, data).catch((err) => alert('구매처 저장 오류: ' + err.message));
-                                      }
-                                    }}
-                                  >
-                                    <option value="">선택</option>
-                                    {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                  </select>
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'defaultSupplierId', it.defaultSupplierId || '', subIds, rowIdx)} />
-                                </td>
-                                <td data-label="비고" className={fillCol('note')}>
-                                  <input
-                                    type="text"
-                                    value={it.note || ''}
-                                    placeholder="-"
-                                    onChange={(e) => updateField(it.id, { note: e.target.value })}
-                                    onBlur={() => flushItem(it.id)}
-                                  />
-                                  <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={(e) => startFill(e, 'note', it.note || '', subIds, rowIdx)} />
-                                </td>
-                                <td className="item-actions-cell">
-                                  <button
-                                    type="button"
-                                    className="item-copy-btn"
-                                    onClick={() => duplicateItem(it)}
-                                    title="이 항목 복사"
-                                    aria-label="복사"
-                                  >복사</button>
-                                  {Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
-                                    <button
-                                      type="button"
-                                      className="item-expand-btn"
-                                      onClick={() => setExpandedId(expanded ? null : it.id)}
-                                      title={expanded ? '접기' : '단가 변경 이력 보기'}
-                                    >
-                                      {expanded ? '∧' : '∨'}
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    className="closing-delete"
-                                    onClick={() => handleDelete(it)}
-                                    aria-label="삭제"
-                                  >✕</button>
-                                </td>
-                              </SortableItemRow>
-                              {expanded && Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
-                                <tr className="item-detail-row">
-                                  <td colSpan={13}>
-                                    <div className="item-detail-body">
-                                      <div className="item-detail-section">
-                                        <label className="item-detail-label">단가 변경 이력</label>
-                                        <div className="price-history">
-                                          {[...it.priceHistory].reverse().map((h, i) => (
-                                            <div key={i} className="price-history-row">
-                                              <div className="ph-info">
-                                                <span className="price-history-date">{h.date}</span>
-                                                {h.supplierName && <span className="ph-supplier">{h.supplierName}</span>}
-                                                {Number(h.qty) > 0 && <span className="ph-qty">×{h.qty}</span>}
-                                              </div>
-                                              <strong>{Number(h.price).toLocaleString()}원</strong>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </div>
+                                    소분류가 없습니다 — 우측 상단 "+ 추가"로 등록하세요.
                                   </td>
                                 </tr>
                               )}
-                            </Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                              {subItems.map((it, rowIdx) => {
+                                const expanded = expandedId === it.id;
+                                const fillIdx = fill ? fill.rowIds.indexOf(it.id) : -1;
+                                const inFillRange =
+                                  fillIdx >= 0 &&
+                                  fillIdx >= Math.min(fill.start, fill.end) &&
+                                  fillIdx <= Math.max(fill.start, fill.end);
+                                // 드래그 중인 "그 열"의 셀에만 색상 — 행 전체 X
+                                const fillCol = (field) =>
+                                  inFillRange && fill?.field === field ? 'cell-fill-on' : undefined;
+                                return (
+                                  <Fragment key={it.id}>
+                                    <SortableItemRow
+                                      id={it.id}
+                                      isHighlight={highlightIds.has(it.id)}
+                                      onActivate={() => clearHighlight(it.id)}
+                                      onMouseEnter={
+                                        fill
+                                          ? () => {
+                                              if (fillIdx >= 0) fillEnter(fillIdx);
+                                            }
+                                          : undefined
+                                      }
+                                    >
+                                      <td
+                                        data-label="코드"
+                                        title={it.code || ''}
+                                        style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                      >
+                                        <input
+                                          type="text"
+                                          value={it.code || ''}
+                                          title={it.code || ''}
+                                          placeholder="코드"
+                                          onChange={(e) => updateField(it.id, { code: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                          autoFocus={String(it.id).startsWith('tmp-') && !highlightIds.has(it.id)}
+                                        />
+                                      </td>
+                                      <td
+                                        data-label="품명"
+                                        className={fillCol('name')}
+                                        title={it.name || ''}
+                                        style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                      >
+                                        <input
+                                          type="text"
+                                          value={it.name || ''}
+                                          title={it.name || ''}
+                                          placeholder="품명"
+                                          onChange={(e) => updateField(it.id, { name: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)}
+                                        />
+                                      </td>
+                                      <td
+                                        data-label="메이커"
+                                        className={fillCol('maker')}
+                                        title={it.maker || ''}
+                                        style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                      >
+                                        <input
+                                          type="text"
+                                          value={it.maker || ''}
+                                          title={it.maker || ''}
+                                          onChange={(e) => updateField(it.id, { maker: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) => startFill(e, 'maker', it.maker || '', subIds, rowIdx)}
+                                        />
+                                      </td>
+                                      <td
+                                        data-label="규격"
+                                        className={fillCol('spec')}
+                                        title={it.spec || ''}
+                                        style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                      >
+                                        <input
+                                          type="text"
+                                          value={it.spec || ''}
+                                          title={it.spec || ''}
+                                          onChange={(e) => updateField(it.id, { spec: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) => startFill(e, 'spec', it.spec || '', subIds, rowIdx)}
+                                        />
+                                      </td>
+                                      <td data-label="분류" className={fillCol('category')} title={it.category || ''}>
+                                        <input
+                                          type="text"
+                                          value={it.category || ''}
+                                          title={it.category || ''}
+                                          onChange={(e) => updateField(it.id, { category: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) =>
+                                            startFill(e, 'category', it.category || '', subIds, rowIdx)
+                                          }
+                                        />
+                                      </td>
+                                      <td
+                                        data-label="인증"
+                                        className={fillCol('certification')}
+                                        title={it.certification || ''}
+                                      >
+                                        <input
+                                          type="text"
+                                          value={it.certification || ''}
+                                          title={it.certification || ''}
+                                          placeholder="CE · KS …"
+                                          onChange={(e) => updateField(it.id, { certification: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) =>
+                                            startFill(e, 'certification', it.certification || '', subIds, rowIdx)
+                                          }
+                                        />
+                                      </td>
+                                      <td data-label="수량/단위" className={fillCol('unit')} title={it.unit || ''}>
+                                        <input
+                                          type="text"
+                                          value={it.unit || ''}
+                                          title={it.unit || ''}
+                                          placeholder="개·m·2/개·roll/610m·박스 24개·10EA"
+                                          onChange={(e) => {
+                                            const newUnit = e.target.value;
+                                            const cu = parseCompoundUnit(newUnit);
+                                            const patch = { unit: newUnit };
+                                            // 복합 단위로 바뀌면 개별단가 기준 단가 재계산
+                                            if (cu && Number(it.unitPrice) > 0) {
+                                              patch.standardPrice = Math.round(Number(it.unitPrice) * cu.qty);
+                                            }
+                                            updateField(it.id, patch);
+                                          }}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) => startFill(e, 'unit', it.unit || '', subIds, rowIdx)}
+                                        />
+                                      </td>
+                                      {(() => {
+                                        const cu = parseCompoundUnit(it.unit);
+                                        const qty = cu ? cu.qty : 1; // 단순 단위는 qty=1로 취급
+                                        const unitPrice = Number(it.unitPrice) || 0;
+                                        return (
+                                          <td
+                                            data-label="개별단가"
+                                            className={`item-cell-unit-price ${fillCol('unitPrice') || ''}`}
+                                          >
+                                            <input
+                                              type="text"
+                                              inputMode="numeric"
+                                              className="num-input"
+                                              value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
+                                              onChange={(e) => {
+                                                const raw = e.target.value.replace(/[^0-9]/g, '');
+                                                const up = raw ? Number(raw) : 0;
+                                                updateField(it.id, {
+                                                  unitPrice: up,
+                                                  standardPrice: Math.round(up * qty),
+                                                });
+                                              }}
+                                              onBlur={() => flushItem(it.id)}
+                                            />
+                                            <span
+                                              className="cell-fill"
+                                              title="드래그하여 아래로 채우기"
+                                              onMouseDown={(e) =>
+                                                startFill(e, 'unitPrice', it.unitPrice || 0, subIds, rowIdx)
+                                              }
+                                            />
+                                          </td>
+                                        );
+                                      })()}
+                                      {(() => {
+                                        const cu = parseCompoundUnit(it.unit);
+                                        const qty = cu ? cu.qty : 1;
+                                        const unitPrice = Number(it.unitPrice) || 0;
+                                        // 개별단가가 있으면 자동 계산값, 없으면 기존 standardPrice 직접 편집 가능
+                                        const isAuto = unitPrice > 0;
+                                        const total = isAuto
+                                          ? Math.round(unitPrice * qty)
+                                          : Number(it.standardPrice) || 0;
+                                        return (
+                                          <td
+                                            data-label="단가"
+                                            className={`item-cell-price ${fillCol('standardPrice') || ''}`}
+                                          >
+                                            <input
+                                              type="text"
+                                              inputMode="numeric"
+                                              className={`num-input ${isAuto ? 'is-readonly' : ''}`}
+                                              value={total ? Number(total).toLocaleString() : ''}
+                                              readOnly={isAuto}
+                                              onChange={(e) => {
+                                                if (isAuto) return;
+                                                const raw = e.target.value.replace(/[^0-9]/g, '');
+                                                updateField(it.id, { standardPrice: raw ? Number(raw) : 0 });
+                                              }}
+                                              onBlur={() => flushItem(it.id)}
+                                            />
+                                            {it.priceHistory?.length > 0 && (
+                                              <span className="price-since">
+                                                {it.priceHistory[it.priceHistory.length - 1].date}~
+                                              </span>
+                                            )}
+                                            {!isAuto && (
+                                              <span
+                                                className="cell-fill"
+                                                title="드래그하여 아래로 채우기"
+                                                onMouseDown={(e) =>
+                                                  startFill(e, 'standardPrice', total, subIds, rowIdx)
+                                                }
+                                              />
+                                            )}
+                                          </td>
+                                        );
+                                      })()}
+                                      <td
+                                        data-label="기본 구매처"
+                                        className={fillCol('defaultSupplierId')}
+                                        title={suppliers.find((s) => s.id === it.defaultSupplierId)?.name || ''}
+                                      >
+                                        <Select
+                                          className="po-supplier-select"
+                                          value={it.defaultSupplierId || ''}
+                                          onChange={(val) => {
+                                            updateField(it.id, { defaultSupplierId: val });
+                                            // 신규(tmp) 행은 품명 저장 시 함께 저장됨 — 즉시 저장은 기존 행만
+                                            if (!String(it.id).startsWith('tmp-')) {
+                                              const {
+                                                id: _i,
+                                                createdAt: _c,
+                                                updatedAt: _u,
+                                                ...data
+                                              } = { ...it, defaultSupplierId: val };
+                                              updatePurchaseItem(it.id, data).catch((err) =>
+                                                alert('구매처 저장 오류: ' + err.message),
+                                              );
+                                            }
+                                          }}
+                                          options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                                          placeholder="선택"
+                                          ariaLabel="기본 구매처 선택"
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) =>
+                                            startFill(
+                                              e,
+                                              'defaultSupplierId',
+                                              it.defaultSupplierId || '',
+                                              subIds,
+                                              rowIdx,
+                                            )
+                                          }
+                                        />
+                                      </td>
+                                      <td
+                                        data-label="비고"
+                                        className={fillCol('note')}
+                                        title={it.note || ''}
+                                        style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                      >
+                                        <input
+                                          type="text"
+                                          value={it.note || ''}
+                                          title={it.note || ''}
+                                          placeholder="-"
+                                          onChange={(e) => updateField(it.id, { note: e.target.value })}
+                                          onBlur={() => flushItem(it.id)}
+                                        />
+                                        <span
+                                          className="cell-fill"
+                                          title="드래그하여 아래로 채우기"
+                                          onMouseDown={(e) => startFill(e, 'note', it.note || '', subIds, rowIdx)}
+                                        />
+                                      </td>
+                                      <td
+                                        className="item-actions-cell"
+                                        style={{
+                                          textAlign: 'center',
+                                          whiteSpace: 'nowrap',
+                                          verticalAlign: 'middle',
+                                          overflow: 'visible',
+                                        }}
+                                      >
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline"
+                                          onClick={() => duplicateItem(it)}
+                                          title="이 항목 복사"
+                                          aria-label="복사"
+                                        >
+                                          복사
+                                        </button>
+                                        {Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
+                                          <button
+                                            type="button"
+                                            className="item-expand-btn"
+                                            onClick={() => setExpandedId(expanded ? null : it.id)}
+                                            title={expanded ? '접기' : '단가 변경 이력 보기'}
+                                          >
+                                            <Icon name={expanded ? 'chevronRight' : 'chevronDown'} />
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-danger"
+                                          onClick={() => handleDelete(it)}
+                                          aria-label="삭제"
+                                          title="삭제"
+                                        >
+                                          <Icon name="trash" className="btn-ic" />삭제
+                                        </button>
+                                      </td>
+                                    </SortableItemRow>
+                                    {expanded && Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
+                                      <tr className="item-detail-row">
+                                        <td colSpan={13}>
+                                          <div className="item-detail-body">
+                                            <div className="item-detail-section">
+                                              <label className="item-detail-label">단가 변경 이력</label>
+                                              <div className="price-history">
+                                                {[...it.priceHistory].reverse().map((h, i) => (
+                                                  <div key={i} className="price-history-row">
+                                                    <div className="ph-info">
+                                                      <span className="price-history-date">{h.date}</span>
+                                                      {h.supplierName && (
+                                                        <span className="ph-supplier">{h.supplierName}</span>
+                                                      )}
+                                                      {Number(h.qty) > 0 && <span className="ph-qty">×{h.qty}</span>}
+                                                    </div>
+                                                    <strong>{Number(h.price).toLocaleString()}원</strong>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </SortableContext>
                     </DndContext>
                   </div>
@@ -941,12 +1247,18 @@ export default function PurchaseItemPage() {
       )}
 
       {/* 그룹 안 일괄 추가 (규격·금액) */}
-      <Modal isOpen={!!groupBulk} onClose={() => setGroupBulk(null)} title={`일괄 추가 — ${groupBulk?.repItem?.name || ''}`}>
+      <Modal
+        isOpen={!!groupBulk}
+        onClose={() => setGroupBulk(null)}
+        title={`일괄 추가 — ${groupBulk?.repItem?.name || ''}`}
+      >
         <div className="form-group">
           <label>규격 · 개별단가 붙여넣기</label>
           <p className="field-hint">
-            이 그룹(<strong>{groupBulk?.repItem?.name}</strong>)에 <strong>규격 + 개별단가</strong>를 한 번에 추가합니다.
-            품명은 대표 품목명(<strong>{groupBulk?.repItem?.name}</strong>)으로 동일하게 들어가고, 코드는 소분류(-N)로 자동 부여됩니다.<br />
+            이 그룹(<strong>{groupBulk?.repItem?.name}</strong>)에 <strong>규격 + 개별단가</strong>를 한 번에
+            추가합니다. 품명은 대표 품목명(<strong>{groupBulk?.repItem?.name}</strong>)으로 동일하게 들어가고, 코드는
+            소분류(-N)로 자동 부여됩니다.
+            <br />
             엑셀 2열(규격·개별단가) 또는 한 줄에 <code>규격 [공백] 개별단가</code> 형식.
           </p>
           <textarea
@@ -958,11 +1270,16 @@ export default function PurchaseItemPage() {
         </div>
 
         <div className="form-group">
-          <label>구매처 선택 <span style={{ fontSize: 11, color: '#9ca3af' }}>(선택)</span></label>
-          <select value={groupBulkSupplier} onChange={(e) => setGroupBulkSupplier(e.target.value)}>
-            <option value="">구매처 미지정</option>
-            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <label>
+            구매처 선택 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(선택)</span>
+          </label>
+          <Select
+            value={groupBulkSupplier}
+            onChange={(v) => setGroupBulkSupplier(v)}
+            options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+            placeholder="구매처 미지정"
+            ariaLabel="구매처 선택"
+          />
           <p className="field-hint">추가하는 규격들의 기본 구매처로 지정됩니다. (기본값: 대표 품목 구매처)</p>
         </div>
 
@@ -971,7 +1288,10 @@ export default function PurchaseItemPage() {
             <div className="bulk-preview-head">{parsedGroupBulk.length}개 인식됨</div>
             <table className="table">
               <thead>
-                <tr><th>규격</th><th style={{ textAlign: 'right' }}>개별단가</th></tr>
+                <tr>
+                  <th>규격</th>
+                  <th style={{ textAlign: 'right' }}>개별단가</th>
+                </tr>
               </thead>
               <tbody>
                 {parsedGroupBulk.slice(0, 50).map((r, i) => (
@@ -994,7 +1314,9 @@ export default function PurchaseItemPage() {
           >
             {groupBulkSaving ? '추가 중…' : `${parsedGroupBulk.length}개 추가`}
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => setGroupBulk(null)}>취소</button>
+          <button type="button" className="btn btn-outline" onClick={() => setGroupBulk(null)}>
+            취소
+          </button>
         </div>
       </Modal>
     </div>

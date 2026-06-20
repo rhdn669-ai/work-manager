@@ -1,7 +1,4 @@
-import {
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, orderBy,
-} from 'firebase/firestore';
+import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const eventsRef = collection(db, 'events');

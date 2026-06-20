@@ -1,6 +1,16 @@
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, writeBatch,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -72,9 +82,7 @@ export async function getBomBySite(siteId) {
     // composite index 미생성 환경 fallback — 클라이언트 정렬
     const q = query(bomRef, where('siteId', '==', siteId));
     const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
   }
 }
 
@@ -100,4 +108,21 @@ export async function updateBomItem(id, data) {
 
 export async function deleteBomItem(id) {
   await deleteDoc(doc(db, 'bom', id));
+}
+
+// 실행취소용 — 원래 id 그대로 복원
+export async function restoreBomItem(id, siteId, data) {
+  await setDoc(doc(db, 'bom', id), {
+    siteId,
+    itemId: data.itemId || '',
+    name: data.name || '',
+    spec: data.spec || '',
+    unit: data.unit || '',
+    qty: Number(data.qty) || 0,
+    unitPrice: Number(data.unitPrice) || 0,
+    note: data.note || '',
+    order: Number(data.order) || 0,
+    createdAt: data.createdAt || new Date(),
+    updatedAt: new Date(),
+  });
 }

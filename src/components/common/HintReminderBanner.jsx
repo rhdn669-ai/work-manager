@@ -23,14 +23,18 @@ export default function HintReminderBanner() {
   const handleDismiss = () => {
     try {
       localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DURATION_MS));
-    } catch { /* 무시 */ }
+    } catch {
+      /* 무시 */
+    }
     setDismissed(true);
   };
 
   return (
     <>
       <div className="hint-reminder-banner" role="status">
-        <span className="hint-reminder-icon" aria-hidden="true">🔐</span>
+        <span className="hint-reminder-icon" aria-hidden="true">
+          🔐
+        </span>
         <span className="hint-reminder-text">
           비밀번호 분실 시 직접 재설정할 수 있도록 <strong>힌트를 설정</strong>해주세요.
         </span>

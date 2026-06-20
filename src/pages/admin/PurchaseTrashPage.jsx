@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  getTrashItems, restoreTrashItem, purgeTrashItem,
-} from '../../services/trashService';
+import { getTrashItems, restoreTrashItem, purgeTrashItem } from '../../services/trashService';
 import { useDialog } from '../../components/common/DialogProvider';
 
 const TYPE_LABEL = {
@@ -34,12 +32,11 @@ export default function PurchaseTrashPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
 
-  const shown = useMemo(
-    () => (typeFilter ? items.filter((t) => t.type === typeFilter) : items),
-    [items, typeFilter],
-  );
+  const shown = useMemo(() => (typeFilter ? items.filter((t) => t.type === typeFilter) : items), [items, typeFilter]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function load() {
     try {
@@ -52,7 +49,7 @@ export default function PurchaseTrashPage() {
   }
 
   async function handleRestore(t) {
-    if (!await confirm(`"${t.title}"을(를) 복원하시겠습니까?`)) return;
+    if (!(await confirm(`"${t.title}"을(를) 복원하시겠습니까?`))) return;
     setBusyId(t.id);
     try {
       await restoreTrashItem(t.id);
@@ -70,7 +67,7 @@ export default function PurchaseTrashPage() {
   }
 
   async function handlePurge(t) {
-    if (!await confirm(`"${t.title}"을(를) 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    if (!(await confirm(`"${t.title}"을(를) 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`))) return;
     setBusyId(t.id);
     try {
       await purgeTrashItem(t.id);
@@ -89,7 +86,9 @@ export default function PurchaseTrashPage() {
       <div className="page-header">
         <h2>{view.title}</h2>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => navigate(view.backTo)}>{view.backLabel}</button>
+          <button className="btn btn-sm btn-outline" onClick={() => navigate(view.backTo)}>
+            {view.backLabel}
+          </button>
         </div>
       </div>
 
@@ -100,46 +99,52 @@ export default function PurchaseTrashPage() {
       {shown.length === 0 ? (
         <p className="purchase-empty">휴지통이 비어 있습니다.</p>
       ) : (
-        <table className="table cards-sm">
-          <thead>
-            <tr>
-              <th>구분</th>
-              <th>이름</th>
-              <th>내용</th>
-              <th>삭제일시</th>
-              <th>삭제자</th>
-              <th style={{ textAlign: 'right' }}>작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((t) => (
-              <tr key={t.id}>
-                <td data-label="구분">
-                  <span className={`purchase-badge purchase-badge-${TYPE_LABEL[t.type]?.cls || 'ordered'}`}>
-                    {TYPE_LABEL[t.type]?.label || t.type}
-                  </span>
-                </td>
-                <td data-label="이름"><strong>{t.title}</strong></td>
-                <td data-label="내용">{t.summary || '-'}</td>
-                <td data-label="삭제일시">{fmtDateTime(t.deletedAt)}</td>
-                <td data-label="삭제자">{t.deletedByName || '-'}</td>
-                <td data-label="작업" style={{ textAlign: 'right' }}>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => handleRestore(t)}
-                    disabled={busyId === t.id}
-                    style={{ marginRight: 6 }}
-                  >복원</button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handlePurge(t)}
-                    disabled={busyId === t.id}
-                  >영구삭제</button>
-                </td>
+        <div className="table-scroll-x">
+          <table className="table cards-sm">
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>이름</th>
+                <th>내용</th>
+                <th>삭제일시</th>
+                <th>삭제자</th>
+                <th className="col-action">작업</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {shown.map((t) => (
+                <tr key={t.id}>
+                  <td data-label="구분">
+                    <span className={`purchase-badge purchase-badge-${TYPE_LABEL[t.type]?.cls || 'ordered'}`}>
+                      {TYPE_LABEL[t.type]?.label || t.type}
+                    </span>
+                  </td>
+                  <td data-label="이름" title={t.title || ''}>
+                    <strong>{t.title}</strong>
+                  </td>
+                  <td data-label="내용" title={t.summary || ''}>
+                    {t.summary || '-'}
+                  </td>
+                  <td data-label="삭제일시">{fmtDateTime(t.deletedAt)}</td>
+                  <td data-label="삭제자">{t.deletedByName || '-'}</td>
+                  <td data-label="작업" className="col-action">
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => handleRestore(t)}
+                      disabled={busyId === t.id}
+                      style={{ marginRight: 6 }}
+                    >
+                      복원
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handlePurge(t)} disabled={busyId === t.id}>
+                      영구삭제
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import UserMenu from './UserMenu';
 import SessionTimerBadge from './SessionTimerBadge';
+import ThemeToggle from './ThemeToggle';
+import Icon from './Icon';
 import { formatRelativeKo } from '../../utils/dateUtils';
 
 export default function Header({ onToggleSidebar }) {
@@ -26,9 +28,13 @@ export default function Header({ onToggleSidebar }) {
     <header className="header">
       <div className="header-left">
         {isAdmin && (
-          <button className="menu-toggle" onClick={onToggleSidebar} aria-label="메뉴">☰</button>
+          <button className="menu-toggle" onClick={onToggleSidebar} aria-label="메뉴">
+            <Icon name="list" />
+          </button>
         )}
-        <div className="header-logo" role="img" aria-label="IOPN" />
+        <div className="header-brand" style={{ marginLeft: 10 }}>
+          <img src="/icnp-emblem.png" className="header-logo" alt="IOPN" draggable="false" />
+        </div>
         <span className="header-version" title={new Date(__APP_BUILD_TIME__).toLocaleString('ko-KR')}>
           <span className="header-version-num">v{__APP_VERSION__}</span>
           {buildRel && <span className="header-version-rel">{buildRel}</span>}
@@ -37,9 +43,12 @@ export default function Header({ onToggleSidebar }) {
       <div className="header-right">
         {userProfile && (
           <>
+            <ThemeToggle />
             <SessionTimerBadge />
             <UserMenu />
-            <button className="btn btn-sm btn-outline" onClick={handleLogout}>로그아웃</button>
+            <button className="btn btn-sm btn-outline" onClick={handleLogout}>
+              로그아웃
+            </button>
           </>
         )}
       </div>

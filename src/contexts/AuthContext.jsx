@@ -28,12 +28,20 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('workManagerUser');
       localStorage.removeItem('workManagerImpersonator');
       localStorage.removeItem(ACTIVITY_KEY);
-      try { sessionStorage.setItem('autoLogoutReason', 'inactivity'); } catch { /* ignore */ }
+      try {
+        sessionStorage.setItem('autoLogoutReason', 'inactivity');
+      } catch {
+        /* ignore */
+      }
       setLoading(false);
       return;
     }
     if (stashed) {
-      try { setImpersonator(JSON.parse(stashed)); } catch { /* ignore */ }
+      try {
+        setImpersonator(JSON.parse(stashed));
+      } catch {
+        /* ignore */
+      }
     }
     if (saved) {
       const profile = JSON.parse(saved);
@@ -48,10 +56,7 @@ export function AuthProvider({ children }) {
 
   async function checkTeamLeader(uid) {
     try {
-      const [teams, sites] = await Promise.all([
-        getDepartmentsByLeader(uid),
-        getAllSites(),
-      ]);
+      const [teams, sites] = await Promise.all([getDepartmentsByLeader(uid), getAllSites()]);
       setIsLeaderOfTeam(teams.length > 0);
       setIsSiteManager(sites.some((s) => (s.managerIds || []).includes(uid)));
     } catch (err) {
@@ -80,6 +85,21 @@ export function AuthProvider({ children }) {
     return profile;
   };
 
+  // 지문(생체) 로그인 — 비밀번호 검증 없이 저장된 코드로 세션 복원 (생체 인증이 곧 본인확인)
+  const loginByCode = async (code) => {
+    const q = query(collection(db, 'users'), where('code', '==', code));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+      throw new Error('등록 정보를 찾을 수 없습니다. 코드로 다시 로그인해주세요.');
+    }
+    const userDoc = snapshot.docs[0];
+    const profile = { ...userDoc.data(), uid: userDoc.id };
+    setUserProfile(profile);
+    localStorage.setItem('workManagerUser', JSON.stringify(profile));
+    await checkTeamLeader(profile.uid);
+    return profile;
+  };
+
   const logout = () => {
     setUserProfile(null);
     setImpersonator(null);
@@ -96,13 +116,21 @@ export function AuthProvider({ children }) {
       const now = Date.now();
       if (now - lastActivityRef.current < ACTIVITY_THROTTLE_MS) return;
       lastActivityRef.current = now;
-      try { localStorage.setItem(ACTIVITY_KEY, String(now)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem(ACTIVITY_KEY, String(now));
+      } catch {
+        /* ignore */
+      }
     };
 
     const checkExpiry = () => {
       const last = Number(localStorage.getItem(ACTIVITY_KEY) || 0);
       if (last && Date.now() - last > INACTIVITY_TIMEOUT_MS) {
-        try { sessionStorage.setItem('autoLogoutReason', 'inactivity'); } catch { /* ignore */ }
+        try {
+          sessionStorage.setItem('autoLogoutReason', 'inactivity');
+        } catch {
+          /* ignore */
+        }
         logout();
       }
     };
@@ -192,6 +220,7 @@ export function AuthProvider({ children }) {
     userProfile,
     loading,
     login,
+    loginByCode,
     logout,
     refreshProfile,
     impersonate,
@@ -211,11 +240,7 @@ export function AuthProvider({ children }) {
     canViewArchive,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

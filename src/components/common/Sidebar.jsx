@@ -1,8 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribePreferences, setSidebarPref, clearSidebarPref, setSeededAdminDefaults } from '../../services/userPreferenceService';
+import {
+  subscribePreferences,
+  setSidebarPref,
+  clearSidebarPref,
+  setSeededAdminDefaults,
+} from '../../services/userPreferenceService';
 import { useDialog } from './DialogProvider';
+import Icon from './Icon';
 
 // 관리자에게만 1회 자동 추가되는 기본 대분류 (삭제 후 재등장 방지를 위해 didSeedAdminDefaults 플래그로 관리)
 const ADMIN_DEFAULT_GROUP_LABELS = ['직원', '외주', '비용'];
@@ -15,28 +21,49 @@ const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 // 기본 메뉴 정의
 function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }) {
   return [
-    { key: 'home', to: '/dashboard', label: '홈', show: true, end: false },
-    { key: 'library', to: '/library', label: '자료실', show: canViewArchive, end: true },
-    { key: 'admin-users', to: '/admin/users', label: '직원 관리', show: isAdmin },
-    { key: 'admin-reports', to: '/admin/reports', label: '잔업 · 연차', show: isAdmin },
-    { key: 'admin-leaves', to: '/admin/leaves', label: '연차/잔업 신청 목록', show: isAdmin },
-    { key: 'admin-unassigned', to: '/admin/unassigned', label: '직원 배치현황', show: isAdmin },
-    { key: 'admin-outsource', to: '/admin/outsource', label: '외주 관리', show: isAdmin },
-    { key: 'attendance', to: '/attendance', label: '잔업', show: !isAdmin, end: true },
-    { key: 'leave', to: '/leave', label: '연차', show: !isAdmin, end: true },
-    { key: 'sites', to: '/sites', label: '프로젝트', show: isAdmin || canApproveLeave || canCreateSite, end: true },
-    { key: 'admin-total-closing', to: '/admin/total-closing', label: '총 마감', show: isAdmin },
-    { key: 'manage-team-admin', to: '/manage/team', label: '팀구성 관리', show: isAdmin, end: true },
-    { key: 'manage-team-employee', to: '/manage/team', label: '우리 팀', show: !isAdmin && !canApproveLeave, end: true },
-    { key: 'manage-leave', to: '/manage/leave', label: '우리 팀', show: canApproveLeave && !isAdmin, end: true },
-    { key: 'manage-my-projects', to: '/manage/my-projects', label: '외주', show: canApproveLeave && !isAdmin, end: true },
-    { key: 'admin-events', to: '/admin/events', label: '이벤트 · 공지', show: isAdmin },
-    { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', show: isAdmin },
-    { key: 'admin-purchase', to: '/admin/purchase', label: '구매 · 발주 현황', show: isAdmin, end: true },
-    { key: 'admin-purchase-suppliers', to: '/admin/purchase/suppliers', label: '구매처 관리', show: isAdmin },
-    { key: 'admin-purchase-quotes', to: '/admin/purchase/quotes', label: '견적서 관리', show: isAdmin },
-    { key: 'admin-purchase-items', to: '/admin/purchase/items', label: '구매 품목 관리', show: isAdmin },
-    { key: 'admin-purchase-bom', to: '/admin/purchase/bom', label: '프로젝트별 BOM', show: isAdmin },
+    { key: 'home', to: '/dashboard', label: '홈', icon: 'home', show: true, end: false },
+    { key: 'library', to: '/library', label: '자료실', icon: 'folder', show: canViewArchive, end: true },
+    { key: 'admin-users', to: '/admin/users', label: '직원', icon: 'users', show: isAdmin, end: false },
+    { key: 'admin-reports', to: '/admin/reports', label: '잔업·연차', icon: 'clock', show: isAdmin },
+    { key: 'admin-outsource', to: '/admin/outsource', label: '외주 관리', icon: 'briefcase', show: isAdmin },
+    { key: 'attendance', to: '/attendance', label: '잔업', icon: 'clock', show: !isAdmin, end: true },
+    { key: 'leave', to: '/leave', label: '연차', icon: 'calendar', show: !isAdmin, end: true },
+    {
+      key: 'sites',
+      to: '/sites',
+      label: '프로젝트',
+      icon: 'building',
+      show: isAdmin || canApproveLeave || canCreateSite,
+      end: true,
+    },
+    { key: 'admin-total-closing', to: '/admin/total-closing', label: '총 마감', icon: 'check', show: isAdmin },
+    {
+      key: 'manage-team-employee',
+      to: '/manage/team',
+      label: '우리 팀',
+      icon: 'users',
+      show: !isAdmin && !canApproveLeave,
+      end: true,
+    },
+    {
+      key: 'manage-leave',
+      to: '/manage/leave',
+      label: '우리 팀',
+      icon: 'users',
+      show: canApproveLeave && !isAdmin,
+      end: true,
+    },
+    {
+      key: 'manage-my-projects',
+      to: '/manage/my-projects',
+      label: '외주',
+      icon: 'briefcase',
+      show: canApproveLeave && !isAdmin,
+      end: true,
+    },
+    { key: 'admin-events', to: '/admin/events', label: '이벤트·공지', icon: 'alert', show: isAdmin },
+    { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', icon: 'list', show: isAdmin },
+    { key: 'admin-purchase', to: '/admin/purchase', label: '구매', icon: 'cart', show: isAdmin, end: false },
   ];
 }
 
@@ -58,7 +85,11 @@ export default function Sidebar({ isOpen }) {
     setEditing(false);
     migratedRef.current = false;
     seedAttemptedRef.current = false;
-    if (!uid) { setOrder(null); setGroups([]); return; }
+    if (!uid) {
+      setOrder(null);
+      setGroups([]);
+      return;
+    }
 
     const unsub = subscribePreferences(uid, (data) => {
       let nextOrder = null;
@@ -84,14 +115,24 @@ export default function Sidebar({ isOpen }) {
               nextOrder = Array.isArray(raw.order) ? raw.order : null;
               nextGroups = Array.isArray(raw.groups) ? raw.groups : [];
             }
-          } catch { /* 무시 */ }
+          } catch {
+            /* 무시 */
+          }
         }
         setOrder(nextOrder);
         setGroups(nextGroups);
         if (nextOrder || nextGroups.length > 0) {
           setSidebarPref(uid, { order: nextOrder, groups: nextGroups })
-            .then(() => { try { if (key) localStorage.removeItem(key); } catch { /* 무시 */ } })
-            .catch(() => { /* 다음 변경 때 재시도됨 */ });
+            .then(() => {
+              try {
+                if (key) localStorage.removeItem(key);
+              } catch {
+                /* 무시 */
+              }
+            })
+            .catch(() => {
+              /* 다음 변경 때 재시도됨 */
+            });
         }
       } else {
         return; // 이미 초기화 완료된 후의 빈 snapshot은 무시
@@ -101,15 +142,19 @@ export default function Sidebar({ isOpen }) {
       if (isAdmin && !data?.didSeedAdminDefaults && !seedAttemptedRef.current) {
         seedAttemptedRef.current = true;
         const existing = new Set((nextGroups || []).map((g) => g.label));
-        const newOnes = ADMIN_DEFAULT_GROUP_LABELS
-          .filter((l) => !existing.has(l))
-          .map((l, idx) => ({ key: `group-default-${Date.now()}-${idx}`, label: l, isGroup: true }));
+        const newOnes = ADMIN_DEFAULT_GROUP_LABELS.filter((l) => !existing.has(l)).map((l, idx) => ({
+          key: `group-default-${Date.now()}-${idx}`,
+          label: l,
+          isGroup: true,
+        }));
         if (newOnes.length > 0) {
           setGroups([...(nextGroups || []), ...newOnes]);
           // saveTimer 효과(300ms 디바운스)가 자동으로 Firestore에 반영
         }
         // 추가 여부와 무관하게 플래그 마킹 — 사용자가 삭제해도 재등장하지 않도록
-        setSeededAdminDefaults(uid).catch(() => { /* 무시 */ });
+        setSeededAdminDefaults(uid).catch(() => {
+          /* 무시 */
+        });
       }
     });
     return () => unsub();
@@ -144,9 +189,13 @@ export default function Sidebar({ isOpen }) {
     if (!uid || !migratedRef.current) return; // 최초 로드 전에는 저장 안 함 (덮어쓰기 방지)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      setSidebarPref(uid, { order: order || null, groups }).catch(() => { /* 무시 */ });
+      setSidebarPref(uid, { order: order || null, groups }).catch(() => {
+        /* 무시 */
+      });
     }, 300);
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [order, groups, userProfile?.uid]);
 
   const [draggedKey, setDraggedKey] = useState(null);
@@ -157,7 +206,11 @@ export default function Sidebar({ isOpen }) {
   function handleDragStart(e, key) {
     setDraggedKey(key);
     e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', key); } catch { /* 무시 */ }
+    try {
+      e.dataTransfer.setData('text/plain', key);
+    } catch {
+      /* 무시 */
+    }
   }
   function handleDragOver(e, overKey) {
     e.preventDefault();
@@ -176,13 +229,22 @@ export default function Sidebar({ isOpen }) {
   }
 
   async function resetOrder() {
-    if (!await confirm('사이드바 순서와 추가한 대분류를 모두 기본으로 초기화하시겠습니까?')) return;
+    if (!(await confirm('사이드바 순서와 추가한 대분류를 모두 기본으로 초기화하시겠습니까?'))) return;
     const uid = userProfile?.uid;
     const key = lsKeyFor(uid);
-    if (key) { try { localStorage.removeItem(key); } catch { /* 무시 */ } }
+    if (key) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* 무시 */
+      }
+    }
     setOrder(null);
     setGroups([]);
-    if (uid) clearSidebarPref(uid).catch(() => { /* 무시 */ });
+    if (uid)
+      clearSidebarPref(uid).catch(() => {
+        /* 무시 */
+      });
   }
 
   function openAddGroup() {
@@ -203,7 +265,7 @@ export default function Sidebar({ isOpen }) {
   }
 
   async function deleteGroup(groupKey) {
-    if (!await confirm('이 대분류를 삭제하시겠습니까?')) return;
+    if (!(await confirm('이 대분류를 삭제하시겠습니까?'))) return;
     setGroups((gs) => gs.filter((g) => g.key !== groupKey));
     setOrder((o) => (o ? o.filter((k) => k !== groupKey) : o));
   }
@@ -220,7 +282,7 @@ export default function Sidebar({ isOpen }) {
               title="기본값 복원"
               aria-label="기본값 복원"
             >
-              ↻
+              <Icon name="restore" />
             </button>
           )}
           <button
@@ -231,9 +293,18 @@ export default function Sidebar({ isOpen }) {
             aria-label={editing ? '편집 완료' : '순서 수정'}
           >
             {editing ? (
-              '✓'
+              <Icon name="check" />
             ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
@@ -260,17 +331,22 @@ export default function Sidebar({ isOpen }) {
                 onDragEnd={handleDragEnd}
                 title="드래그해서 순서 변경"
               >
-                <span className="nav-drag-handle">⋮⋮</span>
+                <Icon name="move" className="nav-drag-handle" />
+                {!item.isGroup && item.icon && <Icon name={item.icon} className="nav-ic" />}
                 <span className="nav-edit-label">{item.label}</span>
                 {item.isGroup && (
                   <span className="nav-edit-actions">
                     <button
                       type="button"
                       className="nav-edit-del"
-                      onClick={(e) => { e.stopPropagation(); deleteGroup(item.key); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteGroup(item.key);
+                      }}
                       title="대분류 삭제"
+                      aria-label="대분류 삭제"
                     >
-                      ✕
+                      <Icon name="close" />
                     </button>
                   </span>
                 )}
@@ -291,11 +367,12 @@ export default function Sidebar({ isOpen }) {
               end={item.end}
               className={`nav-link ${item.badgeCount > 0 ? 'has-unread' : ''}`}
             >
-              {item.label}
+              {item.icon && <Icon name={item.icon} className="nav-ic" />}
+              <span className="nav-link-label" title={item.label}>
+                {item.label}
+              </span>
               {item.badgeCount > 0 && (
-                <span className="nav-badge sidebar-badge">
-                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
-                </span>
+                <span className="nav-badge sidebar-badge">{item.badgeCount > 99 ? '99+' : item.badgeCount}</span>
               )}
             </NavLink>
           );
@@ -309,7 +386,9 @@ export default function Sidebar({ isOpen }) {
             type="text"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && groupName.trim()) confirmAddGroup(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && groupName.trim()) confirmAddGroup();
+            }}
             placeholder="예: 관리, 일반, 외부"
             autoFocus
             maxLength={20}
@@ -319,8 +398,12 @@ export default function Sidebar({ isOpen }) {
           </p>
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-primary" disabled={!groupName.trim()} onClick={confirmAddGroup}>추가</button>
-          <button type="button" className="btn btn-outline" onClick={() => setGroupModalOpen(false)}>취소</button>
+          <button type="button" className="btn btn-primary" disabled={!groupName.trim()} onClick={confirmAddGroup}>
+            추가
+          </button>
+          <button type="button" className="btn btn-outline" onClick={() => setGroupModalOpen(false)}>
+            취소
+          </button>
         </div>
       </Modal>
     </aside>

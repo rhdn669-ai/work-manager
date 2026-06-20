@@ -34,18 +34,22 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
 
   const total = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
 
-  const openAdd = () => { setEditing(null); setModalOpen(true); };
-  const openEdit = (it) => { setEditing(it); setModalOpen(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setModalOpen(true);
+  };
+  const openEdit = (it) => {
+    setEditing(it);
+    setModalOpen(true);
+  };
   const handleSave = (payload) => {
-    const next = editing
-      ? items.map((it) => (it.id === editing.id ? payload : it))
-      : [...items, payload];
+    const next = editing ? items.map((it) => (it.id === editing.id ? payload : it)) : [...items, payload];
     onChange(next);
     setModalOpen(false);
     setEditing(null);
   };
   const handleDelete = async (id) => {
-    if (!await confirm('이 항목을 삭제할까요?')) return;
+    if (!(await confirm('이 항목을 삭제할까요?'))) return;
     onChange(items.filter((it) => it.id !== id));
   };
 
@@ -54,11 +58,15 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
       <div className="fixed-expense-header">
         <div className="fixed-expense-title">
           <span>🏢 고정지출</span>
-          <span className="fixed-expense-period">{year}.{String(month).padStart(2, '0')}</span>
+          <span className="fixed-expense-period">
+            {year}.{String(month).padStart(2, '0')}
+          </span>
         </div>
         <div className="fixed-expense-actions">
           {saving && <span className="fixed-expense-saving">저장 중...</span>}
-          <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>+ 항목 추가</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
+            + 항목 추가
+          </button>
         </div>
       </div>
 
@@ -76,15 +84,25 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
                   {chips.length > 0 && (
                     <span className="fixed-expense-chips">
                       {chips.map((c, i) => (
-                        <span key={i} className="fixed-expense-chip">{c}</span>
+                        <span key={i} className="fixed-expense-chip">
+                          {c}
+                        </span>
                       ))}
                     </span>
                   )}
                 </span>
                 <span className="fixed-expense-amount">{(Number(it.amount) || 0).toLocaleString()}원</span>
                 <span className="fixed-expense-row-actions">
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => openEdit(it)}>수정</button>
-                  <button type="button" className="btn btn-ghost btn-xs btn-danger-text" onClick={() => handleDelete(it.id)}>삭제</button>
+                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => openEdit(it)}>
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs btn-danger-text"
+                    onClick={() => handleDelete(it.id)}
+                  >
+                    삭제
+                  </button>
                 </span>
               </li>
             );
@@ -102,7 +120,10 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
         <FixedExpenseModal
           key={editing?.id || 'new'}
           isOpen={modalOpen}
-          onClose={() => { setModalOpen(false); setEditing(null); }}
+          onClose={() => {
+            setModalOpen(false);
+            setEditing(null);
+          }}
           onSave={handleSave}
           initial={editing}
         />

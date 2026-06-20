@@ -5,6 +5,7 @@ import { getEvents } from '../../services/eventService';
 import { LEAVE_TYPES, LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import { getBusinessDaysExcludingHolidays, buildHolidaySet } from '../../utils/dateUtils';
 import LeaveTabs from '../../components/common/LeaveTabs';
+import Select from '../../components/common/Select';
 
 export default function LeaveRequestPage() {
   const { userProfile } = useAuth();
@@ -19,7 +20,12 @@ export default function LeaveRequestPage() {
     const el = ref.current;
     if (!el) return;
     if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); return; } catch { /* fallback */ }
+      try {
+        el.showPicker();
+        return;
+      } catch {
+        /* fallback */
+      }
     }
     el.focus();
     el.click();
@@ -31,7 +37,9 @@ export default function LeaveRequestPage() {
   const [holidayEvents, setHolidayEvents] = useState([]);
 
   useEffect(() => {
-    getEvents().then((evs) => setHolidayEvents(evs.filter((e) => e.type === 'holiday'))).catch(() => {});
+    getEvents()
+      .then((evs) => setHolidayEvents(evs.filter((e) => e.type === 'holiday')))
+      .catch(() => {});
   }, []);
   const holidaySet = useMemo(() => buildHolidaySet(holidayEvents), [holidayEvents]);
 
@@ -77,9 +85,7 @@ export default function LeaveRequestPage() {
   }
 
   const isSingleDay =
-    type === LEAVE_TYPES.HALF_AM ||
-    type === LEAVE_TYPES.HALF_PM ||
-    QUARTER_LEAVE_TYPES.includes(type);
+    type === LEAVE_TYPES.HALF_AM || type === LEAVE_TYPES.HALF_PM || QUARTER_LEAVE_TYPES.includes(type);
   const days = calculateDays();
 
   return (
@@ -94,20 +100,27 @@ export default function LeaveRequestPage() {
 
           <div className="form-group">
             <label>휴가 종류</label>
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              {Object.entries(LEAVE_TYPE_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
+            <Select
+              value={type}
+              onChange={(v) => setType(v)}
+              ariaLabel="휴가 종류"
+              options={Object.entries(LEAVE_TYPE_LABELS).map(([key, label]) => ({ value: key, label }))}
+            />
           </div>
 
-          <div className="form-row">
+          <div className="form-row" style={{ flexWrap: 'wrap', gap: 4 }}>
             <div
               className="form-group date-picker-cell"
               role="button"
               tabIndex={0}
+              style={{ flex: '1 1 100px', minWidth: 100 }}
               onClick={() => openPicker(startInputRef)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(startInputRef); } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openPicker(startInputRef);
+                }
+              }}
             >
               <label>시작일</label>
               <input
@@ -117,6 +130,7 @@ export default function LeaveRequestPage() {
                 onChange={(e) => setStartDate(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
                 required
+                style={{ maxWidth: '100%', minHeight: 36 }}
               />
             </div>
             {!isSingleDay && (
@@ -124,8 +138,14 @@ export default function LeaveRequestPage() {
                 className="form-group date-picker-cell"
                 role="button"
                 tabIndex={0}
+                style={{ flex: '1 1 100px', minWidth: 100 }}
                 onClick={() => openPicker(endInputRef)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(endInputRef); } }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openPicker(endInputRef);
+                  }
+                }}
               >
                 <label>종료일</label>
                 <input
@@ -136,15 +156,18 @@ export default function LeaveRequestPage() {
                   onClick={(e) => e.stopPropagation()}
                   min={startDate}
                   required
+                  style={{ maxWidth: '100%', minHeight: 36 }}
                 />
               </div>
             )}
           </div>
 
           {days > 0 && (
-            <div className="leave-days-info">
+            <div className="leave-days-info" style={{ maxWidth: '100%', wordBreak: 'break-word', textAlign: 'center' }}>
               차감일수: <strong>{days}일</strong>
-              <span className="text-muted text-sm" style={{ marginLeft: 8 }}>(주말·휴일 제외)</span>
+              <span className="text-muted text-sm" style={{ marginLeft: 8 }}>
+                (주말·휴일 제외)
+              </span>
             </div>
           )}
 
@@ -158,7 +181,7 @@ export default function LeaveRequestPage() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading}>
+          <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap', width: '100%' }} disabled={loading}>
             {loading ? '신청 중...' : '신청하기'}
           </button>
         </div>

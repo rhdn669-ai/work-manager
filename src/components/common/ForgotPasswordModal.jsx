@@ -16,8 +16,15 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen) {
-      setStep(1); setCode(''); setUser(null); setAnswer('');
-      setNext(''); setConfirm(''); setError(''); setSuccess(''); setLoading(false);
+      setStep(1);
+      setCode('');
+      setUser(null);
+      setAnswer('');
+      setNext('');
+      setConfirm('');
+      setError('');
+      setSuccess('');
+      setLoading(false);
     }
   }, [isOpen]);
 
@@ -25,7 +32,10 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   const handleStep1 = async (e) => {
     e.preventDefault();
     setError('');
-    if (!code.trim()) { setError('코드를 입력해주세요.'); return; }
+    if (!code.trim()) {
+      setError('코드를 입력해주세요.');
+      return;
+    }
     setLoading(true);
     try {
       const u = await getUserByCode(code.trim());
@@ -56,7 +66,10 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   const handleStep2 = async (e) => {
     e.preventDefault();
     setError('');
-    if (!answer.trim()) { setError('답변을 입력해주세요.'); return; }
+    if (!answer.trim()) {
+      setError('답변을 입력해주세요.');
+      return;
+    }
     setLoading(true);
     try {
       const hashed = await hashAnswer(answer);
@@ -83,8 +96,14 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   const handleStep3 = async (e) => {
     e.preventDefault();
     setError('');
-    if (next.length < 4) { setError('비밀번호는 4자 이상이어야 합니다.'); return; }
-    if (next !== confirm) { setError('비밀번호가 일치하지 않습니다.'); return; }
+    if (next.length < 4) {
+      setError('비밀번호는 4자 이상이어야 합니다.');
+      return;
+    }
+    if (next !== confirm) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
     setLoading(true);
     try {
       await updateUser(user.uid, { password: next });
@@ -123,16 +142,16 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? '확인 중...' : '다음'}
               </button>
-              <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>취소</button>
+              <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
+                취소
+              </button>
             </div>
           </form>
         )}
 
         {step === 2 && user && (
           <form onSubmit={handleStep2}>
-            <p className="forgot-pw-step-desc">
-              본인이 설정한 힌트 질문에 답해주세요. (5회 실패 시 30분간 잠금)
-            </p>
+            <p className="forgot-pw-step-desc">본인이 설정한 힌트 질문에 답해주세요. (5회 실패 시 30분간 잠금)</p>
             <div className="forgot-pw-question">
               <span className="forgot-pw-question-label">질문</span>
               <strong>{user.passwordHintQuestion}</strong>
@@ -154,7 +173,17 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
               <button type="submit" className="btn btn-primary" disabled={loading || !!success}>
                 {loading ? '확인 중...' : '확인'}
               </button>
-              <button type="button" className="btn btn-outline" onClick={() => { setStep(1); setError(''); }} disabled={loading || !!success}>이전</button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setStep(1);
+                  setError('');
+                }}
+                disabled={loading || !!success}
+              >
+                이전
+              </button>
             </div>
           </form>
         )}
@@ -189,7 +218,9 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
               <button type="submit" className="btn btn-primary" disabled={loading || !!success}>
                 {loading ? '저장 중...' : '저장'}
               </button>
-              <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>취소</button>
+              <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
+                취소
+              </button>
             </div>
           </form>
         )}

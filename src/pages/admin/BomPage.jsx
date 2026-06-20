@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
-} from '@dnd-kit/core';
-import {
-  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
-} from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  getBomProjects, addBomProject, deleteBomProject, saveBomProjectsOrder,
-} from '../../services/bomService';
+import { getBomProjects, addBomProject, deleteBomProject, saveBomProjectsOrder } from '../../services/bomService';
 import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
+import TrashModal from '../../components/common/TrashModal';
+import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -27,11 +23,24 @@ function SortableProjectRow({ p, onOpen, onDelete }) {
   return (
     <tr ref={setNodeRef} style={style} className="table-clickable-row" onClick={() => onOpen(p)}>
       <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="drag-handle-btn" aria-label="드래그하여 순서 변경" title="드래그하여 순서 변경" {...attributes} {...listeners}>≡</button>
+        <button
+          type="button"
+          className="drag-handle-btn"
+          aria-label="드래그하여 순서 변경"
+          title="드래그하여 순서 변경"
+          {...attributes}
+          {...listeners}
+        >
+          <Icon name="move" />
+        </button>
       </td>
-      <td data-label="프로젝트명"><strong>{p.name}</strong></td>
-      <td className="bom-project-action-col">
-        <button className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>삭제</button>
+      <td data-label="프로젝트명" title={p.name || ''}>
+        <strong className="u-ellipsis-1" title={p.name || ''}>{p.name}</strong>
+      </td>
+      <td className="bom-project-action-col action-cell">
+        <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
+          <Icon name="trash" className="btn-ic" />삭제
+        </button>
       </td>
     </tr>
   );
@@ -57,6 +66,7 @@ export default function BomPage() {
       alert('순서 저장 오류: ' + err.message);
     }
   }
+  const [trashOpen, setTrashOpen] = useState(false);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +94,10 @@ export default function BomPage() {
 
   async function submitAddProject() {
     const name = newProjectName.trim();
-    if (!name) { alert('프로젝트 이름을 입력하세요.'); return; }
+    if (!name) {
+      alert('프로젝트 이름을 입력하세요.');
+      return;
+    }
     if (projects.some((p) => (p.name || '').trim().toLowerCase() === name.toLowerCase())) {
       alert('같은 이름의 프로젝트가 이미 있습니다.');
       return;
@@ -103,7 +116,12 @@ export default function BomPage() {
 
   async function handleDeleteProject(e, project) {
     e.stopPropagation();
-    if (!await confirm(`"${project.name}" 프로젝트와 등록된 BOM을 모두 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`)) return;
+    if (
+      !(await confirm(
+        `"${project.name}" 프로젝트와 등록된 BOM을 모두 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`,
+      ))
+    )
+      return;
     try {
       await trashBomProject(project.id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
       await deleteBomProject(project.id);
@@ -117,20 +135,33 @@ export default function BomPage() {
 
   return (
     <div className="bom-page">
+      <style>{`
+        .bom-page .table tbody tr { min-height: 44px; }
+        .bom-page .table thead tr { height: 44px; }
+      `}</style>
       <div className="page-header">
         <h2>프로젝트별 BOM</h2>
         <div className="page-actions">
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/trash?type=bomProject')}>🗑 휴지통</button>
-          <button type="button" className="btn btn-sm btn-primary" onClick={openAddProject}>+ 프로젝트 추가</button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => setTrashOpen(true)}
+          >
+            <Icon name="trash" className="btn-ic" />
+            휴지통
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openAddProject}>
+            <Icon name="plus" className="btn-ic" />
+            프로젝트 추가
+          </button>
         </div>
       </div>
 
       {projects.length === 0 ? (
-        <p className="purchase-empty">
-          등록된 프로젝트가 없습니다 — 우측 상단 "+ 프로젝트 추가"로 시작하세요.
-        </p>
+        <p className="purchase-empty">등록된 프로젝트가 없습니다 — 우측 상단 "+ 프로젝트 추가"로 시작하세요.</p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <div className="table-scroll-x">
           <table className="table cards-sm sortable-rows">
             <thead>
               <tr>
@@ -152,6 +183,7 @@ export default function BomPage() {
               </tbody>
             </SortableContext>
           </table>
+          </div>
         </DndContext>
       )}
 
@@ -163,7 +195,9 @@ export default function BomPage() {
             value={newProjectName}
             placeholder="예: 2026 공장동 신축"
             onChange={(e) => setNewProjectName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') submitAddProject(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitAddProject();
+            }}
             autoFocus
           />
         </div>
@@ -177,9 +211,19 @@ export default function BomPage() {
           >
             {addingProject ? '추가 중…' : '추가하고 열기'}
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => setAddProjectOpen(false)}>취소</button>
+          <button type="button" className="btn btn-outline" onClick={() => setAddProjectOpen(false)}>
+            취소
+          </button>
         </div>
       </Modal>
+
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['bomProject']}
+        title="프로젝트 BOM 휴지통"
+        onChange={() => {}}
+      />
     </div>
   );
 }

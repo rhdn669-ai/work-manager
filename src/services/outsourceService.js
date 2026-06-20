@@ -1,6 +1,16 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  query, orderBy, where, arrayUnion, arrayRemove,
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDoc,
+  getDocs,
+  query,
+  orderBy,
+  where,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -81,10 +91,15 @@ export function getRateForDate(freelancer, dateStr) {
 function prevMonthOf(fromStr) {
   if (!fromStr) return '';
   const [ys, ms] = fromStr.split('-');
-  const y = Number(ys); const m = Number(ms);
+  const y = Number(ys);
+  const m = Number(ms);
   if (!y || !m) return '';
-  let py = y; let pm = m - 1;
-  if (pm <= 0) { py -= 1; pm = 12; }
+  let py = y;
+  let pm = m - 1;
+  if (pm <= 0) {
+    py -= 1;
+    pm = 12;
+  }
   return `${py}-${String(pm).padStart(2, '0')}-01`;
 }
 
@@ -111,8 +126,13 @@ export async function setFreelancerRate(freelancerId, { dailyRate, effectiveFrom
     // 레거시 previousDailyRate가 있고 rateHistory에 아직 병합되지 않았다면 선반영
     const migrated = [];
     if (
-      Number(prev.previousDailyRate) > 0
-      && !existing.some((h) => h && h.rate === Number(prev.previousDailyRate) && (h.effectiveFrom || '') === (prev.previousDailyRateFrom || ''))
+      Number(prev.previousDailyRate) > 0 &&
+      !existing.some(
+        (h) =>
+          h &&
+          h.rate === Number(prev.previousDailyRate) &&
+          (h.effectiveFrom || '') === (prev.previousDailyRateFrom || ''),
+      )
     ) {
       migrated.push({
         rate: Number(prev.previousDailyRate) || 0,
@@ -228,14 +248,14 @@ export async function getVendors() {
 
 export async function addVendor(data) {
   return addDoc(vendorsRef, {
-    name: data.name || '',                     // 업체명
+    name: data.name || '', // 업체명
     representative: data.representative || '', // 대표자 이름
-    contact: data.contact || '',               // 연락처
-    email: data.email || '',                   // 이메일
+    contact: data.contact || '', // 연락처
+    email: data.email || '', // 이메일
     businessNumber: data.businessNumber || '', // 사업자번호
-    category: data.category || '',             // 분류
-    bankName: data.bankName || '',             // 은행명
-    bankAccount: data.bankAccount || '',       // 계좌번호 (예금주 포함 가능)
+    category: data.category || '', // 분류
+    bankName: data.bankName || '', // 은행명
+    bankAccount: data.bankAccount || '', // 계좌번호 (예금주 포함 가능)
     note: data.note || '',
     dailyRate: Number(data.dailyRate) || 0,
     caseRate: Number(data.caseRate) || 0,
@@ -277,7 +297,9 @@ export async function addVendorToProject({ vendorName, siteId, year, month, unit
   const nextNo = existing.length ? Math.max(...existing.map((i) => i.no || 0)) + 1 : 1;
   return addDoc(closingItemsRef, {
     closingId: cid,
-    siteId, year, month,
+    siteId,
+    year,
+    month,
     no: nextNo,
     vendor: vendorName,
     detail: '',
@@ -397,16 +419,24 @@ export async function importFromSiteClosings() {
   const existingVNames = new Set(existingV.map((v) => v.name));
 
   const stats = {
-    freelancersAdded: 0, freelancersSkipped: 0,
-    vendorsAdded: 0, vendorsSkipped: 0,
+    freelancersAdded: 0,
+    freelancersSkipped: 0,
+    vendorsAdded: 0,
+    vendorsSkipped: 0,
   };
   for (const f of freelancerMap.values()) {
-    if (existingFNames.has(f.name)) { stats.freelancersSkipped++; continue; }
+    if (existingFNames.has(f.name)) {
+      stats.freelancersSkipped++;
+      continue;
+    }
     await addFreelancer(f);
     stats.freelancersAdded++;
   }
   for (const v of vendorSet) {
-    if (existingVNames.has(v)) { stats.vendorsSkipped++; continue; }
+    if (existingVNames.has(v)) {
+      stats.vendorsSkipped++;
+      continue;
+    }
     await addVendor({ name: v });
     stats.vendorsAdded++;
   }

@@ -1,6 +1,19 @@
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc,
-  query, orderBy, where, arrayUnion, writeBatch,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  deleteField,
+  setDoc,
+  query,
+  orderBy,
+  where,
+  arrayUnion,
+  writeBatch,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
@@ -26,7 +39,7 @@ export async function getPurchasePrintLogs(purchaseId) {
   const q = query(printLogsRef, where('purchaseId', '==', purchaseId));
   const snap = await getDocs(q);
   const logs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const ms = (x) => (x?.toDate ? x.toDate().getTime() : (x ? new Date(x).getTime() : 0));
+  const ms = (x) => (x?.toDate ? x.toDate().getTime() : x ? new Date(x).getTime() : 0);
   logs.sort((a, b) => ms(b.at) - ms(a.at)); // 최신순
   return logs;
 }
@@ -39,11 +52,15 @@ export async function getPurchaseConfig() {
 }
 
 export async function setHqSite(siteId, siteName) {
-  await setDoc(configDoc, {
-    hqSiteId: siteId || '',
-    hqSiteName: siteName || '',
-    updatedAt: new Date(),
-  }, { merge: true });
+  await setDoc(
+    configDoc,
+    {
+      hqSiteId: siteId || '',
+      hqSiteName: siteName || '',
+      updatedAt: new Date(),
+    },
+    { merge: true },
+  );
 }
 
 // ---------- 구매처 (suppliers) ----------
@@ -86,22 +103,28 @@ export async function getPurchaseItems() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// 실시간 구독 — 품목 마스터가 변경될 때마다 콜백 호출
+export function subscribePurchaseItems(cb) {
+  const q = query(itemsRef, orderBy('name'));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+}
+
 export async function addPurchaseItem(data) {
   return addDoc(itemsRef, {
-    code: data.code || '',                // 품목 코드
+    code: data.code || '', // 품목 코드
     name: data.name || '',
     spec: data.spec || '',
-    maker: data.maker || '',              // 제조사/메이커
+    maker: data.maker || '', // 제조사/메이커
     unit: data.unit || '',
     category: data.category || '',
     standardPrice: Number(data.standardPrice) || 0,
-    unitPrice: Number(data.unitPrice) || 0,        // 복합 단위(roll/610m)일 때 단위(m)당 단가
-    priceHistory: data.priceHistory || [],   // [{ price, date: 'YYYY-MM-DD' }]
-    certification: data.certification || '',     // 인증 (CE/KS/UL 등 자유 텍스트)
+    unitPrice: Number(data.unitPrice) || 0, // 복합 단위(roll/610m)일 때 단위(m)당 단가
+    priceHistory: data.priceHistory || [], // [{ price, date: 'YYYY-MM-DD' }]
+    certification: data.certification || '', // 인증 (CE/KS/UL 등 자유 텍스트)
     defaultSupplierId: data.defaultSupplierId || '',
-    siteIds: data.siteIds || [],         // 사용 프로젝트 (다중)
+    siteIds: data.siteIds || [], // 사용 프로젝트 (다중)
     note: data.note || '',
-    groupKey: data.groupKey || null,     // 대분류 그룹 식별자 — 베어 메인의 doc id (베어 메인은 null)
+    groupKey: data.groupKey || null, // 대분류 그룹 식별자 — 베어 메인의 doc id (베어 메인은 null)
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -317,21 +340,22 @@ export async function getPurchaseById(id) {
 export async function addPurchase(data) {
   return addDoc(purchasesRef, {
     title: data.title || '',
-    items: data.items || [],            // [{ itemId, name, spec, unit, qty, unitPrice, amount }]
+    items: data.items || [], // [{ itemId, name, spec, unit, qty, unitPrice, amount }]
     supplierId: data.supplierId || '',
     supplierName: data.supplierName || '',
-    ownerType: data.ownerType || 'hq',  // 'site' | 'hq'
+    ownerType: data.ownerType || 'hq', // 'site' | 'hq'
     siteId: data.siteId || '',
     siteName: data.siteName || '',
     totalAmount: Number(data.totalAmount) || 0,
-    status: 'ordered',                  // 등록 = 발주
+    status: 'draft', // 초안 → confirmPurchase()로 발주 확정
     requesterId: data.requesterId || '',
     requesterName: data.requesterName || '',
-    deliveryDue: data.deliveryDue || '',  // 납기(납품기일)
-    contactName: data.contactName || '',  // 담당자
-    contactPhone: data.contactPhone || '', // 연락처
+    deliveryDue: data.deliveryDue || '',
+    contactName: data.contactName || '',
+    contactPhone: data.contactPhone || '',
+    factoryKey: data.factoryKey || '',
+    deliveryPlace: data.deliveryPlace || '',
     note: data.note || '',
-    orderedAt: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -352,6 +376,38 @@ export async function setPurchaseStatus(id, status, extra = {}) {
     ...extra,
     updatedAt: new Date(),
   });
+}
+
+// 초안 → 발주 확정 (draft → ordered)
+export async function confirmPurchase(id, confirmedBy = '') {
+  await updateDoc(doc(db, 'purchases', id), {
+    status: 'ordered',
+    orderedAt: new Date(),
+    confirmedBy,
+    updatedAt: new Date(),
+  });
+}
+
+// 업체별 발주 완료 마킹
+export async function markSupplierSent(purchaseId, supplierName, sentBy = '') {
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierSent.${supplierName.replace(/\./g, '_')}.sentAt`]: new Date(),
+    [`supplierSent.${supplierName.replace(/\./g, '_')}.sentBy`]: sentBy,
+    updatedAt: new Date(),
+  });
+}
+
+// 업체별 발주 완료 마킹 취소
+export async function unmarkSupplierSent(purchaseId, supplierName) {
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierSent.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
+// 공장 프리셋 저장
+export async function saveFactories(factories) {
+  await setDoc(configDoc, { factories, updatedAt: new Date() }, { merge: true });
 }
 
 // 일괄 입고 — 잔여 수량 있는 모든 라인을 동일 일자/메모로 입고 처리
@@ -392,7 +448,10 @@ export async function bulkReceivePurchase(purchase, info) {
     };
   });
 
-  const totalAmount = next.reduce((s, it) => s + (Number(it.amount) || (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)), 0);
+  const totalAmount = next.reduce(
+    (s, it) => s + (Number(it.amount) || (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
+    0,
+  );
   const nextStatus = deriveStatus(next, purchase.status);
   const extra = {
     items: next,
@@ -441,7 +500,7 @@ export async function settlePurchase(purchase, settledBy) {
   const siteId = purchase.siteId;
   if (!siteId) throw new Error('귀속 프로젝트가 지정되지 않았습니다.');
   const recv = purchase.receivedAt;
-  const d = recv?.toDate ? recv.toDate() : (recv ? new Date(recv) : new Date());
+  const d = recv?.toDate ? recv.toDate() : recv ? new Date(recv) : new Date();
   const year = d.getFullYear();
   const month = d.getMonth() + 1;
   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -456,20 +515,23 @@ export async function settlePurchase(purchase, settledBy) {
 
   // 각 품목의 실거래 단가를 priceHistory에 누적, standardPrice도 최신화
   const lineItems = Array.isArray(purchase.items) ? purchase.items : [];
-  await Promise.all(lineItems
-    .filter((ln) => ln.itemId)
-    .map((ln) => updateDoc(doc(db, 'purchaseItems', ln.itemId), {
-      priceHistory: arrayUnion({
-        price: Number(ln.unitPrice) || 0,
-        date: dateStr,
-        qty: Number(ln.qty) || 0,
-        supplierId: purchase.supplierId || '',
-        supplierName: purchase.supplierName || '',
-        purchaseId: purchase.id,
-      }),
-      standardPrice: Number(ln.unitPrice) || 0,
-      updatedAt: new Date(),
-    })),
+  await Promise.all(
+    lineItems
+      .filter((ln) => ln.itemId)
+      .map((ln) =>
+        updateDoc(doc(db, 'purchaseItems', ln.itemId), {
+          priceHistory: arrayUnion({
+            price: Number(ln.unitPrice) || 0,
+            date: dateStr,
+            qty: Number(ln.qty) || 0,
+            supplierId: purchase.supplierId || '',
+            supplierName: purchase.supplierName || '',
+            purchaseId: purchase.id,
+          }),
+          standardPrice: Number(ln.unitPrice) || 0,
+          updatedAt: new Date(),
+        }),
+      ),
   );
 
   await setPurchaseStatus(purchase.id, 'settled', {
@@ -485,22 +547,27 @@ export async function settlePurchase(purchase, settledBy) {
 export async function cancelSettlePurchase(purchase) {
   // 지출 항목 삭제
   if (purchase.financeId) {
-    try { await deleteFinanceItem(purchase.financeId); } catch { /* 이미 삭제된 경우 무시 */ }
+    try {
+      await deleteFinanceItem(purchase.financeId);
+    } catch {
+      /* 이미 삭제된 경우 무시 */
+    }
   }
   // 각 품목 priceHistory에서 이 purchaseId 매칭 항목 제거
   const lineItems = Array.isArray(purchase.items) ? purchase.items : [];
-  await Promise.all(lineItems
-    .filter((ln) => ln.itemId)
-    .map(async (ln) => {
-      const ref = doc(db, 'purchaseItems', ln.itemId);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) return;
-      const history = Array.isArray(snap.data().priceHistory) ? snap.data().priceHistory : [];
-      const filtered = history.filter((h) => h && h.purchaseId !== purchase.id);
-      if (filtered.length !== history.length) {
-        await updateDoc(ref, { priceHistory: filtered, updatedAt: new Date() });
-      }
-    }),
+  await Promise.all(
+    lineItems
+      .filter((ln) => ln.itemId)
+      .map(async (ln) => {
+        const ref = doc(db, 'purchaseItems', ln.itemId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        const history = Array.isArray(snap.data().priceHistory) ? snap.data().priceHistory : [];
+        const filtered = history.filter((h) => h && h.purchaseId !== purchase.id);
+        if (filtered.length !== history.length) {
+          await updateDoc(ref, { priceHistory: filtered, updatedAt: new Date() });
+        }
+      }),
   );
   // 상태 되돌림 (정산 메타 제거)
   await updateDoc(doc(db, 'purchases', purchase.id), {

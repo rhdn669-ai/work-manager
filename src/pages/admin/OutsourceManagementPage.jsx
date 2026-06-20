@@ -1,26 +1,39 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  getFreelancers, addFreelancer, updateFreelancer, deleteFreelancer,
-  getVendors, addVendor, updateVendor, deleteVendor,
-  importFromSiteClosings, getVendorDetail,
+  getFreelancers,
+  addFreelancer,
+  updateFreelancer,
+  deleteFreelancer,
+  getVendors,
+  addVendor,
+  updateVendor,
+  importFromSiteClosings,
+  getVendorDetail,
   addFreelancerToVendor,
-  addVendorProject, removeVendorProject,
-  setFreelancerRate, clearAllRateHistories,
+  addVendorProject,
+  removeVendorProject,
+  setFreelancerRate,
+  clearAllRateHistories,
   removeRateHistoryByFields,
   getAllClosingItems,
 } from '../../services/outsourceService';
 import { getAllSites } from '../../services/siteService';
+import { trashGeneric } from '../../services/trashService';
 import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
 import { extractBizInfo, normalizeCompany } from '../../utils/bizPdf';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
+import Select from '../../components/common/Select';
+import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/DialogProvider';
+import Icon from '../../components/common/Icon';
 
 export default function OutsourceManagementPage() {
   const { isAdmin, canViewSalary, userProfile } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
+  const [trashOpen, setTrashOpen] = useState(false);
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [closingItems, setClosingItems] = useState([]);
@@ -73,8 +86,14 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleSaveRate(freelancerId) {
-    if (!rateEdit.year || !rateEdit.month) { alert('적용 년/월을 선택해주세요.'); return; }
-    if (!rateEdit.rate || Number(rateEdit.rate) <= 0) { alert('단가를 입력해주세요.'); return; }
+    if (!rateEdit.year || !rateEdit.month) {
+      alert('적용 년/월을 선택해주세요.');
+      return;
+    }
+    if (!rateEdit.rate || Number(rateEdit.rate) <= 0) {
+      alert('단가를 입력해주세요.');
+      return;
+    }
     const effectiveFromMonth = `${rateEdit.year}-${String(rateEdit.month).padStart(2, '0')}-01`;
     setDetailBusy(true);
     try {
@@ -99,7 +118,9 @@ export default function OutsourceManagementPage() {
     setDetailLoading(true);
     try {
       const detail = await getVendorDetail(v.id, v.name);
-      setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null);
+      setDetailVendor((prev) =>
+        prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null,
+      );
     } catch (err) {
       alert('상세 조회 실패: ' + err.message);
     } finally {
@@ -110,13 +131,16 @@ export default function OutsourceManagementPage() {
   async function reloadDetail() {
     if (!detailVendor) return;
     const detail = await getVendorDetail(detailVendor.id, detailVendor.name);
-    setDetailVendor((prev) => prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null);
+    setDetailVendor((prev) => (prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null));
     await loadAll();
   }
 
   async function handleAddFreelancerToVendor(e) {
     e.preventDefault();
-    if (!newFreelancer.name?.trim()) { alert('이름을 입력해주세요.'); return; }
+    if (!newFreelancer.name?.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
     setDetailBusy(true);
     try {
       await addFreelancerToVendor(detailVendor.name, {
@@ -126,7 +150,9 @@ export default function OutsourceManagementPage() {
       setNewFreelancer({ name: '', dailyRate: detailVendor.dailyRate || 0 });
       await reloadDetail();
       // 다음 직원 이름을 바로 입력할 수 있도록 이름 input에 재포커스 → IME가 한글 모드로 복귀
-      setTimeout(() => { newFreelancerNameRef.current?.focus(); }, 0);
+      setTimeout(() => {
+        newFreelancerNameRef.current?.focus();
+      }, 0);
     } catch (err) {
       alert('직원 추가 실패: ' + err.message);
     } finally {
@@ -137,8 +163,14 @@ export default function OutsourceManagementPage() {
   async function handleAddProject(e) {
     e.preventDefault();
     const name = newProject.name.trim();
-    if (!name) { alert('프로젝트명을 입력해주세요.'); return; }
-    if ((detailVendor.projects || []).some((p) => p.name === name)) { alert('이미 등록된 프로젝트입니다.'); return; }
+    if (!name) {
+      alert('프로젝트명을 입력해주세요.');
+      return;
+    }
+    if ((detailVendor.projects || []).some((p) => p.name === name)) {
+      alert('이미 등록된 프로젝트입니다.');
+      return;
+    }
     setDetailBusy(true);
     try {
       await addVendorProject(detailVendor.id, { name, unitPrice: newProject.unitPrice });
@@ -152,7 +184,7 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleRemoveProject(project) {
-    if (!await confirm(`"${project.name}"을(를) 삭제하시겠습니까?`)) return;
+    if (!(await confirm(`"${project.name}"을(를) 삭제하시겠습니까?`))) return;
     setDetailBusy(true);
     try {
       await removeVendorProject(detailVendor.id, project);
@@ -165,14 +197,19 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleImport() {
-    if (!await confirm('모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?')) return;
+    if (
+      !(await confirm(
+        '모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?',
+      ))
+    )
+      return;
     setImporting(true);
     try {
       const stats = await importFromSiteClosings();
       alert(
         `가져오기 완료\n\n` +
-        `프리랜서 추가: ${stats.freelancersAdded}명 (기존 유지 ${stats.freelancersSkipped}명)\n` +
-        `업체 추가: ${stats.vendorsAdded}개 (기존 유지 ${stats.vendorsSkipped}개)`
+          `프리랜서 추가: ${stats.freelancersAdded}명 (기존 유지 ${stats.freelancersSkipped}명)\n` +
+          `업체 추가: ${stats.vendorsAdded}개 (기존 유지 ${stats.vendorsSkipped}개)`,
       );
       await loadAll();
     } catch (err) {
@@ -183,7 +220,12 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleClearHistories() {
-    if (!await confirm('모든 프리랜서의 단가 변경 이력을 초기화합니다.\n현재 단가는 유지되고, 이전 단가 기록만 전부 삭제됩니다.\n되돌릴 수 없습니다.\n\n계속하시겠습니까?')) return;
+    if (
+      !(await confirm(
+        '모든 프리랜서의 단가 변경 이력을 초기화합니다.\n현재 단가는 유지되고, 이전 단가 기록만 전부 삭제됩니다.\n되돌릴 수 없습니다.\n\n계속하시겠습니까?',
+      ))
+    )
+      return;
     setClearing(true);
     try {
       const count = await clearAllRateHistories();
@@ -208,15 +250,23 @@ export default function OutsourceManagementPage() {
       setVendors(vs);
       setClosingItems(cs);
       setSites(ss);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function shiftFilterMonth(delta) {
     let y = filterYear;
     let m = filterMonth + delta;
-    if (m < 1) { m = 12; y -= 1; }
-    else if (m > 12) { m = 1; y += 1; }
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    } else if (m > 12) {
+      m = 1;
+      y += 1;
+    }
     setFilterYear(y);
     setFilterMonth(m);
   }
@@ -224,7 +274,17 @@ export default function OutsourceManagementPage() {
   function openCreate() {
     setEditItem(null);
     if (tab === 'vendor') {
-      setForm({ name: '', representative: '', contact: '', email: '', businessNumber: '', category: '', bankName: '', bankAccount: '', note: '' });
+      setForm({
+        name: '',
+        representative: '',
+        contact: '',
+        email: '',
+        businessNumber: '',
+        category: '',
+        bankName: '',
+        bankAccount: '',
+        note: '',
+      });
     } else {
       // freelancer / daily 공통 (workerType만 탭에 맞게 설정)
       setForm({ name: '', vendor: '', dailyRate: 0, contact: '', note: '', workerType: tab });
@@ -245,7 +305,10 @@ export default function OutsourceManagementPage() {
   // 업체 PDF(여러 개 가능) → 텍스트/OCR 자동 입력 + 자료실 보관용 보관 (사업자등록증·통장사본 합산)
   async function handlePdfFiles(fileList) {
     const files = Array.from(fileList || []).filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
-    if (files.length === 0) { alert('PDF 파일만 가능합니다.'); return; }
+    if (files.length === 0) {
+      alert('PDF 파일만 가능합니다.');
+      return;
+    }
     setPdfBusy(true);
     setPdfFiles((prev) => [...prev, ...files]);
     setPdfStatus('PDF 읽는 중…');
@@ -260,7 +323,9 @@ export default function OutsourceManagementPage() {
           else if (stage === 'ocr') setPdfStatus(`${label}OCR 인식 중… ${Math.round((progress || 0) * 100)}%`);
         });
         usedOcr = usedOcr || o;
-        Object.keys(merged).forEach((k) => { if (!merged[k] && parsed[k]) merged[k] = parsed[k]; });
+        Object.keys(merged).forEach((k) => {
+          if (!merged[k] && parsed[k]) merged[k] = parsed[k];
+        });
       }
       setForm((f) => ({
         ...f,
@@ -273,9 +338,11 @@ export default function OutsourceManagementPage() {
       const got = merged.name || merged.businessNumber || merged.bankName || merged.bankAccount;
       if (!got) {
         setPdfStatus('');
-        alert(`정보를 충분히 읽지 못했습니다${usedOcr ? ' (OCR 시도함)' : ''}. 직접 확인·입력해 주세요. 파일은 자료실에 보관됩니다.`);
+        alert(
+          `정보를 충분히 읽지 못했습니다${usedOcr ? ' (OCR 시도함)' : ''}. 직접 확인·입력해 주세요. 파일은 자료실에 보관됩니다.`,
+        );
       } else {
-        setPdfStatus(usedOcr ? '✅ OCR로 자동 입력됨 (값 확인 권장)' : '✅ 자동 입력됨');
+        setPdfStatus(usedOcr ? 'OCR로 자동 입력됨 (값 확인 권장)' : '자동 입력됨');
       }
     } catch (err) {
       setPdfStatus('');
@@ -288,11 +355,14 @@ export default function OutsourceManagementPage() {
   async function handleSave(e) {
     e.preventDefault();
     if (submitting) return;
-    if (!form.name?.trim()) { alert('이름을 입력해주세요.'); return; }
+    if (!form.name?.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
     const isVendor = tab === 'vendor';
     const filesToUpload = isVendor ? pdfFiles : [];
     // 업체는 회사명 통일(주식회사 → (주)), 사람(프리랜서/일용직) 이름은 그대로
-    const vendorName = isVendor ? (normalizeCompany(form.name) || form.name.trim()) : form.name.trim();
+    const vendorName = isVendor ? normalizeCompany(form.name) || form.name.trim() : form.name.trim();
     setSubmitting(true);
     try {
       if (isVendor) {
@@ -319,7 +389,13 @@ export default function OutsourceManagementPage() {
       try {
         const folderId = await ensureFolderPath(['거래처 정보', vendorName], userProfile);
         for (let i = 0; i < filesToUpload.length; i += 1) {
-          await uploadFile(filesToUpload[i], folderId, userProfile, undefined, `${vendorName}_${filesToUpload[i].name}`);
+          await uploadFile(
+            filesToUpload[i],
+            folderId,
+            userProfile,
+            undefined,
+            `${vendorName}_${filesToUpload[i].name}`,
+          );
         }
       } catch (err) {
         alert('PDF 자료실 보관 중 오류: ' + err.message);
@@ -329,38 +405,70 @@ export default function OutsourceManagementPage() {
 
   async function handleDelete(item) {
     const label = tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서';
-    if (!await confirm(`"${item.name}" ${label}를 삭제하시겠습니까?`)) return;
+    if (!(await confirm(`"${item.name}" ${label}를 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
     try {
-      if (tab === 'vendor') await deleteVendor(item.id);
-      else await deleteFreelancer(item.id);
+      const collectionName = tab === 'vendor' ? 'vendors' : 'freelancers';
+      const summary =
+        tab === 'vendor'
+          ? [item.representative, item.businessNumber].filter(Boolean).join(' · ')
+          : [label, item.contact].filter(Boolean).join(' · ');
+      await trashGeneric(
+        collectionName,
+        item.id,
+        {
+          title: item.name,
+          summary,
+        },
+        userProfile?.name || '',
+      );
+      toast('휴지통으로 이동했습니다.');
       await loadAll();
     } catch (err) {
       alert('삭제 실패: ' + err.message);
     }
   }
 
-  if (!isAdmin) return <div className="card"><div className="card-body empty-state">접근 권한이 없습니다.</div></div>;
+  if (!isAdmin)
+    return (
+      <div className="card">
+        <div className="card-body empty-state">접근 권한이 없습니다.</div>
+      </div>
+    );
 
   // 업체 소속이 없는 개인 인력만 프리랜서/일용직 탭에 표시 (workerType 미지정은 freelancer로 간주)
-  const soloFreelancers = freelancers.filter((f) => !(f.vendor || '').trim() && (f.workerType || 'freelancer') === 'freelancer');
+  const soloFreelancers = freelancers.filter(
+    (f) => !(f.vendor || '').trim() && (f.workerType || 'freelancer') === 'freelancer',
+  );
   const soloDailies = freelancers.filter((f) => !(f.vendor || '').trim() && f.workerType === 'daily');
 
+  // 업체 표용 — 소속 직원 수 / 등록 프로젝트 수 (로드된 데이터로 계산, 추가 조회 없음)
+  const vendorEmpCount = (v) => freelancers.filter((f) => (f.vendor || '').trim() === (v.name || '').trim()).length;
+  const vendorProjCount = (v) => {
+    const names = new Set();
+    (Array.isArray(v.projects) ? v.projects : []).forEach((p) => names.add(typeof p === 'string' ? p : p?.name));
+    (Array.isArray(v.projectNames) ? v.projectNames : []).forEach((n) => names.add(n));
+    names.delete(undefined);
+    names.delete('');
+    return names.size;
+  };
+
   // 선택된 기간 필터 — 월별 / 전체
-  const filteredItems = filterMode === 'month'
-    ? closingItems.filter((it) => Number(it.year) === filterYear && Number(it.month) === filterMonth)
-    : closingItems;
+  const filteredItems =
+    filterMode === 'month'
+      ? closingItems.filter((it) => Number(it.year) === filterYear && Number(it.month) === filterMonth)
+      : closingItems;
 
   // 탭별 지출 합계 (선택된 기간 기준)
-  const sumByItemTypes = (types, list = filteredItems) => list
-    .filter((it) => types.includes(it.itemType))
-    .reduce((s, it) => s + (Number(it.amount) || 0), 0);
+  const sumByItemTypes = (types, list = filteredItems) =>
+    list.filter((it) => types.includes(it.itemType)).reduce((s, it) => s + (Number(it.amount) || 0), 0);
   const freelancerSpend = sumByItemTypes(['freelancer']);
   const dailySpend = sumByItemTypes(['daily']);
   const vendorSpend = sumByItemTypes(['vendor', 'vendor_case']);
 
   const fmtMoney = (n) => `${Number(n || 0).toLocaleString()}원`;
   const currentSpend = tab === 'freelancer' ? freelancerSpend : tab === 'daily' ? dailySpend : vendorSpend;
-  const currentTabTypes = tab === 'freelancer' ? ['freelancer'] : tab === 'daily' ? ['daily'] : ['vendor', 'vendor_case'];
+  const currentTabTypes =
+    tab === 'freelancer' ? ['freelancer'] : tab === 'daily' ? ['daily'] : ['vendor', 'vendor_case'];
   const currentTabLabel = tab === 'freelancer' ? '프리랜서' : tab === 'daily' ? '일용직' : '업체';
   const periodLabel = filterMode === 'month' ? `${filterYear}년 ${filterMonth}월` : '전체 기간';
   const siteNameMap = Object.fromEntries(sites.map((s) => [s.id, s.name]));
@@ -369,7 +477,7 @@ export default function OutsourceManagementPage() {
   const currentTabItems = filteredItems.filter((it) => currentTabTypes.includes(it.itemType));
 
   // 인원/업체별 집계 — key = 이름(freelancer/daily) 또는 업체명(vendor)
-  const groupKey = (it) => (tab === 'vendor' ? (it.vendor || '(미지정)') : (it.detail || '(이름없음)'));
+  const groupKey = (it) => (tab === 'vendor' ? it.vendor || '(미지정)' : it.detail || '(이름없음)');
   const groupLabel = tab === 'vendor' ? '업체명' : '이름';
   const perPerson = Object.values(
     currentTabItems
@@ -380,7 +488,7 @@ export default function OutsourceManagementPage() {
         acc[k].total += Number(it.amount) || 0;
         acc[k].count += 1;
         return acc;
-      }, {})
+      }, {}),
   ).sort((a, b) => b.total - a.total);
 
   return (
@@ -388,11 +496,29 @@ export default function OutsourceManagementPage() {
       <div className="page-header">
         <h2>외주 관리</h2>
         <div className="page-actions">
-          <button className="btn btn-primary" onClick={openCreate}>
-            {tab === 'vendor' ? '+ 업체' : tab === 'daily' ? '+ 일용직' : '+ 프리랜서'} 추가
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+            <Icon name="trash" className="btn-ic" />
+            휴지통
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={openCreate}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            <Icon name="plus" className="btn-ic" />
+            {tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서'} 추가
           </button>
         </div>
       </div>
+
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['vendors', 'freelancers']}
+        title="외주 휴지통"
+        onChange={loadAll}
+      />
 
       <div className="tab-nav" style={{ marginBottom: 14 }}>
         <button
@@ -400,7 +526,8 @@ export default function OutsourceManagementPage() {
           className={`tab-nav-item ${tab === 'freelancer' ? 'active' : ''}`}
           onClick={() => setTab('freelancer')}
         >
-          프리랜서 {soloFreelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloFreelancers.length}</span>}
+          프리랜서{' '}
+          {soloFreelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloFreelancers.length}</span>}
         </button>
         <button
           type="button"
@@ -427,18 +554,40 @@ export default function OutsourceManagementPage() {
                 type="button"
                 className={`outsource-filter-btn ${filterMode === 'month' ? 'active' : ''}`}
                 onClick={() => setFilterMode('month')}
-              >월별</button>
+              >
+                월별
+              </button>
               <button
                 type="button"
                 className={`outsource-filter-btn ${filterMode === 'all' ? 'active' : ''}`}
                 onClick={() => setFilterMode('all')}
-              >전체</button>
+              >
+                전체
+              </button>
             </div>
             {filterMode === 'month' && (
               <div className="outsource-spend-month-nav">
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftFilterMonth(-1)} aria-label="이전 달">‹</button>
-                <span className="outsource-spend-ym">{filterYear}년 {filterMonth}월</span>
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => shiftFilterMonth(1)} aria-label="다음 달">›</button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline btn-icon"
+                  onClick={() => shiftFilterMonth(-1)}
+                  aria-label="이전 달"
+                  title="이전 달"
+                >
+                  <Icon name="chevronRight" className="btn-ic" style={{ transform: 'rotate(180deg)' }} />
+                </button>
+                <span className="outsource-spend-ym">
+                  {filterYear}년 {filterMonth}월
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline btn-icon"
+                  onClick={() => shiftFilterMonth(1)}
+                  aria-label="다음 달"
+                  title="다음 달"
+                >
+                  <Icon name="chevronRight" className="btn-ic" />
+                </button>
               </div>
             )}
           </div>
@@ -449,10 +598,24 @@ export default function OutsourceManagementPage() {
             disabled={perPerson.length === 0}
             title={perPerson.length > 0 ? `${currentTabLabel} 인원별 상세 보기` : '해당 기간 지출 없음'}
           >
-            <span className="outsource-spend-summary-label">{currentTabLabel} 지출 · {periodLabel}</span>
-            <strong className="outsource-spend-summary-amount">{fmtMoney(currentSpend)}</strong>
+            <span className="outsource-spend-summary-label">
+              {currentTabLabel} 지출 · {periodLabel}
+            </span>
+            <strong className="outsource-spend-summary-amount" style={{ color: 'var(--primary)' }}>
+              {fmtMoney(currentSpend)}
+            </strong>
             {perPerson.length > 0 && (
-              <span className="outsource-spend-summary-sub">
+              <span
+                className="outsource-spend-summary-sub"
+                title={`${perPerson.length}명 · 클릭하여 인원별 보기`}
+                style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: 'block',
+                  maxWidth: '100%',
+                }}
+              >
                 {perPerson.length}명 · 클릭하여 인원별 보기 →
               </span>
             )}
@@ -462,73 +625,98 @@ export default function OutsourceManagementPage() {
 
       {loading ? (
         <div className="loading">로딩 중...</div>
-      ) : (tab === 'freelancer' || tab === 'daily') ? (
+      ) : tab === 'freelancer' || tab === 'daily' ? (
         (tab === 'freelancer' ? soloFreelancers : soloDailies).length === 0 ? (
-          <div className="card"><div className="card-body empty-state">
-            {tab === 'freelancer'
-              ? '등록된 개인 프리랜서가 없습니다. (업체 소속 직원은 업체 상세에서 관리)'
-              : '등록된 일용직이 없습니다.'}
-          </div></div>
+          <div className="card">
+            <div className="card-body empty-state">
+              {tab === 'freelancer'
+                ? '등록된 개인 프리랜서가 없습니다. (업체 소속 직원은 업체 상세에서 관리)'
+                : '등록된 일용직이 없습니다.'}
+            </div>
+          </div>
         ) : (
-          <table className="table table-clickable cards-sm">
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>{tab === 'daily' ? '시급' : '일당'}</th>
-                <th>연락처</th>
-                <th>비고</th>
-                <th style={{ width: 1, whiteSpace: 'nowrap' }}>작업</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(tab === 'freelancer' ? soloFreelancers : soloDailies).map((f) => (
-                <tr
-                  key={f.id}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setDetailFor({ kind: tab, name: f.name })}
-                  title={`${f.name} 공수표 상세 내역 보기`}
-                >
-                  <td data-label="이름"><strong>{f.name}</strong></td>
-                  <td data-label={tab === 'daily' ? '시급' : '일당'}>{f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}</td>
-                  <td data-label="연락처">{f.contact || '-'}</td>
-                  <td data-label="비고" style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.note || '-'}</td>
-                  <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
-                    <div className="outsource-action-btns">
-                      <button type="button" className="outsource-icon-btn" onClick={() => openEdit(f)} title="수정" aria-label="수정">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                      <button type="button" className="outsource-icon-btn is-danger" onClick={() => handleDelete(f)} title="삭제" aria-label="삭제">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                          <path d="M10 11v6M14 11v6"/>
-                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
+          <div className="table-scroll-x">
+            <table className="table table-clickable cards-sm">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>{tab === 'daily' ? '시급' : '일당'}</th>
+                  <th>연락처</th>
+                  <th>비고</th>
+                  <th className="bom-project-action-col">작업</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(tab === 'freelancer' ? soloFreelancers : soloDailies).map((f) => (
+                  <tr
+                    key={f.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setDetailFor({ kind: tab, name: f.name })}
+                    title={`${f.name} 공수표 상세 내역 보기`}
+                  >
+                    <td data-label="이름" title={f.name || ''}>
+                      <strong>{f.name}</strong>
+                    </td>
+                    <td data-label={tab === 'daily' ? '시급' : '일당'}>
+                      {f.dailyRate ? `${Number(f.dailyRate).toLocaleString()}원` : '-'}
+                    </td>
+                    <td data-label="연락처" className="u-ellipsis" title={f.contact || ''}>
+                      {f.contact || '-'}
+                    </td>
+                    <td data-label="비고" className="supplier-note-cell" title={f.note || ''}>
+                      <span className="cell-clamp-2">{f.note || '-'}</span>
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()} className="bom-project-action-col">
+                      <div className="btn-group" style={{ alignItems: 'stretch' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => openEdit(f)}
+                          title="수정"
+                          aria-label="수정"
+                          style={{ minHeight: 36 }}
+                        >
+                          수정
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(f)}
+                          title="삭제"
+                          aria-label="삭제"
+                          style={{ minHeight: 36 }}
+                        >
+                          <Icon name="trash" className="btn-ic" />삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )
+      ) : vendors.length === 0 ? (
+        <div className="card">
+          <div className="card-body empty-state">등록된 업체가 없습니다.</div>
+        </div>
       ) : (
-        vendors.length === 0 ? (
-          <div className="card"><div className="card-body empty-state">등록된 업체가 없습니다.</div></div>
-        ) : (
-          <table className="table table-clickable cards-sm">
+        <div className="table-scroll-x">
+          <table className="table cards-sm vendor-table">
             <thead>
               <tr>
-                <th>업체명</th>
-                <th>대표자</th>
+                <th>상호</th>
+                <th>대표</th>
                 <th>연락처</th>
+                <th>이메일</th>
                 <th>사업자번호</th>
                 <th>은행</th>
-                <th>계좌</th>
-                <th style={{ width: 1, whiteSpace: 'nowrap' }}>작업</th>
+                <th>계좌번호</th>
+                <th className="hide-mobile">분류</th>
+                <th>직원수</th>
+                <th>프로젝트수</th>
+                <th className="hide-mobile">비고</th>
+                <th className="bom-project-action-col">작업</th>
               </tr>
             </thead>
             <tbody>
@@ -536,38 +724,59 @@ export default function OutsourceManagementPage() {
                 <tr
                   key={v.id}
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setDetailFor({ kind: 'vendor', name: v.name })}
-                  title={`${v.name} 지출 상세 내역 보기`}
+                  onClick={() => openVendorDetail(v)}
+                  title={`${v.name} 소속·프로젝트 보기`}
                 >
-                  <td data-label="업체명"><strong>{v.name}</strong></td>
-                  <td data-label="대표자">{v.representative || '-'}</td>
-                  <td data-label="연락처">{v.contact || '-'}</td>
-                  <td data-label="사업자번호">{v.businessNumber || '-'}</td>
-                  <td data-label="은행" style={{ whiteSpace: 'nowrap' }}>{v.bankName || '-'}</td>
-                  <td data-label="계좌" style={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.bankAccount || '-'}</td>
-                  <td onClick={(e) => e.stopPropagation()} className="outsource-actions-cell">
-                    <div className="outsource-action-btns">
-                      <button type="button" className="outsource-icon-btn" onClick={() => openVendorDetail(v)} title="소속·프로젝트" aria-label="소속·프로젝트 보기">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                          <circle cx="9" cy="7" r="4"/>
-                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
+                  <td data-label="상호" title={v.name || ''}>
+                    <strong>{v.name}</strong>
+                  </td>
+                  <td data-label="대표" className="u-ellipsis" title={v.representative || ''}>
+                    {v.representative || '-'}
+                  </td>
+                  <td data-label="연락처" className="u-ellipsis" title={v.contact || ''}>
+                    {v.contact || '-'}
+                  </td>
+                  <td data-label="이메일" className="u-ellipsis" title={v.email || ''}>
+                    {v.email || '-'}
+                  </td>
+                  <td data-label="사업자번호" className="u-ellipsis" title={v.businessNumber || ''}>
+                    {v.businessNumber || '-'}
+                  </td>
+                  <td data-label="은행" className="u-ellipsis" title={v.bankName || ''}>
+                    {v.bankName || '-'}
+                  </td>
+                  <td data-label="계좌번호" className="u-wrap" title={v.bankAccount || ''}>
+                    {v.bankAccount || '-'}
+                  </td>
+                  <td data-label="분류" className="u-ellipsis hide-mobile" title={v.category || ''}>
+                    {v.category || '-'}
+                  </td>
+                  <td data-label="직원수">{vendorEmpCount(v)}명</td>
+                  <td data-label="프로젝트수">{vendorProjCount(v)}개</td>
+                  <td data-label="비고" className="supplier-note-cell hide-mobile" title={v.note || ''}>
+                    <span className="cell-clamp-2">{v.note || '-'}</span>
+                  </td>
+                  <td className="bom-project-action-col" onClick={(e) => e.stopPropagation()}>
+                    <div className="btn-group" style={{ alignItems: 'stretch' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => openEdit(v)}
+                        title="수정"
+                        aria-label="수정"
+                        style={{ minHeight: 36 }}
+                      >
+                        수정
                       </button>
-                      <button type="button" className="outsource-icon-btn" onClick={() => openEdit(v)} title="수정" aria-label="수정">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                      <button type="button" className="outsource-icon-btn is-danger" onClick={() => handleDelete(v)} title="삭제" aria-label="삭제">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                          <path d="M10 11v6M14 11v6"/>
-                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                        </svg>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDelete(v)}
+                        title="삭제"
+                        aria-label="삭제"
+                        style={{ minHeight: 36 }}
+                      >
+                        <Icon name="trash" className="btn-ic" />삭제
                       </button>
                     </div>
                   </td>
@@ -575,7 +784,7 @@ export default function OutsourceManagementPage() {
               ))}
             </tbody>
           </table>
-        )
+        </div>
       )}
 
       <Modal
@@ -586,29 +795,48 @@ export default function OutsourceManagementPage() {
         <form onSubmit={handleSave}>
           {tab === 'vendor' && (
             <div className="form-group">
-              <label>PDF 첨부 — 사업자등록증·통장사본 (자동 입력 + 자료실 보관)</label>
+              <label>PDF 첨부 (사업자등록증·통장사본)</label>
               <div
                 className={`pdf-dropzone ${pdfDragOver ? 'is-over' : ''} ${pdfBusy ? 'is-busy' : ''}`}
                 onClick={() => !pdfBusy && pdfInputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); if (!pdfBusy) setPdfDragOver(true); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!pdfBusy) setPdfDragOver(true);
+                }}
                 onDragLeave={() => setPdfDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setPdfDragOver(false); if (e.dataTransfer.files?.length) handlePdfFiles(e.dataTransfer.files); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setPdfDragOver(false);
+                  if (e.dataTransfer.files?.length) handlePdfFiles(e.dataTransfer.files);
+                }}
               >
                 <input
-                  ref={pdfInputRef} type="file" accept="application/pdf,.pdf" multiple
-                  style={{ display: 'none' }} disabled={pdfBusy}
-                  onChange={(e) => { const fl = e.target.files; e.target.value = ''; if (fl?.length) handlePdfFiles(fl); }}
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  multiple
+                  style={{ display: 'none' }}
+                  disabled={pdfBusy}
+                  onChange={(e) => {
+                    const fl = e.target.files;
+                    e.target.value = '';
+                    if (fl?.length) handlePdfFiles(fl);
+                  }}
                 />
-                <span className="pdf-dropzone-icon">📄</span>
-                <span>{pdfFiles.length ? `${pdfFiles.length}개 첨부됨 (클릭/드롭으로 더 추가)` : 'PDF를 끌어다 놓거나 클릭해서 선택 (여러 개 가능)'}</span>
+                <Icon name="doc" className="pdf-dropzone-icon" />
+                <span>
+                  {pdfFiles.length
+                    ? `${pdfFiles.length}개 첨부됨 (클릭/드롭으로 더 추가)`
+                    : 'PDF를 끌어다 놓거나 클릭해서 선택 (여러 개 가능)'}
+                </span>
               </div>
-              <p className="field-hint">
-                {pdfBusy
-                  ? (pdfStatus || 'PDF 처리 중…')
-                  : (pdfFiles.length
-                    ? `${pdfStatus ? pdfStatus + ' · ' : ''}${pdfFiles.map((f) => f.name).join(', ')} — 저장 시 자료실 "거래처 정보/${(normalizeCompany(form.name) || (form.name || '').trim()) || '업체명'}" 폴더에 보관됩니다.`
-                    : '사업자등록증·통장사본을 한 번에 첨부하면 둘 다 인식. 스캔 PDF는 OCR.')}
-              </p>
+              {(pdfBusy || pdfFiles.length > 0) && (
+                <p className="field-hint">
+                  {pdfBusy
+                    ? pdfStatus || 'PDF 처리 중…'
+                    : `${pdfStatus ? pdfStatus + ' · ' : ''}${pdfFiles.map((f) => f.name).join(', ')} — 저장 시 자료실 "거래처 정보/${normalizeCompany(form.name) || (form.name || '').trim() || '업체명'}" 폴더에 보관됩니다.`}
+                </p>
+              )}
             </div>
           )}
           <div className="form-group">
@@ -641,7 +869,9 @@ export default function OutsourceManagementPage() {
                   value={form.representative || ''}
                   onChange={(e) => setForm({ ...form, representative: e.target.value })}
                   placeholder="대표자 성함"
-                  lang="ko" autoComplete="off" spellCheck={false}
+                  lang="ko"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </div>
               <div className="form-group">
@@ -649,15 +879,19 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.contact || ''}
                   onChange={(e) => setForm({ ...form, contact: e.target.value })}
-                  placeholder="010-0000-0000" inputMode="tel" autoComplete="off"
+                  placeholder="010-0000-0000"
+                  inputMode="tel"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-group">
                 <label>이메일</label>
                 <input
-                  type="email" value={form.email || ''}
+                  type="email"
+                  value={form.email || ''}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="예: sales@company.com" autoComplete="off"
+                  placeholder="예: sales@company.com"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-group">
@@ -665,7 +899,9 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.businessNumber || ''}
                   onChange={(e) => setForm({ ...form, businessNumber: e.target.value })}
-                  placeholder="000-00-00000" inputMode="numeric" autoComplete="off"
+                  placeholder="000-00-00000"
+                  inputMode="numeric"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-group">
@@ -673,7 +909,8 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.category || ''}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  placeholder="예: 자재, 공구, 소모품" autoComplete="off"
+                  placeholder="예: 자재, 공구, 소모품"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-group">
@@ -681,7 +918,10 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.bankName || ''}
                   onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-                  placeholder="예: 국민은행" lang="ko" autoComplete="off" spellCheck={false}
+                  placeholder="예: 국민은행"
+                  lang="ko"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </div>
               <div className="form-group">
@@ -689,12 +929,17 @@ export default function OutsourceManagementPage() {
                 <input
                   value={form.bankAccount || ''}
                   onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
-                  placeholder="계좌번호 · 예금주" autoComplete="off"
+                  placeholder="계좌번호 · 예금주"
+                  autoComplete="off"
                 />
               </div>
               <div className="form-group">
                 <label>메모</label>
-                <textarea rows={2} value={form.note || ''} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+                <textarea
+                  rows={2}
+                  value={form.note || ''}
+                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                />
               </div>
             </>
           )}
@@ -719,10 +964,18 @@ export default function OutsourceManagementPage() {
             </>
           )}
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? '저장 중…' : (editItem ? '수정' : '추가')}
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ minHeight: 36 }}>
+              {submitting ? '저장 중…' : editItem ? '수정' : '추가'}
             </button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)} disabled={submitting}>취소</button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setShowModal(false)}
+              disabled={submitting}
+              style={{ minHeight: 36 }}
+            >
+              취소
+            </button>
           </div>
         </form>
       </Modal>
@@ -767,96 +1020,107 @@ export default function OutsourceManagementPage() {
       )}
 
       {/* 개별 상세 내역 모달 — 이름/업체 행 클릭 시 */}
-      {detailFor && (() => {
-        const types = detailFor.kind === 'vendor' ? ['vendor', 'vendor_case'] : [detailFor.kind];
-        const matcher = (it) => types.includes(it.itemType) && (
-          detailFor.kind === 'vendor'
-            ? (it.vendor || '') === detailFor.name
-            : (it.detail || '') === detailFor.name
-        );
-        const all = closingItems.filter(matcher).filter((it) => Number(it.amount) > 0);
-        const totalAmt = all.reduce((s, it) => s + (Number(it.amount) || 0), 0);
-        // 최신순 정렬
-        const sorted = [...all].sort((a, b) => {
-          const d = Number(b.year) * 100 + Number(b.month) - Number(a.year) * 100 - Number(a.month);
-          return d !== 0 ? d : (a.no || 0) - (b.no || 0);
-        });
-        const kindLabel = detailFor.kind === 'vendor' ? '업체' : detailFor.kind === 'daily' ? '일용직' : '프리랜서';
-        const isVendorTab = detailFor.kind === 'vendor';
-        return (
-          <Modal
-            isOpen={!!detailFor}
-            onClose={() => setDetailFor(null)}
-            title={`${detailFor.name} · ${kindLabel} 지출 상세`}
-          >
-            <div className="outsource-pp-summary">
-              <div className="outsource-pp-total">
-                <span>총 지출 (전체 기간)</span>
-                <strong>{fmtMoney(totalAmt)}</strong>
-              </div>
-              {sorted.length === 0 ? (
-                <p className="empty-state">지출 기록이 없습니다.</p>
-              ) : (
-                <ul className="outsource-detail-list">
-                  {sorted.map((it) => {
-                    const siteName = siteNameMap[it.siteId] || '(삭제된 프로젝트)';
-                    const qty = Number(it.quantity || 0);
-                    const unit = it.itemType === 'daily' ? '시간' : it.itemType === 'vendor_case' ? '건' : '일';
-                    // 품목/이름 라벨: 업체 탭이면 detail=직원명 or 프로젝트명, 프리랜서/일용직 탭이면 vendor=소속업체(있을 때)
-                    const itemLabel = isVendorTab
-                      ? (it.detail || (it.itemType === 'vendor_case' ? '프로젝트 미지정' : '직원 미지정'))
-                      : (it.vendor || '');
-                    const itemKind = isVendorTab
-                      ? (it.itemType === 'vendor_case' ? '프로젝트' : '직원')
-                      : (it.vendor ? '소속 업체' : '');
-                    return (
-                      <li key={it.id}>
-                        <div className="outsource-detail-head">
-                          <strong>{it.year}년 {it.month}월</strong>
-                          <span className="outsource-detail-site">{siteName}</span>
-                        </div>
-                        {itemLabel && (
-                          <div className="outsource-detail-item">
-                            {itemKind && <span className="outsource-detail-kind">{itemKind}</span>}
-                            <strong className="outsource-detail-name">{itemLabel}</strong>
-                            {it.category && <span className="outsource-detail-cat">· {it.category}</span>}
+      {detailFor &&
+        (() => {
+          const types = detailFor.kind === 'vendor' ? ['vendor', 'vendor_case'] : [detailFor.kind];
+          const matcher = (it) =>
+            types.includes(it.itemType) &&
+            (detailFor.kind === 'vendor' ? (it.vendor || '') === detailFor.name : (it.detail || '') === detailFor.name);
+          const all = closingItems.filter(matcher).filter((it) => Number(it.amount) > 0);
+          const totalAmt = all.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+          // 최신순 정렬
+          const sorted = [...all].sort((a, b) => {
+            const d = Number(b.year) * 100 + Number(b.month) - Number(a.year) * 100 - Number(a.month);
+            return d !== 0 ? d : (a.no || 0) - (b.no || 0);
+          });
+          const kindLabel = detailFor.kind === 'vendor' ? '업체' : detailFor.kind === 'daily' ? '일용직' : '프리랜서';
+          const isVendorTab = detailFor.kind === 'vendor';
+          return (
+            <Modal
+              isOpen={!!detailFor}
+              onClose={() => setDetailFor(null)}
+              title={`${detailFor.name} · ${kindLabel} 지출 상세`}
+            >
+              <div className="outsource-pp-summary">
+                <div className="outsource-pp-total">
+                  <span>총 지출 (전체 기간)</span>
+                  <strong>{fmtMoney(totalAmt)}</strong>
+                </div>
+                {sorted.length === 0 ? (
+                  <p className="empty-state">지출 기록이 없습니다.</p>
+                ) : (
+                  <ul className="outsource-detail-list">
+                    {sorted.map((it) => {
+                      const siteName = siteNameMap[it.siteId] || '(삭제된 프로젝트)';
+                      const qty = Number(it.quantity || 0);
+                      const unit = it.itemType === 'daily' ? '시간' : it.itemType === 'vendor_case' ? '건' : '일';
+                      // 품목/이름 라벨: 업체 탭이면 detail=직원명 or 프로젝트명, 프리랜서/일용직 탭이면 vendor=소속업체(있을 때)
+                      const itemLabel = isVendorTab
+                        ? it.detail || (it.itemType === 'vendor_case' ? '프로젝트 미지정' : '직원 미지정')
+                        : it.vendor || '';
+                      const itemKind = isVendorTab
+                        ? it.itemType === 'vendor_case'
+                          ? '프로젝트'
+                          : '직원'
+                        : it.vendor
+                          ? '소속 업체'
+                          : '';
+                      return (
+                        <li key={it.id}>
+                          <div className="outsource-detail-head">
+                            <strong>
+                              {it.year}년 {it.month}월
+                            </strong>
+                            <span className="outsource-detail-site">{siteName}</span>
                           </div>
-                        )}
-                        <div className="outsource-detail-body">
-                          <span className="outsource-detail-meta">
-                            {qty > 0 ? `${qty}${unit}` : ''}
-                            {it.unitPrice > 0 && qty > 0 ? ` · 단가 ${Number(it.unitPrice).toLocaleString()}원` : ''}
-                          </span>
-                          <strong className="outsource-detail-amount">{fmtMoney(it.amount)}</strong>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </Modal>
-        );
-      })()}
+                          {itemLabel && (
+                            <div className="outsource-detail-item">
+                              {itemKind && <span className="outsource-detail-kind">{itemKind}</span>}
+                              <strong className="outsource-detail-name">{itemLabel}</strong>
+                              {it.category && <span className="outsource-detail-cat">· {it.category}</span>}
+                            </div>
+                          )}
+                          <div className="outsource-detail-body">
+                            <span className="outsource-detail-meta">
+                              {qty > 0 ? `${qty}${unit}` : ''}
+                              {it.unitPrice > 0 && qty > 0 ? ` · 단가 ${Number(it.unitPrice).toLocaleString()}원` : ''}
+                            </span>
+                            <strong className="outsource-detail-amount">{fmtMoney(it.amount)}</strong>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </Modal>
+          );
+        })()}
 
       {/* 업체 상세 모달 */}
       <Modal isOpen={!!detailVendor} onClose={() => setDetailVendor(null)} title={detailVendor?.name || '업체 상세'}>
         {detailVendor && (
           <>
-            <div className="tab-nav" style={{ marginBottom: 12 }}>
+            <div className="tab-nav" style={{ marginBottom: 8 }}>
               <button
                 type="button"
                 className={`tab-nav-item ${detailTab === 'freelancers' ? 'active' : ''}`}
                 onClick={() => setDetailTab('freelancers')}
               >
-                포함 직원 {detailVendor.freelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.freelancers.length}</span>}
+                포함 직원{' '}
+                {detailVendor.freelancers.length > 0 && (
+                  <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.freelancers.length}</span>
+                )}
               </button>
               <button
                 type="button"
                 className={`tab-nav-item ${detailTab === 'projects' ? 'active' : ''}`}
                 onClick={() => setDetailTab('projects')}
               >
-                프로젝트 {(detailVendor.projects || []).length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projects.length}</span>}
+                프로젝트{' '}
+                {(detailVendor.projects || []).length > 0 && (
+                  <span style={{ opacity: 0.6, marginLeft: 3 }}>{detailVendor.projects.length}</span>
+                )}
               </button>
             </div>
 
@@ -892,15 +1156,30 @@ export default function OutsourceManagementPage() {
                       if (Number(f.previousDailyRate) > 0) {
                         const legacyFrom = f.previousDailyRateFrom || '';
                         const legacyTo = f.previousDailyRateTo || '';
-                        const dup = historyList.some((h) => h.rate === Number(f.previousDailyRate) && h.from === legacyFrom && h.to === legacyTo);
-                        if (!dup) historyList.push({ rate: Number(f.previousDailyRate), from: legacyFrom, to: legacyTo, isLegacy: true });
+                        const dup = historyList.some(
+                          (h) => h.rate === Number(f.previousDailyRate) && h.from === legacyFrom && h.to === legacyTo,
+                        );
+                        if (!dup)
+                          historyList.push({
+                            rate: Number(f.previousDailyRate),
+                            from: legacyFrom,
+                            to: legacyTo,
+                            isLegacy: true,
+                          });
                       }
                       historyList.sort((a, b) => (b.from || '').localeCompare(a.from || ''));
                       return (
                         <li key={f.id} className="vendor-detail-item">
-                          <div className="vendor-detail-row-main">
-                            <strong>{f.name}</strong>
-                            <span>
+                          <div
+                            className="vendor-detail-row-main"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, flexWrap: 'wrap' }}
+                          >
+                            <strong className="u-ellipsis-1" title={f.name} style={{ minWidth: 0 }}>
+                              {f.name}
+                            </strong>
+                            <span
+                              title={`${f.dailyRate > 0 ? `${Number(f.dailyRate).toLocaleString()}원` : '단가 미입력'}${fromLabel ? ` · ${fromLabel}` : ''}${f.contact ? ` · ${f.contact}` : ''}`}
+                            >
                               {f.dailyRate > 0 ? `${Number(f.dailyRate).toLocaleString()}원` : '단가 미입력'}
                               {fromLabel && ` · ${fromLabel}`}
                               {f.contact && ` · ${f.contact}`}
@@ -909,15 +1188,23 @@ export default function OutsourceManagementPage() {
                               type="button"
                               className="btn btn-sm btn-outline"
                               onClick={() => (isEditing ? setEditRateFor(null) : openRateEdit(f))}
+                              style={{ minHeight: 36 }}
                             >
                               {isEditing ? '취소' : '단가 변경'}
                             </button>
                             <button
                               type="button"
-                              className="btn btn-sm btn-danger-outline"
+                              className="btn btn-sm btn-danger"
                               title="이 소속 직원 삭제"
+                              aria-label="삭제"
+                              style={{ minHeight: 36 }}
                               onClick={async () => {
-                                if (!await confirm(`"${f.name}"을(를) 이 업체에서 완전히 삭제하시겠습니까?\n(외주관리에서도 제거되며, 공수표에 기록된 과거 내역은 남습니다.)`)) return;
+                                if (
+                                  !(await confirm(
+                                    `"${f.name}"을(를) 이 업체에서 완전히 삭제하시겠습니까?\n(외주관리에서도 제거되며, 공수표에 기록된 과거 내역은 남습니다.)`,
+                                  ))
+                                )
+                                  return;
                                 setDetailBusy(true);
                                 try {
                                   await deleteFreelancer(f.id);
@@ -931,81 +1218,115 @@ export default function OutsourceManagementPage() {
                               }}
                               disabled={detailBusy}
                             >
-                              삭제
+                              <Icon name="trash" className="btn-ic" />삭제
                             </button>
                           </div>
-                          {historyList.length > 0 && (() => {
-                            const isOpen = !!openHistoryFor[f.id];
-                            return (
-                              <div className="rate-history-list">
-                                <button
-                                  type="button"
-                                  className="rate-history-toggle"
-                                  onClick={() => setOpenHistoryFor((s) => ({ ...s, [f.id]: !s[f.id] }))}
-                                  aria-expanded={isOpen}
-                                >
-                                  <span className={`rate-history-caret${isOpen ? ' open' : ''}`}>▸</span>
-                                  단가 이력 ({historyList.length})
-                                </button>
-                                {isOpen && historyList.map((h, idx) => {
-                                  const hf = fmtYM(h.from);
-                                  const ht = fmtYM(h.to);
-                                  const period = hf || ht ? `(${hf || '이전'} ~ ${ht || '이전'})` : '';
-                                  return (
-                                    <div className="previous-rate-info" key={`${h.rate}-${h.from}-${h.to}-${idx}`}>
-                                      <span>{h.rate.toLocaleString()}원 {period}</span>
-                                      <button
-                                        type="button"
-                                        className="rate-history-delete"
-                                        title="이 이력 삭제"
-                                        aria-label="이 이력 삭제"
-                                        onClick={async () => {
-                                          if (!await confirm(`${h.rate.toLocaleString()}원 ${period} 이력을 삭제하시겠습니까?`)) return;
-                                          setDetailBusy(true);
-                                          try {
-                                            await removeRateHistoryByFields(f.id, {
-                                              from: h.from, to: h.to, rate: h.rate, isLegacy: h.isLegacy,
-                                            });
-                                            await reloadDetail();
-                                          } catch (err) {
-                                            alert('삭제 실패: ' + err.message);
-                                          } finally {
-                                            setDetailBusy(false);
-                                          }
-                                        }}
-                                        disabled={detailBusy}
-                                      >
-                                        ✕
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
+                          {historyList.length > 0 &&
+                            (() => {
+                              const isOpen = !!openHistoryFor[f.id];
+                              return (
+                                <div className="rate-history-list">
+                                  <button
+                                    type="button"
+                                    className="rate-history-toggle"
+                                    onClick={() => setOpenHistoryFor((s) => ({ ...s, [f.id]: !s[f.id] }))}
+                                    aria-expanded={isOpen}
+                                    title={`단가 이력 (${historyList.length}건)`}
+                                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                  >
+                                    <Icon
+                                      name="chevronRight"
+                                      className={`rate-history-caret${isOpen ? ' open' : ''}`}
+                                    />
+                                    단가 이력 ({historyList.length})
+                                  </button>
+                                  {isOpen &&
+                                    historyList.map((h, idx) => {
+                                      const hf = fmtYM(h.from);
+                                      const ht = fmtYM(h.to);
+                                      const period = hf || ht ? `(${hf || '이전'} ~ ${ht || '이전'})` : '';
+                                      return (
+                                        <div className="previous-rate-info" key={`${h.rate}-${h.from}-${h.to}-${idx}`}>
+                                          <span title={`${h.rate.toLocaleString()}원 ${period}`}>
+                                            {h.rate.toLocaleString()}원 {period}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            className="rate-history-delete"
+                                            title="이 이력 삭제"
+                                            aria-label="이 이력 삭제"
+                                            onClick={async () => {
+                                              if (
+                                                !(await confirm(
+                                                  `${h.rate.toLocaleString()}원 ${period} 이력을 삭제하시겠습니까?`,
+                                                ))
+                                              )
+                                                return;
+                                              setDetailBusy(true);
+                                              try {
+                                                await removeRateHistoryByFields(f.id, {
+                                                  from: h.from,
+                                                  to: h.to,
+                                                  rate: h.rate,
+                                                  isLegacy: h.isLegacy,
+                                                });
+                                                await reloadDetail();
+                                              } catch (err) {
+                                                alert('삭제 실패: ' + err.message);
+                                              } finally {
+                                                setDetailBusy(false);
+                                              }
+                                            }}
+                                            disabled={detailBusy}
+                                          >
+                                            <Icon name="close" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              );
+                            })()}
                           {isEditing && (
                             <div className="rate-edit-panel">
-                              <div className="rate-edit-row">
-                                <label>적용 월</label>
-                                <div style={{ display: 'flex', gap: 4 }}>
-                                  <select value={rateEdit.year} onChange={(e) => setRateEdit({ ...rateEdit, year: Number(e.target.value) })}>
-                                    {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
-                                  </select>
-                                  <select value={rateEdit.month} onChange={(e) => setRateEdit({ ...rateEdit, month: Number(e.target.value) })}>
-                                    {Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => <option key={mm} value={mm}>{mm}월</option>)}
-                                  </select>
+                              <div className="rate-edit-row" style={{ flexDirection: 'column', gap: 4 }}>
+                                <label style={{ minWidth: 56, flexShrink: 0 }}>적용 월</label>
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                  <Select
+                                    value={rateEdit.year}
+                                    onChange={(v) => setRateEdit({ ...rateEdit, year: Number(v) })}
+                                    ariaLabel="적용 년도"
+                                    options={[2024, 2025, 2026, 2027, 2028].map((y) => ({ value: y, label: `${y}년` }))}
+                                  />
+                                  <Select
+                                    value={rateEdit.month}
+                                    onChange={(v) => setRateEdit({ ...rateEdit, month: Number(v) })}
+                                    ariaLabel="적용 월"
+                                    options={Array.from({ length: 12 }, (_, i) => i + 1).map((mm) => ({
+                                      value: mm,
+                                      label: `${mm}월`,
+                                    }))}
+                                  />
                                 </div>
                               </div>
-                              <div className="rate-edit-row">
-                                <label>새 단가</label>
+                              <div className="rate-edit-row" style={{ flexDirection: 'column', gap: 4 }}>
+                                <label style={{ minWidth: 56, flexShrink: 0 }}>새 단가</label>
                                 <MoneyInput
                                   value={rateEdit.rate || 0}
                                   onChange={(e) => setRateEdit({ ...rateEdit, rate: e.target.value })}
                                 />
                               </div>
-                              <p className="rate-edit-hint">지정한 월부터 공수표에 자동 적용됩니다. 과거 공수표는 영향 없습니다.</p>
+                              <p className="rate-edit-hint">
+                                지정한 월부터 공수표에 자동 적용됩니다. 과거 공수표는 영향 없습니다.
+                              </p>
                               <div className="rate-edit-actions">
-                                <button type="button" className="btn btn-sm btn-primary" disabled={detailBusy} onClick={() => handleSaveRate(f.id)}>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-primary"
+                                  disabled={detailBusy}
+                                  onClick={() => handleSaveRate(f.id)}
+                                  style={{ minHeight: 36 }}
+                                >
                                   {detailBusy ? '저장 중…' : '저장'}
                                 </button>
                               </div>
@@ -1016,7 +1337,7 @@ export default function OutsourceManagementPage() {
                     })}
                   </ul>
                 )}
-                <form className="vendor-add-form" onSubmit={handleAddFreelancerToVendor}>
+                <form className="vendor-add-form" onSubmit={handleAddFreelancerToVendor} style={{ flexWrap: 'wrap' }}>
                   <input
                     ref={newFreelancerNameRef}
                     placeholder="직원 이름"
@@ -1025,14 +1346,21 @@ export default function OutsourceManagementPage() {
                     lang="ko"
                     autoComplete="off"
                     spellCheck={false}
+                    style={{ minWidth: 0, flex: '1 1 120px' }}
                   />
                   <MoneyInput
                     placeholder="일당"
                     value={newFreelancer.dailyRate || 0}
                     onChange={(e) => setNewFreelancer({ ...newFreelancer, dailyRate: e.target.value })}
+                    style={{ minWidth: 0, flex: '1 1 100px' }}
                   />
-                  <button type="submit" className="btn btn-sm btn-primary" disabled={detailBusy}>
-                    {detailBusy ? '…' : '+ 추가'}
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary"
+                    disabled={detailBusy}
+                    style={{ flexShrink: 0, minHeight: 36 }}
+                  >
+                    {detailBusy ? '…' : '추가'}
                   </button>
                 </form>
               </>
@@ -1044,31 +1372,45 @@ export default function OutsourceManagementPage() {
                   <ul className="vendor-detail-list">
                     {detailVendor.projects.map((p) => (
                       <li key={p.name}>
-                        <strong>{p.name}</strong>
-                        <span>{p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}</span>
+                        <strong className="u-ellipsis" title={p.name}>
+                          {p.name}
+                        </strong>
+                        <span>
+                          {p.unitPrice > 0 ? `건당 ${Number(p.unitPrice).toLocaleString()}원` : '단가 미입력'}
+                        </span>
                         <button
                           type="button"
-                          className="btn btn-sm btn-danger-outline"
+                          className="btn btn-sm btn-danger"
                           onClick={() => handleRemoveProject(p)}
                           disabled={detailBusy}
-                        >삭제</button>
+                          style={{ minHeight: 36 }}
+                        >
+                          <Icon name="trash" className="btn-ic" />삭제
+                        </button>
                       </li>
                     ))}
                   </ul>
                 )}
-                <form className="vendor-add-form" onSubmit={handleAddProject}>
+                <form className="vendor-add-form" onSubmit={handleAddProject} style={{ flexWrap: 'wrap' }}>
                   <input
                     placeholder="프로젝트명"
                     value={newProject.name}
                     onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                    style={{ minWidth: 0, flex: '1 1 120px' }}
                   />
                   <MoneyInput
                     placeholder="건당 단가"
                     value={newProject.unitPrice || 0}
                     onChange={(e) => setNewProject({ ...newProject, unitPrice: e.target.value })}
+                    style={{ minWidth: 0, flex: '1 1 100px' }}
                   />
-                  <button type="submit" className="btn btn-sm btn-primary" disabled={detailBusy}>
-                    {detailBusy ? '…' : '+ 추가'}
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary"
+                    disabled={detailBusy}
+                    style={{ flexShrink: 0, minHeight: 36 }}
+                  >
+                    {detailBusy ? '…' : '추가'}
                   </button>
                 </form>
               </>

@@ -1,34 +1,29 @@
 import { useState } from 'react';
 import Modal from '../common/Modal';
+import Select from '../common/Select';
 import MoneyInput from '../common/MoneyInput';
 import { FIXED_EXPENSE_CATEGORIES } from '../../services/fixedExpenseService';
 import { useDialog } from '../common/DialogProvider';
 
 // 카테고리별 추가 필드 정의 — type: 'text' | 'money' | 'percent'
 const CATEGORY_FIELDS = {
-  '월세': [
+  월세: [
     { key: 'landlord', label: '임대인', type: 'text', placeholder: '예: 김OO' },
-    { key: 'deposit',  label: '보증금', type: 'money', placeholder: '0' },
+    { key: 'deposit', label: '보증금', type: 'money', placeholder: '0' },
   ],
-  '대출': [
-    { key: 'lender',       label: '대출기관', type: 'text',    placeholder: '예: 국민은행' },
-    { key: 'principal',    label: '원금',     type: 'money',   placeholder: '0' },
-    { key: 'interestRate', label: '금리(%)',  type: 'percent', placeholder: '예: 4.5' },
+  대출: [
+    { key: 'lender', label: '대출기관', type: 'text', placeholder: '예: 국민은행' },
+    { key: 'principal', label: '원금', type: 'money', placeholder: '0' },
+    { key: 'interestRate', label: '금리(%)', type: 'percent', placeholder: '예: 4.5' },
   ],
-  '보험': [
-    { key: 'insurer',       label: '보험사',  type: 'text', placeholder: '예: 삼성화재' },
+  보험: [
+    { key: 'insurer', label: '보험사', type: 'text', placeholder: '예: 삼성화재' },
     { key: 'insuredPerson', label: '피보험자', type: 'text', placeholder: '예: 홍길동' },
   ],
-  '통신비': [
-    { key: 'telecom', label: '통신사', type: 'text', placeholder: '예: SKT' },
-  ],
-  '구독료': [
-    { key: 'service', label: '서비스', type: 'text', placeholder: '예: Notion' },
-  ],
-  '세무': [
-    { key: 'office', label: '사무소', type: 'text', placeholder: '예: OO 세무사사무소' },
-  ],
-  '기타': [],
+  통신비: [{ key: 'telecom', label: '통신사', type: 'text', placeholder: '예: SKT' }],
+  구독료: [{ key: 'service', label: '서비스', type: 'text', placeholder: '예: Notion' }],
+  세무: [{ key: 'office', label: '사무소', type: 'text', placeholder: '예: OO 세무사사무소' }],
+  기타: [],
 };
 
 export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) {
@@ -83,11 +78,12 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
       <form onSubmit={handleSubmit} className="fixed-expense-form">
         <div className="form-row">
           <label>카테고리</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {FIXED_EXPENSE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+          <Select
+            value={category}
+            onChange={(v) => setCategory(v)}
+            options={FIXED_EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c }))}
+            ariaLabel="분류 선택"
+          />
         </div>
         <div className="form-row">
           <label>항목명</label>
@@ -102,11 +98,7 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         </div>
         <div className="form-row">
           <label>금액</label>
-          <MoneyInput
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-          />
+          <MoneyInput value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
         </div>
 
         <div className="fixed-expense-divider" />
@@ -114,14 +106,12 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         <div className="form-row form-row-double">
           <div>
             <label>시작일</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div>
-            <label>종료일 <span className="form-row-hint">(선택)</span></label>
+            <label>
+              종료일 <span className="form-row-hint">(선택)</span>
+            </label>
             <input
               type="date"
               value={endDate}
@@ -137,7 +127,9 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
             <div className="fixed-expense-section-label">{category} 정보</div>
             {fields.map((f) => (
               <div className="form-row" key={f.key}>
-                <label>{f.label} <span className="form-row-hint">(선택)</span></label>
+                <label>
+                  {f.label} <span className="form-row-hint">(선택)</span>
+                </label>
                 {f.type === 'money' ? (
                   <MoneyInput
                     value={details[f.key] ?? ''}
@@ -171,7 +163,9 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         <div className="fixed-expense-divider" />
 
         <div className="form-row">
-          <label>메모 <span className="form-row-hint">(선택)</span></label>
+          <label>
+            메모 <span className="form-row-hint">(선택)</span>
+          </label>
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
@@ -183,7 +177,9 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>취소</button>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            취소
+          </button>
           <button type="submit" className="btn btn-primary" disabled={!name.trim() || !amount}>
             {initial ? '수정' : '추가'}
           </button>

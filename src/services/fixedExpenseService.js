@@ -12,15 +12,7 @@ import { db } from '../config/firebase';
 
 const collectionRef = collection(db, 'monthlyFixedExpenses');
 
-export const FIXED_EXPENSE_CATEGORIES = [
-  '월세',
-  '대출',
-  '보험',
-  '구독료',
-  '통신비',
-  '세무',
-  '기타',
-];
+export const FIXED_EXPENSE_CATEGORIES = ['월세', '대출', '보험', '구독료', '통신비', '세무', '기타'];
 
 function ymKey(year, month) {
   return `${year}-${String(month).padStart(2, '0')}`;

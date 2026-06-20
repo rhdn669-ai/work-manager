@@ -12,7 +12,6 @@ import LeaveBalancePage from './pages/leave/LeaveBalancePage';
 import TeamReportsPage from './pages/manage/TeamReportsPage';
 import ManageTeamPage from './pages/manage/ManageTeamPage';
 import MyProjectsPage from './pages/manage/MyProjectsPage';
-import UserManagementPage from './pages/admin/UserManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import UnassignedReportPage from './pages/admin/UnassignedReportPage';
 import OutsourceManagementPage from './pages/admin/OutsourceManagementPage';
@@ -21,7 +20,6 @@ import EventManagementPage from './pages/admin/EventManagementPage';
 import LeaveManagementPage from './pages/admin/LeaveManagementPage';
 import TotalClosingPage from './pages/admin/TotalClosingPage';
 import VehicleLogPage from './pages/admin/VehicleLogPage';
-import PurchaseListPage from './pages/admin/PurchaseListPage';
 import PurchaseDetailPage from './pages/admin/PurchaseDetailPage';
 import SupplierManagementPage from './pages/admin/SupplierManagementPage';
 import QuotePage from './pages/admin/QuotePage';
@@ -29,6 +27,9 @@ import PurchaseItemPage from './pages/admin/PurchaseItemPage';
 import BomPage from './pages/admin/BomPage';
 import BomDetailPage from './pages/admin/BomDetailPage';
 import PurchaseTrashPage from './pages/admin/PurchaseTrashPage';
+import PurchaseListPage from './pages/admin/PurchaseListPage';
+import PurchaseLayout from './pages/admin/PurchaseLayout';
+import StaffHubPage from './pages/admin/StaffHubPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 import FileLibraryPage from './pages/library/FileLibraryPage';
@@ -63,7 +64,7 @@ const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
-{ path: '/manage/leave', element: <TeamReportsPage /> },
+          { path: '/manage/leave', element: <TeamReportsPage /> },
           { path: '/manage/my-projects', element: <MyProjectsPage /> },
         ],
       },
@@ -75,7 +76,7 @@ const router = createBrowserRouter([
       {
         element: <Layout />,
         children: [
-          { path: '/admin/users', element: <UserManagementPage /> },
+          { path: '/admin/users', element: <StaffHubPage /> },
           { path: '/admin/sites', element: <SiteManagementPage /> },
           { path: '/admin/reports', element: <ReportsPage /> },
           { path: '/admin/unassigned', element: <UnassignedReportPage /> },
@@ -84,14 +85,20 @@ const router = createBrowserRouter([
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
-          { path: '/admin/purchase', element: <PurchaseListPage /> },
-          { path: '/admin/purchase/suppliers', element: <SupplierManagementPage /> },
-          { path: '/admin/purchase/quotes', element: <QuotePage /> },
-          { path: '/admin/purchase/items', element: <PurchaseItemPage /> },
-          { path: '/admin/purchase/bom', element: <BomPage /> },
-          { path: '/admin/purchase/bom/:projectId', element: <BomDetailPage /> },
-          { path: '/admin/purchase/trash', element: <PurchaseTrashPage /> },
-          { path: '/admin/purchase/:id', element: <PurchaseDetailPage /> },
+          {
+            path: '/admin/purchase',
+            element: <PurchaseLayout />,
+            children: [
+              { index: true, element: <PurchaseListPage /> },
+              { path: 'bom', element: <BomPage /> },
+              { path: 'bom/:projectId', element: <BomDetailPage /> },
+              { path: 'suppliers', element: <SupplierManagementPage /> },
+              { path: 'quotes', element: <QuotePage /> },
+              { path: 'items', element: <PurchaseItemPage /> },
+              { path: 'trash', element: <PurchaseTrashPage /> },
+              { path: ':id', element: <PurchaseDetailPage /> },
+            ],
+          },
         ],
       },
     ],

@@ -9,12 +9,24 @@ import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../.
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { getKoreanHolidaysAsEvents, getKoreanHolidayDates } from '../../utils/koreanHolidays';
 import Modal from './Modal';
+import Icon from './Icon';
 import { useDialog } from './DialogProvider';
 
-const TYPE_LABEL = { event: '이벤트', notice: '공지', holiday: '휴무', overtime: '잔업', leave: '연차', personal: '내 일정' };
+const TYPE_LABEL = {
+  event: '이벤트',
+  notice: '공지',
+  holiday: '휴무',
+  overtime: '잔업',
+  leave: '연차',
+  personal: '내 일정',
+};
 
-function pad(n) { return String(n).padStart(2, '0'); }
-function toISO(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+function toISO(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 function formatMinutes(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -51,7 +63,10 @@ export default function HomeCalendar() {
       const endISO = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
 
       const [rawEvents, allSitesForMap] = await Promise.all([
-        getEvents().catch((err) => { console.error('이벤트 로드 실패', err); return []; }),
+        getEvents().catch((err) => {
+          console.error('이벤트 로드 실패', err);
+          return [];
+        }),
         getAllSites().catch(() => []),
       ]);
       // 관리자가 아닌 경우 공지(notice)·휴무(holiday)만 표시, 관리자는 모든 이벤트 표시
@@ -69,22 +84,35 @@ export default function HomeCalendar() {
       if (isAdmin && canApproveAll) {
         // 관리자는 전체 인원 조회
         [ots, lvs, users] = await Promise.all([
-          getAllOvertimeRecords(startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; }),
-          getApprovedLeavesByMonth(year, month).catch((err) => { console.error('연차 로드 실패', err); return []; }),
-          getUsers().catch((err) => { console.error('사용자 로드 실패', err); return []; }),
+          getAllOvertimeRecords(startISO, endISO).catch((err) => {
+            console.error('잔업 로드 실패', err);
+            return [];
+          }),
+          getApprovedLeavesByMonth(year, month).catch((err) => {
+            console.error('연차 로드 실패', err);
+            return [];
+          }),
+          getUsers().catch((err) => {
+            console.error('사용자 로드 실패', err);
+            return [];
+          }),
         ]);
       } else if (userProfile?.uid) {
         // 비관리자(팀장 포함)는 본인 데이터만 — 팀 데이터는 "우리 팀" 탭 캘린더에서 확인
         [ots, lvs] = await Promise.all([
-          getMyOvertimeRecords(userProfile.uid, startISO, endISO).catch((err) => { console.error('잔업 로드 실패', err); return []; }),
-          getMyLeaves(userProfile.uid, year).catch((err) => { console.error('연차 로드 실패', err); return []; }),
+          getMyOvertimeRecords(userProfile.uid, startISO, endISO).catch((err) => {
+            console.error('잔업 로드 실패', err);
+            return [];
+          }),
+          getMyLeaves(userProfile.uid, year).catch((err) => {
+            console.error('연차 로드 실패', err);
+            return [];
+          }),
         ]);
       }
 
       // 본인 개인 일정 로드
-      const personal = userProfile?.uid
-        ? await getMyPersonalEvents(userProfile.uid, year, month).catch(() => [])
-        : [];
+      const personal = userProfile?.uid ? await getMyPersonalEvents(userProfile.uid, year, month).catch(() => []) : [];
 
       if (!active) return;
       setEvents(evs);
@@ -92,14 +120,20 @@ export default function HomeCalendar() {
       setLeaves(lvs);
       setPersonalEvents(personal);
       const nameMap = {};
-      users.forEach((u) => { nameMap[u.uid] = u.name; });
+      users.forEach((u) => {
+        nameMap[u.uid] = u.name;
+      });
       setUserNameMap(nameMap);
       const siteMap = {};
-      allSitesForMap.forEach((s) => { siteMap[s.id] = s.name; });
+      allSitesForMap.forEach((s) => {
+        siteMap[s.id] = s.name;
+      });
       setSiteNameMap(siteMap);
       setLoading(false);
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [userProfile?.uid, isAdmin, canApproveAll, canApproveLeave, cursor.y, cursor.m]);
 
   async function reloadPersonal() {
@@ -116,8 +150,14 @@ export default function HomeCalendar() {
 
   async function handleSavePersonal(e) {
     e.preventDefault();
-    if (!personalForm.title.trim()) { alert('제목을 입력해주세요.'); return; }
-    if (!personalForm.startDate) { alert('시작일을 선택해주세요.'); return; }
+    if (!personalForm.title.trim()) {
+      alert('제목을 입력해주세요.');
+      return;
+    }
+    if (!personalForm.startDate) {
+      alert('시작일을 선택해주세요.');
+      return;
+    }
     setPersonalBusy(true);
     try {
       await addPersonalEvent({
@@ -137,7 +177,7 @@ export default function HomeCalendar() {
   }
 
   async function handleDeletePersonal(id) {
-    if (!await confirm('이 일정을 삭제하시겠습니까?')) return;
+    if (!(await confirm('이 일정을 삭제하시겠습니까?'))) return;
     try {
       await deletePersonalEvent(id);
       await reloadPersonal();
@@ -147,7 +187,8 @@ export default function HomeCalendar() {
   }
 
   const { weeks, eventsByDay, monthEvents } = useMemo(() => {
-    const y = cursor.y, m = cursor.m;
+    const y = cursor.y,
+      m = cursor.m;
     const first = new Date(y, m - 1, 1);
     const totalDays = new Date(y, m, 0).getDate();
     const firstDow = first.getDay();
@@ -155,7 +196,10 @@ export default function HomeCalendar() {
     let week = new Array(firstDow).fill(null);
     for (let d = 1; d <= totalDays; d++) {
       week.push(d);
-      if (week.length === 7) { ws.push(week); week = []; }
+      if (week.length === 7) {
+        ws.push(week);
+        week = [];
+      }
     }
     if (week.length > 0) {
       while (week.length < 7) week.push(null);
@@ -167,30 +211,38 @@ export default function HomeCalendar() {
     // events(Firestore) + 한국 공휴일(정적) 통합 — 같은 날짜는 Firestore 등록 우선
     const koreanEvents = getKoreanHolidaysAsEvents(y);
     const fsHolidayDates = new Set(
-      events.filter((e) => e.type === 'holiday').flatMap((e) => {
-        const result = [];
-        const start = new Date(e.startDate);
-        const end = new Date(e.endDate || e.startDate);
-        const cur = new Date(start);
-        while (cur <= end) {
-          result.push(toISO(cur));
-          cur.setDate(cur.getDate() + 1);
-        }
-        return result;
-      }),
+      events
+        .filter((e) => e.type === 'holiday')
+        .flatMap((e) => {
+          const result = [];
+          const start = new Date(e.startDate);
+          const end = new Date(e.endDate || e.startDate);
+          const cur = new Date(start);
+          while (cur <= end) {
+            result.push(toISO(cur));
+            cur.setDate(cur.getDate() + 1);
+          }
+          return result;
+        }),
     );
     const filteredKorean = koreanEvents.filter((kh) => !fsHolidayDates.has(kh.startDate));
 
     const inMonthEvents = [...events, ...filteredKorean]
       .filter((e) => (e.endDate || e.startDate) >= monthStart && e.startDate <= monthEnd)
-      .map((e) => ({ ...e, _kind: 'event', type: e.type || 'event', _start: e.startDate, _end: e.endDate || e.startDate }));
+      .map((e) => ({
+        ...e,
+        _kind: 'event',
+        type: e.type || 'event',
+        _start: e.startDate,
+        _end: e.endDate || e.startDate,
+      }));
 
     const inMonthOvertimes = overtimes
       .filter((o) => o.status === 'approved' && o.date >= monthStart && o.date <= monthEnd)
       .map((o) => {
-        const showName = (canApproveLeave) && o.userId !== userProfile?.uid;
-        const who = showName ? (o.userName || userNameMap[o.userId] || '') : '';
-        const siteName = o.siteId ? (siteNameMap[o.siteId] || '') : '';
+        const showName = canApproveLeave && o.userId !== userProfile?.uid;
+        const who = showName ? o.userName || userNameMap[o.userId] || '' : '';
+        const siteName = o.siteId ? siteNameMap[o.siteId] || '' : '';
         // 제목은 사람 + 잔업 시간만 — 프로젝트명은 상세 영역에서 별도 표시 (중복 방지)
         const title = `${who ? who + ' · ' : ''}잔업 ${formatMinutes(o.minutes || 0)}`;
         return {
@@ -206,10 +258,15 @@ export default function HomeCalendar() {
       });
 
     const inMonthLeaves = leaves
-      .filter((l) => (l.status === 'approved' || l.status === 'confirmed') && (l.endDate || l.startDate) >= monthStart && l.startDate <= monthEnd)
+      .filter(
+        (l) =>
+          (l.status === 'approved' || l.status === 'confirmed') &&
+          (l.endDate || l.startDate) >= monthStart &&
+          l.startDate <= monthEnd,
+      )
       .map((l) => {
-        const showName = (canApproveLeave) && l.userId !== userProfile?.uid;
-        const who = showName ? (userNameMap[l.userId] || '') : '';
+        const showName = canApproveLeave && l.userId !== userProfile?.uid;
+        const who = showName ? userNameMap[l.userId] || '' : '';
         const leaveLabel = LEAVE_TYPE_LABELS[l.type] || '연차';
         return {
           ...l,
@@ -249,11 +306,11 @@ export default function HomeCalendar() {
 
   function prev() {
     setSelectedDate(null);
-    setCursor((c) => c.m === 1 ? { y: c.y - 1, m: 12 } : { y: c.y, m: c.m - 1 });
+    setCursor((c) => (c.m === 1 ? { y: c.y - 1, m: 12 } : { y: c.y, m: c.m - 1 }));
   }
   function next() {
     setSelectedDate(null);
-    setCursor((c) => c.m === 12 ? { y: c.y + 1, m: 1 } : { y: c.y, m: c.m + 1 });
+    setCursor((c) => (c.m === 12 ? { y: c.y + 1, m: 1 } : { y: c.y, m: c.m + 1 }));
   }
   function goToday() {
     const d = new Date();
@@ -270,13 +327,44 @@ export default function HomeCalendar() {
     <div className="home-calendar card">
       <div className="home-calendar-head">
         <div className="home-calendar-title">
-          <h3>{cursor.y}년 {cursor.m}월</h3>
+          <h3>
+            {cursor.y}년 {cursor.m}월
+          </h3>
           <span className="home-calendar-sub">{isAdmin ? '사내 캘린더' : '내 일정 · 공지'}</span>
         </div>
         <div className="home-calendar-nav">
-          <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); prev(); }} aria-label="이전 달">‹</button>
-          <button type="button" className="cal-today-btn" onPointerDown={(e) => { e.preventDefault(); goToday(); }}>오늘</button>
-          <button type="button" className="cal-nav-btn" onPointerDown={(e) => { e.preventDefault(); next(); }} aria-label="다음 달">›</button>
+          <button
+            type="button"
+            className="cal-nav-btn"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              prev();
+            }}
+            aria-label="이전 달"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="cal-today-btn"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              goToday();
+            }}
+          >
+            오늘
+          </button>
+          <button
+            type="button"
+            className="cal-nav-btn"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              next();
+            }}
+            aria-label="다음 달"
+          >
+            ›
+          </button>
         </div>
       </div>
 
@@ -284,10 +372,12 @@ export default function HomeCalendar() {
         <div className="home-calendar-loading">로딩 중...</div>
       ) : (
         <>
-          <div className="home-calendar-grid">
+          <div className="home-calendar-grid" style={{ maxWidth: '100%', overflowX: 'auto' }}>
             <div className="home-cal-row home-cal-dow">
-              {['일','월','화','수','목','금','토'].map((dn, i) => (
-                <div key={dn} className={`home-cal-dow-cell ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}>{dn}</div>
+              {['일', '월', '화', '수', '목', '금', '토'].map((dn, i) => (
+                <div key={dn} className={`home-cal-dow-cell ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`} aria-label={dn}>
+                  <span className="dow-label-full">{dn}</span>
+                </div>
               ))}
             </div>
             {weeks.map((wk, wi) => (
@@ -307,35 +397,31 @@ export default function HomeCalendar() {
                       type="button"
                       key={di}
                       className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''}`}
+                      style={{ padding: 5, lineHeight: 1.3 }}
                       onPointerDown={(e) => {
                         e.preventDefault();
                         setSelectedDate(iso);
                       }}
                     >
-                      <span className="home-cal-date-row">
-                        <span className="home-cal-date">{d}</span>
+                      <span className="home-cal-date-row" style={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 2 }}>
+                        <span className="home-cal-date" style={{ flexShrink: 0, fontSize: 13 }}>{d}</span>
                         {holidayEv && (
-                          <span className="home-cal-holiday-label" title={holidayEv.title}>
+                          <span
+                            className="home-cal-holiday-label"
+                            title={holidayEv.title}
+                            style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, display: 'flex', alignItems: 'center' }}
+                          >
                             {holidayEv.title}
                           </span>
                         )}
                       </span>
-                      <div className="home-cal-events">
-                        {otherEvents.slice(0, 3).map((e, ei) => {
-                          const lbl = e._kind === 'overtime' || e._kind === 'leave'
-                            ? (e._who || userNameMap[e.userId] || (TYPE_LABEL[e.type] || '일정'))
-                            : e.title;
-                          return (
-                            <span
-                              key={ei}
-                              className={`home-cal-ev type-${e.type || 'event'}`}
-                              title={e.title}
-                            >
-                              {lbl}
-                            </span>
-                          );
-                        })}
-                        {otherEvents.length > 3 && <span className="home-cal-ev-more">+{otherEvents.length - 3}</span>}
+                      <div className="home-cal-events home-cal-events-dots">
+                        {otherEvents.slice(0, 4).map((e, ei) => (
+                          <span key={ei} className={`home-cal-dot type-${e.type || 'event'}`} title={e.title} />
+                        ))}
+                        {otherEvents.length > 4 && (
+                          <span className="home-cal-ev-more">+{otherEvents.length - 4}</span>
+                        )}
                       </div>
                     </button>
                   );
@@ -344,10 +430,13 @@ export default function HomeCalendar() {
             ))}
           </div>
 
-          <div className="home-calendar-list">
+          <div className="home-calendar-list" style={{ maxHeight: '45vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
             {selectedDate ? (
               <>
-                <div className="home-cal-list-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div
+                  className="home-cal-list-head"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+                >
                   <span>{selectedDate}</span>
                   {userProfile?.uid && (
                     <button
@@ -355,7 +444,7 @@ export default function HomeCalendar() {
                       className="btn btn-sm btn-outline"
                       onClick={() => openAddPersonal(selectedDate)}
                     >
-                      + 내 일정 추가
+                      내 일정 추가
                     </button>
                   )}
                 </div>
@@ -363,28 +452,49 @@ export default function HomeCalendar() {
                   <div className="home-cal-list-empty">이 날짜의 일정이 없습니다.</div>
                 ) : (
                   selectedEvents.map((e) => (
-                    <div className={`home-cal-item type-${e.type}`} key={`${e._kind}-${e.id}`}>
+                    <div
+                      className={`home-cal-item type-${e.type}`}
+                      key={`${e._kind}-${e.id}`}
+                      style={{ alignItems: 'flex-start' }}
+                    >
                       <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
-                      <div className="home-cal-item-body">
-                        <div className="home-cal-item-title">{e.title}</div>
-                        {e._kind === 'event' && e.description && <div className="home-cal-item-desc">{e.description}</div>}
+                      <div className="home-cal-item-body" style={{ flex: 1, minWidth: 0 }}>
+                        <div className="home-cal-item-title" title={e.title} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>
+                          {e.title}
+                        </div>
+                        {e._kind === 'event' && e.description && (
+                          <div className="home-cal-item-desc" title={e.description} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>
+                            {e.description}
+                          </div>
+                        )}
                         {e._kind === 'leave' && (
                           <div className="home-cal-item-meta">
-                            {e._start}{e._end && e._end !== e._start ? ` ~ ${e._end}` : ''} · {e.days}일
+                            {e._start}
+                            {e._end && e._end !== e._start ? ` ~ ${e._end}` : ''} · {e.days}일
                           </div>
                         )}
                         {e._kind === 'overtime' && (e._siteName || e.reason) && (
-                          <div className="home-cal-item-desc">
-                            {e._siteName && <strong style={{ color: '#334155' }}>{e._siteName}</strong>}
+                          <div
+                            className="home-cal-item-desc"
+                            title={`${e._siteName || ''}${e._siteName && e.reason ? ' · ' : ''}${e.reason || ''}`}
+                            style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          >
+                            {e._siteName && <strong style={{ color: 'var(--text-light)' }}>{e._siteName}</strong>}
                             {e._siteName && e.reason ? ' · ' : ''}
                             {e.reason}
                           </div>
                         )}
                         {e._kind === 'personal' && (
                           <>
-                            {e.note && <div className="home-cal-item-desc">{e.note}</div>}
+                            {e.note && (
+                              <div className="home-cal-item-desc" title={e.note} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {e.note}
+                              </div>
+                            )}
                             {e._end !== e._start && (
-                              <div className="home-cal-item-meta">{e._start} ~ {e._end}</div>
+                              <div className="home-cal-item-meta">
+                                {e._start} ~ {e._end}
+                              </div>
                             )}
                           </>
                         )}
@@ -392,10 +502,12 @@ export default function HomeCalendar() {
                       {e._kind === 'personal' && (
                         <button
                           type="button"
-                          className="btn btn-sm btn-danger-outline"
+                          className="btn btn-sm btn-danger"
                           onClick={() => handleDeletePersonal(e.id)}
                           style={{ flexShrink: 0 }}
-                        >삭제</button>
+                        >
+                          <Icon name="trash" className="btn-ic" />삭제
+                        </button>
                       )}
                     </div>
                   ))
@@ -404,13 +516,20 @@ export default function HomeCalendar() {
             ) : monthEvents.length > 0 ? (
               <>
                 <div className="home-cal-list-head">이번 달 일정 ({monthEvents.length})</div>
-                {monthEvents.slice(0, 6).map((e) => (
-                  <div className={`home-cal-item type-${e.type}`} key={`${e._kind}-${e.id}`}>
+                {monthEvents.slice(0, 10).map((e) => (
+                  <div
+                    className={`home-cal-item type-${e.type}`}
+                    key={`${e._kind}-${e.id}`}
+                    style={{ alignItems: 'flex-start' }}
+                  >
                     <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
-                    <div className="home-cal-item-body">
-                      <div className="home-cal-item-title">{e.title}</div>
+                    <div className="home-cal-item-body" style={{ flex: 1, minWidth: 0 }}>
+                      <div className="home-cal-item-title" title={e.title} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>
+                        {e.title}
+                      </div>
                       <div className="home-cal-item-meta">
-                        {e._start}{e._end && e._end !== e._start ? ` ~ ${e._end}` : ''}
+                        {e._start}
+                        {e._end && e._end !== e._start ? ` ~ ${e._end}` : ''}
                       </div>
                     </div>
                   </div>
@@ -423,7 +542,11 @@ export default function HomeCalendar() {
         </>
       )}
 
-      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title={`내 일정 추가 · ${personalForm.startDate || ''}`}>
+      <Modal
+        isOpen={showPersonalModal}
+        onClose={() => setShowPersonalModal(false)}
+        title={`내 일정 추가 · ${personalForm.startDate || ''}`}
+      >
         <form onSubmit={handleSavePersonal}>
           <div className="form-group">
             <label>제목 *</label>
@@ -445,10 +568,12 @@ export default function HomeCalendar() {
           </div>
           <p className="field-hint">본인만 볼 수 있는 개인 일정입니다.</p>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" disabled={personalBusy}>
+            <button type="submit" className="btn btn-primary" disabled={personalBusy} style={{ minHeight: 36 }}>
               {personalBusy ? '저장 중...' : '추가'}
             </button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowPersonalModal(false)}>취소</button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowPersonalModal(false)} style={{ minHeight: 36 }}>
+              취소
+            </button>
           </div>
         </form>
       </Modal>

@@ -8,8 +8,21 @@ import { getAllOvertimeRecords, OVERTIME_MULTIPLIER } from '../../services/atten
 import { getMonthStart, getMonthEnd, formatMinutes, buildHolidaySet } from '../../utils/dateUtils';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
+import Select from '../../components/common/Select';
 
-function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+function useViewportWidth() {
+  const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
+  useEffect(() => {
+    const handler = () => setVw(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return vw;
+}
+
+function daysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
+}
 function workingDaysInMonth(y, m) {
   const total = daysInMonth(y, m);
   let count = 0;
@@ -41,6 +54,9 @@ export default function UnassignedReportPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const vw = useViewportWidth();
+  const isMobile = vw < 768;
+  const isXSmall = vw <= 360;
   const [hoverDay, setHoverDay] = useState(null);
   const [detailCell, setDetailCell] = useState(null); // { name, day, dateStr, projects, leaveType, overtimeMin, otSiteNames }
   const [users, setUsers] = useState([]);
@@ -61,8 +77,11 @@ export default function UnassignedReportPage() {
         // 'iopn' 계정은 시스템/회사 계정이므로 직원 배치현황에서 제외
         setUsers(u.filter((x) => x.isActive !== false && (x.name || '').trim().toLowerCase() !== 'iopn'));
         setSites(s);
-      } catch (err) { console.error(err); }
-      finally { setLoading(false); }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -79,7 +98,12 @@ export default function UnassignedReportPage() {
               const items = await getClosingItems(s.id, year, month);
               return items
                 .filter((it) => it.itemType === 'employee')
-                .map((it) => ({ siteId: s.id, siteName: s.name, detail: it.detail, dailyQuantities: it.dailyQuantities || {} }));
+                .map((it) => ({
+                  siteId: s.id,
+                  siteName: s.name,
+                  detail: it.detail,
+                  dailyQuantities: it.dailyQuantities || {},
+                }));
             }),
           ),
           getApprovedLeavesByMonth(year, month),
@@ -88,8 +112,11 @@ export default function UnassignedReportPage() {
         setAllItems(perSite.flat());
         setLeaves(lvs);
         setOvertimes(ots.filter((o) => o.status === 'approved'));
-      } catch (err) { console.error(err); }
-      finally { setLoading(false); }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [sites, year, month]);
 
@@ -138,7 +165,7 @@ export default function UnassignedReportPage() {
       const day = d.getDate();
       if (!nameToOvertime[name]) nameToOvertime[name] = {};
       if (!nameToOvertime[name][day]) nameToOvertime[name][day] = { minutes: 0, siteNames: new Set() };
-      nameToOvertime[name][day].minutes += (o.minutes || 0);
+      nameToOvertime[name][day].minutes += o.minutes || 0;
       if (o.siteId) {
         const sn = o.siteId === 'etc' ? '기타' : siteIdToName[o.siteId];
         if (sn) nameToOvertime[name][day].siteNames.add(sn);
@@ -205,20 +232,28 @@ export default function UnassignedReportPage() {
       totalUnassignedDays += r.unassignedCount;
     }
 
-    const topU = [...out].filter((r) => r.unassignedCount > 0).sort((a, b) => b.unassignedCount - a.unassignedCount).slice(0, 5);
+    const topU = [...out]
+      .filter((r) => r.unassignedCount > 0)
+      .sort((a, b) => b.unassignedCount - a.unassignedCount)
+      .slice(0, 5);
 
     // 잔업 Top: 직원별 총 시간·금액 집계
-    const topOT = users.map((u) => {
-      const dayMap = nameToOvertime[u.name] || {};
-      const totalMinutes = Object.values(dayMap).reduce((s, v) => s + (v.minutes || 0), 0);
-      if (totalMinutes === 0) return null;
-      const hours = totalMinutes / 60;
-      const amount = Math.round((Number(u.hourlyRate) || 0) * OVERTIME_MULTIPLIER * hours);
-      return { uid: u.uid, name: u.name, minutes: totalMinutes, amount };
-    }).filter(Boolean).sort((a, b) => b.minutes - a.minutes).slice(0, 5);
+    const topOT = users
+      .map((u) => {
+        const dayMap = nameToOvertime[u.name] || {};
+        const totalMinutes = Object.values(dayMap).reduce((s, v) => s + (v.minutes || 0), 0);
+        if (totalMinutes === 0) return null;
+        const hours = totalMinutes / 60;
+        const amount = Math.round((Number(u.hourlyRate) || 0) * OVERTIME_MULTIPLIER * hours);
+        return { uid: u.uid, name: u.name, minutes: totalMinutes, amount };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 5);
 
-    const sorted = out.sort((a, b) =>
-      (b.unassignedCount + b.overlapCount) - (a.unassignedCount + a.overlapCount) || a.name.localeCompare(b.name),
+    const sorted = out.sort(
+      (a, b) =>
+        b.unassignedCount + b.overlapCount - (a.unassignedCount + a.overlapCount) || a.name.localeCompare(b.name),
     );
     return { rows: sorted, topUnassigned: topU, topOvertime: topOT, totalUnassignedAmount, totalUnassignedDays };
   }, [users, allItems, leaves, overtimes, year, month, holidaySet]);
@@ -226,7 +261,12 @@ export default function UnassignedReportPage() {
   const totalDays = daysInMonth(year, month);
   const dayHeaders = Array.from({ length: totalDays }, (_, i) => i + 1);
 
-  if (!isAdmin) return <div className="card"><div className="card-body empty-state">접근 권한이 없습니다.</div></div>;
+  if (!isAdmin)
+    return (
+      <div className="card">
+        <div className="card-body empty-state">접근 권한이 없습니다.</div>
+      </div>
+    );
 
   return (
     <div className="unassigned-report-page">
@@ -235,14 +275,19 @@ export default function UnassignedReportPage() {
       </div>
 
       <div className="filters">
-        <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-          {[2024, 2025, 2026, 2027, 2028].map((y) => <option key={y} value={y}>{y}년</option>)}
-        </select>
-        <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => <option key={m} value={m}>{m}월</option>)}
-        </select>
+        <Select
+          value={year}
+          onChange={(v) => setYear(Number(v))}
+          options={[2024, 2025, 2026, 2027, 2028].map((y) => ({ value: y, label: `${y}년` }))}
+          ariaLabel="연도 선택"
+        />
+        <Select
+          value={month}
+          onChange={(v) => setMonth(Number(v))}
+          options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => ({ value: m, label: `${m}월` }))}
+          ariaLabel="월 선택"
+        />
       </div>
-
 
       <div className="ua-summary-card" style={{ marginBottom: 14 }}>
         <div className="ua-summary-title">
@@ -252,44 +297,130 @@ export default function UnassignedReportPage() {
         {totalUnassignedDays === 0 ? (
           <p className="ua-summary-empty">미배정 일수 없음</p>
         ) : (
-          <div className="ua-summary-total" style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>
+          <div
+            className="ua-summary-total"
+            style={{
+              marginTop: 0,
+              borderTop: 'none',
+              paddingTop: 0,
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
             <span>전체 합계</span>
-            <strong style={{ display: 'inline-grid', gridTemplateColumns: '60px 140px', gap: 14, fontVariantNumeric: 'tabular-nums' }}>
+            <span
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                fontVariantNumeric: 'tabular-nums',
+                fontWeight: 700,
+              }}
+            >
               <em style={{ fontStyle: 'normal', textAlign: 'right' }}>{totalUnassignedDays}일</em>
               <em style={{ fontStyle: 'normal', textAlign: 'right' }}>{totalUnassignedAmount.toLocaleString()}원</em>
-            </strong>
+            </span>
           </div>
         )}
       </div>
 
-      <div className="ua-legend">
-        <span><span className="ua-legend-swatch assigned" />배정</span>
-        <span><span className="ua-legend-swatch overlap" />중복배정</span>
-        <span><span className="ua-legend-swatch leave-annual" />연차</span>
-        <span><span className="ua-legend-swatch leave-half" />반차</span>
-        <span><span className="ua-legend-swatch leave-quarter" />반반차</span>
-        <span><span className="ua-legend-swatch leave-sick" />병가</span>
-        <span><span className="ua-legend-swatch weekend" />주말</span>
-        <span><span className="ua-legend-swatch holiday" />공휴일</span>
-        <span><span className="ua-legend-swatch unassigned" />미배정</span>
-        <span><span className="ua-legend-dot" />잔업</span>
+      <div className="ua-legend" style={isXSmall ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, fontSize: 10 } : undefined}>
+        <span>
+          <span className="ua-legend-swatch assigned" />
+          배정
+        </span>
+        <span>
+          <span className="ua-legend-swatch overlap" />
+          중복배정
+        </span>
+        <span>
+          <span className="ua-legend-swatch leave-annual" />
+          연차
+        </span>
+        <span>
+          <span className="ua-legend-swatch leave-half" />
+          반차
+        </span>
+        <span>
+          <span className="ua-legend-swatch leave-quarter" />
+          반반차
+        </span>
+        <span>
+          <span className="ua-legend-swatch leave-sick" />
+          병가
+        </span>
+        <span>
+          <span className="ua-legend-swatch weekend" />
+          주말
+        </span>
+        <span>
+          <span className="ua-legend-swatch holiday" />
+          공휴일
+        </span>
+        <span>
+          <span className="ua-legend-swatch unassigned" />
+          미배정
+        </span>
+        <span>
+          <span className="ua-legend-dot" />
+          잔업
+        </span>
       </div>
 
       {loading ? (
         <div className="loading">로딩 중...</div>
       ) : rows.length === 0 ? (
-        <div className="card"><div className="card-body empty-state">표시할 직원이 없습니다.</div></div>
+        <div className="card">
+          <div className="card-body empty-state">표시할 직원이 없습니다.</div>
+        </div>
+      ) : isMobile ? (
+        <div className="unassigned-mobile-cards">
+          <p className="text-muted text-sm" style={{ marginBottom: 8 }}>
+            {year}년 {month}월 — 미배정 직원 {rows.filter((r) => r.unassignedCount > 0).length}명
+          </p>
+          {rows.filter((r) => r.unassignedCount > 0 || r.overlapCount > 0).slice(0, 10).map((r) => (
+            <div key={r.uid} className="card" style={{ padding: '8px 12px', marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, wordBreak: 'break-word', minWidth: 0 }} title={`${r.name}${r.position ? ` · ${r.position}` : ''}`}>
+                  {r.name}
+                  {r.position && <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>{r.position}</span>}
+                </span>
+                <span style={{ display: 'flex', gap: 8, flexShrink: 0, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+                  {r.unassignedCount > 0 && <span style={{ color: 'var(--danger)' }}>미배정 <strong>{r.unassignedCount}일</strong></span>}
+                  {r.overlapCount > 0 && <span style={{ color: 'var(--warning, #d97706)' }}>중복 <strong>{r.overlapCount}일</strong></span>}
+                  {r.leaveCount > 0 && <span>연차 <strong>{r.leaveCount % 1 === 0 ? r.leaveCount : r.leaveCount.toFixed(2).replace(/\.?0+$/, '')}일</strong></span>}
+                </span>
+              </div>
+            </div>
+          ))}
+          {rows.filter((r) => r.unassignedCount === 0 && r.overlapCount === 0).length > 0 && (
+            <p className="text-muted text-sm" style={{ marginTop: 4 }}>
+              + 배정 완료 {rows.filter((r) => r.unassignedCount === 0 && r.overlapCount === 0).length}명
+            </p>
+          )}
+          <p className="text-muted text-sm" style={{ marginTop: 8 }}>
+            전체 그리드는 태블릿/PC(768px 이상)에서 확인하세요.
+          </p>
+        </div>
       ) : (
-        <div className="unassigned-table-wrap">
+        <div className="unassigned-table-wrap table-scroll-x unassigned-table-container">
           <table className="unassigned-table">
             <thead>
               <tr>
                 <th className="sticky-col">직원</th>
                 {dayHeaders.map((d) => {
                   const dow = new Date(year, month - 1, d).getDay();
-                  const isHoliday = holidaySet.has(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-                  const dowCls = (dow === 0 || isHoliday) ? 'sun' : dow === 6 ? 'sat' : '';
-                  return <th key={d} className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`}>{d}</th>;
+                  const isHoliday = holidaySet.has(
+                    `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+                  );
+                  const dowCls = dow === 0 || isHoliday ? 'sun' : dow === 6 ? 'sat' : '';
+                  return (
+                    <th key={d} className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`} style={{ minWidth: 18, maxWidth: 24, fontSize: 10, width: 22 }}>
+                      {d}
+                    </th>
+                  );
                 })}
                 <th className="sticky-col-right">연차</th>
                 <th className="sticky-col-right">미배정</th>
@@ -299,9 +430,9 @@ export default function UnassignedReportPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.uid}>
-                  <td className="sticky-col name-col">
+                  <td className="sticky-col name-col" title={`${r.name}${r.position ? ` · ${r.position}` : ''}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     <strong>{r.name}</strong>
-                    {r.position && <span className="position-tag">{r.position}</span>}
+                    {r.position && <span className="position-tag position-tag-mobile-hide" title={r.position}>{r.position}</span>}
                   </td>
                   {r.days.map((c) => {
                     const hasOT = c.overtimeMin > 0;
@@ -314,7 +445,9 @@ export default function UnassignedReportPage() {
                     else if (c.type === 'holiday') baseTitle = '공휴일';
                     else if (c.type === 'weekend') baseTitle = '주말';
                     else baseTitle = '미배정';
-                    const title = hasOT ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}${c.otSiteNames.length > 0 ? ` (${c.otSiteNames.join(', ')})` : ''}` : baseTitle;
+                    const title = hasOT
+                      ? `${baseTitle} · 잔업 ${formatMinutes(c.overtimeMin)}${c.otSiteNames.length > 0 ? ` (${c.otSiteNames.join(', ')})` : ''}`
+                      : baseTitle;
                     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(c.d).padStart(2, '0')}`;
                     return (
                       <td
@@ -323,28 +456,42 @@ export default function UnassignedReportPage() {
                         title={`${c.d}일 · ${title}`}
                         onMouseEnter={() => setHoverDay(c.d)}
                         onMouseLeave={() => setHoverDay((prev) => (prev === c.d ? null : prev))}
-                        onClick={() => setDetailCell({
-                          name: r.name,
-                          position: r.position,
-                          day: c.d,
-                          dateStr,
-                          type: c.type,
-                          projects: c.projects,
-                          leaveType: c.leaveType,
-                          overtimeMin: c.overtimeMin,
-                          otSiteNames: c.otSiteNames,
-                        })}
+                        onClick={() =>
+                          setDetailCell({
+                            name: r.name,
+                            position: r.position,
+                            day: c.d,
+                            dateStr,
+                            type: c.type,
+                            projects: c.projects,
+                            leaveType: c.leaveType,
+                            overtimeMin: c.overtimeMin,
+                            otSiteNames: c.otSiteNames,
+                          })
+                        }
                       />
                     );
                   })}
-                  <td className="sticky-col-right count-col">
-                    <strong className={r.leaveCount > 0 ? 'leave-count' : ''}>{r.leaveCount % 1 === 0 ? r.leaveCount : r.leaveCount.toFixed(2).replace(/\.?0+$/, '')}</strong>
+                  <td className="sticky-col-right count-col" style={{ textAlign: 'right' }}>
+                    <strong
+                      className={r.leaveCount > 0 ? 'leave-count' : ''}
+                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {r.leaveCount % 1 === 0 ? r.leaveCount : r.leaveCount.toFixed(2).replace(/\.?0+$/, '')}
+                    </strong>
                   </td>
-                  <td className="sticky-col-right count-col">
-                    <strong className={r.unassignedCount > 0 ? 'neg' : ''}>{r.unassignedCount}</strong>
+                  <td className="sticky-col-right count-col" style={{ textAlign: 'right' }}>
+                    <strong
+                      className={r.unassignedCount > 0 ? 'neg' : ''}
+                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {r.unassignedCount}
+                    </strong>
                   </td>
-                  <td className="sticky-col-right count-col">
-                    <strong className={r.overlapCount > 0 ? 'warn' : ''}>{r.overlapCount}</strong>
+                  <td className="sticky-col-right count-col" style={{ textAlign: 'right' }}>
+                    <strong className={r.overlapCount > 0 ? 'warn' : ''} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {r.overlapCount}
+                    </strong>
                   </td>
                 </tr>
               ))}
@@ -354,105 +501,119 @@ export default function UnassignedReportPage() {
       )}
 
       {/* 셀 클릭 시 배치 상세 모달 */}
-      {detailCell && (() => {
-        const c = detailCell;
-        const isLeave = typeof c.type === 'string' && c.type.startsWith('leave-');
-        const statusLabel =
-          c.type === 'overlap' ? '중복배정' :
-          c.type === 'assigned' ? '배정' :
-          isLeave ? leaveLabel(c.leaveType) :
-          c.type === 'holiday' ? '공휴일' :
-          c.type === 'weekend' ? '주말' : '미배정';
-        return (
-          <Modal isOpen={!!detailCell} onClose={() => setDetailCell(null)} title={`${c.name}님 · ${c.dateStr}`}>
-            <div className="placement-detail-body">
-              <div className="placement-detail-summary">
-                <span className={`ua-legend-swatch ${c.type}`} />
-                <strong>{statusLabel}</strong>
-                {c.position && <span className="placement-detail-pos">· {c.position}</span>}
-              </div>
+      {detailCell &&
+        (() => {
+          const c = detailCell;
+          const isLeave = typeof c.type === 'string' && c.type.startsWith('leave-');
+          const statusLabel =
+            c.type === 'overlap'
+              ? '중복배정'
+              : c.type === 'assigned'
+                ? '배정'
+                : isLeave
+                  ? leaveLabel(c.leaveType)
+                  : c.type === 'holiday'
+                    ? '공휴일'
+                    : c.type === 'weekend'
+                      ? '주말'
+                      : '미배정';
+          return (
+            <Modal isOpen={!!detailCell} onClose={() => setDetailCell(null)} title={`${c.name}님 · ${c.dateStr}`}>
+              <div className="placement-detail-body">
+                <div className="placement-detail-summary">
+                  <span className={`ua-legend-swatch ${c.type}`} />
+                  <strong>{statusLabel}</strong>
+                  {c.position && <span className="placement-detail-pos">· {c.position}</span>}
+                </div>
 
-              {(c.projects.length > 0) && (() => {
-                const totalQty = c.projects.reduce((s, p) => s + (Number(p.qty) || 0), 0);
-                return (
-                <div className="placement-detail-section">
-                  <div className="placement-detail-label">
-                    배정 프로젝트
-                    <span className="placement-detail-total">합계 {formatQty(totalQty)}공수</span>
+                {c.projects.length > 0 &&
+                  (() => {
+                    const totalQty = c.projects.reduce((s, p) => s + (Number(p.qty) || 0), 0);
+                    return (
+                      <div className="placement-detail-section">
+                        <div className="placement-detail-label">
+                          배정 프로젝트
+                          <span className="placement-detail-total">합계 {formatQty(totalQty)}공수</span>
+                        </div>
+                        <ul className="placement-detail-list">
+                          {c.projects.map((p, i) => {
+                            const site = sites.find((s) => s.name === p.name);
+                            const canNavigate = !!site;
+                            const qtyEl = <span className="placement-project-qty">{formatQty(p.qty)}공수</span>;
+                            return (
+                              <li key={i}>
+                                {canNavigate ? (
+                                  <button
+                                    type="button"
+                                    className="placement-project-link"
+                                    onClick={() => {
+                                      setDetailCell(null);
+                                      navigate(`/sites/${site.id}/${year}/${month}`);
+                                    }}
+                                    title={`${p.name} 프로젝트로 이동`}
+                                  >
+                                    <span className="placement-project-name u-wrap" title={p.name}>
+                                      {p.name}
+                                    </span>
+                                    {qtyEl}
+                                    <span className="placement-project-link-arrow" aria-hidden="true">
+                                      →
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <span className="placement-project-row">
+                                    <span className="placement-project-name u-wrap" title={p.name}>
+                                      {p.name}
+                                    </span>
+                                    {qtyEl}
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })()}
+
+                {isLeave && (
+                  <div className="placement-detail-section">
+                    <div className="placement-detail-label">휴가</div>
+                    <p>{leaveLabel(c.leaveType)}</p>
                   </div>
-                  <ul className="placement-detail-list">
-                    {c.projects.map((p, i) => {
-                      const site = sites.find((s) => s.name === p.name);
-                      const canNavigate = !!site;
-                      const qtyEl = (
-                        <span className="placement-project-qty">{formatQty(p.qty)}공수</span>
-                      );
-                      return (
-                        <li key={i}>
-                          {canNavigate ? (
-                            <button
-                              type="button"
-                              className="placement-project-link"
-                              onClick={() => {
-                                setDetailCell(null);
-                                navigate(`/sites/${site.id}/${year}/${month}`);
-                              }}
-                              title={`${p.name} 프로젝트로 이동`}
-                            >
-                              <span className="placement-project-name">{p.name}</span>
-                              {qtyEl}
-                              <span className="placement-project-link-arrow" aria-hidden="true">→</span>
-                            </button>
-                          ) : (
-                            <span className="placement-project-row">
-                              <span className="placement-project-name">{p.name}</span>
-                              {qtyEl}
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-                );
-              })()}
+                )}
 
-              {isLeave && (
-                <div className="placement-detail-section">
-                  <div className="placement-detail-label">휴가</div>
-                  <p>{leaveLabel(c.leaveType)}</p>
-                </div>
-              )}
+                {c.overtimeMin > 0 && (
+                  <div className="placement-detail-section">
+                    <div className="placement-detail-label">잔업 (별도 집계)</div>
+                    <p>
+                      {formatMinutes(c.overtimeMin)}
+                      {c.otSiteNames.length > 0 && ` · ${c.otSiteNames.join(', ')}`}
+                    </p>
+                    <p className="text-muted text-sm" style={{ marginTop: 2 }}>
+                      잔업은 공수표 배정과 무관하게 별도로 집계됩니다.
+                    </p>
+                  </div>
+                )}
 
-              {c.overtimeMin > 0 && (
-                <div className="placement-detail-section">
-                  <div className="placement-detail-label">잔업 (별도 집계)</div>
-                  <p>
-                    {formatMinutes(c.overtimeMin)}
-                    {c.otSiteNames.length > 0 && ` · ${c.otSiteNames.join(', ')}`}
-                  </p>
-                  <p className="text-muted text-sm" style={{ marginTop: 2 }}>
-                    잔업은 공수표 배정과 무관하게 별도로 집계됩니다.
-                  </p>
-                </div>
-              )}
+                {c.type === 'unassigned' && (
+                  <div className="placement-detail-section">
+                    <p className="text-muted text-sm">
+                      공수표에 배정된 프로젝트가 없는 날입니다.
+                      {c.overtimeMin > 0 && ' (잔업 기록은 위에 별도 표시됨)'}
+                    </p>
+                  </div>
+                )}
 
-              {c.type === 'unassigned' && (
-                <div className="placement-detail-section">
-                  <p className="text-muted text-sm">
-                    공수표에 배정된 프로젝트가 없는 날입니다.
-                    {c.overtimeMin > 0 && ' (잔업 기록은 위에 별도 표시됨)'}
-                  </p>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => setDetailCell(null)}>
+                    닫기
+                  </button>
                 </div>
-              )}
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-primary" onClick={() => setDetailCell(null)}>닫기</button>
               </div>
-            </div>
-          </Modal>
-        );
-      })()}
+            </Modal>
+          );
+        })()}
     </div>
   );
 }

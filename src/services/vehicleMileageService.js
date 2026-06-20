@@ -1,7 +1,4 @@
-import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc,
-  query, where,
-} from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // 차량 운행 키로수 — 사용자×월 단일 문서

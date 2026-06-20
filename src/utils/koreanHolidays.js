@@ -70,8 +70,12 @@ const LUNAR_AND_SUBSTITUTE = {
 // 단일 연도 공휴일 맵 { 'YYYY-MM-DD': '명칭' }
 export function getKoreanHolidaysMap(year) {
   const map = {};
-  buildFixedHolidays(year).forEach((h) => { map[h.date] = h.name; });
-  (LUNAR_AND_SUBSTITUTE[year] || []).forEach((h) => { map[h.date] = h.name; });
+  buildFixedHolidays(year).forEach((h) => {
+    map[h.date] = h.name;
+  });
+  (LUNAR_AND_SUBSTITUTE[year] || []).forEach((h) => {
+    map[h.date] = h.name;
+  });
   return map;
 }
 

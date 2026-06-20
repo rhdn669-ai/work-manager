@@ -1,11 +1,14 @@
-import {
-  collection, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc,
-  query, where,
-} from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
-import { addFinanceItem, deleteFinanceItem, findFinanceByOvertimeId, getFinanceItems, updateFinanceItem } from './siteService';
+import {
+  addFinanceItem,
+  deleteFinanceItem,
+  findFinanceByOvertimeId,
+  getFinanceItems,
+  updateFinanceItem,
+} from './siteService';
 
 const overtimeRef = collection(db, 'overtimeRecords');
 
@@ -103,13 +106,18 @@ async function removeOvertimeExpense(overtimeId, record) {
   if (finances.length === 0 && record?.siteId && record.siteId !== 'etc' && record.date) {
     const d = new Date(record.date);
     const all = await getFinanceItems(record.siteId, d.getFullYear(), d.getMonth() + 1);
-    finances = all.filter((f) => f.description && f.description.includes('잔업') && f.description.includes(record.userName) && f.description.includes(record.date));
+    finances = all.filter(
+      (f) =>
+        f.description &&
+        f.description.includes('잔업') &&
+        f.description.includes(record.userName) &&
+        f.description.includes(record.date),
+    );
   }
   for (const f of finances) {
     await deleteFinanceItem(f.id);
   }
 }
-
 
 // 본인 잔업 기록 조회 (기간별)
 export async function getMyOvertimeRecords(userId, startDate, endDate) {
@@ -165,9 +173,7 @@ async function addOvertimeExpense(userId, userName, siteId, date, minutes, overt
 // 시급이 변경되었거나 OVERTIME_MULTIPLIER가 바뀌었을 때 사용
 export async function recomputeAllOvertimeExpenses() {
   const snap = await getDocs(overtimeRef);
-  const approvedAll = snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((r) => r.status === 'approved');
+  const approvedAll = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => r.status === 'approved');
 
   const stats = { total: approvedAll.length, updated: 0, skipped: [] };
   for (const rec of approvedAll) {
@@ -179,7 +185,11 @@ export async function recomputeAllOvertimeExpenses() {
       const user = await getUser(rec.userId);
       const hourlyRate = Number(user?.hourlyRate) || 0;
       if (hourlyRate <= 0) {
-        stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '시급 미등록' });
+        stats.skipped.push({
+          userName: rec.userName || user?.name || '(이름없음)',
+          date: rec.date,
+          reason: '시급 미등록',
+        });
         continue;
       }
       const hours = (rec.minutes || 0) / 60;
@@ -187,7 +197,11 @@ export async function recomputeAllOvertimeExpenses() {
 
       const fins = await findFinanceByOvertimeId(rec.id);
       if (fins.length === 0) {
-        stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '연결된 지출 항목 없음' });
+        stats.skipped.push({
+          userName: rec.userName || user?.name || '(이름없음)',
+          date: rec.date,
+          reason: '연결된 지출 항목 없음',
+        });
         continue;
       }
       let rowUpdated = false;
@@ -198,7 +212,12 @@ export async function recomputeAllOvertimeExpenses() {
         }
       }
       if (rowUpdated) stats.updated++;
-      else stats.skipped.push({ userName: rec.userName || user?.name || '(이름없음)', date: rec.date, reason: '이미 최신 금액' });
+      else
+        stats.skipped.push({
+          userName: rec.userName || user?.name || '(이름없음)',
+          date: rec.date,
+          reason: '이미 최신 금액',
+        });
     } catch (err) {
       console.error('잔업 재계산 실패:', rec.id, err);
       stats.skipped.push({ userName: rec.userName || '(이름없음)', date: rec.date, reason: `에러: ${err.message}` });

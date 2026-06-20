@@ -1,6 +1,15 @@
 import {
-  collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc,
-  query, where, orderBy,
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  setDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { calculateAccruedLeave } from '../utils/leaveCalculator';
@@ -106,7 +115,6 @@ export async function requestLeave(data) {
   return docRef;
 }
 
-
 // 연차 취소 (선택적으로 취소 사유 기록)
 export async function cancelLeave(leaveId, cancelReason = '') {
   const leaveDoc = await getDoc(doc(db, 'leaves', leaveId));
@@ -160,7 +168,6 @@ export async function getMyLeaves(userId, year) {
     .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
 }
 
-
 // 잔여 연차 조회 (users 컬렉션의 입사일 기준 실시간 계산)
 export async function getLeaveBalance(userId) {
   // users 컬렉션에서 최신 입사일을 직접 가져옴
@@ -171,7 +178,7 @@ export async function getLeaveBalance(userId) {
   const totalDays = calculateAccruedLeave(joinDate);
 
   const docSnap = await getDoc(doc(db, 'leaveBalances', userId));
-  const usedDays = docSnap.exists() ? (docSnap.data().usedDays || 0) : 0;
+  const usedDays = docSnap.exists() ? docSnap.data().usedDays || 0 : 0;
 
   // leaveBalances 문서가 없으면 자동 생성
   if (!docSnap.exists()) {
@@ -280,7 +287,7 @@ export async function editLeaveWithBalance(id, userId, data, oldDays) {
 export async function initLeaveBalance(userId, joinDate) {
   const ref = doc(db, 'leaveBalances', userId);
   const existing = await getDoc(ref);
-  const usedDays = existing.exists() ? (existing.data().usedDays || 0) : 0;
+  const usedDays = existing.exists() ? existing.data().usedDays || 0 : 0;
 
   await setDoc(ref, {
     userId,

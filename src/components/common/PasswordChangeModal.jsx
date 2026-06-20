@@ -14,19 +14,39 @@ export default function PasswordChangeModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen) {
-      setCurrent(''); setNext(''); setConfirm('');
-      setError(''); setSuccess(''); setLoading(false);
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+      setError('');
+      setSuccess('');
+      setLoading(false);
     }
   }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); setSuccess('');
-    if (!current) { setError('현재 비밀번호를 입력해주세요.'); return; }
-    if (current !== userProfile?.password) { setError('현재 비밀번호가 일치하지 않습니다.'); return; }
-    if (next.length < 4) { setError('새 비밀번호는 4자 이상이어야 합니다.'); return; }
-    if (next === current) { setError('현재 비밀번호와 다른 비밀번호를 사용해주세요.'); return; }
-    if (next !== confirm) { setError('새 비밀번호가 일치하지 않습니다.'); return; }
+    setError('');
+    setSuccess('');
+    if (!current) {
+      setError('현재 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (current !== userProfile?.password) {
+      setError('현재 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    if (next.length < 4) {
+      setError('새 비밀번호는 4자 이상이어야 합니다.');
+      return;
+    }
+    if (next === current) {
+      setError('현재 비밀번호와 다른 비밀번호를 사용해주세요.');
+      return;
+    }
+    if (next !== confirm) {
+      setError('새 비밀번호가 일치하지 않습니다.');
+      return;
+    }
 
     setLoading(true);
     try {

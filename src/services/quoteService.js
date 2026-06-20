@@ -1,7 +1,4 @@
-import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, orderBy,
-} from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const quotesRef = collection(db, 'quotes');
@@ -22,7 +19,8 @@ export async function getQuotes() {
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch {
     const snap = await getDocs(quotesRef);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
   }
 }

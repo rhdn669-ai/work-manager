@@ -83,9 +83,18 @@ export function DialogProvider({ children }) {
           {toasts.map((t) => (
             <div key={t.id} className={`toast toast--${t.type === 'error' ? 'error' : 'success'}`} role="status">
               <svg className="toast__icon" viewBox="0 0 24 24" aria-hidden="true">
-                {t.type === 'error'
-                  ? <><circle cx="12" cy="12" r="9" /><path d="M12 8v5" /><path d="M12 16h.01" /></>
-                  : <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></>}
+                {t.type === 'error' ? (
+                  <>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 8v5" />
+                    <path d="M12 16h.01" />
+                  </>
+                ) : (
+                  <>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+                  </>
+                )}
               </svg>
               <span>{t.message}</span>
             </div>
@@ -93,10 +102,7 @@ export function DialogProvider({ children }) {
         </div>
       )}
       {dialog && (
-        <div
-          className="modal-overlay"
-          onClick={() => close(dialog.type === 'confirm' ? false : undefined)}
-        >
+        <div className="modal-overlay" onClick={() => close(dialog.type === 'confirm' ? false : undefined)}>
           <div className="modal app-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{dialog.title}</h3>

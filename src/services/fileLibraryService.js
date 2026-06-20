@@ -1,9 +1,17 @@
 import {
-  collection, doc, addDoc, deleteDoc, onSnapshot, query, where, orderBy, getDocs,
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  updateDoc,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  writeBatch,
 } from 'firebase/firestore';
-import {
-  ref, uploadBytesResumable, getDownloadURL, deleteObject,
-} from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, ensureAnonymousAuth } from '../config/firebase';
 
 // 사내 자료실 — 전 직원이 폴더를 만들고 파일을 올리고 받을 수 있는 공용 클라우드 저장소
@@ -15,26 +23,45 @@ const filesRef = collection(db, 'libraryFiles');
 
 // ---------- 실시간 구독 ----------
 
-// 폴더 목록 실시간 구독 (생성일 오름차순)
+// 폴더 목록 실시간 구독 (order 우선, 없으면 생성일순) — JS 정렬로 하위호환
 export function subscribeFolders(cb) {
   const q = query(foldersRef, orderBy('createdAt', 'asc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  }, (err) => {
-    console.error('[자료실] 폴더 구독 오류:', err);
-    cb([]);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      // 쿼리가 createdAt 오름차순 → Array.sort는 안정정렬이라 order 동률 시 생성순 유지
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9));
+      cb(list);
+    },
+    (err) => {
+      console.error('[자료실] 폴더 구독 오류:', err);
+      cb([]);
+    },
+  );
+}
+
+// 폴더 순서 저장 — [{ id, order }] 배치 갱신
+export async function setFolderOrder(updates) {
+  if (!updates || updates.length === 0) return;
+  const batch = writeBatch(db);
+  updates.forEach(({ id, order }) => batch.update(doc(db, 'libraryFolders', id), { order }));
+  await batch.commit();
 }
 
 // 파일 목록 실시간 구독 (최신 업로드 우선)
 export function subscribeFiles(cb) {
   const q = query(filesRef, orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  }, (err) => {
-    console.error('[자료실] 파일 구독 오류:', err);
-    cb([]);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    },
+    (err) => {
+      console.error('[자료실] 파일 구독 오류:', err);
+      cb([]);
+    },
+  );
 }
 
 // ---------- 폴더 ----------
@@ -67,34 +94,23 @@ export async function ensureFolder(name, user, parentId = null) {
 // 폴더 경로(['거래처 정보', '업체명'])를 차례로 보장하고 마지막(말단) 폴더 id 반환
 export async function ensureFolderPath(parts, user) {
   let parentId = null;
-  for (const p of (parts || [])) {
+  for (const p of parts || []) {
     if (!p || !String(p).trim()) continue;
     parentId = await ensureFolder(String(p).trim(), user, parentId);
   }
   return parentId;
 }
 
-// 폴더 삭제 — 하위 폴더·그 안의 파일(Storage + 메타)까지 재귀 삭제
+// 폴더 이름 변경
+export async function renameFolder(folderId, newName) {
+  const trimmed = (newName || '').trim();
+  if (!trimmed) throw new Error('폴더 이름을 입력하세요.');
+  await updateDoc(doc(db, 'libraryFolders', folderId), { name: trimmed });
+}
+
+// 폴더 문서만 삭제 — 파일 휴지통 이동은 호출자(FileLibraryPage)가 처리
 export async function deleteFolder(folderId) {
-  const allFolders = (await getDocs(foldersRef)).docs.map((d) => ({ id: d.id, parentId: d.data().parentId || null }));
-  // 삭제 대상: 자기 자신 + 모든 하위 후손 폴더
-  const targets = [];
-  const collect = (id) => {
-    targets.push(id);
-    allFolders.filter((f) => f.parentId === id).forEach((c) => collect(c.id));
-  };
-  collect(folderId);
-  for (const fid of targets) {
-    const snap = await getDocs(query(filesRef, where('folderId', '==', fid)));
-    await Promise.all(snap.docs.map(async (d) => {
-      const data = d.data();
-      if (data.storagePath) {
-        try { await deleteObject(ref(storage, data.storagePath)); } catch { /* 이미 없으면 무시 */ }
-      }
-      await deleteDoc(doc(db, 'libraryFiles', d.id));
-    }));
-    await deleteDoc(doc(db, 'libraryFolders', fid));
-  }
+  await deleteDoc(doc(db, 'libraryFolders', folderId));
 }
 
 // ---------- 파일 ----------
@@ -110,7 +126,11 @@ function buildStoragePath(folderId, fileName) {
 // 실제 바이너리는 Storage, 메타데이터는 Firestore에 저장
 export async function uploadFile(file, folderId, user, onProgress, displayName) {
   // 익명 인증 시도 — 비활성화돼 있어도(Storage 규칙 공개면) 업로드는 계속 진행
-  try { await ensureAnonymousAuth(); } catch (e) { console.warn('[자료실] 익명 인증 생략:', e?.message || e); }
+  try {
+    await ensureAnonymousAuth();
+  } catch (e) {
+    console.warn('[자료실] 익명 인증 생략:', e?.message || e);
+  }
   const fileName = (displayName && displayName.trim()) || file.name;
   const storagePath = buildStoragePath(folderId, fileName);
   const task = uploadBytesResumable(ref(storage, storagePath), file, {
@@ -119,7 +139,8 @@ export async function uploadFile(file, folderId, user, onProgress, displayName) 
 
   // 업로드 진행률 → 완료까지 대기
   await new Promise((resolve, reject) => {
-    task.on('state_changed',
+    task.on(
+      'state_changed',
       (snap) => {
         if (onProgress && snap.totalBytes) {
           onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
@@ -144,9 +165,23 @@ export async function uploadFile(file, folderId, user, onProgress, displayName) 
   });
 }
 
+// 파일을 다른 폴더로 이동 (드래그앤드롭) — folderId(null=전체) 갱신
+export async function moveFile(fileId, folderId) {
+  await updateDoc(doc(db, 'libraryFiles', fileId), { folderId: folderId || null });
+}
+
+// 폴더를 다른 폴더 안으로 이동(중첩) 또는 최상위로 — parentId(null=최상위) 갱신
+export async function moveFolder(folderId, newParentId) {
+  await updateDoc(doc(db, 'libraryFolders', folderId), { parentId: newParentId || null });
+}
+
 export async function deleteFile(fileMeta) {
   if (fileMeta.storagePath) {
-    try { await deleteObject(ref(storage, fileMeta.storagePath)); } catch { /* 이미 없으면 무시 */ }
+    try {
+      await deleteObject(ref(storage, fileMeta.storagePath));
+    } catch {
+      /* 이미 없으면 무시 */
+    }
   }
   await deleteDoc(doc(db, 'libraryFiles', fileMeta.id));
 }

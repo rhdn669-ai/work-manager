@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  getMileage, getLatestPrevMileage, saveMileage,
-} from '../../services/vehicleMileageService';
+import { getMileage, getLatestPrevMileage, saveMileage } from '../../services/vehicleMileageService';
 
 // 차량 운행 키로수 입력 모달
 // - 자동 경고 모드: Layout이 매 로그인마다 이번달 미입력일 때 자동 노출
@@ -53,7 +51,9 @@ export default function VehicleMileageModal({ isOpen, onClose, onSaved }) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, userProfile?.uid, year, month]);
 
   const odometerNum = Number(String(odometer).replace(/[^\d.]/g, '')) || 0;
@@ -95,9 +95,11 @@ export default function VehicleMileageModal({ isOpen, onClose, onSaved }) {
       <div className="vehicle-mileage-modal">
         <div className="vehicle-mileage-greet">
           <strong>{userProfile?.name}</strong>님,
-          {existing
-            ? <> 이번달 누적 키로수가 등록되어 있습니다. 필요 시 수정할 수 있어요.</>
-            : <> 이번달 누적 키로수를 입력해 주세요.</>}
+          {existing ? (
+            <> 이번달 누적 키로수가 등록되어 있습니다. 필요 시 수정할 수 있어요.</>
+          ) : (
+            <> 이번달 누적 키로수를 입력해 주세요.</>
+          )}
         </div>
 
         <div className="vehicle-mileage-info">
@@ -108,9 +110,14 @@ export default function VehicleMileageModal({ isOpen, onClose, onSaved }) {
           <div className="vmm-row">
             <span className="vmm-label">이전월 누적</span>
             <span className="vmm-value">
-              {prev
-                ? <><strong>{fmtNumber(prev.odometer)}</strong> km <span className="text-muted text-sm">({prev.yearMonth})</span></>
-                : <span className="text-muted">기록 없음 (이번이 첫 입력)</span>}
+              {prev ? (
+                <>
+                  <strong>{fmtNumber(prev.odometer)}</strong> km{' '}
+                  <span className="text-muted text-sm">({prev.yearMonth})</span>
+                </>
+              ) : (
+                <span className="text-muted">기록 없음 (이번이 첫 입력)</span>
+              )}
             </span>
           </div>
         </div>
@@ -134,9 +141,13 @@ export default function VehicleMileageModal({ isOpen, onClose, onSaved }) {
             />
             {odometerNum > 0 && (
               <div className={`vmm-driven ${isInvalid ? 'is-invalid' : ''}`}>
-                {isInvalid
-                  ? <>⚠ 이전월보다 작습니다 — 다시 확인해 주세요</>
-                  : <>이번달 운행 거리: <strong>{fmtNumber(drivenKm)}</strong> km</>}
+                {isInvalid ? (
+                  <>⚠ 이전월보다 작습니다 — 다시 확인해 주세요</>
+                ) : (
+                  <>
+                    이번달 운행 거리: <strong>{fmtNumber(drivenKm)}</strong> km
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -144,20 +155,11 @@ export default function VehicleMileageModal({ isOpen, onClose, onSaved }) {
           {error && <div className="vmm-error">{error}</div>}
 
           <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={onClose}
-              disabled={saving}
-            >
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={saving}>
               {existing ? '닫기' : '다음에'}
             </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading || saving || !odometerNum || isInvalid}
-            >
-              {saving ? '저장 중…' : (existing ? '수정' : '등록')}
+            <button type="submit" className="btn btn-primary" disabled={loading || saving || !odometerNum || isInvalid}>
+              {saving ? '저장 중…' : existing ? '수정' : '등록'}
             </button>
           </div>
         </form>

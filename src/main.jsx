@@ -9,12 +9,14 @@ try {
   if (localStorage.getItem('wm-theme') === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
   }
-} catch { /* ignore */ }
+} catch {
+  /* ignore */
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );
 
 // Service Worker 등록 (PWA)

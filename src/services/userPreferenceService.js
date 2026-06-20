@@ -32,7 +32,6 @@ export async function clearSidebarPref(uid) {
   await setDoc(refFor(uid), { sidebar: deleteField(), updatedAt: new Date() }, { merge: true });
 }
 
-
 // 관리자 기본 대분류 seed 완료 플래그 — 사용자가 삭제해도 재등장하지 않도록 저장
 export async function setSeededAdminDefaults(uid) {
   if (!uid) return;

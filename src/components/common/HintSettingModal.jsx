@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Modal from './Modal';
+import Select from './Select';
 import { useAuth } from '../../contexts/AuthContext';
 import { updateUser } from '../../services/userService';
 import { hashAnswer } from '../../utils/hash';
@@ -27,7 +28,10 @@ export default function HintSettingModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen) {
-      setHintAnswerVal(''); setError(''); setSuccess(''); setLoading(false);
+      setHintAnswerVal('');
+      setError('');
+      setSuccess('');
+      setLoading(false);
       return;
     }
     const stored = userProfile?.passwordHintQuestion || '';
@@ -50,11 +54,21 @@ export default function HintSettingModal({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); setSuccess('');
+    setError('');
+    setSuccess('');
 
-    if (!effectiveQuestion) { setError('힌트 질문을 선택하거나 입력해주세요.'); return; }
-    if (!hintAnswer.trim()) { setError('힌트 답변을 입력해주세요.'); return; }
-    if (hintAnswer.trim().length < 2) { setError('힌트 답변은 2자 이상이어야 합니다.'); return; }
+    if (!effectiveQuestion) {
+      setError('힌트 질문을 선택하거나 입력해주세요.');
+      return;
+    }
+    if (!hintAnswer.trim()) {
+      setError('힌트 답변을 입력해주세요.');
+      return;
+    }
+    if (hintAnswer.trim().length < 2) {
+      setError('힌트 답변은 2자 이상이어야 합니다.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -82,24 +96,23 @@ export default function HintSettingModal({ isOpen, onClose }) {
         {success && <div className="alert alert-success">{success}</div>}
 
         <p className="forgot-pw-step-desc">
-          비밀번호 분실 시 본인이 직접 재설정할 수 있도록 힌트 질문과 답변을 설정합니다.
-          답변은 암호화되어 저장되며 관리자도 볼 수 없습니다.
+          비밀번호 분실 시 본인이 직접 재설정할 수 있도록 힌트 질문과 답변을 설정합니다. 답변은 암호화되어 저장되며
+          관리자도 볼 수 없습니다.
         </p>
 
         <div className="form-group">
           <label>힌트 질문</label>
-          <select
+          <Select
             value={hintQuestion}
-            onChange={(e) => setHintQuestion(e.target.value)}
+            onChange={(v) => setHintQuestion(v)}
+            options={[
+              ...PRESET_QUESTIONS.map((q) => ({ value: q, label: q })),
+              { value: CUSTOM_VALUE, label: '직접 입력' },
+            ]}
+            placeholder="선택하세요"
             disabled={loading}
-            required
-          >
-            <option value="">선택하세요</option>
-            {PRESET_QUESTIONS.map((q) => (
-              <option key={q} value={q}>{q}</option>
-            ))}
-            <option value={CUSTOM_VALUE}>직접 입력</option>
-          </select>
+            ariaLabel="힌트 질문 선택"
+          />
         </div>
 
         {hintQuestion === CUSTOM_VALUE && (
@@ -132,7 +145,7 @@ export default function HintSettingModal({ isOpen, onClose }) {
 
         <div className="modal-actions">
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? '저장 중...' : (hasExistingHint ? '변경' : '설정')}
+            {loading ? '저장 중...' : hasExistingHint ? '변경' : '설정'}
           </button>
           <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
             취소

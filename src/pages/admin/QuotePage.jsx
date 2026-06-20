@@ -1,16 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getQuotes, addQuote, updateQuote, deleteQuote } from '../../services/quoteService';
+import { getQuotes, addQuote, updateQuote } from '../../services/quoteService';
 import { getSuppliers } from '../../services/purchaseService';
+import { trashGeneric } from '../../services/trashService';
+import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
+import TrashModal from '../../components/common/TrashModal';
+import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/DialogProvider';
+import Icon from '../../components/common/Icon';
 import { specFontClass } from '../../utils/printText';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
 const DEFAULT_NOTE = '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.';
 const EMPTY_FORM = {
-  title: '', supplierId: '', supplierName: '', siteName: '',
+  title: '',
+  supplierId: '',
+  supplierName: '',
+  siteName: '',
   items: [{ ...EMPTY_LINE }],
-  validity: '15일', delivery: '일정에 준함', payment: '협의',
+  validity: '15일',
+  delivery: '일정에 준함',
+  payment: '협의',
   note: DEFAULT_NOTE,
 };
 
@@ -25,14 +35,17 @@ const SELF_INFO = {
 const PRINT_ROWS = 15;
 
 function fmtDateKo(ts) {
-  const d = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : new Date());
+  const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : new Date();
   if (Number.isNaN(d.getTime())) return '';
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
 function quoteNumber(quote) {
-  const d = quote.createdAt?.toDate ? quote.createdAt.toDate()
-    : (quote.createdAt ? new Date(quote.createdAt) : new Date());
+  const d = quote.createdAt?.toDate
+    ? quote.createdAt.toDate()
+    : quote.createdAt
+      ? new Date(quote.createdAt)
+      : new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -41,10 +54,12 @@ function quoteNumber(quote) {
 }
 
 export default function QuotePage() {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
+  const { userProfile } = useAuth();
   const [quotes, setQuotes] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const [showModal, setShowModal] = useState(false);
@@ -53,7 +68,9 @@ export default function QuotePage() {
 
   const [previewQuote, setPreviewQuote] = useState(null);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   async function loadAll() {
     try {
@@ -88,9 +105,7 @@ export default function QuotePage() {
       supplierId: q.supplierId || '',
       supplierName: q.supplierName || '',
       siteName: q.siteName || '',
-      items: (q.items && q.items.length > 0)
-        ? q.items.map((it) => ({ ...EMPTY_LINE, ...it }))
-        : [{ ...EMPTY_LINE }],
+      items: q.items && q.items.length > 0 ? q.items.map((it) => ({ ...EMPTY_LINE, ...it })) : [{ ...EMPTY_LINE }],
       validity: q.validity || '15일',
       delivery: q.delivery || '일정에 준함',
       payment: q.payment || '협의',
@@ -102,7 +117,9 @@ export default function QuotePage() {
   function updateLine(idx, patch) {
     setForm((f) => ({ ...f, items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)) }));
   }
-  function addLine() { setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] })); }
+  function addLine() {
+    setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] }));
+  }
   function removeLine(idx) {
     setForm((f) => ({ ...f, items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items }));
   }
@@ -116,11 +133,17 @@ export default function QuotePage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.title.trim()) { alert('제목을 입력해주세요.'); return; }
+    if (!form.title.trim()) {
+      alert('제목을 입력해주세요.');
+      return;
+    }
     const lines = form.items.filter((ln) => (ln.name || '').trim());
     const items = lines.map((ln) => ({
-      name: ln.name, spec: ln.spec || '', unit: ln.unit || '',
-      qty: Number(ln.qty) || 0, unitPrice: Number(ln.unitPrice) || 0,
+      name: ln.name,
+      spec: ln.spec || '',
+      unit: ln.unit || '',
+      qty: Number(ln.qty) || 0,
+      unitPrice: Number(ln.unitPrice) || 0,
       amount: (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0),
       note: ln.note || '',
     }));
@@ -132,7 +155,10 @@ export default function QuotePage() {
       supplierId: form.supplierId,
       supplierName: supplier?.name || form.supplierName || '',
       siteName: form.siteName || '',
-      items, totalAmount, vat, grandTotal: totalAmount + vat,
+      items,
+      totalAmount,
+      vat,
+      grandTotal: totalAmount + vat,
       validity: form.validity || '15일',
       delivery: form.delivery || '일정에 준함',
       payment: form.payment || '협의',
@@ -153,9 +179,18 @@ export default function QuotePage() {
 
   async function handleDelete(e, q) {
     e.stopPropagation();
-    if (!await confirm(`"${q.title}" 견적서를 삭제하시겠습니까?`)) return;
+    if (!(await confirm(`"${q.title}" 견적서를 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
     try {
-      await deleteQuote(q.id);
+      await trashGeneric(
+        'quotes',
+        q.id,
+        {
+          title: q.title,
+          summary: [q.supplierName, q.siteName].filter(Boolean).join(' · '),
+        },
+        userProfile?.name || '',
+      );
+      toast('휴지통으로 이동했습니다.');
       await loadAll();
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
@@ -166,12 +201,60 @@ export default function QuotePage() {
 
   return (
     <div className="quote-page printable-page">
+      <style>{`
+        @media (max-width: 480px) {
+          .quote-line { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+          .quote-line input[placeholder="품명"], .quote-line input[placeholder="규격"] { grid-column: 1 / -1; flex: 1 1 100% !important; }
+          .quote-line input { flex: 1 1 calc(50% - 4px); }
+          .quote-line .purchase-line-del { grid-column: 1 / -1; min-height: 36px; }
+          .quote-line-amount { grid-column: 1 / -1; text-align: right; }
+          .quote-page .table { font-size: 12px; }
+          .quote-page .table th, .quote-page .table td { padding: 6px 8px; vertical-align: middle; }
+        }
+        @media (max-width: 390px) {
+          .quote-page .table { font-size: 11px; }
+          .quote-page .table th, .quote-page .table td { padding: 4px !important; }
+          .quote-page .table td[data-label="거래처"],
+          .quote-page .table td[data-label="현장"] { min-width: 80px !important; }
+        }
+        .quote-page .table th, .quote-page .table td { vertical-align: middle; }
+        .quote-page .table tbody tr { min-height: 36px; }
+        .quote-page .table tbody tr td { padding-top: 8px; padding-bottom: 8px; }
+        .quote-line { display: flex; align-items: center; }
+        .quote-line > * { min-height: 36px; align-items: center; }
+        .quote-line input { min-height: 36px; box-sizing: border-box; }
+        .quote-line .purchase-line-del { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; }
+        .quote-line-amount { text-align: right; display: inline-flex; align-items: center; min-height: 36px; min-width: 80px; }
+        .quote-page .table td { word-break: break-word; overflow-wrap: break-word; }
+        .quote-page .table th { min-width: 80px; }
+        .quote-page .table .btn { min-height: 32px; vertical-align: middle; }
+        .quote-cell-clamp { min-width: 80px; max-width: 160px; }
+        .quote-cell-clamp-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; white-space: normal; min-width: 0; }
+        @media (max-width: 430px) { .quote-cell-clamp { max-width: 110px !important; } }
+        @media (max-width: 360px) { .quote-cell-clamp { max-width: 88px !important; } }
+        @media (max-width: 280px) { .quote-cell-clamp { max-width: 64px !important; } }
+      `}</style>
       <div className="page-header screen-only">
         <h2>견적서 관리</h2>
         <div className="page-actions">
-          <button className="btn btn-primary" onClick={openCreate}>견적서 작성</button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+            <Icon name="trash" className="btn-ic" />
+            휴지통
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
+            <Icon name="plus" className="btn-ic" />
+            견적서 작성
+          </button>
         </div>
       </div>
+
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['quotes']}
+        title="견적 휴지통"
+        onChange={loadAll}
+      />
 
       <div className="purchase-filters screen-only">
         <input
@@ -186,33 +269,53 @@ export default function QuotePage() {
       <div className="screen-only">
         {filtered.length === 0 ? (
           <p className="purchase-empty">
-            {quotes.length === 0 ? '등록된 견적서가 없습니다. 우측 상단 "견적서 작성"으로 시작하세요.' : '검색 결과가 없습니다.'}
+            {quotes.length === 0
+              ? '등록된 견적서가 없습니다. 우측 상단 "견적서 작성"으로 시작하세요.'
+              : '검색 결과가 없습니다.'}
           </p>
         ) : (
-          <table className="table cards-sm">
-            <thead>
-              <tr>
-                <th>제목</th><th>거래처</th><th>현장</th>
-                <th>공급가액</th><th>합계</th><th>작성일</th>
-                <th className="bom-project-action-col">작업</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((q) => (
-                <tr key={q.id} className="table-clickable-row" onClick={() => setPreviewQuote(q)}>
-                  <td data-label="제목"><strong>{q.title}</strong></td>
-                  <td data-label="거래처">{q.supplierName || '-'}</td>
-                  <td data-label="현장">{q.siteName || '-'}</td>
-                  <td data-label="공급가액">{Number(q.totalAmount || 0).toLocaleString()}원</td>
-                  <td data-label="합계"><strong>{Number(q.grandTotal || 0).toLocaleString()}원</strong></td>
-                  <td data-label="작성일">{fmtDateKo(q.createdAt)}</td>
-                  <td className="bom-project-action-col" onClick={(e) => e.stopPropagation()}>
-                    <button className="btn btn-sm btn-danger" onClick={(e) => handleDelete(e, q)}>삭제</button>
-                  </td>
+          <div className="table-scroll-x">
+            <table className="table cards-sm" style={{ '--row-min-h': '36px' }}>
+              <thead>
+                <tr style={{ height: 36 }}>
+                  <th style={{ verticalAlign: 'middle' }}>제목</th>
+                  <th style={{ verticalAlign: 'middle' }}>거래처</th>
+                  <th style={{ verticalAlign: 'middle' }}>현장</th>
+                  <th style={{ textAlign: 'right', verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums' }}>공급가액</th>
+                  <th style={{ textAlign: 'right', verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums' }}>합계</th>
+                  <th style={{ verticalAlign: 'middle' }}>작성일</th>
+                  <th className="bom-project-action-col" style={{ verticalAlign: 'middle' }}>작업</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((q) => (
+                  <tr key={q.id} className="table-clickable-row" style={{ minHeight: 36 }} onClick={() => setPreviewQuote(q)}>
+                    <td data-label="제목" title={q.title || ''}>
+                      <strong>{q.title}</strong>
+                    </td>
+                    <td data-label="거래처" title={q.supplierName || ''} className="quote-cell-clamp">
+                      <span className="quote-cell-clamp-text" title={q.supplierName || ''}>{q.supplierName || '-'}</span>
+                    </td>
+                    <td data-label="현장" title={q.siteName || ''} className="quote-cell-clamp">
+                      <span className="quote-cell-clamp-text" title={q.siteName || ''}>{q.siteName || '-'}</span>
+                    </td>
+                    <td data-label="공급가액" style={{ textAlign: 'right', verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums' }}>
+                      {Number(q.totalAmount || 0).toLocaleString()}원
+                    </td>
+                    <td data-label="합계" style={{ textAlign: 'right', verticalAlign: 'middle', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{Number(q.grandTotal || 0).toLocaleString()}원</strong>
+                    </td>
+                    <td data-label="작성일" style={{ verticalAlign: 'middle' }}>{fmtDateKo(q.createdAt)}</td>
+                    <td className="bom-project-action-col action-cell" style={{ verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                      <button type="button" className="btn btn-sm btn-danger" onClick={(e) => handleDelete(e, q)}>
+                        <Icon name="trash" className="btn-ic" />삭제
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -221,33 +324,60 @@ export default function QuotePage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>제목 *</label>
-            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="예) STAGE 1SET" required />
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="예) STAGE 1SET"
+              required
+            />
           </div>
           <div className="form-group">
             <label>거래처</label>
-            <select value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
-              <option value="">선택 (또는 아래에 직접 입력)</option>
-              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <Select
+              value={form.supplierId}
+              onChange={(v) => setForm({ ...form, supplierId: v })}
+              options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+              ariaLabel="거래처 선택"
+              placeholder="선택 (또는 아래에 직접 입력)"
+            />
           </div>
           {!form.supplierId && (
             <div className="form-group">
               <label>거래처명 (직접 입력)</label>
-              <input type="text" value={form.supplierName} onChange={(e) => setForm({ ...form, supplierName: e.target.value })} placeholder="등록 안된 거래처는 직접 입력" />
+              <input
+                type="text"
+                value={form.supplierName}
+                onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
+                placeholder="등록 안된 거래처는 직접 입력"
+              />
             </div>
           )}
           <div className="form-group">
             <label>현장명</label>
-            <input type="text" value={form.siteName} onChange={(e) => setForm({ ...form, siteName: e.target.value })} placeholder="예) SEMES 프로버설비" />
+            <input
+              type="text"
+              value={form.siteName}
+              onChange={(e) => setForm({ ...form, siteName: e.target.value })}
+              placeholder="예) SEMES 프로버설비"
+            />
           </div>
           <div className="form-group form-row-3">
             <div>
               <label>유효기간</label>
-              <input type="text" value={form.validity} onChange={(e) => setForm({ ...form, validity: e.target.value })} />
+              <input
+                type="text"
+                value={form.validity}
+                onChange={(e) => setForm({ ...form, validity: e.target.value })}
+              />
             </div>
             <div>
               <label>납품기일</label>
-              <input type="text" value={form.delivery} onChange={(e) => setForm({ ...form, delivery: e.target.value })} />
+              <input
+                type="text"
+                value={form.delivery}
+                onChange={(e) => setForm({ ...form, delivery: e.target.value })}
+              />
             </div>
             <div>
               <label>지불조건</label>
@@ -259,23 +389,76 @@ export default function QuotePage() {
             <label>품목</label>
             <p className="field-hint">품명·규격·단위·수량·단가를 입력하세요. 합계는 자동 계산됩니다.</p>
             {form.items.map((ln, idx) => (
-              <div className="quote-line" key={idx}>
-                <input type="text" placeholder="품명" value={ln.name} onChange={(e) => updateLine(idx, { name: e.target.value })} />
-                <input type="text" placeholder="규격" value={ln.spec} onChange={(e) => updateLine(idx, { spec: e.target.value })} />
-                <input type="text" placeholder="단위" value={ln.unit} onChange={(e) => updateLine(idx, { unit: e.target.value })} />
-                <input className="num-input" type="number" min="0" placeholder="수량" value={ln.qty || ''} onChange={(e) => updateLine(idx, { qty: e.target.value })} />
-                <input className="num-input" type="number" min="0" placeholder="단가" value={ln.unitPrice || ''} onChange={(e) => updateLine(idx, { unitPrice: e.target.value })} />
-                <span className="quote-line-amount">{((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}</span>
-                <input type="text" placeholder="비고" value={ln.note} onChange={(e) => updateLine(idx, { note: e.target.value })} />
-                <button type="button" className="purchase-line-del" onClick={() => removeLine(idx)} aria-label="행 삭제">✕</button>
+              <div className="quote-line" key={idx} style={{ flexWrap: 'wrap', gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="품명"
+                  value={ln.name}
+                  title={ln.name || ''}
+                  onChange={(e) => updateLine(idx, { name: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="규격"
+                  value={ln.spec}
+                  title={ln.spec || ''}
+                  onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="단위"
+                  value={ln.unit}
+                  title={ln.unit || ''}
+                  onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                />
+                <input
+                  className="num-input"
+                  type="number"
+                  min="0"
+                  placeholder="수량"
+                  value={ln.qty || ''}
+                  onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                />
+                <input
+                  className="num-input"
+                  type="number"
+                  min="0"
+                  placeholder="단가"
+                  value={ln.unitPrice || ''}
+                  onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                />
+                <span className="quote-line-amount">
+                  {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
+                </span>
+                <input
+                  type="text"
+                  placeholder="비고"
+                  value={ln.note}
+                  title={ln.note || ''}
+                  onChange={(e) => updateLine(idx, { note: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline purchase-line-del"
+                  onClick={() => removeLine(idx)}
+                  aria-label="행 삭제"
+                  title="행 삭제"
+                >
+                  <Icon name="close" />
+                </button>
               </div>
             ))}
-            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>+ 품목 추가</button>
+            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
+              <Icon name="plus" className="btn-ic" />
+              품목 추가
+            </button>
           </div>
 
           <div className="purchase-total-row">
             <span>공급가액 / VAT (10%) / 합계</span>
-            <strong>{supplyAmount.toLocaleString()} / {vatAmount.toLocaleString()} / {grandTotal.toLocaleString()}원</strong>
+            <strong>
+              {supplyAmount.toLocaleString()} / {vatAmount.toLocaleString()} / {grandTotal.toLocaleString()}원
+            </strong>
           </div>
 
           <div className="form-group">
@@ -284,8 +467,12 @@ export default function QuotePage() {
           </div>
 
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">{editTarget ? '수정' : '저장'}</button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>취소</button>
+            <button type="submit" className="btn btn-primary">
+              {editTarget ? '수정' : '저장'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
+              취소
+            </button>
           </div>
         </form>
       </Modal>
@@ -297,9 +484,22 @@ export default function QuotePage() {
             <QuotePrintForm quote={previewQuote} />
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn btn-primary" onClick={() => window.print()}>PDF 출력</button>
-            <button type="button" className="btn btn-outline" onClick={() => { openEdit(previewQuote); setPreviewQuote(null); }}>수정</button>
-            <button type="button" className="btn btn-outline" onClick={() => setPreviewQuote(null)}>닫기</button>
+            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+              PDF 출력
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => {
+                openEdit(previewQuote);
+                setPreviewQuote(null);
+              }}
+            >
+              수정
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setPreviewQuote(null)}>
+              닫기
+            </button>
           </div>
         </Modal>
       )}
@@ -323,9 +523,11 @@ export default function QuotePage() {
 }
 
 function QuotePrintForm({ quote, hostClass }) {
-  const supplyAmount = Number(quote.totalAmount) || (quote.items || []).reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+  const supplyAmount =
+    Number(quote.totalAmount) ||
+    (quote.items || []).reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const vat = Number(quote.vat) || Math.round(supplyAmount * 0.1);
-  const grandTotal = Number(quote.grandTotal) || (supplyAmount + vat);
+  const grandTotal = Number(quote.grandTotal) || supplyAmount + vat;
   const totalQty = (quote.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0);
   const printRows = [...(quote.items || [])];
   while (printRows.length < PRINT_ROWS) printRows.push(null);
@@ -394,23 +596,30 @@ function QuotePrintForm({ quote, hostClass }) {
         </thead>
         <tbody>
           {printRows.map((ln, idx) => {
-            if (!ln) return (
-              <tr key={`empty-${idx}`}>
-                <td className="c-no">{idx + 1}</td>
-                <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-              </tr>
-            );
+            if (!ln)
+              return (
+                <tr key={`empty-${idx}`}>
+                  <td className="c-no">{idx + 1}</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              );
             const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
             return (
               <tr key={idx}>
                 <td className="c-no">{idx + 1}</td>
-                <td className={`c-name ${specFontClass(ln.name, 18)}`}>{ln.name || ''}</td>
-                <td className={`c-spec ${specFontClass(ln.spec, 20)}`}>{ln.spec || ''}</td>
+                <td className={`c-name ${specFontClass(ln.name, 18)}`} title={ln.name || ''}>{ln.name || ''}</td>
+                <td className={`c-spec ${specFontClass(ln.spec, 20)}`} title={ln.spec || ''}>{ln.spec || ''}</td>
                 <td className="c-unit">{ln.unit || ''}</td>
                 <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
                 <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                 <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                <td className={`c-note ${specFontClass(ln.note, 12)}`}>{ln.note || ''}</td>
+                <td className={`c-note ${specFontClass(ln.note, 12)}`} title={ln.note || ''}>{ln.note || ''}</td>
               </tr>
             );
           })}

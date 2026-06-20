@@ -1,6 +1,15 @@
 import {
-  collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc,
-  query, where, orderBy,
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { QUARTER_LEAVE_TYPES } from '../utils/constants';
@@ -51,8 +60,8 @@ export async function createSite(data) {
     team: data.team || '',
     managerIds: data.managerIds || [],
     defaultVendors: data.defaultVendors || [],
-    projectType: data.projectType || 'recurring',   // 'recurring' | 'once'
-    status: data.status || 'active',                 // 'active' | 'completed'
+    projectType: data.projectType || 'recurring', // 'recurring' | 'once'
+    status: data.status || 'active', // 'active' | 'completed'
     startYear: data.startYear || null,
     startMonth: data.startMonth || null,
     endYear: data.endYear || null,
@@ -93,13 +102,19 @@ export async function getClosing(siteId, year, month) {
 
 export async function upsertClosing(siteId, year, month, data) {
   const id = closingId(siteId, year, month);
-  await setDoc(doc(db, 'siteClosings', id), {
-    siteId, year, month,
-    equipmentCount: data.equipmentCount ?? 0,
-    note: data.note ?? '',
-    locked: data.locked ?? false,
-    updatedAt: new Date(),
-  }, { merge: true });
+  await setDoc(
+    doc(db, 'siteClosings', id),
+    {
+      siteId,
+      year,
+      month,
+      equipmentCount: data.equipmentCount ?? 0,
+      note: data.note ?? '',
+      locked: data.locked ?? false,
+      updatedAt: new Date(),
+    },
+    { merge: true },
+  );
   return id;
 }
 
@@ -109,16 +124,16 @@ export async function getClosingItems(siteId, year, month) {
   const cid = closingId(siteId, year, month);
   const q = query(itemsRef, where('closingId', '==', cid));
   const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 export async function addClosingItem(siteId, year, month, data) {
   const cid = closingId(siteId, year, month);
   const docRef = await addDoc(itemsRef, {
     closingId: cid,
-    siteId, year, month,
+    siteId,
+    year,
+    month,
     no: data.no || 1,
     vendor: data.vendor || '',
     detail: data.detail || '',
@@ -131,7 +146,7 @@ export async function addClosingItem(siteId, year, month, data) {
     quantity: data.quantity || 0,
     amount: data.amount || 0,
     order: data.order || 0,
-    participatedFrom: data.participatedFrom || '',  // 직원 참여 시작일 (YYYY-MM-DD) — 이 날짜 이전 평일은 자동 채움 제외
+    participatedFrom: data.participatedFrom || '', // 직원 참여 시작일 (YYYY-MM-DD) — 이 날짜 이전 평일은 자동 채움 제외
     // 모달 선택으로 추가된 행의 수정 잠금 플래그
     vendorLocked: !!data.vendorLocked,
     detailLocked: !!data.detailLocked,
@@ -155,7 +170,12 @@ export async function deleteClosingItem(itemId) {
 // 같은 년/월의 직원(employee) 공수표 항목을 전 사이트에서 조회
 // 직원 1일 합계 검증용 — 다른 프로젝트에 이미 들어간 일별 수량을 합산할 때 사용
 export async function getEmployeeClosingItemsByMonth(year, month) {
-  const q = query(itemsRef, where('year', '==', year), where('month', '==', month), where('itemType', '==', 'employee'));
+  const q = query(
+    itemsRef,
+    where('year', '==', year),
+    where('month', '==', month),
+    where('itemType', '==', 'employee'),
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
@@ -178,16 +198,16 @@ export async function getFinanceItems(siteId, year, month) {
   const cid = closingId(siteId, year, month);
   const q = query(financesRef, where('closingId', '==', cid));
   const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 export async function addFinanceItem(siteId, year, month, data) {
   const cid = closingId(siteId, year, month);
   const docRef = await addDoc(financesRef, {
     closingId: cid,
-    siteId, year, month,
+    siteId,
+    year,
+    month,
     type: data.type, // 'expense' | 'revenue'
     description: data.description || '',
     amount: data.amount || 0,
@@ -251,9 +271,7 @@ export async function syncEmployeeLeaveDaysForMonth(userName, year, month, leave
     where('itemType', '==', 'employee'),
   );
   const snapshot = await getDocs(q);
-  const items = snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((it) => it.detail === userName);
+  const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })).filter((it) => it.detail === userName);
   if (items.length === 0) return;
 
   const siteIds = [...new Set(items.map((it) => it.siteId))];
@@ -280,9 +298,9 @@ export async function syncEmployeeLeaveDaysForMonth(userName, year, month, leave
       // 빈 칸: 동기화로 자동 채우지 않음 (미래 도래하지 않은 평일이 1로 채워지는 버그 방지)
       // 단, 빈 칸에 새 연차가 들어오면(반차/반반차) frac만큼 채움
       if (isEmpty) {
-        if (!leaveType) continue;                 // 연차도 없으면 그대로 둠
+        if (!leaveType) continue; // 연차도 없으면 그대로 둠
         const frac = _leaveWorkFraction(leaveType);
-        if (frac > 0) newDq[d] = frac;            // 반차/반반차: 0.5/0.75만 채움 (전일 연차는 0)
+        if (frac > 0) newDq[d] = frac; // 반차/반반차: 0.5/0.75만 채움 (전일 연차는 0)
         continue;
       }
 
@@ -309,7 +327,12 @@ export async function syncEmployeeLeaveDaysForMonth(userName, year, month, leave
 // ---------- 월별 전체 프로젝트 직원 배정 조회 ----------
 
 export async function getAssignedEmployeeIds(year, month) {
-  const q = query(itemsRef, where('year', '==', year), where('month', '==', month), where('itemType', '==', 'employee'));
+  const q = query(
+    itemsRef,
+    where('year', '==', year),
+    where('month', '==', month),
+    where('itemType', '==', 'employee'),
+  );
   const snapshot = await getDocs(q);
   const ids = new Set();
   snapshot.docs.forEach((d) => {
@@ -330,7 +353,10 @@ export async function getAssignedEmployeeIds(year, month) {
 export async function initRosterFromPreviousMonth(siteId, year, month) {
   let prevYear = year;
   let prevMonth = month - 1;
-  if (prevMonth < 1) { prevYear -= 1; prevMonth = 12; }
+  if (prevMonth < 1) {
+    prevYear -= 1;
+    prevMonth = 12;
+  }
 
   const prevItems = await getClosingItems(siteId, prevYear, prevMonth);
   if (prevItems.length === 0) throw new Error('전월 공수표 데이터가 없습니다.');
@@ -357,7 +383,10 @@ export async function initRosterFromPreviousMonth(siteId, year, month) {
 export async function copyPreviousMonth(siteId, year, month) {
   let prevYear = year;
   let prevMonth = month - 1;
-  if (prevMonth < 1) { prevYear -= 1; prevMonth = 12; }
+  if (prevMonth < 1) {
+    prevYear -= 1;
+    prevMonth = 12;
+  }
 
   const [prevItems, prevFinances] = await Promise.all([
     getClosingItems(siteId, prevYear, prevMonth),

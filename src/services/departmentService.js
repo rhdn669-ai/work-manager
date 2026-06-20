@@ -1,7 +1,4 @@
-import {
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy,
-} from 'firebase/firestore';
+import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const deptRef = collection(db, 'departments');
