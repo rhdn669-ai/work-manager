@@ -14810,6 +14810,43 @@ tr.is-newly-added > td {
   }
 }
 
+/* ===== 페이지 상단/하단 이동 플로팅 버튼 ===== */
+.scroll-jump-btn {
+  position: fixed;
+  right: 24px;
+  bottom: 80px;
+  z-index: 89;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.scroll-jump-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+  transform: scale(1.08);
+}
+.scroll-jump-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
+}
+@media (max-width: 768px) {
+  .scroll-jump-btn {
+    bottom: 70px; /* BottomNav 위 */
+    right: 16px;
+  }
+}
+
 /* ===== PDF 출력 floating 버튼 — 페이지 우하단 고정, 인쇄 시 자동 숨김 ===== */
 .pdf-print-fab {
   position: fixed;
