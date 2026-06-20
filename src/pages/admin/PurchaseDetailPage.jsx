@@ -1231,7 +1231,7 @@ export default function PurchaseDetailPage() {
 
                 <div className="bom-print-footer">
                   <span>
-                    (주)아이오피엔 · 구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}
+                    구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}
                   </span>
                   <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
                   <span>
