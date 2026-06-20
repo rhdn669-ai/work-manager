@@ -4479,6 +4479,13 @@ table.cards-sm td {
 }
 
 /* 업체별 발주 현황 작업 버튼 — 위치·크기 고정 (3개 항상 한 줄, 줄바꿈 방지) */
+/* 업체별 발주현황 — 발행번호(별도 컬럼) */
+.purchase-sup-pono {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--navy, #002050);
+}
 .purchase-sup-actions {
   flex-wrap: nowrap !important;
   justify-content: flex-end;
@@ -15287,6 +15294,12 @@ tr.is-newly-added > td {
     box-sizing: border-box;
     min-height: 270mm; /* 페이지 하단까지 채워 하단 여백 최소화 (인쇄영역 약 280mm 내) */
     overflow: hidden;
+    background: #fff;
+  }
+  /* 마지막 페이지는 page-break-after를 적용하지 않음 — 뒤에 빈 페이지(음영) 생성 방지 */
+  .bom-print-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
   }
   .bom-print-page:last-child {
     page-break-after: auto;

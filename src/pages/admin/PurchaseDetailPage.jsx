@@ -1716,9 +1716,10 @@ export default function PurchaseDetailPage() {
               <table className="table inline-edit-table cards-sm">
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 140 }}>구매처</th>
-                    <th style={{ width: 110 }}>품목</th>
-                    <th style={{ width: 240, paddingLeft: 24 }}>발주 상태</th>
+                    <th style={{ minWidth: 130 }}>구매처</th>
+                    <th style={{ width: 80 }}>품목</th>
+                    <th style={{ width: 160 }}>발행번호</th>
+                    <th style={{ width: 150 }}>발주 상태</th>
                     <th className="col-action" style={{ width: '100%' }}>
                       작업
                     </th>
@@ -1738,11 +1739,13 @@ export default function PurchaseDetailPage() {
                               <strong>{sup.name}</strong>
                             </td>
                             <td data-label="품목">{sup.count}품목</td>
-                            <td data-label="발주 상태" style={{ paddingLeft: 24 }}>
+                            <td data-label="발행번호">
+                              <strong className="purchase-sup-pono">{supPoNo}</strong>
+                            </td>
+                            <td data-label="발주 상태">
                               {sent ? (
                                 <span className="purchase-badge purchase-badge-received">
                                   발주완료 · {fmtDate(sent.sentAt)}
-                                  <strong className="purchase-sup-pono"> · {supPoNo}</strong>
                                 </span>
                               ) : (
                                 <span className="purchase-badge purchase-badge-draft">미발주</span>
