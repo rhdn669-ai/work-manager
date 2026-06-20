@@ -9,8 +9,6 @@ import {
   bulkReceivePurchase,
   getSuppliers,
   subscribePurchaseItems,
-  addPurchasePrintLog,
-  getPurchasePrintLogs,
   confirmPurchase,
   markSupplierSent,
   unmarkSupplierSent,
@@ -153,11 +151,6 @@ export default function PurchaseDetailPage() {
   const [bomLoading, setBomLoading] = useState(false);
   const [bomImporting, setBomImporting] = useState(false);
 
-  // 출력 이력(스냅샷)
-  const [printLogsOpen, setPrintLogsOpen] = useState(false);
-  const [printLogs, setPrintLogs] = useState([]);
-  const [printLogsLoading, setPrintLogsLoading] = useState(false);
-  const [viewSnapshot, setViewSnapshot] = useState(null); // 이력 보기 중인 스냅샷
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단에 표시할 출력 시각
 
   // PDF → 자료실 저장
@@ -564,101 +557,17 @@ export default function PurchaseDetailPage() {
     });
   }
 
-  // 출력 시점 발주서 상태 스냅샷 (supplierOverride: 특정 업체만 출력)
-  function buildPrintSnapshot(supplierOverride) {
-    const filterSup = supplierOverride !== undefined ? supplierOverride : printSupplierFilter;
-    const od = purchase.orderedAt?.toDate
-      ? purchase.orderedAt.toDate()
-      : purchase.orderedAt
-        ? new Date(purchase.orderedAt)
-        : purchase.createdAt?.toDate
-          ? purchase.createdAt.toDate()
-          : new Date();
-    const supplier = suppliers.find((s) => s.id === purchase.supplierId);
-    return {
-      title: purchase.title || '',
-      siteName: sites.find((s) => s.id === purchase.siteId)?.name || purchase.siteName || '',
-      deliveryPlace: form.deliveryPlace || purchase.deliveryPlace || SELF_INFO.address,
-      deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
-      payment: purchase.payment || PO_DEFAULTS.payment,
-      contactName: purchase.contactName || purchase.requesterName || '',
-      contactPhone: purchase.contactPhone || '',
-      supplierName: filterSup || supplier?.name || derivedSupplier || '',
-      note: form.note || '',
-      orderDateKo: `${od.getFullYear()}년 ${od.getMonth() + 1}월 ${od.getDate()}일`,
-      poNumber: poNumber(purchase),
-      printSupplier: filterSup || '',
-      items: mapPrintItems(form.items.filter((ln) => (ln.name || '').trim()))
-        .filter((ln) => !filterSup || (ln._supplier || '(구매처 미지정)') === filterSup)
-        .map((ln) => ({
-          itemId: ln.itemId || '',
-          _name: ln._name || '',
-          _spec: ln._spec || '',
-          _supplier: ln._supplier || '',
-          qty: Number(ln.qty) || 0,
-          unitPrice: Number(ln.unitPrice) || 0,
-          receivedQty: Number(ln.receivedQty) || 0,
-          note: ln.note || '',
-        })),
-    };
-  }
-
-  // 발주서 출력 이력 기록 (PDF 출력 시 — 스냅샷 저장 + 횟수 갱신)
-  function recordPrint(supplierOverride) {
-    if (!id) return;
-    const snapshot = buildPrintSnapshot(supplierOverride);
-    const next = {
-      lastPrintedAt: new Date(),
-      lastPrintedBy: userProfile?.name || '',
-      printCount: (Number(purchaseRef.current?.printCount) || 0) + 1,
-    };
-    setPurchase((p) => ({ ...(p || {}), ...next }));
-    purchaseRef.current = { ...(purchaseRef.current || {}), ...next };
-    Promise.all([updatePurchase(id, next), addPurchasePrintLog(id, snapshot, userProfile?.name || '')]).catch((e) =>
-      console.error('출력 이력 저장 오류:', e),
-    );
-  }
-
   // 특정 업체 품목만 PDF 출력 (발주완료도 함께 표시)
   function printForSupplier(supName) {
     setPrintSupplierFilter(supName);
     setPrintStamp(fmtDateTime(new Date()));
     setTimeout(() => {
-      recordPrint(supName);
       window.print();
       setPrintSupplierFilter(null);
       const sentKey = supName.replace(/\./g, '_');
       if (!purchaseRef.current?.supplierSent?.[sentKey]) markSent(supName);
     }, 140);
   }
-
-  async function openPrintLogs() {
-    setPrintLogsOpen(true);
-    setPrintLogsLoading(true);
-    try {
-      setPrintLogs(await getPurchasePrintLogs(id));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setPrintLogsLoading(false);
-    }
-  }
-
-  // 이력 스냅샷을 그 시점 그대로 재출력
-  function printSnapshot(log) {
-    setPrintLogsOpen(false);
-    setViewSnapshot(log.snapshot || null);
-  }
-  // viewSnapshot 렌더 완료 후 인쇄 → 라이브로 복원
-  useEffect(() => {
-    if (!viewSnapshot) return;
-    setPrintStamp(fmtDateTime(new Date()));
-    const t = setTimeout(() => {
-      window.print();
-      setViewSnapshot(null);
-    }, 180);
-    return () => clearTimeout(t);
-  }, [viewSnapshot]);
 
   // PDF 자료실 저장 모달 열기 — 기본 파일명/스탬프 세팅
   function openPdfModal() {
@@ -672,7 +581,6 @@ export default function PurchaseDetailPage() {
   // 「PDF 출력」 — 대표님이 가장 선명하다고 하신 브라우저 인쇄(window.print)를 그대로 유지.
   function handlePdfOutput() {
     setPrintStamp(fmtDateTime(new Date()));
-    recordPrint();
     setTimeout(() => window.print(), 120);
   }
 
@@ -697,7 +605,6 @@ export default function PurchaseDetailPage() {
         await new Promise((r) => setTimeout(r, 80));
         const blob = await captureToPdfBlob(el, fileName);
         await uploadPdfToLibrary(blob, pdfFileName, folderId, userProfile);
-        recordPrint();
         toast(`자료실에 저장되었습니다: ${fileName}`);
       } catch (err) {
         toast(`자료실 저장 실패: ${err?.message || err}`, 'error');
@@ -996,9 +903,6 @@ export default function PurchaseDetailPage() {
           className="page-actions purchase-detail-top-actions"
           style={{ flexWrap: 'wrap', gap: 4, alignItems: 'center', overflowX: 'auto' }}
         >
-          <button type="button" className="btn btn-sm btn-outline" onClick={openPrintLogs}>
-            출력 이력{purchase.printCount > 0 ? ` (${purchase.printCount})` : ''}
-          </button>
           {!isReadOnly && (
             <>
               <button type="button" className="btn btn-sm btn-outline" onClick={openItemPicker}>
@@ -1110,24 +1014,7 @@ export default function PurchaseDetailPage() {
             ? `${derivedSupplier} 귀하`
             : '';
 
-        // 출력 소스: 이력 보기 중이면 그 시점 스냅샷, 아니면 현재(라이브) 데이터
-        const src = viewSnapshot
-          ? {
-              siteName: viewSnapshot.siteName || '',
-              deliveryPlace: viewSnapshot.deliveryPlace || SELF_INFO.address,
-              deliveryDue: viewSnapshot.deliveryDue || PO_DEFAULTS.delivery,
-              payment: viewSnapshot.payment || PO_DEFAULTS.payment,
-              contactLine: [viewSnapshot.contactName || '', viewSnapshot.contactPhone || '']
-                .filter(Boolean)
-                .join(' / '),
-              note: viewSnapshot.note || '',
-              orderDateKo: viewSnapshot.orderDateKo || liveOrderDateKo,
-              poNum: viewSnapshot.poNumber || poNumber(purchase),
-              supplierTitle: viewSnapshot.supplierName ? `${viewSnapshot.supplierName} 귀하` : '',
-              supplierLabel: viewSnapshot.printSupplier || '',
-              items: viewSnapshot.items || [],
-            }
-          : {
+        const src = {
               siteName: site?.name || purchase.siteName || '',
               deliveryPlace: form.deliveryPlace || purchase.deliveryPlace || SELF_INFO.address,
               deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
@@ -2138,51 +2025,6 @@ export default function PurchaseDetailPage() {
             </button>
           </div>
         </form>
-      </Modal>
-
-      <Modal isOpen={printLogsOpen} onClose={() => setPrintLogsOpen(false)} title="발주서 출력 이력">
-        <p className="field-hint">
-          출력했던 시점의 발주서 상태가 저장되어 있습니다. 「이 시점 PDF 출력」을 누르면 그때 모습 그대로 다시 출력·PDF
-          저장할 수 있습니다.
-        </p>
-        {printLogsLoading ? (
-          <p className="purchase-empty">불러오는 중...</p>
-        ) : printLogs.length === 0 ? (
-          <p className="purchase-empty">출력 이력이 없습니다.</p>
-        ) : (
-          <div className="bom-import-list" style={{ maxHeight: 420 }}>
-            {printLogs.map((log) => {
-              const snap = log.snapshot || {};
-              const items = snap.items || [];
-              const total = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-              const vat = Math.round(total * 0.1);
-              return (
-                <div key={log.id} className="bom-import-row" style={{ cursor: 'default' }}>
-                  <span className="bom-import-name">
-                    <strong>{fmtDateTime(log.at)}</strong>
-                    <span className="text-muted" style={{ marginLeft: 8, fontWeight: 400, fontSize: 12 }}>
-                      {log.by || '-'} · {items.length}품목 · ₩{(total + vat).toLocaleString()}
-                      {snap.printSupplier ? ` · ${snap.printSupplier}` : ''}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    style={{ flexShrink: 0 }}
-                    onClick={() => printSnapshot(log)}
-                  >
-                    이 시점 PDF 출력
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setPrintLogsOpen(false)}>
-            닫기
-          </button>
-        </div>
       </Modal>
 
       <Modal isOpen={pdfModalOpen} onClose={() => setPdfModalOpen(false)} title="PDF로 자료실 저장">
