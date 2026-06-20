@@ -14219,10 +14219,12 @@ tr.is-newly-added > td {
   background: #f3f3f3;
   font-weight: 700;
   text-align: center;
-  width: 13%;
+  width: 16%;
+  white-space: nowrap;        /* '사업자등록번호' 라벨 2줄 방지 */
+  letter-spacing: -0.02em;
 }
 .iopn-info-table .val {
-  width: 37%;
+  width: 34%;
   text-align: left;
   padding-left: 10px;
 }
@@ -15044,10 +15046,12 @@ tr.is-newly-added > td {
     background: #f3f3f3 !important;
     font-weight: 700;
     text-align: center;
-    width: 13%;
+    width: 16%;
+    white-space: nowrap;        /* '사업자등록번호' 라벨 2줄 방지 */
+    letter-spacing: -0.02em;
   }
   .iopn-info-table .val {
-    width: 37%;
+    width: 34%;
     text-align: left;
     padding-left: 3mm;
   }
