@@ -61,18 +61,6 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 발주 건 '대표' 발행번호 — 업체별 발행번호 중 가장 빠른(작은 순번). 없으면 구버전 건 단위 poNo.
-function repPoNo(p) {
-  const seqOf = (po) => {
-    const m = (po || '').match(/-(\d+)$/);
-    return m ? parseInt(m[1], 10) : 0;
-  };
-  const nums = Object.values(p.supplierSent || {})
-    .map((s) => s && s.poNo)
-    .filter(Boolean);
-  if (nums.length > 0) return nums.sort((a, b) => seqOf(a) - seqOf(b))[0];
-  return p.poNo || '';
-}
 
 // 드래그 가능한 발주 카드 (전체 탭에서만 순서변경 활성)
 function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
@@ -90,10 +78,7 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
   return (
     <div ref={setNodeRef} style={style} className="po-card" onClick={() => onOpen(p)}>
       <div className="po-card__top">
-        <span className={`purchase-badge purchase-badge-${st.cls}`}>
-          {st.label}
-          {repPoNo(p) && <span className="purchase-badge-pono">{repPoNo(p)}</span>}
-        </span>
+        <span className={`purchase-badge purchase-badge-${st.cls}`}>{st.label}</span>
         {dragEnabled && (
           <button
             type="button"
@@ -186,9 +171,7 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
         <em>원</em>
       </div>
       <div className="kb-card__foot">
-        <span className="kb-card__date">
-          {repPoNo(p) ? <span className="kb-card__pono">{repPoNo(p)}</span> : fmtDate(p.createdAt || p.orderedAt)}
-        </span>
+        <span className="kb-card__date">{fmtDate(p.createdAt || p.orderedAt)}</span>
         <div className="kb-card__actions" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정

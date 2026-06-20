@@ -54,25 +54,8 @@ const PO_DEFAULTS = {
   payment: '납품완료후 익월말',
   delivery: '긴급',
 };
-// 발행번호 순번(-N)의 숫자만 추출 (정렬용)
-function poSeqOf(po) {
-  const m = (po || '').match(/-(\d+)$/);
-  return m ? parseInt(m[1], 10) : 0;
-}
-// 발주 건에 발행번호가 하나라도 부여됐는지 (업체별 발행 or 구버전 건 단위)
-function hasIssuedPo(purchase) {
-  const ss = purchase.supplierSent || {};
-  return Object.values(ss).some((s) => s && s.poNo) || !!purchase.poNo;
-}
-// 발주 건 '대표' 발행번호 — 업체별 발행번호 중 가장 빠른(작은 순번) 것
-function poNumber(purchase) {
-  const ss = purchase.supplierSent || {};
-  const nums = Object.values(ss)
-    .map((s) => s && s.poNo)
-    .filter(Boolean);
-  if (nums.length > 0) return nums.sort((a, b) => poSeqOf(a) - poSeqOf(b))[0];
-  if (purchase.poNo) return purchase.poNo; // 구버전(발주 건 단위) 호환
-  // 미발행 — 날짜 기반 fallback (순번 없음)
+// 발주일 기반 발행번호 접두 — IOPN{YYYYMMDD}
+function poDateStr(purchase) {
   const d = purchase.orderedAt?.toDate
     ? purchase.orderedAt.toDate()
     : purchase.orderedAt
@@ -82,6 +65,10 @@ function poNumber(purchase) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `IOPN${yyyy}${mm}${dd}`;
+}
+// 발주 건 대표 발행번호(파일명·전체출력용) — 발주일 접두만
+function poNumber(purchase) {
+  return poDateStr(purchase);
 }
 
 function fmtDate(ts) {
@@ -913,12 +900,11 @@ export default function PurchaseDetailPage() {
   // 발주완료 마킹 (확인창 없이 바로 — 메일 발송 후 자동 호출용)
   async function markSent(supplierName) {
     try {
-      const poNo = await markSupplierSent(id, supplierName, userProfile?.name || '');
+      await markSupplierSent(id, supplierName, userProfile?.name || '');
       const sentKey = supplierName.replace(/\./g, '_');
-      const prevEntry = purchaseRef.current?.supplierSent?.[sentKey];
       const nextSent = {
         ...(purchaseRef.current?.supplierSent || {}),
-        [sentKey]: { sentAt: new Date(), sentBy: userProfile?.name || '', poNo: prevEntry?.poNo || poNo },
+        [sentKey]: { sentAt: new Date(), sentBy: userProfile?.name || '' },
       };
       purchaseRef.current = { ...(purchaseRef.current || {}), supplierSent: nextSent };
       setPurchase((prev) => ({ ...prev, supplierSent: nextSent }));
@@ -1004,7 +990,6 @@ export default function PurchaseDetailPage() {
           <h2>{purchase.title || '(제목 없음)'}</h2>
           <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
             {STATUS[status]?.label || status}
-            {hasIssuedPo(purchase) && <span className="purchase-badge-pono">{poNumber(purchase)}</span>}
           </span>
         </div>
         <div
@@ -1152,10 +1137,13 @@ export default function PurchaseDetailPage() {
                 .join(' / '),
               note: form.note,
               orderDateKo: liveOrderDateKo,
-              // 업체별 출력이면 그 업체 발행번호, 전체 출력이면 발주 건 대표 발행번호
-              poNum: printSupplierFilter
-                ? purchase.supplierSent?.[printSupplierFilter.replace(/\./g, '_')]?.poNo || poNumber(purchase)
-                : poNumber(purchase),
+              // 업체별 출력이면 그 업체의 발행번호(발주일+구매처 순번), 전체 출력이면 발주일 접두만
+              poNum: (() => {
+                if (!printSupplierFilter) return poDateStr(purchase);
+                const sl = computeSupplierList();
+                const i = sl.findIndex((s) => s.name === printSupplierFilter);
+                return i >= 0 ? `${poDateStr(purchase)}-${i + 1}` : poDateStr(purchase);
+              })(),
               supplierTitle: printSupplierFilter ? `${printSupplierFilter} 귀하` : liveSupplierTitle,
               supplierLabel: printSupplierFilter || '',
               // 특정 업체 출력이면 그 업체 품목만
@@ -1737,9 +1725,11 @@ export default function PurchaseDetailPage() {
                   </tr>
                 </thead>
                     <tbody>
-                      {supList.map((sup) => {
+                      {supList.map((sup, supIdx) => {
                         const sentKey = sup.name.replace(/\./g, '_');
                         const sent = purchase.supplierSent?.[sentKey];
+                        // 발행번호 = 발주일 + 발주서 내 구매처 순번(아래 표 순서대로 -1, -2 …)
+                        const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}`;
                         const mailSubject = `[발주] ${purchase.title || ''} - ${purchase.siteName || ''}`;
                         const mailBody = `안녕하세요,\n\n발주서를 첨부하여 보내드립니다.\n\n프로젝트: ${purchase.siteName || ''}\n발주 건명: ${purchase.title || ''}\n\n감사합니다.\n\n(주)아이오피엔`;
                         return (
@@ -1752,11 +1742,7 @@ export default function PurchaseDetailPage() {
                               {sent ? (
                                 <span className="purchase-badge purchase-badge-received">
                                   발주완료 · {fmtDate(sent.sentAt)}
-                                  {sent.poNo ? (
-                                    <strong className="purchase-sup-pono"> · {sent.poNo}</strong>
-                                  ) : (
-                                    ''
-                                  )}
+                                  <strong className="purchase-sup-pono"> · {supPoNo}</strong>
                                 </span>
                               ) : (
                                 <span className="purchase-badge purchase-badge-draft">미발주</span>
