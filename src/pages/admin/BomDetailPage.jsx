@@ -13,6 +13,7 @@ import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseSer
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useUndo } from '../../contexts/UndoContext';
 import { specFontClass } from '../../utils/printText';
@@ -490,17 +491,10 @@ export default function BomDetailPage() {
         </div>
       </div>
 
-      <button
-        type="button"
-        className="pdf-print-fab no-print"
-        onClick={() => {
-          setPrintStamp(fmtDateTime(new Date()));
-          setTimeout(() => window.print(), 120);
-        }}
-        title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
-      >
-        PDF 출력
-      </button>
+      <PdfFabGroup
+        defaultFileName={() => `${project?.name || 'BOM'}_BOM`}
+        onBeforeOutput={() => setPrintStamp(fmtDateTime(new Date()))}
+      />
 
       {/* 인쇄 전용 IOPN_v4 양식 (자재 명세서) */}
       {(() => {

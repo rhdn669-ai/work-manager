@@ -8,6 +8,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { specFontClass } from '../../utils/printText';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
@@ -507,16 +508,9 @@ export default function QuotePage() {
       {/* 인쇄용 — 선택된 견적서 양식 */}
       {previewQuote && <QuotePrintForm quote={previewQuote} hostClass="print-only" />}
 
-      {/* PDF 출력 floating 버튼 — 선택된 견적서가 있을 때만 */}
+      {/* PDF 출력 + 자료실 저장 FAB — 선택된 견적서가 있을 때만 */}
       {previewQuote && (
-        <button
-          type="button"
-          className="pdf-print-fab no-print"
-          onClick={() => window.print()}
-          title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
-        >
-          PDF 출력
-        </button>
+        <PdfFabGroup defaultFileName={() => `견적서_${previewQuote.supplierName || ''}`.trim()} />
       )}
     </div>
   );
