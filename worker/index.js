@@ -22,6 +22,21 @@ function json(obj, status = 200) {
   });
 }
 
+// Browser Rendering은 콜드/세션 준비 전 첫 호출에서 "Unable to connect to existing
+// session" 오류가 간헐적으로 난다 → 새 브라우저로 재시도해 첫 호출도 견고하게.
+async function launchBrowser(env, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await puppeteer.launch(env.BROWSER);
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 async function renderPdf(request, env) {
   let browser = null;
   try {
@@ -38,7 +53,7 @@ async function renderPdf(request, env) {
       <style>html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style>
       </head><body><div class="purchase-detail-page printable-page">${html}</div></body></html>`;
 
-    browser = await puppeteer.launch(env.BROWSER);
+    browser = await launchBrowser(env);
     const page = await browser.newPage();
     await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
     // 웹폰트(Pretendard) 로딩 완료까지 대기 — 한글 글리프 보장
