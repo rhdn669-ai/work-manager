@@ -14,6 +14,7 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
+import { useUndo } from '../../contexts/UndoContext';
 import { specFontClass } from '../../utils/printText';
 
 function fmtDateTime(d) {
@@ -27,6 +28,7 @@ export default function BomDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { confirm, alert } = useDialog();
+  const { push: pushUndo } = useUndo();
 
   const [project, setProject] = useState(null);
   const [bomItems, setBomItems] = useState([]);
@@ -60,6 +62,7 @@ export default function BomDetailPage() {
     const clone = JSON.parse(JSON.stringify(bomItemsRef.current));
     bomUndoStackRef.current.push(clone);
     if (bomUndoStackRef.current.length > 30) bomUndoStackRef.current.shift();
+    pushUndo('BOM 변경', () => handleBomUndoRef.current?.());
   }
 
   async function handleBomUndo() {
@@ -89,17 +92,7 @@ export default function BomDetailPage() {
   }
   handleBomUndoRef.current = handleBomUndo;
 
-  useEffect(() => {
-    function onKeyDown(e) {
-      if (!(e.ctrlKey || e.metaKey) || e.key !== 'z' || e.shiftKey) return;
-      const tag = document.activeElement?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      e.preventDefault();
-      handleBomUndoRef.current?.();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  // Ctrl+Z는 전역 UndoContext가 처리 (saveBomSnapshot → pushUndo로 통합)
 
   useEffect(() => {
     (async () => {
@@ -455,21 +448,17 @@ export default function BomDetailPage() {
         @media (max-width: 390px) {
           .bom-flat-table th { min-width: 40px; }
           .bom-flat-table .bom-action-col { display: table-cell !important; }
-          .bom-flat-table .bom-action-col .closing-delete,
           .bom-flat-table .bom-action-col .bom-goto-item { width: 32px; height: 32px; padding: 0; }
         }
         .bom-action-col { white-space: nowrap; vertical-align: middle; }
         .bom-action-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-        .bom-action-wrap .bom-goto-item,
-        .bom-action-wrap .closing-delete {
+        .bom-action-wrap .bom-goto-item {
           flex: 0 0 auto; width: 28px; height: 28px; padding: 0; margin: 0;
           display: inline-flex; align-items: center; justify-content: center;
           border: 1px solid var(--border); border-radius: 6px;
-          background: var(--bg-card); cursor: pointer;
+          background: var(--bg-card); cursor: pointer; color: var(--primary);
         }
-        .bom-action-wrap .bom-goto-item { color: var(--primary); }
-        .bom-action-wrap .bom-goto-item svg,
-        .bom-action-wrap .closing-delete svg { width: 16px; height: 16px; }
+        .bom-action-wrap .bom-goto-item svg { width: 16px; height: 16px; }
         .bom-goto-item:hover { background: var(--navy-soft, #e7eefb); border-color: var(--primary); }
         @media (max-width: 360px) {
           .bom-sort { flex-wrap: wrap; }
@@ -482,12 +471,12 @@ export default function BomDetailPage() {
           <h2>{project.name}</h2>
           <button
             type="button"
-            className="bom-title-edit"
+            className="btn btn-sm btn-outline"
             onClick={openNameModal}
             title="프로젝트명 수정"
             aria-label="프로젝트명 수정"
           >
-            <Icon name="edit" />
+            <Icon name="edit" className="btn-ic" />수정
           </button>
         </div>
         <div className="page-actions">
@@ -915,12 +904,12 @@ export default function BomDetailPage() {
                               </button>
                               <button
                                 type="button"
-                                className="closing-delete"
+                                className="btn btn-sm btn-danger"
                                 onClick={() => removeRow(it.id)}
                                 aria-label="삭제"
                                 title="삭제"
                               >
-                                <Icon name="trash" />
+                                <Icon name="trash" className="btn-ic" />삭제
                               </button>
                             </div>
                           </td>

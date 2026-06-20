@@ -179,6 +179,33 @@ const PATHS = {
       <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" />
     </>
   ),
+  image: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </>
+  ),
+  video: (
+    <>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M10 9l6 3-6 3V9Z" />
+    </>
+  ),
+  music: (
+    <>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </>
+  ),
+  archive: (
+    <>
+      <path d="M21 8V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8" />
+      <path d="M3 4h18a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+      <path d="M10 12h4" />
+    </>
+  ),
 };
 
 export default function Icon({ name, className, size, ...rest }) {

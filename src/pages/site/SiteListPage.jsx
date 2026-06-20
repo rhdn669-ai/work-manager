@@ -18,7 +18,8 @@ import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 import TrashModal from '../../components/common/TrashModal';
-import { trashGeneric } from '../../services/trashService';
+import { trashGeneric, restoreTrashItem } from '../../services/trashService';
+import { useUndo } from '../../contexts/UndoContext';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
 const CS_BADGE_LABEL = 'CS';
@@ -42,6 +43,7 @@ function getIconColor(key) {
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive, canViewSalary, canCreateSite } = useAuth();
   const { confirm, alert } = useDialog();
+  const { push: pushUndo } = useUndo();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
@@ -334,8 +336,12 @@ export default function SiteListPage() {
     e.stopPropagation();
     if (!(await confirm(`"${site.name}" 프로젝트를 휴지통으로 이동하시겠습니까?\n(기존 마감 데이터는 남습니다)`))) return;
     try {
-      await trashGeneric('sites', site.id, { title: site.name }, userProfile?.name || '');
+      const tid = await trashGeneric('sites', site.id, { title: site.name }, userProfile?.name || '');
       await loadData();
+      if (tid) pushUndo(`프로젝트 "${site.name}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        await loadData();
+      });
     } catch (err) {
       alert('삭제 오류: ' + err.message);
     }

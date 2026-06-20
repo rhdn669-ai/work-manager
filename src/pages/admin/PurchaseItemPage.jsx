@@ -12,7 +12,8 @@ import {
   inferGroupKeys,
   repadItemCodes,
 } from '../../services/purchaseService';
-import { trashGeneric } from '../../services/trashService';
+import { trashGeneric, restoreTrashItem } from '../../services/trashService';
+import { useUndo } from '../../contexts/UndoContext';
 import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
@@ -121,6 +122,7 @@ function parseSimpleBulk(text) {
 export default function PurchaseItemPage() {
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
+  const { push: pushUndo } = useUndo();
   const [items, setItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -453,7 +455,7 @@ export default function PurchaseItemPage() {
     // 삭제 대상이 하위분류(-N)면, 같은 대분류의 뒷번호를 당겨 빈 번호를 채움
     const subMatch = (it.code || '').match(/^(IOPN-\d+)-(\d+)$/);
     try {
-      await trashGeneric(
+      const tid = await trashGeneric(
         'purchaseItems',
         it.id,
         {
@@ -463,6 +465,10 @@ export default function PurchaseItemPage() {
         userProfile?.name || '',
       );
       toast('휴지통으로 이동했습니다.');
+      if (tid) pushUndo(`품목 "${it.name || '항목'}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        await loadData();
+      });
       const remaining = items.filter((x) => x.id !== it.id);
       setItems(remaining);
 

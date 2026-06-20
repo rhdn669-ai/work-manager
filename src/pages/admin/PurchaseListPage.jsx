@@ -24,18 +24,19 @@ import {
   savePurchasesOrder,
   saveFactories,
 } from '../../services/purchaseService';
-import { trashPurchase } from '../../services/trashService';
+import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
+import { useUndo } from '../../contexts/UndoContext';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 
 const STATUS = {
-  draft: { label: '발주이전', cls: 'draft' },
+  draft: { label: '대기', cls: 'draft' },
   ordered: { label: '발주', cls: 'ordered' },
   partial: { label: '부분입고', cls: 'partial' },
   received: { label: '입고완료', cls: 'received' },
@@ -44,7 +45,7 @@ const STATUS = {
 
 const TABS = [
   { key: 'all', label: '전체' },
-  { key: 'draft', label: '발주이전' },
+  { key: 'draft', label: '대기' },
   { key: 'ordered', label: '발주' },
   { key: 'partial', label: '부분입고' },
   { key: 'received', label: '입고완료' },
@@ -76,7 +77,10 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
   return (
     <div ref={setNodeRef} style={style} className="po-card" onClick={() => onOpen(p)}>
       <div className="po-card__top">
-        <span className={`purchase-badge purchase-badge-${st.cls}`}>{st.label}</span>
+        <span className={`purchase-badge purchase-badge-${st.cls}`}>
+          {st.label}
+          {p.poNo && <span className="purchase-badge-pono">{p.poNo}</span>}
+        </span>
         {dragEnabled && (
           <button
             type="button"
@@ -132,7 +136,7 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
 
 // ===== 칸반 보드 (상태 열로 드래그하면 상태 변경) =====
 const BOARD_COLS = [
-  { key: 'draft', label: '발주이전' },
+  { key: 'draft', label: '대기' },
   { key: 'ordered', label: '발주' },
   { key: 'partial', label: '부분입고' },
   { key: 'received', label: '입고완료' },
@@ -169,7 +173,9 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
         <em>원</em>
       </div>
       <div className="kb-card__foot">
-        <span className="kb-card__date">{fmtDate(p.createdAt || p.orderedAt)}</span>
+        <span className="kb-card__date">
+          {p.poNo ? <span className="kb-card__pono">{p.poNo}</span> : fmtDate(p.createdAt || p.orderedAt)}
+        </span>
         <div className="kb-card__actions" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정
@@ -204,6 +210,7 @@ function KanbanColumn({ col, cards, onOpen, onEdit, onDelete }) {
 export default function PurchaseListPage() {
   const { userProfile } = useAuth();
   const { alert, confirm } = useDialog();
+  const { push: pushUndo } = useUndo();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const navigate = useNavigate();
 
@@ -347,10 +354,29 @@ export default function PurchaseListPage() {
         contactPhone: form.contactPhone.trim(),
       };
       if (editingId) {
-        // 수정 — 기본정보만 갱신 (품목·금액은 상세에서 관리)
+        const prev = purchases.find((x) => x.id === editingId);
+        const prevBase = prev
+          ? {
+              title: prev.title || '',
+              siteId: prev.siteId || '',
+              siteName: prev.siteName || '',
+              supplierId: prev.supplierId || '',
+              supplierName: prev.supplierName || '',
+              deliveryDue: prev.deliveryDue || '',
+              contactName: prev.contactName || '',
+              contactPhone: prev.contactPhone || '',
+            }
+          : null;
         await updatePurchase(editingId, base);
-        setPurchases((prev) => prev.map((x) => (x.id === editingId ? { ...x, ...base } : x)));
+        setPurchases((prev2) => prev2.map((x) => (x.id === editingId ? { ...x, ...base } : x)));
         setFormModal(false);
+        if (prevBase) {
+          const targetId = editingId;
+          pushUndo(`구매 "${base.title}" 수정`, async () => {
+            await updatePurchase(targetId, prevBase);
+            setPurchases((prev2) => prev2.map((x) => (x.id === targetId ? { ...x, ...prevBase } : x)));
+          });
+        }
       } else {
         const ref = await addPurchase({
           ...base,
@@ -363,6 +389,10 @@ export default function PurchaseListPage() {
           await setHqSite(form.siteId, site?.name || '');
           setRecentSiteId(form.siteId);
         }
+        pushUndo(`구매 "${base.title}" 추가`, async () => {
+          await trashPurchase(ref.id, userProfile?.name || '');
+          await deletePurchase(ref.id);
+        });
         setFormModal(false);
         navigate(`/admin/purchase/${ref.id}`);
       }
@@ -393,9 +423,14 @@ export default function PurchaseListPage() {
     e.stopPropagation();
     if (!(await confirm(`"${p.title}" 구매 건을 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`))) return;
     try {
-      await trashPurchase(p.id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
+      const tid = await trashPurchase(p.id, userProfile?.name || '');
       await deletePurchase(p.id);
       setPurchases((prev) => prev.filter((x) => x.id !== p.id));
+      if (tid) pushUndo(`구매 "${p.title}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        const ps = await getPurchases();
+        setPurchases(ps);
+      });
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
     }
@@ -573,8 +608,6 @@ export default function PurchaseListPage() {
             .kb-card__actions { display: flex; gap: 4px; align-items: center; }
             .kb-card__actions .btn { min-height: 36px; }
             .kb-col__head { background: var(--navy, #002050); color: var(--text-sidebar, #fff); }
-            [data-theme=dark] .kb-col__head { background: #1e3f86; color: #d0e0f8; }
-            [data-theme=dark] .po-card__amount { color: var(--accent, #F05819); }
             @media (max-width: 480px) { .field-hint { font-size: 12px; margin-top: 4px; } }
           `}</style>
           <div className="table-scroll-x no-print">

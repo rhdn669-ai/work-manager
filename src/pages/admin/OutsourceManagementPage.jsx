@@ -19,7 +19,8 @@ import {
   getAllClosingItems,
 } from '../../services/outsourceService';
 import { getAllSites } from '../../services/siteService';
-import { trashGeneric } from '../../services/trashService';
+import { trashGeneric, restoreTrashItem } from '../../services/trashService';
+import { useUndo } from '../../contexts/UndoContext';
 import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
 import { extractBizInfo, normalizeCompany } from '../../utils/bizPdf';
 import Modal from '../../components/common/Modal';
@@ -32,6 +33,7 @@ import Icon from '../../components/common/Icon';
 export default function OutsourceManagementPage() {
   const { isAdmin, canViewSalary, userProfile } = useAuth();
   const { confirm, alert, toast } = useDialog();
+  const { push: pushUndo } = useUndo();
   const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
   const [trashOpen, setTrashOpen] = useState(false);
   const [freelancers, setFreelancers] = useState([]);
@@ -412,7 +414,7 @@ export default function OutsourceManagementPage() {
         tab === 'vendor'
           ? [item.representative, item.businessNumber].filter(Boolean).join(' · ')
           : [label, item.contact].filter(Boolean).join(' · ');
-      await trashGeneric(
+      const tid = await trashGeneric(
         collectionName,
         item.id,
         {
@@ -423,6 +425,10 @@ export default function OutsourceManagementPage() {
       );
       toast('휴지통으로 이동했습니다.');
       await loadAll();
+      if (tid) pushUndo(`${label} "${item.name}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        await loadAll();
+      });
     } catch (err) {
       alert('삭제 실패: ' + err.message);
     }
@@ -1252,7 +1258,7 @@ export default function OutsourceManagementPage() {
                                           </span>
                                           <button
                                             type="button"
-                                            className="rate-history-delete"
+                                            className="btn btn-sm btn-danger"
                                             title="이 이력 삭제"
                                             aria-label="이 이력 삭제"
                                             onClick={async () => {
@@ -1279,7 +1285,7 @@ export default function OutsourceManagementPage() {
                                             }}
                                             disabled={detailBusy}
                                           >
-                                            <Icon name="close" />
+                                            <Icon name="trash" className="btn-ic" />삭제
                                           </button>
                                         </div>
                                       );

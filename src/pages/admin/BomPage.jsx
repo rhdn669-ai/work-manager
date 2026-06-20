@@ -4,12 +4,15 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getBomProjects, addBomProject, deleteBomProject, saveBomProjectsOrder } from '../../services/bomService';
+// getBomProjects는 undo 복원 후 목록 갱신에도 사용
 import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUndo } from '../../contexts/UndoContext';
+import { restoreTrashItem } from '../../services/trashService';
 
 // 드래그 가능한 프로젝트 행
 function SortableProjectRow({ p, onOpen, onDelete }) {
@@ -49,6 +52,7 @@ function SortableProjectRow({ p, onOpen, onDelete }) {
 export default function BomPage() {
   const { confirm, alert } = useDialog();
   const { userProfile } = useAuth();
+  const { push: pushUndo } = useUndo();
   const navigate = useNavigate();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -123,9 +127,14 @@ export default function BomPage() {
     )
       return;
     try {
-      await trashBomProject(project.id, userProfile?.name || ''); // 휴지통에 스냅샷 보관
+      const tid = await trashBomProject(project.id, userProfile?.name || '');
       await deleteBomProject(project.id);
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
+      if (tid) pushUndo(`BOM 프로젝트 "${project.name}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        const ps = await getBomProjects();
+        setProjects(ps);
+      });
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
     }

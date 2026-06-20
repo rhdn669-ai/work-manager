@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import UserMenu from './UserMenu';
 import SessionTimerBadge from './SessionTimerBadge';
-import ThemeToggle from './ThemeToggle';
 import Icon from './Icon';
 import { formatRelativeKo } from '../../utils/dateUtils';
 
@@ -43,7 +42,6 @@ export default function Header({ onToggleSidebar }) {
       <div className="header-right">
         {userProfile && (
           <>
-            <ThemeToggle />
             <SessionTimerBadge />
             <UserMenu />
             <button className="btn btn-sm btn-outline" onClick={handleLogout}>

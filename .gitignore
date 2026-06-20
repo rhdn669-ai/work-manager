@@ -28,6 +28,7 @@ dist-ssr
 .env.local
 
 .vercel
+.wrangler
 
 # Claude Code 개인 설정
 .claude/settings.local.json

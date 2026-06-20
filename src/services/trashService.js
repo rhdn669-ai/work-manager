@@ -10,6 +10,7 @@ import {
   orderBy,
   where,
   writeBatch,
+  onSnapshot,
 } from 'firebase/firestore';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
@@ -30,13 +31,22 @@ export async function getTrashByType(types) {
   return all.filter((t) => set.has(t.type));
 }
 
+// 타입(들)별 휴지통 실시간 구독 — 휴지통 버튼 개수 배지용
+export function subscribeTrashByType(types, cb) {
+  const set = Array.isArray(types) ? new Set(types) : new Set([types]);
+  return onSnapshot(query(trashRef, orderBy('deletedAt', 'desc')), (snap) => {
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    cb(all.filter((t) => set.has(t.type)));
+  });
+}
+
 // 범용 소프트 삭제 — 임의 컬렉션 문서 1건을 휴지통에 스냅샷 후 원본 삭제
 // 어느 저장 페이지든 이 함수로 삭제하면 휴지통에서 복원 가능
 export async function trashGeneric(collectionName, docId, meta = {}, deletedByName = '') {
   const snap = await getDoc(doc(db, collectionName, docId));
-  if (!snap.exists()) return;
+  if (!snap.exists()) return null;
   const data = snap.data();
-  await addDoc(trashRef, {
+  const trashDocRef = await addDoc(trashRef, {
     type: collectionName,
     collection: collectionName,
     refId: docId,
@@ -47,14 +57,15 @@ export async function trashGeneric(collectionName, docId, meta = {}, deletedByNa
     deletedByName,
   });
   await deleteDoc(doc(db, collectionName, docId));
+  return trashDocRef.id;
 }
 
 // 발주(purchase) 1건 → 휴지통에 스냅샷 보관
 export async function trashPurchase(purchaseId, deletedByName = '') {
   const snap = await getDoc(doc(db, 'purchases', purchaseId));
-  if (!snap.exists()) return;
+  if (!snap.exists()) return null;
   const data = snap.data();
-  await addDoc(trashRef, {
+  const trashDocRef = await addDoc(trashRef, {
     type: 'purchase',
     refId: purchaseId,
     title: data.title || '(제목 없음)',
@@ -64,6 +75,7 @@ export async function trashPurchase(purchaseId, deletedByName = '') {
     deletedAt: new Date(),
     deletedByName,
   });
+  return trashDocRef.id;
 }
 
 // 프로젝트 BOM 1건(프로젝트 문서 + 모든 BOM 항목) → 휴지통에 스냅샷 보관
@@ -72,7 +84,7 @@ export async function trashBomProject(projectId, deletedByName = '') {
   const itemsSnap = await getDocs(query(collection(db, 'bom'), where('siteId', '==', projectId)));
   const bomItems = itemsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const proj = projSnap.exists() ? projSnap.data() : {};
-  await addDoc(trashRef, {
+  const trashDocRef = await addDoc(trashRef, {
     type: 'bomProject',
     refId: projectId,
     title: proj.name || '(이름 없음)',
@@ -83,6 +95,7 @@ export async function trashBomProject(projectId, deletedByName = '') {
     deletedAt: new Date(),
     deletedByName,
   });
+  return trashDocRef.id;
 }
 
 // 휴지통 항목 복원 — 원래 id 그대로 컬렉션에 되살림

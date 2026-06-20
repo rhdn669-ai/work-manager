@@ -93,12 +93,12 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
                 </span>
                 <span className="fixed-expense-amount">{(Number(it.amount) || 0).toLocaleString()}원</span>
                 <span className="fixed-expense-row-actions">
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => openEdit(it)}>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(it)}>
                     수정
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-xs btn-danger-text"
+                    className="btn btn-sm btn-danger"
                     onClick={() => handleDelete(it.id)}
                   >
                     삭제

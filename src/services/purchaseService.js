@@ -369,23 +369,52 @@ export async function deletePurchase(id) {
   await deleteDoc(doc(db, 'purchases', id));
 }
 
-// 상태 전이 — extra에 단계별 담당자·일시 등 기록
-export async function setPurchaseStatus(id, status, extra = {}) {
-  await updateDoc(doc(db, 'purchases', id), {
-    status,
-    ...extra,
-    updatedAt: new Date(),
+// 발주번호 생성 — IOPN{YYYYMMDD} 뒤에 "당일 부여 순서"(-1, -2 …)를 붙인다.
+// 같은 날짜 prefix를 가진 기존 poNo의 최대 순번 +1 (삭제가 있어도 번호 충돌 없음)
+async function nextPoNo(dateObj) {
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  const prefix = `IOPN${yyyy}${mm}${dd}`;
+  const snap = await getDocs(purchasesRef);
+  const re = new RegExp(`^${prefix}-(\\d+)$`);
+  let maxSeq = 0;
+  snap.forEach((d) => {
+    const m = re.exec(d.data().poNo || '');
+    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
   });
+  return `${prefix}-${maxSeq + 1}`;
 }
 
-// 초안 → 발주 확정 (draft → ordered)
+// 상태 전이 — extra에 단계별 담당자·일시 등 기록.
+// draft를 벗어나는데 아직 발주번호가 없으면 당일 순번으로 부여 (칸반 드래그 등 모든 경로 커버)
+export async function setPurchaseStatus(id, status, extra = {}) {
+  const ref = doc(db, 'purchases', id);
+  const update = { status, ...extra, updatedAt: new Date() };
+  if (status && status !== 'draft' && !('poNo' in extra)) {
+    const snap = await getDoc(ref);
+    const d = snap.exists() ? snap.data() : {};
+    if (!d.poNo) {
+      const base = d.orderedAt?.toDate
+        ? d.orderedAt.toDate()
+        : d.orderedAt
+          ? new Date(d.orderedAt)
+          : new Date();
+      update.poNo = await nextPoNo(base);
+    }
+  }
+  await updateDoc(ref, update);
+}
+
+// 초안 → 발주 확정 (draft → ordered). 첫 확정 시 당일 순번 발주번호 부여 (이미 있으면 유지)
 export async function confirmPurchase(id, confirmedBy = '') {
-  await updateDoc(doc(db, 'purchases', id), {
-    status: 'ordered',
-    orderedAt: new Date(),
-    confirmedBy,
-    updatedAt: new Date(),
-  });
+  const ref = doc(db, 'purchases', id);
+  const snap = await getDoc(ref);
+  const existing = snap.exists() ? snap.data() : {};
+  const now = new Date();
+  const update = { status: 'ordered', orderedAt: now, confirmedBy, updatedAt: now };
+  if (!existing.poNo) update.poNo = await nextPoNo(now);
+  await updateDoc(ref, update);
 }
 
 // 업체별 발주 완료 마킹

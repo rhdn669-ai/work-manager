@@ -346,9 +346,6 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
   animation: ds-shimmer 1.3s var(--ease) infinite;
 }
-[data-theme='dark'] .sk::after {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-}
 @keyframes ds-shimmer {
   100% {
     transform: translateX(100%);
@@ -462,12 +459,6 @@ body {
   color: var(--primary);
 }
 .stat-value--navy {
-  color: var(--primary) !important;
-}
-[data-theme='dark'] .stat-value {
-  color: var(--primary) !important;
-}
-[data-theme='dark'] .stat-value--navy {
   color: var(--primary) !important;
 }
 .u-nowrap {
@@ -732,11 +723,6 @@ body {
   background: var(--accent);
 }
 .ds-select__option.is-selected .ds-select__check {
-  color: #fff;
-}
-/* dark mode: --accent is explicitly #F05819 in global.css [data-theme='dark'] (line 259) — no leakage */
-[data-theme='dark'] .ds-select__option.is-selected {
-  background: var(--accent);
   color: #fff;
 }
 .ds-select__check {
@@ -1208,9 +1194,7 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-/* brand-color fix: amount always uses accent orange (#F05819) for brand consistency.
-   Dark mode: --accent stays #F05819 (global.css [data-theme='dark'] line 259 is explicit), but on dark
-   backgrounds the pure #F05819 can appear washed out — use a slightly lighter #ff6b3d for better contrast. */
+/* brand-color fix: amount always uses accent orange (#F05819) for brand consistency. */
 .kb-card__amount {
   font-size: 17px;
   font-weight: 900;
@@ -1223,9 +1207,6 @@ body {
   font-style: normal;
   color: var(--text-light);
   margin-left: 2px;
-}
-[data-theme='dark'] .kb-card__amount {
-  color: #ff6b3d;
 }
 .kb-card__foot {
   display: flex;
@@ -1416,9 +1397,7 @@ body {
   gap: 8px;
   margin-top: 2px;
 }
-/* brand-color fix: amount always uses accent orange (#F05819) for brand consistency.
-   Dark mode: --accent stays #F05819 (global.css [data-theme='dark'] line 259 is explicit), but on dark
-   backgrounds the pure #F05819 can appear washed out — use a slightly lighter #ff6b3d for better contrast. */
+/* brand-color fix: amount always uses accent orange (#F05819) for brand consistency. */
 .po-card__amount {
   font-size: 19px;
   font-weight: 900;
@@ -1431,9 +1410,6 @@ body {
   font-style: normal;
   color: var(--text-light);
   margin-left: 2px;
-}
-[data-theme='dark'] .po-card__amount {
-  color: #ff6b3d;
 }
 .po-card__date {
   font-size: 12px;
@@ -1730,9 +1706,6 @@ body {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-[data-theme='dark'] .login-bio-btn {
-  color: var(--text);
 }
 
 /* 폼 안에서는 기존 네이티브 select처럼 전체 너비 채움 */

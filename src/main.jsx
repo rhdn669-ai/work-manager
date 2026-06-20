@@ -4,11 +4,10 @@ import App from './App';
 import './styles/global.css';
 import './styles/design-system.css';
 
-// 테마 초기화 — 라이트 기본, 저장된 선택(localStorage) 복원
+// 다크모드 폐지 — 항상 라이트 강제 (이전에 다크 저장한 사용자도 해제)
 try {
-  if (localStorage.getItem('wm-theme') === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
+  document.documentElement.removeAttribute('data-theme');
+  localStorage.removeItem('wm-theme');
 } catch {
   /* ignore */
 }
