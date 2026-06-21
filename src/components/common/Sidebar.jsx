@@ -64,6 +64,7 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive
     { key: 'admin-events', to: '/admin/events', label: '이벤트·공지', icon: 'alert', show: isAdmin },
     { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', icon: 'list', show: isAdmin },
     { key: 'admin-purchase', to: '/admin/purchase', label: '구매', icon: 'cart', show: isAdmin, end: false },
+    { key: 'admin-trash', to: '/admin/trash', label: '휴지통', icon: 'trash', show: isAdmin, end: false },
   ];
 }
 

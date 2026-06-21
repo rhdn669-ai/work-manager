@@ -31,6 +31,7 @@ import PurchaseTrashPage from './pages/admin/PurchaseTrashPage';
 import PurchaseListPage from './pages/admin/PurchaseListPage';
 import PurchaseLayout from './pages/admin/PurchaseLayout';
 import StaffHubPage from './pages/admin/StaffHubPage';
+import TrashPage from './pages/admin/TrashPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 import FileLibraryPage from './pages/library/FileLibraryPage';
@@ -86,6 +87,7 @@ const router = createBrowserRouter([
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
+          { path: '/admin/trash', element: <TrashPage /> },
           {
             path: '/admin/purchase',
             element: <PurchaseLayout />,
