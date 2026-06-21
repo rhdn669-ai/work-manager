@@ -169,7 +169,7 @@ export default function SupplierManagementPage() {
     // 첨부 PDF들은 모달 닫은 뒤 백그라운드로 자료실 "거래처 정보/{업체명}" 폴더에 보관
     if (filesToUpload.length > 0) {
       try {
-        const folderId = await ensureFolderPath(['거래처 정보', supplierName], userProfile);
+        const folderId = await ensureFolderPath(['거래처 정보', supplierName], userProfile, { protected: true });
         for (let i = 0; i < filesToUpload.length; i += 1) {
           await uploadFile(
             filesToUpload[i],

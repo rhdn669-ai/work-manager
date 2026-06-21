@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDmjuf6Lyu_bRYbFRfTAYFxpm_QW7vbZd4',
@@ -16,6 +17,8 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
+export const functions = getFunctions(app, 'asia-northeast3');
+export const callSendEmail = httpsCallable(functions, 'sendPurchaseOrderEmail');
 
 // Firebase Storage 업로드 권한을 위한 익명 인증 보장
 // 앱 자체 인증(accessCode) 외에 Firebase 세션이 필요한 기능(Storage)용

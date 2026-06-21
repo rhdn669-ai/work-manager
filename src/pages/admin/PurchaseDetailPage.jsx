@@ -12,6 +12,9 @@ import {
   confirmPurchase,
   markSupplierSent,
   unmarkSupplierSent,
+  markSupplierReplied,
+  unmarkSupplierReplied,
+  setPurchaseReplied,
   getPurchaseConfig,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
@@ -25,12 +28,14 @@ import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import Select from '../../components/common/Select';
 import { specFontClass } from '../../utils/printText';
-import { subscribeFolders } from '../../services/fileLibraryService';
+import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
+import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 
 const STATUS = {
-  draft: { label: '대기', cls: 'draft' },
-  ordered: { label: '발주', cls: 'ordered' },
+  draft: { label: '발주대기', cls: 'draft' },
+  ordered: { label: '발주완료', cls: 'ordered' },
+  replied: { label: '회신', cls: 'replied' },
   partial: { label: '부분입고', cls: 'partial' },
   received: { label: '입고완료', cls: 'received' },
   settled: { label: '정산완료', cls: 'settled' },
@@ -50,8 +55,28 @@ const SELF_INFO = {
 const PO_DEFAULTS = {
   validity: '협의',
   payment: '납품완료후 익월말',
-  delivery: '긴급',
+  delivery: '협의',
 };
+// 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
+const BUSINESS_CARD_NAMES = [
+  '이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱',
+];
+function cardFileFor(name) {
+  const n = (name || '').trim();
+  return BUSINESS_CARD_NAMES.includes(n) ? `/cards/${encodeURIComponent(n)}.png` : '';
+}
+// 발주서 메일 기본(공통) 본문 — 담당자명 동적. 발주별로 수정 가능, 비우면 이 문구 사용
+function buildDefaultMailBody(name) {
+  return [
+    '안녕하세요.',
+    `아이오피엔 ${name || ''}입니다.`,
+    '해당 건 관련하여 발주서 첨부드립니다.',
+    '',
+    '바쁘시겠지만 납기 및 특이사항 확인하신 후 회신 부탁드리겠습니다.',
+    '감사합니다.',
+  ].join('\n');
+}
+
 // 발주일 기반 발행번호 접두 — IOPN{YYYYMMDD}
 function poDateStr(purchase) {
   const d = purchase.orderedAt?.toDate
@@ -128,6 +153,9 @@ export default function PurchaseDetailPage() {
     deliveryPlace: '',
     items: [{ ...EMPTY_LINE }],
     note: '',
+    supplierNotes: {},
+    setCount: 0,
+    mailBody: '',
   });
   const [saveState, setSaveState] = useState('saved'); // 'saving' | 'saved' | 'error'
 
@@ -144,6 +172,7 @@ export default function PurchaseDetailPage() {
 
   // BOM 가져오기
   const [bomModalOpen, setBomModalOpen] = useState(false);
+  const [bomSetCount, setBomSetCount] = useState(1); // BOM 가져올 때 세트 수량(배수)
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [itemPickerSearch, setItemPickerSearch] = useState('');
   const [itemPicked, setItemPicked] = useState(new Map()); // itemId -> 수량
@@ -159,6 +188,15 @@ export default function PurchaseDetailPage() {
   const [pdfFolders, setPdfFolders] = useState([]); // [{ id, label }] 경로 라벨 포함 평면 목록
   const [pdfFolderId, setPdfFolderId] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
+
+  // 메일 발송 미리보기 모달
+  const [mailPreview, setMailPreview] = useState(null); // { supplierName, to, subject, html, fileName } | null
+  // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
+  const [mailSending, setMailSending] = useState({});
+  // 백그라운드 PDF 캡처 시 현장명 표시 모드 (null=실제 현장명, 'hidden'=미공개, 'blank'=공백)
+  const [printSiteNameMode, setPrintSiteNameMode] = useState(null);
+  // 내부 저장용 PDF에만 구매처 계좌정보 표시 (메일 첨부엔 미표시)
+  const [printAccountMode, setPrintAccountMode] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -242,6 +280,9 @@ export default function PurchaseDetailPage() {
         deliveryPlace: p.deliveryPlace || '',
         items: p.items && p.items.length > 0 ? p.items.map((it) => ({ ...EMPTY_LINE, ...it })) : [{ ...EMPTY_LINE }],
         note: p.note || '',
+        supplierNotes: p.supplierNotes || {},
+        setCount: Number(p.setCount) || 0,
+        mailBody: p.mailBody != null ? p.mailBody : buildDefaultMailBody(p.contactName || p.requesterName),
       });
     } catch (err) {
       console.error(err);
@@ -365,8 +406,18 @@ export default function PurchaseDetailPage() {
     scheduleAutoSave();
   }
 
+  // 품목 전체 삭제 — 모든 행 제거 후 빈 행 1개로 초기화
+  async function clearAllLines() {
+    const count = form.items.filter((ln) => (ln.name || '').trim()).length;
+    if (count === 0) return;
+    if (!(await confirm(`품목 ${count}개를 모두 삭제하시겠습니까?\n저장하면 반영됩니다.`))) return;
+    setForm((f) => ({ ...f, items: [{ ...EMPTY_LINE }], setCount: 0 }));
+    scheduleAutoSave();
+  }
+
   // BOM 가져오기 모달 열기 (프로젝트 목록 지연 로드)
   async function openBomModal() {
+    setBomSetCount(1);
     setBomModalOpen(true);
     if (bomProjects.length === 0) {
       setBomLoading(true);
@@ -383,6 +434,7 @@ export default function PurchaseDetailPage() {
 
   // 선택한 BOM의 품목을 발주 라인으로 불러오기 (수량·단가는 그대로, 이후 수정 가능)
   async function importBom(bp) {
+    const setCount = Math.max(1, Number(bomSetCount) || 1);
     setBomImporting(true);
     try {
       const items = await getBomBySite(bp.id);
@@ -400,18 +452,18 @@ export default function PurchaseDetailPage() {
             name: m?.name || b.name || '',
             spec: m?.spec || b.spec || '',
             unit: m?.unit || b.unit || '',
-            qty: Number(b.qty) || 1,
+            qty: (Number(b.qty) || 1) * setCount, // 세트 수량(배수) 반영
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             note: b.note || '',
           };
         });
       setForm((f) => {
         const existing = f.items.filter((ln) => (ln.name || '').trim()); // 빈 라인 제거 후 합치기
-        return { ...f, items: [...existing, ...newLines] };
+        return { ...f, items: [...existing, ...newLines], setCount };
       });
       scheduleAutoSave();
       setBomModalOpen(false);
-      alert(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 가져왔습니다.\n수량·단가는 자동 저장됩니다.`);
+      alert(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 ${setCount}세트로 가져왔습니다.\n수량·단가는 자동 저장됩니다.`);
     } catch (err) {
       alert('BOM 가져오기 오류: ' + err.message);
     } finally {
@@ -508,6 +560,9 @@ export default function PurchaseDetailPage() {
         supplierId,
         supplierName,
         note: f.note,
+        supplierNotes: f.supplierNotes || {},
+        setCount: Number(f.setCount) || 0,
+        mailBody: f.mailBody || '',
       });
       const updated = {
         ...(purchaseRef.current || {}),
@@ -516,6 +571,9 @@ export default function PurchaseDetailPage() {
         supplierId,
         supplierName,
         note: f.note,
+        supplierNotes: f.supplierNotes || {},
+        setCount: Number(f.setCount) || 0,
+        mailBody: f.mailBody || '',
         title: f.title.trim(),
         siteId: f.siteId,
         siteName: site?.name || '',
@@ -550,23 +608,24 @@ export default function PurchaseDetailPage() {
 
   // 라인을 마스터와 매칭해 출력용 명칭·규격·구매처 부여
   function mapPrintItems(items) {
-    return (items || []).map((ln) => {
+    return (items || []).map((ln, idx) => {
       const mst = itemMaster.find((x) => x.id === ln.itemId);
       const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
-      return { ...ln, _supplier: sup?.name || '', _name: mst?.name || ln.name, _spec: mst?.spec || ln.spec };
+      return { ...ln, _globalNo: idx + 1, _supplier: sup?.name || '', _name: mst?.name || ln.name, _spec: mst?.spec || ln.spec };
     });
   }
 
   // 특정 업체 품목만 PDF 출력 (발주완료도 함께 표시)
+  // PDF 출력은 발주완료 표시를 하지 않는다 (발주완료는 메일 발송 시에만)
   function printForSupplier(supName) {
     setPrintSupplierFilter(supName);
+    setPrintAccountMode(true); // 수동 출력 = 내부용: 계좌 표시 (현장명은 기본 null=실제)
     setPrintStamp(fmtDateTime(new Date()));
     setTimeout(() => {
       window.print();
       setPrintSupplierFilter(null);
-      const sentKey = supName.replace(/\./g, '_');
-      if (!purchaseRef.current?.supplierSent?.[sentKey]) markSent(supName);
-    }, 140);
+      setPrintAccountMode(false);
+    }, 200);
   }
 
   // PDF 자료실 저장 모달 열기 — 기본 파일명/스탬프 세팅
@@ -602,11 +661,14 @@ export default function PurchaseDetailPage() {
       try {
         await flushAutoSave();
         setPrintStamp(fmtDateTime(new Date()));
-        await new Promise((r) => setTimeout(r, 80));
+        setPrintAccountMode(true); // 내부 저장본: 계좌 포함
+        await new Promise((r) => setTimeout(r, 250));
         const blob = await captureToPdfBlob(el, fileName);
+        setPrintAccountMode(false);
         await uploadPdfToLibrary(blob, pdfFileName, folderId, userProfile);
         toast(`자료실에 저장되었습니다: ${fileName}`);
       } catch (err) {
+        setPrintAccountMode(false);
         toast(`자료실 저장 실패: ${err?.message || err}`, 'error');
       }
     })();
@@ -787,10 +849,10 @@ export default function PurchaseDetailPage() {
     return [...supMap.values()];
   }
 
-  // 모든 업체 발주완료 + 현재 '대기' 상태면 → '발주'로 자동 확정 (확인창 없이)
+  // 모든 업체 메일 발송 완료 + 현재 '발주대기' 상태면 → '발주완료'로 자동 확정 (확인창 없이)
   async function maybeAutoConfirm(sentMap) {
     const cur = purchaseRef.current || purchase;
-    if (!cur || (cur.status || 'draft') !== 'draft') return; // 대기 상태에서만 자동 전환
+    if (!cur || (cur.status || 'draft') !== 'draft') return; // 발주대기 상태에서만 자동 전환
     const supList = computeSupplierList();
     if (supList.length === 0) return;
     const allSent = supList.every((s) => sentMap[s.name.replace(/\./g, '_')]);
@@ -798,7 +860,7 @@ export default function PurchaseDetailPage() {
     try {
       await confirmPurchase(id, userProfile?.name || '');
       await loadData({ silent: true });
-      toast('모든 품목 발주완료 — 「발주」 상태로 이동했습니다.');
+      toast('모든 업체 메일 발송 완료 — 「발주완료」 상태로 이동했습니다.');
     } catch (err) {
       console.error('자동 발주 전환 오류:', err);
     }
@@ -826,13 +888,193 @@ export default function PurchaseDetailPage() {
     await markSent(supplierName);
   }
 
-  // 메일 발송 → 메일 클라이언트 열고 발주완료 자동 표시
-  function handleSendMail(supplierName, mailtoHref) {
-    window.location.href = mailtoHref; // 메일 클라이언트 열기
-    const sentKey = supplierName.replace(/\./g, '_');
-    if (!purchase.supplierSent?.[sentKey]) {
-      markSent(supplierName); // 아직 미발주면 완료 표시
+  // 모든 업체 회신 확인 + 현재 '발주완료' 상태면 → '회신'으로 자동 전환
+  async function maybeAutoReply(repliedMap) {
+    const cur = purchaseRef.current || purchase;
+    if (!cur || (cur.status || 'draft') !== 'ordered') return; // 발주완료 상태에서만 전환
+    const supList = computeSupplierList();
+    if (supList.length === 0) return;
+    const allReplied = supList.every((s) => repliedMap[s.name.replace(/\./g, '_')]);
+    if (!allReplied) return;
+    try {
+      await setPurchaseReplied(id, userProfile?.name || '');
+      await loadData({ silent: true });
+      toast('모든 업체 회신 확인 — 「회신」 상태로 이동했습니다.');
+    } catch (err) {
+      console.error('자동 회신 전환 오류:', err);
     }
+  }
+
+  // 업체별 회신 확인 마킹
+  async function handleMarkSupplierReplied(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체 회신을 확인 처리하시겠습니까?`))) return;
+    try {
+      await markSupplierReplied(id, supplierName, userProfile?.name || '');
+      const key = supplierName.replace(/\./g, '_');
+      const nextReplied = {
+        ...(purchaseRef.current?.supplierReplied || {}),
+        [key]: { repliedAt: new Date(), repliedBy: userProfile?.name || '' },
+      };
+      purchaseRef.current = { ...(purchaseRef.current || {}), supplierReplied: nextReplied };
+      setPurchase((prev) => ({ ...prev, supplierReplied: nextReplied }));
+      await maybeAutoReply(nextReplied);
+    } catch (err) {
+      alert('처리 중 오류: ' + err.message);
+    }
+  }
+
+  // 업체별 회신 확인 취소
+  async function handleUnmarkSupplierReplied(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체의 회신 확인을 취소하시겠습니까?`))) return;
+    try {
+      await unmarkSupplierReplied(id, supplierName);
+      const key = supplierName.replace(/\./g, '_');
+      setPurchase((prev) => {
+        const next = { ...(prev.supplierReplied || {}) };
+        delete next[key];
+        purchaseRef.current = { ...(purchaseRef.current || {}), supplierReplied: next };
+        return { ...prev, supplierReplied: next };
+      });
+    } catch (err) {
+      alert('처리 중 오류: ' + err.message);
+    }
+  }
+
+  // Blob → base64 문자열 (data URL 접두 제거)
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // 메일 발송 버튼 → 미리보기 모달 열기 (실제 발송은 모달의 "발송"에서)
+  // 발송(첨부) 파일명 = 발주서_제목_업체명_발행번호 (부제 제외 — 외부 노출)
+  // 저장(자료실) 파일명 = 발주서_제목_부제_업체명_발행번호 (부제 포함 — 내부 식별)
+  function openMailPreview(supplierName, toEmail, subject, htmlBody, poNo) {
+    const build = (arr) =>
+      `${arr.filter(Boolean).map((s) => String(s).trim()).filter(Boolean).join('_')}.pdf`.replace(/[/\\]/g, '_');
+    const fileName = build(['발주서', purchase.title, supplierName]); // 발송용(제목·업체명까지만)
+    const saveFileName = build(['발주서', purchase.title, purchase.subtitle, supplierName, poNo]); // 저장용(부제 포함)
+    setMailPreview({ supplierName, to: toEmail, subject, html: htmlBody, fileName, saveFileName });
+  }
+
+  // 미리보기 모달의 "발송" → 모달 즉시 닫고 백그라운드로 PDF 생성·발송 (대기 없음)
+  function confirmSendMail() {
+    if (!mailPreview) return;
+    const { supplierName, to, subject, html, fileName, saveFileName } = mailPreview;
+    setMailPreview(null);
+    const setPct = (pct) => setMailSending((prev) => ({ ...prev, [supplierName]: pct }));
+    const clearPct = () =>
+      setMailSending((prev) => {
+        const next = { ...prev };
+        delete next[supplierName];
+        return next;
+      });
+    setPct(5);
+    (async () => {
+      try {
+        await ensureAnonymousAuth();
+        setPct(20);
+        // 해당 업체 품목만 발주서 렌더 + 현장명 공백 처리 → PDF 캡처
+        await flushAutoSave();
+        setPrintSiteNameMode('blank');
+        setPrintAccountMode(false); // 메일 첨부용: 계좌 미표시
+        setPrintSupplierFilter(supplierName);
+        setPrintStamp(fmtDateTime(new Date()));
+        await new Promise((r) => setTimeout(r, 250));
+        setPct(40);
+        let attachments = [];
+        let pdfBlob = null;
+        let saveBlob = null;
+        try {
+          const el = printRef.current;
+          if (el) {
+            // ① 메일 첨부용 (계좌 없음)
+            pdfBlob = await captureToPdfBlob(el, fileName);
+            const base64 = await blobToBase64(pdfBlob);
+            attachments = [{ filename: fileName, content: base64, encoding: 'base64' }];
+            // ② 내부 저장용 (계좌 포함 + 실제 현장명) — 별도 재캡처
+            setPrintAccountMode(true);
+            setPrintSiteNameMode(null); // 저장본은 실제 현장명(프로젝트) 표시
+            await new Promise((r) => setTimeout(r, 250));
+            saveBlob = await captureToPdfBlob(el, saveFileName);
+          }
+        } finally {
+          setPrintSupplierFilter(null);
+          setPrintSiteNameMode(null);
+          setPrintAccountMode(false);
+        }
+        if (attachments.length === 0) {
+          toast('발주서 PDF 생성에 실패했습니다. (배포 환경에서만 동작)', 'error');
+          clearPct();
+          return;
+        }
+        setPct(70);
+        // 본문 명함 이미지를 cid 인라인 첨부로 변환 (메일 클라이언트 이미지 차단 방지)
+        let sendHtml = html;
+        const cardMatch = html.match(/src="(\/cards\/[^"]*)"/);
+        if (cardMatch) {
+          try {
+            const res = await fetch(cardMatch[1]);
+            if (res.ok) {
+              const cardB64 = await blobToBase64(await res.blob());
+              attachments.push({
+                filename: 'businesscard.png',
+                content: cardB64,
+                encoding: 'base64',
+                contentType: 'image/png',
+                contentDisposition: 'inline',
+                cid: 'bizcard',
+              });
+              sendHtml = html.replace(cardMatch[1], 'cid:bizcard');
+            }
+          } catch {
+            /* 명함 로드 실패 시 경로 이미지 그대로 발송 */
+          }
+        }
+        setPct(88);
+        await callSendEmail({ to, subject, html: sendHtml, attachments });
+        setPct(100);
+        toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
+        const sentKey = supplierName.replace(/\./g, '_');
+        if (!purchase.supplierSent?.[sentKey]) markSent(supplierName);
+        // 발송 성공 → 프로젝트 자료실 "발주이력 > YYYY-MM" 월 폴더에 발주서 PDF 자동 보관
+        // 내부 저장본은 계좌 포함(saveBlob), 없으면 메일본(pdfBlob)
+        const archiveBlob = saveBlob || pdfBlob;
+        if (archiveBlob && purchase.siteName) {
+          try {
+            const result = await ensureProjectFolders(purchase.siteName, userProfile);
+            const histId = result?.sub?.['발주이력'];
+            if (histId) {
+              // 발주일 기준 월 폴더(YYYY-MM) 자동 생성
+              const od = purchase.orderedAt?.toDate
+                ? purchase.orderedAt.toDate()
+                : purchase.orderedAt
+                  ? new Date(purchase.orderedAt)
+                  : purchase.createdAt?.toDate
+                    ? purchase.createdAt.toDate()
+                    : new Date();
+              const ym = `${od.getFullYear()}-${String(od.getMonth() + 1).padStart(2, '0')}`;
+              const monthId = await ensureFolder(ym, userProfile, histId, { protected: true });
+              const baseName = (saveFileName || fileName).replace(/\.pdf$/i, '');
+              await uploadPdfToLibrary(archiveBlob, baseName, monthId, userProfile);
+            }
+          } catch (e) {
+            console.warn('[자료실] 발주이력 자동 저장 실패:', e);
+          }
+        }
+      } catch (err) {
+        setPrintSupplierFilter(null);
+        setPrintSiteNameMode(null);
+        toast('메일 발송 실패: ' + (err.message || err), 'error');
+      } finally {
+        // 100% 잠깐 보여준 뒤 이 업체만 정리
+        setTimeout(clearPct, 600);
+      }
+    })();
   }
 
   async function handleUnmarkSupplierSent(supplierName) {
@@ -893,15 +1135,27 @@ export default function PurchaseDetailPage() {
         .purchase-line-item-wrap .purchase-line-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
       `}</style>
       <div className="page-header screen-only">
-        <div className="purchase-detail-header-left" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h2>{purchase.title || '(제목 없음)'}</h2>
-          <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
-            {STATUS[status]?.label || status}
-          </span>
+        <div className="purchase-detail-header-left" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: 0 }}>
+            <h2 style={{ margin: 0 }}>{purchase.title || '(제목 없음)'}</h2>
+            <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
+              {STATUS[status]?.label || status}
+            </span>
+            {Number(form.setCount) > 0 && (
+              <span className="purchase-badge" style={{ background: '#e0e7ff', color: '#3730a3' }}>
+                {form.setCount}세트
+              </span>
+            )}
+          </div>
+          {purchase.subtitle && (
+            <div style={{ margin: 0, fontSize: 16, color: 'var(--text-secondary, #6b7280)', fontWeight: 600, letterSpacing: '-0.02em' }}>
+              {purchase.subtitle}
+            </div>
+          )}
         </div>
         <div
           className="page-actions purchase-detail-top-actions"
-          style={{ flexWrap: 'wrap', gap: 4, alignItems: 'center', overflowX: 'auto' }}
+          style={{ flexWrap: 'wrap', gap: 4, alignItems: 'center' }}
         >
           {!isReadOnly && (
             <>
@@ -1022,17 +1276,38 @@ export default function PurchaseDetailPage() {
               contactLine: [purchase.contactName || purchase.requesterName || '', purchase.contactPhone || '']
                 .filter(Boolean)
                 .join(' / '),
-              note: form.note,
+              // 업체별 출력이면 그 업체 특이사항 우선, 없으면 발주 전체 메모
+              note: (() => {
+                if (printSupplierFilter) {
+                  const key = printSupplierFilter.replace(/\./g, '_');
+                  const supNote = form.supplierNotes?.[key];
+                  if (supNote && supNote.trim()) return supNote;
+                }
+                return form.note || '';
+              })(),
               orderDateKo: liveOrderDateKo,
-              // 업체별 출력이면 그 업체의 발행번호(발주일+구매처 순번), 전체 출력이면 발주일 접두만
+              // 업체별 출력이면 그 업체의 발행번호(발주일+구매처순번+발주건 고유ID), 전체 출력이면 발주일+ID
               poNum: (() => {
-                if (!printSupplierFilter) return poDateStr(purchase);
+                const idTail = (purchase.id || '').slice(0, 4).toUpperCase();
+                if (!printSupplierFilter) return `${poDateStr(purchase)}-${idTail}`;
                 const sl = computeSupplierList();
                 const i = sl.findIndex((s) => s.name === printSupplierFilter);
-                return i >= 0 ? `${poDateStr(purchase)}-${i + 1}` : poDateStr(purchase);
+                return i >= 0
+                  ? `${poDateStr(purchase)}-${i + 1}-${idTail}`
+                  : `${poDateStr(purchase)}-${idTail}`;
               })(),
               supplierTitle: printSupplierFilter ? `${printSupplierFilter} 귀하` : liveSupplierTitle,
               supplierLabel: printSupplierFilter || '',
+              // 내부 저장용 PDF에 넣을 구매처 계좌정보 (printAccountMode일 때만 표시)
+              account: (() => {
+                if (!printAccountMode) return null;
+                const sup = printSupplierFilter
+                  ? suppliers.find((s) => s.name === printSupplierFilter)
+                  : suppliers.find((s) => s.id === purchase.supplierId);
+                if (!sup || (!sup.bankName && !sup.bankAccount)) return null;
+                const holder = sup.representative || sup.name || '';
+                return `${sup.bankName || ''} ${sup.bankAccount || ''}${holder ? ` (${holder})` : ''}`.trim();
+              })(),
               // 특정 업체 출력이면 그 업체 품목만
               items: mapPrintItems(form.items).filter(
                 (ln) => !printSupplierFilter || (ln._supplier || '(구매처 미지정)') === printSupplierFilter,
@@ -1082,9 +1357,8 @@ export default function PurchaseDetailPage() {
             const isFirst = pageIdx === 0;
             const isLast = pageIdx === pageCount - 1;
             const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-            let targetRows = cap - (isLast ? TOTALS_ROWS : 0);
-            // 한 장짜리 짧은 발주서는 품목 + 소량 여유만 채워 표 아래 빈칸·하단 여백 최소화
-            if (isLast && pageCount === 1) targetRows = Math.min(targetRows, pg.chunk.length + 4);
+            // 품목이 적어도 항상 페이지 끝까지 빈 행으로 채워 한 장을 꽉 채운다.
+            const targetRows = cap - (isLast ? TOTALS_ROWS : 0);
             const padded = [...pg.chunk];
             while (padded.length < targetRows) padded.push(null);
             return (
@@ -1101,8 +1375,14 @@ export default function PurchaseDetailPage() {
                         <td className="val">{SELF_INFO.businessNumber}</td>
                       </tr>
                       <tr>
-                        <th className="lbl">현 장 명</th>
-                        <td className="val">{src.siteName}</td>
+                        <th className="lbl">프로젝트</th>
+                        <td className="val">
+                          {printSiteNameMode
+                            ? printSiteNameMode === 'blank'
+                              ? ' '
+                              : '미공개'
+                            : src.siteName}
+                        </td>
                         <th className="lbl">회사명/대표</th>
                         <td className="val">{SELF_INFO.companyAndCeo}</td>
                       </tr>
@@ -1147,6 +1427,7 @@ export default function PurchaseDetailPage() {
                   <thead>
                     <tr>
                       <th className="c-no">NO</th>
+                      <th className="c-itemno">품번</th>
                       <th className="c-name">품목명</th>
                       <th className="c-spec">규격</th>
                       <th className="c-qty">수량</th>
@@ -1162,6 +1443,7 @@ export default function PurchaseDetailPage() {
                         return (
                           <tr key={`e-${r}`}>
                             <td className="c-no"></td>
+                            <td className="c-itemno"></td>
                             <td></td>
                             <td></td>
                             <td></td>
@@ -1178,6 +1460,7 @@ export default function PurchaseDetailPage() {
                       return (
                         <tr key={r}>
                           <td className="c-no">{pg.startNo + r + 1}</td>
+                          <td className="c-itemno">{ln._globalNo || ''}</td>
                           <td className={`c-name ${specFontClass(ln._name, 11)}`} title={ln._name || ''}>
                             {ln._name || ''}
                           </td>
@@ -1209,6 +1492,12 @@ export default function PurchaseDetailPage() {
                           <th className="lbl">특이사항</th>
                           <td className="val">{src.note || ''}</td>
                         </tr>
+                        {src.account && (
+                          <tr>
+                            <th className="lbl">입금계좌</th>
+                            <td className="val">{src.account}</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
 
@@ -1284,7 +1573,15 @@ export default function PurchaseDetailPage() {
       </div>
 
       <div className="form-group screen-only">
-        <label>품목</label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <label style={{ margin: 0 }}>품목</label>
+          {!isReadOnly && form.items.some((ln) => (ln.name || '').trim()) && (
+            <button type="button" className="btn btn-sm btn-danger" onClick={clearAllLines}>
+              <Icon name="trash" className="btn-ic" />
+              전체 삭제
+            </button>
+          )}
+        </div>
         <p className="field-hint">
           우측 상단 「품목 불러오기」로 구매 품목을 선택해 추가하세요. 입력 즉시 자동 저장됩니다. 구매처는 첫 품목의
           기본 구매처로 자동 적용.
@@ -1561,9 +1858,27 @@ export default function PurchaseDetailPage() {
               </span>
             </label>
             <p className="field-hint">
-              각 업체별로 「PDF 출력」하면 그 업체 품목만 발주서가 만들어집니다(출력 시 발주완료 자동 표시). 메일 발송도
-              동일하게 발주완료로 표시됩니다.
+              각 업체별로 「PDF 출력」하면 그 업체 품목만 발주서가 만들어집니다. 메일 발송 시 발주완료로 표시됩니다.
             </p>
+            {!isReadOnly && (
+              <div className="form-group" style={{ marginBottom: 12 }}>
+                <label>발주서 메일 본문 (공통 문구 — 수정 가능)</label>
+                <textarea
+                  value={form.mailBody}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, mailBody: e.target.value }));
+                    scheduleAutoSave();
+                  }}
+                  rows={6}
+                  placeholder={buildDefaultMailBody(purchase.contactName)}
+                  style={{ fontSize: 14, lineHeight: 1.6 }}
+                />
+                <p className="field-hint">
+                  메일 발송 시 발신·수신·담당자 명함과 함께 이 문구가 본문으로 들어갑니다. 발주 건마다 수정·저장할 수
+                  있고, 비우면 기본 공통 문구가 사용됩니다.
+                </p>
+              </div>
+            )}
             {!isReadOnly && (
               <div
                 style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}
@@ -1600,26 +1915,39 @@ export default function PurchaseDetailPage() {
               </div>
             )}
             <div className="table-scroll-x">
-              <table className="table inline-edit-table cards-sm">
+              <table className="table inline-edit-table cards-sm po-sup-table">
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 130 }}>구매처</th>
-                    <th style={{ width: 80 }}>품목</th>
-                    <th style={{ width: 160 }}>발행번호</th>
-                    <th style={{ width: 150 }}>발주 상태</th>
-                    <th className="col-action" style={{ width: '100%' }}>
-                      작업
-                    </th>
+                    <th style={{ minWidth: 140 }}>구매처</th>
+                    <th style={{ minWidth: 80, width: 100 }}>품목</th>
+                    <th style={{ minWidth: 170, width: 200 }}>발행번호</th>
+                    <th style={{ minWidth: 170, width: 170 }}>발주 상태</th>
+                    <th style={{ minWidth: 170, width: 170 }}>회신</th>
+                    <th style={{ minWidth: 200, width: '100%' }}>특이사항</th>
+                    <th className="col-action" aria-label="작업"></th>
                   </tr>
                 </thead>
                     <tbody>
                       {supList.map((sup, supIdx) => {
                         const sentKey = sup.name.replace(/\./g, '_');
                         const sent = purchase.supplierSent?.[sentKey];
-                        // 발행번호 = 발주일 + 발주서 내 구매처 순번(아래 표 순서대로 -1, -2 …)
-                        const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}`;
-                        const mailSubject = `[발주] ${purchase.title || ''} - ${purchase.siteName || ''}`;
-                        const mailBody = `안녕하세요,\n\n발주서를 첨부하여 보내드립니다.\n\n프로젝트: ${purchase.siteName || ''}\n발주 건명: ${purchase.title || ''}\n\n감사합니다.\n\n(주)아이오피엔`;
+                        const replied = purchase.supplierReplied?.[sentKey];
+                        // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
+                        const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
+                        const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
+                        const mailSubject = `[주식회사 아이오피엔] ${purchase.title || ''}`;
+                        const cardSrc = cardFileFor(purchase.contactName);
+                        const cardHtml = cardSrc
+                          ? `<br><br><br><img src="${cardSrc}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
+                          : '';
+                        // 발주별 메일 본문(form.mailBody) 사용, 비었으면 공통 기본 문구
+                        const bodyText = (form.mailBody && form.mailBody.trim())
+                          ? form.mailBody
+                          : buildDefaultMailBody(purchase.contactName);
+                        const bodyHtml = bodyText
+                          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                          .replace(/\n/g, '<br>');
+                        const mailHtml = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.name}</p><br><br><p>${bodyHtml}</p>${cardHtml}`;
                         return (
                           <tr key={sup.name}>
                             <td data-label="구매처" title={sup.name}>
@@ -1638,11 +1966,37 @@ export default function PurchaseDetailPage() {
                                 <span className="purchase-badge purchase-badge-draft">미발주</span>
                               )}
                             </td>
+                            <td data-label="회신">
+                              {replied ? (
+                                <span className="purchase-badge purchase-badge-replied">
+                                  회신 · {fmtDate(replied.repliedAt)}
+                                </span>
+                              ) : (
+                                <span className="purchase-badge purchase-badge-draft">미회신</span>
+                              )}
+                            </td>
+                            <td data-label="특이사항">
+                              <input
+                                type="text"
+                                value={form.supplierNotes?.[sup.name.replace(/\./g, '_')] || ''}
+                                onChange={(e) => {
+                                  const key = sup.name.replace(/\./g, '_');
+                                  setForm((f) => ({
+                                    ...f,
+                                    supplierNotes: { ...f.supplierNotes, [key]: e.target.value },
+                                  }));
+                                  scheduleAutoSave();
+                                }}
+                                placeholder=""
+                                disabled={isReadOnly}
+                                style={{ width: '100%', minWidth: 100 }}
+                              />
+                            </td>
                             <td data-label="작업" className="col-action">
                               <div className="row-actions purchase-sup-actions">
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-primary"
+                                  className="btn btn-sm po-act-btn"
                                   onClick={() => printForSupplier(sup.name)}
                                   title={`${sup.name} 품목만 발주서 PDF 출력`}
                                 >
@@ -1651,25 +2005,23 @@ export default function PurchaseDetailPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  className={`btn btn-sm btn-outline${sup.email ? '' : ' is-no-email'}`}
+                                  className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${mailSending[sup.name] != null ? ' is-sending' : ''}`}
+                                  disabled={mailSending[sup.name] != null}
                                   onClick={() => {
                                     if (!sup.email) {
                                       alert(`"${sup.name}"에 등록된 이메일이 없습니다.\n구매처 관리에서 이메일을 먼저 등록해주세요.`);
                                       return;
                                     }
-                                    handleSendMail(
-                                      sup.name,
-                                      `mailto:${sup.email}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`,
-                                    );
+                                    openMailPreview(sup.name, sup.email, mailSubject, mailHtml, supPoNo);
                                   }}
                                   title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}
                                 >
-                                  메일 발송
+                                  {mailSending[sup.name] != null ? `발송 중 ${mailSending[sup.name]}%` : '메일 발송'}
                                 </button>
                                 {sent ? (
                                   <button
                                     type="button"
-                                    className="btn btn-sm btn-danger purchase-sup-toggle"
+                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle"
                                     onClick={() => handleUnmarkSupplierSent(sup.name)}
                                   >
                                     발주 취소
@@ -1683,6 +2035,23 @@ export default function PurchaseDetailPage() {
                                     발주 완료 표시
                                   </button>
                                 )}
+                                {replied ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle"
+                                    onClick={() => handleUnmarkSupplierReplied(sup.name)}
+                                  >
+                                    회신 취소
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline purchase-sup-toggle"
+                                    onClick={() => handleMarkSupplierReplied(sup.name)}
+                                  >
+                                    회신 확인
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1694,16 +2063,6 @@ export default function PurchaseDetailPage() {
           </div>
         );
       })()}
-
-      <div className="form-group screen-only">
-        <label>메모</label>
-        <textarea
-          value={form.note}
-          onChange={(e) => patchForm({ note: e.target.value })}
-          rows={2}
-          disabled={isReadOnly}
-        />
-      </div>
 
       {purchase.receiveNote && (
         <div className="form-group screen-only">
@@ -1909,6 +2268,21 @@ export default function PurchaseDetailPage() {
           선택한 BOM(프로젝트)의 품목·수량·단가를 이 발주에 불러옵니다. 불러온 뒤 목록·수량·단가(금액)를 수정할 수 있고,
           저장해야 반영됩니다.
         </p>
+        <div className="form-group">
+          <label>세트 수량 (배수)</label>
+          <input
+            type="number"
+            min="1"
+            value={bomSetCount}
+            onChange={(e) => setBomSetCount(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            placeholder="1"
+            style={{ maxWidth: 160, fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+          />
+          <p className="field-hint">
+            BOM 1세트 기준 수량에 곱해집니다. 예) 5세트 입력 → 각 품목 수량 ×5로 불러옵니다.
+          </p>
+        </div>
         {bomLoading ? (
           <p className="purchase-empty">불러오는 중...</p>
         ) : bomProjects.length === 0 ? (
@@ -2068,6 +2442,57 @@ export default function PurchaseDetailPage() {
             취소
           </button>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!mailPreview}
+        onClose={() => setMailPreview(null)}
+        title="발주서 메일 미리보기"
+        size="lg"
+      >
+        {mailPreview && (
+          <>
+            <div className="form-group">
+              <label>받는 사람</label>
+              <input
+                type="email"
+                value={mailPreview.to}
+                onChange={(e) => setMailPreview((p) => ({ ...p, to: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label>제목</label>
+              <input
+                type="text"
+                value={mailPreview.subject}
+                onChange={(e) => setMailPreview((p) => ({ ...p, subject: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label>첨부파일</label>
+              <div className="mail-attach-chip">
+                <Icon name="download" className="btn-ic" />
+                {mailPreview.fileName}
+              </div>
+              <p className="field-hint">발송 시 해당 업체 발주서가 PDF로 생성되어 첨부됩니다.</p>
+            </div>
+            <div className="form-group">
+              <label>본문 미리보기</label>
+              <div
+                className="mail-body-preview"
+                dangerouslySetInnerHTML={{ __html: mailPreview.html }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={confirmSendMail}>
+                발송
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setMailPreview(null)}>
+                취소
+              </button>
+            </div>
+          </>
+        )}
       </Modal>
     </div>
   );

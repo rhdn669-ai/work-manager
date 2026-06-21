@@ -17,7 +17,6 @@ import {
   addPurchase,
   setPurchaseStatus,
   getPurchaseConfig,
-  setHqSite,
   deletePurchase,
   updatePurchase,
   getSuppliers,
@@ -36,8 +35,9 @@ import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 
 const STATUS = {
-  draft: { label: '대기', cls: 'draft' },
-  ordered: { label: '발주', cls: 'ordered' },
+  draft: { label: '발주대기', cls: 'draft' },
+  ordered: { label: '발주완료', cls: 'ordered' },
+  replied: { label: '회신', cls: 'replied' },
   partial: { label: '부분입고', cls: 'partial' },
   received: { label: '입고완료', cls: 'received' },
   settled: { label: '정산완료', cls: 'settled' },
@@ -45,14 +45,15 @@ const STATUS = {
 
 const TABS = [
   { key: 'all', label: '전체' },
-  { key: 'draft', label: '대기' },
-  { key: 'ordered', label: '발주' },
+  { key: 'draft', label: '발주대기' },
+  { key: 'ordered', label: '발주완료' },
+  { key: 'replied', label: '회신' },
   { key: 'partial', label: '부분입고' },
   { key: 'received', label: '입고완료' },
   { key: 'settled', label: '정산완료' },
 ];
 
-const EMPTY_FORM = { title: '', siteId: '', supplierId: '', deliveryDue: '', contactName: '', contactPhone: '' };
+const EMPTY_FORM = { title: '', subtitle: '', siteId: '', supplierId: '', deliveryDue: '', contactName: '', contactPhone: '' };
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -96,6 +97,11 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
       <div className="po-card__title u-ellipsis-1" title={p.title || ''}>
         {p.title}
       </div>
+      {p.subtitle && (
+        <div className="po-card__subtitle u-ellipsis-1" title={p.subtitle}>
+          {p.subtitle}
+        </div>
+      )}
       <div
         className="po-card__meta u-ellipsis-1"
         title={`${p.siteName || '프로젝트 미지정'}${p.supplierName ? ` · ${p.supplierName}` : ''}`}
@@ -113,12 +119,12 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
           {Number(p.totalAmount || 0).toLocaleString()}
           <em>원</em>
         </span>
-        <span className="po-card__date">{fmtDate(p.createdAt || p.orderedAt)}</span>
       </div>
       <div className="po-card__foot">
-        <span className="po-card__by" title={p.requesterName || '-'}>
-          {p.requesterName || '-'}
-        </span>
+        <div className="po-card__dates">
+          <span>작성일: {fmtDate(p.createdAt || p.orderedAt)}</span>
+          <span>납기: {p.deliveryDue || '-'}</span>
+        </div>
         <div className="po-card__actions" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정
@@ -134,8 +140,9 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
 
 // ===== 칸반 보드 (상태 열로 드래그하면 상태 변경) =====
 const BOARD_COLS = [
-  { key: 'draft', label: '대기' },
-  { key: 'ordered', label: '발주' },
+  { key: 'draft', label: '발주대기' },
+  { key: 'ordered', label: '발주완료' },
+  { key: 'replied', label: '회신' },
   { key: 'partial', label: '부분입고' },
   { key: 'received', label: '입고완료' },
   { key: 'settled', label: '정산완료' },
@@ -159,6 +166,11 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
       <div className="kb-card__title u-ellipsis-1" title={p.title || ''}>
         {p.title}
       </div>
+      {p.subtitle && (
+        <div className="kb-card__subtitle u-ellipsis-1" title={p.subtitle}>
+          {p.subtitle}
+        </div>
+      )}
       <div
         className="kb-card__meta u-ellipsis-1"
         title={`${p.siteName || '프로젝트 미지정'}${p.supplierName ? ` · ${p.supplierName}` : ''}`}
@@ -171,7 +183,10 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
         <em>원</em>
       </div>
       <div className="kb-card__foot">
-        <span className="kb-card__date">{fmtDate(p.createdAt || p.orderedAt)}</span>
+        <div className="kb-card__dates">
+          <span>작성일: {fmtDate(p.createdAt || p.orderedAt)}</span>
+          <span>납기: {p.deliveryDue || '-'}</span>
+        </div>
         <div className="kb-card__actions" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정
@@ -245,7 +260,7 @@ export default function PurchaseListPage() {
       setUsers(us);
       setSuppliers(sup);
       setFactories(cfg.factories || []);
-      const validStatus = ['draft', 'ordered', 'partial', 'received', 'settled'];
+      const validStatus = ['draft', 'ordered', 'replied', 'partial', 'received', 'settled'];
       const legacy = p.filter((x) => !validStatus.includes(x.status));
       if (legacy.length > 0) {
         await Promise.all(legacy.map((x) => setPurchaseStatus(x.id, 'ordered')));
@@ -306,7 +321,7 @@ export default function PurchaseListPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm({ ...EMPTY_FORM, siteId: recentSiteId || '' });
+    setForm({ ...EMPTY_FORM });
     setFormModal(true);
   }
 
@@ -315,6 +330,7 @@ export default function PurchaseListPage() {
     setEditingId(p.id);
     setForm({
       title: p.title || '',
+      subtitle: p.subtitle || '',
       siteId: p.siteId || '',
       supplierId: p.supplierId || '',
       deliveryDue: p.deliveryDue || '',
@@ -341,6 +357,7 @@ export default function PurchaseListPage() {
       const supplier = suppliers.find((s) => s.id === form.supplierId);
       const base = {
         title: form.title.trim(),
+        subtitle: form.subtitle.trim(),
         siteId: form.siteId,
         siteName: site?.name || '',
         supplierId: form.supplierId || '',
@@ -354,6 +371,7 @@ export default function PurchaseListPage() {
         const prevBase = prev
           ? {
               title: prev.title || '',
+              subtitle: prev.subtitle || '',
               siteId: prev.siteId || '',
               siteName: prev.siteName || '',
               supplierId: prev.supplierId || '',
@@ -381,10 +399,6 @@ export default function PurchaseListPage() {
           requesterId: userProfile?.uid || '',
           requesterName: userProfile?.name || '',
         });
-        if (form.siteId !== recentSiteId) {
-          await setHqSite(form.siteId, site?.name || '');
-          setRecentSiteId(form.siteId);
-        }
         pushUndo(`구매 "${base.title}" 추가`, async () => {
           await trashPurchase(ref.id, userProfile?.name || '');
           await deletePurchase(ref.id);
@@ -573,10 +587,10 @@ export default function PurchaseListPage() {
       {viewMode === 'board' ? (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleBoardDrag}>
           <style>{`
-            /* 발주 보드: 769px 이상에서 5개 컬럼을 한 줄로 (홈 칸반엔 영향 없음) */
+            /* 발주 보드: 769px 이상에서 6개 컬럼을 한 줄로 (홈 칸반엔 영향 없음) */
             @media (min-width: 769px) {
               .purchase-list-page .kb-board {
-                grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+                grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
                 grid-auto-flow: unset !important;
                 grid-auto-columns: unset !important;
                 overflow-x: unset !important;
@@ -591,18 +605,19 @@ export default function PurchaseListPage() {
             @media (max-width: 320px) { .kb-board { grid-template-columns: 1fr !important; overflow-x: auto; } }
             @media (max-width: 430px) { .kb-board { grid-template-columns: 1fr !important; } }
             @media (max-width: 768px) { .kb-board { grid-template-columns: 1fr !important; } }
-            .po-card { gap: 4px; width: 100%; box-sizing: border-box; }
-            .po-card__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .po-card__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card { gap: 5px; width: 100%; box-sizing: border-box; padding: 14px; }
+            .po-card__title { font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__subtitle, .kb-card__subtitle { font-size: 12px; font-weight: 500; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__meta { font-size: 12px; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__by { overflow: hidden; text-overflow: ellipsis; word-break: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; min-width: 0; }
-            .po-card__actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: stretch; min-height: 36px; }
-            .po-card__actions .btn { min-height: 36px; flex: 1 1 auto; }
+            .po-card__actions { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; flex-shrink: 0; }
+            .po-card__actions .btn { min-height: 32px; white-space: nowrap; }
             @media (max-width: 430px) { .po-card { padding: 6px !important; } .po-card-list { gap: 2px !important; } }
             @media (max-width: 360px) { .po-card { padding: 6px !important; gap: 3px !important; } .po-card-list { gap: 2px !important; } }
-            .kb-card__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .kb-card__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .kb-card__actions { display: flex; gap: 4px; align-items: center; }
-            .kb-card__actions .btn { min-height: 36px; }
+            .kb-card__title { font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .kb-card__meta { font-size: 12px; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .kb-card__actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; }
+            .kb-card__actions .btn { min-height: 32px; white-space: nowrap; }
             .kb-col__head { background: var(--navy, #002050); color: var(--text-sidebar, #fff); }
             @media (max-width: 480px) { .field-hint { font-size: 12px; margin-top: 4px; } }
           `}</style>
@@ -657,8 +672,19 @@ export default function PurchaseListPage() {
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="보안사항 기입 금지 (업체에 보여지는 제목)"
               required
               autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label>부제 (내부용)</label>
+            <input
+              type="text"
+              value={form.subtitle}
+              onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+              placeholder="현장명 등 내부 식별용 — 업체 발송물에는 표시되지 않습니다"
             />
           </div>
 
@@ -673,7 +699,6 @@ export default function PurchaseListPage() {
               placeholder="선택"
               ariaLabel="프로젝트 선택"
             />
-            <p className="field-hint">최근 선택한 프로젝트가 다음 등록 시 자동 입력됩니다.</p>
           </div>
 
           <div className="form-group">
@@ -694,7 +719,7 @@ export default function PurchaseListPage() {
               value={form.deliveryDue}
               onChange={(e) => setForm({ ...form, deliveryDue: e.target.value })}
             />
-            <p className="field-hint">날짜 또는 "협의·긴급" 등 자유 입력. 비워두면 발주서에 "긴급"으로 표시됩니다.</p>
+            <p className="field-hint">날짜 또는 "협의·긴급" 등 자유 입력. 비워두면 발주서에 "협의"로 표시됩니다.</p>
           </div>
 
           <div className="form-group">

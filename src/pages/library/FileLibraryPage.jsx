@@ -29,7 +29,9 @@ function formatSize(bytes) {
 function formatDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  const date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${date} ${time}`;
 }
 
 function getFileIconName(name = '', contentType = '') {
@@ -50,10 +52,45 @@ function getAncestorIds(folderId, folders) {
   return result;
 }
 
+// 폴더 정렬 — 자동생성 "자료" 폴더는 형제 중 항상 최상단, 그 외는 order(드래그 순서)순
+function sortFolders(a, b) {
+  const ap = a.protected && a.name === '자료' ? 0 : 1;
+  const bp = b.protected && b.name === '자료' ? 0 : 1;
+  if (ap !== bp) return ap - bp;
+  return (a.order ?? 1e9) - (b.order ?? 1e9);
+}
+
+// 폴더의 하위 전체(재귀) 통계 — 하위 폴더수·파일수 합산 + 가장 최근 저장시각
+function getFolderStats(folderId, folders, files) {
+  let folderCount = 0;
+  let fileCount = 0;
+  let latest = null;
+  const bump = (ts) => {
+    const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
+    if (d && !Number.isNaN(d.getTime()) && (!latest || d > latest)) latest = d;
+  };
+  for (const f of files) {
+    if ((f.folderId || null) === folderId) {
+      fileCount++;
+      bump(f.createdAt);
+    }
+  }
+  for (const sf of folders) {
+    if ((sf.parentId || null) === folderId) {
+      folderCount++;
+      const s = getFolderStats(sf.id, folders, files);
+      folderCount += s.folderCount;
+      fileCount += s.fileCount;
+      if (s.latest && (!latest || s.latest > latest)) latest = s.latest;
+    }
+  }
+  return { folderCount, fileCount, latest };
+}
+
 // ── 트리 노드 ──
 function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDelete, dragOverId, dndProps, depth, openMap, toggleOpen, folderDragOverId, folderDropMode, draggingFolderId }) {
   const children = useMemo(
-    () => folders.filter((f) => (f.parentId || null) === folder.id).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9)),
+    () => folders.filter((f) => (f.parentId || null) === folder.id).sort(sortFolders),
     [folders, folder.id],
   );
   const fileCount = files.filter((f) => (f.folderId || null) === folder.id).length;
@@ -87,27 +124,33 @@ function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDe
         <span className="lib-tree-ic"><Icon name="folder" /></span>
         <span className="lib-tree-name">{folder.name}</span>
         {fileCount > 0 && <span className="lib-tree-badge">{fileCount}</span>}
-        {/* hover 시 노출되는 액션 버튼 */}
-        <span className="lib-tree-actions" onPointerDown={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            className="lib-tree-act"
-            title="이름 변경"
-            aria-label="이름 변경"
-            onClick={(e) => { e.stopPropagation(); onRename(folder); }}
-          >
-            <Icon name="edit" />
-          </button>
-          <button
-            type="button"
-            className="lib-tree-act lib-tree-act--del"
-            title="폴더 삭제"
-            aria-label="폴더 삭제"
-            onClick={(e) => { e.stopPropagation(); onDelete(folder); }}
-          >
-            <Icon name="trash" />
-          </button>
-        </span>
+        {/* hover 시 노출되는 액션 버튼 — 자동생성(protected) 폴더는 숨김 */}
+        {folder.protected ? (
+          <span className="lib-tree-lock" title="자동 생성 폴더 (수정·삭제 불가)" aria-label="잠긴 폴더">
+            <Icon name="lock" />
+          </span>
+        ) : (
+          <span className="lib-tree-actions" onPointerDown={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="lib-tree-act"
+              title="이름 변경"
+              aria-label="이름 변경"
+              onClick={(e) => { e.stopPropagation(); onRename(folder); }}
+            >
+              <Icon name="edit" />
+            </button>
+            <button
+              type="button"
+              className="lib-tree-act lib-tree-act--del"
+              title="폴더 삭제"
+              aria-label="폴더 삭제"
+              onClick={(e) => { e.stopPropagation(); onDelete(folder); }}
+            >
+              <Icon name="trash" />
+            </button>
+          </span>
+        )}
       </div>
       {isOpen && children.map((child) => (
         <TreeNode
@@ -183,7 +226,7 @@ export default function FileLibraryPage() {
   }, [selectedFolderId, folders]);
 
   const topFolders = useMemo(
-    () => folders.filter((f) => (f.parentId || null) === null).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9)),
+    () => folders.filter((f) => (f.parentId || null) === null).sort(sortFolders),
     [folders],
   );
 
@@ -191,7 +234,7 @@ export default function FileLibraryPage() {
 
   // 현재 폴더의 하위 폴더 (탐색기: 폴더가 위)
   const currentSubFolders = useMemo(
-    () => folders.filter((f) => (f.parentId || null) === selectedFolderId).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9)),
+    () => folders.filter((f) => (f.parentId || null) === selectedFolderId).sort(sortFolders),
     [folders, selectedFolderId],
   );
 
@@ -299,6 +342,7 @@ export default function FileLibraryPage() {
 
   // ── 폴더 이름 변경 ──
   async function handleRename() {
+    if (renameTarget?.protected) { alert('자동 생성된 폴더는 이름을 변경할 수 없습니다.'); setRenameTarget(null); return; }
     const name = renameName.trim();
     if (!name || name === renameTarget.name) { setRenameTarget(null); return; }
     const siblings = folders.filter((f) => (f.parentId || null) === (renameTarget.parentId || null) && f.id !== renameTarget.id);
@@ -312,6 +356,7 @@ export default function FileLibraryPage() {
   // ── 폴더 삭제 ──
   async function handleDeleteFolder(folder, e) {
     e?.stopPropagation();
+    if (folder.protected) { alert('자동 생성된 폴더는 삭제할 수 없습니다.'); return; }
     const filesIn = files.filter((f) => (f.folderId || null) === folder.id);
     const subsIn = folders.filter((f) => (f.parentId || null) === folder.id);
     const msg = (filesIn.length || subsIn.length)
@@ -357,6 +402,7 @@ export default function FileLibraryPage() {
     const dragged = folders.find((f) => f.id === draggedId);
     const target = folders.find((f) => f.id === targetId);
     if (!dragged || !target || draggedId === targetId) return;
+    if (dragged.protected) { toast('자동 생성된 폴더는 이동할 수 없습니다.', 'error'); return; }
     // 순환 방지 — target이 dragged의 자손이면 이동 금지
     const isDescendant = (id) => {
       let cur = folders.find((f) => f.id === id);
@@ -373,7 +419,7 @@ export default function FileLibraryPage() {
       if ((dragged.parentId || null) === target.id) return; // 이미 그 폴더의 자식
       const childSiblings = folders
         .filter((f) => (f.parentId || null) === target.id && f.id !== draggedId)
-        .sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9));
+        .sort(sortFolders);
       const orderUpdates = [...childSiblings, dragged].map((f, i) => ({ id: f.id, order: i }));
       try {
         await moveFolder(draggedId, target.id);
@@ -388,7 +434,7 @@ export default function FileLibraryPage() {
     const targetParent = target.parentId || null;
     const siblings = folders
       .filter((f) => (f.parentId || null) === targetParent && f.id !== draggedId)
-      .sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9));
+      .sort(sortFolders);
     const targetIdx = siblings.findIndex((f) => f.id === targetId);
     const insertIdx = mode === 'before' ? targetIdx : targetIdx + 1;
     siblings.splice(insertIdx, 0, dragged);
@@ -628,8 +674,9 @@ export default function FileLibraryPage() {
                   <tbody>
                     {/* 폴더 행 */}
                     {currentSubFolders.map((folder) => {
-                      const cnt = files.filter((f) => (f.folderId || null) === folder.id).length;
-                      const subCnt = folders.filter((f) => (f.parentId || null) === folder.id).length;
+                      const stats = getFolderStats(folder.id, folders, files);
+                      const cnt = stats.fileCount;
+                      const subCnt = stats.folderCount;
                       const isFileTarget = dragOverId === folder.id;
                       const isFolderOver = folderDragOverId === folder.id && draggingFolderId !== folder.id;
                       const dropCls = isFolderOver
@@ -652,31 +699,37 @@ export default function FileLibraryPage() {
                             <span className="lib-row-name">{folder.name}</span>
                           </td>
                           <td className="lib-col-type" data-label="종류">폴더</td>
-                          <td className="lib-col-date" data-label="수정일">—</td>
+                          <td className="lib-col-date" data-label="수정일">{stats.latest ? formatDate(stats.latest) : '—'}</td>
                           <td className="lib-col-size" data-label="크기">
                             {subCnt > 0 ? `${subCnt}개 폴더 · ` : ''}{cnt}개 파일
                           </td>
                           <td className="col-action" onClick={(e) => e.stopPropagation()}>
-                            <div className="row-actions">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline"
-                                title="이름 변경"
-                                aria-label="이름 변경"
-                                onClick={() => { setRenameTarget(folder); setRenameName(folder.name); }}
-                              >
-                                <Icon name="edit" className="btn-ic" />수정
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger"
-                                title="삭제"
-                                aria-label="삭제"
-                                onClick={(e) => handleDeleteFolder(folder, e)}
-                              >
-                                <Icon name="trash" className="btn-ic" />삭제
-                              </button>
-                            </div>
+                            {folder.protected ? (
+                              <span className="lib-locked-label" title="자동 생성 폴더 (수정·삭제 불가)">
+                                <Icon name="lock" className="btn-ic" />자동
+                              </span>
+                            ) : (
+                              <div className="row-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline"
+                                  title="이름 변경"
+                                  aria-label="이름 변경"
+                                  onClick={() => { setRenameTarget(folder); setRenameName(folder.name); }}
+                                >
+                                  <Icon name="edit" className="btn-ic" />수정
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  title="삭제"
+                                  aria-label="삭제"
+                                  onClick={(e) => handleDeleteFolder(folder, e)}
+                                >
+                                  <Icon name="trash" className="btn-ic" />삭제
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );

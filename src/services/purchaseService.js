@@ -403,6 +403,34 @@ export async function unmarkSupplierSent(purchaseId, supplierName) {
   });
 }
 
+// 업체별 회신 확인 마킹 — 회신 일시·확인자 기록
+export async function markSupplierReplied(purchaseId, supplierName, by = '') {
+  const key = supplierName.replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierReplied.${key}.repliedAt`]: new Date(),
+    [`supplierReplied.${key}.repliedBy`]: by,
+    updatedAt: new Date(),
+  });
+}
+
+// 업체별 회신 확인 취소
+export async function unmarkSupplierReplied(purchaseId, supplierName) {
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierReplied.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
+// 발주건 상태를 '회신'으로 전환 (모든 업체 회신 확인 시 자동 호출)
+export async function setPurchaseReplied(id, by = '') {
+  await updateDoc(doc(db, 'purchases', id), {
+    status: 'replied',
+    repliedAt: new Date(),
+    repliedBy: by,
+    updatedAt: new Date(),
+  });
+}
+
 // 공장 프리셋 저장
 export async function saveFactories(factories) {
   await setDoc(configDoc, { factories, updatedAt: new Date() }, { merge: true });

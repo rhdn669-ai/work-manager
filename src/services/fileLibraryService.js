@@ -67,7 +67,8 @@ export function subscribeFiles(cb) {
 // ---------- 폴더 ----------
 
 // parentId: 상위 폴더 id (null = 최상위). 중첩 폴더 지원
-export async function createFolder(name, user, parentId = null) {
+// opts.protected: 시스템 자동생성 폴더 — 자료실에서 수정·삭제 불가
+export async function createFolder(name, user, parentId = null, opts = {}) {
   const trimmed = (name || '').trim();
   if (!trimmed) throw new Error('폴더 이름을 입력하세요.');
   const refDoc = await addDoc(foldersRef, {
@@ -76,29 +77,91 @@ export async function createFolder(name, user, parentId = null) {
     createdBy: user?.uid || '',
     createdByName: user?.name || '',
     createdAt: new Date(),
+    ...(opts.protected ? { protected: true } : {}),
   });
   return refDoc.id;
 }
 
 // 같은 (이름+상위폴더)의 폴더가 있으면 그 id, 없으면 새로 만들어 id 반환
 // 기존 폴더는 parentId 필드가 없을 수 있어 JS에서 null로 보정해 매칭(하위 호환)
-export async function ensureFolder(name, user, parentId = null) {
+// opts.protected: 기존 폴더에도 보호 플래그를 보강
+export async function ensureFolder(name, user, parentId = null, opts = {}) {
   const trimmed = (name || '').trim();
   if (!trimmed) throw new Error('폴더 이름이 비었습니다.');
   const snap = await getDocs(query(foldersRef, where('name', '==', trimmed)));
   const match = snap.docs.find((d) => (d.data().parentId || null) === (parentId || null));
-  if (match) return match.id;
-  return createFolder(trimmed, user, parentId);
+  if (match) {
+    if (opts.protected && !match.data().protected) {
+      await updateDoc(doc(db, 'libraryFolders', match.id), { protected: true });
+    }
+    return match.id;
+  }
+  return createFolder(trimmed, user, parentId, opts);
 }
 
 // 폴더 경로(['거래처 정보', '업체명'])를 차례로 보장하고 마지막(말단) 폴더 id 반환
-export async function ensureFolderPath(parts, user) {
+// opts.protected: 경로상 모든 폴더를 자동생성 보호 폴더로 표시(수정·삭제 불가)
+export async function ensureFolderPath(parts, user, opts = {}) {
   let parentId = null;
   for (const p of parts || []) {
     if (!p || !String(p).trim()) continue;
-    parentId = await ensureFolder(String(p).trim(), user, parentId);
+    parentId = await ensureFolder(String(p).trim(), user, parentId, opts);
   }
   return parentId;
+}
+
+// 프로젝트(현장) 자료실 표준 하위 폴더 — 프로젝트 생성 시 자동 생성, 각 기능과 연동
+export const PROJECT_SUBFOLDERS = ['발주이력', '자료', '견적', 'BOM'];
+// 모든 프로젝트 폴더를 담는 최상위 묶음 폴더
+export const PROJECT_ROOT_FOLDER = '프로젝트';
+
+// "프로젝트" 묶음폴더 > 프로젝트명 > [발주이력/자료/견적/BOM] 구조를 보장하고
+// { rootId, sub: { 발주이력, 자료, 견적, BOM } } 반환 (idempotent)
+// 과거에 자료실 최상위에 생성됐던 동명 프로젝트 폴더는 "프로젝트" 아래로 자동 이동(마이그레이션)
+export async function ensureProjectFolders(siteName, user) {
+  const name = (siteName || '').trim();
+  if (!name) return null;
+  const rootParent = await ensureFolder(PROJECT_ROOT_FOLDER, user, null, { protected: true });
+  // 최상위(parentId=null)에 흩어져 있던 동명 프로젝트 폴더가 있으면 "프로젝트" 아래로 이동
+  const existing = await getDocs(query(foldersRef, where('name', '==', name)));
+  const topLevel = existing.docs.find((d) => (d.data().parentId || null) === null);
+  if (topLevel && topLevel.id !== rootParent) {
+    await updateDoc(doc(db, 'libraryFolders', topLevel.id), { parentId: rootParent });
+  }
+  const rootId = await ensureFolder(name, user, rootParent, { protected: true });
+  const sub = {};
+  for (const f of PROJECT_SUBFOLDERS) {
+    sub[f] = await ensureFolder(f, user, rootId, { protected: true });
+  }
+  return { rootId, sub };
+}
+
+// 기존 "발주이력" 폴더 직속 파일들을 발주월(YYYY-MM) 하위 폴더로 일괄 이동(정리)
+// 월 판별: 파일명 IOPN{YYYYMMDD} 우선, 없으면 업로드일(createdAt) 기준. (idempotent)
+export async function organizeOrderHistory(user) {
+  const histFolders = (await getDocs(query(foldersRef, where('name', '==', '발주이력')))).docs;
+  let moved = 0;
+  for (const hf of histFolders) {
+    const histId = hf.id;
+    const fileSnap = await getDocs(query(filesRef, where('folderId', '==', histId)));
+    for (const fd of fileSnap.docs) {
+      const f = fd.data();
+      const m = (f.name || '').match(/IOPN(\d{4})(\d{2})\d{2}/);
+      let ym;
+      if (m) {
+        ym = `${m[1]}-${m[2]}`;
+      } else {
+        const d = f.createdAt?.toDate ? f.createdAt.toDate() : f.createdAt ? new Date(f.createdAt) : new Date();
+        ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+      const monthId = await ensureFolder(ym, user, histId, { protected: true });
+      if (monthId && monthId !== histId) {
+        await updateDoc(doc(db, 'libraryFiles', fd.id), { folderId: monthId });
+        moved++;
+      }
+    }
+  }
+  return moved;
 }
 
 // 폴더 이름 변경

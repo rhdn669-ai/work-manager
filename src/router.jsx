@@ -23,6 +23,7 @@ import VehicleLogPage from './pages/admin/VehicleLogPage';
 import PurchaseDetailPage from './pages/admin/PurchaseDetailPage';
 import SupplierManagementPage from './pages/admin/SupplierManagementPage';
 import QuotePage from './pages/admin/QuotePage';
+import QuoteFormPage from './pages/admin/QuoteFormPage';
 import PurchaseItemPage from './pages/admin/PurchaseItemPage';
 import BomPage from './pages/admin/BomPage';
 import BomDetailPage from './pages/admin/BomDetailPage';
@@ -93,7 +94,14 @@ const router = createBrowserRouter([
               { path: 'bom', element: <BomPage /> },
               { path: 'bom/:projectId', element: <BomDetailPage /> },
               { path: 'suppliers', element: <SupplierManagementPage /> },
-              { path: 'quotes', element: <QuotePage /> },
+              {
+                path: 'quotes',
+                children: [
+                  { index: true, element: <QuotePage /> },
+                  { path: 'new', element: <QuoteFormPage /> },
+                  { path: ':quoteId', element: <QuoteFormPage /> },
+                ],
+              },
               { path: 'items', element: <PurchaseItemPage /> },
               { path: 'trash', element: <PurchaseTrashPage /> },
               { path: ':id', element: <PurchaseDetailPage /> },

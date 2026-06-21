@@ -4461,6 +4461,10 @@ table.cards-sm td {
   background: #ede9fe;
   color: #6d28d9;
 }
+.purchase-badge-replied {
+  background: #fef9c3;
+  color: #a16207;
+}
 .purchase-badge-partial {
   background: var(--accent-soft);
   color: var(--accent-press);
@@ -4478,6 +4482,23 @@ table.cards-sm td {
   color: #6b7280;
 }
 
+/* 구매처별 발주 요약 테이블 — 충분한 셀 패딩 */
+.po-sup-table th,
+.po-sup-table td {
+  padding: 10px 16px !important;
+}
+.po-sup-table .col-action {
+  /* 버튼(PDF·메일·발주·회신) 4개가 항상 들어가는 고정 폭 — 특이사항이 버튼 변동에 밀리지 않음 */
+  min-width: 540px;
+  width: 540px;
+  padding-left: 28px !important;
+  padding-right: 8px !important;
+}
+/* 발주/회신 토글 버튼 — 글자(확인/취소·완료/표시)가 바뀌어도 폭 고정 */
+.po-sup-table .purchase-sup-toggle {
+  min-width: 112px;
+  flex: 0 0 112px;
+}
 /* 업체별 발주 현황 작업 버튼 — 위치·크기 고정 (3개 항상 한 줄, 줄바꿈 방지) */
 /* 업체별 발주현황 — 발행번호(별도 컬럼) */
 .purchase-sup-pono {
@@ -4498,9 +4519,131 @@ table.cards-sm td {
 .purchase-sup-toggle {
   min-width: 104px;
 }
-/* 이메일 미등록 메일 발송 버튼 — 위치는 유지, 흐리게만 표시 */
-.btn.is-no-email {
-  opacity: 0.55;
+/* 메일 발송 — 활성/비활성(이메일 미등록) 무관하게 폭 고정 */
+.purchase-sup-mail {
+  min-width: 96px;
+  justify-content: center;
+}
+/* 메일 발송 중 — 진행률 표시 (네이비 톤, 깜빡임) */
+.purchase-sup-mail.is-sending {
+  background: var(--primary, #002050) !important;
+  color: #fff !important;
+  border-color: var(--primary, #002050) !important;
+  opacity: 1 !important;
+  cursor: progress;
+  animation: po-mail-pulse 1.1s ease-in-out infinite;
+}
+@keyframes po-mail-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+/* 업체별 발주 작업 버튼 — 기본 하늘색, 완료(토글 on) 시 분홍색 */
+.po-act-btn {
+  background: #e0f2fe;
+  color: #075985;
+  border: 1px solid #7dd3fc;
+}
+.po-act-btn:hover:not(:disabled) {
+  background: #bae6fd;
+  border-color: #38bdf8;
+}
+.po-act-btn--on {
+  background: #fce7f3;
+  color: #be185d;
+  border-color: #f9a8d4;
+}
+.po-act-btn--on:hover:not(:disabled) {
+  background: #fbcfe8;
+  border-color: #f472b6;
+}
+/* 이메일 미등록 메일 발송 버튼 — 위치·크기는 유지, 회색으로 표시 */
+.btn.is-no-email,
+.po-act-btn.is-no-email {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+.po-act-btn.is-no-email:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+/* 자료실 — 자동생성(잠긴) 폴더 표시 */
+.lib-tree-lock {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 6px;
+  color: var(--text-secondary, #9ca3af);
+  opacity: 0.7;
+}
+.lib-tree-lock svg {
+  width: 14px;
+  height: 14px;
+}
+.lib-locked-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--btn-h-sm);
+  font-size: 12px;
+  color: var(--text-secondary, #9ca3af);
+  white-space: nowrap;
+}
+/* 세그먼트 토글 (버튼형 선택) */
+.seg-toggle {
+  display: flex;
+  gap: 8px;
+}
+.seg-toggle .btn {
+  flex: 0 0 auto;
+  min-width: 84px;
+  white-space: nowrap;
+}
+/* 발주서 메일 미리보기 모달 */
+.mail-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--accent-soft, #fef0e9);
+  color: var(--accent-press, #c2410c);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 100%;
+  word-break: break-all;
+}
+.mail-body-preview {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: #fff;
+  font-size: 14px;
+}
+.mail-body-preview table {
+  width: 100%;
+}
+/* 발주 카드 · 칸반 카드 — 날짜+버튼 한 줄 배치 */
+.po-card__foot,
+.kb-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.po-card__dates,
+.kb-card__dates {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-secondary, #6b7280);
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+  min-width: 0;
 }
 
 .purchase-owner-toggle {
@@ -4876,6 +5019,7 @@ table.cards-sm td {
   cursor: default;
 }
 .bom-import-name {
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
   min-width: 0;
@@ -4884,7 +5028,7 @@ table.cards-sm td {
   white-space: nowrap;
 }
 .bom-import-go {
-  font-size: var(--font-sm);
+  font-size: var(--font-md);
   color: var(--primary);
   font-weight: 700;
   flex-shrink: 0;
@@ -6135,12 +6279,19 @@ table.cards-sm td {
   gap: 6px;
   margin-bottom: 6px;
 }
+/* 헤더(추가/일괄) 셀과 행(복사/삭제) 셀을 완전히 동일한 패딩·폭·정렬로 강제 — 어긋남 방지 */
 .table th.item-group-add-th,
-.item-group-add-th {
-  text-align: center !important;
-  padding: 4px 6px !important;
-  vertical-align: middle;
+.item-group-add-th,
+.table td.item-actions-cell {
+  text-align: right !important;
+  padding: 4px 16px 4px 6px !important;  /* 상 우 하 좌 모두 동일 */
+  width: 140px !important;
+  vertical-align: middle !important;
   white-space: nowrap;
+}
+.item-group-add-th .btn,
+.item-actions-cell .btn {
+  min-height: var(--btn-h-sm);    /* 헤더·행 버튼 동일 높이 */
 }
 .item-group-add-btn {
   display: inline-flex;
@@ -8933,7 +9084,8 @@ tr.is-newly-added > td {
   align-items: center;
 }
 
-.site-row-meta .chip {
+.site-row-meta .chip,
+.site-row-badges .chip {
   display: inline-flex;
   align-items: center;
   padding: 3px 9px;
@@ -8948,9 +9100,11 @@ tr.is-newly-added > td {
   text-overflow: ellipsis;
 }
 
-.site-row-meta .chip-team {
+.site-row-meta .chip-team,
+.site-row-badges .chip-team {
   background: var(--primary-soft);
   color: var(--navy);
+  border: 1px solid var(--primary);
 }
 
 .site-row-meta .chip-manager {
@@ -14347,15 +14501,18 @@ tr.is-newly-added > td {
   width: 13%;
   text-align: center;
 }
-/* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
+/* 구매발주서 — 단위 미출력, 구매처 포함 10열 폭 배분 */
 .iopn-items-table.po-cols .c-no {
-  width: 6%;
+  width: 5%;
+}
+.iopn-items-table.po-cols .c-itemno {
+  width: 5%;
 }
 .iopn-items-table.po-cols .c-name {
   width: 15%;
 }
 .iopn-items-table.po-cols .c-spec {
-  width: 35%;
+  width: 30%;
 }
 .iopn-items-table.po-cols .c-qty {
   width: 5%;
@@ -14367,7 +14524,7 @@ tr.is-newly-added > td {
   width: 12%;
 }
 .iopn-items-table.po-cols .c-recv {
-  width: 7%;
+  width: 8%;
 }
 .iopn-items-table.po-cols .c-note {
   width: 9%;
@@ -14379,6 +14536,22 @@ tr.is-newly-added > td {
   padding-left: 3px;
   padding-right: 3px;
 }
+/* 견적서 전용 — 모든 셀 가운데 정렬 */
+.quote-form .iopn-info-table .val { text-align: center; padding-left: 4px; }
+.quote-form .iopn-notes-table .val { text-align: center; }
+.quote-form .iopn-total-table .num { text-align: center; padding-right: 4px; }
+/* 견적서 품목 표 — 전체 셀 가운데 정렬 */
+.iopn-items-table.quote-cols th,
+.iopn-items-table.quote-cols td {
+  text-align: center;
+  vertical-align: middle;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+.iopn-items-table.quote-cols .c-name { width: 20%; text-align: left; padding-left: 4px; }
+.iopn-items-table.quote-cols .c-spec { width: 22%; text-align: left; padding-left: 4px; white-space: normal; word-break: break-word; overflow: visible; }
+.iopn-items-table.quote-cols .c-amount { text-align: center; padding-right: 4px; }
+.iopn-items-table.quote-cols .c-price  { text-align: center; padding-right: 4px; }
 /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
 .iopn-items-table.po-cols .c-spec {
   white-space: normal;
@@ -15217,15 +15390,18 @@ tr.is-newly-added > td {
     width: 13%;
     text-align: center;
   }
-  /* 구매발주서 — 단위 미출력, 구매처 포함 9열 폭 배분 (규격 넓게) */
+  /* 구매발주서 — 단위 미출력, 구매처 포함 10열 폭 배분 */
   .iopn-items-table.po-cols .c-no {
-    width: 6%;
+    width: 5%;
+  }
+  .iopn-items-table.po-cols .c-itemno {
+    width: 5%;
   }
   .iopn-items-table.po-cols .c-name {
     width: 15%;
   }
   .iopn-items-table.po-cols .c-spec {
-    width: 35%;
+    width: 30%;
   }
   .iopn-items-table.po-cols .c-qty {
     width: 5%;
@@ -15237,7 +15413,7 @@ tr.is-newly-added > td {
     width: 12%;
   }
   .iopn-items-table.po-cols .c-recv {
-    width: 7%;
+    width: 8%;
   }
   .iopn-items-table.po-cols .c-note {
     width: 9%;
@@ -15249,6 +15425,22 @@ tr.is-newly-added > td {
     padding-left: 1mm;
     padding-right: 1mm;
   }
+  /* 견적서 전용 — 모든 셀 가운데 정렬 */
+  .quote-form .iopn-info-table .val { text-align: center; padding-left: 1mm; }
+  .quote-form .iopn-notes-table .val { text-align: center; }
+  .quote-form .iopn-total-table .num { text-align: center; padding-right: 1mm; }
+  /* 견적서 품목 표 — 전체 셀 가운데 정렬 */
+  .iopn-items-table.quote-cols th,
+  .iopn-items-table.quote-cols td {
+    text-align: center;
+    vertical-align: middle;
+    padding-left: 1mm;
+    padding-right: 1mm;
+  }
+  .iopn-items-table.quote-cols .c-name { width: 20%; text-align: left; padding-left: 2mm; }
+  .iopn-items-table.quote-cols .c-spec { width: 22%; text-align: left; padding-left: 2mm; white-space: normal; word-break: break-word; overflow: visible; }
+  .iopn-items-table.quote-cols .c-amount { text-align: center; padding-right: 1mm; }
+  .iopn-items-table.quote-cols .c-price  { text-align: center; padding-right: 1mm; }
   /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
   .iopn-items-table.po-cols .c-spec {
     white-space: normal;
@@ -16232,7 +16424,10 @@ tr.is-newly-added > td {
 .lib-detail-table td.lib-col-date,
 .lib-detail-table th.lib-col-size,
 .lib-detail-table td.lib-col-size {
-  width: 140px;
+  width: 190px;
+  min-width: 190px;         /* 내용이 짧아도 칸이 압축되지 않게 — 3칸 간격 균등 보장 */
+  padding-left: 16px;
+  padding-right: 16px;
   text-align: center;       /* 3칸 정렬 통일 — 좌/우 혼용으로 생기던 간격 불균형 제거 */
   white-space: nowrap;
 }

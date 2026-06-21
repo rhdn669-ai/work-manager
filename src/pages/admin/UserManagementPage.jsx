@@ -432,6 +432,7 @@ export default function UserManagementPage() {
               <th>코드</th>
               <th>비밀번호</th>
               <th style={isSmall ? { display: 'none' } : undefined}>직급</th>
+              <th style={isSmall ? { display: 'none' } : undefined}>연락처</th>
               <th>부서</th>
               <th>고정비용</th>
               <th style={isSmall ? { display: 'none' } : undefined}>시급</th>
@@ -473,6 +474,9 @@ export default function UserManagementPage() {
                     <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
                       {u.position || '-'}
                     </span>
+                  </td>
+                  <td data-label="연락처" title={u.phone || ''} style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', minHeight: 36, ...(isSmall ? { display: 'none' } : {}) }}>
+                    {u.phone || '-'}
                   </td>
                   <td data-label="부서" title={deptMap[u.departmentId] || ''} style={{ minHeight: 36 }}>
                     {deptMap[u.departmentId] || '-'}

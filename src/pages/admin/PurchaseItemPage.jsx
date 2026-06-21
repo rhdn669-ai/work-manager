@@ -835,7 +835,7 @@ export default function PurchaseItemPage() {
                                 <th style={{ width: 100 }}>단가</th>
                                 <th style={{ width: 150 }}>기본 구매처</th>
                                 <th style={{ width: 110 }}>비고</th>
-                                <th className="item-group-add-th" style={{ width: 160 }}>
+                                <th className="item-group-add-th">
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-outline"
@@ -851,7 +851,7 @@ export default function PurchaseItemPage() {
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-outline"
-                                    style={{ marginLeft: 6 }}
+                                    style={{ marginLeft: 4 }}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openGroupBulk(repItem);
@@ -1175,7 +1175,7 @@ export default function PurchaseItemPage() {
                                       <td
                                         className="item-actions-cell"
                                         style={{
-                                          textAlign: 'center',
+                                          textAlign: 'right',
                                           whiteSpace: 'nowrap',
                                           verticalAlign: 'middle',
                                           overflow: 'visible',

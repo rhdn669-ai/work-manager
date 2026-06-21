@@ -20,6 +20,7 @@ import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 import TrashModal from '../../components/common/TrashModal';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
 import { useUndo } from '../../contexts/UndoContext';
+import { ensureProjectFolders, organizeOrderHistory } from '../../services/fileLibraryService';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
 const CS_BADGE_LABEL = 'CS';
@@ -76,6 +77,7 @@ export default function SiteListPage() {
   // 프로젝트 추가/수정 모달
   const [showModal, setShowModal] = useState(false);
   const [editSite, setEditSite] = useState(null);
+  const [syncingFolders, setSyncingFolders] = useState(false);
   const [form, setForm] = useState({
     name: '',
     team: '',
@@ -323,11 +325,51 @@ export default function SiteListPage() {
         await updateSite(editSite.id, { ...form });
       } else {
         await createSite({ ...form });
+        // 신규 프로젝트 → 자료실에 표준 폴더(발주이력/자료/견적/BOM) 자동 생성
+        ensureProjectFolders(form.name, userProfile).catch((err) =>
+          console.warn('[자료실] 프로젝트 폴더 생성 실패:', err),
+        );
       }
       setShowModal(false);
       await loadData();
     } catch (err) {
       alert('처리 중 오류: ' + err.message);
+    }
+  }
+
+  // 기존 모든 프로젝트의 자료실 표준 폴더를 일괄 생성·동기화 (idempotent)
+  async function handleSyncFolders() {
+    if (
+      !(await confirm(
+        '모든 프로젝트의 자료실 폴더(발주이력·자료·견적·BOM)를 생성·동기화할까요?\n이미 있는 폴더는 그대로 두고 빠진 것만 만듭니다.',
+      ))
+    )
+      return;
+    setSyncingFolders(true);
+    try {
+      const all = await getAllSites();
+      let ok = 0;
+      for (const s of all) {
+        try {
+          await ensureProjectFolders(s.name, userProfile);
+          ok++;
+        } catch (err) {
+          console.warn('[자료실] 폴더 동기화 실패:', s.name, err);
+        }
+      }
+      // 기존 발주이력 파일을 발주월 폴더로 일괄 정리
+      let movedMsg = '';
+      try {
+        const moved = await organizeOrderHistory(userProfile);
+        if (moved > 0) movedMsg = `\n발주서 ${moved}건을 월별 폴더로 정리했습니다.`;
+      } catch (err) {
+        console.warn('[자료실] 발주이력 월별 정리 실패:', err);
+      }
+      alert(`${ok}/${all.length}개 프로젝트의 자료실 폴더를 동기화했습니다.${movedMsg}`);
+    } catch (err) {
+      alert('동기화 오류: ' + err.message);
+    } finally {
+      setSyncingFolders(false);
     }
   }
 
@@ -390,6 +432,12 @@ export default function SiteListPage() {
         <h2>프로젝트</h2>
         {(isAdmin || canCreateSite) && (
           <div className="page-actions">
+            {isAdmin && (
+              <button type="button" className="btn btn-sm btn-outline" onClick={handleSyncFolders} disabled={syncingFolders}>
+                <Icon name="folder" className="btn-ic" />
+                {syncingFolders ? '동기화 중…' : '자료실 폴더 동기화'}
+              </button>
+            )}
             {isAdmin && (
               <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
                 <Icon name="trash" className="btn-ic" />휴지통
@@ -609,8 +657,6 @@ export default function SiteListPage() {
                         {st === 'completed' && (
                           <span className="site-status-badge site-status-completed">{STATUS_LABELS[st]}</span>
                         )}
-                      </div>
-                      <div className="site-row-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, minWidth: 0 }}>
                         <span
                           className="chip chip-team"
                           title={s.team || '팀 미지정'}
@@ -618,6 +664,8 @@ export default function SiteListPage() {
                         >
                           {s.team || '팀 미지정'}
                         </span>
+                      </div>
+                      <div className="site-row-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, minWidth: 0 }}>
                         {managerNameArr(s).length > 0 ? (
                           managerNameArr(s).map((name) => (
                             <span
