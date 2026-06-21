@@ -607,9 +607,8 @@ export default function PurchaseDetailPage() {
     }
     const fileName = `${pdfFileName || '발주서'}.pdf`;
     const folderId = pdfFolderId || null;
-    // 모달 즉시 닫기 + 백그라운드 시작 알림
+    // 모달 즉시 닫기 — 시작 토스트 없음, 결과만 sticky 토스트로 알림(총괄 수칙)
     setPdfModalOpen(false);
-    toast(`"${fileName}" 자료실 저장을 시작했습니다…`);
     // fire-and-forget — await로 화면을 막지 않음
     (async () => {
       try {
@@ -620,10 +619,10 @@ export default function PurchaseDetailPage() {
         const blob = await captureToPdfBlob(el, fileName);
         setPrintAccountMode(false);
         await uploadPdfToLibrary(blob, pdfFileName, folderId, userProfile);
-        toast(`자료실에 저장되었습니다: ${fileName}`);
+        toast(`자료실에 저장되었습니다: ${fileName}`, 'success', 0);
       } catch (err) {
         setPrintAccountMode(false);
-        toast(`자료실 저장 실패: ${err?.message || err}`, 'error');
+        toast(`자료실 저장 실패: ${err?.message || err}`, 'error', 0);
       }
     })();
   }

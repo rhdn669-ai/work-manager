@@ -14539,9 +14539,9 @@ tr.is-newly-added > td {
 }
 /* 견적서 전용 — 모든 셀 가운데 정렬 */
 .quote-form .iopn-info-table .val { text-align: center; padding-left: 4px; }
-.quote-form .iopn-notes-table .val { text-align: center; }
+.quote-form .iopn-notes-table .val { text-align: left; padding-left: 8px; }
 .quote-form .iopn-total-table .num { text-align: center; padding-right: 4px; }
-/* 견적서 품목 표 — 전체 셀 가운데 정렬 */
+/* 견적서 품목 표 — 전체 셀 가운데 정렬 (품목명·규격 포함) */
 .iopn-items-table.quote-cols th,
 .iopn-items-table.quote-cols td {
   text-align: center;
@@ -14549,8 +14549,8 @@ tr.is-newly-added > td {
   padding-left: 3px;
   padding-right: 3px;
 }
-.iopn-items-table.quote-cols .c-name { width: 20%; text-align: left; padding-left: 4px; }
-.iopn-items-table.quote-cols .c-spec { width: 22%; text-align: left; padding-left: 4px; white-space: normal; word-break: break-word; overflow: visible; }
+.iopn-items-table.quote-cols .c-name { width: 20%; text-align: center; }
+.iopn-items-table.quote-cols .c-spec { width: 22%; text-align: center; white-space: normal; word-break: break-word; overflow: visible; }
 .iopn-items-table.quote-cols .c-amount { text-align: center; padding-right: 4px; }
 .iopn-items-table.quote-cols .c-price  { text-align: center; padding-right: 4px; }
 /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */
@@ -15428,9 +15428,9 @@ tr.is-newly-added > td {
   }
   /* 견적서 전용 — 모든 셀 가운데 정렬 */
   .quote-form .iopn-info-table .val { text-align: center; padding-left: 1mm; }
-  .quote-form .iopn-notes-table .val { text-align: center; }
+  .quote-form .iopn-notes-table .val { text-align: left; padding-left: 2mm; }
   .quote-form .iopn-total-table .num { text-align: center; padding-right: 1mm; }
-  /* 견적서 품목 표 — 전체 셀 가운데 정렬 */
+  /* 견적서 품목 표 — 전체 셀 가운데 정렬 (품목명·규격 포함) */
   .iopn-items-table.quote-cols th,
   .iopn-items-table.quote-cols td {
     text-align: center;
@@ -15438,8 +15438,8 @@ tr.is-newly-added > td {
     padding-left: 1mm;
     padding-right: 1mm;
   }
-  .iopn-items-table.quote-cols .c-name { width: 20%; text-align: left; padding-left: 2mm; }
-  .iopn-items-table.quote-cols .c-spec { width: 22%; text-align: left; padding-left: 2mm; white-space: normal; word-break: break-word; overflow: visible; }
+  .iopn-items-table.quote-cols .c-name { width: 20%; text-align: center; }
+  .iopn-items-table.quote-cols .c-spec { width: 22%; text-align: center; white-space: normal; word-break: break-word; overflow: visible; }
   .iopn-items-table.quote-cols .c-amount { text-align: center; padding-right: 1mm; }
   .iopn-items-table.quote-cols .c-price  { text-align: center; padding-right: 1mm; }
   /* 긴 규격은 줄이지 말고 줄바꿈(고정 8pt) — 항상 읽히게 */

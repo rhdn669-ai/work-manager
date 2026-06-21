@@ -19,15 +19,29 @@ export function DialogProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
 
-  // 결과 알림 토스트 — toast('저장됐습니다') / toast('실패', 'error')
-  const toast = useCallback((input, type = 'success', duration = 2400) => {
-    const opts = normalize(input);
-    const id = ++toastIdRef.current;
-    setToasts((list) => [...list, { id, message: opts.message || String(input || ''), type: opts.type || type }]);
-    setTimeout(() => {
-      setToasts((list) => list.filter((t) => t.id !== id));
-    }, opts.duration || duration);
+  const removeToast = useCallback((id) => {
+    setToasts((list) => list.filter((t) => t.id !== id));
   }, []);
+
+  // 결과 알림 토스트
+  //   toast('저장됐습니다')                       — 2.4초 후 자동 사라짐
+  //   toast('실패', 'error')
+  //   toast('완료', 'success', 0)                 — sticky: X 누를 때까지 유지
+  //   toast({ message, type, sticky: true })      — 객체형
+  const toast = useCallback(
+    (input, type = 'success', duration = 2400) => {
+      const opts = normalize(input);
+      const id = ++toastIdRef.current;
+      const message = opts.message || String(input || '');
+      const ttype = opts.type || type;
+      const dur = opts.duration ?? duration;
+      const sticky = opts.sticky === true || dur === 0;
+      setToasts((list) => [...list, { id, message, type: ttype, sticky }]);
+      if (!sticky) setTimeout(() => removeToast(id), dur);
+      return id;
+    },
+    [removeToast],
+  );
 
   const close = useCallback((result) => {
     setDialog(null);
@@ -76,12 +90,16 @@ export function DialogProvider({ children }) {
   }, [dialog, close]);
 
   return (
-    <DialogContext.Provider value={{ confirm, alert, toast }}>
+    <DialogContext.Provider value={{ confirm, alert, toast, removeToast }}>
       {children}
       {toasts.length > 0 && (
         <div className="toast-viewport" aria-live="polite">
           {toasts.map((t) => (
-            <div key={t.id} className={`toast toast--${t.type === 'error' ? 'error' : 'success'}`} role="status">
+            <div
+              key={t.id}
+              className={`toast toast--${t.type === 'error' ? 'error' : 'success'}${t.sticky ? ' toast--sticky' : ''}`}
+              role="status"
+            >
               <svg className="toast__icon" viewBox="0 0 24 24" aria-hidden="true">
                 {t.type === 'error' ? (
                   <>
@@ -97,6 +115,14 @@ export function DialogProvider({ children }) {
                 )}
               </svg>
               <span>{t.message}</span>
+              <button
+                type="button"
+                className="toast__close"
+                onClick={() => removeToast(t.id)}
+                aria-label="닫기"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>

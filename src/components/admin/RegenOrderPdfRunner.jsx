@@ -30,7 +30,7 @@ export default function RegenOrderPdfRunner({ task, onDone }) {
     (async () => {
       const { jobs, suppliers, sites, itemMaster } = task;
       stampRef.current = fmtStamp(new Date());
-      toast(`발주서 저장본 ${jobs.length}건 재생성 시작 — 백그라운드 진행`);
+      // 시작·진행 토스트는 띄우지 않는다 — 모달 닫힘이 시작 신호, 결과만 sticky 토스트로 알림(총괄 수칙)
       let ok = 0;
       let fail = 0;
       for (let i = 0; i < jobs.length; i++) {
@@ -47,13 +47,12 @@ export default function RegenOrderPdfRunner({ task, onDone }) {
           fail++;
           console.error('[저장본 재생성]', j.file?.name, e?.message || e);
         }
-        // 25건마다 중간 경과 알림(긴 작업 가시성)
-        if ((i + 1) % 25 === 0 && i + 1 < jobs.length) toast(`재생성 진행 ${i + 1}/${jobs.length}…`);
       }
       setJob(null);
       runningRef.current = false;
-      if (fail === 0) toast(`발주서 저장본 ${ok}건 재생성 완료`);
-      else toast(`재생성 완료 ${ok}건 · 실패 ${fail}건 (콘솔 확인)`, 'error');
+      // 결과 토스트 — X 누를 때까지 유지(sticky)
+      if (fail === 0) toast(`발주서 저장본 ${ok}건 재생성 완료`, 'success', 0);
+      else toast(`재생성 완료 ${ok}건 · 실패 ${fail}건 (콘솔 확인)`, 'error', 0);
       onDone && onDone();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

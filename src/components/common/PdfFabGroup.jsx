@@ -69,16 +69,16 @@ export default function PdfFabGroup({
     const name = `${fileName || '문서'}.pdf`;
     const fid = folderId || null;
     setOpen(false);
-    toast(`"${name}" 자료실 저장을 시작했습니다…`);
+    // 시작 토스트 없음 — 결과만 sticky 토스트(X로 닫음)로 알림(총괄 수칙: 저장은 백그라운드+결과만)
     (async () => {
       try {
         onBeforeOutput?.();
         await new Promise((r) => setTimeout(r, 80));
         const blob = await captureToPdfBlob(el, name);
         await uploadPdfToLibrary(blob, fileName, fid, userProfile);
-        toast(`자료실에 저장되었습니다: ${name}`);
+        toast(`자료실에 저장되었습니다: ${name}`, 'success', 0);
       } catch (err) {
-        toast(`자료실 저장 실패: ${err?.message || err}`, 'error');
+        toast(`자료실 저장 실패: ${err?.message || err}`, 'error', 0);
       }
     })();
   }
