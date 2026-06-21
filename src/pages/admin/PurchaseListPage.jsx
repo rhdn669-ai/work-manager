@@ -34,6 +34,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
+import RegenOrderPdfRunner from '../../components/admin/RegenOrderPdfRunner';
 
 const STATUS = {
   draft: { label: '발주대기', cls: 'draft' },
@@ -228,6 +229,7 @@ export default function PurchaseListPage() {
 
   const [trashOpen, setTrashOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [regenTask, setRegenTask] = useState(null); // 백그라운드 재생성 잡 { jobs, suppliers, sites, itemMaster }
   const [purchases, setPurchases] = useState([]);
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
@@ -851,7 +853,13 @@ export default function PurchaseListPage() {
         onChange={() => {}}
       />
 
-      <RegenOrderPdfModal isOpen={regenOpen} onClose={() => setRegenOpen(false)} />
+      <RegenOrderPdfModal
+        isOpen={regenOpen}
+        onClose={() => setRegenOpen(false)}
+        onStart={(payload) => setRegenTask(payload)}
+        busy={!!regenTask}
+      />
+      <RegenOrderPdfRunner task={regenTask} onDone={() => setRegenTask(null)} />
     </div>
   );
 }
