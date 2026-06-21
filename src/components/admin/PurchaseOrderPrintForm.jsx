@@ -69,13 +69,16 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     })(),
     supplierTitle: printSupplierFilter ? `${printSupplierFilter} 귀하` : liveSupplierTitle,
     supplierLabel: printSupplierFilter || '',
-    // 내부 저장용 PDF에 넣을 구매처 계좌정보 (printAccountMode일 때만 표시)
+    // 내부 저장용 PDF의 구매처 계좌정보 (printAccountMode일 때만 행 표시).
+    // 계좌 정보가 없어도 "입금계좌" 행은 고정으로 노출하고 값만 공백으로 둔다.
+    //   null  = 행 자체 미표시(외부 메일 첨부본)
+    //   ''    = 행은 표시하되 값 공백(내부용·계좌 미등록)
     account: (() => {
       if (!printAccountMode) return null;
       const sup = printSupplierFilter
         ? suppliers.find((s) => s.name === printSupplierFilter)
         : suppliers.find((s) => s.id === purchase.supplierId);
-      if (!sup || (!sup.bankName && !sup.bankAccount)) return null;
+      if (!sup || (!sup.bankName && !sup.bankAccount)) return '';
       const holder = sup.representative || sup.name || '';
       return `${sup.bankName || ''} ${sup.bankAccount || ''}${holder ? ` (${holder})` : ''}`.trim();
     })(),
@@ -253,10 +256,10 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                     <th className="lbl">특이사항</th>
                     <td className="val">{src.note || ''}</td>
                   </tr>
-                  {src.account && (
+                  {src.account !== null && (
                     <tr>
                       <th className="lbl">입금계좌</th>
-                      <td className="val">{src.account}</td>
+                      <td className="val">{src.account || ''}</td>
                     </tr>
                   )}
                 </tbody>
