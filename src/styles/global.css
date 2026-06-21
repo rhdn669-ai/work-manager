@@ -6292,6 +6292,7 @@ table.cards-sm td {
 .item-group-add-th .btn,
 .item-actions-cell .btn {
   min-height: var(--btn-h-sm);    /* 헤더·행 버튼 동일 높이 */
+  vertical-align: middle;         /* inline-flex 버튼 baseline 정렬로 인한 세로 어긋남 방지 (아이콘 유/무 혼합 시) */
 }
 .item-group-add-btn {
   display: inline-flex;

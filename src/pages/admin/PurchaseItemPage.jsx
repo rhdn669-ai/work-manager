@@ -644,8 +644,8 @@ export default function PurchaseItemPage() {
         /* 작업 셀 — table-cell 유지(헤더 +추가/일괄 컬럼과 정렬 일치). flex 금지 */
         .item-actions-cell { text-align: center; white-space: nowrap; vertical-align: middle; min-height: 36px; overflow: visible; }
         .item-actions-cell > * + * { margin-left: 6px; }
-        .item-actions-cell .btn { min-height: var(--btn-h-sm); }
-        .item-actions-cell .item-expand-btn { min-height: var(--btn-h-sm); }
+        .item-actions-cell .btn { min-height: var(--btn-h-sm); vertical-align: middle; }
+        .item-actions-cell .item-expand-btn { min-height: var(--btn-h-sm); vertical-align: middle; }
         .item-group-name-input { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
         /* 기본 구매처 드롭다운 — 컬럼(고정폭) 가득 채워 펼친 폭과 트리거 폭 통일 */
         .po-supplier-select { width: 100%; }
