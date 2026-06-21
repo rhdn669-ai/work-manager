@@ -238,6 +238,40 @@ export async function moveFolder(folderId, newParentId) {
   await updateDoc(doc(db, 'libraryFolders', folderId), { parentId: newParentId || null });
 }
 
+// 기존 파일의 "내용(바이너리)"만 새 Blob으로 교체 — 파일 doc·이름·폴더·위치는 그대로 유지.
+// 발주서 저장본 일괄 재생성처럼 "같은 파일을 새 양식으로 갱신"할 때 사용(휴지통·중복 없이 in-place).
+export async function replaceLibraryFile(fileMeta, blob, user) {
+  try {
+    await ensureAnonymousAuth();
+  } catch (e) {
+    console.warn('[자료실] 익명 인증 생략:', e?.message || e);
+  }
+  const folderId = fileMeta.folderId || null;
+  const fileName = fileMeta.name || 'document.pdf';
+  const newPath = buildStoragePath(folderId, fileName);
+  const task = uploadBytesResumable(ref(storage, newPath), blob, { contentType: 'application/pdf' });
+  await new Promise((resolve, reject) => {
+    task.on('state_changed', null, reject, resolve);
+  });
+  const downloadURL = await getDownloadURL(task.snapshot.ref);
+  await updateDoc(doc(db, 'libraryFiles', fileMeta.id), {
+    storagePath: newPath,
+    downloadURL,
+    size: blob.size || 0,
+    contentType: 'application/pdf',
+    updatedAt: new Date(),
+    updatedByName: user?.name || '',
+  });
+  // 이전 Storage 객체 정리(실패해도 무시)
+  if (fileMeta.storagePath && fileMeta.storagePath !== newPath) {
+    try {
+      await deleteObject(ref(storage, fileMeta.storagePath));
+    } catch {
+      /* 이미 없으면 무시 */
+    }
+  }
+}
+
 export async function deleteFile(fileMeta) {
   if (fileMeta.storagePath) {
     try {

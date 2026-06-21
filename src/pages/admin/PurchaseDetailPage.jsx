@@ -27,10 +27,18 @@ import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import Select from '../../components/common/Select';
-import { specFontClass } from '../../utils/printText';
 import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
+import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
+import {
+  SELF_INFO,
+  PO_DEFAULTS,
+  poDateStr,
+  poNumber,
+  deriveSupplier,
+  computeSupplierList as computeSupplierListPure,
+} from '../../utils/purchaseOrder';
 
 const STATUS = {
   draft: { label: '발주대기', cls: 'draft' },
@@ -43,20 +51,7 @@ const STATUS = {
 
 const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0 };
 
-// 자사 정보 (IOPN_v4 양식 기준 — 발주서 PDF 상단 자사 박스에 표시)
-const SELF_INFO = {
-  companyAndCeo: '(주)아이오피엔 / 이종현',
-  businessNumber: '222-81-36621',
-  address: '충남 천안시 서북구 성환읍 율금1길 8-15',
-  telFax: '041-415-0766 / 041-415-0767',
-  email: 'iopn2024@naver.com',
-  contact: '손성욱 / 010-7704-0331',
-};
-const PO_DEFAULTS = {
-  validity: '협의',
-  payment: '납품완료후 익월말',
-  delivery: '협의',
-};
+// SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
 // 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
 const BUSINESS_CARD_NAMES = [
   '이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱',
@@ -77,22 +72,6 @@ function buildDefaultMailBody(name) {
   ].join('\n');
 }
 
-// 발주일 기반 발행번호 접두 — IOPN{YYYYMMDD}
-function poDateStr(purchase) {
-  const d = purchase.orderedAt?.toDate
-    ? purchase.orderedAt.toDate()
-    : purchase.orderedAt
-      ? new Date(purchase.orderedAt)
-      : new Date(purchase.createdAt?.toDate ? purchase.createdAt.toDate() : new Date());
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `IOPN${yyyy}${mm}${dd}`;
-}
-// 발주 건 대표 발행번호(파일명·전체출력용) — 발주일 접두만
-function poNumber(purchase) {
-  return poDateStr(purchase);
-}
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -114,22 +93,6 @@ function fmtDateTime(ts) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// 첫 품목의 defaultSupplierId 자동 추출 — 모두 같은 구매처면 그 값, 혼합/없음이면 빈값
-function deriveSupplier(lines, itemMaster, suppliers) {
-  const ids = lines
-    .map((ln) => {
-      const m = itemMaster.find((x) => x.id === ln.itemId);
-      return m?.defaultSupplierId || '';
-    })
-    .filter(Boolean);
-  if (ids.length === 0) return { supplierId: '', supplierName: '' };
-  const unique = [...new Set(ids)];
-  if (unique.length === 1) {
-    const sup = suppliers.find((s) => s.id === unique[0]);
-    return { supplierId: unique[0], supplierName: sup?.name || '' };
-  }
-  return { supplierId: '', supplierName: '' };
-}
 
 export default function PurchaseDetailPage() {
   const { id } = useParams();
@@ -606,15 +569,6 @@ export default function PurchaseDetailPage() {
     await persistPO();
   }
 
-  // 라인을 마스터와 매칭해 출력용 명칭·규격·구매처 부여
-  function mapPrintItems(items) {
-    return (items || []).map((ln, idx) => {
-      const mst = itemMaster.find((x) => x.id === ln.itemId);
-      const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
-      return { ...ln, _globalNo: idx + 1, _supplier: sup?.name || '', _name: mst?.name || ln.name, _spec: mst?.spec || ln.spec };
-    });
-  }
-
   // 특정 업체 품목만 PDF 출력 (발주완료도 함께 표시)
   // PDF 출력은 발주완료 표시를 하지 않는다 (발주완료는 메일 발송 시에만)
   function printForSupplier(supName) {
@@ -832,21 +786,9 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  // 현재 품목들을 구매처별로 그룹화한 목록 — 발주현황 표·자동전환 판정 공용
+  // 현재 품목들을 구매처별로 그룹화한 목록 — 발주현황 표·자동전환 판정 공용 (공용 순수함수 위임)
   function computeSupplierList() {
-    const cur = purchaseRef.current || purchase;
-    const fallbackSup = cur?.supplierId ? suppliers.find((s) => s.id === cur.supplierId) : null;
-    const supMap = new Map();
-    for (const ln of form.items) {
-      if (!(ln.name || '').trim()) continue;
-      const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
-      const supId = master?.defaultSupplierId || '';
-      const sup = (supId ? suppliers.find((s) => s.id === supId) : null) || fallbackSup || null;
-      const supName = sup?.name || cur?.supplierName || '(구매처 미지정)';
-      if (!supMap.has(supName)) supMap.set(supName, { name: supName, email: sup?.email || '', count: 0 });
-      supMap.get(supName).count++;
-    }
-    return [...supMap.values()];
+    return computeSupplierListPure(form.items, itemMaster, suppliers, purchaseRef.current || purchase);
   }
 
   // 모든 업체 메일 발송 완료 + 현재 '발주대기' 상태면 → '발주완료'로 자동 확정 (확인창 없이)
@@ -1250,294 +1192,19 @@ export default function PurchaseDetailPage() {
         </button>
       </div>
 
-      {/* 인쇄 전용 IOPN_v4 발주서 양식 */}
-      {(() => {
-        const supplier = suppliers.find((s) => s.id === purchase.supplierId);
-        const site = sites.find((s) => s.id === purchase.siteId);
-        const liveOrderDate = purchase.orderedAt?.toDate
-          ? purchase.orderedAt.toDate()
-          : purchase.orderedAt
-            ? new Date(purchase.orderedAt)
-            : purchase.createdAt?.toDate
-              ? purchase.createdAt.toDate()
-              : new Date();
-        const liveOrderDateKo = `${liveOrderDate.getFullYear()}년 ${liveOrderDate.getMonth() + 1}월 ${liveOrderDate.getDate()}일`;
-        const liveSupplierTitle = supplier?.name
-          ? `${supplier.name} 귀하`
-          : derivedSupplier
-            ? `${derivedSupplier} 귀하`
-            : '';
-
-        const src = {
-              siteName: site?.name || purchase.siteName || '',
-              deliveryPlace: form.deliveryPlace || purchase.deliveryPlace || SELF_INFO.address,
-              deliveryDue: purchase.deliveryDue || PO_DEFAULTS.delivery,
-              payment: purchase.payment || PO_DEFAULTS.payment,
-              contactLine: [purchase.contactName || purchase.requesterName || '', purchase.contactPhone || '']
-                .filter(Boolean)
-                .join(' / '),
-              // 업체별 출력이면 그 업체 특이사항 우선, 없으면 발주 전체 메모
-              note: (() => {
-                if (printSupplierFilter) {
-                  const key = printSupplierFilter.replace(/\./g, '_');
-                  const supNote = form.supplierNotes?.[key];
-                  if (supNote && supNote.trim()) return supNote;
-                }
-                return form.note || '';
-              })(),
-              orderDateKo: liveOrderDateKo,
-              // 업체별 출력이면 그 업체의 발행번호(발주일+구매처순번+발주건 고유ID), 전체 출력이면 발주일+ID
-              poNum: (() => {
-                const idTail = (purchase.id || '').slice(0, 4).toUpperCase();
-                if (!printSupplierFilter) return `${poDateStr(purchase)}-${idTail}`;
-                const sl = computeSupplierList();
-                const i = sl.findIndex((s) => s.name === printSupplierFilter);
-                return i >= 0
-                  ? `${poDateStr(purchase)}-${i + 1}-${idTail}`
-                  : `${poDateStr(purchase)}-${idTail}`;
-              })(),
-              supplierTitle: printSupplierFilter ? `${printSupplierFilter} 귀하` : liveSupplierTitle,
-              supplierLabel: printSupplierFilter || '',
-              // 내부 저장용 PDF에 넣을 구매처 계좌정보 (printAccountMode일 때만 표시)
-              account: (() => {
-                if (!printAccountMode) return null;
-                const sup = printSupplierFilter
-                  ? suppliers.find((s) => s.name === printSupplierFilter)
-                  : suppliers.find((s) => s.id === purchase.supplierId);
-                if (!sup || (!sup.bankName && !sup.bankAccount)) return null;
-                const holder = sup.representative || sup.name || '';
-                return `${sup.bankName || ''} ${sup.bankAccount || ''}${holder ? ` (${holder})` : ''}`.trim();
-              })(),
-              // 특정 업체 출력이면 그 업체 품목만
-              items: mapPrintItems(form.items).filter(
-                (ln) => !printSupplierFilter || (ln._supplier || '(구매처 미지정)') === printSupplierFilter,
-              ),
-            };
-
-        // 항상 1장 (특정 업체 또는 전체)
-        const docs = [
-          {
-            recvTitle: src.supplierTitle,
-            supplierLabel: src.supplierLabel || '',
-            items: src.items.filter((ln) => (ln._name || ln.name || '').trim()),
-          },
-        ];
-
-        // 행 개수 기반 페이지 분할 — 페이지를 거의 채우고 하단엔 합계·특이사항 크기(TOTALS_ROWS)만큼만 공백을 남김.
-        // 1페이지는 상단 정보표 높이(INFO_ROWS)만큼 행을 줄여 다른 페이지와 하단 공백을 동일하게 맞춤.
-        const OTHER_PAGE_ROWS = 33; // 일반 페이지(페이지를 거의 채우는 행수)
-        const INFO_ROWS = 11; // 1페이지 상단 제목+정보표가 차지하는 행수
-        const TOTALS_ROWS = 5; // 마지막 페이지 합계+특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
-        const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
-
-        // 한 문서(구매처)를 페이지 div 배열로 렌더
-        const renderDoc = (rows, recvTitle, supplierLabel, docKey) => {
-          const supplyAmount = rows.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0);
-          const totalQty = rows.reduce((s, ln) => s + (Number(ln.qty) || 0), 0);
-          const vat = Math.round(supplyAmount * 0.1);
-          const grandTotal = supplyAmount + vat;
-          // 행 개수로 페이지 분할
-          const pages = [];
-          let i = 0;
-          while (i < rows.length) {
-            const size = pages.length === 0 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-            pages.push({ chunk: rows.slice(i, i + size), startNo: i });
-            i += size;
-          }
-          if (pages.length === 0) pages.push({ chunk: [], startNo: 0 });
-          // 합계는 마지막 내용 페이지의 남는 공간에 그대로 출력 (별도 페이지 추가 안 함).
-          // 단, 마지막 페이지가 물리적으로 꽉 차서 합계가 안 들어갈 때만 전용 페이지 추가.
-          const lastFill = (pages.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS) + TOTALS_ROWS;
-          if (pages[pages.length - 1].chunk.length + TOTALS_ROWS > lastFill) {
-            pages.push({ chunk: [], startNo: rows.length });
-          }
-          const pageCount = pages.length;
-
-          return pages.map((pg, pageIdx) => {
-            const isFirst = pageIdx === 0;
-            const isLast = pageIdx === pageCount - 1;
-            const cap = isFirst ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
-            // 품목이 적어도 항상 페이지 끝까지 빈 행으로 채워 한 장을 꽉 채운다.
-            const targetRows = cap - (isLast ? TOTALS_ROWS : 0);
-            const padded = [...pg.chunk];
-            while (padded.length < targetRows) padded.push(null);
-            return (
-              <div className="bom-print-page po-doc-page" key={`${docKey}-${pageIdx}`}>
-                {isFirst && <div className="print-form-title po-form-title">구매발주서</div>}
-
-                {isFirst && (
-                  <table className="iopn-info-table">
-                    <tbody>
-                      <tr>
-                        <th className="lbl">수 신</th>
-                        <td className="val">{recvTitle}</td>
-                        <th className="lbl">사업자등록번호</th>
-                        <td className="val">{SELF_INFO.businessNumber}</td>
-                      </tr>
-                      <tr>
-                        <th className="lbl">프로젝트</th>
-                        <td className="val">
-                          {printSiteNameMode
-                            ? printSiteNameMode === 'blank'
-                              ? ' '
-                              : '미공개'
-                            : src.siteName}
-                        </td>
-                        <th className="lbl">회사명/대표</th>
-                        <td className="val">{SELF_INFO.companyAndCeo}</td>
-                      </tr>
-                      <tr>
-                        <th className="lbl">납품장소</th>
-                        <td className="val">{src.deliveryPlace}</td>
-                        <th className="lbl">주 소</th>
-                        <td className="val">{SELF_INFO.address}</td>
-                      </tr>
-                      <tr>
-                        <th className="lbl">발행번호</th>
-                        <td className="val">{src.poNum}</td>
-                        <th className="lbl">TEL/FAX</th>
-                        <td className="val">{SELF_INFO.telFax}</td>
-                      </tr>
-                      <tr>
-                        <th className="lbl">발 주 일</th>
-                        <td className="val">{src.orderDateKo}</td>
-                        <th className="lbl">납품기일</th>
-                        <td className="val">{src.deliveryDue}</td>
-                      </tr>
-                      <tr>
-                        <th className="lbl">지불조건</th>
-                        <td className="val">{src.payment}</td>
-                        <th className="lbl">담당/연락처</th>
-                        <td className="val">{src.contactLine}</td>
-                      </tr>
-                      <tr>
-                        <td colSpan={4} className="iopn-amount-row">
-                          총 금액(VAT 포함) : ₩ {grandTotal.toLocaleString()}원
-                          <span className="iopn-amount-sub">
-                            {' '}
-                            (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                )}
-
-                <table className="iopn-items-table po-cols">
-                  <thead>
-                    <tr>
-                      <th className="c-no">NO</th>
-                      <th className="c-itemno">품번</th>
-                      <th className="c-name">품목명</th>
-                      <th className="c-spec">규격</th>
-                      <th className="c-qty">수량</th>
-                      <th className="c-price">단가</th>
-                      <th className="c-amount">금액</th>
-                      <th className="c-recv">입고</th>
-                      <th className="c-note">비고</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {padded.map((ln, r) => {
-                      if (!ln)
-                        return (
-                          <tr key={`e-${r}`}>
-                            <td className="c-no"></td>
-                            <td className="c-itemno"></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                          </tr>
-                        );
-                      const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
-                      const q = Number(ln.qty) || 0;
-                      const rq = Number(ln.receivedQty) || 0;
-                      const recvText = q <= 0 ? '' : rq >= q ? '완료' : rq > 0 ? `${rq}/${q}` : '미입고';
-                      return (
-                        <tr key={r}>
-                          <td className="c-no">{pg.startNo + r + 1}</td>
-                          <td className="c-itemno">{ln._globalNo || ''}</td>
-                          <td className={`c-name ${specFontClass(ln._name, 11)}`} title={ln._name || ''}>
-                            {ln._name || ''}
-                          </td>
-                          <td className="c-spec" title={ln._spec || ''}>
-                            {ln._spec || ''}
-                          </td>
-                          <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
-                          <td className="c-price">
-                            {Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}
-                          </td>
-                          <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                          <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : rq === 0 ? 'recv-none' : ''}`}>
-                            {recvText}
-                          </td>
-                          <td className={`c-note ${specFontClass(ln.note, 11)}`} title={ln.note || ''}>
-                            {ln.note || ''}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                {isLast && (
-                  <>
-                    <table className="iopn-notes-table">
-                      <tbody>
-                        <tr>
-                          <th className="lbl">특이사항</th>
-                          <td className="val">{src.note || ''}</td>
-                        </tr>
-                        {src.account && (
-                          <tr>
-                            <th className="lbl">입금계좌</th>
-                            <td className="val">{src.account}</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-
-                    <table className="iopn-total-table">
-                      <tbody>
-                        <tr>
-                          <th className="lbl">수량</th>
-                          <td className="num">{totalQty.toLocaleString()}</td>
-                          <th className="lbl">공급가액</th>
-                          <td className="num">{supplyAmount.toLocaleString()}</td>
-                          <th className="lbl">VAT</th>
-                          <td className="num">{vat.toLocaleString()}</td>
-                          <th className="lbl">합계</th>
-                          <td className="num grand">{grandTotal.toLocaleString()}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </>
-                )}
-
-                <div className="bom-print-footer">
-                  <span>
-                    구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}
-                  </span>
-                  <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
-                  <span>
-                    페이지 {pageIdx + 1} / {pageCount}
-                  </span>
-                </div>
-              </div>
-            );
-          });
-        };
-
-        return (
-          <div ref={printRef} className="print-form-iopn print-form-paged print-only">
-            {docs.map((d, di) => renderDoc(d.items, d.recvTitle, d.supplierLabel, `doc${di}`))}
-          </div>
-        );
-      })()}
+      {/* 인쇄 전용 IOPN_v4 발주서 양식 — 공용 컴포넌트로 분리(저장본 일괄 재생성과 동일 양식 공유) */}
+      <PurchaseOrderPrintForm
+        ref={printRef}
+        purchase={purchase}
+        form={form}
+        suppliers={suppliers}
+        sites={sites}
+        itemMaster={itemMaster}
+        printSupplierFilter={printSupplierFilter}
+        printAccountMode={printAccountMode}
+        printSiteNameMode={printSiteNameMode}
+        printStamp={printStamp}
+      />
 
       <div className="purchase-meta-bar screen-only">
         <div className="purchase-meta-items">

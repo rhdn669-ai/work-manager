@@ -17151,3 +17151,26 @@ a.lib-row-name:hover {
     padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
   }
 }
+
+/* ───────── 발주서 저장본 일괄 재생성 모달 ───────── */
+.regen-po { display: flex; flex-direction: column; gap: 12px; }
+.regen-po__desc { font-size: 13px; line-height: 1.6; color: var(--text-2, #475569); margin: 0; }
+.regen-po__warn { font-size: 12px; line-height: 1.55; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 10px; margin: 0; }
+.regen-po__loading { padding: 24px 0; text-align: center; color: var(--text-3, #94a3b8); font-size: 13px; }
+.regen-po__summary { display: flex; gap: 8px; align-items: center; }
+.regen-po__chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.regen-po__chip--ok { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.regen-po__chip--skip { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+.regen-po__bar { position: relative; height: 24px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+.regen-po__bar-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #60a5fa, #2563eb); transition: width .25s ease; }
+.regen-po__bar-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #0f172a; }
+.regen-po__results, .regen-po__unresolved { max-height: 320px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; }
+.regen-po__unresolved summary { padding: 8px 12px; cursor: pointer; font-size: 13px; font-weight: 600; color: #64748b; }
+.regen-po__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 12px; border-top: 1px solid var(--border-soft, #f1f5f9); font-size: 12px; }
+.regen-po__row:first-child { border-top: none; }
+.regen-po__row-name { color: #0f172a; word-break: break-all; }
+.regen-po__row-msg { flex-shrink: 0; font-weight: 600; }
+.regen-po__row.is-ok .regen-po__row-msg { color: #16a34a; }
+.regen-po__row.is-fail .regen-po__row-msg { color: #dc2626; }
+.regen-po__row.is-skip .regen-po__row-msg { color: #94a3b8; }
+.regen-po__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

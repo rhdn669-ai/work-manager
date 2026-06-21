@@ -33,6 +33,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
 
 const STATUS = {
   draft: { label: '발주대기', cls: 'draft' },
@@ -226,6 +227,7 @@ export default function PurchaseListPage() {
   const navigate = useNavigate();
 
   const [trashOpen, setTrashOpen] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
   const [purchases, setPurchases] = useState([]);
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
@@ -520,6 +522,15 @@ export default function PurchaseListPage() {
           >
             <Icon name="trash" className="btn-ic" />
             휴지통
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => setRegenOpen(true)}
+            title="자료실 발주이력에 저장된 발주서를 현재 내부용 양식(계좌+현장명)으로 일괄 재생성합니다"
+          >
+            <Icon name="archive" className="btn-ic" />
+            저장본 일괄 재생성
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
             <Icon name="plus" className="btn-ic" />
@@ -839,6 +850,8 @@ export default function PurchaseListPage() {
         title="구매·발주 휴지통"
         onChange={() => {}}
       />
+
+      <RegenOrderPdfModal isOpen={regenOpen} onClose={() => setRegenOpen(false)} />
     </div>
   );
 }
