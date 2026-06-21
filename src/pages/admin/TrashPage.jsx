@@ -91,6 +91,29 @@ export default function TrashPage() {
     }
   }
 
+  // 현재 탭에 보이는 항목 전부 영구 삭제 (관리자 전용)
+  async function handlePurgeAll() {
+    if (!isAdmin || items.length === 0) return;
+    const scope = activeTab.types ? `'${activeTab.label}' 분류의 ` : '휴지통의 모든 ';
+    if (
+      !(await confirm({
+        title: '전체 영구 삭제',
+        message: `${scope}${items.length}건을 완전히 삭제합니다.\n복구할 수 없습니다. 계속할까요?`,
+      }))
+    )
+      return;
+    setBusy('__all__');
+    try {
+      await Promise.all(items.map((t) => purgeTrashItem(t.id)));
+      toast(`${items.length}건 영구 삭제되었습니다.`);
+      await load();
+    } catch (err) {
+      toast(err?.message || '삭제에 실패했습니다.', 'error');
+    } finally {
+      setBusy('');
+    }
+  }
+
   return (
     <div className="trash-page">
       <div className="page-header">
@@ -100,6 +123,19 @@ export default function TrashPage() {
             <Icon name="restore" className="btn-ic" />
             새로고침
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn btn-sm btn-danger"
+              onClick={handlePurgeAll}
+              disabled={loading || busy === '__all__' || items.length === 0}
+              title="현재 분류에 보이는 삭제기록을 모두 영구 삭제합니다"
+            >
+              <Icon name="trash" className="btn-ic" />
+              {activeTab.types ? '이 분류 전체 삭제' : '휴지통 비우기'}
+              {items.length > 0 ? ` (${items.length})` : ''}
+            </button>
+          )}
         </div>
       </div>
 

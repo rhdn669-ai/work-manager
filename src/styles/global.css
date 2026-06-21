@@ -17175,3 +17175,13 @@ a.lib-row-name:hover {
 .regen-po__row.is-fail .regen-po__row-msg { color: #dc2626; }
 .regen-po__row.is-skip .regen-po__row-msg { color: #94a3b8; }
 .regen-po__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* 휴지통 모달 상단 바 — 안내문구 + 전체삭제 버튼 */
+.trash-modal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.trash-modal-bar .btn { flex-shrink: 0; }

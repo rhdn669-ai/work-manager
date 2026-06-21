@@ -59,12 +59,47 @@ export default function TrashModal({ isOpen, onClose, types, title = '휴지통'
     }
   }
 
+  // 이 휴지통의 항목 전부 영구 삭제 (관리자 전용)
+  async function handlePurgeAll() {
+    if (!isAdmin || items.length === 0) return;
+    if (
+      !(await confirm({
+        title: '전체 영구 삭제',
+        message: `${items.length}건을 완전히 삭제합니다.\n복구할 수 없습니다. 계속할까요?`,
+      }))
+    )
+      return;
+    setBusy('__all__');
+    try {
+      await Promise.all(items.map((t) => purgeTrashItem(t.id)));
+      toast(`${items.length}건 영구 삭제되었습니다.`);
+      await load();
+    } catch (err) {
+      toast(err?.message || '삭제에 실패했습니다.', 'error');
+    } finally {
+      setBusy('');
+    }
+  }
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
-      <p className="field-hint" style={{ marginBottom: 12 }}>
-        삭제된 항목이 보관됩니다. 복원하면 원래대로 되살아납니다.
-        {isAdmin ? ' 영구 삭제는 되돌릴 수 없습니다.' : ' 영구 삭제는 관리자만 할 수 있습니다.'}
-      </p>
+      <div className="trash-modal-bar">
+        <p className="field-hint" style={{ margin: 0 }}>
+          삭제된 항목이 보관됩니다. 복원하면 원래대로 되살아납니다.
+          {isAdmin ? ' 영구 삭제는 되돌릴 수 없습니다.' : ' 영구 삭제는 관리자만 할 수 있습니다.'}
+        </p>
+        {isAdmin && items.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-danger"
+            onClick={handlePurgeAll}
+            disabled={busy === '__all__'}
+            title="이 휴지통의 항목을 모두 영구 삭제합니다"
+          >
+            전체 삭제 ({items.length})
+          </button>
+        )}
+      </div>
       <TrashList
         items={items}
         loading={loading}
