@@ -36,8 +36,8 @@ export default function Select({
     const spaceBelow = vh - safeBottom - r.bottom; // 입력칸 아래 사용가능 높이
     const spaceAbove = r.top - safeTop; // 입력칸 위 사용가능 높이
     const desired = Math.min(320, options.length * 41 + 14);
-    // 아래 공간이 충분하거나(>=160) 위보다 넓으면 아래로, 아니면 위로 펼친다.
-    const openDown = spaceBelow >= Math.min(desired, 160) || spaceBelow >= spaceAbove;
+    // 더 넓은 쪽으로 펼친다 — 세로 짧은 폰(아이폰SE)에서 아래가 좁으면 위로 펼쳐 다 보이게.
+    const openDown = spaceBelow >= spaceAbove;
     const room = Math.max(120, openDown ? spaceBelow : spaceAbove);
     const width = Math.max(r.width, 168);
     setPos({
@@ -113,8 +113,9 @@ export default function Select({
       const desired = Math.min(320, options.length * 41 + 14);
       const spaceBelow = vh - safeBottom - r.bottom;
       const spaceAbove = r.top - safeTop;
-      const openDown = spaceBelow >= Math.min(desired, 160) || spaceBelow >= spaceAbove;
+      const openDown = spaceBelow >= spaceAbove;
       // 아래로 펼치는데 공간이 모자라면 → 부족분만큼 페이지를 내려 입력칸을 위로 올린다.
+      // (위로 펼치는 경우는 위 공간이 더 넓으므로 스크롤 없이 보인다)
       if (openDown && spaceBelow < desired) {
         const need = Math.ceil(desired - spaceBelow);
         const scroller = getScrollParent(el);
