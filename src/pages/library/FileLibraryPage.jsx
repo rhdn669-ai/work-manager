@@ -304,6 +304,25 @@ export default function FileLibraryPage() {
     toast('휴지통으로 이동했습니다.');
   }
 
+  // 선택한 파일들을 한 번에 출력(새 탭/다운로드) — 순차로 열어 팝업 차단·과부하 방지
+  function bulkDownload() {
+    const sel = files.filter((x) => selected.has(x.id) && x.downloadURL);
+    if (sel.length === 0) return;
+    sel.forEach((f, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = f.downloadURL;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.download = f.name || '';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, i * 250);
+    });
+    toast(`${sel.length}개 파일을 출력합니다.`);
+  }
+
   async function bulkMove(v) {
     if (!v || selected.size === 0) return;
     const folderId = v === '__root' ? null : v;
@@ -619,6 +638,9 @@ export default function FileLibraryPage() {
                 <span className="lib-sel-count">{selected.size}개 선택</span>
                 <div className="lib-bulk">
                   <Select value="" onChange={bulkMove} options={moveOptions} placeholder="이동" ariaLabel="폴더로 이동" />
+                  <button type="button" className="btn btn-sm btn-outline" onClick={bulkDownload} title="선택한 파일을 한 번에 출력(다운로드)">
+                    <Icon name="download" className="btn-ic" />출력
+                  </button>
                   <button type="button" className="btn btn-sm btn-danger" onClick={bulkDelete}>
                     <Icon name="trash" className="btn-ic" />삭제
                   </button>
