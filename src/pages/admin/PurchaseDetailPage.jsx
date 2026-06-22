@@ -156,6 +156,7 @@ export default function PurchaseDetailPage() {
   // 메일 발송 미리보기 모달
   const [mailPreview, setMailPreview] = useState(null); // { supplierName, to, subject, html, fileName } | null
   const [mailAttachBusy, setMailAttachBusy] = useState(false); // 첨부 미리보기 PDF 생성 중
+  const [replyModal, setReplyModal] = useState(null); // 회신 확인 시 납기 입력 모달 { supplierName, due } | null
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
   const [mailSending, setMailSending] = useState({});
   // 백그라운드 PDF 캡처 시 현장명 표시 모드 (null=실제 현장명, 'hidden'=미공개, 'blank'=공백)
@@ -882,15 +883,24 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  // 업체별 회신 확인 마킹
-  async function handleMarkSupplierReplied(supplierName) {
-    if (!(await confirm(`"${supplierName}" 업체 회신을 확인 처리하시겠습니까?`))) return;
+  // 업체별 회신 확인 — 납기 입력 모달을 먼저 띄운다
+  function handleMarkSupplierReplied(supplierName) {
+    const key = supplierName.replace(/\./g, '_');
+    const prevDue = purchase.supplierReplied?.[key]?.deliveryDue || purchase.deliveryDue || '';
+    setReplyModal({ supplierName, due: prevDue });
+  }
+
+  // 납기 입력 후 회신 확인 확정
+  async function confirmReplyWithDue() {
+    if (!replyModal) return;
+    const { supplierName, due } = replyModal;
+    setReplyModal(null);
     try {
-      await markSupplierReplied(id, supplierName, userProfile?.name || '');
+      await markSupplierReplied(id, supplierName, userProfile?.name || '', due || '');
       const key = supplierName.replace(/\./g, '_');
       const nextReplied = {
         ...(purchaseRef.current?.supplierReplied || {}),
-        [key]: { repliedAt: new Date(), repliedBy: userProfile?.name || '' },
+        [key]: { repliedAt: new Date(), repliedBy: userProfile?.name || '', deliveryDue: due || '' },
       };
       purchaseRef.current = { ...(purchaseRef.current || {}), supplierReplied: nextReplied };
       setPurchase((prev) => ({ ...prev, supplierReplied: nextReplied }));
@@ -1675,6 +1685,7 @@ export default function PurchaseDetailPage() {
                     <th style={{ minWidth: 170, width: 200 }}>발행번호</th>
                     <th style={{ minWidth: 170, width: 170 }}>발주 상태</th>
                     <th style={{ minWidth: 170, width: 170 }}>회신</th>
+                    <th style={{ minWidth: 110, width: 130 }}>납기</th>
                     <th style={{ minWidth: 200, width: '100%' }}>특이사항</th>
                     <th className="col-action" aria-label="작업"></th>
                   </tr>
@@ -1725,6 +1736,13 @@ export default function PurchaseDetailPage() {
                                 </span>
                               ) : (
                                 <span className="purchase-badge purchase-badge-draft">미회신</span>
+                              )}
+                            </td>
+                            <td data-label="납기">
+                              {replied?.deliveryDue ? (
+                                <strong className="purchase-sup-due">{replied.deliveryDue}</strong>
+                              ) : (
+                                <span className="text-muted">-</span>
                               )}
                             </td>
                             <td data-label="특이사항">
@@ -2277,6 +2295,34 @@ export default function PurchaseDetailPage() {
                 발송
               </button>
               <button type="button" className="btn btn-outline" onClick={() => setMailPreview(null)}>
+                취소
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* 회신 확인 — 납기 입력 모달 */}
+      <Modal isOpen={!!replyModal} onClose={() => setReplyModal(null)} title="회신 확인 — 납기 입력">
+        {replyModal && (
+          <>
+            <p className="field-hint">
+              <strong>{replyModal.supplierName}</strong> 업체의 회신을 확인 처리합니다. 회신받은 납기일을 입력하세요.
+            </p>
+            <div className="form-group">
+              <label>납기일</label>
+              <input
+                type="date"
+                value={replyModal.due || ''}
+                onChange={(e) => setReplyModal((p) => ({ ...p, due: e.target.value }))}
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={confirmReplyWithDue}>
+                회신 확인
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setReplyModal(null)}>
                 취소
               </button>
             </div>

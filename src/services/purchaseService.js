@@ -404,11 +404,12 @@ export async function unmarkSupplierSent(purchaseId, supplierName) {
 }
 
 // 업체별 회신 확인 마킹 — 회신 일시·확인자 기록
-export async function markSupplierReplied(purchaseId, supplierName, by = '') {
+export async function markSupplierReplied(purchaseId, supplierName, by = '', deliveryDue = '') {
   const key = supplierName.replace(/\./g, '_');
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`supplierReplied.${key}.repliedAt`]: new Date(),
     [`supplierReplied.${key}.repliedBy`]: by,
+    [`supplierReplied.${key}.deliveryDue`]: deliveryDue || '', // 회신 확인 시 입력한 납기일
     updatedAt: new Date(),
   });
 }
