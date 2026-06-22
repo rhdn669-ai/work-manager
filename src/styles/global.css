@@ -14399,12 +14399,18 @@ tr.is-newly-added > td {
 .iopn-info-table {
   margin-bottom: 0;
 }
+/* 정보표만 내용폭 자동 — 라벨이 칸을 넘쳐 글자단위로 세로로 깨지던 문제 방지
+   (.print-form-iopn table의 fixed 보다 우선하도록 더 구체적 선택자 사용) */
+.print-form-iopn .iopn-info-table {
+  table-layout: auto;
+}
 .iopn-info-table .lbl {
   background: #f3f3f3;
   font-weight: 700;
   text-align: center;
   width: 16%;
   white-space: nowrap;        /* '사업자등록번호' 라벨 2줄 방지 */
+  word-break: keep-all;       /* 한글 라벨을 글자단위로 쪼개지 않음 (서버 렌더 폰트 폭 대응) */
   letter-spacing: -0.02em;
 }
 .iopn-info-table .val {
@@ -15288,12 +15294,17 @@ tr.is-newly-added > td {
   .iopn-info-table {
     margin-bottom: 0;
   }
+  /* 정보표만 내용폭 자동 — 라벨이 칸을 넘쳐 글자단위로 세로로 깨지던 문제 방지 */
+  .print-form-iopn .iopn-info-table {
+    table-layout: auto;
+  }
   .iopn-info-table .lbl {
     background: #f3f3f3 !important;
     font-weight: 700;
     text-align: center;
     width: 16%;
     white-space: nowrap;        /* '사업자등록번호' 라벨 2줄 방지 */
+    word-break: keep-all;       /* 한글 라벨을 글자단위로 쪼개지 않음 (서버 렌더 폰트 폭 대응) */
     letter-spacing: -0.02em;
   }
   .iopn-info-table .val {
