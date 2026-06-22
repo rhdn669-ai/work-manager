@@ -659,21 +659,28 @@ body {
   display: inline-flex;
   width: 100%;
 }
-.ds-select__native {
+.ds-select--native .ds-select__native {
   width: 100%;
-  min-height: 40px;
-  padding: 0 36px 0 12px;
+  min-height: 44px;
+  padding: 11px 36px 11px 14px; /* 우측은 caret 자리 — 그 외엔 폼 입력칸과 동일 */
   background: var(--bg-card);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: var(--font-base);
-  font-weight: 600;
+  font-size: 14px;
   appearance: none;
   -webkit-appearance: none;
   -webkit-tap-highlight-color: transparent;
 }
-.ds-select__native:disabled {
+.ds-select--native .ds-select__native:focus {
+  outline: none;
+  border-color: var(--accent, #ea580c);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(234, 88, 12, 0.12));
+}
+.ds-select--native .ds-select__native.is-placeholder {
+  color: var(--text-muted); /* 선택 전 — 다른 입력칸 placeholder와 같은 회색 */
+}
+.ds-select--native .ds-select__native:disabled {
   opacity: 0.6;
 }
 .ds-select--native .ds-select__caret {

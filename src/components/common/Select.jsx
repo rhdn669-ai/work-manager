@@ -136,7 +136,7 @@ export default function Select({
     return (
       <div className={`ds-select ds-select--native ${className}`}>
         <select
-          className="ds-select__native"
+          className={`ds-select__native ${selected ? '' : 'is-placeholder'}`}
           value={value == null ? '' : String(value)}
           onChange={(e) => {
             const o = options.find((x) => String(x.value) === e.target.value);
