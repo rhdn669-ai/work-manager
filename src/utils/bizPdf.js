@@ -140,22 +140,22 @@ const BANK_NAMES = [
   '산업',
 ];
 export function parseBank(rawText) {
-  const t = String(rawText || '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // ★ 공백 완전 제거(compact) — 스캔 OCR·텍스트 PDF가 글자/숫자 사이에 넣는
+  //   자간 공백("1 2 3 - 4 5")을 없애야 은행명·계좌번호 패턴이 잡힌다.
+  const c = String(rawText || '').replace(/\s+/g, '');
   const out = { bankName: '', bankAccount: '' };
   for (const b of BANK_NAMES) {
-    if (t.includes(b)) {
+    if (c.includes(b)) {
       out.bankName = /(뱅크|금고|협|우체국)$/.test(b) ? b : `${b}은행`;
       break;
     }
   }
   // 계좌번호 — 하이픈 포함(3덩이 이상) 우선, 없으면 10~16자리 숫자
-  const acc = t.match(/\d{2,6}\s*-\s*\d{2,6}\s*-\s*\d{2,7}(?:\s*-\s*\d{1,6})?/);
-  if (acc) out.bankAccount = acc[0].replace(/\s/g, '');
+  const acc = c.match(/\d{2,6}-\d{2,6}-\d{2,7}(?:-\d{1,6})?/);
+  if (acc) out.bankAccount = acc[0];
   else {
-    const acc2 = t.match(/\b(\d{10,16})\b/);
-    if (acc2) out.bankAccount = acc2[1];
+    const acc2 = c.match(/\d{10,16}/);
+    if (acc2) out.bankAccount = acc2[0];
   }
   return out;
 }
@@ -253,32 +253,27 @@ export function normalizeCompany(name) {
 
 // 사업자등록증 텍스트 → { name, representative, businessNumber }
 export function parseBizReg(rawText) {
-  const t = String(rawText || '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // ★ 공백 완전 제거(compact) — PDF/OCR이 글자마다 넣는 자간 공백을 없애야
+  //   "주 식 회 사", "1 5 6 - 8 7" 같은 텍스트에서도 라벨·숫자가 잡힌다.
+  const c = String(rawText || '').replace(/\s+/g, '');
   const out = { name: '', representative: '', businessNumber: '' };
 
-  // 사업자등록번호 (하이픈 누락·공백 허용 → xxx-xx-xxxxx로 정규화)
-  const bn = t.match(/(\d{3})\s*[-–]?\s*(\d{2})\s*[-–]?\s*(\d{5})/);
+  // 사업자등록번호 3-2-5 — '등록번호' 라벨 뒤 우선, 없으면 문서 내 첫 3-2-5
+  //   (법인등록번호 6-7자리와 하이픈 위치로 구분됨)
+  const bn =
+    c.match(/(?:사업자등록번호|등록번호)[:：]?(\d{3})-?(\d{2})-?(\d{5})(?!\d)/) ||
+    c.match(/(\d{3})-(\d{2})-(\d{5})(?!\d)/);
   if (bn) out.businessNumber = `${bn[1]}-${bn[2]}-${bn[3]}`;
 
-  // 상호(법인명/단체명)
-  const nm = t.match(
-    /(?:법\s*인\s*명|단\s*체\s*명|상\s*호)\s*(?:\([^)]*\))?\s*[:：]?\s*([^:：]+?)\s*(?=성\s*명|대\s*표|등\s*록|사\s*업|개\s*업|생\s*년|소\s*재|주\s*소|$)/,
-  );
-  if (nm)
-    out.name = normalizeCompany(
-      nm[1]
-        .trim()
-        .replace(/[()]+$/, '')
-        .trim(),
-    );
+  // 상호(법인명/단체명/상호)
+  const nm = c.match(/(?:법인명\(단체명\)|법인명|단체명|상호)[:：]?(.+?)(?=대표자|성명|개업|등록|사업|소재|발급|$)/);
+  if (nm) out.name = normalizeCompany(nm[1].replace(/[()]/g, ''));
 
-  // 성명(대표자)
-  const rep = t.match(
-    /(?:성\s*명|대\s*표\s*자)\s*(?:\([^)]*\))?\s*[:：]?\s*([^:：]+?)\s*(?=생\s*년|개\s*업|사\s*업|등\s*록|주\s*소|소\s*재|상\s*호|$)/,
-  );
-  if (rep) out.representative = rep[1].trim();
+  // 대표자/성명 — 라벨 뒤 한글 이름(2~5자)
+  let rep = c.match(/(?:성명|대표자)(?:\([^)]*\))?[:：]?([가-힣]{2,5})(?=생년|개업|사업|등록|주소|소재|법인|$)/);
+  // 폴백 — 국세청 양식에서 대표자명이 라벨과 분리돼 소재지 뒤·사업종류 앞에 오는 경우
+  if (!rep) rep = c.match(/\)([가-힣]{2,4})(?=사업의종류|업태|종목)/);
+  if (rep) out.representative = rep[1];
 
   return out;
 }
