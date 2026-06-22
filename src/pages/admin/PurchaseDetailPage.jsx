@@ -157,6 +157,7 @@ export default function PurchaseDetailPage() {
   const [mailPreview, setMailPreview] = useState(null); // { supplierName, to, subject, html, fileName } | null
   const [mailAttachBusy, setMailAttachBusy] = useState(false); // 첨부 미리보기 PDF 생성 중
   const [mailExtraFiles, setMailExtraFiles] = useState([]); // 메일에 함께 보낼 추가 첨부파일(도면·사양서 등)
+  const [mailDropOver, setMailDropOver] = useState(false); // 추가 첨부 드래그앤드롭 hover 상태
   const mailFileInputRef = useRef(null);
   const [replyModal, setReplyModal] = useState(null); // 회신 확인 시 납기 입력 모달 { supplierName, due } | null
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
@@ -2322,14 +2323,27 @@ export default function PurchaseDetailPage() {
                   if (fs.length) setMailExtraFiles((prev) => [...prev, ...fs]);
                 }}
               />
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
+              <div
+                className={`pdf-dropzone ${mailDropOver ? 'is-over' : ''}`}
                 onClick={() => mailFileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setMailDropOver(true);
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget)) return; // 자식 이동 오발동 방지
+                  setMailDropOver(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setMailDropOver(false);
+                  const fs = Array.from(e.dataTransfer.files || []);
+                  if (fs.length) setMailExtraFiles((prev) => [...prev, ...fs]);
+                }}
               >
-                <Icon name="plus" className="btn-ic" />
-                파일 추가
-              </button>
+                <Icon name="plus" className="pdf-dropzone-icon" />
+                <span>파일을 끌어다 놓거나 클릭해서 첨부 (여러 개 가능)</span>
+              </div>
               {mailExtraFiles.length > 0 && (
                 <ul className="mail-extra-list">
                   {mailExtraFiles.map((f, i) => (
