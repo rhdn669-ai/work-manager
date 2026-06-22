@@ -4635,6 +4635,25 @@ table.cards-sm td {
   max-width: 100%;
   word-break: break-all;
 }
+/* 클릭 가능한 첨부 칩 — 누르면 실제 PDF 미리보기 */
+.mail-attach-chip--btn {
+  border: 1px solid var(--accent, #ea580c);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.12s ease,
+    transform 0.08s ease;
+}
+.mail-attach-chip--btn:hover:not(:disabled) {
+  background: var(--accent-tint, #fde4d6);
+}
+.mail-attach-chip--btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.mail-attach-chip--btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
 .mail-body-preview {
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 8px;

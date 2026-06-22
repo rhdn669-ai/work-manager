@@ -43,13 +43,34 @@ async function renderPdf(request, env) {
     const { html, cssUrls = [], fileName } = await request.json();
     if (!html) return json({ error: 'html이 필요합니다.' }, 400);
 
-    const links = (Array.isArray(cssUrls) ? cssUrls : [])
-      .filter(Boolean)
-      .map((u) => `<link rel="stylesheet" href="${String(u).replace(/"/g, '&quot;')}">`)
-      .join('');
+    // ★ CSS를 <link>(브라우저 외부 fetch)에 의존하지 않고, 워커가 env.ASSETS로 직접 읽어
+    //   <style>로 인라인한다. Browser Rendering이 자산 URL을 못 가져오면 스타일이 통째로
+    //   빠져(표 프레임 사라지고 글자만) PDF가 깨지던 문제를 근본 차단. 실패 시에만 <link> 폴백.
+    const origin = new URL(request.url).origin;
+    const styleParts = [];
+    for (const u of (Array.isArray(cssUrls) ? cssUrls : []).filter(Boolean)) {
+      let inlined = false;
+      try {
+        const path = new URL(String(u), origin).pathname;
+        const assetRes = await env.ASSETS.fetch(new Request(new URL(path, origin)));
+        if (assetRes.ok) {
+          const css = await assetRes.text();
+          if (css && css.trim()) {
+            styleParts.push(`<style>${css}</style>`);
+            inlined = true;
+          }
+        }
+      } catch {
+        /* 폴백으로 진행 */
+      }
+      if (!inlined) {
+        styleParts.push(`<link rel="stylesheet" href="${String(u).replace(/"/g, '&quot;')}">`);
+      }
+    }
+    const links = styleParts.join('');
 
     // 인쇄 양식을 .printable-page 컨텍스트로 감싸 @media print 규칙이 그대로 적용되게 함
-    const fullHtml = `<!doctype html><html lang="ko"><head><meta charset="utf-8">${links}
+    const fullHtml = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><base href="${origin}/">${links}
       <style>html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style>
       </head><body><div class="purchase-detail-page printable-page">${html}</div></body></html>`;
 

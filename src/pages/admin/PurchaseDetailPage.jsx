@@ -154,6 +154,7 @@ export default function PurchaseDetailPage() {
 
   // 메일 발송 미리보기 모달
   const [mailPreview, setMailPreview] = useState(null); // { supplierName, to, subject, html, fileName } | null
+  const [mailAttachBusy, setMailAttachBusy] = useState(false); // 첨부 미리보기 PDF 생성 중
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
   const [mailSending, setMailSending] = useState({});
   // 백그라운드 PDF 캡처 시 현장명 표시 모드 (null=실제 현장명, 'hidden'=미공개, 'blank'=공백)
@@ -900,6 +901,44 @@ export default function PurchaseDetailPage() {
     const fileName = build(['발주서', purchase.title, supplierName]); // 발송용(제목·업체명까지만)
     const saveFileName = build(['발주서', purchase.title, purchase.subtitle, supplierName, poNo]); // 저장용(부제 포함)
     setMailPreview({ supplierName, to: toEmail, subject, html: htmlBody, fileName, saveFileName });
+  }
+
+  // 미리보기 모달에서 "첨부파일" 클릭 → 실제 첨부될 발주서 PDF를 그 자리에서 생성해 새 탭으로 열어 확인.
+  // (발송 전 양식이 정상인지 눈으로 검증 — 깨진 채 발송되는 것 방지)
+  async function previewMailAttachment() {
+    if (!mailPreview || mailAttachBusy) return;
+    const { supplierName, fileName } = mailPreview;
+    setMailAttachBusy(true);
+    try {
+      await ensureAnonymousAuth();
+      await flushAutoSave();
+      // 메일 첨부본과 동일 조건: 현장명 공백 + 계좌 미표시 + 해당 업체만
+      setPrintSiteNameMode('blank');
+      setPrintAccountMode(false);
+      setPrintSupplierFilter(supplierName);
+      setPrintStamp(fmtDateTime(new Date()));
+      await new Promise((r) => setTimeout(r, 250));
+      let blob = null;
+      try {
+        const el = printRef.current;
+        if (el) blob = await captureToPdfBlob(el, fileName);
+      } finally {
+        setPrintSupplierFilter(null);
+        setPrintSiteNameMode(null);
+        setPrintAccountMode(false);
+      }
+      if (!blob) {
+        toast('미리보기 생성에 실패했습니다. (배포 환경에서만 동작)', 'error');
+        return;
+      }
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err) {
+      toast('미리보기 실패: ' + (err.message || err), 'error');
+    } finally {
+      setMailAttachBusy(false);
+    }
   }
 
   // 미리보기 모달의 "발송" → 모달 즉시 닫고 백그라운드로 PDF 생성·발송 (대기 없음)
@@ -2136,11 +2175,19 @@ export default function PurchaseDetailPage() {
             </div>
             <div className="form-group">
               <label>첨부파일</label>
-              <div className="mail-attach-chip">
-                <Icon name="download" className="btn-ic" />
-                {mailPreview.fileName}
-              </div>
-              <p className="field-hint">발송 시 해당 업체 발주서가 PDF로 생성되어 첨부됩니다.</p>
+              <button
+                type="button"
+                className="mail-attach-chip mail-attach-chip--btn"
+                onClick={previewMailAttachment}
+                disabled={mailAttachBusy}
+                title="클릭하면 실제 첨부될 발주서 PDF를 새 탭에서 미리 확인합니다"
+              >
+                <Icon name={mailAttachBusy ? 'clock' : 'download'} className="btn-ic" />
+                {mailAttachBusy ? '미리보기 생성 중…' : mailPreview.fileName}
+              </button>
+              <p className="field-hint">
+                첨부파일을 클릭하면 실제 발송될 발주서 PDF를 미리 확인할 수 있습니다. 발송 시 동일한 PDF가 첨부됩니다.
+              </p>
             </div>
             <div className="form-group">
               <label>본문 미리보기</label>
