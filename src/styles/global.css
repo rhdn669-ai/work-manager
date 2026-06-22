@@ -932,6 +932,12 @@ body {
   color: var(--accent-press);
   flex-wrap: wrap;
 }
+/* 메인 콘텐츠 안에 놓일 때(고정 헤더 아래 보이는 영역) — 둥근 배너 카드로 정돈 */
+.main-content > .hint-reminder-banner {
+  margin-bottom: 14px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+}
 .hint-reminder-icon {
   font-size: 18px;
   flex-shrink: 0;

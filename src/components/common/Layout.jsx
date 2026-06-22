@@ -121,7 +121,6 @@ export default function Layout() {
         </div>
       )}
       <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <HintReminderBanner />
       <div className="app-body">
         {/* 사이드바 표시 조건:
             - 관리자: 항상 (PC는 기본 열림, 모바일은 햄버거로 토글)
@@ -132,6 +131,9 @@ export default function Layout() {
           <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         )}
         <main className={`main-content ${(isAdmin || !isMobile) && sidebarOpen ? '' : 'expanded'}`}>
+          {/* 힌트 설정 안내 배너 — 고정 헤더 아래 보이는 영역 안에서 렌더(헤더 뒤에 가려져
+              빈 공간을 만들던 문제 수정). 힌트 미설정 계정에만 노출. */}
+          <HintReminderBanner />
           <Outlet />
         </main>
       </div>
