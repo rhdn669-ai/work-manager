@@ -1696,6 +1696,21 @@ body {
   font-size: var(--font-md);
   white-space: pre-line;
 }
+/* 휴지통 표 — 고정 레이아웃 + 긴 이름 줄바꿈으로 가로 스크롤 제거 */
+.trash-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.trash-table th,
+.trash-table td {
+  white-space: normal;
+  word-break: break-all;
+  vertical-align: top;
+}
+.trash-table td[data-label='삭제일시'],
+.trash-table td[data-label='삭제자'] {
+  word-break: keep-all;
+}
 .trash-list {
   list-style: none;
   margin: 0;

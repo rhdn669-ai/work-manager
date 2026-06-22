@@ -47,15 +47,15 @@ export default function TrashList({ items, loading, busy, onRestore, onPurge, ca
 
   return (
     <div className="table-scroll-x">
-      <table className="table cards-sm">
+      <table className="table cards-sm trash-table">
         <thead>
           <tr>
-            <th style={{ width: 64 }}>구분</th>
-            <th>이름</th>
+            <th style={{ width: 60 }}>구분</th>
+            <th style={{ width: '42%' }}>이름</th>
             <th>내용</th>
-            <th style={{ width: 140 }}>삭제일시</th>
-            <th style={{ width: 80 }}>삭제자</th>
-            <th className="col-action" style={{ width: canPurge ? 140 : 80 }}>작업</th>
+            <th style={{ width: 130 }}>삭제일시</th>
+            <th style={{ width: 76 }}>삭제자</th>
+            <th className="col-action" style={{ width: canPurge ? 136 : 76 }}>작업</th>
           </tr>
         </thead>
         <tbody>

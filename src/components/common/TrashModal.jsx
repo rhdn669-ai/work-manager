@@ -82,7 +82,7 @@ export default function TrashModal({ isOpen, onClose, types, title = '휴지통'
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl">
       <div className="trash-modal-bar">
         <p className="field-hint" style={{ margin: 0 }}>
           삭제된 항목이 보관됩니다. 복원하면 원래대로 되살아납니다.

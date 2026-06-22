@@ -4185,6 +4185,9 @@ body {
 .modal-lg {
   max-width: 800px;
 }
+.modal-xl {
+  max-width: min(1120px, 95vw);
+}
 
 .modal-header {
   display: flex;
