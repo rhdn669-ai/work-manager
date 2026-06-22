@@ -29,11 +29,40 @@ function preprocessCanvas(canvas) {
   const d = img.data;
   const n = d.length / 4;
   const gray = new Uint8ClampedArray(n);
-  const hist = new Array(256).fill(0);
+  // 1) 그레이스케일
   for (let i = 0, j = 0; i < d.length; i += 4, j += 1) {
-    const g = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-    gray[j] = g;
-    hist[g] += 1;
+    gray[j] = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+  }
+  // 2) 명암 정규화 — 2~98 백분위로 스트레치. 통장사본처럼 옅은 글자(저대비) 스캔의
+  //    인식률을 크게 올린다. (이 단계 없이는 Otsu가 흐린 글자를 통째로 날려버림)
+  const ghist = new Array(256).fill(0);
+  for (let j = 0; j < n; j += 1) ghist[gray[j]] += 1;
+  let lo = 0;
+  let hi = 255;
+  let acc = 0;
+  for (let t = 0; t < 256; t += 1) {
+    acc += ghist[t];
+    if (acc >= n * 0.02) {
+      lo = t;
+      break;
+    }
+  }
+  acc = 0;
+  for (let t = 255; t >= 0; t -= 1) {
+    acc += ghist[t];
+    if (acc >= n * 0.02) {
+      hi = t;
+      break;
+    }
+  }
+  const span = Math.max(1, hi - lo);
+  // 3) 정규화 적용 + Otsu용 히스토그램 재계산
+  const hist = new Array(256).fill(0);
+  for (let j = 0; j < n; j += 1) {
+    let v = Math.round(((gray[j] - lo) * 255) / span);
+    v = v < 0 ? 0 : v > 255 ? 255 : v;
+    gray[j] = v;
+    hist[v] += 1;
   }
   // Otsu 임계값
   let sum = 0;
@@ -92,14 +121,30 @@ export async function ocrCanvasesPerPage(canvases, onProgress) {
   const Tesseract = (await import('tesseract.js')).default;
   const pages = [];
   for (let i = 0; i < canvases.length; i += 1) {
+    // 1) 본문 인식 (한글+영문) — 단일 블록(PSM 6)이 통장·등록증 레이아웃에 더 안정적
     const { data } = await Tesseract.recognize(canvases[i], 'kor+eng', {
       logger: (m) => {
-        if (onProgress && m.status === 'recognizing text') onProgress(m.progress);
+        if (onProgress && m.status === 'recognizing text') onProgress(m.progress * 0.7);
       },
-      tessedit_pageseg_mode: '4', // 단일 컬럼 문서 가정
+      tessedit_pageseg_mode: '6',
       preserve_interword_spaces: '1',
     });
-    pages.push(data.text || '');
+    // 2) 숫자 전용 보강 패스 — 계좌번호·사업자번호 (통장 글꼴·도장에도 강함).
+    //    한글 본문 패스가 숫자를 흐리게 읽어도 이 패스가 정확한 번호를 잡아낸다.
+    let digits = '';
+    try {
+      const dRes = await Tesseract.recognize(canvases[i], 'eng', {
+        logger: (m) => {
+          if (onProgress && m.status === 'recognizing text') onProgress(0.7 + m.progress * 0.3);
+        },
+        tessedit_pageseg_mode: '11', // sparse text — 흩어진 숫자 덩어리 인식
+        tessedit_char_whitelist: '0123456789-',
+      });
+      digits = dRes.data.text || '';
+    } catch {
+      /* 숫자 보강 실패는 무시 — 본문 패스만으로 진행 */
+    }
+    pages.push(`${data.text || ''}\n${digits}`);
   }
   return pages;
 }
@@ -150,9 +195,11 @@ export function parseBank(rawText) {
       break;
     }
   }
-  // 계좌번호 — 하이픈 포함(3덩이 이상) 우선, 없으면 10~16자리 숫자
-  const acc = c.match(/\d{2,6}-\d{2,6}-\d{2,7}(?:-\d{1,6})?/);
-  if (acc) out.bankAccount = acc[0];
+  // 계좌번호 — 하이픈 포함(3덩이 이상) 우선, 없으면 10~16자리 숫자.
+  //   전화·팩스번호(0 또는 15·16·18 로 시작)는 제외하고 계좌형을 우선 선택.
+  const accs = [...c.matchAll(/\d{2,6}-\d{2,6}-\d{2,7}(?:-\d{1,6})?/g)].map((m) => m[0]);
+  const acc = accs.find((a) => !/^0/.test(a) && !/^1[5689]/.test(a)) || accs[0];
+  if (acc) out.bankAccount = acc;
   else {
     const acc2 = c.match(/\d{10,16}/);
     if (acc2) out.bankAccount = acc2[0];
