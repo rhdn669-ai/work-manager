@@ -706,10 +706,15 @@ export default function PurchaseItemPage() {
             const repItem = repItemForGroup(groupItems);
             const repName = repItem?.name || '';
             const repCode = repItem?.code || '';
-            // 필터 활성화 시 매칭 항목 누락 없이 모두 행으로 표시 (rep도 포함)
-            // 검색 중에도 하위품목이 있으면 대분류(베어 메인)는 결과에서 제외 — 단, 그룹에 대분류 하나뿐이면 표시
-            const subItems =
-              repItem && (!hasActiveFilter || groupItems.length > 1)
+            // 검색 시: 진짜 대분류(베어 메인)만 결과에서 제외하고 나머지는 모두 행으로 표시.
+            //   ★ 대표(repItem)는 진짜 대분류가 없을 때 임의 항목이 될 수 있으므로 그걸로 제외하면
+            //     실제 품목이 사라진다(같은 그룹의 EW32/EW50 중 하나만 보이던 버그). → trueMain만 제외.
+            const trueMain = groupItems.find((it) => !it.groupKey || it.groupKey === it.id);
+            const subItems = hasActiveFilter
+              ? trueMain
+                ? groupItems.filter((it) => it.id !== trueMain.id)
+                : groupItems
+              : repItem
                 ? groupItems.filter((it) => it.id !== repItem.id)
                 : groupItems;
             const subIds = subItems.map((s) => s.id);

@@ -248,7 +248,11 @@ export default function PurchaseDetailPage() {
         note: p.note || '',
         supplierNotes: p.supplierNotes || {},
         setCount: Number(p.setCount) || 0,
-        mailBody: p.mailBody != null ? p.mailBody : buildDefaultMailBody(p.contactName || p.requesterName),
+        // 비어 있으면 기본 공통 문구를 '실제 값'으로 채워 바로 편집 가능하게 (placeholder만 보여 수정 불가처럼 보이던 문제)
+        mailBody:
+          p.mailBody && String(p.mailBody).trim()
+            ? p.mailBody
+            : buildDefaultMailBody(p.contactName || p.requesterName),
       });
     } catch (err) {
       console.error(err);
