@@ -22,7 +22,7 @@ import { getAllSites } from '../../services/siteService';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
 import { useUndo } from '../../contexts/UndoContext';
 import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
-import { extractBizInfo, normalizeCompany } from '../../utils/bizPdf';
+import { extractBizInfo, normalizeCompany, isSupportedBizFile } from '../../utils/bizPdf';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Select from '../../components/common/Select';
@@ -304,11 +304,11 @@ export default function OutsourceManagementPage() {
     setShowModal(true);
   }
 
-  // 업체 PDF(여러 개 가능) → 텍스트/OCR 자동 입력 + 자료실 보관용 보관 (사업자등록증·통장사본 합산)
+  // 업체 PDF·이미지(여러 개 가능) → 텍스트/OCR 자동 입력 + 자료실 보관 (사업자등록증·통장사본 합산)
   async function handlePdfFiles(fileList) {
-    const files = Array.from(fileList || []).filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    const files = Array.from(fileList || []).filter((f) => isSupportedBizFile(f));
     if (files.length === 0) {
-      alert('PDF 파일만 가능합니다.');
+      alert('PDF 또는 이미지(JPG·PNG) 파일만 가능합니다.');
       return;
     }
     setPdfBusy(true);
@@ -819,7 +819,7 @@ export default function OutsourceManagementPage() {
                 <input
                   ref={pdfInputRef}
                   type="file"
-                  accept="application/pdf,.pdf"
+                  accept="application/pdf,.pdf,image/*"
                   multiple
                   style={{ display: 'none' }}
                   disabled={pdfBusy}

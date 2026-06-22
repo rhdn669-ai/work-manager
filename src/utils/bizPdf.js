@@ -224,33 +224,50 @@ export function classifyPage(rawText) {
 // ★ 페이지별로 분류해 사업자등록증 페이지엔 사업자정보 파서만, 통장 페이지엔 통장 파서만 적용.
 //   → 사업자등록증 2페이지의 숫자(사업자번호 등)를 계좌번호로 오인하거나, 통장 인식이 밀리는 문제 해결.
 // onStage(stage, progress?) : 'reading' | 'rendering' | 'ocr'
-export async function extractBizInfo(file, onStage) {
-  if (onStage) onStage('reading');
-  const pages = await extractPdfTextPerPage(file);
-  let usedOcr = false;
+// 첨부 가능 여부 — PDF 또는 이미지(휴대폰 사진·스캔)
+export function isImageFile(file) {
+  return (
+    (file?.type || '').startsWith('image/') ||
+    /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(file?.name || '')
+  );
+}
+export function isSupportedBizFile(file) {
+  return (
+    file?.type === 'application/pdf' || /\.pdf$/i.test(file?.name || '') || isImageFile(file)
+  );
+}
 
-  // ★ 페이지 단위로 OCR 폴백 판단 — 글자가 부족한(스캔/이미지) 페이지만 OCR.
-  //   문서 전체 합산으로 판단하면, 사업자등록증(텍스트)+통장사본(스캔) 혼합 첨부 시
-  //   합산 글자수가 20을 넘겨 OCR이 통째로 건너뛰고 통장(계좌)이 안 잡히는 문제가 있었음.
-  const weak = pages.map((t) => String(t || '').replace(/\s/g, '').length < 20);
-  if (weak.some(Boolean)) {
-    usedOcr = true;
-    if (onStage) onStage('rendering');
-    const canvases = await renderPdfToCanvases(file);
-    const total = weak.filter(Boolean).length;
-    let done = 0;
-    if (onStage) onStage('ocr', 0);
-    for (let i = 0; i < pages.length; i += 1) {
-      if (!weak[i] || !canvases[i]) continue;
-      const [ocrText] = await ocrCanvasesPerPage(
-        [canvases[i]],
-        (p) => onStage && onStage('ocr', (done + (p || 0)) / total),
-      );
-      pages[i] = ocrText || '';
-      done += 1;
-    }
+// 이미지 파일 → OCR용 캔버스 (작으면 확대해 인식률↑, 큰 건 maxDim로 축소)
+async function imageFileToCanvas(file, maxDim = 2400) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error('이미지를 읽을 수 없습니다(HEIC 등은 JPG/PNG로 변환해 올려주세요).'));
+      im.src = url;
+    });
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error('이미지 크기를 확인할 수 없습니다.');
+    const scale = Math.min(2, maxDim / Math.max(w, h));
+    const cw = Math.max(1, Math.round(w * scale));
+    const ch = Math.max(1, Math.round(h * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(img, 0, 0, cw, ch);
+    return canvas;
+  } finally {
+    URL.revokeObjectURL(url);
   }
+}
 
+// 페이지별 텍스트 → 사업자/통장 정보 병합 (PDF·이미지 공용)
+function parsePagesToInfo(pages, { usedOcr = false, fileName = '' } = {}) {
   const parsed = { name: '', representative: '', businessNumber: '', bankName: '', bankAccount: '' };
   const take = (src, keys) =>
     keys.forEach((k) => {
@@ -270,19 +287,54 @@ export async function extractBizInfo(file, onStage) {
       dbg.push({ page: i + 1, kind, ...r });
     }
   });
-
-  // 진단용 — 어느 페이지가 무엇으로 분류돼 무엇이 잡혔는지 콘솔(F12)로 확인 가능.
-  // 값이 안 채워질 때 추출 텍스트와 분류 결과를 바로 보고 정규식/분류를 고치기 위함.
   try {
     // eslint-disable-next-line no-console
-    console.info('[bizPdf] 추출 결과', { file: file?.name, usedOcr, perPage: dbg, merged: parsed });
+    console.info('[bizPdf] 추출 결과', { file: fileName, usedOcr, perPage: dbg, merged: parsed });
     // eslint-disable-next-line no-console
     console.debug('[bizPdf] 페이지별 원문', pages);
   } catch {
     /* noop */
   }
-
   return { parsed, usedOcr, text: pages.join('\n') };
+}
+
+// 사업자등록증·통장사본(PDF 또는 사진)에서 상호·대표자·사업자번호·은행·계좌 추출.
+// onStage(stage, progress?) : 'reading' | 'rendering' | 'ocr'
+export async function extractBizInfo(file, onStage) {
+  // 이미지(휴대폰 사진·스캔 이미지) → 전처리 후 OCR
+  if (isImageFile(file)) {
+    if (onStage) onStage('rendering');
+    const canvas = await imageFileToCanvas(file);
+    preprocessCanvas(canvas);
+    if (onStage) onStage('ocr', 0);
+    const pages = await ocrCanvasesPerPage([canvas], (p) => onStage && onStage('ocr', p));
+    return parsePagesToInfo(pages, { usedOcr: true, fileName: file?.name });
+  }
+
+  // PDF — 텍스트 우선, 글자가 부족한(스캔) 페이지만 OCR
+  if (onStage) onStage('reading');
+  const pages = await extractPdfTextPerPage(file);
+  let usedOcr = false;
+  // ★ 페이지 단위로 OCR 폴백 — 사업자등록증(텍스트)+통장사본(스캔) 혼합에서도 통장 페이지만 OCR.
+  const weak = pages.map((t) => String(t || '').replace(/\s/g, '').length < 20);
+  if (weak.some(Boolean)) {
+    usedOcr = true;
+    if (onStage) onStage('rendering');
+    const canvases = await renderPdfToCanvases(file);
+    const total = weak.filter(Boolean).length;
+    let done = 0;
+    if (onStage) onStage('ocr', 0);
+    for (let i = 0; i < pages.length; i += 1) {
+      if (!weak[i] || !canvases[i]) continue;
+      const [ocrText] = await ocrCanvasesPerPage(
+        [canvases[i]],
+        (p) => onStage && onStage('ocr', (done + (p || 0)) / total),
+      );
+      pages[i] = ocrText || '';
+      done += 1;
+    }
+  }
+  return parsePagesToInfo(pages, { usedOcr, fileName: file?.name });
 }
 
 // 회사명 통일 — "주식회사 X" / "X 주식회사" / "㈜X" / "(주) X" → "(주)X"

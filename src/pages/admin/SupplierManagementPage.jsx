@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { getSuppliers, addSupplier, updateSupplier } from '../../services/purchaseService';
 import { trashGeneric } from '../../services/trashService';
 import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
-import { extractBizInfo, normalizeCompany } from '../../utils/bizPdf';
+import { extractBizInfo, normalizeCompany, isSupportedBizFile } from '../../utils/bizPdf';
 import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
@@ -88,12 +88,12 @@ export default function SupplierManagementPage() {
     setShowModal(true);
   }
 
-  // PDF(여러 개 가능) 처리 → 텍스트/OCR 자동 입력 + 자료실 보관용 보관
-  // 사업자등록증·통장사본을 한 번에 붙이면 각자에서 잡힌 값을 합쳐 채움
+  // PDF·이미지(여러 개 가능) 처리 → 텍스트/OCR 자동 입력 + 자료실 보관
+  // 사업자등록증·통장사본을 한 번에(PDF든 사진이든) 붙이면 각자에서 잡힌 값을 합쳐 채움
   async function handlePdfFiles(fileList) {
-    const files = Array.from(fileList || []).filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    const files = Array.from(fileList || []).filter((f) => isSupportedBizFile(f));
     if (files.length === 0) {
-      alert('PDF 파일만 가능합니다.');
+      alert('PDF 또는 이미지(JPG·PNG) 파일만 가능합니다.');
       return;
     }
     setPdfBusy(true);
@@ -331,7 +331,7 @@ export default function SupplierManagementPage() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editTarget ? '구매처 수정' : '구매처 추가'}>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>PDF 첨부 — 사업자등록증·통장사본 (자동 입력 + 자료실 보관)</label>
+            <label>파일 첨부 — 사업자등록증·통장사본 (PDF·사진, 자동 입력 + 자료실 보관)</label>
             <div
               className={`pdf-dropzone ${pdfDragOver ? 'is-over' : ''} ${pdfBusy ? 'is-busy' : ''}`}
               onClick={() => !pdfBusy && pdfInputRef.current?.click()}
@@ -349,7 +349,7 @@ export default function SupplierManagementPage() {
               <input
                 ref={pdfInputRef}
                 type="file"
-                accept="application/pdf,.pdf"
+                accept="application/pdf,.pdf,image/*"
                 multiple
                 style={{ display: 'none' }}
                 disabled={pdfBusy}
@@ -363,15 +363,15 @@ export default function SupplierManagementPage() {
               <span>
                 {pdfFiles.length
                   ? `${pdfFiles.length}개 첨부됨 (클릭/드롭으로 더 추가)`
-                  : 'PDF를 끌어다 놓거나 클릭해서 선택 (여러 개 가능)'}
+                  : 'PDF·사진을 끌어다 놓거나 클릭해서 선택 (여러 개 가능)'}
               </span>
             </div>
             <p className="field-hint">
               {pdfBusy
-                ? pdfStatus || 'PDF 처리 중…'
+                ? pdfStatus || '파일 처리 중…'
                 : pdfFiles.length
                   ? `${pdfStatus ? pdfStatus + ' · ' : ''}${pdfFiles.map((f) => f.name).join(', ')} — 저장 시 자료실 "거래처 정보/${normalizeCompany(form.name) || form.name.trim() || '상호'}" 폴더에 보관됩니다.`
-                  : '사업자등록증·통장사본을 한 번에 첨부하면 둘 다 인식해 상호·대표자·사업자번호·은행·계좌를 채웁니다. 텍스트·스캔 PDF 모두 가능(스캔은 OCR).'}
+                  : '사업자등록증·통장사본을 한 번에(PDF든 사진이든) 첨부하면 둘 다 인식해 상호·대표자·사업자번호·은행·계좌를 채웁니다. 텍스트·스캔·사진 모두 가능(스캔·사진은 OCR).'}
             </p>
           </div>
           <div className="form-group">
