@@ -1062,6 +1062,39 @@ body {
     scroll-snap-align: none;
   }
 }
+/* 단계 이동 화살표 — 모바일에서만 노출(PC는 드래그) */
+.task-move {
+  display: none;
+}
+@media (max-width: 768px) {
+  .task-move {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .task-move__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .task-move__btn:disabled {
+    opacity: 0.35;
+  }
+  .task-move__btn:active:not(:disabled) {
+    background: var(--bg-subtle, #f1f5f9);
+  }
+}
 .task-board .kb-col__title {
   font-size: 13px;
   font-weight: 700;
