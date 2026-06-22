@@ -4589,6 +4589,21 @@ table.cards-sm td {
   color: var(--text-secondary, #9ca3af);
   white-space: nowrap;
 }
+/* 관리자 전용 — 잠긴 폴더의 자물쇠 버튼(클릭 시 일시 해제) */
+.lib-lock-btn {
+  color: var(--text-secondary, #9ca3af);
+}
+.lib-lock-btn:hover:not(:disabled) {
+  color: var(--text-primary, #111827);
+}
+/* 해제된 상태 표시 — 다시 잠그기 버튼 */
+.lib-relock-btn {
+  color: var(--success, #16a34a);
+  border-color: var(--success, #16a34a);
+}
+.lib-relock-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success, #16a34a) 12%, transparent);
+}
 /* 세그먼트 토글 (버튼형 선택) */
 .seg-toggle {
   display: flex;

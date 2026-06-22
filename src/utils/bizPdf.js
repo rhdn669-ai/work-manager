@@ -179,30 +179,62 @@ export function classifyPage(rawText) {
 // onStage(stage, progress?) : 'reading' | 'rendering' | 'ocr'
 export async function extractBizInfo(file, onStage) {
   if (onStage) onStage('reading');
-  let pages = await extractPdfTextPerPage(file);
+  const pages = await extractPdfTextPerPage(file);
   let usedOcr = false;
-  const totalChars = pages.join('').replace(/\s/g, '').length;
-  if (totalChars < 20) {
+
+  // ★ 페이지 단위로 OCR 폴백 판단 — 글자가 부족한(스캔/이미지) 페이지만 OCR.
+  //   문서 전체 합산으로 판단하면, 사업자등록증(텍스트)+통장사본(스캔) 혼합 첨부 시
+  //   합산 글자수가 20을 넘겨 OCR이 통째로 건너뛰고 통장(계좌)이 안 잡히는 문제가 있었음.
+  const weak = pages.map((t) => String(t || '').replace(/\s/g, '').length < 20);
+  if (weak.some(Boolean)) {
     usedOcr = true;
     if (onStage) onStage('rendering');
     const canvases = await renderPdfToCanvases(file);
+    const total = weak.filter(Boolean).length;
+    let done = 0;
     if (onStage) onStage('ocr', 0);
-    pages = await ocrCanvasesPerPage(canvases, (p) => onStage && onStage('ocr', p));
+    for (let i = 0; i < pages.length; i += 1) {
+      if (!weak[i] || !canvases[i]) continue;
+      const [ocrText] = await ocrCanvasesPerPage(
+        [canvases[i]],
+        (p) => onStage && onStage('ocr', (done + (p || 0)) / total),
+      );
+      pages[i] = ocrText || '';
+      done += 1;
+    }
   }
+
   const parsed = { name: '', representative: '', businessNumber: '', bankName: '', bankAccount: '' };
   const take = (src, keys) =>
     keys.forEach((k) => {
       if (!parsed[k] && src[k]) parsed[k] = src[k];
     });
-  for (const pageText of pages) {
+  const dbg = [];
+  pages.forEach((pageText, i) => {
     const kind = classifyPage(pageText);
     if (kind === 'bank') {
-      take(parseBank(pageText), ['bankName', 'bankAccount']);
+      const r = parseBank(pageText);
+      take(r, ['bankName', 'bankAccount']);
+      dbg.push({ page: i + 1, kind, ...r });
     } else {
       // 'bizreg' 또는 'unknown' → 사업자정보만 (통장 파서 미적용 → 사업자번호를 계좌번호로 오인 방지)
-      take(parseBizReg(pageText), ['name', 'representative', 'businessNumber']);
+      const r = parseBizReg(pageText);
+      take(r, ['name', 'representative', 'businessNumber']);
+      dbg.push({ page: i + 1, kind, ...r });
     }
+  });
+
+  // 진단용 — 어느 페이지가 무엇으로 분류돼 무엇이 잡혔는지 콘솔(F12)로 확인 가능.
+  // 값이 안 채워질 때 추출 텍스트와 분류 결과를 바로 보고 정규식/분류를 고치기 위함.
+  try {
+    // eslint-disable-next-line no-console
+    console.info('[bizPdf] 추출 결과', { file: file?.name, usedOcr, perPage: dbg, merged: parsed });
+    // eslint-disable-next-line no-console
+    console.debug('[bizPdf] 페이지별 원문', pages);
+  } catch {
+    /* noop */
   }
+
   return { parsed, usedOcr, text: pages.join('\n') };
 }
 

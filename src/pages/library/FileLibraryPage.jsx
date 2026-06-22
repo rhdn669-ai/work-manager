@@ -177,7 +177,7 @@ function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDe
 }
 
 export default function FileLibraryPage() {
-  const { userProfile, canViewArchive } = useAuth();
+  const { userProfile, canViewArchive, isAdmin } = useAuth();
   const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
 
@@ -205,6 +205,26 @@ export default function FileLibraryPage() {
   const [uploads, setUploads] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
+
+  // 관리자가 자물쇠를 눌러 일시 해제한 잠금(protected) 폴더 ID 모음.
+  // 영구 변경이 아니라 현재 화면에서만 유효 — 새로고침/재진입하면 다시 잠긴다.
+  const [unlocked, setUnlocked] = useState(() => new Set());
+  const isFolderUnlocked = (folder) => !!folder && isAdmin && unlocked.has(folder.id);
+  function toggleFolderLock(folder, e) {
+    e?.stopPropagation();
+    if (!isAdmin || !folder?.protected) return;
+    setUnlocked((prev) => {
+      const next = new Set(prev);
+      if (next.has(folder.id)) {
+        next.delete(folder.id);
+        toast(`"${folder.name}" 폴더를 다시 잠갔습니다.`);
+      } else {
+        next.add(folder.id);
+        toast(`"${folder.name}" 폴더 잠금을 일시 해제했습니다. 수정·삭제할 수 있습니다(새로고침하면 다시 잠김).`, 'success', 0);
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     const unsubF = subscribeFolders(setFolders);
@@ -342,7 +362,7 @@ export default function FileLibraryPage() {
 
   // ── 폴더 이름 변경 ──
   async function handleRename() {
-    if (renameTarget?.protected) { alert('자동 생성된 폴더는 이름을 변경할 수 없습니다.'); setRenameTarget(null); return; }
+    if (renameTarget?.protected && !isFolderUnlocked(renameTarget)) { alert('자동 생성된 폴더는 이름을 변경할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)'); setRenameTarget(null); return; }
     const name = renameName.trim();
     if (!name || name === renameTarget.name) { setRenameTarget(null); return; }
     const siblings = folders.filter((f) => (f.parentId || null) === (renameTarget.parentId || null) && f.id !== renameTarget.id);
@@ -356,7 +376,7 @@ export default function FileLibraryPage() {
   // ── 폴더 삭제 ──
   async function handleDeleteFolder(folder, e) {
     e?.stopPropagation();
-    if (folder.protected) { alert('자동 생성된 폴더는 삭제할 수 없습니다.'); return; }
+    if (folder.protected && !isFolderUnlocked(folder)) { alert('자동 생성된 폴더는 삭제할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)'); return; }
     const filesIn = files.filter((f) => (f.folderId || null) === folder.id);
     const subsIn = folders.filter((f) => (f.parentId || null) === folder.id);
     const msg = (filesIn.length || subsIn.length)
@@ -402,7 +422,7 @@ export default function FileLibraryPage() {
     const dragged = folders.find((f) => f.id === draggedId);
     const target = folders.find((f) => f.id === targetId);
     if (!dragged || !target || draggedId === targetId) return;
-    if (dragged.protected) { toast('자동 생성된 폴더는 이동할 수 없습니다.', 'error'); return; }
+    if (dragged.protected && !isFolderUnlocked(dragged)) { toast('자동 생성된 폴더는 이동할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)', 'error'); return; }
     // 순환 방지 — target이 dragged의 자손이면 이동 금지
     const isDescendant = (id) => {
       let cur = folders.find((f) => f.id === id);
@@ -704,12 +724,37 @@ export default function FileLibraryPage() {
                             {subCnt > 0 ? `${subCnt}개 폴더 · ` : ''}{cnt}개 파일
                           </td>
                           <td className="col-action" onClick={(e) => e.stopPropagation()}>
-                            {folder.protected ? (
-                              <span className="lib-locked-label" title="자동 생성 폴더 (수정·삭제 불가)">
-                                <Icon name="lock" className="btn-ic" />자동
-                              </span>
+                            {folder.protected && !isFolderUnlocked(folder) ? (
+                              isAdmin ? (
+                                <div className="row-actions">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline lib-lock-btn"
+                                    title="관리자 — 클릭하면 잠금을 일시 해제합니다 (수정·삭제 가능)"
+                                    aria-label="잠금 해제"
+                                    onClick={(e) => toggleFolderLock(folder, e)}
+                                  >
+                                    <Icon name="lock" className="btn-ic" />잠금
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="lib-locked-label" title="자동 생성 폴더 (수정·삭제 불가)">
+                                  <Icon name="lock" className="btn-ic" />자동
+                                </span>
+                              )
                             ) : (
                               <div className="row-actions">
+                                {folder.protected && isAdmin && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline lib-relock-btn"
+                                    title="다시 잠그기"
+                                    aria-label="다시 잠그기"
+                                    onClick={(e) => toggleFolderLock(folder, e)}
+                                  >
+                                    <Icon name="unlock" className="btn-ic" />해제됨
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-outline"
