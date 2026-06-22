@@ -10,10 +10,43 @@ export default {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       return renderPdf(request, env);
     }
+    if (url.pathname === '/api/merge-pdf') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      return mergePdf(request);
+    }
     // 정적 자산(SPA) — not_found_handling=single-page-application
     return env.ASSETS.fetch(request);
   },
 };
+
+// 여러 PDF URL을 서버에서 받아 하나로 병합(벡터 그대로). 서버 fetch라 Storage CORS와 무관.
+async function mergePdf(request) {
+  try {
+    const { urls } = await request.json();
+    if (!Array.isArray(urls) || urls.length === 0) return json({ error: 'urls가 필요합니다.' }, 400);
+    const { PDFDocument } = await import('pdf-lib');
+    const merged = await PDFDocument.create();
+    let added = 0;
+    for (const u of urls) {
+      try {
+        const res = await fetch(u);
+        if (!res.ok) continue;
+        const buf = await res.arrayBuffer();
+        const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const pages = await merged.copyPages(doc, doc.getPageIndices());
+        pages.forEach((p) => merged.addPage(p));
+        added += 1;
+      } catch {
+        /* 개별 파일 실패는 건너뜀 */
+      }
+    }
+    if (added === 0) return json({ error: '합칠 PDF를 불러오지 못했습니다.' }, 502);
+    const bytes = await merged.save();
+    return new Response(bytes, { headers: { 'Content-Type': 'application/pdf' } });
+  } catch (err) {
+    return json({ error: err?.message || 'PDF 병합 실패' }, 500);
+  }
+}
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {

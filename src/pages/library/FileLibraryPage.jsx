@@ -315,25 +315,34 @@ export default function FileLibraryPage() {
       return;
     }
     setMerging(true);
+    // 새 탭은 사용자 클릭 직후 미리 열어둔다(비동기 후 window.open은 팝업 차단됨)
+    const win = window.open('', '_blank');
     try {
-      const { PDFDocument } = await import('pdf-lib');
-      const merged = await PDFDocument.create();
-      for (const f of pdfs) {
-        const res = await fetch(f.downloadURL);
-        if (!res.ok) continue;
-        const buf = await res.arrayBuffer();
-        const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
-        const pages = await merged.copyPages(doc, doc.getPageIndices());
-        pages.forEach((p) => merged.addPage(p));
+      // 서버(워커)에서 병합 — 브라우저 fetch는 Storage CORS로 막히므로 서버측 fetch 사용
+      const res = await fetch('/api/merge-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls: pdfs.map((f) => f.downloadURL) }),
+      });
+      if (!res.ok) {
+        let msg = `서버 응답 ${res.status}`;
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
       }
-      const bytes = await merged.save();
-      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener'); // 새 탭에서 합본 PDF 열림 → 인쇄/저장
+      if (win) win.location = url;
+      else window.open(url, '_blank', 'noopener');
       setTimeout(() => URL.revokeObjectURL(url), 120000);
       const skipped = sel.length - pdfs.length;
       toast(`${pdfs.length}개 PDF를 하나로 합쳐 출력했습니다.${skipped ? ` (PDF 아님 ${skipped}개 제외)` : ''}`);
     } catch (err) {
+      if (win) win.close();
       toast('PDF 합치기 실패: ' + (err.message || err), 'error');
     } finally {
       setMerging(false);
