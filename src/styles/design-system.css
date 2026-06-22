@@ -1033,6 +1033,16 @@ body {
   border-radius: 8px;
   padding: 7px 10px;
 }
+/* 진행 단계별 헤더 색상 — 할일(슬레이트) · 진행중(파랑) · 완료(초록) */
+.task-board .task-col--todo .kb-col__head {
+  background: #475569;
+}
+.task-board .task-col--doing .kb-col__head {
+  background: #2563eb;
+}
+.task-board .task-col--done .kb-col__head {
+  background: #16a34a;
+}
 .task-board .kb-col__title {
   font-size: 13px;
   font-weight: 700;

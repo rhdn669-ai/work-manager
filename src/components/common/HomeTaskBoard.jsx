@@ -97,7 +97,7 @@ function TaskCard({ t, onEdit, onDelete }) {
 function TaskColumn({ col, cards, onAdd, onEdit, onDelete }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
-    <div ref={setNodeRef} className={`kb-col ${isOver ? 'is-over' : ''}`}>
+    <div ref={setNodeRef} className={`kb-col task-col--${col.key} ${isOver ? 'is-over' : ''}`}>
       <div className="kb-col__head">
         <span className="kb-col__title">{col.label}</span>
         <span className="kb-col__count">{cards.length}</span>
