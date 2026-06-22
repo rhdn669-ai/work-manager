@@ -26,17 +26,26 @@ export default function Select({
     if (!el) return;
     const r = el.getBoundingClientRect();
     const vh = window.innerHeight;
+    const vw = window.innerWidth;
     const gap = 6;
-    const spaceBelow = vh - r.bottom;
-    const desired = Math.min(300, options.length * 41 + 14);
-    const up = spaceBelow < desired + 12 && r.top > spaceBelow;
-    const maxHeight = Math.min(300, Math.max(140, (up ? r.top : spaceBelow) - 14));
+    // 하단 고정바(BottomNav)·상단 고정헤더에 가려지지 않도록 사용 가능한 영역을 좁힌다.
+    const navEl = typeof document !== 'undefined' ? document.querySelector('.bottom-nav') : null;
+    const headEl = typeof document !== 'undefined' ? document.querySelector('.header') : null;
+    const safeBottom = (navEl ? navEl.getBoundingClientRect().height : 0) + 8;
+    const safeTop = (headEl ? headEl.getBoundingClientRect().height : 0) + 8;
+    const spaceBelow = vh - safeBottom - r.bottom; // 입력칸 아래 사용가능 높이
+    const spaceAbove = r.top - safeTop; // 입력칸 위 사용가능 높이
+    const desired = Math.min(320, options.length * 41 + 14);
+    // 아래 공간이 충분하거나(>=160) 위보다 넓으면 아래로, 아니면 위로 펼친다.
+    const openDown = spaceBelow >= Math.min(desired, 160) || spaceBelow >= spaceAbove;
+    const room = Math.max(120, openDown ? spaceBelow : spaceAbove);
+    const width = Math.max(r.width, 168);
     setPos({
-      left: Math.max(8, r.left),
-      width: Math.max(r.width, 168),
-      top: up ? undefined : r.bottom + gap,
-      bottom: up ? vh - r.top + gap : undefined,
-      maxHeight,
+      left: Math.min(Math.max(8, r.left), Math.max(8, vw - width - 8)),
+      width,
+      top: openDown ? r.bottom + gap : undefined,
+      bottom: openDown ? undefined : vh - r.top + gap,
+      maxHeight: Math.min(desired, room), // 화면 안에 들어오도록 제한 → 패널 내부 스크롤
     });
   }, [options.length]);
 
@@ -74,19 +83,11 @@ export default function Select({
     setOpen(false);
   }
 
-  // 드롭다운을 열 때, 입력칸을 화면 중앙으로 자동 스크롤 → 화면 하단에 있어도
-  // 펼쳐진 옵션이 가려지지 않고 항상 보이게 (전역 모든 Select 공통 적용).
+  // 드롭다운 열기 — 위치는 reposition이 하단바/헤더 여백을 빼고 더 넓은 쪽으로 펼쳐
+  // 화면 안에 가둔다(패널 내부 스크롤). 세로 짧은 폰에서도 옵션이 항상 보인다.
   function toggleOpen() {
     if (disabled) return;
-    setOpen((o) => {
-      const next = !o;
-      if (next) {
-        requestAnimationFrame(() => {
-          triggerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        });
-      }
-      return next;
-    });
+    setOpen((o) => !o);
   }
 
   return (
