@@ -20,6 +20,11 @@ export default function Select({
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
   const selected = options.find((o) => String(o.value) === String(value));
+  // 모바일에서는 OS 기본 드롭다운(네이티브 select)을 쓴다 — 운영체제가 화면에 맞춰
+  // 띄우므로 절대 잘리지 않는다. (커스텀 위치계산이 폰마다 어긋나던 문제 근본 해결)
+  const [isNative] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
+  );
 
   const reposition = useCallback(() => {
     const el = triggerRef.current;
@@ -124,6 +129,36 @@ export default function Select({
         // 스크롤 후 패널 위치 재계산은 scroll 리스너의 reposition이 처리
       }
     });
+  }
+
+  // ── 모바일: OS 기본 드롭다운 ──
+  if (isNative) {
+    return (
+      <div className={`ds-select ds-select--native ${className}`}>
+        <select
+          className="ds-select__native"
+          value={value == null ? '' : String(value)}
+          onChange={(e) => {
+            const o = options.find((x) => String(x.value) === e.target.value);
+            onChange(o ? o.value : e.target.value);
+          }}
+          disabled={disabled}
+          aria-label={ariaLabel}
+        >
+          {!selected && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map((o) => (
+            <option key={o.value} value={String(o.value)}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <Icon name="chevronDown" className="ds-select__caret" />
+      </div>
+    );
   }
 
   return (

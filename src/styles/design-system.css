@@ -653,6 +653,36 @@ body {
   color: var(--text-muted);
   font-weight: 500;
 }
+/* 모바일: OS 기본 드롭다운 — trigger와 동일한 박스, caret만 우측 겹쳐 표시 */
+.ds-select--native {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+.ds-select__native {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 36px 0 12px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-base);
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ds-select__native:disabled {
+  opacity: 0.6;
+}
+.ds-select--native .ds-select__caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
 .ds-select__caret {
   width: 16px;
   height: 16px;
