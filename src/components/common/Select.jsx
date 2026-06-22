@@ -83,11 +83,46 @@ export default function Select({
     setOpen(false);
   }
 
-  // 드롭다운 열기 — 위치는 reposition이 하단바/헤더 여백을 빼고 더 넓은 쪽으로 펼쳐
-  // 화면 안에 가둔다(패널 내부 스크롤). 세로 짧은 폰에서도 옵션이 항상 보인다.
+  // 실제 스크롤되는 조상 컨테이너를 찾는다(없으면 window).
+  function getScrollParent(node) {
+    let el = node?.parentElement;
+    while (el) {
+      const s = getComputedStyle(el);
+      if (/(auto|scroll)/.test(s.overflowY) && el.scrollHeight > el.clientHeight + 1) return el;
+      el = el.parentElement;
+    }
+    return window;
+  }
+
+  // 드롭다운 열기 — 아래로 펼칠 공간이 부족하면 부족분만큼 페이지를 자동으로 내려
+  // 옵션이 화면(하단바 위)에 다 보이게 한다. (세로 짧은 폰=아이폰SE 대응)
   function toggleOpen() {
     if (disabled) return;
-    setOpen((o) => !o);
+    const willOpen = !open;
+    setOpen(willOpen);
+    if (!willOpen) return;
+    requestAnimationFrame(() => {
+      const el = triggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const navEl = document.querySelector('.bottom-nav');
+      const headEl = document.querySelector('.header');
+      const safeBottom = (navEl ? navEl.getBoundingClientRect().height : 0) + 12;
+      const safeTop = (headEl ? headEl.getBoundingClientRect().height : 0) + 12;
+      const desired = Math.min(320, options.length * 41 + 14);
+      const spaceBelow = vh - safeBottom - r.bottom;
+      const spaceAbove = r.top - safeTop;
+      const openDown = spaceBelow >= Math.min(desired, 160) || spaceBelow >= spaceAbove;
+      // 아래로 펼치는데 공간이 모자라면 → 부족분만큼 페이지를 내려 입력칸을 위로 올린다.
+      if (openDown && spaceBelow < desired) {
+        const need = Math.ceil(desired - spaceBelow);
+        const scroller = getScrollParent(el);
+        if (scroller === window) window.scrollBy({ top: need, behavior: 'smooth' });
+        else scroller.scrollBy({ top: need, behavior: 'smooth' });
+        // 스크롤 후 패널 위치 재계산은 scroll 리스너의 reposition이 처리
+      }
+    });
   }
 
   return (
