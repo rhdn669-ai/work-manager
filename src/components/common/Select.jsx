@@ -74,12 +74,27 @@ export default function Select({
     setOpen(false);
   }
 
+  // 드롭다운을 열 때, 입력칸을 화면 중앙으로 자동 스크롤 → 화면 하단에 있어도
+  // 펼쳐진 옵션이 가려지지 않고 항상 보이게 (전역 모든 Select 공통 적용).
+  function toggleOpen() {
+    if (disabled) return;
+    setOpen((o) => {
+      const next = !o;
+      if (next) {
+        requestAnimationFrame(() => {
+          triggerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+      }
+      return next;
+    });
+  }
+
   return (
     <div className={`ds-select ${open ? 'is-open' : ''} ${className}`} ref={triggerRef}>
       <button
         type="button"
         className="ds-select__trigger"
-        onClick={() => !disabled && setOpen((o) => !o)}
+        onClick={toggleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
