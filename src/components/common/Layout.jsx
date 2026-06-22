@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import { ensureBodyScrollUnlockedIfIdle } from './Modal';
 import HintReminderBanner from './HintReminderBanner';
 import VehicleMileageModal from './VehicleMileageModal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,9 +23,10 @@ export default function Layout() {
   const location = useLocation();
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
-  // 모바일에서 라우트 변경 시 사이드바 자동 닫기
+  // 모바일에서 라우트 변경 시 사이드바 자동 닫기 + 스크롤 잠금 잔재 자동 해제
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
+    ensureBodyScrollUnlockedIfIdle(); // 모달 잠금이 남아 세로 스크롤이 막힌 경우 복구
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
   const [exitToast, setExitToast] = useState(false);
