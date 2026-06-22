@@ -371,9 +371,12 @@ export async function extractBizInfo(file, onStage) {
 export function normalizeCompany(name) {
   let n = String(name || '').trim();
   if (!n) return n;
-  const isCorp = /주식회사|㈜|\(\s*주\s*\)/.test(n);
+  // 주식회사 표기 변형 모두 인식 → "(주)"로 통일:
+  //   자간 공백("주 식 회 사"), "주식 회사", ㈜, (주)/( 주 ), 전각 괄호「（주）」
+  const CORP = /주\s*식\s*회\s*사|㈜|[(（]\s*주\s*[)）]/;
+  const isCorp = CORP.test(n);
   n = n
-    .replace(/주식회사|㈜|\(\s*주\s*\)/g, ' ')
+    .replace(/주\s*식\s*회\s*사|㈜|[(（]\s*주\s*[)）]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (isCorp && n) n = `(주)${n}`;
