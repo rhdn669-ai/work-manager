@@ -116,26 +116,57 @@ export async function renderPdfToCanvases(file, scale = 3) {
   return canvases;
 }
 
-// 캔버스 이미지들 OCR (한국어+영어) → 페이지별 텍스트 배열. tesseract.js는 필요할 때만 동적 로드
+// 캔버스 회전 (0/90/180/270) — 눕혀 찍거나 스캔한 통장·서류 대응
+function rotateCanvasEl(src, deg) {
+  if (!deg) return src;
+  const canvas = document.createElement('canvas');
+  if (deg === 90 || deg === 270) {
+    canvas.width = src.height;
+    canvas.height = src.width;
+  } else {
+    canvas.width = src.width;
+    canvas.height = src.height;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+  return canvas;
+}
+
+// 사업자등록증·통장사본 키워드 — 방향(회전) 자동 감지에 사용
+const BIZ_KEYWORDS = /통장|계좌|예금|은행|보통예금|예금주|사업자등록|법인명|단체명|대표자|사업장|등록번호/;
+
+// 캔버스 이미지들 OCR (한국어+영어) → 페이지별 텍스트 배열. tesseract.js는 필요할 때만 동적 로드.
+// ★ 방향 자동 감지: 0°부터 돌려보며 사업자/통장 키워드가 잡히는 방향을 채택(눕힌 사진·스캔 대응).
 export async function ocrCanvasesPerPage(canvases, onProgress) {
   const Tesseract = (await import('tesseract.js')).default;
   const pages = [];
   for (let i = 0; i < canvases.length; i += 1) {
-    // 1) 본문 인식 (한글+영문) — 단일 블록(PSM 6)이 통장·등록증 레이아웃에 더 안정적
-    const { data } = await Tesseract.recognize(canvases[i], 'kor+eng', {
-      logger: (m) => {
-        if (onProgress && m.status === 'recognizing text') onProgress(m.progress * 0.7);
-      },
-      tessedit_pageseg_mode: '6',
-      preserve_interword_spaces: '1',
-    });
-    // 2) 숫자 전용 보강 패스 — 계좌번호·사업자번호 (통장 글꼴·도장에도 강함).
-    //    한글 본문 패스가 숫자를 흐리게 읽어도 이 패스가 정확한 번호를 잡아낸다.
+    // 1) 방향 자동 감지 + 본문 인식 (PSM 6)
+    let best = null;
+    for (const deg of [0, 90, 270, 180]) {
+      const rot = rotateCanvasEl(canvases[i], deg);
+      const { data } = await Tesseract.recognize(rot, 'kor+eng', {
+        logger: (m) => {
+          if (onProgress && m.status === 'recognizing text') onProgress(m.progress * 0.6);
+        },
+        tessedit_pageseg_mode: '6',
+        preserve_interword_spaces: '1',
+      });
+      const text = data.text || '';
+      if (deg === 0) best = { text, canvas: rot }; // 기본값(정방향)
+      if (BIZ_KEYWORDS.test(text.replace(/\s+/g, ''))) {
+        best = { text, canvas: rot };
+        break; // 키워드가 잡히는 방향 = 올바른 방향
+      }
+    }
+    // 2) 숫자 전용 보강 패스 — 채택된 방향에서 계좌번호·사업자번호 인식
     let digits = '';
     try {
-      const dRes = await Tesseract.recognize(canvases[i], 'eng', {
+      const dRes = await Tesseract.recognize(best.canvas, 'eng', {
         logger: (m) => {
-          if (onProgress && m.status === 'recognizing text') onProgress(0.7 + m.progress * 0.3);
+          if (onProgress && m.status === 'recognizing text') onProgress(0.6 + m.progress * 0.4);
         },
         tessedit_pageseg_mode: '11', // sparse text — 흩어진 숫자 덩어리 인식
         tessedit_char_whitelist: '0123456789-',
@@ -144,7 +175,7 @@ export async function ocrCanvasesPerPage(canvases, onProgress) {
     } catch {
       /* 숫자 보강 실패는 무시 — 본문 패스만으로 진행 */
     }
-    pages.push(`${data.text || ''}\n${digits}`);
+    pages.push(`${best.text || ''}\n${digits}`);
   }
   return pages;
 }
@@ -185,9 +216,11 @@ const BANK_NAMES = [
   '산업',
 ];
 export function parseBank(rawText) {
-  // ★ 공백 완전 제거(compact) — 스캔 OCR·텍스트 PDF가 글자/숫자 사이에 넣는
-  //   자간 공백("1 2 3 - 4 5")을 없애야 은행명·계좌번호 패턴이 잡힌다.
-  const c = String(rawText || '').replace(/\s+/g, '');
+  // ★ 공백 완전 제거(compact) + 하이픈 변형 정규화 — 스캔 OCR이 하이픈을 em-dash(—)·
+  //   다른 기호로 읽어도 계좌번호가 매칭되게 ASCII '-'로 통일한다.
+  const c = String(rawText || '')
+    .replace(/[—–―‒−﹣－‐ー]/g, '-').replace(/-{2,}/g, '-')
+    .replace(/\s+/g, '');
   const out = { bankName: '', bankAccount: '' };
   for (const b of BANK_NAMES) {
     if (c.includes(b)) {
@@ -195,15 +228,12 @@ export function parseBank(rawText) {
       break;
     }
   }
-  // 계좌번호 — 하이픈 포함(3덩이 이상) 우선, 없으면 10~16자리 숫자.
-  //   전화·팩스번호(0 또는 15·16·18 로 시작)는 제외하고 계좌형을 우선 선택.
-  const accs = [...c.matchAll(/\d{2,6}-\d{2,6}-\d{2,7}(?:-\d{1,6})?/g)].map((m) => m[0]);
-  const acc = accs.find((a) => !/^0/.test(a) && !/^1[5689]/.test(a)) || accs[0];
+  // 계좌번호 — 하이픈 포함(3덩이) 우선. 전화·팩스(0 또는 15·16·18로 시작)는 제외하고
+  //   계좌형만 채택. 계좌형이 없으면 전화번호를 잘못 채우지 않도록 비워둔다(수기 입력 유도).
+  //   각 구간 2~6자리로 제한 — 인접한 전화번호 앞자리를 끌어와 과다매칭되는 것 방지.
+  const accs = [...c.matchAll(/\d{2,6}-\d{2,6}-\d{2,6}(?:-\d{2,6})?/g)].map((m) => m[0]);
+  const acc = accs.find((a) => !/^0/.test(a) && !/^1[5689]/.test(a));
   if (acc) out.bankAccount = acc;
-  else {
-    const acc2 = c.match(/\d{10,16}/);
-    if (acc2) out.bankAccount = acc2[0];
-  }
   return out;
 }
 
@@ -352,9 +382,11 @@ export function normalizeCompany(name) {
 
 // 사업자등록증 텍스트 → { name, representative, businessNumber }
 export function parseBizReg(rawText) {
-  // ★ 공백 완전 제거(compact) — PDF/OCR이 글자마다 넣는 자간 공백을 없애야
-  //   "주 식 회 사", "1 5 6 - 8 7" 같은 텍스트에서도 라벨·숫자가 잡힌다.
-  const c = String(rawText || '').replace(/\s+/g, '');
+  // ★ 공백 완전 제거(compact) + 하이픈 변형 정규화 — "주 식 회 사", "1 5 6 - 8 7",
+  //   OCR이 em-dash로 읽은 "156—87—03859" 같은 경우에도 라벨·숫자가 잡힌다.
+  const c = String(rawText || '')
+    .replace(/[—–―‒−﹣－‐ー]/g, '-').replace(/-{2,}/g, '-')
+    .replace(/\s+/g, '');
   const out = { name: '', representative: '', businessNumber: '' };
 
   // 사업자등록번호 3-2-5 — '등록번호' 라벨 뒤 우선, 없으면 문서 내 첫 3-2-5
