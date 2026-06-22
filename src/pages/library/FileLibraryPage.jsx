@@ -304,23 +304,40 @@ export default function FileLibraryPage() {
     toast('휴지통으로 이동했습니다.');
   }
 
-  // 선택한 파일들을 한 번에 출력(새 탭/다운로드) — 순차로 열어 팝업 차단·과부하 방지
-  function bulkDownload() {
+  const [merging, setMerging] = useState(false);
+  // 선택한 PDF들을 '하나의 PDF'로 합쳐 새 탭에서 출력(인쇄·저장). 벡터 그대로 병합돼 선명.
+  async function bulkDownload() {
+    if (merging) return;
     const sel = files.filter((x) => selected.has(x.id) && x.downloadURL);
-    if (sel.length === 0) return;
-    sel.forEach((f, i) => {
-      setTimeout(() => {
-        const a = document.createElement('a');
-        a.href = f.downloadURL;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.download = f.name || '';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }, i * 250);
-    });
-    toast(`${sel.length}개 파일을 출력합니다.`);
+    const pdfs = sel.filter((f) => /\.pdf$/i.test(f.name || '') || f.contentType === 'application/pdf');
+    if (pdfs.length === 0) {
+      toast('합쳐서 출력할 PDF가 없습니다. (PDF 파일만 가능)', 'error');
+      return;
+    }
+    setMerging(true);
+    try {
+      const { PDFDocument } = await import('pdf-lib');
+      const merged = await PDFDocument.create();
+      for (const f of pdfs) {
+        const res = await fetch(f.downloadURL);
+        if (!res.ok) continue;
+        const buf = await res.arrayBuffer();
+        const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const pages = await merged.copyPages(doc, doc.getPageIndices());
+        pages.forEach((p) => merged.addPage(p));
+      }
+      const bytes = await merged.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener'); // 새 탭에서 합본 PDF 열림 → 인쇄/저장
+      setTimeout(() => URL.revokeObjectURL(url), 120000);
+      const skipped = sel.length - pdfs.length;
+      toast(`${pdfs.length}개 PDF를 하나로 합쳐 출력했습니다.${skipped ? ` (PDF 아님 ${skipped}개 제외)` : ''}`);
+    } catch (err) {
+      toast('PDF 합치기 실패: ' + (err.message || err), 'error');
+    } finally {
+      setMerging(false);
+    }
   }
 
   async function bulkMove(v) {
@@ -638,8 +655,15 @@ export default function FileLibraryPage() {
                 <span className="lib-sel-count">{selected.size}개 선택</span>
                 <div className="lib-bulk">
                   <Select value="" onChange={bulkMove} options={moveOptions} placeholder="이동" ariaLabel="폴더로 이동" />
-                  <button type="button" className="btn btn-sm btn-outline" onClick={bulkDownload} title="선택한 파일을 한 번에 출력(다운로드)">
-                    <Icon name="download" className="btn-ic" />출력
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={bulkDownload}
+                    disabled={merging}
+                    title="선택한 PDF를 하나로 합쳐 출력(인쇄·저장)"
+                  >
+                    <Icon name={merging ? 'clock' : 'download'} className="btn-ic" />
+                    {merging ? '합치는 중…' : '출력'}
                   </button>
                   <button type="button" className="btn btn-sm btn-danger" onClick={bulkDelete}>
                     <Icon name="trash" className="btn-ic" />삭제
