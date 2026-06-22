@@ -5397,6 +5397,28 @@ table.cards-sm td {
 .bom-picker-row.is-checked {
   background: var(--primary-softer);
 }
+/* 교체 모드 — 클릭형 버튼 행 (체크박스 없이 클릭 즉시 변경) */
+.bom-picker-row--btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+}
+.bom-picker-row--btn .bom-picker-pick {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--accent-press, #c2410c);
+  background: var(--accent-soft, #fef0e9);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+}
+.bom-picker-row--btn:hover .bom-picker-pick {
+  background: var(--accent, #ea580c);
+  color: #fff;
+}
 .bom-picker-row input[type='checkbox'] {
   width: 16px;
   height: 16px;
