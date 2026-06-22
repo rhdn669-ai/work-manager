@@ -35,6 +35,14 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 등록일 표시 (Firestore Timestamp 또는 Date) → YY.MM.DD
+function fmtCreated(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function TaskCard({ t, onEdit, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: t.id });
   const style = {
@@ -74,12 +82,18 @@ function TaskCard({ t, onEdit, onDelete }) {
           {t.memo}
         </div>
       )}
-      {(t.assigneeName || t.dueDate) && (
+      {(t.assigneeName || t.dueDate || t.createdAt) && (
         <div className="task-card__foot">
           {t.assigneeName && (
             <span className="task-meta" title={t.assigneeName}>
               <Icon name="user" className="task-ic" />
               {t.assigneeName}
+            </span>
+          )}
+          {t.createdAt && (
+            <span className="task-meta" title={`등록 ${fmtCreated(t.createdAt)}`}>
+              <Icon name="clock" className="task-ic" />
+              {fmtCreated(t.createdAt)}
             </span>
           )}
           {t.dueDate && (

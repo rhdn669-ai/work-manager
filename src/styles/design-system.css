@@ -1043,6 +1043,25 @@ body {
 .task-board .task-col--done .kb-col__head {
   background: #16a34a;
 }
+/* 모바일: 가로 칸반(스와이프) 대신 상태별 섹션을 세로로 쌓는다 — 가로 스크롤로
+   세로 스크롤 중 옆으로 넘어가던 문제 제거. (홈 진행상황 보드 한정) */
+@media (max-width: 768px) {
+  .task-board.kb-board {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+    scroll-snap-type: none;
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  .task-board .kb-col {
+    width: 100%;
+    scroll-snap-align: none;
+  }
+}
 .task-board .kb-col__title {
   font-size: 13px;
   font-weight: 700;
