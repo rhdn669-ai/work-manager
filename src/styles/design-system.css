@@ -1261,7 +1261,9 @@ body {
     grid-auto-columns: 76%;
     gap: 6px;
     overflow-x: auto;
-    scroll-snap-type: x mandatory;
+    /* proximity = 가까이 갔을 때만 정렬. mandatory는 살짝만 스와이프해도 다음 칸으로
+       강제 넘어가 의도치 않게 컬럼이 바뀌던 문제가 있어 완화한다. */
+    scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
     /* 고정 하단 내비에 카드가 가리지 않도록 충분한 하단 여백 */
     padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
