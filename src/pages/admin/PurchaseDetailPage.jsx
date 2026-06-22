@@ -156,6 +156,8 @@ export default function PurchaseDetailPage() {
   // 메일 발송 미리보기 모달
   const [mailPreview, setMailPreview] = useState(null); // { supplierName, to, subject, html, fileName } | null
   const [mailAttachBusy, setMailAttachBusy] = useState(false); // 첨부 미리보기 PDF 생성 중
+  const [mailExtraFiles, setMailExtraFiles] = useState([]); // 메일에 함께 보낼 추가 첨부파일(도면·사양서 등)
+  const mailFileInputRef = useRef(null);
   const [replyModal, setReplyModal] = useState(null); // 회신 확인 시 납기 입력 모달 { supplierName, due } | null
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
   const [mailSending, setMailSending] = useState({});
@@ -949,6 +951,7 @@ export default function PurchaseDetailPage() {
       `${arr.filter(Boolean).map((s) => String(s).trim()).filter(Boolean).join('_')}.pdf`.replace(/[/\\]/g, '_');
     const fileName = build(['발주서', purchase.title, supplierName]); // 발송용(제목·업체명까지만)
     const saveFileName = build(['발주서', purchase.title, purchase.subtitle, supplierName, poNo]); // 저장용(부제 포함)
+    setMailExtraFiles([]); // 추가 첨부 초기화
     setMailPreview({ supplierName, to: toEmail, subject, html: htmlBody, fileName, saveFileName });
   }
 
@@ -994,7 +997,9 @@ export default function PurchaseDetailPage() {
   function confirmSendMail() {
     if (!mailPreview) return;
     const { supplierName, to, subject, html, fileName, saveFileName } = mailPreview;
+    const extraFiles = mailExtraFiles; // 발송 시점의 추가 첨부 캡처
     setMailPreview(null);
+    setMailExtraFiles([]);
     const setPct = (pct) => setMailSending((prev) => ({ ...prev, [supplierName]: pct }));
     const clearPct = () =>
       setMailSending((prev) => {
@@ -1062,6 +1067,20 @@ export default function PurchaseDetailPage() {
             }
           } catch {
             /* 명함 로드 실패 시 경로 이미지 그대로 발송 */
+          }
+        }
+        // 사용자가 추가한 첨부파일(도면·사양서 등)을 메일에 함께 첨부
+        if (extraFiles.length > 0) {
+          const totalExtra = extraFiles.reduce((s, f) => s + (f.size || 0), 0);
+          if (totalExtra > 8 * 1024 * 1024) {
+            toast('추가 첨부 용량이 너무 큽니다(총 8MB 이하). 일부를 빼고 다시 보내세요.', 'error');
+            clearPct();
+            return;
+          }
+          setPct(80);
+          for (const f of extraFiles) {
+            const b64 = await blobToBase64(f);
+            attachments.push({ filename: f.name, content: b64, encoding: 'base64' });
           }
         }
         setPct(88);
@@ -2249,7 +2268,10 @@ export default function PurchaseDetailPage() {
 
       <Modal
         isOpen={!!mailPreview}
-        onClose={() => setMailPreview(null)}
+        onClose={() => {
+          setMailPreview(null);
+          setMailExtraFiles([]);
+        }}
         title="발주서 메일 미리보기"
         size="lg"
       >
@@ -2288,6 +2310,57 @@ export default function PurchaseDetailPage() {
               </p>
             </div>
             <div className="form-group">
+              <label>추가 첨부파일 (선택)</label>
+              <input
+                ref={mailFileInputRef}
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const fs = Array.from(e.target.files || []);
+                  e.target.value = '';
+                  if (fs.length) setMailExtraFiles((prev) => [...prev, ...fs]);
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => mailFileInputRef.current?.click()}
+              >
+                <Icon name="plus" className="btn-ic" />
+                파일 추가
+              </button>
+              {mailExtraFiles.length > 0 && (
+                <ul className="mail-extra-list">
+                  {mailExtraFiles.map((f, i) => (
+                    <li key={`${f.name}-${i}`} className="mail-extra-item">
+                      <Icon name="doc" className="mail-extra-ic" />
+                      <span className="mail-extra-name" title={f.name}>
+                        {f.name}
+                      </span>
+                      <span className="mail-extra-size">
+                        {f.size < 1024 * 1024
+                          ? `${Math.max(1, Math.round(f.size / 1024))}KB`
+                          : `${(f.size / 1024 / 1024).toFixed(1)}MB`}
+                      </span>
+                      <button
+                        type="button"
+                        className="mail-extra-del"
+                        onClick={() => setMailExtraFiles((prev) => prev.filter((_, j) => j !== i))}
+                        aria-label="첨부 제거"
+                        title="제거"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="field-hint">
+                발주서 PDF 외에 도면·사양서 등을 함께 보낼 수 있습니다. (추가 첨부 합계 8MB 이하)
+              </p>
+            </div>
+            <div className="form-group">
               <label>본문 미리보기</label>
               <div
                 className="mail-body-preview"
@@ -2298,7 +2371,14 @@ export default function PurchaseDetailPage() {
               <button type="button" className="btn btn-primary" onClick={confirmSendMail}>
                 발송
               </button>
-              <button type="button" className="btn btn-outline" onClick={() => setMailPreview(null)}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setMailPreview(null);
+                  setMailExtraFiles([]);
+                }}
+              >
                 취소
               </button>
             </div>
