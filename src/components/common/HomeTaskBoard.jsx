@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCorners,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDraggable,
@@ -133,7 +134,12 @@ export default function HomeTaskBoard() {
   const { confirm, alert } = useDialog();
   const { userProfile, isAdmin, isExecutive } = useAuth();
   const canSeeAll = isAdmin || isExecutive;
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // PC: 마우스로 즉시 드래그. 모바일: 길게 눌러야(220ms) 드래그 시작 →
+  // 짧은 터치·이동은 그대로 세로 스크롤이 되어 스크롤이 막히지 않는다.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
+  );
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
