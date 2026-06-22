@@ -1583,6 +1583,7 @@ body {
   padding: 18px 22px;
   width: calc(100% - var(--sidebar-width));
   min-height: calc(100vh - var(--header-height));
+  min-height: calc(100dvh - var(--header-height)); /* 모바일 동적 뷰포트 — 주소창 변화에도 높이 정확 */
   transition:
     margin-left 0.2s ease,
     width 0.2s ease;

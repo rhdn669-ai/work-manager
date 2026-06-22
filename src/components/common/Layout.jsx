@@ -29,6 +29,25 @@ export default function Layout() {
     ensureBodyScrollUnlockedIfIdle(); // 모달 잠금이 남아 세로 스크롤이 막힌 경우 복구
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  // 자가복구 안전망 — 열린 모달이 없는데 스크롤 잠금이 잔류하면, 사용자가 화면을
+  // 만지거나(터치/포인터) 앱으로 돌아오는 순간 즉시 해제. (일부 기기에서 세로 스크롤이
+  // 막힌 채로 남던 문제를 새로고침 없이 그 자리에서 회복)
+  useEffect(() => {
+    const heal = () => ensureBodyScrollUnlockedIfIdle();
+    window.addEventListener('focus', heal);
+    window.addEventListener('pageshow', heal);
+    document.addEventListener('visibilitychange', heal);
+    document.addEventListener('touchstart', heal, { passive: true });
+    document.addEventListener('pointerdown', heal, { passive: true });
+    return () => {
+      window.removeEventListener('focus', heal);
+      window.removeEventListener('pageshow', heal);
+      document.removeEventListener('visibilitychange', heal);
+      document.removeEventListener('touchstart', heal);
+      document.removeEventListener('pointerdown', heal);
+    };
+  }, []);
   const [exitToast, setExitToast] = useState(false);
   const exitArmedRef = useRef(false);
   const exitTimerRef = useRef(null);
