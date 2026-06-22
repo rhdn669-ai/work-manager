@@ -35,3 +35,4 @@ dist-ssr
 
 # 테스트용 임시 이미지
 public/_*.png
+*.traineddata
