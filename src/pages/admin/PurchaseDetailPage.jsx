@@ -1499,20 +1499,20 @@ export default function PurchaseDetailPage() {
                         </td>
                         <td data-label="수량">
                           <input
-                            className="num-input"
-                            type="number"
-                            min="0"
-                            value={ln.qty}
-                            onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                            disabled={isReadOnly}
+                            className="num-input bom-readonly-input"
+                            type="text"
+                            value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
+                            readOnly
+                            tabIndex={-1}
                           />
                         </td>
                         <td data-label="단가">
-                          <MoneyInput
-                            className="num-input"
-                            value={ln.unitPrice}
-                            onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                            disabled={isReadOnly}
+                          <input
+                            className="num-input bom-readonly-input"
+                            type="text"
+                            value={Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}
+                            readOnly
+                            tabIndex={-1}
                           />
                         </td>
                         <td data-label="합계" title={amount ? amount.toLocaleString() : ''}>
@@ -1536,11 +1536,12 @@ export default function PurchaseDetailPage() {
                         <td data-label="비고" title={ln.note || ''} style={{ minWidth: 90 }}>
                           <input
                             type="text"
+                            className="bom-readonly-input"
                             value={ln.note || ''}
                             title={ln.note || ''}
                             placeholder="-"
-                            onChange={(e) => updateLine(idx, { note: e.target.value })}
-                            disabled={isReadOnly}
+                            readOnly
+                            tabIndex={-1}
                           />
                         </td>
                         <td data-label="입고" className="no-print">
