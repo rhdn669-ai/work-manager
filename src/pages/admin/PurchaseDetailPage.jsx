@@ -119,7 +119,9 @@ export default function PurchaseDetailPage() {
     supplierNotes: {},
     setCount: 0,
     mailBody: '',
+    deletedItems: [], // 삭제된 품목 행 휴지통
   });
+  const [lineTrashOpen, setLineTrashOpen] = useState(false);
   const [saveState, setSaveState] = useState('saved'); // 'saving' | 'saved' | 'error'
 
   const [receiveModal, setReceiveModal] = useState(null); // { lineIdx, line } | null
@@ -248,6 +250,7 @@ export default function PurchaseDetailPage() {
         factoryKey: p.factoryKey || '',
         deliveryPlace: p.deliveryPlace || '',
         items: p.items && p.items.length > 0 ? p.items.map((it) => ({ ...EMPTY_LINE, ...it })) : [{ ...EMPTY_LINE }],
+        deletedItems: Array.isArray(p.deletedItems) ? p.deletedItems : [],
         note: p.note || '',
         supplierNotes: p.supplierNotes || {},
         setCount: Number(p.setCount) || 0,
@@ -459,11 +462,38 @@ export default function PurchaseDetailPage() {
   }
 
   async function removeLine(idx) {
-    if (!(await confirm('이 품목 행을 삭제하시겠습니까?'))) return;
-    setForm((f) => ({
-      ...f,
-      items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items,
-    }));
+    if (!(await confirm('이 품목 행을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.'))) return;
+    setForm((f) => {
+      const removed = f.items[idx];
+      const hasContent = (removed?.name || '').trim() || removed?.itemId;
+      const rest = f.items.filter((_, i) => i !== idx);
+      const items = rest.length > 0 ? rest : [{ ...EMPTY_LINE }];
+      const deletedItems = hasContent
+        ? [{ ...removed, _deletedAt: Date.now(), _deletedBy: userProfile?.name || '' }, ...(f.deletedItems || [])]
+        : f.deletedItems || [];
+      return { ...f, items, deletedItems };
+    });
+    scheduleAutoSave();
+  }
+
+  // 발주 품목 휴지통 — 복원 / 영구삭제
+  function restoreDeletedItem(i) {
+    setForm((f) => {
+      const dl = (f.deletedItems || [])[i];
+      if (!dl) return f;
+      const { _deletedAt, _deletedBy, ...line } = dl;
+      const kept = f.items.filter((ln) => (ln.name || '').trim() || ln.itemId);
+      return {
+        ...f,
+        items: [...kept, line],
+        deletedItems: (f.deletedItems || []).filter((_, k) => k !== i),
+      };
+    });
+    scheduleAutoSave();
+    toast('복원되었습니다.');
+  }
+  function purgeDeletedItem(i) {
+    setForm((f) => ({ ...f, deletedItems: (f.deletedItems || []).filter((_, k) => k !== i) }));
     scheduleAutoSave();
   }
 
@@ -624,6 +654,7 @@ export default function PurchaseDetailPage() {
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
         mailBody: f.mailBody || '',
+        deletedItems: f.deletedItems || [],
       });
       const updated = {
         ...(purchaseRef.current || {}),
@@ -635,6 +666,7 @@ export default function PurchaseDetailPage() {
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
         mailBody: f.mailBody || '',
+        deletedItems: f.deletedItems || [],
         title: f.title.trim(),
         siteId: f.siteId,
         siteName: site?.name || '',
@@ -1403,12 +1435,18 @@ export default function PurchaseDetailPage() {
       <div className="form-group screen-only">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <label style={{ margin: 0 }}>품목</label>
-          {!isReadOnly && form.items.some((ln) => (ln.name || '').trim()) && (
-            <button type="button" className="btn btn-sm btn-danger" onClick={clearAllLines}>
+          <div className="row-actions">
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setLineTrashOpen(true)}>
               <Icon name="trash" className="btn-ic" />
-              전체 삭제
+              휴지통{form.deletedItems?.length ? ` (${form.deletedItems.length})` : ''}
             </button>
-          )}
+            {!isReadOnly && form.items.some((ln) => (ln.name || '').trim()) && (
+              <button type="button" className="btn btn-sm btn-danger" onClick={clearAllLines}>
+                <Icon name="trash" className="btn-ic" />
+                전체 삭제
+              </button>
+            )}
+          </div>
         </div>
         <p className="field-hint">
           우측 상단 「품목 불러오기」로 구매 품목을 선택해 추가하세요. 입력 즉시 자동 저장됩니다. 구매처는 첫 품목의
@@ -2452,6 +2490,64 @@ export default function PurchaseDetailPage() {
               </button>
             </div>
           </>
+        )}
+      </Modal>
+
+      {/* 발주 품목 휴지통 */}
+      <Modal isOpen={lineTrashOpen} onClose={() => setLineTrashOpen(false)} title="발주 품목 휴지통" size="lg">
+        <p className="field-hint">삭제한 품목 행이 보관됩니다. 복원하면 품목 목록으로 되살아납니다.</p>
+        {(form.deletedItems || []).length === 0 ? (
+          <div className="trash-empty">삭제한 품목이 없습니다.</div>
+        ) : (
+          <div className="table-scroll-x">
+            <table className="table cards-sm">
+              <thead>
+                <tr>
+                  <th>품명</th>
+                  <th>규격</th>
+                  <th style={{ width: 70 }}>수량</th>
+                  <th style={{ width: 90 }}>단가</th>
+                  <th style={{ width: 130 }}>삭제일시</th>
+                  <th className="col-action" style={{ width: 150 }}>작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(form.deletedItems || []).map((d, i) => {
+                  const m = d.itemId ? itemMaster.find((x) => x.id === d.itemId) : null;
+                  return (
+                    <tr key={`${d.itemId || d.name}-${i}`}>
+                      <td data-label="품명">
+                        <strong>{(m && m.name) || d.name || '(이름 없음)'}</strong>
+                      </td>
+                      <td data-label="규격">{(m && m.spec) || d.spec || '-'}</td>
+                      <td data-label="수량">{Number(d.qty) ? Number(d.qty).toLocaleString() : '-'}</td>
+                      <td data-label="단가">{Number(d.unitPrice) ? Number(d.unitPrice).toLocaleString() : '-'}</td>
+                      <td data-label="삭제일시">{d._deletedAt ? fmtDateTime(new Date(d._deletedAt)) : '-'}</td>
+                      <td data-label="작업" className="col-action">
+                        <div className="row-actions">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => restoreDeletedItem(i)}
+                            disabled={isReadOnly}
+                          >
+                            <Icon name="restore" className="btn-ic" />복원
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            onClick={() => purgeDeletedItem(i)}
+                          >
+                            <Icon name="trash" className="btn-ic" />영구삭제
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </Modal>
 
