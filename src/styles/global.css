@@ -4590,6 +4590,14 @@ table.cards-sm td {
   width: 14px;
   height: 14px;
 }
+/* 표 열 드래그 복사 — 선택된 셀 하이라이트 */
+.col-copy-sel {
+  background: var(--primary-softer, #dbeafe) !important;
+  box-shadow: inset 0 0 0 1.5px var(--accent, #ea580c);
+}
+.bom-flat-table {
+  user-select: none; /* 열 드래그 시 텍스트 선택 방지 */
+}
 .lib-locked-label {
   display: inline-flex;
   align-items: center;

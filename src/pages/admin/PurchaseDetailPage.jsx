@@ -265,6 +265,60 @@ export default function PurchaseDetailPage() {
     }
   }
 
+  // 표에서 같은 '열'을 세로로 드래그하면 그 열의 값들만 클립보드로 복사 (엑셀 붙여넣기용)
+  function handleColumnDragCopy(e) {
+    if (e.button !== 0) return;
+    const td = e.target.closest('td');
+    if (!td) return;
+    // 버튼·셀렉트 등 조작 위젯이 있는 칸(작업·입고)은 제외 — 클릭 동작 보존
+    if (td.querySelector('button, a, select')) return;
+    const tr = td.closest('tr');
+    const tbody = tr?.closest('tbody');
+    if (!tbody) return;
+    const rows = [...tbody.rows];
+    const startRow = rows.indexOf(tr);
+    const col = td.cellIndex;
+    if (startRow < 0) return;
+    e.preventDefault();
+    const clear = () =>
+      tbody.querySelectorAll('.col-copy-sel').forEach((el) => el.classList.remove('col-copy-sel'));
+    const apply = (r) => {
+      const a = Math.min(startRow, r);
+      const b = Math.max(startRow, r);
+      rows.forEach((t, i) => {
+        const c = t.cells[col];
+        if (c) c.classList.toggle('col-copy-sel', i >= a && i <= b);
+      });
+    };
+    clear();
+    apply(startRow);
+    const move = (ev) => {
+      const overTd = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('td');
+      if (!overTd) return;
+      const i = rows.indexOf(overTd.closest('tr'));
+      if (i >= 0) apply(i);
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      const cells = [...tbody.querySelectorAll('.col-copy-sel')]
+        .map((c) => {
+          const inp = c.querySelector('input, textarea');
+          return (inp ? inp.value : c.textContent || '').trim();
+        })
+        .filter((v) => v !== '');
+      if (cells.length && navigator.clipboard?.writeText) {
+        navigator.clipboard
+          .writeText(cells.join('\n'))
+          .then(() => toast(`${cells.length}칸 복사됨 (붙여넣기 가능)`))
+          .catch(() => toast('복사 실패', 'error'));
+      }
+      setTimeout(clear, 800);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
+
   function patchForm(patch) {
     setForm((f) => ({ ...f, ...patch }));
     scheduleAutoSave();
@@ -1373,7 +1427,7 @@ export default function PurchaseDetailPage() {
         <div className="item-group is-expanded bom-flat-group">
           <div className="item-group-detail">
             <div className="table-scroll-x">
-              <table className="table inline-edit-table cards-sm bom-flat-table">
+              <table className="table inline-edit-table cards-sm bom-flat-table" onMouseDown={handleColumnDragCopy}>
                 <thead>
                   <tr>
                     <th className="bom-no-col">No</th>
