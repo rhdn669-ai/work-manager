@@ -1439,14 +1439,14 @@ export default function PurchaseDetailPage() {
                         <td data-label="품명" title={(ln.itemId && master) ? master.name : (ln.name || '')} style={{ minWidth: 90, maxWidth: 200 }}>
                           <div className="purchase-line-item-wrap">
                             <input
-                              className="purchase-line-item"
+                              className="purchase-line-item bom-readonly-input"
                               type="text"
-                              placeholder="품목 불러오기 또는 직접 입력"
+                              placeholder="‘변경’ 버튼으로 품목 선택"
                               value={(ln.itemId && master) ? master.name : ln.name}
                               title={(ln.itemId && master) ? master.name : (ln.name || '')}
-                              onChange={(e) => updateLineName(idx, e.target.value)}
+                              readOnly
+                              tabIndex={-1}
                               autoComplete="off"
-                              disabled={isReadOnly}
                             />
                           </div>
                         </td>
