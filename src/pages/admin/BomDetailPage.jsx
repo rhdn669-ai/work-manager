@@ -45,6 +45,7 @@ export default function BomDetailPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [picked, setPicked] = useState(new Map()); // itemId -> 수량
+  const [pickerTargetId, setPickerTargetId] = useState(null); // null=추가, BOM항목 id=그 행 품목 교체
   // 코드 붙여넣기 일괄 선택
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -234,12 +235,48 @@ export default function BomDetailPage() {
   }
 
   function openPicker() {
+    setPickerTargetId(null); // 추가 모드
     setPicked(new Map());
     setPickerSearch('');
     setPasteOpen(false);
     setPasteText('');
     setPasteResult(null);
     setPickerOpen(true);
+  }
+  // 특정 BOM 행의 품목을 다른 품목으로 교체하기 위해 picker 열기
+  function openPickerReplace(id) {
+    setPickerTargetId(id);
+    setPicked(new Map());
+    setPickerSearch('');
+    setPasteOpen(false);
+    setPasteText('');
+    setPasteResult(null);
+    setPickerOpen(true);
+  }
+  // 선택한 마스터 품목으로 해당 행 교체 (수량·비고 유지, 단가는 표준단가로)
+  async function replaceBomItemWithMaster(targetId, m) {
+    if (!targetId || !m) return;
+    pushBomUndo();
+    const patch = {
+      itemId: m.id,
+      name: m.name || '',
+      spec: m.spec || '',
+      unit: m.unit || '',
+      unitPrice: Number(m.standardPrice) || 0,
+      code: m.code || '',
+    };
+    setBomItems((prev) => prev.map((b) => (b.id === targetId ? { ...b, ...patch } : b)));
+    setPickerOpen(false);
+    setPickerTargetId(null);
+    try {
+      await updateBomItem(targetId, patch);
+    } catch (err) {
+      alert('변경 저장 오류: ' + err.message);
+    }
+  }
+  function closePicker() {
+    setPickerOpen(false);
+    setPickerTargetId(null);
   }
 
   // 붙여넣은 코드 한 줄을 마스터 품목과 매칭 (코드/품명/규격 순, 괄호 메모·따옴표 무시)
@@ -898,6 +935,15 @@ export default function BomDetailPage() {
                               </button>
                               <button
                                 type="button"
+                                className="btn btn-sm btn-outline"
+                                onClick={() => openPickerReplace(it.id)}
+                                aria-label="품목 변경"
+                                title="이 행의 품목을 다른 품목으로 변경"
+                              >
+                                <Icon name="edit" className="btn-ic" />변경
+                              </button>
+                              <button
+                                type="button"
                                 className="btn btn-sm btn-danger"
                                 onClick={() => removeRow(it.id)}
                                 aria-label="삭제"
@@ -939,10 +985,12 @@ export default function BomDetailPage() {
         </div>
       )}
 
-      <Modal isOpen={pickerOpen} onClose={() => setPickerOpen(false)} title="품목 선택">
+      <Modal isOpen={pickerOpen} onClose={closePicker} title={pickerTargetId ? '품목 변경 (다른 품목으로 교체)' : '품목 선택'}>
         <form onSubmit={handlePickerSubmit}>
           <p className="field-hint">
-            구매 품목 관리에 등록된 품목 중에서 선택해 BOM에 추가합니다. 이미 BOM에 있는 품목은 목록에서 제외됩니다.
+            {pickerTargetId
+              ? '교체할 품목을 클릭하면 해당 행이 그 품목으로 바뀝니다. (수량·비고 유지, 단가는 표준단가 적용)'
+              : '구매 품목 관리에 등록된 품목 중에서 선택해 BOM에 추가합니다. 이미 BOM에 있는 품목은 목록에서 제외됩니다.'}
           </p>
 
           {/* 코드 여러 개 붙여넣기 → 자동 선택 */}
@@ -1023,19 +1071,39 @@ export default function BomDetailPage() {
                     : '추가 가능한 품목이 없습니다 (모두 BOM에 포함됨).'}
               </p>
             ) : (
-              filteredMaster.map((m) => (
-                <label key={m.id} className={`bom-picker-row ${picked.has(m.id) ? 'is-checked' : ''}`}>
-                  <input type="checkbox" checked={picked.has(m.id)} onChange={() => togglePick(m.id)} />
-                  <span className="bom-picker-code">{m.code || '-'}</span>
-                  <span className="bom-picker-name">
-                    <strong>{m.name}</strong>
-                    {m.spec && <span className="bom-picker-spec"> ({m.spec})</span>}
-                  </span>
-                  {m.standardPrice > 0 && (
-                    <span className="bom-picker-price">{Number(m.standardPrice).toLocaleString()}원</span>
-                  )}
-                  {picked.has(m.id) && (
-                    <span
+              filteredMaster.map((m) => {
+                const meta = (
+                  <>
+                    <span className="bom-picker-code">{m.code || '-'}</span>
+                    <span className="bom-picker-name">
+                      <strong>{m.name}</strong>
+                      {m.spec && <span className="bom-picker-spec"> ({m.spec})</span>}
+                    </span>
+                    {m.standardPrice > 0 && (
+                      <span className="bom-picker-price">{Number(m.standardPrice).toLocaleString()}원</span>
+                    )}
+                  </>
+                );
+                // 교체 모드 — 클릭 즉시 해당 행 품목 교체
+                if (pickerTargetId) {
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      className="bom-picker-row bom-picker-row--btn"
+                      onClick={() => replaceBomItemWithMaster(pickerTargetId, m)}
+                    >
+                      {meta}
+                      <span className="bom-picker-pick">변경</span>
+                    </button>
+                  );
+                }
+                return (
+                  <label key={m.id} className={`bom-picker-row ${picked.has(m.id) ? 'is-checked' : ''}`}>
+                    <input type="checkbox" checked={picked.has(m.id)} onChange={() => togglePick(m.id)} />
+                    {meta}
+                    {picked.has(m.id) && (
+                      <span
                       className="bom-picker-qty-wrap"
                       onClick={(e) => {
                         e.preventDefault();
@@ -1056,14 +1124,17 @@ export default function BomDetailPage() {
                     </span>
                   )}
                 </label>
-              ))
+                );
+              })
             )}
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" disabled={picked.size === 0}>
-              {picked.size}개 추가
-            </button>
-            <button type="button" className="btn btn-outline" onClick={() => setPickerOpen(false)}>
+            {!pickerTargetId && (
+              <button type="submit" className="btn btn-primary" disabled={picked.size === 0}>
+                {picked.size}개 추가
+              </button>
+            )}
+            <button type="button" className="btn btn-outline" onClick={closePicker}>
               취소
             </button>
           </div>
