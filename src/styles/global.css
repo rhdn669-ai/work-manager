@@ -1441,11 +1441,13 @@ body {
   text-align: center; /* ★기준: 라벨 중앙정렬 */
 }
 .nav-link .nav-badge.sidebar-badge {
-  /* flex margin-left:auto pushes badge to right without overlap — avoids absolute overlay on label */
-  margin-left: auto;
+  /* 배지를 우측에 절대 고정 — 라벨의 중앙정렬(메뉴 위치)에 영향 주지 않음 */
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 0;
   flex-shrink: 0;
-  position: static;
-  transform: none;
 }
 
 /* 사용자가 추가한 대분류 헤더 — 절취선 + 네이비 라벨 */
