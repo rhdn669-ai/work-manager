@@ -48,8 +48,10 @@ export default function Select({
     setPos({
       left: Math.min(Math.max(8, r.left), Math.max(8, vw - width - 8)),
       width,
-      top: openDown ? r.bottom + gap : undefined,
-      bottom: openDown ? undefined : vh - r.top + gap,
+      // 위로 펼칠 때 top을 'auto'로 명시 — 기본 CSS top:calc(100%+6px)가 살아나 화면 밖으로
+      // 밀리던 문제 방지(아래쪽 행이 안 펼쳐지던 원인).
+      top: openDown ? r.bottom + gap : 'auto',
+      bottom: openDown ? 'auto' : vh - r.top + gap,
       maxHeight: Math.min(desired, room), // 화면 안에 들어오도록 제한 → 패널 내부 스크롤
     });
   }, [options.length]);
