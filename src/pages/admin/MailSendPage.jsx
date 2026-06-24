@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
 import { getSuppliers } from '../../services/purchaseService';
 import { getVendors } from '../../services/outsourceService';
+import { addMailLog, getMailLogs } from '../../services/mailService';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 
 function blobToBase64(blob) {
@@ -14,9 +16,21 @@ function blobToBase64(blob) {
   });
 }
 
+function fmtDateTime(ts) {
+  if (!ts) return '-';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '-';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // 업체 다중 선택 → 동일한 메일을 한 번에 발송 (구매처 / 외주)
 export default function MailSendPage() {
   const { toast, confirm } = useDialog();
+  const { userProfile } = useAuth();
+  const [mode, setMode] = useState('compose'); // 'compose' | 'history'
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const [targetType, setTargetType] = useState('supplier'); // 'supplier' | 'vendor'
   const [suppliers, setSuppliers] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -46,6 +60,20 @@ export default function MailSendPage() {
   useEffect(() => {
     setSelected(new Set());
   }, [targetType]);
+
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true);
+    try {
+      setLogs(await getMailLogs());
+    } catch {
+      setLogs([]);
+    } finally {
+      setLogsLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (mode === 'history') loadLogs();
+  }, [mode, loadLogs]);
 
   const list = targetType === 'supplier' ? suppliers : vendors;
   const filtered = useMemo(() => {
@@ -124,6 +152,22 @@ export default function MailSendPage() {
         }
         setProgress({ done: i + 1, total: recipients.length });
       }
+      // 발송 이력 기록
+      try {
+        await addMailLog({
+          by: userProfile?.name || '',
+          targetType,
+          subject: subject.trim(),
+          total: recipients.length,
+          okCount: ok,
+          failCount: fail.length,
+          recipients: recipients.map((r) => ({ name: r.name, email: r.email })),
+          failNames: fail,
+          fileNames: files.map((f) => f.name),
+        });
+      } catch {
+        /* 이력 기록 실패는 무시 */
+      }
       if (fail.length === 0) toast(`${ok}개 업체에 발송 완료했습니다.`, 'success', 0);
       else toast(`${ok}개 발송, 실패 ${fail.length}개: ${fail.join(', ')}`, 'error', 0);
       setSelected(new Set());
@@ -142,12 +186,83 @@ export default function MailSendPage() {
       <div className="page-header">
         <h2>메일 발송</h2>
         <div className="page-actions">
-          <button type="button" className="btn btn-sm btn-primary" onClick={send} disabled={sending}>
-            <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
-            {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
-          </button>
+          {mode === 'compose' && (
+            <button type="button" className="btn btn-sm btn-primary" onClick={send} disabled={sending}>
+              <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
+              {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* 상단 탭 — 메일 작성 / 발송 이력 */}
+      <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          className={`tab-nav-item ${mode === 'compose' ? 'active' : ''}`}
+          onClick={() => setMode('compose')}
+        >
+          메일 작성
+        </button>
+        <button
+          type="button"
+          className={`tab-nav-item ${mode === 'history' ? 'active' : ''}`}
+          onClick={() => setMode('history')}
+        >
+          발송 이력
+        </button>
+      </div>
+
+      {mode === 'history' ? (
+        <div className="mail-history">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <button type="button" className="btn btn-sm btn-outline" onClick={loadLogs} disabled={logsLoading}>
+              <Icon name="restore" className="btn-ic" />
+              새로고침
+            </button>
+          </div>
+          {logsLoading ? (
+            <p className="text-muted">불러오는 중...</p>
+          ) : logs.length === 0 ? (
+            <div className="trash-empty">발송 이력이 없습니다.</div>
+          ) : (
+            <div className="table-scroll-x">
+              <table className="table cards-sm">
+                <thead>
+                  <tr>
+                    <th style={{ width: 140 }}>발송일시</th>
+                    <th style={{ width: 70 }}>대상</th>
+                    <th>제목</th>
+                    <th style={{ width: 90 }}>수신/성공</th>
+                    <th style={{ width: 70 }}>발송자</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((l) => (
+                    <tr key={l.id}>
+                      <td data-label="발송일시">{fmtDateTime(l.createdAt)}</td>
+                      <td data-label="대상">{l.targetType === 'vendor' ? '외주' : '구매처'}</td>
+                      <td data-label="제목">
+                        <strong>{l.subject || '(제목 없음)'}</strong>
+                        <div className="field-hint" style={{ margin: '2px 0 0' }} title={(l.recipients || []).map((r) => r.name).join(', ')}>
+                          {(l.recipients || []).map((r) => r.name).join(', ')}
+                          {l.fileNames?.length ? ` · 첨부 ${l.fileNames.length}` : ''}
+                        </div>
+                      </td>
+                      <td data-label="수신/성공">
+                        {l.okCount ?? 0}/{l.total ?? 0}
+                        {l.failCount ? <span style={{ color: 'var(--danger,#dc2626)' }}> (실패 {l.failCount})</span> : ''}
+                      </td>
+                      <td data-label="발송자">{l.by || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
         업체를 여러 개 선택해 같은 내용의 메일을 한 번에 보냅니다. 이메일이 등록된 업체만 발송됩니다.
       </p>
@@ -292,6 +407,8 @@ export default function MailSendPage() {
           </p>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
