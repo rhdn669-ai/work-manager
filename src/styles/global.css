@@ -4602,6 +4602,13 @@ table.cards-sm td {
     grid-template-columns: 1fr;
   }
 }
+.mail-send-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #374151);
+  margin-bottom: 8px;
+}
 .mail-send-recipients__bar {
   display: flex;
   gap: 8px;
@@ -4610,10 +4617,16 @@ table.cards-sm td {
 .mail-send-recipients__bar input {
   flex: 1;
   min-width: 0;
+  min-height: 44px;
+  padding: 11px 14px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--bg-card, #fff);
+  font-size: 14px;
 }
 .mail-send-list {
   border: 1px solid var(--border, #e5e7eb);
-  border-radius: 10px;
+  border-radius: var(--radius-md, 14px);
   max-height: 480px;
   overflow-y: auto;
   background: var(--bg-card, #fff);

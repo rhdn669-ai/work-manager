@@ -141,10 +141,12 @@ export default function MailSendPage() {
     <div className="mail-send-page">
       <div className="page-header">
         <h2>메일 발송</h2>
-        <button type="button" className="btn btn-primary" onClick={send} disabled={sending}>
-          <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
-          {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
-        </button>
+        <div className="page-actions">
+          <button type="button" className="btn btn-sm btn-primary" onClick={send} disabled={sending}>
+            <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
+            {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
+          </button>
+        </div>
       </div>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
         업체를 여러 개 선택해 같은 내용의 메일을 한 번에 보냅니다. 이메일이 등록된 업체만 발송됩니다.
@@ -171,6 +173,7 @@ export default function MailSendPage() {
       <div className="mail-send-grid">
         {/* 수신 업체 선택 */}
         <div className="mail-send-recipients">
+          <label className="mail-send-label">수신 업체</label>
           <div className="mail-send-recipients__bar">
             <input
               type="search"
@@ -284,10 +287,9 @@ export default function MailSendPage() {
               </ul>
             )}
           </div>
-          <button type="button" className="btn btn-primary" onClick={send} disabled={sending} style={{ minHeight: 42 }}>
-            <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
-            {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `선택한 ${selectedCount}개 업체에 발송`}
-          </button>
+          <p className="field-hint" style={{ margin: '4px 2px 0' }}>
+            우측 상단 <strong>발송</strong> 버튼으로 선택한 업체에 한 번에 보냅니다.
+          </p>
         </div>
       </div>
     </div>
