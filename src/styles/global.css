@@ -1441,11 +1441,11 @@ body {
   text-align: center; /* ★기준: 라벨 중앙정렬 */
 }
 .nav-link .nav-badge.sidebar-badge {
-  /* 배지를 우측에 절대 고정 — 라벨의 중앙정렬(메뉴 위치)에 영향 주지 않음 */
+  /* 배지를 우측에 절대 고정 — 라벨의 중앙정렬(메뉴 위치)에 영향 주지 않음.
+     중앙정렬은 transform이 아닌 top 계산으로 — badge-bounce 애니메이션의 transform과 충돌 방지(배지 높이 20px). */
   position: absolute;
   right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: calc(50% - 10px);
   margin-left: 0;
   flex-shrink: 0;
 }
