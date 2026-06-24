@@ -483,6 +483,15 @@ export async function unmarkPaymentRequested(purchaseId, supplierName) {
   });
 }
 
+// 업체별 세금계산서(홈택스/코드에프 또는 수동) 정보 저장 — 결제 페이지 표시용
+export async function setSupplierTaxInvoice(purchaseId, supplierName, data) {
+  const key = supplierName.replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`taxInvoice.${key}`]: { ...data, fetchedAt: new Date() },
+    updatedAt: new Date(),
+  });
+}
+
 // 발주건 상태를 '회신'으로 전환 (모든 업체 회신 확인 시 자동 호출)
 export async function setPurchaseReplied(id, by = '') {
   await updateDoc(doc(db, 'purchases', id), {

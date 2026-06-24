@@ -14,10 +14,86 @@ export default {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       return mergePdf(request);
     }
+    if (url.pathname === '/api/hometax/taxinvoice') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      return hometaxTaxInvoice(request, env);
+    }
     // 정적 자산(SPA) — not_found_handling=single-page-application
     return env.ASSETS.fetch(request);
   },
 };
+
+// ── 홈택스 전자세금계산서(매입) 조회 — 코드에프(CODEF) 스크래핑 ──
+// 필요한 Worker 시크릿: CODEF_CLIENT_ID, CODEF_CLIENT_SECRET, CODEF_CONNECTED_ID(공동인증서 1회 등록 시 발급).
+// 선택: CODEF_BASE(기본 https://api.codef.io), CODEF_INVOICE_PATH(기본 매입 세금계산서 목록 경로).
+// 키 미설정 시 { configured:false } 반환 → 프런트가 설정 안내.
+async function hometaxTaxInvoice(request, env) {
+  const clientId = (env.CODEF_CLIENT_ID || '').trim();
+  const clientSecret = (env.CODEF_CLIENT_SECRET || '').trim();
+  const connectedId = (env.CODEF_CONNECTED_ID || '').trim();
+  if (!clientId || !clientSecret || !connectedId) {
+    return json({ configured: false, message: '코드에프 키/인증서가 아직 설정되지 않았습니다.' });
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: '잘못된 요청' }, 400);
+  }
+  const { startDate, endDate, bizNo } = body || {};
+  try {
+    // 1) OAuth 토큰
+    const tokenRes = await fetch('https://oauth.codef.io/oauth/token?grant_type=client_credentials&scope=read', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + btoa(`${clientId}:${clientSecret}`),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    if (!tokenRes.ok) return json({ error: '코드에프 토큰 발급 실패', status: tokenRes.status }, 502);
+    const token = (await tokenRes.json()).access_token;
+
+    // 2) 홈택스 매입 세금계산서 목록 조회
+    const base = (env.CODEF_BASE || 'https://api.codef.io').replace(/\/$/, '');
+    const path = env.CODEF_INVOICE_PATH || '/v1/kr/public/nt/etax-invoice/list';
+    const payload = {
+      organization: '0001',
+      connectedId,
+      startDate: (startDate || '').replace(/-/g, ''),
+      endDate: (endDate || '').replace(/-/g, ''),
+      type: '11', // 매입(받은 세금계산서)
+      searchType: '0',
+    };
+    const apiRes = await fetch(base + path, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const raw = await apiRes.text();
+    // CODEF 응답은 URL-encoded JSON
+    let parsed;
+    try {
+      parsed = JSON.parse(decodeURIComponent(raw));
+    } catch {
+      parsed = JSON.parse(raw);
+    }
+    // 공급자 사업자번호로 정규화 (bizNo 지정 시 필터)
+    const list = (parsed?.data?.resTaxInvoiceList || parsed?.data || []);
+    const norm = (Array.isArray(list) ? list : []).map((r) => ({
+      writeDate: r.resWriteDate || r.resIssueDate || '',
+      approvalNo: r.resIssueId || r.resManageNo || '',
+      supplierBizNo: (r.resSupplierCorpNum || r.commCorpNum || '').replace(/-/g, ''),
+      supplierName: r.resSupplierCorpName || '',
+      supplyValue: Number((r.resSupplyValue || '0').toString().replace(/[^0-9-]/g, '')) || 0,
+      tax: Number((r.resTaxAmount || '0').toString().replace(/[^0-9-]/g, '')) || 0,
+      total: Number((r.resTotalAmount || '0').toString().replace(/[^0-9-]/g, '')) || 0,
+    }));
+    const filtered = bizNo ? norm.filter((r) => r.supplierBizNo === String(bizNo).replace(/-/g, '')) : norm;
+    return json({ configured: true, result: parsed?.result || null, invoices: filtered });
+  } catch (e) {
+    return json({ error: '조회 오류: ' + (e?.message || String(e)) }, 500);
+  }
+}
 
 // 여러 PDF URL을 서버에서 받아 하나로 병합(벡터 그대로). 서버 fetch라 Storage CORS와 무관.
 async function mergePdf(request) {

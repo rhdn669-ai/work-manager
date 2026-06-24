@@ -10,6 +10,7 @@ import {
   subscribePurchaseItems,
   markSupplierPaid,
   unmarkSupplierPaid,
+  setSupplierTaxInvoice,
 } from '../../services/purchaseService';
 import { getSupplierLibraryFiles } from '../../services/fileLibraryService';
 import { mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
@@ -120,6 +121,7 @@ export default function PaymentPage() {
           bankAccount: supInfo.bankAccount || '',
           category: supInfo.category || '',
           note: supInfo.note || '',
+          taxInvoice: p.taxInvoice?.[key] || null,
           supply,
           total: supply + vat,
           requestedAt: req.requestedAt,
@@ -215,6 +217,49 @@ export default function PaymentPage() {
     );
   }
 
+  // 홈택스 세금계산서(코드에프) 불러와 사업자번호로 결제 건에 매칭
+  const [taxSyncing, setTaxSyncing] = useState(false);
+  async function syncTaxInvoices() {
+    if (taxSyncing) return;
+    setTaxSyncing(true);
+    try {
+      // 조회 기간: 결제요청 가장 이른 달 ~ 오늘 (없으면 최근 3개월)
+      const reqDates = allRows.map((r) => ms(r.requestedAt)).filter(Boolean);
+      const start = reqDates.length ? new Date(Math.min(...reqDates)) : new Date(Date.now() - 90 * 864e5);
+      const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const res = await fetch('/api/hometax/taxinvoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: fmt(start), endDate: fmt(new Date()) }),
+      });
+      const data = await res.json();
+      if (data.configured === false) {
+        toast('코드에프 키/공동인증서가 아직 설정되지 않았습니다. 발급 후 알려주세요.', 'error', 0);
+        return;
+      }
+      if (data.error) {
+        toast('홈택스 조회 오류: ' + data.error, 'error', 0);
+        return;
+      }
+      const invoices = data.invoices || [];
+      const byBiz = new Map(invoices.map((iv) => [String(iv.supplierBizNo || '').replace(/-/g, ''), iv]));
+      let matched = 0;
+      for (const r of allRows) {
+        const biz = String(r.businessNumber || '').replace(/-/g, '');
+        const iv = biz && byBiz.get(biz);
+        if (!iv) continue;
+        await setSupplierTaxInvoice(r.purchaseId, r.supplier, iv);
+        matched += 1;
+      }
+      await load();
+      toast(`홈택스 세금계산서 ${invoices.length}건 조회 · ${matched}건 매칭 완료`, matched ? 'success' : 'error', 0);
+    } catch (e) {
+      toast('불러오기 실패: ' + (e.message || e), 'error', 0);
+    } finally {
+      setTaxSyncing(false);
+    }
+  }
+
   async function pay(r) {
     if (!(await confirm({ title: '결제 완료', message: `"${r.supplier}" · ${r.total.toLocaleString()}원(VAT 포함)\n결제 완료로 처리할까요?` })))
       return;
@@ -248,6 +293,10 @@ export default function PaymentPage() {
       <div className="page-header">
         <h2>결제</h2>
         <div className="page-actions">
+          <button type="button" className="btn btn-sm btn-outline" onClick={syncTaxInvoices} disabled={taxSyncing}>
+            <Icon name={taxSyncing ? 'clock' : 'download'} className="btn-ic" />
+            {taxSyncing ? '불러오는 중…' : '홈택스 세금계산서'}
+          </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={load} disabled={loading}>
             <Icon name="restore" className="btn-ic" />
             새로고침
@@ -337,6 +386,7 @@ export default function PaymentPage() {
                             <th style={{ width: 120 }}>결제금액(VAT포함)</th>
                             <th style={{ width: 96 }}>결제요청일</th>
                             <th style={{ width: 104 }}>결제마감일</th>
+                            <th style={{ width: 150 }}>세금계산서</th>
                             <th className="col-action" style={{ width: 280 }}>작업</th>
                           </tr>
                         </thead>
@@ -370,6 +420,15 @@ export default function PaymentPage() {
                                 <td data-label="결제마감일">
                                   {r.dueDate ? (
                                     <strong className={`payment-due${!r.paid && r.dueDate < todayStr ? ' is-overdue' : ''}`}>{r.dueDate}</strong>
+                                  ) : (
+                                    <span className="text-muted">-</span>
+                                  )}
+                                </td>
+                                <td data-label="세금계산서">
+                                  {r.taxInvoice ? (
+                                    <span className="purchase-badge purchase-badge-received" title={`승인번호 ${r.taxInvoice.approvalNo || '-'} · 공급가 ${(r.taxInvoice.supplyValue || 0).toLocaleString()} · 세액 ${(r.taxInvoice.tax || 0).toLocaleString()}`}>
+                                      발행 {r.taxInvoice.writeDate || ''}
+                                    </span>
                                   ) : (
                                     <span className="text-muted">-</span>
                                   )}
