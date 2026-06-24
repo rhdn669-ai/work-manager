@@ -14,8 +14,8 @@ import {
   unmarkSupplierSent,
   markSupplierReplied,
   unmarkSupplierReplied,
-  markSupplierPaid,
-  unmarkSupplierPaid,
+  markPaymentRequested,
+  unmarkPaymentRequested,
   setPurchaseReplied,
   getPurchaseConfig,
 } from '../../services/purchaseService';
@@ -1022,34 +1022,35 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  // 업체별 결제 완료 표시 → 결제 페이지로 노출
-  async function handleMarkSupplierPaid(supplierName) {
-    if (!(await confirm(`"${supplierName}" 업체 건을 결제 완료로 표시할까요?\n결제 페이지에 등록됩니다.`))) return;
+  // 업체별 결제 요청 → 결제 페이지에 결제 대기로 노출
+  async function handleRequestPayment(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체 건의 결제를 요청할까요?\n결제 페이지에 결제 대기로 올라갑니다.`))) return;
     try {
-      await markSupplierPaid(id, supplierName, userProfile?.name || '');
+      await markPaymentRequested(id, supplierName, userProfile?.name || '');
       const key = supplierName.replace(/\./g, '_');
       const next = {
-        ...(purchaseRef.current?.supplierPaid || {}),
-        [key]: { paidAt: new Date(), paidBy: userProfile?.name || '' },
+        ...(purchaseRef.current?.paymentRequested || {}),
+        [key]: { requestedAt: new Date(), requestedBy: userProfile?.name || '' },
       };
-      purchaseRef.current = { ...(purchaseRef.current || {}), supplierPaid: next };
-      setPurchase((prev) => ({ ...prev, supplierPaid: next }));
-      toast('결제 완료로 표시했습니다.');
+      purchaseRef.current = { ...(purchaseRef.current || {}), paymentRequested: next };
+      setPurchase((prev) => ({ ...prev, paymentRequested: next }));
+      toast('결제 요청했습니다. 결제 페이지에서 확인하세요.');
     } catch (err) {
       alert('처리 중 오류: ' + err.message);
     }
   }
-  async function handleUnmarkSupplierPaid(supplierName) {
-    if (!(await confirm(`"${supplierName}" 업체의 결제 완료를 취소하시겠습니까?`))) return;
+  async function handleCancelPaymentRequest(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체의 결제 요청을 취소하시겠습니까?`))) return;
     try {
-      await unmarkSupplierPaid(id, supplierName);
+      await unmarkPaymentRequested(id, supplierName);
       const key = supplierName.replace(/\./g, '_');
       setPurchase((prev) => {
-        const next = { ...(prev.supplierPaid || {}) };
+        const next = { ...(prev.paymentRequested || {}) };
         delete next[key];
-        purchaseRef.current = { ...(purchaseRef.current || {}), supplierPaid: next };
-        return { ...prev, supplierPaid: next };
+        purchaseRef.current = { ...(purchaseRef.current || {}), paymentRequested: next };
+        return { ...prev, paymentRequested: next };
       });
+      toast('결제 요청을 취소했습니다.');
     } catch (err) {
       alert('처리 중 오류: ' + err.message);
     }
@@ -1847,6 +1848,7 @@ export default function PurchaseDetailPage() {
                         const sentKey = sup.name.replace(/\./g, '_');
                         const sent = purchase.supplierSent?.[sentKey];
                         const replied = purchase.supplierReplied?.[sentKey];
+                        const payReq = purchase.paymentRequested?.[sentKey];
                         const paid = purchase.supplierPaid?.[sentKey];
                         // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
                         const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
@@ -1976,22 +1978,29 @@ export default function PurchaseDetailPage() {
                                   </button>
                                 )}
                                 {paid ? (
+                                  <span
+                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle is-static"
+                                    title={`결제 완료 ${fmtDate(paid.paidAt)} — 결제 페이지에서 처리됨`}
+                                  >
+                                    결제완료
+                                  </span>
+                                ) : payReq ? (
                                   <button
                                     type="button"
                                     className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                    onClick={() => handleUnmarkSupplierPaid(sup.name)}
-                                    title={`결제 완료 ${fmtDate(paid.paidAt)} — 클릭 시 취소`}
+                                    onClick={() => handleCancelPaymentRequest(sup.name)}
+                                    title={`결제 요청됨 ${fmtDate(payReq.requestedAt)} — 클릭 시 요청 취소`}
                                   >
-                                    결제 취소
+                                    요청 취소
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-primary purchase-sup-toggle"
-                                    onClick={() => handleMarkSupplierPaid(sup.name)}
-                                    title="결제 완료로 표시하고 결제 페이지로 보냅니다"
+                                    onClick={() => handleRequestPayment(sup.name)}
+                                    title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
                                   >
-                                    결제 완료
+                                    결제 요청
                                   </button>
                                 )}
                               </div>

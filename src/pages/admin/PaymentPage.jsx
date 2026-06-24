@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import Modal from '../../components/common/Modal';
 import {
   getPurchases,
   getSuppliers,
@@ -10,6 +11,7 @@ import {
   markSupplierPaid,
   unmarkSupplierPaid,
 } from '../../services/purchaseService';
+import { getSupplierLibraryFiles } from '../../services/fileLibraryService';
 import { mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
 
 function fmtDate(ts) {
@@ -36,6 +38,19 @@ export default function PaymentPage() {
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
   const [busy, setBusy] = useState('');
+  // 사업자등록증 모달 { supplier, loading, files }
+  const [bizDoc, setBizDoc] = useState(null);
+
+  async function openBizDoc(supplier) {
+    setBizDoc({ supplier, loading: true, files: [] });
+    try {
+      const files = await getSupplierLibraryFiles(supplier);
+      setBizDoc({ supplier, loading: false, files });
+    } catch (err) {
+      console.error(err);
+      setBizDoc({ supplier, loading: false, files: [], error: err.message || String(err) });
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,18 +71,18 @@ export default function PaymentPage() {
     return () => unsub();
   }, [load]);
 
-  // 발주완료(supplierSent)된 (발주 × 업체) 건을 모두 모은다 — 결제 대상.
+  // 결제 요청된(paymentRequested) (발주 × 업체) 건을 모두 모은다 — 결제 대상.
   const allRows = useMemo(() => {
     const out = [];
     for (const p of purchases) {
-      const sentMap = p.supplierSent;
-      if (!sentMap || Object.keys(sentMap).length === 0) continue;
+      const reqMap = p.paymentRequested;
+      if (!reqMap || Object.keys(reqMap).length === 0) continue;
       const lines = mapPrintItems(p.items || [], itemMaster, suppliers);
       const supList = computeSupplierList(p.items || [], itemMaster, suppliers, p);
       for (const sup of supList) {
         const key = sup.name.replace(/\./g, '_');
-        const sent = sentMap[key];
-        if (!sent) continue; // 발주완료된 업체만
+        const req = reqMap[key];
+        if (!req) continue; // 결제 요청된 업체만
         const paid = p.supplierPaid?.[key];
         const supply = lines
           .filter((l) => (l._supplier || '(구매처 미지정)') === sup.name)
@@ -80,14 +95,14 @@ export default function PaymentPage() {
           supplier: sup.name,
           supply,
           total: supply + vat,
-          sentAt: sent.sentAt,
+          requestedAt: req.requestedAt,
           paid: !!paid,
           paidAt: paid?.paidAt,
           paidBy: paid?.paidBy || '',
         });
       }
     }
-    out.sort((a, b) => ms(b.sentAt) - ms(a.sentAt));
+    out.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     return out;
   }, [purchases, itemMaster, suppliers]);
 
@@ -160,7 +175,7 @@ export default function PaymentPage() {
         </div>
       </div>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        업체에 발주서가 나가면(발주완료) 자동으로 여기에 <strong>결제 대기</strong>로 올라옵니다. 확인 후 <strong>결제 완료</strong> 처리하세요.
+        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 업체명을 누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후 <strong>결제 완료</strong> 처리하세요.
       </p>
 
       {/* 결제 상태 탭 */}
@@ -184,7 +199,7 @@ export default function PaymentPage() {
         <p className="text-muted">불러오는 중...</p>
       ) : filtered.length === 0 ? (
         <div className="trash-empty">
-          {filterMode === 'pending' ? '결제 대기 중인 발주가 없습니다.' : filterMode === 'paid' ? '결제 완료된 발주가 없습니다.' : '발주완료된 건이 없습니다.'}
+          {filterMode === 'pending' ? '결제 대기 중인 발주가 없습니다.' : filterMode === 'paid' ? '결제 완료된 발주가 없습니다.' : '결제 요청된 건이 없습니다.'}
         </div>
       ) : (
         <div className="table-scroll-x">
@@ -194,9 +209,9 @@ export default function PaymentPage() {
                 <th style={{ width: 90 }}>상태</th>
                 <th>발주 제목</th>
                 <th style={{ width: 130 }}>프로젝트</th>
-                <th style={{ width: 150 }}>업체</th>
+                <th style={{ width: 180 }}>업체</th>
                 <th style={{ width: 130 }}>결제금액(VAT포함)</th>
-                <th style={{ width: 110 }}>발주일</th>
+                <th style={{ width: 110 }}>결제요청일</th>
                 <th className="col-action" style={{ width: 180 }}>작업</th>
               </tr>
             </thead>
@@ -214,11 +229,21 @@ export default function PaymentPage() {
                       <strong>{r.title}</strong>
                     </td>
                     <td data-label="프로젝트">{r.siteName || '-'}</td>
-                    <td data-label="업체">{r.supplier}</td>
+                    <td data-label="업체">
+                      <button
+                        type="button"
+                        className="payment-biz-link"
+                        onClick={() => openBizDoc(r.supplier)}
+                        title="사업자등록증 보기"
+                      >
+                        <Icon name="doc" className="payment-biz-ic" />
+                        {r.supplier}
+                      </button>
+                    </td>
                     <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
                       {r.total.toLocaleString()}원
                     </td>
-                    <td data-label="발주일">{fmtDate(r.sentAt)}</td>
+                    <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
                     <td data-label="작업" className="col-action">
                       <div className="row-actions">
                         <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
@@ -251,6 +276,47 @@ export default function PaymentPage() {
           </table>
         </div>
       )}
+
+      {/* 사업자등록증 미리보기 모달 */}
+      <Modal isOpen={!!bizDoc} onClose={() => setBizDoc(null)} title={bizDoc ? `${bizDoc.supplier} · 거래처 정보` : '거래처 정보'} size="lg">
+        {bizDoc?.loading ? (
+          <p className="text-muted">불러오는 중...</p>
+        ) : bizDoc?.error ? (
+          <div className="trash-empty">조회 오류: {bizDoc.error}</div>
+        ) : !bizDoc?.files?.length ? (
+          <div className="trash-empty">
+            자료실 "거래처 정보 / {bizDoc?.supplier}" 폴더에 저장된 파일이 없습니다.
+            <br />
+            구매처 관리에서 사업자등록증·통장사본을 등록하면 여기에 표시됩니다.
+          </div>
+        ) : (
+          <div className="biz-doc-list">
+            {bizDoc.files.map((f) => {
+              const isImg = (f.contentType || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(f.name || '');
+              const isPdf = (f.contentType || '').includes('pdf') || /\.pdf$/i.test(f.name || '');
+              return (
+                <div key={f.id} className="biz-doc-item">
+                  <div className="biz-doc-head">
+                    <Icon name="doc" className="biz-doc-ic" />
+                    <span className="biz-doc-name" title={f.name}>{f.name}</span>
+                    <a className="btn btn-sm btn-outline" href={f.downloadURL} target="_blank" rel="noreferrer">
+                      <Icon name="download" className="btn-ic" />
+                      새 창
+                    </a>
+                  </div>
+                  {isImg ? (
+                    <img className="biz-doc-img" src={f.downloadURL} alt={f.name} />
+                  ) : isPdf ? (
+                    <iframe className="biz-doc-frame" src={f.downloadURL} title={f.name} />
+                  ) : (
+                    <p className="text-muted" style={{ margin: '6px 0 0' }}>미리보기를 지원하지 않는 형식입니다. "새 창"으로 열어주세요.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

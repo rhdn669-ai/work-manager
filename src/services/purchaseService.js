@@ -438,6 +438,22 @@ export async function unmarkSupplierPaid(purchaseId, supplierName) {
   });
 }
 
+// 업체별 결제 요청 — 발주 상세에서 '결제 요청'을 누르면 결제 페이지에 결제 대기로 올라온다.
+export async function markPaymentRequested(purchaseId, supplierName, by = '') {
+  const key = supplierName.replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`paymentRequested.${key}.requestedAt`]: new Date(),
+    [`paymentRequested.${key}.requestedBy`]: by,
+    updatedAt: new Date(),
+  });
+}
+export async function unmarkPaymentRequested(purchaseId, supplierName) {
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`paymentRequested.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
 // 발주건 상태를 '회신'으로 전환 (모든 업체 회신 확인 시 자동 호출)
 export async function setPurchaseReplied(id, by = '') {
   await updateDoc(doc(db, 'purchases', id), {

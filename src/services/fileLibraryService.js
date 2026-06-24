@@ -110,6 +110,27 @@ export async function ensureFolderPath(parts, user, opts = {}) {
   return parentId;
 }
 
+// "거래처 정보 / {업체명}" 폴더에 보관된 그 업체의 파일(사업자등록증·통장사본 등)을 조회.
+// 결제 페이지 등에서 업체 사업자등록증을 모달로 보여줄 때 사용.
+export async function getSupplierLibraryFiles(supplierName) {
+  const name = (supplierName || '').trim();
+  if (!name) return [];
+  // 1) '거래처 정보' 최상위 폴더
+  const rootSnap = await getDocs(query(foldersRef, where('name', '==', '거래처 정보')));
+  if (rootSnap.empty) return [];
+  const rootIds = rootSnap.docs.map((d) => d.id);
+  // 2) 그 아래 '{업체명}' 폴더 (parentId가 거래처 정보 중 하나)
+  const supSnap = await getDocs(query(foldersRef, where('name', '==', name)));
+  const supFolder = supSnap.docs.find((d) => rootIds.includes(d.data().parentId));
+  if (!supFolder) return [];
+  // 3) 그 폴더의 파일들 — 사업자등록증을 앞으로 정렬
+  const fileSnap = await getDocs(query(filesRef, where('folderId', '==', supFolder.id)));
+  const files = fileSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const rank = (n = '') => (/사업자|등록증/.test(n) ? 0 : /통장|계좌/.test(n) ? 1 : 2);
+  files.sort((a, b) => rank(a.name) - rank(b.name));
+  return files;
+}
+
 // 프로젝트(현장) 자료실 표준 하위 폴더 — 프로젝트 생성 시 자동 생성, 각 기능과 연동
 export const PROJECT_SUBFOLDERS = ['발주이력', '자료', '견적', 'BOM'];
 // 모든 프로젝트 폴더를 담는 최상위 묶음 폴더
