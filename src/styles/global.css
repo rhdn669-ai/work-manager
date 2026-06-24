@@ -4611,6 +4611,16 @@ table.cards-sm td {
   color: var(--text, #374151);
   margin-bottom: 8px;
 }
+.mail-send-po-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mail-send-po-select {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+}
 .mail-send-recipients__bar {
   display: flex;
   gap: 8px;

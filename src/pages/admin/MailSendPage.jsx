@@ -3,10 +3,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
-import { getSuppliers } from '../../services/purchaseService';
+import { getSuppliers, getPurchases, subscribePurchaseItems } from '../../services/purchaseService';
 import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
+import { computeSupplierList } from '../../utils/purchaseOrder';
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -35,6 +36,9 @@ export default function MailSendPage() {
   const [targetType, setTargetType] = useState('supplier'); // 'supplier' | 'vendor'
   const [suppliers, setSuppliers] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [purchases, setPurchases] = useState([]); // 발주서별 선택용
+  const [itemMaster, setItemMaster] = useState([]);
+  const [poFilter, setPoFilter] = useState(''); // 선택된 발주서 id
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   const [subject, setSubject] = useState('');
@@ -49,19 +53,38 @@ export default function MailSendPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [sp, vd] = await Promise.all([getSuppliers(), getVendors()]);
+        const [sp, vd, ps] = await Promise.all([getSuppliers(), getVendors(), getPurchases()]);
         setSuppliers(sp);
         setVendors(vd);
+        setPurchases(ps);
       } catch (err) {
         console.error(err);
       }
     })();
+    const unsub = subscribePurchaseItems(setItemMaster);
+    return () => unsub();
   }, []);
 
-  // 대상 유형 바꾸면 선택 초기화
+  // 대상 유형 바꾸면 선택·발주서 필터 초기화
   useEffect(() => {
     setSelected(new Set());
+    setPoFilter('');
   }, [targetType]);
+
+  // 발주서를 고르면 그 발주서에 속한(이메일 등록) 구매처만 선택
+  function selectByPO(purchaseId) {
+    setPoFilter(purchaseId);
+    if (!purchaseId) {
+      setSelected(new Set());
+      return;
+    }
+    const p = purchases.find((x) => x.id === purchaseId);
+    if (!p) return;
+    const supList = computeSupplierList(p.items || [], itemMaster, suppliers, p);
+    const names = new Set(supList.map((s) => s.name));
+    const ids = suppliers.filter((s) => names.has(s.name) && s.email).map((s) => s.id);
+    setSelected(new Set(ids));
+  }
 
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -271,7 +294,7 @@ export default function MailSendPage() {
       ) : (
         <>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        업체를 여러 개 선택해 같은 내용의 메일을 한 번에 보냅니다. 이메일이 등록된 업체만 발송됩니다.
+        업체를 여러 개 선택해 같은 내용의 메일을 한 번에 보냅니다. 이메일이 등록된 업체만 발송됩니다. <strong>발주서로 선택</strong>하면 그 발주서에 속한 구매처만 자동 선택됩니다.
       </p>
 
       {/* 대상 유형 */}
@@ -296,6 +319,28 @@ export default function MailSendPage() {
         {/* 수신 업체 선택 */}
         <div className="mail-send-recipients">
           <label className="mail-send-label">수신 업체</label>
+          {targetType === 'supplier' && (
+            <div className="mail-send-po-row">
+              <select
+                className="payment-month-select mail-send-po-select"
+                value={poFilter}
+                onChange={(e) => selectByPO(e.target.value)}
+                aria-label="발주서로 업체 선택"
+              >
+                <option value="">발주서로 선택…</option>
+                {purchases.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title || '(제목 없음)'}{p.siteName ? ` · ${p.siteName}` : ''}
+                  </option>
+                ))}
+              </select>
+              {poFilter && (
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => selectByPO('')}>
+                  해제
+                </button>
+              )}
+            </div>
+          )}
           <div className="mail-send-recipients__bar">
             <input
               type="search"
