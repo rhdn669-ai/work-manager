@@ -112,9 +112,14 @@ export default function PaymentPage() {
           title: p.title || '(제목 없음)',
           siteName: p.siteName || '',
           supplier: sup.name,
+          representative: supInfo.representative || '',
+          contact: supInfo.contact || '',
+          email: supInfo.email || '',
           businessNumber: supInfo.businessNumber || '',
           bankName: supInfo.bankName || '',
           bankAccount: supInfo.bankAccount || '',
+          category: supInfo.category || '',
+          note: supInfo.note || '',
           supply,
           total: supply + vat,
           requestedAt: req.requestedAt,
@@ -316,15 +321,21 @@ export default function PaymentPage() {
 
                   {open && (
                     <div className="payment-folder-body table-scroll-x">
-                      <table className="table cards-sm">
+                      <table className="table cards-sm payment-detail-table">
                         <thead>
                           <tr>
-                            <th style={{ width: 90 }}>상태</th>
-                            <th style={{ width: 230 }}>업체 · 사업자/계좌</th>
-                            <th style={{ width: 130 }}>결제금액(VAT포함)</th>
-                            <th style={{ width: 100 }}>결제요청일</th>
-                            <th style={{ width: 110 }}>결제마감일</th>
-                            <th className="col-action" style={{ width: 200 }}>작업</th>
+                            <th style={{ width: 84 }}>상태</th>
+                            <th style={{ width: 150 }}>상호</th>
+                            <th style={{ width: 80 }}>대표</th>
+                            <th style={{ width: 120 }}>연락처</th>
+                            <th style={{ width: 170 }}>이메일</th>
+                            <th style={{ width: 120 }}>사업자번호</th>
+                            <th style={{ width: 90 }}>은행</th>
+                            <th style={{ width: 140 }}>계좌번호</th>
+                            <th style={{ width: 120 }}>결제금액(VAT포함)</th>
+                            <th style={{ width: 96 }}>결제요청일</th>
+                            <th style={{ width: 104 }}>결제마감일</th>
+                            <th className="col-action" style={{ width: 190 }}>작업</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -337,16 +348,18 @@ export default function PaymentPage() {
                                     {r.paid ? '결제완료' : '결제대기'}
                                   </span>
                                 </td>
-                                <td data-label="업체 · 사업자/계좌">
+                                <td data-label="상호" title={r.supplier}>
                                   <button type="button" className="payment-biz-link" onClick={() => openBizDoc(r.supplier)} title="사업자등록증 보기">
                                     <Icon name="doc" className="payment-biz-ic" />
                                     {r.supplier}
                                   </button>
-                                  <div className="payment-sup-meta">
-                                    <span>사업자 {r.businessNumber || '-'}</span>
-                                    <span>{r.bankName ? `${r.bankName} ` : ''}{r.bankAccount || '계좌 미등록'}</span>
-                                  </div>
                                 </td>
+                                <td data-label="대표" className="u-ellipsis" title={r.representative || ''}>{r.representative || '-'}</td>
+                                <td data-label="연락처" className="u-ellipsis" title={r.contact || ''}>{r.contact || '-'}</td>
+                                <td data-label="이메일" className="u-ellipsis" title={r.email || ''}>{r.email || '-'}</td>
+                                <td data-label="사업자번호" className="u-ellipsis" title={r.businessNumber || ''}>{r.businessNumber || '-'}</td>
+                                <td data-label="은행" className="u-ellipsis" title={r.bankName || ''}>{r.bankName || '-'}</td>
+                                <td data-label="계좌번호" className="u-wrap" title={r.bankAccount || ''}>{r.bankAccount || '-'}</td>
                                 <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
                                   {r.total.toLocaleString()}원
                                 </td>
