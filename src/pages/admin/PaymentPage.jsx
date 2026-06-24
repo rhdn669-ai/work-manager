@@ -337,7 +337,7 @@ export default function PaymentPage() {
                             <th style={{ width: 120 }}>결제금액(VAT포함)</th>
                             <th style={{ width: 96 }}>결제요청일</th>
                             <th style={{ width: 104 }}>결제마감일</th>
-                            <th className="col-action" style={{ width: 190 }}>작업</th>
+                            <th className="col-action" style={{ width: 280 }}>작업</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -351,10 +351,7 @@ export default function PaymentPage() {
                                   </span>
                                 </td>
                                 <td data-label="상호" title={r.supplier}>
-                                  <button type="button" className="payment-biz-link" onClick={() => openBizDoc(r.supplier)} title="사업자등록증 보기">
-                                    <Icon name="doc" className="payment-biz-ic" />
-                                    {r.supplier}
-                                  </button>
+                                  <strong>{r.supplier}</strong>
                                 </td>
                                 <td data-label="대표" className="u-ellipsis" title={r.representative || ''}>{r.representative || '-'}</td>
                                 <td data-label="연락처" className="u-ellipsis" title={r.contact || ''}>{r.contact || '-'}</td>
@@ -366,7 +363,7 @@ export default function PaymentPage() {
                                 <td data-label="비고" className="supplier-note-cell" title={r.note || ''}>
                                   <span className="cell-clamp-2">{r.note || '-'}</span>
                                 </td>
-                                <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
+                                <td data-label="결제금액(VAT포함)" className="payment-amount-cell" title={`공급가 ${r.supply.toLocaleString()}`}>
                                   {r.total.toLocaleString()}원
                                 </td>
                                 <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
@@ -379,6 +376,9 @@ export default function PaymentPage() {
                                 </td>
                                 <td data-label="작업" className="col-action">
                                   <div className="row-actions">
+                                    <button type="button" className="btn btn-sm btn-outline" onClick={() => openBizDoc(r.supplier)} title="사업자등록증 보기/출력">
+                                      <Icon name="doc" className="btn-ic" />PDF 출력
+                                    </button>
                                     <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
                                       <Icon name="chevronRight" className="btn-ic" />발주서
                                     </button>

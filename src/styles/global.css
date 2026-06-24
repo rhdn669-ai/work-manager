@@ -4827,6 +4827,12 @@ table.cards-sm td {
   color: var(--text-muted, #667085);
   line-height: 1.5;
 }
+/* 결제 금액 — 헤더와 같은 위치에 정렬(우측 밀림 방지) */
+.payment-amount-cell {
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 700;
+}
 /* 결제 마감일 */
 .payment-due.is-overdue {
   color: #dc2626;
