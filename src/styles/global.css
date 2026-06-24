@@ -4707,8 +4707,9 @@ table.cards-sm td {
 }
 .payment-folder {
   border: 1px solid var(--border, #e5e7eb);
-  border-radius: var(--radius, 12px);
+  border-radius: var(--radius-md, 14px);
   background: #fff;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
   overflow: hidden;
 }
 .payment-folder.is-open {
@@ -4776,13 +4777,14 @@ table.cards-sm td {
   flex: 1 1 auto;
 }
 .payment-folder-badge {
+  /* 대기 = 무채색(회색) — DESIGN-SYSTEM 상태배지 규칙(오렌지는 주행동·활성 전용) */
   flex: 0 0 auto;
   font-size: 12px;
   font-weight: 700;
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--accent-soft, #fef0e9);
-  color: var(--accent-press, #c2410c);
+  background: #eef1f5;
+  color: #475569;
 }
 .payment-folder-badge.is-done {
   background: #e8f3ec;
@@ -4838,13 +4840,14 @@ table.cards-sm td {
   color: #dc2626;
 }
 .payment-folder-due {
+  /* 마감일 = 무채색 정보 배지, 기한 초과 시에만 빨강(경고) */
   flex: 0 0 auto;
   font-size: 12px;
   font-weight: 700;
   padding: 3px 9px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: #eef1f5;
+  color: #475569;
   white-space: nowrap;
 }
 .payment-folder-due.is-overdue {
