@@ -4845,6 +4845,12 @@ table.cards-sm td {
   cursor: default;
   pointer-events: none;
 }
+.btn.purchase-sup-toggle.po-act-paid {
+  background: #e8f3ec;
+  border: 1px solid #bfe3cc;
+  color: #15803d;
+  font-weight: 700;
+}
 /* 사업자등록증 미리보기 모달 */
 .biz-doc-list {
   display: flex;

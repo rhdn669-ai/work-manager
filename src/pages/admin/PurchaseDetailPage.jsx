@@ -1979,7 +1979,7 @@ export default function PurchaseDetailPage() {
                                 )}
                                 {paid ? (
                                   <span
-                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle is-static"
+                                    className="btn btn-sm purchase-sup-toggle is-static po-act-paid"
                                     title={`결제 완료 ${fmtDate(paid.paidAt)} — 결제 페이지에서 처리됨`}
                                   >
                                     결제완료
