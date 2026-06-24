@@ -1,8 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
-import { getPurchases, getSuppliers, subscribePurchaseItems, unmarkSupplierPaid } from '../../services/purchaseService';
+import {
+  getPurchases,
+  getSuppliers,
+  subscribePurchaseItems,
+  markSupplierPaid,
+  unmarkSupplierPaid,
+} from '../../services/purchaseService';
 import { mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
 
 function fmtDate(ts) {
@@ -11,16 +18,24 @@ function fmtDate(ts) {
   if (Number.isNaN(d.getTime())) return '-';
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
+function ms(ts) {
+  if (!ts) return 0;
+  return ts.toMillis ? ts.toMillis() : new Date(ts).getTime();
+}
 
-// 결제 완료 표시된 (발주 × 업체) 건을 모아 보여주는 페이지
+// 발주완료(업체 발송)된 건이 자동으로 올라오는 결제 페이지.
+// 대표가 여기서 결제 대기 → 결제 완료 처리.
 export default function PaymentPage() {
   const navigate = useNavigate();
   const { confirm, toast } = useDialog();
+  const { userProfile } = useAuth();
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
+  const [busy, setBusy] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,69 +56,95 @@ export default function PaymentPage() {
     return () => unsub();
   }, [load]);
 
-  // 결제 완료된 (발주, 업체) 행 목록
-  const rows = useMemo(() => {
+  // 발주완료(supplierSent)된 (발주 × 업체) 건을 모두 모은다 — 결제 대상.
+  const allRows = useMemo(() => {
     const out = [];
     for (const p of purchases) {
-      const paidMap = p.supplierPaid;
-      if (!paidMap || Object.keys(paidMap).length === 0) continue;
+      const sentMap = p.supplierSent;
+      if (!sentMap || Object.keys(sentMap).length === 0) continue;
       const lines = mapPrintItems(p.items || [], itemMaster, suppliers);
       const supList = computeSupplierList(p.items || [], itemMaster, suppliers, p);
       for (const sup of supList) {
         const key = sup.name.replace(/\./g, '_');
-        const paid = paidMap[key];
-        if (!paid) continue;
-        const amount = lines
+        const sent = sentMap[key];
+        if (!sent) continue; // 발주완료된 업체만
+        const paid = p.supplierPaid?.[key];
+        const supply = lines
           .filter((l) => (l._supplier || '(구매처 미지정)') === sup.name)
           .reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
+        const vat = Math.round(supply * 0.1);
         out.push({
           purchaseId: p.id,
           title: p.title || '(제목 없음)',
           siteName: p.siteName || '',
           supplier: sup.name,
-          amount,
-          paidAt: paid.paidAt,
-          paidBy: paid.paidBy || '',
+          supply,
+          total: supply + vat,
+          sentAt: sent.sentAt,
+          paid: !!paid,
+          paidAt: paid?.paidAt,
+          paidBy: paid?.paidBy || '',
         });
       }
     }
-    out.sort((a, b) => {
-      const ta = a.paidAt?.toMillis ? a.paidAt.toMillis() : new Date(a.paidAt || 0).getTime();
-      const tb = b.paidAt?.toMillis ? b.paidAt.toMillis() : new Date(b.paidAt || 0).getTime();
-      return tb - ta;
-    });
+    out.sort((a, b) => ms(b.sentAt) - ms(a.sentAt));
     return out;
   }, [purchases, itemMaster, suppliers]);
 
+  const pendingCount = allRows.filter((r) => !r.paid).length;
+  const paidCount = allRows.filter((r) => r.paid).length;
+
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    if (!kw) return rows;
-    return rows.filter(
-      (r) =>
-        r.title.toLowerCase().includes(kw) ||
-        r.supplier.toLowerCase().includes(kw) ||
-        (r.siteName || '').toLowerCase().includes(kw),
+    return allRows.filter((r) => {
+      if (filterMode === 'pending' && r.paid) return false;
+      if (filterMode === 'paid' && !r.paid) return false;
+      if (kw && !(r.title.toLowerCase().includes(kw) || r.supplier.toLowerCase().includes(kw) || (r.siteName || '').toLowerCase().includes(kw)))
+        return false;
+      return true;
+    });
+  }, [allRows, filterMode, search]);
+
+  const sumTotal = filtered.reduce((s, r) => s + r.total, 0);
+
+  function applyPaidLocal(purchaseId, supplier, paidObj) {
+    setPurchases((prev) =>
+      prev.map((p) => {
+        if (p.id !== purchaseId) return p;
+        const next = { ...(p.supplierPaid || {}) };
+        const k = supplier.replace(/\./g, '_');
+        if (paidObj) next[k] = paidObj;
+        else delete next[k];
+        return { ...p, supplierPaid: next };
+      }),
     );
-  }, [rows, search]);
+  }
 
-  const totalAmount = filtered.reduce((s, r) => s + r.amount, 0);
-
-  async function cancelPaid(r) {
-    if (!(await confirm({ title: '결제 취소', message: `"${r.supplier}" 결제 완료를 취소할까요?\n결제 목록에서 빠집니다.` })))
+  async function pay(r) {
+    if (!(await confirm({ title: '결제 완료', message: `"${r.supplier}" · ${r.total.toLocaleString()}원(VAT 포함)\n결제 완료로 처리할까요?` })))
       return;
+    setBusy(`${r.purchaseId}-${r.supplier}`);
+    try {
+      await markSupplierPaid(r.purchaseId, r.supplier, userProfile?.name || '');
+      applyPaidLocal(r.purchaseId, r.supplier, { paidAt: new Date(), paidBy: userProfile?.name || '' });
+      toast('결제 완료 처리했습니다.');
+    } catch (err) {
+      toast('처리 오류: ' + (err.message || err), 'error');
+    } finally {
+      setBusy('');
+    }
+  }
+  async function cancelPay(r) {
+    if (!(await confirm({ title: '결제 취소', message: `"${r.supplier}" 결제 완료를 취소할까요?` }))) return;
+    setBusy(`${r.purchaseId}-${r.supplier}`);
     try {
       await unmarkSupplierPaid(r.purchaseId, r.supplier);
-      setPurchases((prev) =>
-        prev.map((p) => {
-          if (p.id !== r.purchaseId) return p;
-          const next = { ...(p.supplierPaid || {}) };
-          delete next[r.supplier.replace(/\./g, '_')];
-          return { ...p, supplierPaid: next };
-        }),
-      );
+      applyPaidLocal(r.purchaseId, r.supplier, null);
       toast('결제 완료를 취소했습니다.');
     } catch (err) {
-      toast('취소 오류: ' + (err.message || err), 'error');
+      toast('처리 오류: ' + (err.message || err), 'error');
+    } finally {
+      setBusy('');
     }
   }
 
@@ -119,74 +160,92 @@ export default function PaymentPage() {
         </div>
       </div>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        발주 상세에서 <strong>결제 완료</strong>로 표시한 건이 여기에 모입니다. 업체별로 한 줄씩 표시됩니다.
+        업체에 발주서가 나가면(발주완료) 자동으로 여기에 <strong>결제 대기</strong>로 올라옵니다. 확인 후 <strong>결제 완료</strong> 처리하세요.
       </p>
 
+      {/* 결제 상태 탭 */}
+      <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
+        <button type="button" className={`tab-nav-item ${filterMode === 'pending' ? 'active' : ''}`} onClick={() => setFilterMode('pending')}>
+          결제 대기{pendingCount > 0 && <span className="tab-nav-count">{pendingCount}</span>}
+        </button>
+        <button type="button" className={`tab-nav-item ${filterMode === 'paid' ? 'active' : ''}`} onClick={() => setFilterMode('paid')}>
+          결제 완료{paidCount > 0 && <span className="tab-nav-count">{paidCount}</span>}
+        </button>
+        <button type="button" className={`tab-nav-item ${filterMode === 'all' ? 'active' : ''}`} onClick={() => setFilterMode('all')}>
+          전체
+        </button>
+      </div>
+
       <div className="lib-search-inline" style={{ marginBottom: 12, maxWidth: 360 }}>
-        <input
-          type="search"
-          placeholder="발주 제목 · 업체 · 프로젝트 검색"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="검색"
-        />
+        <input type="search" placeholder="발주 제목 · 업체 · 프로젝트 검색" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="검색" />
       </div>
 
       {loading ? (
         <p className="text-muted">불러오는 중...</p>
       ) : filtered.length === 0 ? (
-        <div className="trash-empty">결제 완료로 표시된 발주가 없습니다.</div>
+        <div className="trash-empty">
+          {filterMode === 'pending' ? '결제 대기 중인 발주가 없습니다.' : filterMode === 'paid' ? '결제 완료된 발주가 없습니다.' : '발주완료된 건이 없습니다.'}
+        </div>
       ) : (
         <div className="table-scroll-x">
           <table className="table cards-sm">
             <thead>
               <tr>
+                <th style={{ width: 90 }}>상태</th>
                 <th>발주 제목</th>
-                <th style={{ width: 140 }}>프로젝트</th>
-                <th style={{ width: 160 }}>업체</th>
-                <th style={{ width: 120 }}>금액(공급가)</th>
-                <th style={{ width: 110 }}>결제일</th>
-                <th style={{ width: 80 }}>결제자</th>
-                <th className="col-action" style={{ width: 160 }}>작업</th>
+                <th style={{ width: 130 }}>프로젝트</th>
+                <th style={{ width: 150 }}>업체</th>
+                <th style={{ width: 130 }}>결제금액(VAT포함)</th>
+                <th style={{ width: 110 }}>발주일</th>
+                <th className="col-action" style={{ width: 180 }}>작업</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr key={`${r.purchaseId}-${r.supplier}`}>
-                  <td data-label="발주 제목">
-                    <strong>{r.title}</strong>
-                  </td>
-                  <td data-label="프로젝트">{r.siteName || '-'}</td>
-                  <td data-label="업체">{r.supplier}</td>
-                  <td data-label="금액(공급가)" style={{ textAlign: 'right' }}>
-                    {r.amount.toLocaleString()}원
-                  </td>
-                  <td data-label="결제일">{fmtDate(r.paidAt)}</td>
-                  <td data-label="결제자">{r.paidBy || '-'}</td>
-                  <td data-label="작업" className="col-action">
-                    <div className="row-actions">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}
-                      >
-                        <Icon name="chevronRight" className="btn-ic" />발주서
-                      </button>
-                      <button type="button" className="btn btn-sm btn-danger" onClick={() => cancelPaid(r)}>
-                        <Icon name="trash" className="btn-ic" />결제 취소
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((r) => {
+                const k = `${r.purchaseId}-${r.supplier}`;
+                return (
+                  <tr key={k}>
+                    <td data-label="상태">
+                      <span className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}>
+                        {r.paid ? '결제완료' : '결제대기'}
+                      </span>
+                    </td>
+                    <td data-label="발주 제목">
+                      <strong>{r.title}</strong>
+                    </td>
+                    <td data-label="프로젝트">{r.siteName || '-'}</td>
+                    <td data-label="업체">{r.supplier}</td>
+                    <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
+                      {r.total.toLocaleString()}원
+                    </td>
+                    <td data-label="발주일">{fmtDate(r.sentAt)}</td>
+                    <td data-label="작업" className="col-action">
+                      <div className="row-actions">
+                        <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
+                          <Icon name="chevronRight" className="btn-ic" />발주서
+                        </button>
+                        {r.paid ? (
+                          <button type="button" className="btn btn-sm po-act-btn--on" onClick={() => cancelPay(r)} disabled={busy === k}>
+                            결제 취소
+                          </button>
+                        ) : (
+                          <button type="button" className="btn btn-sm btn-primary" onClick={() => pay(r)} disabled={busy === k}>
+                            결제 완료
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3} style={{ fontWeight: 700 }}>
+                <td colSpan={4} style={{ fontWeight: 700 }}>
                   합계 ({filtered.length}건)
                 </td>
-                <td style={{ textAlign: 'right', fontWeight: 700 }}>{totalAmount.toLocaleString()}원</td>
-                <td colSpan={3}></td>
+                <td style={{ textAlign: 'right', fontWeight: 700 }}>{sumTotal.toLocaleString()}원</td>
+                <td colSpan={2}></td>
               </tr>
             </tfoot>
           </table>
