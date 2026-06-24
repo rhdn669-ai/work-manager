@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import Modal from '../../components/common/Modal';
 import { getSuppliers } from '../../services/purchaseService';
 import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
@@ -42,6 +43,7 @@ export default function MailSendPage() {
   const [dragOver, setDragOver] = useState(false);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null); // { done, total }
+  const [previewOpen, setPreviewOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -101,9 +103,17 @@ export default function MailSendPage() {
     if (fs.length) setFiles((p) => [...p, ...fs]);
   }
 
-  async function send() {
-    if (sending) return;
-    const recipients = list.filter((c) => selected.has(c.id) && c.email);
+  // 수신 대상(이메일 등록 + 선택)
+  const recipients = useMemo(() => list.filter((c) => selected.has(c.id) && c.email), [list, selected]);
+  const selectedCount = recipients.length;
+  // 실제 발송될 본문 HTML (미리보기 = 발송본 동일)
+  const previewHtml = useMemo(() => {
+    const b = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    return `<p style="margin:0 0 14px;font-weight:700">발신 : (주)아이오피엔</p><p>${b}</p>`;
+  }, [body]);
+
+  // 발송 버튼 → 검증 후 미리보기 모달 열기 (바로 발송 X)
+  function openPreview() {
     if (recipients.length === 0) {
       toast('수신 업체를 선택하세요. (이메일이 등록된 업체만 발송됩니다)', 'error');
       return;
@@ -117,24 +127,17 @@ export default function MailSendPage() {
       toast('첨부 용량이 너무 큽니다 (총 8MB 이하).', 'error');
       return;
     }
-    if (
-      !(await confirm({
-        title: '메일 발송',
-        message: `선택한 ${recipients.length}개 업체에 동일한 메일을 발송할까요?`,
-      }))
-    )
-      return;
+    setPreviewOpen(true);
+  }
 
+  // 미리보기 모달의 '발송' → 실제 발송
+  async function confirmSend() {
+    if (sending) return;
+    setPreviewOpen(false);
     setSending(true);
     setProgress({ done: 0, total: recipients.length });
     try {
       await ensureAnonymousAuth();
-      const bodyHtml = body
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
-      const html = `<p style="margin:0 0 14px;font-weight:700">발신 : (주)아이오피엔</p><p>${bodyHtml}</p>`;
       const attachments = [];
       for (const f of files) {
         const b64 = await blobToBase64(f);
@@ -142,17 +145,20 @@ export default function MailSendPage() {
       }
       let ok = 0;
       const fail = [];
+      let firstErr = '';
       for (let i = 0; i < recipients.length; i += 1) {
         const r = recipients[i];
         try {
-          await callSendEmail({ to: r.email, subject: subject.trim(), html, attachments });
+          await callSendEmail({ to: r.email, subject: subject.trim(), html: previewHtml, attachments });
           ok += 1;
-        } catch {
+        } catch (e) {
           fail.push(r.name);
+          if (!firstErr) firstErr = e?.message || String(e);
+          // eslint-disable-next-line no-console
+          console.error('메일 발송 실패', r.email, e);
         }
         setProgress({ done: i + 1, total: recipients.length });
       }
-      // 발송 이력 기록
       try {
         await addMailLog({
           by: userProfile?.name || '',
@@ -168,9 +174,12 @@ export default function MailSendPage() {
       } catch {
         /* 이력 기록 실패는 무시 */
       }
-      if (fail.length === 0) toast(`${ok}개 업체에 발송 완료했습니다.`, 'success', 0);
-      else toast(`${ok}개 발송, 실패 ${fail.length}개: ${fail.join(', ')}`, 'error', 0);
-      setSelected(new Set());
+      if (fail.length === 0) {
+        toast(`${ok}개 업체에 발송 완료했습니다.`, 'success', 0);
+        setSelected(new Set());
+      } else {
+        toast(`${ok}개 발송 · 실패 ${fail.length}개 (${fail.join(', ')})${firstErr ? ` — ${firstErr}` : ''}`, 'error', 0);
+      }
     } catch (err) {
       toast('발송 오류: ' + (err.message || err), 'error');
     } finally {
@@ -179,15 +188,13 @@ export default function MailSendPage() {
     }
   }
 
-  const selectedCount = list.filter((c) => selected.has(c.id) && c.email).length;
-
   return (
     <div className="mail-send-page">
       <div className="page-header">
         <h2>메일 발송</h2>
         <div className="page-actions">
           {mode === 'compose' && (
-            <button type="button" className="btn btn-sm btn-primary" onClick={send} disabled={sending}>
+            <button type="button" className="btn btn-sm btn-primary" onClick={openPreview} disabled={sending}>
               <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
               {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
             </button>
@@ -409,6 +416,57 @@ export default function MailSendPage() {
       </div>
         </>
       )}
+
+      {/* 발송 미리보기 모달 */}
+      <Modal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} title="메일 발송 미리보기" size="lg">
+        <div className="form-group">
+          <label>수신 업체 ({recipients.length})</label>
+          <div className="mail-preview-recipients">
+            {recipients.map((r) => (
+              <span key={r.id} className="mail-preview-chip" title={r.email}>
+                {r.name}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="form-group">
+          <label>제목</label>
+          <div className="mail-preview-subject">{subject.trim() || '(제목 없음)'}</div>
+        </div>
+        {files.length > 0 && (
+          <div className="form-group">
+            <label>첨부파일 ({files.length})</label>
+            <ul className="mail-extra-list">
+              {files.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="mail-extra-item">
+                  <Icon name="doc" className="mail-extra-ic" />
+                  <span className="mail-extra-name" title={f.name}>
+                    {f.name}
+                  </span>
+                  <span className="mail-extra-size">
+                    {f.size < 1024 * 1024
+                      ? `${Math.max(1, Math.round(f.size / 1024))}KB`
+                      : `${(f.size / 1024 / 1024).toFixed(1)}MB`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="form-group">
+          <label>본문 미리보기</label>
+          <div className="mail-body-preview" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-primary" onClick={confirmSend} disabled={sending}>
+            <Icon name="mail" className="btn-ic" />
+            {recipients.length}개 업체에 발송
+          </button>
+          <button type="button" className="btn btn-outline" onClick={() => setPreviewOpen(false)}>
+            취소
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

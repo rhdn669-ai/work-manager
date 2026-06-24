@@ -4668,6 +4668,32 @@ table.cards-sm td {
   white-space: nowrap;
   max-width: 55%;
 }
+/* 메일 발송 미리보기 모달 */
+.mail-preview-recipients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.mail-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft, #fef0e9);
+  color: var(--accent-press, #c2410c);
+  font-size: 12px;
+  font-weight: 600;
+}
+.mail-preview-subject {
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--bg-subtle, #f9fafb);
+  font-weight: 600;
+  font-size: 14px;
+}
 /* 표 열 드래그 복사 — 선택된 셀 하이라이트 */
 .col-copy-sel {
   background: var(--primary-softer, #dbeafe) !important;
