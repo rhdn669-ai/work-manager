@@ -4590,6 +4590,71 @@ table.cards-sm td {
   width: 14px;
   height: 14px;
 }
+/* 메일 발송 페이지 */
+.mail-send-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.3fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .mail-send-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.mail-send-recipients__bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mail-send-recipients__bar input {
+  flex: 1;
+  min-width: 0;
+}
+.mail-send-list {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+  background: var(--bg-card, #fff);
+}
+.mail-send-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--bg-subtle, #f1f5f9);
+  cursor: pointer;
+  font-size: 13px;
+}
+.mail-send-item:last-child {
+  border-bottom: none;
+}
+.mail-send-item.is-checked {
+  background: var(--accent-soft, #fef0e9);
+}
+.mail-send-item.is-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.mail-send-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.mail-send-item__name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mail-send-item__email {
+  margin-left: auto;
+  color: var(--text-muted, #9ca3af);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 55%;
+}
 /* 표 열 드래그 복사 — 선택된 셀 하이라이트 */
 .col-copy-sel {
   background: var(--primary-softer, #dbeafe) !important;
