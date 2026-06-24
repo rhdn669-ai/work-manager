@@ -4779,13 +4779,13 @@ table.cards-sm td {
   flex: 1 1 auto;
 }
 .payment-folder-badge {
-  /* 대기 = 결제 필요(주의) → 진한 네이비 솔리드로 강조 (오렌지는 주행동 전용이라 브랜드 네이비 사용) */
+  /* 대기 = 결제 필요(주의) → 빨강 솔리드로 강조 */
   flex: 0 0 auto;
   font-size: 12px;
   font-weight: 800;
   padding: 4px 11px;
   border-radius: 999px;
-  background: var(--primary, #002050);
+  background: var(--danger, #ef4444);
   color: #fff;
 }
 .payment-folder-badge.is-done {
