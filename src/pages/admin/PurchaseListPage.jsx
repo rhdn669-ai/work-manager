@@ -55,7 +55,7 @@ const TABS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-const EMPTY_FORM = { title: '', subtitle: '', siteId: '', supplierId: '', deliveryDue: '', contactName: '', contactPhone: '' };
+const EMPTY_FORM = { title: '', subtitle: '', siteId: '', supplierId: '', deliveryDue: '', contactName: '', contactPhone: '', factoryKey: '', deliveryPlace: '' };
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -325,7 +325,9 @@ export default function PurchaseListPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm({ ...EMPTY_FORM });
+    // 납품 공장 기본값: '본사'가 있으면 자동 선택 + 주소 채움
+    const hq = factories.find((f) => f.name === '본사') || factories[0];
+    setForm({ ...EMPTY_FORM, factoryKey: hq?.name || '', deliveryPlace: hq?.address || '' });
     setFormModal(true);
   }
 
@@ -340,6 +342,8 @@ export default function PurchaseListPage() {
       deliveryDue: p.deliveryDue || '',
       contactName: p.contactName || '',
       contactPhone: p.contactPhone || '',
+      factoryKey: p.factoryKey || '',
+      deliveryPlace: p.deliveryPlace || '',
     });
     setFormModal(true);
   }
@@ -369,6 +373,8 @@ export default function PurchaseListPage() {
         deliveryDue: form.deliveryDue.trim(),
         contactName: form.contactName.trim(),
         contactPhone: form.contactPhone.trim(),
+        factoryKey: form.factoryKey || '',
+        deliveryPlace: (form.deliveryPlace || '').trim(),
       };
       if (editingId) {
         const prev = purchases.find((x) => x.id === editingId);
@@ -383,6 +389,8 @@ export default function PurchaseListPage() {
               deliveryDue: prev.deliveryDue || '',
               contactName: prev.contactName || '',
               contactPhone: prev.contactPhone || '',
+              factoryKey: prev.factoryKey || '',
+              deliveryPlace: prev.deliveryPlace || '',
             }
           : null;
         await updatePurchase(editingId, base);
@@ -723,6 +731,30 @@ export default function PurchaseListPage() {
               placeholder="선택 (미지정 시 첫 품목 기본 구매처 자동 적용)"
               ariaLabel="구매처 선택"
             />
+          </div>
+
+          <div className="form-group">
+            <label>납품 공장 (납품 위치)</label>
+            {factories.length > 0 && (
+              <Select
+                value={form.factoryKey}
+                onChange={(v) => {
+                  const factory = factories.find((f) => f.name === v);
+                  setForm((prev) => ({ ...prev, factoryKey: v, deliveryPlace: factory?.address || prev.deliveryPlace }));
+                }}
+                options={factories.map((f) => ({ value: f.name, label: f.name }))}
+                placeholder="선택"
+                ariaLabel="납품 공장 선택"
+              />
+            )}
+            <input
+              type="text"
+              value={form.deliveryPlace}
+              onChange={(e) => setForm({ ...form, deliveryPlace: e.target.value })}
+              placeholder="납품 장소 주소 (발주서에 표시)"
+              style={{ marginTop: 8 }}
+            />
+            <p className="field-hint">공장을 선택하면 주소가 자동으로 채워집니다. 직접 수정도 가능합니다.</p>
           </div>
 
           <div className="form-group">
