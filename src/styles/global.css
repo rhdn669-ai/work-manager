@@ -5645,7 +5645,7 @@ table.cards-sm td {
   white-space: nowrap;
 }
 .bom-flat-table th.bom-no-col {
-  border-bottom: 1px solid var(--border);
+  border-bottom: none; /* 다른 헤더 셀과 통일 — 네이비 헤더 밑 회색 라인 튀어나옴 제거 */
 }
 .bom-flat-table .bom-action-col {
   text-align: right;
