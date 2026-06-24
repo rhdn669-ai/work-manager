@@ -274,8 +274,9 @@ export default function PaymentPage() {
           <div className="payment-folders">
             {folders.map((f) => {
               const open = expanded.has(f.purchaseId);
+              const allPaid = f.pending === 0 && f.paidCount > 0;
               return (
-                <div key={f.purchaseId} className={`payment-folder ${open ? 'is-open' : ''}`}>
+                <div key={f.purchaseId} className={`payment-folder ${open ? 'is-open' : ''} ${allPaid ? 'is-paid' : ''}`}>
                   <button type="button" className="payment-folder-head" onClick={() => toggleFolder(f.purchaseId)}>
                     <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
                     <Icon name="folder" className="payment-folder-ic" />
@@ -303,7 +304,7 @@ export default function PaymentPage() {
                           {f.rows.map((r) => {
                             const k = `${r.purchaseId}-${r.supplier}`;
                             return (
-                              <tr key={k}>
+                              <tr key={k} className={r.paid ? 'is-paid-row' : ''}>
                                 <td data-label="상태">
                                   <span className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}>
                                     {r.paid ? '결제완료' : '결제대기'}

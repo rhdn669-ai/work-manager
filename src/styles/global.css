@@ -4712,6 +4712,21 @@ table.cards-sm td {
 .payment-folder.is-open {
   border-color: var(--primary, #002050);
 }
+/* 결제 완료된 발주서 폴더 — 연한 초록 */
+.payment-folder.is-paid {
+  border-color: #bfe3cc;
+  background: #f0f9f3;
+}
+.payment-folder.is-paid .payment-folder-head {
+  background: #eafaf0;
+}
+.payment-folder.is-paid.is-open .payment-folder-head {
+  border-bottom-color: #bfe3cc;
+}
+/* 결제 완료된 개별 행 — 연한 초록 */
+.payment-folder-body tr.is-paid-row > td {
+  background: #f0f9f3;
+}
 .payment-folder-head {
   display: flex;
   align-items: center;
