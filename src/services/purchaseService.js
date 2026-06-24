@@ -466,11 +466,13 @@ export async function unmarkSupplierPaid(purchaseId, supplierName) {
 }
 
 // 업체별 결제 요청 — 발주 상세에서 '결제 요청'을 누르면 결제 페이지에 결제 대기로 올라온다.
-export async function markPaymentRequested(purchaseId, supplierName, by = '') {
+// dueDate: 결제 마감일(YYYY-MM-DD) — 결제 페이지에 함께 전달.
+export async function markPaymentRequested(purchaseId, supplierName, by = '', dueDate = '') {
   const key = supplierName.replace(/\./g, '_');
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`paymentRequested.${key}.requestedAt`]: new Date(),
     [`paymentRequested.${key}.requestedBy`]: by,
+    [`paymentRequested.${key}.dueDate`]: dueDate || '',
     updatedAt: new Date(),
   });
 }

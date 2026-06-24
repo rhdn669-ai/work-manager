@@ -164,6 +164,7 @@ export default function PurchaseDetailPage() {
   const [mailDropOver, setMailDropOver] = useState(false); // 추가 첨부 드래그앤드롭 hover 상태
   const mailFileInputRef = useRef(null);
   const [replyModal, setReplyModal] = useState(null); // 회신 확인 시 납기 입력 모달 { supplierName, due } | null
+  const [payReqModal, setPayReqModal] = useState(null); // 결제 요청 시 마감일 입력 모달 { supplierName, due } | null
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
   const [mailSending, setMailSending] = useState({});
   // 백그라운드 PDF 캡처 시 현장명 표시 모드 (null=실제 현장명, 'hidden'=미공개, 'blank'=공백)
@@ -1022,15 +1023,24 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  // 업체별 결제 요청 → 결제 페이지에 결제 대기로 노출
-  async function handleRequestPayment(supplierName) {
-    if (!(await confirm(`"${supplierName}" 업체 건의 결제를 요청할까요?\n결제 페이지에 결제 대기로 올라갑니다.`))) return;
+  // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다
+  function handleRequestPayment(supplierName) {
+    const key = supplierName.replace(/\./g, '_');
+    const prevDue = purchase.paymentRequested?.[key]?.dueDate || '';
+    setPayReqModal({ supplierName, due: prevDue });
+  }
+
+  // 마감일 입력 후 결제 요청 확정 → 결제 페이지에 결제 대기로 노출
+  async function confirmPaymentRequest() {
+    if (!payReqModal) return;
+    const { supplierName, due } = payReqModal;
+    setPayReqModal(null);
     try {
-      await markPaymentRequested(id, supplierName, userProfile?.name || '');
+      await markPaymentRequested(id, supplierName, userProfile?.name || '', due || '');
       const key = supplierName.replace(/\./g, '_');
       const next = {
         ...(purchaseRef.current?.paymentRequested || {}),
-        [key]: { requestedAt: new Date(), requestedBy: userProfile?.name || '' },
+        [key]: { requestedAt: new Date(), requestedBy: userProfile?.name || '', dueDate: due || '' },
       };
       purchaseRef.current = { ...(purchaseRef.current || {}), paymentRequested: next };
       setPurchase((prev) => ({ ...prev, paymentRequested: next }));
@@ -2636,6 +2646,34 @@ export default function PurchaseDetailPage() {
                 회신 확인
               </button>
               <button type="button" className="btn btn-outline" onClick={() => setReplyModal(null)}>
+                취소
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* 결제 요청 — 결제 마감일 입력 */}
+      <Modal isOpen={!!payReqModal} onClose={() => setPayReqModal(null)} title="결제 요청 — 마감일 입력">
+        {payReqModal && (
+          <>
+            <p className="field-hint">
+              <strong>{payReqModal.supplierName}</strong> 업체 건의 결제를 요청합니다. 결제 마감일을 입력하면 결제 페이지에 함께 전달됩니다.
+            </p>
+            <div className="form-group">
+              <label>결제 마감일</label>
+              <input
+                type="date"
+                value={payReqModal.due || ''}
+                onChange={(e) => setPayReqModal((p) => ({ ...p, due: e.target.value }))}
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={confirmPaymentRequest}>
+                결제 요청
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => setPayReqModal(null)}>
                 취소
               </button>
             </div>

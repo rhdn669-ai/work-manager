@@ -4817,6 +4817,34 @@ table.cards-sm td {
   }
 }
 
+/* 결제 페이지 — 업체 사업자번호/계좌 보조정보 */
+.payment-sup-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--text-muted, #667085);
+  line-height: 1.5;
+}
+/* 결제 마감일 */
+.payment-due.is-overdue {
+  color: #dc2626;
+}
+.payment-folder-due {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  white-space: nowrap;
+}
+.payment-folder-due.is-overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
 /* 결제 페이지 — 업체명(사업자등록증 보기) 링크 */
 .payment-biz-link {
   display: inline-flex;

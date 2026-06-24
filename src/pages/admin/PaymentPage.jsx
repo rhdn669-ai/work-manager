@@ -80,6 +80,15 @@ export default function PaymentPage() {
     return () => unsub();
   }, [load]);
 
+  // 구매처명 → 사업자번호·은행·계좌 조회용 맵
+  const supByName = useMemo(() => {
+    const m = new Map();
+    for (const s of suppliers) {
+      if (s.name) m.set(s.name, s);
+    }
+    return m;
+  }, [suppliers]);
+
   // 결제 요청된(paymentRequested) (발주 × 업체) 건을 모두 모은다 — 결제 대상.
   const allRows = useMemo(() => {
     const out = [];
@@ -93,6 +102,7 @@ export default function PaymentPage() {
         const req = reqMap[key];
         if (!req) continue; // 결제 요청된 업체만
         const paid = p.supplierPaid?.[key];
+        const supInfo = supByName.get(sup.name) || {};
         const supply = lines
           .filter((l) => (l._supplier || '(구매처 미지정)') === sup.name)
           .reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
@@ -102,9 +112,13 @@ export default function PaymentPage() {
           title: p.title || '(제목 없음)',
           siteName: p.siteName || '',
           supplier: sup.name,
+          businessNumber: supInfo.businessNumber || '',
+          bankName: supInfo.bankName || '',
+          bankAccount: supInfo.bankAccount || '',
           supply,
           total: supply + vat,
           requestedAt: req.requestedAt,
+          dueDate: req.dueDate || '',
           paid: !!paid,
           paidAt: paid?.paidAt,
           paidBy: paid?.paidBy || '',
@@ -113,7 +127,7 @@ export default function PaymentPage() {
     }
     out.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     return out;
-  }, [purchases, itemMaster, suppliers]);
+  }, [purchases, itemMaster, suppliers, supByName]);
 
   const pendingCount = allRows.filter((r) => !r.paid).length;
   const paidCount = allRows.filter((r) => r.paid).length;
@@ -159,11 +173,20 @@ export default function PaymentPage() {
       f.pending = f.rows.filter((r) => !r.paid).length;
       f.paidCount = f.rows.filter((r) => r.paid).length;
       f.total = f.rows.reduce((s, r) => s + r.total, 0);
+      // 미결제 건 중 가장 임박한 결제 마감일
+      const dues = f.rows.filter((r) => !r.paid && r.dueDate).map((r) => r.dueDate).sort();
+      f.nearestDue = dues[0] || '';
       f.rows.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     }
     arr.sort((a, b) => b.latest - a.latest);
     return arr;
   }, [filtered]);
+
+  // 오늘(YYYY-MM-DD) — 결제 마감일 초과 강조용
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
 
   function toggleFolder(pid) {
     setExpanded((prev) => {
@@ -283,6 +306,9 @@ export default function PaymentPage() {
                     <span className="payment-folder-title" title={f.title}>{f.title}</span>
                     {f.siteName && <span className="payment-folder-site">{f.siteName}</span>}
                     <span className="payment-folder-spacer" />
+                    {f.nearestDue && (
+                      <span className={`payment-folder-due${f.nearestDue < todayStr ? ' is-overdue' : ''}`}>~{f.nearestDue} 마감</span>
+                    )}
                     {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
                     {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
                     <span className="payment-folder-amount">{f.total.toLocaleString()}원</span>
@@ -294,9 +320,10 @@ export default function PaymentPage() {
                         <thead>
                           <tr>
                             <th style={{ width: 90 }}>상태</th>
-                            <th style={{ width: 200 }}>업체</th>
-                            <th style={{ width: 140 }}>결제금액(VAT포함)</th>
-                            <th style={{ width: 110 }}>결제요청일</th>
+                            <th style={{ width: 230 }}>업체 · 사업자/계좌</th>
+                            <th style={{ width: 130 }}>결제금액(VAT포함)</th>
+                            <th style={{ width: 100 }}>결제요청일</th>
+                            <th style={{ width: 110 }}>결제마감일</th>
                             <th className="col-action" style={{ width: 200 }}>작업</th>
                           </tr>
                         </thead>
@@ -310,16 +337,27 @@ export default function PaymentPage() {
                                     {r.paid ? '결제완료' : '결제대기'}
                                   </span>
                                 </td>
-                                <td data-label="업체">
+                                <td data-label="업체 · 사업자/계좌">
                                   <button type="button" className="payment-biz-link" onClick={() => openBizDoc(r.supplier)} title="사업자등록증 보기">
                                     <Icon name="doc" className="payment-biz-ic" />
                                     {r.supplier}
                                   </button>
+                                  <div className="payment-sup-meta">
+                                    <span>사업자 {r.businessNumber || '-'}</span>
+                                    <span>{r.bankName ? `${r.bankName} ` : ''}{r.bankAccount || '계좌 미등록'}</span>
+                                  </div>
                                 </td>
                                 <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
                                   {r.total.toLocaleString()}원
                                 </td>
                                 <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
+                                <td data-label="결제마감일">
+                                  {r.dueDate ? (
+                                    <strong className={`payment-due${!r.paid && r.dueDate < todayStr ? ' is-overdue' : ''}`}>{r.dueDate}</strong>
+                                  ) : (
+                                    <span className="text-muted">-</span>
+                                  )}
+                                </td>
                                 <td data-label="작업" className="col-action">
                                   <div className="row-actions">
                                     <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
