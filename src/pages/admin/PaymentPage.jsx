@@ -332,6 +332,8 @@ export default function PaymentPage() {
                             <th style={{ width: 120 }}>사업자번호</th>
                             <th style={{ width: 90 }}>은행</th>
                             <th style={{ width: 140 }}>계좌번호</th>
+                            <th style={{ width: 110 }}>분류</th>
+                            <th style={{ width: 150 }}>비고</th>
                             <th style={{ width: 120 }}>결제금액(VAT포함)</th>
                             <th style={{ width: 96 }}>결제요청일</th>
                             <th style={{ width: 104 }}>결제마감일</th>
@@ -360,6 +362,10 @@ export default function PaymentPage() {
                                 <td data-label="사업자번호" className="u-ellipsis" title={r.businessNumber || ''}>{r.businessNumber || '-'}</td>
                                 <td data-label="은행" className="u-ellipsis" title={r.bankName || ''}>{r.bankName || '-'}</td>
                                 <td data-label="계좌번호" className="u-wrap" title={r.bankAccount || ''}>{r.bankAccount || '-'}</td>
+                                <td data-label="분류" className="u-ellipsis" title={r.category || ''}>{r.category || '-'}</td>
+                                <td data-label="비고" className="supplier-note-cell" title={r.note || ''}>
+                                  <span className="cell-clamp-2">{r.note || '-'}</span>
+                                </td>
                                 <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
                                   {r.total.toLocaleString()}원
                                 </td>
