@@ -4779,17 +4779,17 @@ table.cards-sm td {
   flex: 1 1 auto;
 }
 .payment-folder-badge {
-  /* 대기 = 무채색(회색) — DESIGN-SYSTEM 상태배지 규칙(오렌지는 주행동·활성 전용) */
+  /* 대기 = 결제 필요(주의) → 진한 네이비 솔리드로 강조 (오렌지는 주행동 전용이라 브랜드 네이비 사용) */
   flex: 0 0 auto;
   font-size: 12px;
-  font-weight: 700;
-  padding: 3px 9px;
+  font-weight: 800;
+  padding: 4px 11px;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--primary, #002050);
+  color: #fff;
 }
 .payment-folder-badge.is-done {
-  background: #e8f3ec;
+  background: #dcfce7;
   color: #15803d;
 }
 .payment-folder-amount {
