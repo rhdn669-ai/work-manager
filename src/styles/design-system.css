@@ -725,6 +725,10 @@ body {
   top: auto;
   bottom: calc(100% + 6px);
 }
+/* 포털(body)로 띄운 패널 — 모달(9999~10000)·스티키 헤더 위로 올려 가려지지 않게 */
+.ds-select__panel--portal {
+  z-index: 10050;
+}
 @keyframes ds-pop {
   from {
     opacity: 0;
