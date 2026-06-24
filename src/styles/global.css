@@ -4668,6 +4668,138 @@ table.cards-sm td {
   white-space: nowrap;
   max-width: 55%;
 }
+/* 결제 페이지 — 년월 필터바 */
+.payment-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.payment-month-select {
+  height: 40px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-sm, 10px);
+  background: #fff
+    url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
+    no-repeat right 12px center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  min-width: 150px;
+}
+.payment-month-select:focus {
+  outline: none;
+  border-color: var(--primary, #002050);
+}
+
+/* 결제 페이지 — 발주서 폴더 */
+.payment-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.payment-folder {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius, 12px);
+  background: #fff;
+  overflow: hidden;
+}
+.payment-folder.is-open {
+  border-color: var(--primary, #002050);
+}
+.payment-folder-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: var(--bg-subtle, #f9fafb);
+  cursor: pointer;
+  text-align: left;
+}
+.payment-folder.is-open .payment-folder-head {
+  background: #fff;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.payment-folder-caret {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+.payment-folder-ic {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--primary, #002050);
+}
+.payment-folder-title {
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+.payment-folder-site {
+  font-size: 12px;
+  color: var(--text-muted, #667085);
+  background: var(--bg-subtle, #f1f5f9);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.payment-folder-spacer {
+  flex: 1 1 auto;
+}
+.payment-folder-badge {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft, #fef0e9);
+  color: var(--accent-press, #c2410c);
+}
+.payment-folder-badge.is-done {
+  background: #e8f3ec;
+  color: #15803d;
+}
+.payment-folder-amount {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 92px;
+  text-align: right;
+}
+.payment-folder-body {
+  padding: 4px 10px 10px;
+}
+.payment-sum-bar {
+  margin-top: 14px;
+  padding: 12px 16px;
+  text-align: right;
+  font-size: 14px;
+  background: var(--bg-subtle, #f9fafb);
+  border-radius: var(--radius-sm, 10px);
+}
+@media (max-width: 768px) {
+  .payment-folder-title {
+    max-width: none;
+    flex: 1 1 100%;
+    order: 2;
+  }
+  .payment-folder-amount {
+    min-width: 0;
+  }
+}
+
 /* 결제 페이지 — 업체명(사업자등록증 보기) 링크 */
 .payment-biz-link {
   display: inline-flex;

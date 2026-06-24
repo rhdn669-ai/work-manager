@@ -322,6 +322,33 @@ export async function getPurchases() {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// 발주 실시간 구독 (결제 대기 배지 등에 사용)
+export function subscribePurchases(cb) {
+  const q = query(purchasesRef, orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('[발주] 구독 오류:', err);
+      cb([]);
+    },
+  );
+}
+
+// 결제 대기(결제 요청됐으나 미결제) (발주×업체) 건수 — 사이드바 배지용
+export function countPaymentPending(purchases) {
+  let n = 0;
+  for (const p of purchases || []) {
+    const req = p.paymentRequested;
+    if (!req) continue;
+    const paid = p.supplierPaid || {};
+    for (const key of Object.keys(req)) {
+      if (!paid[key]) n++;
+    }
+  }
+  return n;
+}
+
 // 드래그 순서변경 — 전달된 id 순서대로 order 저장
 export async function savePurchasesOrder(orderedIds) {
   const batch = writeBatch(db);

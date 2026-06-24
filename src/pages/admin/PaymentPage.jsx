@@ -24,6 +24,13 @@ function ms(ts) {
   if (!ts) return 0;
   return ts.toMillis ? ts.toMillis() : new Date(ts).getTime();
 }
+// 타임스탬프 → 'YYYY.MM' (년월 필터 키)
+function monthKey(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 // 발주완료(업체 발송)된 건이 자동으로 올라오는 결제 페이지.
 // 대표가 여기서 결제 대기 → 결제 완료 처리.
@@ -37,6 +44,8 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
+  const [monthFilter, setMonthFilter] = useState('all'); // 'all' | 'YYYY.MM'
+  const [expanded, setExpanded] = useState(() => new Set()); // 펼친 발주서 폴더 id
   const [busy, setBusy] = useState('');
   // 사업자등록증 모달 { supplier, loading, files }
   const [bizDoc, setBizDoc] = useState(null);
@@ -109,18 +118,61 @@ export default function PaymentPage() {
   const pendingCount = allRows.filter((r) => !r.paid).length;
   const paidCount = allRows.filter((r) => r.paid).length;
 
+  // 년월 드롭다운 옵션 — 결제요청일 기준, 최신순
+  const monthOptions = useMemo(() => {
+    const set = new Set();
+    for (const r of allRows) {
+      const m = monthKey(r.requestedAt);
+      if (m) set.add(m);
+    }
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [allRows]);
+
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     return allRows.filter((r) => {
       if (filterMode === 'pending' && r.paid) return false;
       if (filterMode === 'paid' && !r.paid) return false;
+      if (monthFilter !== 'all' && monthKey(r.requestedAt) !== monthFilter) return false;
       if (kw && !(r.title.toLowerCase().includes(kw) || r.supplier.toLowerCase().includes(kw) || (r.siteName || '').toLowerCase().includes(kw)))
         return false;
       return true;
     });
-  }, [allRows, filterMode, search]);
+  }, [allRows, filterMode, monthFilter, search]);
 
   const sumTotal = filtered.reduce((s, r) => s + r.total, 0);
+
+  // 발주서 단위 폴더로 그룹핑 (자료실 폴더 느낌)
+  const folders = useMemo(() => {
+    const map = new Map();
+    for (const r of filtered) {
+      let f = map.get(r.purchaseId);
+      if (!f) {
+        f = { purchaseId: r.purchaseId, title: r.title, siteName: r.siteName, rows: [], latest: 0 };
+        map.set(r.purchaseId, f);
+      }
+      f.rows.push(r);
+      f.latest = Math.max(f.latest, ms(r.requestedAt));
+    }
+    const arr = Array.from(map.values());
+    for (const f of arr) {
+      f.pending = f.rows.filter((r) => !r.paid).length;
+      f.paidCount = f.rows.filter((r) => r.paid).length;
+      f.total = f.rows.reduce((s, r) => s + r.total, 0);
+      f.rows.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
+    }
+    arr.sort((a, b) => b.latest - a.latest);
+    return arr;
+  }, [filtered]);
+
+  function toggleFolder(pid) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(pid)) next.delete(pid);
+      else next.add(pid);
+      return next;
+    });
+  }
 
   function applyPaidLocal(purchaseId, supplier, paidObj) {
     setPurchases((prev) =>
@@ -191,90 +243,113 @@ export default function PaymentPage() {
         </button>
       </div>
 
-      <div className="lib-search-inline" style={{ marginBottom: 12, maxWidth: 360 }}>
-        <input type="search" placeholder="발주 제목 · 업체 · 프로젝트 검색" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="검색" />
+      {/* 년월 드롭다운 + 검색 */}
+      <div className="payment-filterbar no-print">
+        <select
+          className="payment-month-select"
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+          aria-label="결제요청 년월 선택"
+        >
+          <option value="all">전체 기간</option>
+          {monthOptions.map((m) => (
+            <option key={m} value={m}>
+              {m.replace('.', '년 ')}월
+            </option>
+          ))}
+        </select>
+        <div className="lib-search-inline" style={{ flex: '1 1 240px', maxWidth: 360 }}>
+          <input type="search" placeholder="발주 제목 · 업체 · 프로젝트 검색" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="검색" />
+        </div>
       </div>
 
       {loading ? (
         <p className="text-muted">불러오는 중...</p>
-      ) : filtered.length === 0 ? (
+      ) : folders.length === 0 ? (
         <div className="trash-empty">
           {filterMode === 'pending' ? '결제 대기 중인 발주가 없습니다.' : filterMode === 'paid' ? '결제 완료된 발주가 없습니다.' : '결제 요청된 건이 없습니다.'}
         </div>
       ) : (
-        <div className="table-scroll-x">
-          <table className="table cards-sm">
-            <thead>
-              <tr>
-                <th style={{ width: 90 }}>상태</th>
-                <th>발주 제목</th>
-                <th style={{ width: 130 }}>프로젝트</th>
-                <th style={{ width: 180 }}>업체</th>
-                <th style={{ width: 130 }}>결제금액(VAT포함)</th>
-                <th style={{ width: 110 }}>결제요청일</th>
-                <th className="col-action" style={{ width: 180 }}>작업</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => {
-                const k = `${r.purchaseId}-${r.supplier}`;
-                return (
-                  <tr key={k}>
-                    <td data-label="상태">
-                      <span className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}>
-                        {r.paid ? '결제완료' : '결제대기'}
-                      </span>
-                    </td>
-                    <td data-label="발주 제목">
-                      <strong>{r.title}</strong>
-                    </td>
-                    <td data-label="프로젝트">{r.siteName || '-'}</td>
-                    <td data-label="업체">
-                      <button
-                        type="button"
-                        className="payment-biz-link"
-                        onClick={() => openBizDoc(r.supplier)}
-                        title="사업자등록증 보기"
-                      >
-                        <Icon name="doc" className="payment-biz-ic" />
-                        {r.supplier}
-                      </button>
-                    </td>
-                    <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
-                      {r.total.toLocaleString()}원
-                    </td>
-                    <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
-                    <td data-label="작업" className="col-action">
-                      <div className="row-actions">
-                        <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
-                          <Icon name="chevronRight" className="btn-ic" />발주서
-                        </button>
-                        {r.paid ? (
-                          <button type="button" className="btn btn-sm po-act-btn--on" onClick={() => cancelPay(r)} disabled={busy === k}>
-                            결제 취소
-                          </button>
-                        ) : (
-                          <button type="button" className="btn btn-sm btn-primary" onClick={() => pay(r)} disabled={busy === k}>
-                            결제 완료
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={4} style={{ fontWeight: 700 }}>
-                  합계 ({filtered.length}건)
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 700 }}>{sumTotal.toLocaleString()}원</td>
-                <td colSpan={2}></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <>
+          <div className="payment-folders">
+            {folders.map((f) => {
+              const open = expanded.has(f.purchaseId);
+              return (
+                <div key={f.purchaseId} className={`payment-folder ${open ? 'is-open' : ''}`}>
+                  <button type="button" className="payment-folder-head" onClick={() => toggleFolder(f.purchaseId)}>
+                    <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
+                    <Icon name="folder" className="payment-folder-ic" />
+                    <span className="payment-folder-title" title={f.title}>{f.title}</span>
+                    {f.siteName && <span className="payment-folder-site">{f.siteName}</span>}
+                    <span className="payment-folder-spacer" />
+                    {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
+                    {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
+                    <span className="payment-folder-amount">{f.total.toLocaleString()}원</span>
+                  </button>
+
+                  {open && (
+                    <div className="payment-folder-body table-scroll-x">
+                      <table className="table cards-sm">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 90 }}>상태</th>
+                            <th style={{ width: 200 }}>업체</th>
+                            <th style={{ width: 140 }}>결제금액(VAT포함)</th>
+                            <th style={{ width: 110 }}>결제요청일</th>
+                            <th className="col-action" style={{ width: 200 }}>작업</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {f.rows.map((r) => {
+                            const k = `${r.purchaseId}-${r.supplier}`;
+                            return (
+                              <tr key={k}>
+                                <td data-label="상태">
+                                  <span className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}>
+                                    {r.paid ? '결제완료' : '결제대기'}
+                                  </span>
+                                </td>
+                                <td data-label="업체">
+                                  <button type="button" className="payment-biz-link" onClick={() => openBizDoc(r.supplier)} title="사업자등록증 보기">
+                                    <Icon name="doc" className="payment-biz-ic" />
+                                    {r.supplier}
+                                  </button>
+                                </td>
+                                <td data-label="결제금액(VAT포함)" style={{ textAlign: 'right' }} title={`공급가 ${r.supply.toLocaleString()}`}>
+                                  {r.total.toLocaleString()}원
+                                </td>
+                                <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
+                                <td data-label="작업" className="col-action">
+                                  <div className="row-actions">
+                                    <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
+                                      <Icon name="chevronRight" className="btn-ic" />발주서
+                                    </button>
+                                    {r.paid ? (
+                                      <button type="button" className="btn btn-sm po-act-btn--on" onClick={() => cancelPay(r)} disabled={busy === k}>
+                                        결제 취소
+                                      </button>
+                                    ) : (
+                                      <button type="button" className="btn btn-sm btn-primary" onClick={() => pay(r)} disabled={busy === k}>
+                                        결제 완료
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="payment-sum-bar">
+            합계 ({filtered.length}건) · <strong>{sumTotal.toLocaleString()}원</strong>
+          </div>
+        </>
       )}
 
       {/* 사업자등록증 미리보기 모달 */}

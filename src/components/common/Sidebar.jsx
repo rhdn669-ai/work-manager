@@ -7,6 +7,7 @@ import {
   clearSidebarPref,
   setSeededAdminDefaults,
 } from '../../services/userPreferenceService';
+import { subscribePurchases, countPaymentPending } from '../../services/purchaseService';
 import { useDialog } from './DialogProvider';
 import Icon from './Icon';
 
@@ -163,9 +164,23 @@ export default function Sidebar({ isOpen }) {
     return () => unsub();
   }, [userProfile?.uid, isAdmin]);
 
+  // 결제 대기 건수 — 관리자만 실시간 구독해 '결제' 메뉴에 배지로 표시
+  const [paymentPending, setPaymentPending] = useState(0);
+  useEffect(() => {
+    if (!isAdmin) {
+      setPaymentPending(0);
+      return;
+    }
+    const unsub = subscribePurchases((list) => setPaymentPending(countPaymentPending(list)));
+    return () => unsub();
+  }, [isAdmin]);
+
   const allItems = useMemo(
-    () => buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }),
-    [isAdmin, canApproveLeave, canCreateSite, canViewArchive],
+    () =>
+      buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }).map((it) =>
+        it.key === 'admin-payment' ? { ...it, badgeCount: paymentPending } : it,
+      ),
+    [isAdmin, canApproveLeave, canCreateSite, canViewArchive, paymentPending],
   );
 
   // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬
