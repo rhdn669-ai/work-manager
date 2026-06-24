@@ -14,6 +14,8 @@ import {
   unmarkSupplierSent,
   markSupplierReplied,
   unmarkSupplierReplied,
+  markSupplierPaid,
+  unmarkSupplierPaid,
   setPurchaseReplied,
   getPurchaseConfig,
 } from '../../services/purchaseService';
@@ -1020,6 +1022,39 @@ export default function PurchaseDetailPage() {
     }
   }
 
+  // 업체별 결제 완료 표시 → 결제 페이지로 노출
+  async function handleMarkSupplierPaid(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체 건을 결제 완료로 표시할까요?\n결제 페이지에 등록됩니다.`))) return;
+    try {
+      await markSupplierPaid(id, supplierName, userProfile?.name || '');
+      const key = supplierName.replace(/\./g, '_');
+      const next = {
+        ...(purchaseRef.current?.supplierPaid || {}),
+        [key]: { paidAt: new Date(), paidBy: userProfile?.name || '' },
+      };
+      purchaseRef.current = { ...(purchaseRef.current || {}), supplierPaid: next };
+      setPurchase((prev) => ({ ...prev, supplierPaid: next }));
+      toast('결제 완료로 표시했습니다.');
+    } catch (err) {
+      alert('처리 중 오류: ' + err.message);
+    }
+  }
+  async function handleUnmarkSupplierPaid(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체의 결제 완료를 취소하시겠습니까?`))) return;
+    try {
+      await unmarkSupplierPaid(id, supplierName);
+      const key = supplierName.replace(/\./g, '_');
+      setPurchase((prev) => {
+        const next = { ...(prev.supplierPaid || {}) };
+        delete next[key];
+        purchaseRef.current = { ...(purchaseRef.current || {}), supplierPaid: next };
+        return { ...prev, supplierPaid: next };
+      });
+    } catch (err) {
+      alert('처리 중 오류: ' + err.message);
+    }
+  }
+
   // Blob → base64 문자열 (data URL 접두 제거)
   function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
@@ -1812,6 +1847,7 @@ export default function PurchaseDetailPage() {
                         const sentKey = sup.name.replace(/\./g, '_');
                         const sent = purchase.supplierSent?.[sentKey];
                         const replied = purchase.supplierReplied?.[sentKey];
+                        const paid = purchase.supplierPaid?.[sentKey];
                         // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
                         const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
                         const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
@@ -1937,6 +1973,25 @@ export default function PurchaseDetailPage() {
                                     onClick={() => handleMarkSupplierReplied(sup.name)}
                                   >
                                     회신 확인
+                                  </button>
+                                )}
+                                {paid ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle"
+                                    onClick={() => handleUnmarkSupplierPaid(sup.name)}
+                                    title={`결제 완료 ${fmtDate(paid.paidAt)} — 클릭 시 취소`}
+                                  >
+                                    결제 취소
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-primary purchase-sup-toggle"
+                                    onClick={() => handleMarkSupplierPaid(sup.name)}
+                                    title="결제 완료로 표시하고 결제 페이지로 보냅니다"
+                                  >
+                                    결제 완료
                                   </button>
                                 )}
                               </div>

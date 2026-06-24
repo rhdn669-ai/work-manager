@@ -33,6 +33,7 @@ import PurchaseLayout from './pages/admin/PurchaseLayout';
 import StaffHubPage from './pages/admin/StaffHubPage';
 import TrashPage from './pages/admin/TrashPage';
 import MailSendPage from './pages/admin/MailSendPage';
+import PaymentPage from './pages/admin/PaymentPage';
 import SiteListPage from './pages/site/SiteListPage';
 import SiteClosingPage from './pages/site/SiteClosingPage';
 import FileLibraryPage from './pages/library/FileLibraryPage';
@@ -90,6 +91,7 @@ const router = createBrowserRouter([
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
           { path: '/admin/trash', element: <TrashPage /> },
           { path: '/admin/mail', element: <MailSendPage /> },
+          { path: '/admin/payment', element: <PaymentPage /> },
           {
             path: '/admin/purchase',
             element: <PurchaseLayout />,

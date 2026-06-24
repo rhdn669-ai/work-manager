@@ -422,6 +422,22 @@ export async function unmarkSupplierReplied(purchaseId, supplierName) {
   });
 }
 
+// 업체별 결제 완료 표시 / 취소 (결제 페이지 노출용)
+export async function markSupplierPaid(purchaseId, supplierName, by = '') {
+  const key = supplierName.replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierPaid.${key}.paidAt`]: new Date(),
+    [`supplierPaid.${key}.paidBy`]: by,
+    updatedAt: new Date(),
+  });
+}
+export async function unmarkSupplierPaid(purchaseId, supplierName) {
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierPaid.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
 // 발주건 상태를 '회신'으로 전환 (모든 업체 회신 확인 시 자동 호출)
 export async function setPurchaseReplied(id, by = '') {
   await updateDoc(doc(db, 'purchases', id), {
