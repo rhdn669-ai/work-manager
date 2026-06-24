@@ -725,10 +725,6 @@ body {
   top: auto;
   bottom: calc(100% + 6px);
 }
-/* 포털(body)로 띄운 패널 — 모달(9999~10000)·스티키 헤더 위로 올려 가려지지 않게 */
-.ds-select__panel--portal {
-  z-index: 10050;
-}
 @keyframes ds-pop {
   from {
     opacity: 0;
@@ -797,9 +793,9 @@ body {
   color: var(--accent);
   flex-shrink: 0;
 }
-/* portal(body)로 띄운 패널 — 모달/스크롤에 안 잘림. 모달(z 100~1200) 위로. */
+/* portal(body)로 띄운 패널 — 모달/스크롤에 안 잘림. 모달(z 9999~10000) 위로 확실히. */
 .ds-select__panel--portal {
-  z-index: 1250;
+  z-index: 10050;
   width: max-content;
   max-width: min(360px, 90vw);
 }
