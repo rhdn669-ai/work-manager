@@ -202,8 +202,13 @@ export default function SiteClosingPage() {
   // 이름 미입력(신규) 행은 자동 펼침. allExpanded는 헤더의 "전체 펼치기" 토글.
   const [expandedRows, setExpandedRows] = useState(() => new Set());
   const [allExpanded, setAllExpanded] = useState(false);
-  // 공수표 보기 방식 — 'matrix'(한 표에 전원×날짜, 기본) | 'card'(인원별 카드)
-  const [viewMode, setViewMode] = useState('matrix');
+  // 공수표 보기 방식 — PC는 'matrix'(표), 모바일은 'card'(인원별 카드+달력)로 시작.
+  // 표는 날짜 30칸 가로스크롤이라 폰에서 불편 → DESIGN-SYSTEM(모바일=달력/카드) 방향.
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+      ? 'card'
+      : 'matrix',
+  );
   // 공수표 휴지통 모달
   const [trashOpen, setTrashOpen] = useState(false);
   // 공수표 항목 1건을 휴지통으로 소프트 삭제 (영구삭제 금지 규칙)
