@@ -12578,6 +12578,8 @@ table.closing-matrix {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px;
+  /* 넓은 화면에서 날짜 칸이 늘어나 표가 가로폭을 꽉 채우도록(좁으면 가로 스크롤). */
+  width: 100%;
 }
 table.closing-matrix th,
 table.closing-matrix td {
@@ -12745,9 +12747,7 @@ table.closing-matrix thead th {
 }
 /* 날짜 헤더 */
 .mx-dh {
-  min-width: 34px;
-  max-width: 34px;
-  width: 34px;
+  min-width: 36px;
 }
 .mx-dh .mx-dn {
   display: block;
@@ -12781,8 +12781,7 @@ table.closing-matrix thead th {
 }
 /* 날짜 입력 셀 */
 td.mx-dc {
-  min-width: 34px;
-  max-width: 34px;
+  min-width: 36px;
   padding: 2px;
 }
 .closing-matrix tbody tr:nth-child(even) td.mx-dc {
@@ -12792,7 +12791,7 @@ td.mx-dc.today {
   background: #eef3fb;
 }
 td.mx-dc input {
-  width: 30px;
+  width: 38px;
   height: 28px;
   border: 1px solid #e4e8ee;
   border-radius: 5px;
