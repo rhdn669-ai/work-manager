@@ -9452,8 +9452,9 @@ tr.is-newly-added > td {
 .site-row {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  /* 우측 40px는 ⋮ 관리메뉴 전용 거터 — 년월·화살표가 ⋮ 밑에 겹치지 않게 비워둔다. */
+  padding: 14px 40px 14px 16px;
   flex: 1;
   height: 165px;
   overflow: hidden;
@@ -9519,6 +9520,8 @@ tr.is-newly-added > td {
   gap: 4px;
   margin-bottom: 5px;
   min-height: 20px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* 프로젝트 유형/상태 뱃지 */
@@ -9582,6 +9585,8 @@ tr.is-newly-added > td {
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .site-row-meta .chip,
@@ -9595,7 +9600,8 @@ tr.is-newly-added > td {
   background: var(--bg-subtle);
   color: var(--text-light);
   white-space: nowrap;
-  max-width: 180px;
+  /* 본문 폭을 넘지 않게 — 길면 카드 밖으로 잘리지 않고 칩 안에서 말줄임 처리. */
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -9846,8 +9852,8 @@ tr.is-newly-added > td {
   flex-direction: column;
   align-items: stretch;
   gap: 3px;
-  min-width: 160px;
-  padding: 4px 10px 4px 12px;
+  min-width: 144px;
+  padding: 4px 8px 4px 10px;
   border-left: 1px solid var(--border);
   font-size: 11px;
   flex-shrink: 0;
@@ -9928,6 +9934,44 @@ tr.is-newly-added > td {
   }
 }
 
+/* ── 카드가 좁을 때(다중 컬럼, 카드폭 ≤470) 통계패널을 본문 아래로 내려 본문이 전체 폭을
+   쓰게 한다. 뷰포트가 아닌 "카드 자체 폭" 기준이라 3열에서도 이름·뱃지가 안 잘린다. ── */
+@container (max-width: 470px) {
+  .site-row {
+    height: auto;
+    min-height: 165px;
+    flex-wrap: wrap;
+  }
+  .site-row-stats-panel {
+    order: 5;
+    width: 100%;
+    flex-basis: 100%;
+    min-width: 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 8px 0 0 0;
+    margin-top: 6px;
+  }
+  .site-row-stats-panel .stat-row {
+    justify-content: flex-start;
+    gap: 6px;
+    min-width: 0;
+  }
+  .site-row-stats-panel .stat-row > span {
+    width: auto;
+  }
+  .site-row-stats-panel .stat-balance-row {
+    flex-basis: 100%;
+    justify-content: space-between;
+    margin-top: 0;
+    padding-top: 4px;
+    border-top: 1px dashed var(--border);
+  }
+}
+
 .site-row-period {
   flex-shrink: 0;
   text-align: right;
@@ -9969,6 +10013,8 @@ tr.is-newly-added > td {
   display: flex;
   flex-direction: column;
   min-height: 175px;
+  /* 카드 자체 폭을 기준으로 내부 레이아웃을 분기(container query)하기 위한 컨테이너 지정. */
+  container-type: inline-size;
 }
 
 .once-total-bar {
