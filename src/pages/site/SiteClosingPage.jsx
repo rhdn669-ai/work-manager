@@ -192,6 +192,8 @@ export default function SiteClosingPage() {
   // 이름 미입력(신규) 행은 자동 펼침. allExpanded는 헤더의 "전체 펼치기" 토글.
   const [expandedRows, setExpandedRows] = useState(() => new Set());
   const [allExpanded, setAllExpanded] = useState(false);
+  // 공수표 보기 방식 — 'matrix'(한 표에 전원×날짜, 기본) | 'card'(인원별 카드)
+  const [viewMode, setViewMode] = useState('matrix');
   function toggleRow(id) {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -2039,32 +2041,213 @@ export default function SiteClosingPage() {
             </div>
           );
 
+        // 매트릭스용 분리 — 업체(프로젝트)는 건당이라 표에서 제외(아래 카드로)
+        const dayItems = filtered.filter((it) => (it.itemType || 'freelancer') !== 'vendor_case');
+        const caseItems = filtered.filter((it) => (it.itemType || 'freelancer') === 'vendor_case');
+        const cardsToRender = viewMode === 'matrix' ? caseItems : filtered;
+        const mxDays = Array.from({ length: daysInMonth(y, m) }, (_, i) => i + 1);
+        const nowD = new Date();
+        const mxThisMonth = nowD.getFullYear() === y && nowD.getMonth() + 1 === m;
+        const mxToday = nowD.getDate();
+        const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+        const TYPE_SHORT = { employee: '직원', freelancer: '프리', daily: '일용', vendor: '업체' };
+        const renderMxCell = (it, buf, cardType, d) => {
+          const isDaily = cardType === 'daily';
+          const isEmployee = cardType === 'employee';
+          const v = buf.dailyQuantities?.[d];
+          const hasValue = v !== undefined && v !== null && v !== '';
+          const dow = new Date(y, m - 1, d).getDay();
+          const isSunday = dow === 0;
+          const isSaturday = dow === 6;
+          const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isHoliday = holidaySet.has(dayIso);
+          const isEmpRest = isEmployee && (isSaturday || isSunday || isHoliday);
+          const showAttendance = isEmpRest && !!siteOvertimeDays[buf.detail]?.has(d);
+          const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
+          const isOnLeave = !!leaveType;
+          const isFullLeave = isOnLeave && leaveWorkFraction(leaveType) === 0;
+          const isCSMode = !!site?.isCS;
+          const csSiteName = isCSMode ? buf.dailySites?.[d] || '' : '';
+          const isToday = mxThisMonth && d === mxToday;
+          const maxV = isDaily
+            ? '24'
+            : leaveType === 'half_am' || leaveType === 'half_pm'
+              ? '0.5'
+              : QUARTER_LEAVE_TYPES.includes(leaveType)
+                ? '0.75'
+                : '1';
+          let inner = null;
+          if (isEmpRest) {
+            inner = showAttendance ? <span className="mx-att">출</span> : null;
+          } else if (isFullLeave) {
+            inner = <span className="mx-lv">{leaveBadgeLabel(leaveType)}</span>;
+          } else if (isCSMode) {
+            inner = (
+              <button
+                type="button"
+                className="mx-cs"
+                onClick={() => canEdit && openCsCellModal(it.id, d)}
+                disabled={!canEdit}
+                title={csSiteName ? `${csSiteName} · ${v ?? ''}공수` : '탭하여 공수·현장 입력'}
+              >
+                {hasValue ? v : '+'}
+              </button>
+            );
+          } else {
+            inner = (
+              <input
+                type="number"
+                step={isDaily ? '0.5' : '0.25'}
+                min="0"
+                max={maxV}
+                value={v ?? ''}
+                onChange={(e) => updateDay(it.id, d, e.target.value)}
+                onBlur={() => flushRow(it.id)}
+                disabled={!canEdit}
+              />
+            );
+          }
+          return (
+            <td
+              key={d}
+              className={`mx-dc ${hasValue ? 'has' : ''} ${isSaturday ? 'sat' : ''} ${isSunday ? 'sun' : ''} ${isHoliday ? 'hol' : ''} ${isEmpRest ? 'rest' : ''} ${isOnLeave ? `on-leave leave-${leaveType}` : ''} ${isToday ? 'today' : ''}`}
+            >
+              {inner}
+              {isOnLeave && !isFullLeave && <span className="mx-lvtag">{leaveBadgeLabel(leaveType)}</span>}
+            </td>
+          );
+        };
+        const renderMxRow = (it) => {
+          const buf = editBuf[it.id] || it;
+          const cardType = it.itemType || buf.itemType || 'freelancer';
+          const isEmployee = cardType === 'employee';
+          const nameField = cardType === 'vendor' ? 'vendor' : 'detail';
+          return (
+            <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
+              <td className="mx-name">
+                <span className={`mx-type mx-type-${cardType}`}>{TYPE_SHORT[cardType] || ''}</span>
+                <input
+                  className="mx-name-input"
+                  value={buf[nameField] || ''}
+                  placeholder={cardType === 'vendor' ? '업체' : '이름'}
+                  onChange={(e) => updateField(it.id, nameField, e.target.value)}
+                  onBlur={() => flushRow(it.id)}
+                  disabled={!canEdit}
+                  readOnly={isEmployee}
+                  title={buf[nameField] || ''}
+                />
+                {canEdit && isEmployee && site?.projectType === 'recurring' && (
+                  <button
+                    type="button"
+                    className={`mx-auto ${buf.autofillDisabled ? 'off' : ''}`}
+                    onClick={() => toggleEmployeeAutofill(it.id)}
+                    title={buf.autofillDisabled ? '자동채움 꺼짐 — 켜기' : '자동채움 켜짐 — 끄기'}
+                  >
+                    {buf.autofillDisabled ? 'OFF' : 'ON'}
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="mx-del"
+                    onClick={() => handleDeleteRow(it.id)}
+                    aria-label="삭제"
+                  >
+                    <Icon name="trash" size={13} />
+                  </button>
+                )}
+              </td>
+              <td className="mx-qty">{Number(buf.quantity || 0)}</td>
+              {canViewSalary && (
+                <td className="mx-price">
+                  <MoneyInput
+                    value={buf.unitPrice || 0}
+                    onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
+                    onBlur={() => flushRow(it.id)}
+                    disabled={!canEdit || cardType === 'employee'}
+                  />
+                </td>
+              )}
+              {canViewSalary && <td className="mx-amt">{Number(buf.amount || 0).toLocaleString()}</td>}
+              {mxDays.map((d) => renderMxCell(it, buf, cardType, d))}
+            </tr>
+          );
+        };
         return (
           <>
           <div className="closing-cards-toolbar">
-            <button
-              type="button"
-              className="closing-expand-all"
-              onClick={() => {
-                if (allExpanded) {
-                  // 전체 접기 — 작성중(이름 없는) 행은 펼침 유지
-                  const keep = new Set();
-                  items.forEach((it) => {
-                    if (!(it.detail || '').trim() && !(it.vendor || '').trim()) keep.add(it.id);
-                  });
-                  setExpandedRows(keep);
-                  setAllExpanded(false);
-                } else {
-                  setAllExpanded(true);
-                }
-              }}
-            >
-              <Icon name="chevronDown" size={14} className={allExpanded ? 'is-open' : ''} />
-              {allExpanded ? '전체 접기' : '전체 펼치기'}
-            </button>
+            <div className="closing-viewtog">
+              <button
+                type="button"
+                className={viewMode === 'matrix' ? 'on' : ''}
+                onClick={() => setViewMode('matrix')}
+              >
+                표
+              </button>
+              <button
+                type="button"
+                className={viewMode === 'card' ? 'on' : ''}
+                onClick={() => setViewMode('card')}
+              >
+                카드
+              </button>
+            </div>
+            {viewMode === 'card' && (
+              <button
+                type="button"
+                className="closing-expand-all"
+                onClick={() => {
+                  if (allExpanded) {
+                    // 전체 접기 — 작성중(이름 없는) 행은 펼침 유지
+                    const keep = new Set();
+                    items.forEach((it) => {
+                      if (!(it.detail || '').trim() && !(it.vendor || '').trim()) keep.add(it.id);
+                    });
+                    setExpandedRows(keep);
+                    setAllExpanded(false);
+                  } else {
+                    setAllExpanded(true);
+                  }
+                }}
+              >
+                <Icon name="chevronDown" size={14} className={allExpanded ? 'is-open' : ''} />
+                {allExpanded ? '전체 접기' : '전체 펼치기'}
+              </button>
+            )}
           </div>
+
+          {viewMode === 'matrix' && dayItems.length > 0 && (
+            <div className="closing-matrix-wrap">
+              <table className="closing-matrix">
+                <thead>
+                  <tr>
+                    <th className="mx-name">이름</th>
+                    <th className="mx-qty">공수</th>
+                    {canViewSalary && <th className="mx-price">단가</th>}
+                    {canViewSalary && <th className="mx-amt">금액</th>}
+                    {mxDays.map((d) => {
+                      const dow = new Date(y, m - 1, d).getDay();
+                      const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                      const isToday = mxThisMonth && d === mxToday;
+                      return (
+                        <th
+                          key={d}
+                          className={`mx-dh ${dow === 6 ? 'sat' : ''} ${dow === 0 ? 'sun' : ''} ${holidaySet.has(dayIso) ? 'hol' : ''} ${isToday ? 'today' : ''}`}
+                        >
+                          <span className="mx-dn">{d}</span>
+                          <span className="mx-dw">{DOW[dow]}</span>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>{dayItems.map((it) => renderMxRow(it))}</tbody>
+              </table>
+            </div>
+          )}
+
           <div className="closing-cards">
-            {filtered.map((it) => {
+            {cardsToRender.map((it) => {
               const buf = editBuf[it.id] || it;
               const cardType = it.itemType || buf.itemType || 'freelancer';
               const isDaily = cardType === 'daily';

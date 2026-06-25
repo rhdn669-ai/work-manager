@@ -12537,7 +12537,353 @@ tr.is-newly-added > td {
 .closing-cards-toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+}
+/* 보기 토글 (표 / 카드) */
+.closing-viewtog {
+  display: inline-flex;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+  margin-right: auto;
+}
+.closing-viewtog button {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.closing-viewtog button.on {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ── 공수표 매트릭스(인원 × 날짜) ── */
+.closing-matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05);
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+table.closing-matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+table.closing-matrix th,
+table.closing-matrix td {
+  border-bottom: 1px solid #f2f4f7;
+  border-right: 1px solid #f4f6f8;
+  padding: 0;
+  text-align: center;
+  height: 40px;
+}
+table.closing-matrix thead th {
+  position: sticky;
+  top: 0;
+  background: #fafbfc;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 11px;
+  z-index: 5;
+  border-bottom: 1.5px solid #e2e6ec;
+}
+/* 고정 좌측 열 */
+.closing-matrix .mx-name {
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  background: #fff;
+  min-width: 150px;
+  max-width: 150px;
+  text-align: left;
+  padding: 0 6px 0 10px;
+}
+.closing-matrix .mx-qty {
+  position: sticky;
+  left: 150px;
+  z-index: 6;
+  background: #fff;
+  min-width: 46px;
+  max-width: 46px;
+  font-weight: 800;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.closing-matrix .mx-price {
+  position: sticky;
+  left: 196px;
+  z-index: 6;
+  background: #fff;
+  min-width: 78px;
+  max-width: 78px;
+}
+.closing-matrix .mx-amt {
+  position: sticky;
+  left: 274px;
+  z-index: 6;
+  background: #fff;
+  min-width: 96px;
+  max-width: 96px;
+  font-weight: 800;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+  box-shadow: 8px 0 9px -6px rgba(17, 24, 39, 0.16);
+}
+.closing-matrix thead .mx-name,
+.closing-matrix thead .mx-qty,
+.closing-matrix thead .mx-price,
+.closing-matrix thead .mx-amt {
+  background: #fafbfc;
+  z-index: 7;
+  color: var(--text);
+}
+/* 이름 셀 내부 */
+.closing-matrix .mx-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.closing-matrix td.mx-name {
+  height: 40px;
+}
+.mx-type {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  background: #eef2fb;
+  color: var(--primary);
+}
+.mx-type-freelancer {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.mx-type-daily {
+  background: #ffedd5;
+  color: var(--accent-hover);
+}
+.mx-type-vendor {
+  background: #d1fae5;
+  color: #047857;
+}
+.mx-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 0 4px;
+  outline: none;
+}
+.mx-name-input:not([readonly]):hover,
+.mx-name-input:focus {
+  border-color: var(--border);
+  background: #fff;
+}
+.mx-auto {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 5px;
+  border: none;
+  background: var(--navy-soft, #eef2fb);
+  color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mx-auto.off {
+  background: #fee2e2;
+  color: var(--danger);
+}
+.mx-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.mx-del:hover {
+  background: var(--danger-tint, #fdecec);
+  color: var(--danger);
+}
+.closing-matrix .mx-price input {
+  width: 68px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: right;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 0 6px;
+  color: var(--text);
+  background: #fff;
+}
+/* 날짜 헤더 */
+.mx-dh {
+  min-width: 34px;
+  max-width: 34px;
+  width: 34px;
+}
+.mx-dh .mx-dn {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+}
+.mx-dh .mx-dw {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.mx-dh.sat .mx-dn,
+.mx-dh.sat .mx-dw {
+  color: var(--accent);
+}
+.mx-dh.sun .mx-dn,
+.mx-dh.sun .mx-dw,
+.mx-dh.hol .mx-dn {
+  color: var(--danger);
+}
+.mx-dh.sun,
+.closing-matrix td.mx-dc.sun {
+  border-right: 2px solid #e0e4ea;
+}
+.mx-dh.today {
+  background: #e2ebf9;
+}
+.mx-dh.today .mx-dn {
+  color: var(--primary);
+}
+/* 날짜 입력 셀 */
+td.mx-dc {
+  min-width: 34px;
+  max-width: 34px;
+  padding: 2px;
+}
+.closing-matrix tbody tr:nth-child(even) td.mx-dc {
+  background: #fbfbfd;
+}
+td.mx-dc.today {
+  background: #eef3fb;
+}
+td.mx-dc input {
+  width: 30px;
+  height: 28px;
+  border: 1px solid #e4e8ee;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+  color: var(--text);
+  padding: 0;
+  outline: none;
+}
+td.mx-dc input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 32, 80, 0.12);
+}
+td.mx-dc.has input {
+  background: var(--navy-soft);
+  border-color: var(--navy-tint);
+  color: var(--primary);
+  font-weight: 800;
+}
+td.mx-dc.rest {
+  background: repeating-linear-gradient(45deg, #f5f6f8, #f5f6f8 3px, #edeff2 3px, #edeff2 6px);
+}
+td.mx-dc.rest input {
+  visibility: hidden;
+}
+td.mx-dc.on-leave:has(.mx-lv) {
+  background: var(--danger);
+}
+.mx-lv {
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+}
+.mx-lvtag {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 7px;
+  font-weight: 800;
+  color: var(--danger);
+}
+td.mx-dc {
+  position: relative;
+}
+.mx-att {
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 800;
+}
+.mx-cs {
+  width: 30px;
+  height: 28px;
+  border: 1px solid #e4e8ee;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+}
+.closing-matrix tbody tr:hover .mx-name,
+.closing-matrix tbody tr:hover .mx-qty,
+.closing-matrix tbody tr:hover .mx-price,
+.closing-matrix tbody tr:hover .mx-amt {
+  background: #f6f8fc;
+}
+/* 모바일 — 이름+공수만 고정, 단가·금액은 스크롤 */
+@media (max-width: 768px) {
+  .closing-matrix .mx-name {
+    min-width: 104px;
+    max-width: 104px;
+  }
+  .closing-matrix .mx-qty {
+    left: 104px;
+  }
+  .closing-matrix .mx-price,
+  .closing-matrix .mx-amt {
+    position: static;
+    box-shadow: none;
+  }
+  .closing-matrix thead .mx-price,
+  .closing-matrix thead .mx-amt {
+    position: sticky;
+    top: 0;
+  }
+  .closing-matrix .mx-qty {
+    box-shadow: 8px 0 9px -6px rgba(17, 24, 39, 0.16);
+  }
 }
 .closing-expand-all {
   display: inline-flex;
