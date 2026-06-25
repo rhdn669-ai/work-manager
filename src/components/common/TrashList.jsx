@@ -24,6 +24,7 @@ export const TRASH_TYPE_LABEL = {
   bomProject: { label: 'BOM', cls: 'partial' },
   mileageLogs: { label: '운행기록', cls: 'partial' },
   vehicleMileages: { label: '운행기록', cls: 'partial' },
+  siteClosingItems: { label: '공수표', cls: 'received' },
 };
 
 export function trashTypeInfo(t) {

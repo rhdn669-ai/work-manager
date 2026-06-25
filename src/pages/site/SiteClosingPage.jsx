@@ -6,7 +6,6 @@ import {
   getClosingItems,
   addClosingItem,
   updateClosingItem,
-  deleteClosingItem,
   getFinanceItems,
   addFinanceItem,
   updateFinanceItem,
@@ -29,6 +28,17 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
+import TrashModal from '../../components/common/TrashModal';
+import { trashGeneric } from '../../services/trashService';
+
+// 공수표 항목 유형 라벨 (휴지통 요약용)
+const CLOSING_TYPE_LABEL = {
+  employee: '직원',
+  freelancer: '프리랜서',
+  daily: '일용직',
+  vendor: '업체(공수)',
+  vendor_case: '업체(프로젝트)',
+};
 
 function daysInMonth(yr, mo) {
   return new Date(yr, mo, 0).getDate();
@@ -194,6 +204,22 @@ export default function SiteClosingPage() {
   const [allExpanded, setAllExpanded] = useState(false);
   // 공수표 보기 방식 — 'matrix'(한 표에 전원×날짜, 기본) | 'card'(인원별 카드)
   const [viewMode, setViewMode] = useState('matrix');
+  // 공수표 휴지통 모달
+  const [trashOpen, setTrashOpen] = useState(false);
+  // 공수표 항목 1건을 휴지통으로 소프트 삭제 (영구삭제 금지 규칙)
+  function trashClosingItem(item) {
+    const b = editBuf[item.id] || item || {};
+    const tLabel = CLOSING_TYPE_LABEL[b.itemType] || '';
+    return trashGeneric(
+      'siteClosingItems',
+      item.id,
+      {
+        title: b.detail || b.vendor || '(이름없음)',
+        summary: `${tLabel} · ${Number(b.quantity || 0)}공수 · ${site?.name || ''} ${y}/${String(m).padStart(2, '0')}`,
+      },
+      userProfile?.name || '',
+    );
+  }
   function toggleRow(id) {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -542,7 +568,7 @@ export default function SiteClosingPage() {
   async function handleClearItems() {
     if (
       !(await confirm(
-        `공수표 항목 ${items.length}건을 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?`,
+        `공수표 항목 ${items.length}건을 모두 휴지통으로 보냅니다.\n휴지통에서 복원할 수 있습니다.\n\n계속하시겠습니까?`,
       ))
     )
       return;
@@ -553,7 +579,7 @@ export default function SiteClosingPage() {
           clearTimeout(timersRef.current[item.id]);
           delete timersRef.current[item.id];
         }
-        await deleteClosingItem(item.id);
+        await trashClosingItem(item);
       }
       await loadAll({ silent: true });
     } catch (err) {
@@ -951,13 +977,14 @@ export default function SiteClosingPage() {
   }
 
   async function handleDeleteRow(itemId) {
-    if (!(await confirm('이 항목을 삭제하시겠습니까?'))) return;
+    if (!(await confirm('이 항목을 휴지통으로 보낼까요? (휴지통에서 복원할 수 있습니다)'))) return;
     if (timersRef.current[itemId]) {
       clearTimeout(timersRef.current[itemId]);
       delete timersRef.current[itemId];
     }
     try {
-      await deleteClosingItem(itemId);
+      const item = items.find((x) => x.id === itemId) || { id: itemId };
+      await trashClosingItem(item);
       // 낙관적 업데이트 — 전체 reload 대신 로컬 상태에서만 제거해 스크롤 위치 유지
       setItems((prev) => prev.filter((x) => x.id !== itemId));
       setEditBuf((prev) => {
@@ -1488,11 +1515,25 @@ export default function SiteClosingPage() {
               프로젝트 마감
             </button>
           )}
+          {canEdit && (
+            <button className="btn btn-outline btn-sm" onClick={() => setTrashOpen(true)}>
+              <Icon name="trash" className="btn-ic" />
+              휴지통
+            </button>
+          )}
           <button className="btn btn-outline btn-sm" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
             목록
           </button>
         </div>
       </div>
+
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['siteClosingItems']}
+        title="공수표 휴지통"
+        onChange={() => loadAll({ silent: true })}
+      />
 
       {isCompleted && (
         <div className="alert alert-warning" style={{ marginBottom: 12 }}>

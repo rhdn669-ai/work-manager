@@ -13,6 +13,7 @@ const TRASH_TABS = [
   { key: 'quote', label: '견적', types: ['quotes'] },
   { key: 'bom', label: 'BOM', types: ['bomProject'] },
   { key: 'site', label: '현장', types: ['sites'] },
+  { key: 'closing', label: '공수표', types: ['siteClosingItems'] },
   { key: 'library', label: '자료실', types: ['libraryFiles', 'libraryFolders'] },
   { key: 'org', label: '직원·부서', types: ['users', 'departments'] },
   { key: 'outsource', label: '외주', types: ['vendors', 'freelancers'] },
