@@ -2113,7 +2113,7 @@ export default function SiteClosingPage() {
             <td
               key={d}
               title={isHalf ? leaveBadgeLabel(leaveType) : undefined}
-              className={`mx-dc ${hasValue ? 'has' : ''} ${isSaturday ? 'sat' : ''} ${isSunday ? 'sun' : ''} ${isHoliday ? 'hol' : ''} ${isEmpRest ? 'rest' : ''} ${isOnLeave ? `on-leave leave-${leaveType}` : ''} ${isHalf ? 'half' : ''} ${isToday ? 'today' : ''}`}
+              className={`mx-dc ${hasValue ? 'has' : ''} ${isSaturday ? 'sat' : ''} ${isSunday ? 'sun' : ''} ${isHoliday ? 'hol' : ''} ${isEmpRest && !showAttendance ? 'rest' : ''} ${isOnLeave ? `on-leave leave-${leaveType}` : ''} ${isHalf ? 'half' : ''} ${isToday ? 'today' : ''}`}
             >
               {inner}
             </td>

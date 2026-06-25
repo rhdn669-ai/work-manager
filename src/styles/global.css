@@ -12822,8 +12822,8 @@ td.mx-dc input:focus {
   box-shadow: 0 0 0 2px rgba(0, 32, 80, 0.12);
 }
 td.mx-dc.has input {
-  background: var(--navy-soft);
-  border-color: var(--navy-tint);
+  background: #d2e0f6;
+  border-color: #a6c0e6;
   color: var(--primary);
   font-weight: 800;
 }
@@ -12840,11 +12840,17 @@ td.mx-dc.rest {
 td.mx-dc.rest input {
   visibility: hidden;
 }
-td.mx-dc.on-leave:has(.mx-lv) {
-  background: var(--danger);
-}
+/* 연차(전일휴가) — 칸 전체가 아니라 입력칸 크기의 빨강 배지로(밖으로 안 튀어나오게) */
 .mx-lv {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 52px;
+  height: 30px;
+  background: var(--danger);
   color: #fff;
+  border-radius: 5px;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: -0.3px;
@@ -12860,8 +12866,18 @@ td.mx-dc.on-leave:has(.mx-lv) {
 td.mx-dc {
   position: relative;
 }
+/* 출근(휴무일 잔업) — 테두리 있는 초록 배지로 가독성 확보 */
 .mx-att {
-  color: var(--success);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 52px;
+  height: 30px;
+  background: #e8f6ec;
+  color: #15803d;
+  border: 1px solid #86efac;
+  border-radius: 5px;
   font-size: 12px;
   font-weight: 800;
 }
