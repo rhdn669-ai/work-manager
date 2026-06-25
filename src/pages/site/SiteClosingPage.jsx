@@ -2127,6 +2127,7 @@ export default function SiteClosingPage() {
           return (
             <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
               <td className="mx-name">
+                <div className="mx-name-inner">
                 <span className={`mx-type mx-type-${cardType}`}>{TYPE_SHORT[cardType] || ''}</span>
                 <input
                   className="mx-name-input"
@@ -2158,6 +2159,7 @@ export default function SiteClosingPage() {
                     <Icon name="trash" size={13} />
                   </button>
                 )}
+                </div>
               </td>
               <td className="mx-qty">{Number(buf.quantity || 0)}</td>
               {canViewSalary && (

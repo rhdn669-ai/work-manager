@@ -12605,14 +12605,14 @@ table.closing-matrix thead th {
   left: 0;
   z-index: 6;
   background: #fff;
-  min-width: 150px;
-  max-width: 150px;
+  min-width: 168px;
+  max-width: 168px;
   text-align: left;
-  padding: 0 6px 0 10px;
+  padding: 0 8px 0 12px;
 }
 .closing-matrix .mx-qty {
   position: sticky;
-  left: 150px;
+  left: 168px;
   z-index: 6;
   background: #fff;
   min-width: 46px;
@@ -12624,7 +12624,7 @@ table.closing-matrix thead th {
 }
 .closing-matrix .mx-price {
   position: sticky;
-  left: 196px;
+  left: 214px;
   z-index: 6;
   background: #fff;
   min-width: 78px;
@@ -12632,7 +12632,7 @@ table.closing-matrix thead th {
 }
 .closing-matrix .mx-amt {
   position: sticky;
-  left: 274px;
+  left: 292px;
   z-index: 6;
   background: #fff;
   min-width: 96px;
@@ -12653,14 +12653,16 @@ table.closing-matrix thead th {
   z-index: 7;
   color: var(--text);
 }
-/* 이름 셀 내부 */
-.closing-matrix .mx-name {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
+/* 이름 셀 내부 — td는 표 셀로 두고 안쪽 div에서 flex (input이 칸을 꽉 채워 우측 빈 여백 제거) */
 .closing-matrix td.mx-name {
   height: 40px;
+}
+.mx-name-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 .mx-type {
   font-size: 9px;
@@ -12784,8 +12786,18 @@ td.mx-dc {
   min-width: 36px;
   padding: 2px;
 }
-.closing-matrix tbody tr:nth-child(even) td.mx-dc {
-  background: #fbfbfd;
+/* 분류별 행 색상 — 카드와 동일 계열을 연하게(오늘·주말·고정칸은 아래 규칙이 덮음) */
+.closing-matrix .mx-row-employee td {
+  background-color: #eef0fd;
+}
+.closing-matrix .mx-row-freelancer td {
+  background-color: #eaf4ff;
+}
+.closing-matrix .mx-row-daily td {
+  background-color: #fff5e9;
+}
+.closing-matrix .mx-row-vendor td {
+  background-color: #ebfbf2;
 }
 td.mx-dc.today {
   background: #eef3fb;
@@ -12833,8 +12845,9 @@ td.mx-dc.on-leave:has(.mx-lv) {
 }
 .mx-lv {
   color: #fff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
+  letter-spacing: -0.3px;
 }
 .mx-lvtag {
   position: absolute;
@@ -12849,7 +12862,7 @@ td.mx-dc {
 }
 .mx-att {
   color: var(--success);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .mx-cs {
@@ -12873,11 +12886,11 @@ td.mx-dc {
 /* 모바일 — 이름+공수만 고정, 단가·금액은 스크롤 */
 @media (max-width: 768px) {
   .closing-matrix .mx-name {
-    min-width: 104px;
-    max-width: 104px;
+    min-width: 124px;
+    max-width: 124px;
   }
   .closing-matrix .mx-qty {
-    left: 104px;
+    left: 124px;
   }
   .closing-matrix .mx-price,
   .closing-matrix .mx-amt {
