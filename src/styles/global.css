@@ -6502,6 +6502,41 @@ table.cards-sm td {
   color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
+/* 합계 — 공급가액 + 부가세 포함 별도 표기 */
+.purchase-total-vals {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.purchase-total-supply,
+.purchase-total-vat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.purchase-total-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.purchase-total-supply strong {
+  font-size: 15px;
+  color: var(--text-light);
+  font-weight: 700;
+}
+.purchase-total-vat strong {
+  font-size: 18px;
+  color: var(--primary);
+}
+@media (max-width: 480px) {
+  .purchase-total-vals {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}
 
 .purchase-modal-actions {
   display: flex;

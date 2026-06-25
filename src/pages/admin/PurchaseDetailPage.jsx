@@ -1766,7 +1766,16 @@ export default function PurchaseDetailPage() {
 
       <div className="purchase-total-row screen-only">
         <span>합계</span>
-        <strong>{formTotal.toLocaleString()}원</strong>
+        <div className="purchase-total-vals">
+          <span className="purchase-total-supply">
+            <span className="purchase-total-label">공급가액</span>
+            <strong>{formTotal.toLocaleString()}원</strong>
+          </span>
+          <span className="purchase-total-vat">
+            <span className="purchase-total-label">부가세 포함</span>
+            <strong>{Math.round(formTotal * 1.1).toLocaleString()}원</strong>
+          </span>
+        </div>
       </div>
 
       {/* 업체별 발주 현황 — 메일 발송·발주 완료 추적 (품목 아래) */}
