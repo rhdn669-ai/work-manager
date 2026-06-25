@@ -12498,6 +12498,132 @@ tr.is-newly-added > td {
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
 }
 
+/* ── 공수표 접힘 요약(예외기반 1줄) ── */
+.closing-cards-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.closing-expand-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--navy-soft, #eef2fb);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.closing-expand-all:hover {
+  background: var(--navy-tint, #dbe4f5);
+}
+.closing-expand-all svg,
+.closing-collapse-toggle svg {
+  transition: transform 0.15s;
+}
+.closing-expand-all svg.is-open,
+.closing-collapse-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+/* 헤더 펼침/접힘 캐럿 */
+.closing-collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s;
+}
+.closing-collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--primary);
+}
+
+/* 접힘 본문 — 미니 스트립 + 예외칩 */
+.closing-collapsed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 2px 4px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.closing-strip {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+}
+.cstrip-seg {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 16px;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+.cstrip-work {
+  background: #4a6fa5;
+}
+.cstrip-half {
+  background: linear-gradient(90deg, #4a6fa5 50%, #fff 50%);
+  border: 1px solid #4a6fa5;
+}
+.cstrip-over {
+  background: #16a34a;
+}
+.cstrip-leave {
+  background: #dc2626;
+}
+.cstrip-rest {
+  background: repeating-linear-gradient(45deg, #eef0f3, #eef0f3 3px, #e1e5ea 3px, #e1e5ea 6px);
+}
+.cstrip-zero {
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+}
+.cstrip-empty {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid #e2e8f0;
+}
+.closing-collapsed-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cc-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.cc-work {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-light);
+}
+.cc-leave {
+  background: #fdecec;
+  color: #dc2626;
+}
+.cc-over {
+  background: #e8f6ec;
+  color: #16a34a;
+}
+
 /* 프리랜서/일용직 직접 입력 모달 폼 */
 .direct-input-form {
   display: flex;

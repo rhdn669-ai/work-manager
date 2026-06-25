@@ -188,6 +188,36 @@ export default function SiteClosingPage() {
   const [directInputModal, setDirectInputModal] = useState(null); // { type, name, vendor, dailyRate } | null
   // CS 셀 입력 모달 — site.isCS일 때 셀 탭하면 공수+현장명 함께 입력
   const [csCellModal, setCsCellModal] = useState(null); // { itemId, day, qty, siteName } | null
+  // 공수표 행 펼침/접힘 — 기본 접힘(요약 1줄만), 탭하면 해당 행만 캘린더로 펼쳐 편집.
+  // 이름 미입력(신규) 행은 자동 펼침. allExpanded는 헤더의 "전체 펼치기" 토글.
+  const [expandedRows, setExpandedRows] = useState(() => new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
+  function toggleRow(id) {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  // 이름 미입력(작성중) 행은 자동으로 펼침 유지 — 타이핑 중 접히지 않도록 행 추가 시 1회만 등록.
+  // items(행 추가/삭제/로드) 변화에만 반응 — editBuf 타이핑에는 반응하지 않음(접힘 깜빡임 방지).
+  useEffect(() => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      items.forEach((it) => {
+        const nm = (it.detail || '').trim();
+        const vn = (it.vendor || '').trim();
+        if (!nm && !vn && !next.has(it.id)) {
+          next.add(it.id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   function resetVendorPicker() {
     setVendorPickerMode(null);
@@ -2010,6 +2040,29 @@ export default function SiteClosingPage() {
           );
 
         return (
+          <>
+          <div className="closing-cards-toolbar">
+            <button
+              type="button"
+              className="closing-expand-all"
+              onClick={() => {
+                if (allExpanded) {
+                  // 전체 접기 — 작성중(이름 없는) 행은 펼침 유지
+                  const keep = new Set();
+                  items.forEach((it) => {
+                    if (!(it.detail || '').trim() && !(it.vendor || '').trim()) keep.add(it.id);
+                  });
+                  setExpandedRows(keep);
+                  setAllExpanded(false);
+                } else {
+                  setAllExpanded(true);
+                }
+              }}
+            >
+              <Icon name="chevronDown" size={14} className={allExpanded ? 'is-open' : ''} />
+              {allExpanded ? '전체 접기' : '전체 펼치기'}
+            </button>
+          </div>
           <div className="closing-cards">
             {filtered.map((it) => {
               const buf = editBuf[it.id] || it;
@@ -2026,6 +2079,52 @@ export default function SiteClosingPage() {
               const isVendorType = cardType === 'vendor' || cardType === 'vendor_case';
               const vendorLocked = !!buf.vendorLocked || isEmployee || (isVendorType && !!(buf.vendor || '').trim());
               const detailLocked = !!buf.detailLocked || isEmployee || (isVendorType && !!(buf.detail || '').trim());
+
+              // ── 접힘 요약(미니 스트립 + 예외칩) 계산 ──
+              // 직원=차감식(풀출근 자동, 예외 강조) / 프리랜서·일용직·업체=적산식(일한 날만) / 업체PJ=건당
+              const hasName = !!(buf.detail || '').trim() || !!(buf.vendor || '').trim();
+              const rowExpanded = allExpanded || expandedRows.has(it.id);
+              const nameKey = buf.detail;
+              const dq = buf.dailyQuantities || {};
+              const stripDays = daysInMonth(y, m);
+              let workCnt = 0;
+              let leaveFullCnt = 0;
+              let leaveHalfCnt = 0;
+              let overCnt = 0;
+              const stripSegs = [];
+              if (!isVendorCase) {
+                for (let d = 1; d <= stripDays; d++) {
+                  const dow = new Date(y, m - 1, d).getDay();
+                  const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                  const isHol = holidaySet.has(iso);
+                  const isWknd = dow === 0 || dow === 6;
+                  const rawV = dq[d];
+                  const hasV = rawV !== undefined && rawV !== null && rawV !== '' && Number(rawV) > 0;
+                  const lvType = isEmployee ? leaveDays[nameKey]?.[d] : undefined;
+                  const hasOver =
+                    isEmployee && (isWknd || isHol) && !!siteOvertimeDays[nameKey]?.has(d);
+                  let seg;
+                  if (lvType && leaveWorkFraction(lvType) <= 0) {
+                    seg = 'leave';
+                    leaveFullCnt += 1;
+                  } else if (lvType) {
+                    seg = 'half';
+                    leaveHalfCnt += 1;
+                    if (hasV) workCnt += 1;
+                  } else if (hasOver) {
+                    seg = 'over';
+                    overCnt += 1;
+                  } else if (hasV) {
+                    seg = 'work';
+                    workCnt += 1;
+                  } else if (isWknd || isHol) {
+                    seg = 'rest';
+                  } else {
+                    seg = rawV === 0 || rawV === '0' ? 'zero' : 'empty';
+                  }
+                  stripSegs.push(seg);
+                }
+              }
               return (
                 <div className={`closing-card closing-card-${cardType}`} key={it.id}>
                   <div className="closing-card-head">
@@ -2080,6 +2179,17 @@ export default function SiteClosingPage() {
                         {buf.autofillDisabled ? '자동 OFF' : '자동 ON'}
                       </button>
                     )}
+                    {hasName && (
+                      <button
+                        type="button"
+                        className={`closing-collapse-toggle ${rowExpanded ? 'is-open' : ''}`}
+                        onClick={() => toggleRow(it.id)}
+                        aria-label={rowExpanded ? '접기' : '펼치기'}
+                        title={rowExpanded ? '접기' : '펼쳐서 편집'}
+                      >
+                        <Icon name="chevronDown" size={16} />
+                      </button>
+                    )}
                     {canEdit && (
                       <button
                         type="button"
@@ -2092,8 +2202,48 @@ export default function SiteClosingPage() {
                     )}
                   </div>
 
-                  {isVendorCase
-                    ? (() => {
+                  {!rowExpanded && (
+                    <button
+                      type="button"
+                      className="closing-collapsed"
+                      onClick={() => toggleRow(it.id)}
+                      title="펼쳐서 편집"
+                    >
+                      {!isVendorCase && (
+                        <div className="closing-strip" aria-hidden="true">
+                          {stripSegs.map((seg, i) => (
+                            <span key={i} className={`cstrip-seg cstrip-${seg}`} />
+                          ))}
+                        </div>
+                      )}
+                      <div className="closing-collapsed-chips">
+                        {isVendorCase ? (
+                          <span className="cc-chip cc-work">
+                            {(Array.isArray(buf.closings) ? buf.closings.length : 0)}건 ·{' '}
+                            {Number(buf.quantity || 0)}대
+                          </span>
+                        ) : (
+                          <>
+                            <span className="cc-chip cc-work">
+                              근무 {workCnt}
+                              {unitLabel}
+                            </span>
+                            {leaveFullCnt > 0 && (
+                              <span className="cc-chip cc-leave">연차 {leaveFullCnt}</span>
+                            )}
+                            {leaveHalfCnt > 0 && (
+                              <span className="cc-chip cc-leave">반차 {leaveHalfCnt}</span>
+                            )}
+                            {overCnt > 0 && <span className="cc-chip cc-over">잔업 {overCnt}</span>}
+                          </>
+                        )}
+                      </div>
+                    </button>
+                  )}
+
+                  {rowExpanded &&
+                    (isVendorCase
+                      ? (() => {
                         const closings = Array.isArray(buf.closings) ? buf.closings : [];
                         return (
                           <div className="vendor-case-rows">
@@ -2294,7 +2444,7 @@ export default function SiteClosingPage() {
                             ))}
                           </div>
                         );
-                      })()}
+                        })())}
 
                   <div className="closing-card-foot">
                     <div className="foot-field">
@@ -2327,6 +2477,7 @@ export default function SiteClosingPage() {
               );
             })}
           </div>
+          </>
         );
       })()}
 
