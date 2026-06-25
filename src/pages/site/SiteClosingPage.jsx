@@ -2104,16 +2104,18 @@ export default function SiteClosingPage() {
                 onChange={(e) => updateDay(it.id, d, e.target.value)}
                 onBlur={() => flushRow(it.id)}
                 disabled={!canEdit}
+                title={isOnLeave ? leaveBadgeLabel(leaveType) : undefined}
               />
             );
           }
+          const isHalf = isOnLeave && !isFullLeave;
           return (
             <td
               key={d}
-              className={`mx-dc ${hasValue ? 'has' : ''} ${isSaturday ? 'sat' : ''} ${isSunday ? 'sun' : ''} ${isHoliday ? 'hol' : ''} ${isEmpRest ? 'rest' : ''} ${isOnLeave ? `on-leave leave-${leaveType}` : ''} ${isToday ? 'today' : ''}`}
+              title={isHalf ? leaveBadgeLabel(leaveType) : undefined}
+              className={`mx-dc ${hasValue ? 'has' : ''} ${isSaturday ? 'sat' : ''} ${isSunday ? 'sun' : ''} ${isHoliday ? 'hol' : ''} ${isEmpRest ? 'rest' : ''} ${isOnLeave ? `on-leave leave-${leaveType}` : ''} ${isHalf ? 'half' : ''} ${isToday ? 'today' : ''}`}
             >
               {inner}
-              {isOnLeave && !isFullLeave && <span className="mx-lvtag">{leaveBadgeLabel(leaveType)}</span>}
             </td>
           );
         };

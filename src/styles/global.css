@@ -12791,8 +12791,9 @@ td.mx-dc.today {
   background: #eef3fb;
 }
 td.mx-dc input {
-  width: 38px;
-  height: 28px;
+  width: 100%;
+  max-width: 52px;
+  height: 30px;
   border: 1px solid #e4e8ee;
   border-radius: 5px;
   text-align: center;
@@ -12812,6 +12813,13 @@ td.mx-dc.has input {
   background: var(--navy-soft);
   border-color: var(--navy-tint);
   color: var(--primary);
+  font-weight: 800;
+}
+/* 반차·반반차(부분 휴가) — 라벨 삐져나옴 대신 칸 자체를 호박색 틴트로 구분 */
+td.mx-dc.half input {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #b45309;
   font-weight: 800;
 }
 td.mx-dc.rest {
@@ -12845,8 +12853,9 @@ td.mx-dc {
   font-weight: 800;
 }
 .mx-cs {
-  width: 30px;
-  height: 28px;
+  width: 100%;
+  max-width: 52px;
+  height: 30px;
   border: 1px solid #e4e8ee;
   border-radius: 5px;
   background: #fff;
