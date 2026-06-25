@@ -122,6 +122,10 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
           <em>원</em>
         </span>
       </div>
+      <div className="po-card__amount-vat">
+        <span>부가세 포함</span>
+        {Math.round(Number(p.totalAmount || 0) * 1.1).toLocaleString()}원
+      </div>
       <div className="po-card__foot">
         <div className="po-card__dates">
           <span>작성일: {fmtDate(p.createdAt || p.orderedAt)}</span>
@@ -183,6 +187,10 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
       <div className="kb-card__amount" style={{ color: 'var(--accent, #F05819)' }}>
         {Number(p.totalAmount || 0).toLocaleString()}
         <em>원</em>
+      </div>
+      <div className="kb-card__amount-vat">
+        <span>부가세 포함</span>
+        {Math.round(Number(p.totalAmount || 0) * 1.1).toLocaleString()}원
       </div>
       <div className="kb-card__foot">
         <div className="kb-card__dates">

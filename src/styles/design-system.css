@@ -1537,6 +1537,21 @@ body {
   color: var(--text-light);
   margin-left: 2px;
 }
+/* 발주 카드 — 공급가 아래 부가세 포함액 보조 표기 */
+.po-card__amount-vat,
+.kb-card__amount-vat {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+.po-card__amount-vat span,
+.kb-card__amount-vat span {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 4px;
+}
 .po-card__date {
   font-size: 12px;
   color: var(--text-muted);
