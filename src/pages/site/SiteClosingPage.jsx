@@ -2633,7 +2633,7 @@ export default function SiteClosingPage() {
                                           <input
                                             type="number"
                                             style={{
-                                              textAlign: 'right',
+                                              textAlign: 'center',
                                               fontVariantNumeric: 'tabular-nums',
                                               minHeight: 32,
                                               outline: 'none',
