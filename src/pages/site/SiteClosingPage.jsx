@@ -201,7 +201,10 @@ export default function SiteClosingPage() {
   // 공수표 행 펼침/접힘 — 기본 접힘(요약 1줄만), 탭하면 해당 행만 캘린더로 펼쳐 편집.
   // 이름 미입력(신규) 행은 자동 펼침. allExpanded는 헤더의 "전체 펼치기" 토글.
   const [expandedRows, setExpandedRows] = useState(() => new Set());
-  const [allExpanded, setAllExpanded] = useState(false);
+  // 모바일은 원래 공수표처럼 인원별 달력이 펼쳐진 상태로 시작(접힌 요약막대 X)
+  const [allExpanded, setAllExpanded] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
+  );
   // 공수표 보기 방식 — PC는 'matrix'(표), 모바일은 'card'(인원별 카드+달력)로 시작.
   // 표는 날짜 30칸 가로스크롤이라 폰에서 불편 → DESIGN-SYSTEM(모바일=달력/카드) 방향.
   const [viewMode, setViewMode] = useState(() =>
