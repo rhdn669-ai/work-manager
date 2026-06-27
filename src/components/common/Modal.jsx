@@ -34,15 +34,22 @@ function unlockBodyScroll() {
   }
 }
 
-// 안전망 — 열린 모달이 없는데 스크롤이 잠긴 채 남아 있으면 강제 해제.
-// (구버전에서 잠긴 세션이나 예외적 언마운트로 잔류한 잠금을 페이지 이동 시 자동 복구)
+// 안전망 — "실제로 화면에 떠 있는 모달(.modal-overlay)이 없는데" 스크롤이 잠긴 채 남아 있으면
+// 무조건 강제 해제. 카운트(openModalCount)가 어긋나 영구 잠긴 경우까지 회복한다.
+// (카운트 기준이면 카운트가 새는 순간 영영 안 풀려 전 페이지 세로 스크롤이 막히던 문제 해결)
 export function ensureBodyScrollUnlockedIfIdle() {
-  if (openModalCount !== 0) return;
+  // DOM에 실제 열린 모달 오버레이가 있으면(정상 잠금) 건드리지 않는다.
+  if (typeof document !== 'undefined' && document.querySelector('.modal-overlay')) return;
   const { body, documentElement } = document;
-  if (body.style.overflow === 'hidden') body.style.overflow = '';
-  if (documentElement.style.overflow === 'hidden') documentElement.style.overflow = '';
-  if (body.style.overscrollBehavior === 'none') body.style.overscrollBehavior = '';
-  savedScroll = null;
+  const wasLocked =
+    body.style.overflow === 'hidden' || documentElement.style.overflow === 'hidden';
+  if (wasLocked) {
+    body.style.overflow = '';
+    documentElement.style.overflow = '';
+    if (body.style.overscrollBehavior === 'none') body.style.overscrollBehavior = '';
+    savedScroll = null;
+    openModalCount = 0; // 카운트도 리셋해 잔재 제거
+  }
 }
 
 export default function Modal({ isOpen, onClose, title, children, size }) {
