@@ -18079,6 +18079,8 @@ a.lib-row-name:hover {
   .main-content,
   .main-content.expanded {
     padding: 10px 12px;
+    /* 하단바(BottomNav) 뒤로 마지막 버튼이 가리지 않게 — 단축 padding이 덮은 하단 여백 복구 */
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
   }
   .card-body {
     padding: 9px;
