@@ -133,6 +133,10 @@ export default function PurchaseDetailPage() {
 
   // 특정 업체 품목만 PDF 출력 (null = 전체 발주서)
   const [printSupplierFilter, setPrintSupplierFilter] = useState(null);
+  // ★ 메일 발송 직렬화 체인 — 여러 업체를 연속 발송해도 단일 PDF 렌더 폼(printRef)을
+  //   동시에 만지지 않도록 한 번에 하나씩 순차 처리한다. (한 업체에 전체 품목이 첨부되던
+  //   레이스 컨디션 사고 방지) 사용자는 그대로 빠르게 눌러도 내부에서 큐로 직렬 실행.
+  const mailSendChainRef = useRef(Promise.resolve());
 
   // 품목 검색 (표시 필터 — 데이터는 보존, 원본 인덱스 유지)
   const [itemSearch, setItemSearch] = useState('');
@@ -1140,8 +1144,17 @@ export default function PurchaseDetailPage() {
         delete next[supplierName];
         return next;
       });
+    // ★ 안전 가드 — 업체명이 비어 있으면 필터가 무력화되어 "전체 품목"이 첨부될 수 있으므로
+    //   발송을 거부한다. (전체 리스트가 한 업체에 나가던 사고의 두 번째 경로 차단)
+    if (!supplierName || !String(supplierName).trim()) {
+      toast('업체가 지정되지 않아 발송을 중단했습니다. (전체 발주서 오발송 방지)', 'error');
+      clearPct();
+      return;
+    }
     setPct(5);
-    (async () => {
+    // ★ 직렬화 — 이전 발송이 끝난 뒤에만 이 발송을 시작한다(단일 printRef 동시 접근 차단).
+    //   사용자는 여러 업체를 빠르게 눌러도 되고, 내부에서 큐로 순서대로 처리된다.
+    const runSend = async () => {
       try {
         await ensureAnonymousAuth();
         setPct(20);
@@ -1255,7 +1268,9 @@ export default function PurchaseDetailPage() {
         // 100% 잠깐 보여준 뒤 이 업체만 정리
         setTimeout(clearPct, 600);
       }
-    })();
+    };
+    // 이전 발송 체인 뒤에 직렬 연결 (실패해도 다음 발송은 계속되도록 catch로 흡수)
+    mailSendChainRef.current = mailSendChainRef.current.then(runSend, runSend);
   }
 
   async function handleUnmarkSupplierSent(supplierName) {
