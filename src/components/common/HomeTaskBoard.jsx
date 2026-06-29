@@ -36,6 +36,16 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 마감일 → D-day 라벨 (오늘=D-DAY, 미래=D-n, 지남=D+n)
+function ddayLabel(dueDate) {
+  if (!dueDate) return '';
+  const today = new Date(todayStr());
+  const due = new Date(dueDate);
+  const diff = Math.round((due - today) / 86400000);
+  if (diff === 0) return 'D-DAY';
+  return diff > 0 ? `D-${diff}` : `D+${-diff}`;
+}
+
 // 등록일 표시 (Firestore Timestamp 또는 Date) → YY.MM.DD
 function fmtCreated(ts) {
   if (!ts) return '';
@@ -102,9 +112,12 @@ function TaskCard({ t, onEdit, onDelete, onMove }) {
             </span>
           )}
           {t.dueDate && (
-            <span className={`task-meta task-due${overdue ? ' is-overdue' : ''}`} title={`마감 ${t.dueDate}`}>
+            <span
+              className={`task-meta task-due${overdue ? ' is-overdue' : ''}`}
+              title={`마감 ${t.dueDate}`}
+            >
               <Icon name="calendar" className="task-ic" />
-              {t.dueDate.slice(5)}
+              {t.status === 'done' ? t.dueDate.slice(5) : ddayLabel(t.dueDate)}
             </span>
           )}
         </div>
