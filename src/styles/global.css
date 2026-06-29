@@ -12827,6 +12827,27 @@ td.mx-dc.has input {
   color: var(--primary);
   font-weight: 800;
 }
+/* 채움 칸 색을 행 분류 색에 맞춤 — 직원=라벤더 / 프리=블루 / 일용=오렌지 / 업체=그린 */
+.closing-matrix .mx-row-employee td.mx-dc.has input {
+  background: #d7dcf7;
+  border-color: #b3bcee;
+  color: #3730a3;
+}
+.closing-matrix .mx-row-freelancer td.mx-dc.has input {
+  background: #cfe3fb;
+  border-color: #9fc6f1;
+  color: #1d4ed8;
+}
+.closing-matrix .mx-row-daily td.mx-dc.has input {
+  background: #ffe1c2;
+  border-color: #f9c188;
+  color: #b45309;
+}
+.closing-matrix .mx-row-vendor td.mx-dc.has input {
+  background: #c9efda;
+  border-color: #8fdcb1;
+  color: #047857;
+}
 /* 반차·반반차(부분 휴가) — 라벨 삐져나옴 대신 칸 자체를 호박색 틴트로 구분 */
 td.mx-dc.half input {
   background: #ffedd5;
