@@ -1158,6 +1158,29 @@ body {
   color: var(--danger);
   font-weight: 700;
 }
+/* 마감 D-day 색상 배지(토글) — 긴급도별: 빨강(오늘·지남)/앰버(임박)/회색(여유) */
+.task-dday {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.task-dday--urgent {
+  background: var(--danger-tint, #fde7e7);
+  color: var(--danger, #dc2626);
+}
+.task-dday--soon {
+  background: #fef3c7;
+  color: #b45309;
+}
+.task-dday--safe {
+  background: var(--grey-100, #f1f3f5);
+  color: var(--text-muted, #6b7280);
+}
 .task-prio {
   display: inline-flex;
   align-items: center;

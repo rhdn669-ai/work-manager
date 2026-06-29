@@ -36,14 +36,25 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 마감일 → D-day 라벨 (오늘=D-DAY, 미래=D-n, 지남=D+n)
-function ddayLabel(dueDate) {
-  if (!dueDate) return '';
+// 마감일 → D-day 남은 일수 (오늘=0, 미래=양수, 지남=음수)
+function ddayDiff(dueDate) {
+  if (!dueDate) return null;
   const today = new Date(todayStr());
   const due = new Date(dueDate);
-  const diff = Math.round((due - today) / 86400000);
+  return Math.round((due - today) / 86400000);
+}
+// 남은 일수 → 라벨
+function ddayLabel(diff) {
+  if (diff == null) return '';
   if (diff === 0) return 'D-DAY';
   return diff > 0 ? `D-${diff}` : `D+${-diff}`;
+}
+// 남은 일수 → 긴급도 색상 클래스 (urgent=빨강 / soon=앰버 / safe=회색)
+function ddayLevel(diff) {
+  if (diff == null) return '';
+  if (diff <= 0) return 'urgent'; // 오늘·지남
+  if (diff <= 3) return 'soon'; // 임박(3일 이내)
+  return 'safe'; // 여유
 }
 
 // 등록일 표시 (Firestore Timestamp 또는 Date) → YY.MM.DD
@@ -61,7 +72,6 @@ function TaskCard({ t, onEdit, onDelete, onMove }) {
     opacity: isDragging ? 0.4 : undefined,
   };
   const pr = PRIORITY[t.priority] || PRIORITY.normal;
-  const overdue = t.dueDate && t.status !== 'done' && t.dueDate < todayStr();
   const colIdx = COLS.findIndex((c) => c.key === (t.status || 'todo'));
   const stopAll = (e) => {
     e.stopPropagation();
@@ -111,15 +121,20 @@ function TaskCard({ t, onEdit, onDelete, onMove }) {
               {fmtCreated(t.createdAt)}
             </span>
           )}
-          {t.dueDate && (
-            <span
-              className={`task-meta task-due${overdue ? ' is-overdue' : ''}`}
-              title={`마감 ${t.dueDate}`}
-            >
-              <Icon name="calendar" className="task-ic" />
-              {t.status === 'done' ? t.dueDate.slice(5) : ddayLabel(t.dueDate)}
-            </span>
-          )}
+          {t.dueDate &&
+            (t.status === 'done' ? (
+              <span className="task-meta" title={`마감 ${t.dueDate}`}>
+                <Icon name="calendar" className="task-ic" />
+                {t.dueDate.slice(5)}
+              </span>
+            ) : (
+              <span
+                className={`task-dday task-dday--${ddayLevel(ddayDiff(t.dueDate))}`}
+                title={`마감 ${t.dueDate}`}
+              >
+                {ddayLabel(ddayDiff(t.dueDate))}
+              </span>
+            ))}
         </div>
       )}
       {/* 모바일 전용 — 화살표로 단계 이동 (드래그 대신) */}
