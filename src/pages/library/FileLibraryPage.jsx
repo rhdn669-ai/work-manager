@@ -10,6 +10,7 @@ import {
   subscribeFiles,
   createFolder,
   renameFolder,
+  renameFile,
   uploadFile,
   moveFile,
   moveFolder,
@@ -32,6 +33,13 @@ function formatDate(ts) {
   const date = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   return `${date} ${time}`;
+}
+
+// 파일명을 이름 부분과 확장자('.pdf' 포함)로 분리 — 숨김파일/확장자 없음은 ext ''
+function splitExt(name = '') {
+  const i = name.lastIndexOf('.');
+  if (i <= 0) return { base: name, ext: '' };
+  return { base: name.slice(0, i), ext: name.slice(i) };
 }
 
 function getFileIconName(name = '', contentType = '') {
@@ -201,6 +209,8 @@ export default function FileLibraryPage() {
   const [folderName, setFolderName] = useState('');
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameName, setRenameName] = useState('');
+  const [fileRenameTarget, setFileRenameTarget] = useState(null); // 파일명 변경 대상
+  const [fileRenameBase, setFileRenameBase] = useState(''); // 확장자 제외한 이름 부분
 
   const [uploads, setUploads] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -415,6 +425,25 @@ export default function FileLibraryPage() {
     try {
       await renameFolder(renameTarget.id, name);
       setRenameTarget(null);
+    } catch (err) { alert('이름 변경 오류: ' + err.message); }
+  }
+
+  // ── 파일 이름 변경 (관리자, 확장자 자동 유지) ──
+  function openFileRename(file) {
+    setFileRenameTarget(file);
+    setFileRenameBase(splitExt(file.name || '').base);
+  }
+  async function handleFileRename() {
+    if (!fileRenameTarget) return;
+    const base = fileRenameBase.trim();
+    if (!base) { setFileRenameTarget(null); return; }
+    const { ext } = splitExt(fileRenameTarget.name || '');
+    const newName = base + ext;
+    if (newName === fileRenameTarget.name) { setFileRenameTarget(null); return; }
+    try {
+      await renameFile(fileRenameTarget.id, newName);
+      setFileRenameTarget(null);
+      toast(`파일 이름을 "${newName}"(으)로 변경했습니다.`);
     } catch (err) { alert('이름 변경 오류: ' + err.message); }
   }
 
@@ -866,6 +895,11 @@ export default function FileLibraryPage() {
                               <a className="library-file-btn download" href={file.downloadURL} target="_blank" rel="noopener noreferrer" title="다운로드" aria-label="다운로드">
                                 <Icon name="download" />
                               </a>
+                              {isAdmin && (
+                                <button type="button" className="library-file-btn" title="이름 변경" aria-label="이름 변경" onClick={() => openFileRename(file)}>
+                                  <Icon name="edit" />
+                                </button>
+                              )}
                               <button type="button" className="btn btn-sm btn-danger" title="삭제" aria-label="삭제" onClick={() => handleDeleteFile(file)}>
                                 <Icon name="trash" className="btn-ic" />삭제
                               </button>
@@ -921,6 +955,32 @@ export default function FileLibraryPage() {
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setRenameTarget(null)}>취소</button>
           <button type="button" className="btn btn-primary" disabled={!renameName.trim()} onClick={handleRename}>저장</button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!fileRenameTarget} onClose={() => setFileRenameTarget(null)} title="파일 이름 변경">
+        <div className="form-group">
+          <label>새 이름</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="text"
+              value={fileRenameBase}
+              onChange={(e) => setFileRenameBase(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && fileRenameBase.trim()) handleFileRename(); }}
+              autoFocus
+              style={{ flex: 1 }}
+            />
+            {splitExt(fileRenameTarget?.name || '').ext && (
+              <span className="text-muted" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                {splitExt(fileRenameTarget?.name || '').ext}
+              </span>
+            )}
+          </div>
+          <small className="text-muted">확장자({splitExt(fileRenameTarget?.name || '').ext || '없음'})는 자동으로 유지됩니다.</small>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setFileRenameTarget(null)}>취소</button>
+          <button type="button" className="btn btn-primary" disabled={!fileRenameBase.trim()} onClick={handleFileRename}>저장</button>
         </div>
       </Modal>
 

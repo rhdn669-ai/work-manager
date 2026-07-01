@@ -192,6 +192,13 @@ export async function renameFolder(folderId, newName) {
   await updateDoc(doc(db, 'libraryFolders', folderId), { name: trimmed });
 }
 
+// 파일 표시명(Firestore name)만 변경 — Storage 실제 객체는 건드리지 않음
+export async function renameFile(fileId, newName) {
+  const trimmed = (newName || '').trim();
+  if (!trimmed) throw new Error('파일 이름을 입력하세요.');
+  await updateDoc(doc(db, 'libraryFiles', fileId), { name: trimmed });
+}
+
 // 폴더 문서만 삭제 — 파일 휴지통 이동은 호출자(FileLibraryPage)가 처리
 export async function deleteFolder(folderId) {
   await deleteDoc(doc(db, 'libraryFolders', folderId));
