@@ -281,6 +281,14 @@ export default function UserManagementPage() {
   }
   const siteCreators = users.map((u) => ({ user: u, reason: getCreateSiteReason(u) })).filter((x) => x.reason);
 
+  function getArchiveViewReason(u) {
+    if (u.role === 'admin') return '관리자';
+    if (EXECUTIVE_POSITIONS.includes(u.position)) return u.position;
+    if (u.canViewArchive) return '권한 부여';
+    return null;
+  }
+  const archiveViewers = users.map((u) => ({ user: u, reason: getArchiveViewReason(u) })).filter((x) => x.reason);
+
   if (loading) return <div className="loading">로딩 중...</div>;
 
   return (
@@ -405,6 +413,63 @@ export default function UserManagementPage() {
                 style={{
                   cursor: 'pointer',
                   background: reason === '권한 부여' ? 'var(--primary-soft, #e6ecf5)' : 'var(--primary-tint, #d7e0ee)',
+                  color: 'var(--text, #1f2937)',
+                  border: '1px solid rgba(0,32,80,0.12)',
+                  padding: isXSmall ? '0px 3px' : '1px 5px',
+                  borderRadius: 999,
+                  fontSize: isXSmall ? 10 : 11,
+                  height: isXSmall ? 18 : 20,
+                  lineHeight: isXSmall ? '18px' : '20px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {user.name} <span style={{ opacity: 0.6, marginLeft: 3 }}>({reason})</span>
+              </span>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div
+        className="card permission-cards"
+        style={{
+          padding: isXSmall ? '6px 8px' : 'var(--space-3, 11px)',
+          marginBottom: isXSmall ? 8 : 'var(--space-2, 8px)',
+          background: 'var(--bg-secondary, #eef1f5)',
+          border: '1px solid var(--border, #d5dbe4)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 'var(--space-2, 8px)',
+            flexWrap: 'wrap',
+            gap: 'var(--space-2, 8px)',
+            lineHeight: 1.3,
+          }}
+        >
+          <strong style={{ fontSize: 14 }}>자료실 열람 권한자 ({archiveViewers.length}명)</strong>
+          <span className="text-muted" style={{ fontSize: 12 }}>
+            관리자·대표·부사장은 자동 포함. 그 외 직원은 아래 직원 행을 눌러 권한 부여.
+          </span>
+        </div>
+        <div className="permission-badge-row" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`, gap: isXSmall ? 4 : 'var(--space-2, 8px)' }}>
+          {archiveViewers.length === 0 ? (
+            <span className="text-muted text-sm">권한자가 없습니다.</span>
+          ) : (
+            archiveViewers.map(({ user, reason }) => (
+              <span
+                key={user.uid}
+                className="badge permission-badge"
+                onClick={() => openEdit(user)}
+                title={`${user.name} (${reason})`}
+                style={{
+                  cursor: 'pointer',
+                  background: reason === '권한 부여' ? 'var(--primary-soft, #e6ecf5)' : 'var(--bg-card, #ffffff)',
                   color: 'var(--text, #1f2937)',
                   border: '1px solid rgba(0,32,80,0.12)',
                   padding: isXSmall ? '0px 3px' : '1px 5px',
