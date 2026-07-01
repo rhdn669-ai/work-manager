@@ -150,14 +150,14 @@ function PriceHistoryView({ items, onDelete }) {
       <table className="table pc-history-table">
         <thead>
           <tr>
-            <th style={{ width: 108 }}>날짜</th>
-            <th style={{ width: '18%' }}>품목</th>
-            <th style={{ width: '18%' }}>구매처</th>
-            <th className="num" style={{ width: 116 }}>이전가</th>
-            <th className="num" style={{ width: 116 }}>변경가</th>
-            <th className="c" style={{ width: 104 }}>변동률</th>
-            <th>사유</th>
-            <th className="c" style={{ width: 64 }}>삭제</th>
+            <th style={{ width: '12%' }}>날짜</th>
+            <th style={{ width: '16%' }}>품목</th>
+            <th style={{ width: '16%' }}>구매처</th>
+            <th className="num" style={{ width: '12%' }}>이전가</th>
+            <th className="num" style={{ width: '12%' }}>변경가</th>
+            <th className="c" style={{ width: '12%' }}>변동률</th>
+            <th style={{ width: '13%' }}>사유</th>
+            <th className="c" style={{ width: '7%' }}>삭제</th>
           </tr>
         </thead>
         <tbody>
@@ -815,8 +815,10 @@ export default function PurchaseItemPage() {
         .pc-price.to { color:var(--primary); }
         .pc-arrow { color:#9aa0ad; }
         .pc-supplier { font-size:12px; color:#6b7280; }
+        .pc-history-table { table-layout:fixed; width:100%; }
         .pc-history-table td.num, .pc-history-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
         .pc-history-table td.c, .pc-history-table th.c { text-align:center; }
+        .pc-history-table td { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .pc-history-table th, .pc-history-table td { padding:10px 14px; vertical-align:middle; }
         .pc-del { padding:4px 8px; min-height:30px; }
       `}</style>
