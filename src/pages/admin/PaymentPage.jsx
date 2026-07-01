@@ -144,7 +144,7 @@ export default function PaymentPage() {
     const set = new Set();
     set.add(monthKey(new Date())); // 현재 월은 데이터가 없어도 항상 선택 가능
     for (const r of allRows) {
-      const m = monthKey(r.requestedAt);
+      const m = monthKey(r.dueDate); // 결제마감일 기준
       if (m) set.add(m);
     }
     return Array.from(set).sort((a, b) => b.localeCompare(a));
@@ -155,7 +155,7 @@ export default function PaymentPage() {
     return allRows.filter((r) => {
       if (filterMode === 'pending' && r.paid) return false;
       if (filterMode === 'paid' && !r.paid) return false;
-      if (monthFilter !== 'all' && monthKey(r.requestedAt) !== monthFilter) return false;
+      if (monthFilter !== 'all' && monthKey(r.dueDate) !== monthFilter) return false; // 결제마감월 기준
       if (kw && !(r.title.toLowerCase().includes(kw) || r.supplier.toLowerCase().includes(kw) || (r.siteName || '').toLowerCase().includes(kw)))
         return false;
       return true;
