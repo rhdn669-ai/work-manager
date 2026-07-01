@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   getPurchaseItems,
   addPurchaseItem,
   updatePurchaseItem,
+  recordPriceChange,
   deletePurchaseItems,
   getSuppliers,
   nextMainCode,
@@ -119,6 +120,64 @@ function parseSimpleBulk(text) {
     .filter((r) => r.name && r.name !== '품명');
 }
 
+// 변동률 배지 — 상승 ▲빨강 / 하락 ▼파랑 / 동일 −회색
+function RateBadge({ from, to, rate }) {
+  const r = rate != null ? Number(rate) : (Number(from) > 0 ? ((Number(to) - Number(from)) / Number(from)) * 100 : 0);
+  const up = r > 0;
+  const down = r < 0;
+  return (
+    <span className={`rate-badge ${up ? 'up' : down ? 'down' : 'flat'}`}>
+      {up ? '▲' : down ? '▼' : '−'} {up ? '+' : ''}
+      {r.toFixed(1)}%
+    </span>
+  );
+}
+
+// 단가 변경 이력 — 전 품목 통합, 최근순
+function PriceHistoryView({ items }) {
+  const rows = items
+    .flatMap((it) => (it.priceChangeHistory || []).map((h) => ({ ...h, name: it.name, code: it.code })))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  if (rows.length === 0)
+    return (
+      <p className="text-muted" style={{ padding: '28px 0', textAlign: 'center' }}>
+        단가 변경 이력이 없습니다 — 품목 탭에서 단가를 수정하면 여기에 기록됩니다.
+      </p>
+    );
+  return (
+    <div className="table-scroll-x">
+      <table className="table pc-history-table">
+        <thead>
+          <tr>
+            <th style={{ width: 110 }}>날짜</th>
+            <th>품목</th>
+            <th>구매처</th>
+            <th className="num">이전가</th>
+            <th className="num">변경가</th>
+            <th style={{ width: 110 }}>변동률</th>
+            <th>사유</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((h, i) => (
+            <tr key={i}>
+              <td>{h.date}</td>
+              <td>{h.name}</td>
+              <td>{h.supplierName || '-'}</td>
+              <td className="num">{Number(h.from).toLocaleString()}원</td>
+              <td className="num">{Number(h.to).toLocaleString()}원</td>
+              <td>
+                <RateBadge from={h.from} to={h.to} rate={h.rate} />
+              </td>
+              <td>{h.reason || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function PurchaseItemPage() {
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
@@ -133,6 +192,11 @@ export default function PurchaseItemPage() {
   const [filterSupplier, setFilterSupplier] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
+  // ── 단가 변경 이력 ──
+  const [activeTab, setActiveTab] = useState('items'); // 'items' | 'history'
+  const [priceChangeModal, setPriceChangeModal] = useState(null); // { itemId, from, to, supplierName, restData }
+  const [pcReason, setPcReason] = useState('');
+  const editStartPriceRef = useRef({}); // 단가 input 포커스 시 원본가 보관 (직접 수정 변동 감지용)
   // 헤더 코드 입력 — 편집 중에는 로컬 state로 임시 보관 (items state 즉시 변경 X → 그룹 키 안 흔들림)
   const [editingHeaderCode, setEditingHeaderCode] = useState(null); // { repId, value } | null
 
@@ -333,11 +397,44 @@ export default function PurchaseItemPage() {
         });
       } else {
         const { id: _id, createdAt: _c, updatedAt: _u, ...data } = payload;
+        // 단가 input을 직접 포커스해 편집한 경우에만 변동 감지 (자동계산 경로는 포커스가 없어 제외됨)
+        const oldPrice = editStartPriceRef.current[id];
+        if (oldPrice != null) {
+          delete editStartPriceRef.current[id];
+          const newPrice = Number(data.standardPrice) || 0;
+          if (oldPrice !== newPrice) {
+            // 단가 변동 → 사유 입력 모달에서 기록. 나머지 필드는 restData로 함께 저장.
+            const { standardPrice: _sp, ...restData } = data;
+            const sup = suppliers.find((x) => x.id === it.defaultSupplierId);
+            setPcReason('');
+            setPriceChangeModal({ itemId: id, from: oldPrice, to: newPrice, supplierName: sup?.name || '', restData });
+            return;
+          }
+        }
         await updatePurchaseItem(id, data);
       }
     } catch (err) {
       alert('저장 중 오류: ' + err.message);
     }
+  }
+
+  // 단가 변경 모달 — 저장(기록) / 취소(단가 롤백)
+  async function confirmPriceChange() {
+    const m = priceChangeModal;
+    if (!m) return;
+    try {
+      await recordPriceChange(m.itemId, { from: m.from, to: m.to, reason: pcReason, supplierName: m.supplierName });
+      if (m.restData && Object.keys(m.restData).length) await updatePurchaseItem(m.itemId, m.restData);
+      toast('단가 변경 이력이 기록되었습니다.', 'success');
+    } catch (err) {
+      alert('기록 실패: ' + err.message);
+    }
+    setPriceChangeModal(null);
+  }
+  function cancelPriceChange() {
+    const m = priceChangeModal;
+    if (m) updateField(m.itemId, { standardPrice: m.from }); // 단가 롤백
+    setPriceChangeModal(null);
   }
 
   function addRow() {
@@ -653,6 +750,22 @@ export default function PurchaseItemPage() {
         .po-supplier-select .ds-select__trigger { width: 100%; min-height: 36px; height: 36px; }
         /* 검색 중에는 그룹 헤더(대분류 윗줄) 숨김 — 아이템 행과 중복 제거 */
         .item-group-header.is-search-hidden { display: none !important; }
+
+        /* 탭 · 단가 변경 이력 */
+        .pi-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); }
+        .pi-tabs button { padding:9px 16px; font-size:13px; font-weight:700; color:var(--text-muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px; }
+        .pi-tabs button.on { color:var(--primary); border-bottom-color:var(--primary); }
+        .rate-badge { display:inline-flex; align-items:center; gap:2px; font-size:12px; font-weight:800; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+        .rate-badge.up { color:#c53030; background:#fdecec; }
+        .rate-badge.down { color:#1d4ed8; background:#e8f0fe; }
+        .rate-badge.flat { color:#6b7280; background:#f1f3f5; }
+        .pc-modal { display:flex; flex-direction:column; gap:14px; }
+        .pc-change { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:800; flex-wrap:wrap; }
+        .pc-price { color:#6b7280; }
+        .pc-price.to { color:var(--primary); }
+        .pc-arrow { color:#9aa0ad; }
+        .pc-supplier { font-size:12px; color:#6b7280; }
+        .pc-history-table td.num, .pc-history-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
       `}</style>
       <div className="page-header">
         <h2>구매 품목 관리</h2>
@@ -676,6 +789,27 @@ export default function PurchaseItemPage() {
         onChange={loadData}
       />
 
+      {/* 탭: 품목 / 단가 변경 이력 */}
+      <div className="pi-tabs">
+        <button
+          type="button"
+          className={activeTab === 'items' ? 'on' : ''}
+          onClick={() => setActiveTab('items')}
+        >
+          품목
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'history' ? 'on' : ''}
+          onClick={() => setActiveTab('history')}
+        >
+          단가 변경 이력
+        </button>
+      </div>
+
+      {activeTab === 'history' && <PriceHistoryView items={items} />}
+      {activeTab === 'items' && (
+        <>
       <div className="purchase-filters">
         <input
           type="text"
@@ -1092,6 +1226,10 @@ export default function PurchaseItemPage() {
                                               className={`num-input ${isAuto ? 'is-readonly' : ''}`}
                                               value={total ? Number(total).toLocaleString() : ''}
                                               readOnly={isAuto}
+                                              onFocus={() => {
+                                                if (!isAuto)
+                                                  editStartPriceRef.current[it.id] = Number(it.standardPrice) || 0;
+                                              }}
                                               onChange={(e) => {
                                                 if (isAuto) return;
                                                 const raw = e.target.value.replace(/[^0-9]/g, '');
@@ -1256,6 +1394,43 @@ export default function PurchaseItemPage() {
           })}
         </div>
       )}
+        </>
+      )}
+
+      {/* 단가 변경 기록 모달 */}
+      <Modal isOpen={!!priceChangeModal} onClose={cancelPriceChange} title="단가 변경 기록">
+        {priceChangeModal && (
+          <div className="pc-modal">
+            <div className="pc-change">
+              <span className="pc-price">{priceChangeModal.from.toLocaleString()}원</span>
+              <span className="pc-arrow">→</span>
+              <span className="pc-price to">{priceChangeModal.to.toLocaleString()}원</span>
+              <RateBadge from={priceChangeModal.from} to={priceChangeModal.to} />
+            </div>
+            {priceChangeModal.supplierName && (
+              <div className="pc-supplier">구매처 · {priceChangeModal.supplierName}</div>
+            )}
+            <div className="form-group">
+              <label>변경 사유 (선택)</label>
+              <input
+                type="text"
+                value={pcReason}
+                onChange={(e) => setPcReason(e.target.value)}
+                placeholder="예: 원자재 인상, 환율 변동"
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-sm btn-outline" onClick={cancelPriceChange}>
+                취소
+              </button>
+              <button type="button" className="btn btn-sm btn-primary" onClick={confirmPriceChange}>
+                저장
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* 그룹 안 일괄 추가 (규격·금액) */}
       <Modal

@@ -180,6 +180,26 @@ export async function updatePurchaseItem(id, data) {
   await updateDoc(doc(db, 'purchaseItems', id), { ...data, updatedAt: new Date() });
 }
 
+// 품목 단가(standardPrice) 직접 수정 이력 — 실거래(priceHistory)와 분리된 "관리자 단가 변경" 기록.
+// { from 이전가, to 변경가, rate 변동률%, date, reason 사유, supplierName 구매처 }
+export async function recordPriceChange(id, { from, to, reason, supplierName }) {
+  const f = Number(from) || 0;
+  const t = Number(to) || 0;
+  const rate = f > 0 ? Math.round(((t - f) / f) * 1000) / 10 : 0; // 소수 1자리 %
+  await updateDoc(doc(db, 'purchaseItems', id), {
+    standardPrice: t,
+    priceChangeHistory: arrayUnion({
+      from: f,
+      to: t,
+      rate,
+      date: new Date().toISOString().slice(0, 10),
+      reason: reason || '',
+      supplierName: supplierName || '',
+    }),
+    updatedAt: new Date(),
+  });
+}
+
 export async function deletePurchaseItem(id) {
   await deleteDoc(doc(db, 'purchaseItems', id));
 }
