@@ -134,8 +134,11 @@ function RateBadge({ from, to, rate }) {
   );
 }
 
-// 단가 변경 이력 — 전 품목 통합, 최근순
+// 단가 변경 이력 — 전 품목 통합, 최근순 + 기간·업체 필터
 function PriceHistoryView({ items, onDelete }) {
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [supplier, setSupplier] = useState('');
   const rows = items
     .flatMap((it) => (it.priceChangeHistory || []).map((h) => ({ ...h, name: it.name, itemId: it.id, entry: h })))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -145,49 +148,90 @@ function PriceHistoryView({ items, onDelete }) {
         단가 변경 이력이 없습니다 — 품목 탭에서 단가를 수정하면 여기에 기록됩니다.
       </p>
     );
+  const supplierOptions = [...new Set(rows.map((r) => r.supplierName).filter(Boolean))].sort();
+  const filtered = rows.filter((r) => {
+    if (fromDate && r.date < fromDate) return false;
+    if (toDate && r.date > toDate) return false;
+    if (supplier && r.supplierName !== supplier) return false;
+    return true;
+  });
+  const hasFilter = fromDate || toDate || supplier;
   return (
-    <div className="table-scroll-x">
-      <table className="table pc-history-table">
-        <thead>
-          <tr>
-            <th style={{ width: '12%' }}>날짜</th>
-            <th style={{ width: '16%' }}>품목</th>
-            <th style={{ width: '16%' }}>구매처</th>
-            <th className="num" style={{ width: '12%' }}>이전가</th>
-            <th className="num" style={{ width: '12%' }}>변경가</th>
-            <th className="c" style={{ width: '12%' }}>변동률</th>
-            <th style={{ width: '13%' }}>사유</th>
-            <th className="c" style={{ width: '7%' }}>삭제</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((h, i) => (
-            <tr key={i}>
-              <td>{h.date}</td>
-              <td>{h.name}</td>
-              <td>{h.supplierName || '-'}</td>
-              <td className="num">{Number(h.from).toLocaleString()}원</td>
-              <td className="num">{Number(h.to).toLocaleString()}원</td>
-              <td className="c">
-                <RateBadge from={h.from} to={h.to} rate={h.rate} />
-              </td>
-              <td>{h.reason || '-'}</td>
-              <td className="c">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-danger pc-del"
-                  onClick={() => onDelete(h.itemId, h.entry)}
-                  title="이 이력 삭제"
-                  aria-label="삭제"
-                >
-                  <Icon name="trash" className="btn-ic" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="pc-filters">
+        <span className="pc-flabel">기간</span>
+        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} aria-label="시작일" />
+        <span className="pc-tilde">~</span>
+        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} aria-label="종료일" />
+        <span className="pc-flabel">업체</span>
+        <div className="pc-supplier">
+          <Select
+            value={supplier}
+            onChange={setSupplier}
+            options={[{ value: '', label: '업체 전체' }, ...supplierOptions.map((s) => ({ value: s, label: s }))]}
+            ariaLabel="업체 필터"
+          />
+        </div>
+        {hasFilter && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => { setFromDate(''); setToDate(''); setSupplier(''); }}
+          >
+            초기화
+          </button>
+        )}
+        <span className="pc-count">{filtered.length}건</span>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-muted" style={{ padding: '24px 0', textAlign: 'center' }}>
+          조건에 맞는 이력이 없습니다.
+        </p>
+      ) : (
+        <div className="table-scroll-x">
+          <table className="table pc-history-table">
+            <thead>
+              <tr>
+                <th style={{ width: '12%' }}>날짜</th>
+                <th style={{ width: '16%' }}>품목</th>
+                <th style={{ width: '16%' }}>구매처</th>
+                <th className="num" style={{ width: '12%' }}>이전가</th>
+                <th className="num" style={{ width: '12%' }}>변경가</th>
+                <th className="c" style={{ width: '12%' }}>변동률</th>
+                <th style={{ width: '13%' }}>사유</th>
+                <th className="c" style={{ width: '7%' }}>삭제</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((h, i) => (
+                <tr key={i}>
+                  <td>{h.date}</td>
+                  <td>{h.name}</td>
+                  <td>{h.supplierName || '-'}</td>
+                  <td className="num">{Number(h.from).toLocaleString()}원</td>
+                  <td className="num">{Number(h.to).toLocaleString()}원</td>
+                  <td className="c">
+                    <RateBadge from={h.from} to={h.to} rate={h.rate} />
+                  </td>
+                  <td>{h.reason || '-'}</td>
+                  <td className="c">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger pc-del"
+                      onClick={() => onDelete(h.itemId, h.entry)}
+                      title="이 이력 삭제"
+                      aria-label="삭제"
+                    >
+                      <Icon name="trash" className="btn-ic" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -816,6 +860,12 @@ export default function PurchaseItemPage() {
         .pc-price.to { color:var(--primary); }
         .pc-arrow { color:#9aa0ad; }
         .pc-supplier { font-size:12px; color:#6b7280; }
+        .pc-filters { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        .pc-filters input[type=date] { height:36px; border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:13px; color:var(--text); background:#fff; }
+        .pc-flabel { font-size:12px; font-weight:700; color:var(--text-muted); }
+        .pc-tilde { color:var(--text-muted); }
+        .pc-filters .pc-supplier { width:180px; }
+        .pc-count { margin-left:auto; font-size:12px; font-weight:600; color:var(--text-muted); }
         .pc-history-table { table-layout:fixed; width:100%; }
         .pc-history-table td.num, .pc-history-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
         .pc-history-table td.c, .pc-history-table th.c { text-align:center; }
