@@ -422,9 +422,28 @@ export default function PurchaseItemPage() {
   async function confirmPriceChange() {
     const m = priceChangeModal;
     if (!m) return;
+    const f = Number(m.from) || 0;
+    const t = Number(m.to) || 0;
+    const rate = f > 0 ? Math.round(((t - f) / f) * 1000) / 10 : 0;
+    const entry = {
+      from: f,
+      to: t,
+      rate,
+      date: new Date().toISOString().slice(0, 10),
+      reason: pcReason || '',
+      supplierName: m.supplierName || '',
+    };
     try {
-      await recordPriceChange(m.itemId, { from: m.from, to: m.to, reason: pcReason, supplierName: m.supplierName });
+      await recordPriceChange(m.itemId, { from: f, to: t, reason: pcReason, supplierName: m.supplierName });
       if (m.restData && Object.keys(m.restData).length) await updatePurchaseItem(m.itemId, m.restData);
+      // 로컬 state 즉시 반영 (화면이 1회 로드 방식이라 수동 갱신 필요)
+      setItems((prev) =>
+        prev.map((x) =>
+          x.id === m.itemId
+            ? { ...x, standardPrice: t, priceChangeHistory: [...(x.priceChangeHistory || []), entry] }
+            : x,
+        ),
+      );
       toast('단가 변경 이력이 기록되었습니다.', 'success');
     } catch (err) {
       alert('기록 실패: ' + err.message);
@@ -1333,7 +1352,7 @@ export default function PurchaseItemPage() {
                                         >
                                           복사
                                         </button>
-                                        {Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
+                                        {(it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0) && (
                                           <button
                                             type="button"
                                             className="item-expand-btn"
@@ -1354,31 +1373,60 @@ export default function PurchaseItemPage() {
                                         </button>
                                       </td>
                                     </SortableItemRow>
-                                    {expanded && Array.isArray(it.priceHistory) && it.priceHistory.length > 0 && (
-                                      <tr className="item-detail-row">
-                                        <td colSpan={13}>
-                                          <div className="item-detail-body">
-                                            <div className="item-detail-section">
-                                              <label className="item-detail-label">단가 변경 이력</label>
-                                              <div className="price-history">
-                                                {[...it.priceHistory].reverse().map((h, i) => (
-                                                  <div key={i} className="price-history-row">
-                                                    <div className="ph-info">
-                                                      <span className="price-history-date">{h.date}</span>
-                                                      {h.supplierName && (
-                                                        <span className="ph-supplier">{h.supplierName}</span>
-                                                      )}
-                                                      {Number(h.qty) > 0 && <span className="ph-qty">×{h.qty}</span>}
-                                                    </div>
-                                                    <strong>{Number(h.price).toLocaleString()}원</strong>
+                                    {expanded &&
+                                      (it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0) && (
+                                        <tr className="item-detail-row">
+                                          <td colSpan={13}>
+                                            <div className="item-detail-body">
+                                              {it.priceChangeHistory?.length > 0 && (
+                                                <div className="item-detail-section">
+                                                  <label className="item-detail-label">단가 변경 이력 (직접 수정)</label>
+                                                  <div className="price-history">
+                                                    {[...it.priceChangeHistory].reverse().map((h, i) => (
+                                                      <div key={i} className="price-history-row">
+                                                        <div className="ph-info">
+                                                          <span className="price-history-date">{h.date}</span>
+                                                          {h.reason && <span className="ph-supplier">{h.reason}</span>}
+                                                        </div>
+                                                        <div
+                                                          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                                                        >
+                                                          <span style={{ color: '#9aa0ad' }}>
+                                                            {Number(h.from).toLocaleString()}→
+                                                          </span>
+                                                          <strong>{Number(h.to).toLocaleString()}원</strong>
+                                                          <RateBadge from={h.from} to={h.to} rate={h.rate} />
+                                                        </div>
+                                                      </div>
+                                                    ))}
                                                   </div>
-                                                ))}
-                                              </div>
+                                                </div>
+                                              )}
+                                              {it.priceHistory?.length > 0 && (
+                                                <div className="item-detail-section">
+                                                  <label className="item-detail-label">실거래 단가 (구매 정산)</label>
+                                                  <div className="price-history">
+                                                    {[...it.priceHistory].reverse().map((h, i) => (
+                                                      <div key={i} className="price-history-row">
+                                                        <div className="ph-info">
+                                                          <span className="price-history-date">{h.date}</span>
+                                                          {h.supplierName && (
+                                                            <span className="ph-supplier">{h.supplierName}</span>
+                                                          )}
+                                                          {Number(h.qty) > 0 && (
+                                                            <span className="ph-qty">×{h.qty}</span>
+                                                          )}
+                                                        </div>
+                                                        <strong>{Number(h.price).toLocaleString()}원</strong>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    )}
+                                          </td>
+                                        </tr>
+                                      )}
                                   </Fragment>
                                 );
                               })}
