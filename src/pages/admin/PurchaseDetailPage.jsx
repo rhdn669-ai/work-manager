@@ -214,16 +214,12 @@ export default function PurchaseDetailPage() {
         const newName = m.name || ln.name;
         const newSpec = m.spec || ln.spec;
         const newUnit = m.unit || ln.unit;
-        const newUnitPrice = m.standardPrice != null ? Number(m.standardPrice) : ln.unitPrice;
-        if (
-          newName === ln.name &&
-          newSpec === ln.spec &&
-          newUnit === ln.unit &&
-          newUnitPrice === Number(ln.unitPrice)
-        )
-          return ln;
+        // ★ 단가(unitPrice)는 발주 시점 스냅샷을 그대로 유지한다. 품목 마스터의 단가가
+        //   이후에 인상/변경돼도 기존 발주서 단가는 건드리지 않는다(과거 발주·정산 기록 왜곡 방지).
+        //   명칭·규격·단위만 최신으로 동기화.
+        if (newName === ln.name && newSpec === ln.spec && newUnit === ln.unit) return ln;
         changed = true;
-        return { ...ln, name: newName, spec: newSpec, unit: newUnit, unitPrice: newUnitPrice };
+        return { ...ln, name: newName, spec: newSpec, unit: newUnit };
       });
       if (!changed) return prev;
       skipUndoPushRef.current = true;
