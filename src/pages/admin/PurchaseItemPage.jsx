@@ -5,6 +5,7 @@ import {
   addPurchaseItem,
   updatePurchaseItem,
   recordPriceChange,
+  deletePriceChange,
   deletePurchaseItems,
   getSuppliers,
   nextMainCode,
@@ -134,9 +135,9 @@ function RateBadge({ from, to, rate }) {
 }
 
 // 단가 변경 이력 — 전 품목 통합, 최근순
-function PriceHistoryView({ items }) {
+function PriceHistoryView({ items, onDelete }) {
   const rows = items
-    .flatMap((it) => (it.priceChangeHistory || []).map((h) => ({ ...h, name: it.name, code: it.code })))
+    .flatMap((it) => (it.priceChangeHistory || []).map((h) => ({ ...h, name: it.name, itemId: it.id, entry: h })))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
   if (rows.length === 0)
     return (
@@ -149,13 +150,14 @@ function PriceHistoryView({ items }) {
       <table className="table pc-history-table">
         <thead>
           <tr>
-            <th style={{ width: 110 }}>날짜</th>
-            <th>품목</th>
-            <th>구매처</th>
-            <th className="num">이전가</th>
-            <th className="num">변경가</th>
-            <th style={{ width: 110 }}>변동률</th>
+            <th style={{ width: 108 }}>날짜</th>
+            <th style={{ width: '18%' }}>품목</th>
+            <th style={{ width: '18%' }}>구매처</th>
+            <th className="num" style={{ width: 116 }}>이전가</th>
+            <th className="num" style={{ width: 116 }}>변경가</th>
+            <th className="c" style={{ width: 104 }}>변동률</th>
             <th>사유</th>
+            <th className="c" style={{ width: 64 }}>삭제</th>
           </tr>
         </thead>
         <tbody>
@@ -166,10 +168,21 @@ function PriceHistoryView({ items }) {
               <td>{h.supplierName || '-'}</td>
               <td className="num">{Number(h.from).toLocaleString()}원</td>
               <td className="num">{Number(h.to).toLocaleString()}원</td>
-              <td>
+              <td className="c">
                 <RateBadge from={h.from} to={h.to} rate={h.rate} />
               </td>
               <td>{h.reason || '-'}</td>
+              <td className="c">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger pc-del"
+                  onClick={() => onDelete(h.itemId, h.entry)}
+                  title="이 이력 삭제"
+                  aria-label="삭제"
+                >
+                  <Icon name="trash" className="btn-ic" />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -454,6 +467,24 @@ export default function PurchaseItemPage() {
     const m = priceChangeModal;
     if (m) updateField(m.itemId, { standardPrice: m.from }); // 단가 롤백
     setPriceChangeModal(null);
+  }
+
+  // 단가 변경 이력 1건 삭제
+  async function handleDeletePriceChange(itemId, entry) {
+    if (!(await confirm('이 단가 변경 이력을 삭제할까요?'))) return;
+    try {
+      await deletePriceChange(itemId, entry);
+      setItems((prev) =>
+        prev.map((x) =>
+          x.id === itemId
+            ? { ...x, priceChangeHistory: (x.priceChangeHistory || []).filter((h) => h !== entry) }
+            : x,
+        ),
+      );
+      toast('단가 변경 이력을 삭제했습니다.', 'success');
+    } catch (err) {
+      alert('삭제 실패: ' + err.message);
+    }
   }
 
   function addRow() {
@@ -785,6 +816,9 @@ export default function PurchaseItemPage() {
         .pc-arrow { color:#9aa0ad; }
         .pc-supplier { font-size:12px; color:#6b7280; }
         .pc-history-table td.num, .pc-history-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
+        .pc-history-table td.c, .pc-history-table th.c { text-align:center; }
+        .pc-history-table th, .pc-history-table td { padding:10px 14px; vertical-align:middle; }
+        .pc-del { padding:4px 8px; min-height:30px; }
       `}</style>
       <div className="page-header">
         <h2>구매 품목 관리</h2>
@@ -826,7 +860,7 @@ export default function PurchaseItemPage() {
         </button>
       </div>
 
-      {activeTab === 'history' && <PriceHistoryView items={items} />}
+      {activeTab === 'history' && <PriceHistoryView items={items} onDelete={handleDeletePriceChange} />}
       {activeTab === 'items' && (
         <>
       <div className="purchase-filters">

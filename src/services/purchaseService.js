@@ -12,6 +12,7 @@ import {
   orderBy,
   where,
   arrayUnion,
+  arrayRemove,
   writeBatch,
   onSnapshot,
 } from 'firebase/firestore';
@@ -196,6 +197,14 @@ export async function recordPriceChange(id, { from, to, reason, supplierName }) 
       reason: reason || '',
       supplierName: supplierName || '',
     }),
+    updatedAt: new Date(),
+  });
+}
+
+// 단가 변경 이력 1건 삭제 (해당 항목을 배열에서 제거)
+export async function deletePriceChange(id, entry) {
+  await updateDoc(doc(db, 'purchaseItems', id), {
+    priceChangeHistory: arrayRemove(entry),
     updatedAt: new Date(),
   });
 }
