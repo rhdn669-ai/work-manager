@@ -1206,6 +1206,10 @@ export default function PurchaseItemPage() {
                                               inputMode="numeric"
                                               className="num-input"
                                               value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
+                                              onFocus={() => {
+                                                // 개별단가 수정 → 단가(standardPrice) 자동 변경. 원본 단가를 보관해 변동 감지.
+                                                editStartPriceRef.current[it.id] = Number(it.standardPrice) || 0;
+                                              }}
                                               onChange={(e) => {
                                                 const raw = e.target.value.replace(/[^0-9]/g, '');
                                                 const up = raw ? Number(raw) : 0;
