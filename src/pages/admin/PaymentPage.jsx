@@ -45,7 +45,7 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
-  const [monthFilter, setMonthFilter] = useState('all'); // 'all' | 'YYYY.MM'
+  const [monthFilter, setMonthFilter] = useState(() => monthKey(new Date())); // 기본: 현재 월 (결제요청일 기준)
   const [expanded, setExpanded] = useState(() => new Set()); // 펼친 발주서 폴더 id
   const [busy, setBusy] = useState('');
   // 사업자등록증 모달 { supplier, loading, files }
@@ -142,6 +142,7 @@ export default function PaymentPage() {
   // 년월 드롭다운 옵션 — 결제요청일 기준, 최신순
   const monthOptions = useMemo(() => {
     const set = new Set();
+    set.add(monthKey(new Date())); // 현재 월은 데이터가 없어도 항상 선택 가능
     for (const r of allRows) {
       const m = monthKey(r.requestedAt);
       if (m) set.add(m);
