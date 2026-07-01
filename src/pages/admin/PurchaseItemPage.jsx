@@ -415,7 +415,8 @@ export default function PurchaseItemPage() {
         if (oldPrice != null) {
           delete editStartPriceRef.current[id];
           const newPrice = Number(data.standardPrice) || 0;
-          if (oldPrice !== newPrice) {
+          // 기존 단가가 있을 때(수정)만 이력 모달. 최초 입력(0→값, 신규 등록)은 모달 없이 저장.
+          if (oldPrice > 0 && oldPrice !== newPrice) {
             // 단가 변동 → 사유 입력 모달에서 기록. 나머지 필드는 restData로 함께 저장.
             const { standardPrice: _sp, ...restData } = data;
             const sup = suppliers.find((x) => x.id === it.defaultSupplierId);
