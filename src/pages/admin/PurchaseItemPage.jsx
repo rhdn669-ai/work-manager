@@ -1177,9 +1177,10 @@ export default function PurchaseItemPage() {
                                             const newUnit = e.target.value;
                                             const cu = parseCompoundUnit(newUnit);
                                             const patch = { unit: newUnit };
-                                            // 복합 단위로 바뀌면 개별단가 기준 단가 재계산
-                                            if (cu && Number(it.unitPrice) > 0) {
-                                              patch.standardPrice = Math.round(Number(it.unitPrice) * cu.qty);
+                                            // 단위가 바뀌면 개별단가 기준으로 단가를 항상 재동기화한다(복합=×수량, 단순=×1).
+                                            // 복합("2/개")→단순("1/개")으로 바꿀 때 과거 배수가 stale로 남던 버그 방지.
+                                            if (Number(it.unitPrice) > 0) {
+                                              patch.standardPrice = Math.round(Number(it.unitPrice) * (cu ? cu.qty : 1));
                                             }
                                             updateField(it.id, patch);
                                           }}
