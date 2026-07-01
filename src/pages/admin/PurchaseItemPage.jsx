@@ -1348,25 +1348,22 @@ export default function PurchaseItemPage() {
                                           overflow: 'visible',
                                         }}
                                       >
+                                        {/* 펼침 화살표 — 이력 없어도 자리를 유지해(hidden) 삭제 버튼이 밀리지 않게 */}
                                         <button
                                           type="button"
-                                          className="btn btn-sm btn-outline"
-                                          onClick={() => duplicateItem(it)}
-                                          title="이 항목 복사"
-                                          aria-label="복사"
+                                          className="item-expand-btn"
+                                          onClick={() => setExpandedId(expanded ? null : it.id)}
+                                          title={expanded ? '접기' : '단가 변경 이력 보기'}
+                                          disabled={!(it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0)}
+                                          style={{
+                                            visibility:
+                                              it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0
+                                                ? 'visible'
+                                                : 'hidden',
+                                          }}
                                         >
-                                          복사
+                                          <Icon name={expanded ? 'chevronRight' : 'chevronDown'} />
                                         </button>
-                                        {(it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0) && (
-                                          <button
-                                            type="button"
-                                            className="item-expand-btn"
-                                            onClick={() => setExpandedId(expanded ? null : it.id)}
-                                            title={expanded ? '접기' : '단가 변경 이력 보기'}
-                                          >
-                                            <Icon name={expanded ? 'chevronRight' : 'chevronDown'} />
-                                          </button>
-                                        )}
                                         <button
                                           type="button"
                                           className="btn btn-sm btn-danger"
