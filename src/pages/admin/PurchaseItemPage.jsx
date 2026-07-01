@@ -251,9 +251,9 @@ export default function PurchaseItemPage() {
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   // ── 단가 변경 이력 ──
   const [activeTab, setActiveTab] = useState('items'); // 'items' | 'history'
-  const [priceChangeModal, setPriceChangeModal] = useState(null); // { itemId, from, to, supplierName, restData }
+  const [priceChangeModal, setPriceChangeModal] = useState(null); // { itemId, currentUnit, qty, oldStd, supplierName }
   const [pcReason, setPcReason] = useState('');
-  const editStartPriceRef = useRef({}); // 단가 input 포커스 시 원본가 보관 (직접 수정 변동 감지용)
+  const [pcNewValue, setPcNewValue] = useState(''); // 모달에서 입력하는 새 개별단가
   // 헤더 코드 입력 — 편집 중에는 로컬 state로 임시 보관 (items state 즉시 변경 X → 그룹 키 안 흔들림)
   const [editingHeaderCode, setEditingHeaderCode] = useState(null); // { repId, value } | null
 
@@ -454,21 +454,6 @@ export default function PurchaseItemPage() {
         });
       } else {
         const { id: _id, createdAt: _c, updatedAt: _u, ...data } = payload;
-        // 단가 input을 직접 포커스해 편집한 경우에만 변동 감지 (자동계산 경로는 포커스가 없어 제외됨)
-        const oldPrice = editStartPriceRef.current[id];
-        if (oldPrice != null) {
-          delete editStartPriceRef.current[id];
-          const newPrice = Number(data.standardPrice) || 0;
-          // 기존 단가가 있을 때(수정)만 이력 모달. 최초 입력(0→값, 신규 등록)은 모달 없이 저장.
-          if (oldPrice > 0 && oldPrice !== newPrice) {
-            // 단가 변동 → 사유 입력 모달에서 기록. 나머지 필드는 restData로 함께 저장.
-            const { standardPrice: _sp, ...restData } = data;
-            const sup = suppliers.find((x) => x.id === it.defaultSupplierId);
-            setPcReason('');
-            setPriceChangeModal({ itemId: id, from: oldPrice, to: newPrice, supplierName: sup?.name || '', restData });
-            return;
-          }
-        }
         await updatePurchaseItem(id, data);
       }
     } catch (err) {
@@ -476,12 +461,31 @@ export default function PurchaseItemPage() {
     }
   }
 
-  // 단가 변경 모달 — 저장(기록) / 취소(단가 롤백)
+  // 개별단가 칸(기존 값 있음) 클릭 → 단가 변경 모달 열기
+  function openPriceEdit(it) {
+    const cu = parseCompoundUnit(it.unit);
+    const q = cu ? cu.qty : 1;
+    const sup = suppliers.find((x) => x.id === it.defaultSupplierId);
+    setPcNewValue('');
+    setPcReason('');
+    setPriceChangeModal({
+      itemId: it.id,
+      currentUnit: Number(it.unitPrice) || 0,
+      qty: q,
+      oldStd: Number(it.standardPrice) || 0,
+      supplierName: sup?.name || '',
+    });
+  }
+
+  // 모달 저장 — 새 개별단가로 단가 변경 + 이력 기록
   async function confirmPriceChange() {
     const m = priceChangeModal;
     if (!m) return;
-    const f = Number(m.from) || 0;
-    const t = Number(m.to) || 0;
+    const newUnit = Number(String(pcNewValue).replace(/[^0-9]/g, '')) || 0;
+    if (!newUnit) return;
+    const newStd = Math.round(newUnit * (m.qty || 1));
+    const f = Number(m.oldStd) || 0;
+    const t = newStd;
     const rate = f > 0 ? Math.round(((t - f) / f) * 1000) / 10 : 0;
     const entry = {
       from: f,
@@ -493,12 +497,11 @@ export default function PurchaseItemPage() {
     };
     try {
       await recordPriceChange(m.itemId, { from: f, to: t, reason: pcReason, supplierName: m.supplierName });
-      if (m.restData && Object.keys(m.restData).length) await updatePurchaseItem(m.itemId, m.restData);
-      // 로컬 state 즉시 반영 (화면이 1회 로드 방식이라 수동 갱신 필요)
+      await updatePurchaseItem(m.itemId, { unitPrice: newUnit }); // 개별단가도 저장(standardPrice는 recordPriceChange가 저장)
       setItems((prev) =>
         prev.map((x) =>
           x.id === m.itemId
-            ? { ...x, standardPrice: t, priceChangeHistory: [...(x.priceChangeHistory || []), entry] }
+            ? { ...x, unitPrice: newUnit, standardPrice: newStd, priceChangeHistory: [...(x.priceChangeHistory || []), entry] }
             : x,
         ),
       );
@@ -509,8 +512,6 @@ export default function PurchaseItemPage() {
     setPriceChangeModal(null);
   }
   function cancelPriceChange() {
-    const m = priceChangeModal;
-    if (m) updateField(m.itemId, { standardPrice: m.from }); // 단가 롤백
     setPriceChangeModal(null);
   }
 
@@ -860,6 +861,9 @@ export default function PurchaseItemPage() {
         .pc-price.to { color:var(--primary); }
         .pc-arrow { color:#9aa0ad; }
         .pc-supplier { font-size:12px; color:#6b7280; }
+        .pc-cur { font-size:13px; color:var(--text); }
+        .pc-cur strong { color:var(--primary); font-size:16px; }
+        .pc-cur-sub { color:#6b7280; font-size:12px; }
         .pc-filters { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
         .pc-filters input[type=date] { height:36px; border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:13px; color:var(--text); background:#fff; }
         .pc-flabel { font-size:12px; font-weight:700; color:var(--text-muted); }
@@ -1293,11 +1297,14 @@ export default function PurchaseItemPage() {
                                               inputMode="numeric"
                                               className="num-input"
                                               value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
-                                              onFocus={() => {
-                                                // 개별단가 수정 → 단가(standardPrice) 자동 변경. 원본 단가를 보관해 변동 감지.
-                                                editStartPriceRef.current[it.id] = Number(it.standardPrice) || 0;
+                                              readOnly={unitPrice > 0}
+                                              style={unitPrice > 0 ? { cursor: 'pointer' } : undefined}
+                                              title={unitPrice > 0 ? '클릭해서 단가 변경(이력 기록)' : ''}
+                                              onClick={() => {
+                                                if (unitPrice > 0) openPriceEdit(it);
                                               }}
                                               onChange={(e) => {
+                                                if (unitPrice > 0) return; // 기존 값은 모달로만 수정(이력 기록)
                                                 const raw = e.target.value.replace(/[^0-9]/g, '');
                                                 const up = raw ? Number(raw) : 0;
                                                 updateField(it.id, {
@@ -1337,10 +1344,6 @@ export default function PurchaseItemPage() {
                                               className={`num-input ${isAuto ? 'is-readonly' : ''}`}
                                               value={total ? Number(total).toLocaleString() : ''}
                                               readOnly={isAuto}
-                                              onFocus={() => {
-                                                if (!isAuto)
-                                                  editStartPriceRef.current[it.id] = Number(it.standardPrice) || 0;
-                                              }}
                                               onChange={(e) => {
                                                 if (isAuto) return;
                                                 const raw = e.target.value.replace(/[^0-9]/g, '');
@@ -1534,39 +1537,69 @@ export default function PurchaseItemPage() {
         </>
       )}
 
-      {/* 단가 변경 기록 모달 */}
-      <Modal isOpen={!!priceChangeModal} onClose={cancelPriceChange} title="단가 변경 기록">
-        {priceChangeModal && (
-          <div className="pc-modal">
-            <div className="pc-change">
-              <span className="pc-price">{priceChangeModal.from.toLocaleString()}원</span>
-              <span className="pc-arrow">→</span>
-              <span className="pc-price to">{priceChangeModal.to.toLocaleString()}원</span>
-              <RateBadge from={priceChangeModal.from} to={priceChangeModal.to} />
-            </div>
-            {priceChangeModal.supplierName && (
-              <div className="pc-supplier">구매처 · {priceChangeModal.supplierName}</div>
-            )}
-            <div className="form-group">
-              <label>변경 사유 (선택)</label>
-              <input
-                type="text"
-                value={pcReason}
-                onChange={(e) => setPcReason(e.target.value)}
-                placeholder="예: 원자재 인상, 환율 변동"
-                autoFocus
-              />
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-sm btn-outline" onClick={cancelPriceChange}>
-                취소
-              </button>
-              <button type="button" className="btn btn-sm btn-primary" onClick={confirmPriceChange}>
-                저장
-              </button>
-            </div>
-          </div>
-        )}
+      {/* 단가 변경 모달 — 개별단가 칸 클릭 시 새 값 입력 */}
+      <Modal isOpen={!!priceChangeModal} onClose={cancelPriceChange} title="단가 변경">
+        {priceChangeModal &&
+          (() => {
+            const newUnit = Number(String(pcNewValue).replace(/[^0-9]/g, '')) || 0;
+            const newStd = Math.round(newUnit * (priceChangeModal.qty || 1));
+            return (
+              <div className="pc-modal">
+                <div className="pc-cur">
+                  현재 개별단가 <strong>{priceChangeModal.currentUnit.toLocaleString()}원</strong>
+                  {priceChangeModal.qty > 1 && (
+                    <span className="pc-cur-sub">
+                      {' · '}단가 {priceChangeModal.oldStd.toLocaleString()}원 (×{priceChangeModal.qty})
+                    </span>
+                  )}
+                </div>
+                <div className="form-group">
+                  <label>새 개별단가</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newUnit ? newUnit.toLocaleString() : ''}
+                    onChange={(e) => setPcNewValue(e.target.value)}
+                    placeholder="새 개별단가 입력"
+                    autoFocus
+                  />
+                </div>
+                {newUnit > 0 && (
+                  <div className="pc-change">
+                    <span className="pc-price">{priceChangeModal.oldStd.toLocaleString()}원</span>
+                    <span className="pc-arrow">→</span>
+                    <span className="pc-price to">{newStd.toLocaleString()}원</span>
+                    <RateBadge from={priceChangeModal.oldStd} to={newStd} />
+                  </div>
+                )}
+                {priceChangeModal.supplierName && (
+                  <div className="pc-supplier">구매처 · {priceChangeModal.supplierName}</div>
+                )}
+                <div className="form-group">
+                  <label>변경 사유 (선택)</label>
+                  <input
+                    type="text"
+                    value={pcReason}
+                    onChange={(e) => setPcReason(e.target.value)}
+                    placeholder="예: 원자재 인상, 환율 변동"
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-sm btn-outline" onClick={cancelPriceChange}>
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={confirmPriceChange}
+                    disabled={!newUnit}
+                  >
+                    저장
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
       </Modal>
 
       {/* 그룹 안 일괄 추가 (규격·금액) */}
