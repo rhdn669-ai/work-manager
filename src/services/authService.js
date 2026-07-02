@@ -1,5 +1,6 @@
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getToday } from '../utils/dateUtils';
 
 // 신규 사용자 프로필 생성 (회원가입 시)
 export async function createUserProfile(uid, data) {
@@ -9,7 +10,7 @@ export async function createUserProfile(uid, data) {
     name: data.name,
     role: data.role || 'employee',
     departmentId: data.departmentId || '',
-    joinDate: data.joinDate || new Date().toISOString().split('T')[0],
+    joinDate: data.joinDate || getToday(),
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),

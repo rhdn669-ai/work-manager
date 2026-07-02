@@ -4,7 +4,6 @@ import {
   getFreelancers,
   addFreelancer,
   updateFreelancer,
-  deleteFreelancer,
   getVendors,
   addVendor,
   updateVendor,
@@ -1213,7 +1212,7 @@ export default function OutsourceManagementPage() {
                                   return;
                                 setDetailBusy(true);
                                 try {
-                                  await deleteFreelancer(f.id);
+                                  await trashGeneric('freelancers', f.id, { title: f.name || '프리랜서' }, userProfile?.name || '');
                                   if (editRateFor === f.id) setEditRateFor(null);
                                   await reloadDetail();
                                 } catch (err) {

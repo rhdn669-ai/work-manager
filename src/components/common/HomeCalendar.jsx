@@ -5,7 +5,8 @@ import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/atte
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getUsers } from '../../services/userService';
 import { getAllSites } from '../../services/siteService';
-import { getMyPersonalEvents, addPersonalEvent, deletePersonalEvent } from '../../services/personalEventService';
+import { getMyPersonalEvents, addPersonalEvent } from '../../services/personalEventService';
+import { trashGeneric } from '../../services/trashService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { getKoreanHolidaysAsEvents, getKoreanHolidayDates } from '../../utils/koreanHolidays';
 import Modal from './Modal';
@@ -179,7 +180,9 @@ export default function HomeCalendar() {
   async function handleDeletePersonal(id) {
     if (!(await confirm('이 일정을 삭제하시겠습니까?'))) return;
     try {
-      await deletePersonalEvent(id);
+      const ev = personalEvents.find((p) => p.id === id);
+      const title = [ev?.title || '내 일정', ev?.startDate].filter(Boolean).join(' ');
+      await trashGeneric('personalEvents', id, { title }, userProfile?.name || '');
       await reloadPersonal();
     } catch (err) {
       alert('삭제 실패: ' + err.message);

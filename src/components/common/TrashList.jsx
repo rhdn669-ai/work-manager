@@ -22,9 +22,15 @@ export const TRASH_TYPE_LABEL = {
   libraryFolders: { label: '폴더', cls: 'received' },
   purchase: { label: '발주', cls: 'ordered' },
   bomProject: { label: 'BOM', cls: 'partial' },
+  bom: { label: 'BOM 품목', cls: 'partial' },
   mileageLogs: { label: '운행기록', cls: 'partial' },
   vehicleMileages: { label: '운행기록', cls: 'partial' },
   siteClosingItems: { label: '공수표', cls: 'received' },
+  siteFinances: { label: '지출·매출', cls: 'settled' },
+  overtimeRecords: { label: '잔업', cls: 'ordered' },
+  leaves: { label: '연차', cls: 'partial' },
+  tasks: { label: '업무', cls: 'ordered' },
+  personalEvents: { label: '개인일정', cls: 'received' },
 };
 
 export function trashTypeInfo(t) {

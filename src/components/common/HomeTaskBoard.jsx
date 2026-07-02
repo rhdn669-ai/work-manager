@@ -9,7 +9,8 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
-import { getTasks, addTask, updateTask, setTaskStatus, deleteTask } from '../../services/taskService';
+import { getTasks, addTask, updateTask, setTaskStatus } from '../../services/taskService';
+import { trashGeneric } from '../../services/trashService';
 import { getUsers } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialog } from './DialogProvider';
@@ -260,7 +261,7 @@ export default function HomeTaskBoard() {
     if (!(await confirm({ title: '업무 삭제', message: `"${t.title}" 업무를 삭제할까요?` }))) return;
     setTasks((prev) => prev.filter((x) => x.id !== t.id));
     try {
-      await deleteTask(t.id);
+      await trashGeneric('tasks', t.id, { title: t.title || '업무' }, userProfile?.name || '');
     } catch (err) {
       alert('삭제 실패: ' + err.message);
       load();

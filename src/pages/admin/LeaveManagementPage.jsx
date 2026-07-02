@@ -7,6 +7,7 @@ import {
   updateOvertimeRecord,
   deleteOvertimeRecord,
 } from '../../services/attendanceService';
+import { useAuth } from '../../contexts/AuthContext';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { getEvents } from '../../services/eventService';
@@ -62,6 +63,7 @@ function formatDays(d) {
 
 export default function LeaveManagementPage({ embedded = false } = {}) {
   const { confirm, alert } = useDialog();
+  const { userProfile } = useAuth();
   // 공통
   const [activeTab, setActiveTab] = useState('leave');
   const [users, setUsers] = useState([]);
@@ -278,7 +280,7 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
       return;
     setLeaveBusy(true);
     try {
-      await deleteLeaveById(l.id);
+      await deleteLeaveById(l.id, userProfile?.name || '');
       await loadLeaves();
     } catch (err) {
       alert('삭제 실패: ' + err.message);
@@ -377,7 +379,7 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
     if (!(await confirm(`${u ? u.name + ' 직원의 ' : ''}${r.date} 잔업 기록을 삭제하시겠습니까?`))) return;
     setOtBusy(r.id);
     try {
-      await deleteOvertimeRecord(r.id);
+      await deleteOvertimeRecord(r.id, userProfile?.name || '');
       await loadOvertimes();
     } catch (err) {
       alert('삭제 실패: ' + err.message);

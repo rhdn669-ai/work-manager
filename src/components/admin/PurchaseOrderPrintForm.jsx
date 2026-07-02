@@ -118,8 +118,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
       i += size;
     }
     if (pages.length === 0) pages.push({ chunk: [], startNo: 0 });
-    const lastFill = (pages.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS) + TOTALS_ROWS;
-    if (pages[pages.length - 1].chunk.length + TOTALS_ROWS > lastFill) {
+    // 마지막 페이지에 합계·특이사항(TOTALS_ROWS)이 들어갈 공간이 없으면 빈 페이지를 추가해 합계가 밀리지 않게 함
+    const lastCap = pages.length === 1 ? FIRST_PAGE_ROWS : OTHER_PAGE_ROWS;
+    if (pages[pages.length - 1].chunk.length + TOTALS_ROWS > lastCap) {
       pages.push({ chunk: [], startNo: rows.length });
     }
     const pageCount = pages.length;

@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
+import { getToday } from '../utils/dateUtils';
 
 const suppliersRef = collection(db, 'suppliers');
 const itemsRef = collection(db, 'purchaseItems');
@@ -193,7 +194,7 @@ export async function recordPriceChange(id, { from, to, reason, supplierName }) 
       from: f,
       to: t,
       rate,
-      date: new Date().toISOString().slice(0, 10),
+      date: getToday(),
       reason: reason || '',
       supplierName: supplierName || '',
     }),
@@ -625,19 +626,32 @@ export async function receivePurchaseLine(purchase, lineIdx, info) {
 export async function settlePurchase(purchase, settledBy) {
   const siteId = purchase.siteId;
   if (!siteId) throw new Error('귀속 프로젝트가 지정되지 않았습니다.');
+
+  const purchaseRef = doc(db, 'purchases', purchase.id);
+  // 서버 최신 상태로 중복 정산 방지 (클라이언트 purchase는 stale일 수 있음)
+  const curSnap = await getDoc(purchaseRef);
+  const cur = curSnap.exists() ? curSnap.data() : {};
+  if (cur.status === 'settled') return cur.financeId || null; // 이미 정산 완료 — 아무 것도 하지 않음
+
   const recv = purchase.receivedAt;
   const d = recv?.toDate ? recv.toDate() : recv ? new Date(recv) : new Date();
   const year = d.getFullYear();
   const month = d.getMonth() + 1;
   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  const financeId = await addFinanceItem(siteId, year, month, {
-    type: 'expense',
-    description: `구매 - ${purchase.title}`,
-    amount: Number(purchase.totalAmount) || 0,
-    note: purchase.supplierName ? `구매처: ${purchase.supplierName}` : '',
-    date: dateStr,
-  });
+  // 지출 등록 — 이전 시도가 지출까지만 성공했으면(financeId 존재) 재사용해 중복 등록 방지
+  let financeId = cur.financeId || null;
+  if (!financeId) {
+    financeId = await addFinanceItem(siteId, year, month, {
+      type: 'expense',
+      description: `구매 - ${purchase.title}`,
+      amount: Number(purchase.totalAmount) || 0,
+      note: purchase.supplierName ? `구매처: ${purchase.supplierName}` : '',
+      date: dateStr,
+    });
+    // 지출 생성 직후 즉시 발주에 기록 → 이후 단계가 실패해도 재시도 시 중복 지출을 막음
+    await updateDoc(purchaseRef, { financeId, financeSiteId: siteId });
+  }
 
   // 각 품목의 실거래 단가를 priceHistory에 누적, standardPrice도 최신화
   const lineItems = Array.isArray(purchase.items) ? purchase.items : [];
@@ -671,13 +685,20 @@ export async function settlePurchase(purchase, settledBy) {
 
 // 정산 취소 — 지출 삭제 + priceHistory에서 이 구매 기록 제거 + 상태 received로 되돌림
 export async function cancelSettlePurchase(purchase) {
-  // 지출 항목 삭제
-  if (purchase.financeId) {
+  const purchaseRef = doc(db, 'purchases', purchase.id);
+  // 서버 최신 상태 확인 — 이미 취소됐으면 아무 것도 하지 않음(유령 상태 방지)
+  const curSnap = await getDoc(purchaseRef);
+  const cur = curSnap.exists() ? curSnap.data() : {};
+  if (cur.status !== 'settled') return;
+
+  // 지출 항목 삭제 후 즉시 financeId 제거 → 재시도 시 유령 참조·중복 삭제 방지
+  if (cur.financeId) {
     try {
-      await deleteFinanceItem(purchase.financeId);
+      await deleteFinanceItem(cur.financeId);
     } catch {
       /* 이미 삭제된 경우 무시 */
     }
+    await updateDoc(purchaseRef, { financeId: null });
   }
   // 각 품목 priceHistory에서 이 purchaseId 매칭 항목 제거
   const lineItems = Array.isArray(purchase.items) ? purchase.items : [];

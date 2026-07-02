@@ -16,6 +16,7 @@ import { calculateAccruedLeave } from '../utils/leaveCalculator';
 import { getUser } from './userService';
 import { syncEmployeeLeaveDaysForMonth } from './siteService';
 import { QUARTER_LEAVE_TYPES } from '../utils/constants';
+import { trashGeneric } from './trashService';
 
 const leavesRef = collection(db, 'leaves');
 const balancesRef = collection(db, 'leaveBalances');
@@ -232,8 +233,8 @@ export async function setLeaveRemaining(userId, remaining) {
   }
 }
 
-// 연차 개별 삭제 (관리자용) - 삭제 시 usedDays 자동 복원
-export async function deleteLeaveById(id) {
+// 연차 개별 삭제 (관리자용) - usedDays 복원 + 공수 복원 후 휴지통으로 소프트 삭제(복원 가능)
+export async function deleteLeaveById(id, deletedByName = '') {
   const ref = doc(db, 'leaves', id);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
@@ -241,7 +242,8 @@ export async function deleteLeaveById(id) {
   if (leave.status === 'confirmed') {
     await updateLeaveBalance(leave.userId, -(leave.days || 0));
   }
-  await deleteDoc(ref);
+  const title = `${leave.userName || ''} ${leave.startDate || ''} 연차`.trim() || '연차 기록';
+  await trashGeneric('leaves', id, { title }, deletedByName);
   // 공수표 자동 동기화 (출근 복원)
   await _reconcileLeaveToSiteClosings(leave.userId, [{ startDate: leave.startDate, endDate: leave.endDate }]);
 }

@@ -2,6 +2,7 @@ import { collection, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, query, 
 import { db } from '../config/firebase';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
+import { trashGeneric } from './trashService';
 import {
   addFinanceItem,
   deleteFinanceItem,
@@ -57,21 +58,24 @@ export async function rejectOvertimeRecord(id, rejectionReason = '') {
   await removeOvertimeExpense(id, prev);
 }
 
-// 승인 대기 잔업 전체 조회 (관리자용)
-export async function getPendingOvertimeRecords() {
+// 승인 대기 잔업 조회 — departmentId 지정 시 해당 부서만(부서장), null이면 전체(관리자)
+export async function getPendingOvertimeRecords(departmentId = null) {
   const q = query(overtimeRef, where('status', '==', 'pending'));
   const snapshot = await getDocs(q);
   return snapshot.docs
     .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => !departmentId || r.departmentId === departmentId)
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
 
-// 잔업 삭제 - 연관된 프로젝트 지출도 함께 제거
-export async function deleteOvertimeRecord(id) {
+// 잔업 삭제 - 연관된 프로젝트 지출 제거 후 휴지통으로 소프트 삭제(복원 가능)
+export async function deleteOvertimeRecord(id, deletedByName = '') {
   const snap = await getDoc(doc(db, 'overtimeRecords', id));
   const prev = snap.exists() ? snap.data() : null;
+  if (!prev) return;
   await removeOvertimeExpense(id, prev);
-  await deleteDoc(doc(db, 'overtimeRecords', id));
+  const title = `${prev.userName || ''} ${prev.date || ''} 잔업`.trim() || '잔업 기록';
+  await trashGeneric('overtimeRecords', id, { title }, deletedByName);
 }
 
 // 잔업 개별 수정 (관리자용) - 프로젝트 지출도 함께 갱신

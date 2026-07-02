@@ -61,7 +61,7 @@ export default function AttendanceHistoryPage() {
   async function handleDelete(id) {
     if (!(await confirm('이 잔업 기록을 삭제하시겠습니까?'))) return;
     try {
-      await deleteOvertimeRecord(id);
+      await deleteOvertimeRecord(id, userProfile?.name || '');
       await loadRecords();
     } catch (err) {
       alert('삭제 실패: ' + err.message);

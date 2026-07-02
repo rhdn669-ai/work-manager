@@ -16,6 +16,8 @@ import Icon from '../../components/common/Icon';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useUndo } from '../../contexts/UndoContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { trashGeneric } from '../../services/trashService';
 import { specFontClass } from '../../utils/printText';
 
 function fmtDateTime(d) {
@@ -30,6 +32,7 @@ export default function BomDetailPage() {
   const navigate = useNavigate();
   const { confirm, alert } = useDialog();
   const { push: pushUndo } = useUndo();
+  const { userProfile } = useAuth();
 
   const [project, setProject] = useState(null);
   const [bomItems, setBomItems] = useState([]);
@@ -227,7 +230,8 @@ export default function BomDetailPage() {
     if (!(await confirm(`"${item?.name || '이 항목'}"을(를) BOM에서 삭제하시겠습니까?`))) return;
     pushBomUndo();
     try {
-      await deleteBomItem(id);
+      const title = [item?.name, item?.spec].filter(Boolean).join(' ') || '(이름 없음)';
+      await trashGeneric('bom', id, { title }, userProfile?.name || '');
       setBomItems((prev) => prev.filter((b) => b.id !== id));
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);

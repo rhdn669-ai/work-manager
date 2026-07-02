@@ -417,6 +417,7 @@ export function EmployeeDetailModal({
   onChanged,
 }) {
   const { confirm, alert } = useDialog();
+  const { userProfile } = useAuth();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
@@ -482,9 +483,9 @@ export function EmployeeDetailModal({
     setBusy(true);
     try {
       if (tab === 'overtime') {
-        await deleteOvertimeRecord(row.id);
+        await deleteOvertimeRecord(row.id, userProfile?.name || '');
       } else {
-        await deleteLeaveById(row.id);
+        await deleteLeaveById(row.id, userProfile?.name || '');
       }
       await onChanged();
     } catch (err) {

@@ -6,7 +6,6 @@ import {
   updatePurchaseItem,
   recordPriceChange,
   deletePriceChange,
-  deletePurchaseItems,
   getSuppliers,
   nextMainCode,
   nextSubCode,
@@ -15,6 +14,7 @@ import {
   repadItemCodes,
 } from '../../services/purchaseService';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
+import { getToday } from '../../utils/dateUtils';
 import { useUndo } from '../../contexts/UndoContext';
 import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
@@ -491,7 +491,7 @@ export default function PurchaseItemPage() {
       from: f,
       to: t,
       rate,
-      date: new Date().toISOString().slice(0, 10),
+      date: getToday(),
       reason: pcReason || '',
       supplierName: m.supplierName || '',
     };
@@ -632,7 +632,19 @@ export default function PurchaseItemPage() {
       return;
     const ids = groupItems.map((it) => it.id);
     try {
-      await deletePurchaseItems(ids);
+      await Promise.all(
+        groupItems.map((it) =>
+          trashGeneric(
+            'purchaseItems',
+            it.id,
+            {
+              title: it.name || '(품명 없음)',
+              summary: [it.code, it.spec].filter(Boolean).join(' · '),
+            },
+            userProfile?.name || '',
+          ),
+        ),
+      );
       setItems((prev) => prev.filter((it) => !ids.includes(it.id)));
     } catch (err) {
       alert('대분류 삭제 중 오류: ' + err.message);
@@ -775,6 +787,9 @@ export default function PurchaseItemPage() {
     }
     setGroupBulkSaving(true);
     try {
+      // 대표 품목 단위가 복합단위(예: 610m/roll)면 단가 = 개별단가 × 수량으로 환산 (셀 편집과 동일)
+      const repCu = parseCompoundUnit(repItem.unit);
+      const repQty = repCu ? repCu.qty : 1;
       let buf = [...items];
       const payloads = parsedGroupBulk.map((r) => {
         const code = nextSubCode(buf, repItem.code);
@@ -787,7 +802,7 @@ export default function PurchaseItemPage() {
           unit: repItem.unit || '',
           category: repItem.category || '',
           unitPrice: Number(r.unitPrice) || 0,
-          standardPrice: Number(r.unitPrice) || 0, // 단순 품목: 단가 = 개별단가
+          standardPrice: Math.round((Number(r.unitPrice) || 0) * repQty), // 복합단위 환산
           defaultSupplierId: groupBulkSupplier || '',
           groupKey: repItem.groupKey || repItem.id,
           priceHistory: [],
