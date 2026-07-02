@@ -58,11 +58,11 @@ export default function TrashList({ items, loading, busy, onRestore, onPurge, ca
         <thead>
           <tr>
             <th style={{ width: 60 }}>구분</th>
-            <th style={{ width: '42%' }}>이름</th>
+            <th style={{ width: '30%' }}>이름</th>
             <th>내용</th>
             <th style={{ width: 130 }}>삭제일시</th>
             <th style={{ width: 76 }}>삭제자</th>
-            <th className="col-action" style={{ width: canPurge ? 136 : 76 }}>작업</th>
+            <th className="col-action" style={{ width: canPurge ? 168 : 80, minWidth: canPurge ? 168 : 80 }}>작업</th>
           </tr>
         </thead>
         <tbody>
