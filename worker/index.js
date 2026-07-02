@@ -96,6 +96,17 @@ async function hometaxTaxInvoice(request, env) {
 }
 
 // 여러 PDF URL을 서버에서 받아 하나로 병합(벡터 그대로). 서버 fetch라 Storage CORS와 무관.
+// SSRF 방지: 자사 Firebase Storage 도메인만 fetch 허용.
+const MERGE_ALLOWED_HOSTS = new Set(['firebasestorage.googleapis.com', 'storage.googleapis.com']);
+function isAllowedPdfUrl(u) {
+  try {
+    const p = new URL(u);
+    return p.protocol === 'https:' && MERGE_ALLOWED_HOSTS.has(p.hostname);
+  } catch {
+    return false;
+  }
+}
+
 async function mergePdf(request) {
   try {
     const { urls } = await request.json();
@@ -105,6 +116,7 @@ async function mergePdf(request) {
     let added = 0;
     for (const u of urls) {
       try {
+        if (!isAllowedPdfUrl(u)) continue; // 허용 도메인 외 URL 무시
         const res = await fetch(u);
         if (!res.ok) continue;
         const buf = await res.arrayBuffer();

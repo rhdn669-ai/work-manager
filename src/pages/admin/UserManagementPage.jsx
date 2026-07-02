@@ -520,7 +520,7 @@ export default function UserManagementPage() {
                   </td>
                   <td data-label="비밀번호" style={{ minHeight: 36 }}>
                     {u.password ? (
-                      <code style={{ fontSize: 13 }}>{u.password}</code>
+                      <code style={{ fontSize: 13, letterSpacing: 2 }} title="보안상 표시하지 않습니다. 분실 시 편집에서 초기화 또는 재설정.">••••</code>
                     ) : (
                       <span
                         style={{
@@ -636,10 +636,8 @@ export default function UserManagementPage() {
             </label>
             {editUser && editUser.password && (
               <div style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>
-                현재:{' '}
-                <code style={{ background: 'var(--bg-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4 }}>
-                  {editUser.password}
-                </code>
+                현재: <code style={{ background: 'var(--bg-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4, letterSpacing: 2 }}>••••</code>
+                <span style={{ marginLeft: 6, fontSize: 12 }}>설정됨 — 분실 시 아래에 새 비밀번호 입력 또는 초기화</span>
               </div>
             )}
             {editUser && !editUser.password && (
