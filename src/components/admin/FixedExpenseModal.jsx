@@ -177,7 +177,7 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
+          <button type="button" className="btn btn-outline" onClick={onClose}>
             취소
           </button>
           <button type="submit" className="btn btn-primary" disabled={!name.trim() || !amount}>

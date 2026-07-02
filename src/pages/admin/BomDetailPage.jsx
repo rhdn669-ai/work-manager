@@ -13,6 +13,7 @@ import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseSer
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useUndo } from '../../contexts/UndoContext';
@@ -30,7 +31,7 @@ function fmtDateTime(d) {
 export default function BomDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const { userProfile } = useAuth();
 
@@ -91,8 +92,8 @@ export default function BomDetailPage() {
         ...toUpdate.map((b) => updateBomItem(b.id, { qty: b.qty, unitPrice: b.unitPrice, note: b.note, order: b.order })),
       ]);
       setBomItems(prev);
-    } catch (err) {
-      alert('실행 취소 오류: ' + err.message);
+    } catch {
+      toast('실행 취소 중 오류가 발생했습니다', 'error');
     }
   }
   handleBomUndoRef.current = handleBomUndo;
@@ -115,7 +116,7 @@ export default function BomDetailPage() {
         setBomItems(items);
       } catch (err) {
         console.error(err);
-        alert('불러오기 오류: ' + err.message);
+        toast('불러오기 중 오류가 발생했습니다', 'error');
       } finally {
         setLoading(false);
       }
@@ -220,8 +221,8 @@ export default function BomDetailPage() {
     try {
       const { id: _, createdAt: __, updatedAt: ___, ...data } = item;
       await updateBomItem(id, data);
-    } catch (err) {
-      alert('저장 오류: ' + err.message);
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -233,8 +234,8 @@ export default function BomDetailPage() {
       const title = [item?.name, item?.spec].filter(Boolean).join(' ') || '(이름 없음)';
       await trashGeneric('bom', id, { title }, userProfile?.name || '');
       setBomItems((prev) => prev.filter((b) => b.id !== id));
-    } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -274,8 +275,8 @@ export default function BomDetailPage() {
     setPickerTargetId(null);
     try {
       await updateBomItem(targetId, patch);
-    } catch (err) {
-      alert('변경 저장 오류: ' + err.message);
+    } catch {
+      toast('변경 저장 중 오류가 발생했습니다', 'error');
     }
   }
   function closePicker() {
@@ -458,12 +459,12 @@ export default function BomDetailPage() {
       await updateBomProject(projectId, n);
       setProject((p) => ({ ...p, name: n }));
       setNameModalOpen(false);
-    } catch (err) {
-      alert('프로젝트명 수정 오류: ' + err.message);
+    } catch {
+      toast('프로젝트명 수정 중 오류가 발생했습니다', 'error');
     }
   }
 
-  if (loading || !project) return <div className="loading">로딩 중...</div>;
+  if (loading || !project) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="bom-page printable-page">
@@ -1133,14 +1134,14 @@ export default function BomDetailPage() {
             )}
           </div>
           <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={closePicker}>
+              취소
+            </button>
             {!pickerTargetId && (
               <button type="submit" className="btn btn-primary" disabled={picked.size === 0}>
                 {picked.size}개 추가
               </button>
             )}
-            <button type="button" className="btn btn-outline" onClick={closePicker}>
-              취소
-            </button>
           </div>
         </form>
       </Modal>
@@ -1161,11 +1162,11 @@ export default function BomDetailPage() {
           />
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-primary" disabled={!nameInput.trim()} onClick={saveName}>
-            저장
-          </button>
           <button type="button" className="btn btn-outline" onClick={() => setNameModalOpen(false)}>
             취소
+          </button>
+          <button type="button" className="btn btn-primary" disabled={!nameInput.trim()} onClick={saveName}>
+            저장
           </button>
         </div>
       </Modal>

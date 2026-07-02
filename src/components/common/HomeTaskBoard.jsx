@@ -189,7 +189,7 @@ function TaskColumn({ col, cards, onAdd, onEdit, onDelete, onMove }) {
 }
 
 export default function HomeTaskBoard() {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const { userProfile, isAdmin, isExecutive } = useAuth();
   const canSeeAll = isAdmin || isExecutive;
   // PC: 마우스로 즉시 드래그. 모바일: 길게 눌러야(220ms) 드래그 시작 →
@@ -253,7 +253,7 @@ export default function HomeTaskBoard() {
       setModalOpen(false);
       await load();
     } catch (err) {
-      alert('저장 실패: ' + err.message);
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -263,7 +263,7 @@ export default function HomeTaskBoard() {
     try {
       await trashGeneric('tasks', t.id, { title: t.title || '업무' }, userProfile?.name || '');
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
       load();
     }
   }
@@ -279,7 +279,7 @@ export default function HomeTaskBoard() {
     try {
       await setTaskStatus(id, next.key);
     } catch (err) {
-      alert('상태 변경 실패: ' + err.message);
+      toast('상태 변경 중 오류가 발생했습니다', 'error');
       load();
     }
   }
@@ -295,7 +295,7 @@ export default function HomeTaskBoard() {
     try {
       await setTaskStatus(id, newStatus);
     } catch (err) {
-      alert('상태 변경 실패: ' + err.message);
+      toast('상태 변경 중 오류가 발생했습니다', 'error');
       load();
     }
   }

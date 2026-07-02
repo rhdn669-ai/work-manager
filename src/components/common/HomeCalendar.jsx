@@ -38,7 +38,7 @@ function formatMinutes(min) {
 
 export default function HomeCalendar() {
   const { userProfile, isAdmin, canApproveAll, canApproveLeave } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() + 1 };
@@ -171,7 +171,7 @@ export default function HomeCalendar() {
       setShowPersonalModal(false);
       await reloadPersonal();
     } catch (err) {
-      alert('저장 실패: ' + err.message);
+      toast('저장 중 오류가 발생했습니다', 'error');
     } finally {
       setPersonalBusy(false);
     }
@@ -185,7 +185,7 @@ export default function HomeCalendar() {
       await trashGeneric('personalEvents', id, { title }, userProfile?.name || '');
       await reloadPersonal();
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 

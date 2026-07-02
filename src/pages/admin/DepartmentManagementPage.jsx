@@ -8,6 +8,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 function useViewportWidth() {
@@ -21,7 +22,7 @@ function useViewportWidth() {
 }
 
 export default function DepartmentManagementPage() {
-  const { confirm, alert, toast } = useDialog();
+  const { confirm, toast } = useDialog();
   const { userProfile } = useAuth();
   const vw = useViewportWidth();
   const isXSmall = vw <= 360;
@@ -73,8 +74,8 @@ export default function DepartmentManagementPage() {
       }
       setShowModal(false);
       await loadData();
-    } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+    } catch {
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -99,8 +100,8 @@ export default function DepartmentManagementPage() {
       await deleteDeptChannel(dept.id);
       toast('휴지통으로 이동했습니다.');
       await loadData();
-    } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -109,7 +110,7 @@ export default function DepartmentManagementPage() {
     userMap[u.uid] = u.name;
   });
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="dept-management-page">
@@ -193,11 +194,11 @@ export default function DepartmentManagementPage() {
             />
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">
-              {editDept ? '수정' : '추가'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {editDept ? '수정' : '추가'}
             </button>
           </div>
         </form>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getTrashItems, restoreTrashItem, purgeTrashItem } from '../../services/trashService';
 import { useDialog } from '../../components/common/DialogProvider';
+import Skeleton from '../../components/common/Skeleton';
 
 const TYPE_LABEL = {
   purchase: { label: '발주', cls: 'ordered' },
@@ -23,7 +24,7 @@ function fmtDateTime(ts) {
 }
 
 export default function PurchaseTrashPage() {
-  const { confirm, alert } = useDialog();
+  const { confirm, toast } = useDialog();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const typeFilter = searchParams.get('type'); // 'purchase' | 'bomProject' | null
@@ -60,7 +61,7 @@ export default function PurchaseTrashPage() {
         if (await confirm('복원 완료. 해당 프로젝트 BOM으로 이동할까요?')) navigate(`/admin/purchase/bom/${t.refId}`);
       }
     } catch (err) {
-      alert('복원 중 오류: ' + err.message);
+      toast('복원 중 오류가 발생했습니다', 'error');
     } finally {
       setBusyId('');
     }
@@ -73,13 +74,13 @@ export default function PurchaseTrashPage() {
       await purgeTrashItem(t.id);
       setItems((prev) => prev.filter((x) => x.id !== t.id));
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setBusyId('');
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="purchase-list-page">

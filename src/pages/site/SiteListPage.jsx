@@ -16,6 +16,7 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
+import Skeleton from '../../components/common/Skeleton';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 import TrashModal from '../../components/common/TrashModal';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
@@ -43,7 +44,7 @@ function getIconColor(key) {
 
 export default function SiteListPage() {
   const { userProfile, isAdmin, isExecutive, canViewSalary, canCreateSite } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
@@ -333,7 +334,7 @@ export default function SiteListPage() {
       setShowModal(false);
       await loadData();
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -365,9 +366,9 @@ export default function SiteListPage() {
       } catch (err) {
         console.warn('[자료실] 발주이력 월별 정리 실패:', err);
       }
-      alert(`${ok}/${all.length}개 프로젝트의 자료실 폴더를 동기화했습니다.${movedMsg}`);
+      toast(`${ok}/${all.length}개 프로젝트의 자료실 폴더를 동기화했습니다.${movedMsg}`);
     } catch (err) {
-      alert('동기화 오류: ' + err.message);
+      toast('동기화 중 오류가 발생했습니다', 'error');
     } finally {
       setSyncingFolders(false);
     }
@@ -385,7 +386,7 @@ export default function SiteListPage() {
         await loadData();
       });
     } catch (err) {
-      alert('삭제 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -402,7 +403,7 @@ export default function SiteListPage() {
       await updateSite(site.id, { status: next });
       await loadData();
     } catch (err) {
-      alert('상태 변경 오류: ' + err.message);
+      toast('상태 변경 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -424,7 +425,7 @@ export default function SiteListPage() {
 
   const candidates = users.filter((u) => u.role !== 'admin');
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="site-list-page">

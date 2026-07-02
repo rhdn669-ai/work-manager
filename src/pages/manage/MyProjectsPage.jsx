@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getSitesByManager, getClosingItems } from '../../services/siteService';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function MyProjectsPage() {
   const { userProfile } = useAuth();
@@ -161,7 +162,7 @@ export default function MyProjectsPage() {
         />
       </div>
 
-      {loading && <div className="loading">로딩 중...</div>}
+      {loading && <Skeleton.Rows count={6} />}
 
       {!loading && rows.length === 0 && (
         <div className="card">

@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import QuotePrintForm, { DEFAULT_NOTE, SELF_INFO } from './QuotePrintForm';
 
@@ -117,7 +118,7 @@ export default function QuoteFormPage() {
         toast('저장되었습니다.');
       }
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     } finally {
       setSaving(false);
     }
@@ -135,7 +136,7 @@ export default function QuoteFormPage() {
       toast('휴지통으로 이동했습니다.');
       navigate('/admin/purchase/quotes');
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -148,7 +149,7 @@ export default function QuoteFormPage() {
     ? { ...form, id: quoteId || 'new', createdAt: quote?.createdAt || new Date(), totalAmount: supplyAmount, vat: vatAmount, grandTotal }
     : quote;
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="quote-detail-page printable-page">

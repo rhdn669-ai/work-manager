@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getWeeklySummary, getOvertimeSummaries, getOvertimeWarningLevel } from '../../services/overtimeService';
 import { getWeekStart, formatMinutes, getDayName } from '../../utils/dateUtils';
 import { WEEKLY_OVERTIME_LIMIT } from '../../utils/constants';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function OvertimePage() {
   const { userProfile } = useAuth();
@@ -32,7 +33,7 @@ export default function OvertimePage() {
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   const warningLevel = currentWeek ? getOvertimeWarningLevel(currentWeek.totalOvertimeMinutes) : 'safe';
   const percentage = currentWeek ? Math.min(100, (currentWeek.totalOvertimeMinutes / WEEKLY_OVERTIME_LIMIT) * 100) : 0;

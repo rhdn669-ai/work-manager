@@ -9,6 +9,7 @@ import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUndo } from '../../contexts/UndoContext';
@@ -50,7 +51,7 @@ function SortableProjectRow({ p, onOpen, onDelete }) {
 }
 
 export default function BomPage() {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
   const { push: pushUndo } = useUndo();
   const navigate = useNavigate();
@@ -66,8 +67,8 @@ export default function BomPage() {
     setProjects(next);
     try {
       await saveBomProjectsOrder(next.map((p) => p.id));
-    } catch (err) {
-      alert('순서 저장 오류: ' + err.message);
+    } catch {
+      toast('순서 저장 중 오류가 발생했습니다', 'error');
     }
   }
   const [trashOpen, setTrashOpen] = useState(false);
@@ -111,8 +112,8 @@ export default function BomPage() {
       const ref = await addBomProject(name);
       setAddProjectOpen(false);
       navigate(`/admin/purchase/bom/${ref.id}`);
-    } catch (err) {
-      alert('프로젝트 추가 중 오류: ' + err.message);
+    } catch {
+      toast('프로젝트 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setAddingProject(false);
     }
@@ -135,12 +136,12 @@ export default function BomPage() {
         const ps = await getBomProjects();
         setProjects(ps);
       });
-    } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="bom-page">
@@ -212,6 +213,9 @@ export default function BomPage() {
         </div>
         <p className="field-hint">추가 후 자동으로 BOM 편집 페이지로 이동합니다.</p>
         <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setAddProjectOpen(false)}>
+            취소
+          </button>
           <button
             type="button"
             className="btn btn-primary"
@@ -219,9 +223,6 @@ export default function BomPage() {
             disabled={addingProject || !newProjectName.trim()}
           >
             {addingProject ? '추가 중…' : '추가하고 열기'}
-          </button>
-          <button type="button" className="btn btn-outline" onClick={() => setAddProjectOpen(false)}>
-            취소
           </button>
         </div>
       </Modal>

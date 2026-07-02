@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getLeaveBalance } from '../../services/leaveService';
 import LeaveTabs from '../../components/common/LeaveTabs';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function LeaveBalancePage() {
   const { userProfile } = useAuth();
@@ -24,7 +25,7 @@ export default function LeaveBalancePage() {
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   const usedPercentage =
     balance && balance.totalDays > 0 ? Math.round((balance.usedDays / balance.totalDays) * 100) : 0;

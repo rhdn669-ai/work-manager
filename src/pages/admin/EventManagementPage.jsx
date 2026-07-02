@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 function useViewportWidth() {
@@ -138,8 +139,8 @@ export default function EventManagementPage() {
       }
       setShowModal(false);
       await loadData();
-    } catch (err) {
-      alert('저장 실패: ' + err.message);
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -163,8 +164,8 @@ export default function EventManagementPage() {
       );
       toast('휴지통으로 이동했습니다.');
       await loadData();
-    } catch (err) {
-      alert('삭제 실패: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -217,16 +218,16 @@ export default function EventManagementPage() {
           createdBy: userProfile?.uid || '',
         });
       }
-      alert(`${toAdd.length}개 공휴일이 등록되었습니다.`);
+      toast(`${toAdd.length}개 공휴일이 등록되었습니다.`);
       await loadData();
-    } catch (err) {
-      alert('등록 실패: ' + err.message);
+    } catch {
+      toast('등록 중 오류가 발생했습니다', 'error');
     } finally {
       setSyncing(false);
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="event-management-page">
@@ -430,11 +431,11 @@ export default function EventManagementPage() {
             />
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">
-              {editEvent ? '수정' : '추가'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {editEvent ? '수정' : '추가'}
             </button>
           </div>
         </form>

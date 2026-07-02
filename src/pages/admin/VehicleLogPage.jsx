@@ -10,6 +10,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 // 관리자 운행일지 — 차량 운행자 지정자의 월별 누적 키로수 / 운행 km 모니터링
@@ -52,7 +53,7 @@ function useViewportWidth() {
 }
 
 export default function VehicleLogPage() {
-  const { alert } = useDialog();
+  const { toast } = useDialog();
   const { userProfile } = useAuth();
   const now = new Date();
   const vw = useViewportWidth();
@@ -145,7 +146,7 @@ export default function VehicleLogPage() {
       });
       setDeleteTarget(null);
     } catch (err) {
-      alert('삭제 실패: ' + (err.message || '알 수 없는 오류'));
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setDeleting(false);
     }
@@ -285,7 +286,7 @@ export default function VehicleLogPage() {
       </div>
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : drivers.length === 0 ? (
         <div className="card vehicle-log-empty">
           <p>차량 운행자로 지정된 직원이 없습니다.</p>

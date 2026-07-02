@@ -10458,6 +10458,16 @@ tr.is-newly-added > td {
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
   border-radius: 6px;
 }
+/* 통일 로딩 스켈레톤 — 공용 Skeleton 컴포넌트(Skeleton.jsx: .sk / .sk-line / .sk-card / .sk-row) */
+.sk {
+  background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+.sk-line { margin: 10px 0; }
+.sk-card { width: 100%; margin: 10px 0; border-radius: 12px; }
+.sk-row { display: flex; flex-direction: column; gap: 6px; padding: 16px 4px; }
 @keyframes skeleton-shimmer {
   0% {
     background-position: 200% 0;
@@ -10779,8 +10789,8 @@ tr.is-newly-added > td {
   flex-direction: column;
   gap: 12px;
 }
-.revenue-card > .closing-delete,
-.revenue-card-head > .closing-delete {
+.revenue-card > .btn-danger,
+.revenue-card-head > .btn-danger {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -10918,7 +10928,7 @@ tr.is-newly-added > td {
   .revenue-row > input[type='text'] {
     grid-area: units;
   }
-  .revenue-row > .closing-delete {
+  .revenue-row > .btn-danger {
     grid-area: del;
   }
   .revenue-row-head {
@@ -10998,7 +11008,7 @@ tr.is-newly-added > td {
   .vendor-case-row > .vendor-case-count {
     grid-area: count;
   }
-  .vendor-case-row > .closing-delete {
+  .vendor-case-row > .btn-danger {
     grid-area: del;
   }
   .vendor-case-row-head {
@@ -11422,7 +11432,7 @@ tr.is-newly-added > td {
   .expense-input-note {
     flex: 1 1 100%;
   }
-  .expense-card .closing-delete {
+  .expense-card .btn-danger {
     margin-left: auto;
   }
   .expense-card-readonly .expense-readonly-text {
@@ -12332,9 +12342,6 @@ tr.is-newly-added > td {
   line-height: 1.2;
   border-radius: 6px;
 }
-.btn.btn-danger-text {
-  color: var(--danger, #dc2626);
-}
 
 /* 고정지출 입력 폼 */
 .fixed-expense-form .form-row {
@@ -13225,20 +13232,6 @@ td.mx-dc {
   box-shadow: var(--ring-primary);
 }
 
-.closing-delete {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.12s;
-}
-
 .closing-autofill-btn {
   flex-shrink: 0;
   padding: 4px 9px;
@@ -13264,10 +13257,6 @@ td.mx-dc {
   color: #b91c1c;
 }
 
-.closing-delete:hover {
-  background: #fee2e2;
-  border-color: var(--danger);
-}
 
 .closing-category {
   width: 100%;

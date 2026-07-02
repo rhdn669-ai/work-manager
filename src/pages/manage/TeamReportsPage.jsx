@@ -10,6 +10,7 @@ import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils
 import { EmployeeDetailModal } from '../admin/ReportsPage';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function TeamReportsPage() {
   const { userProfile, isAdmin, canApproveAll } = useAuth();
@@ -225,7 +226,7 @@ export default function TeamReportsPage() {
       </div>
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : rows.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">팀원이 없습니다.</div>

@@ -29,6 +29,7 @@ import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import Select from '../../components/common/Select';
+import Skeleton from '../../components/common/Skeleton';
 import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
@@ -265,7 +266,7 @@ export default function PurchaseDetailPage() {
       });
     } catch (err) {
       console.error(err);
-      alert('불러오기 오류: ' + err.message);
+      toast('불러오기 중 오류가 발생했습니다', 'error');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -519,7 +520,7 @@ export default function PurchaseDetailPage() {
         const projs = await getBomProjects();
         setBomProjects(projs);
       } catch (err) {
-        alert('BOM 목록 불러오기 오류: ' + err.message);
+        toast('BOM 목록 불러오기 중 오류가 발생했습니다', 'error');
       } finally {
         setBomLoading(false);
       }
@@ -557,9 +558,9 @@ export default function PurchaseDetailPage() {
       });
       scheduleAutoSave();
       setBomModalOpen(false);
-      alert(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 ${setCount}세트로 가져왔습니다.\n수량·단가는 자동 저장됩니다.`);
+      toast(`"${bp.name}" BOM에서 ${newLines.length}개 품목을 ${setCount}세트로 가져왔습니다.`);
     } catch (err) {
-      alert('BOM 가져오기 오류: ' + err.message);
+      toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
       setBomImporting(false);
     }
@@ -797,7 +798,7 @@ export default function PurchaseDetailPage() {
       setReceiveModal(null);
       await loadData({ silent: true });
     } catch (err) {
-      alert('입고 처리 중 오류: ' + err.message);
+      toast('입고 처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -836,7 +837,7 @@ export default function PurchaseDetailPage() {
       setBulkModal(null);
       await loadData({ silent: true });
     } catch (err) {
-      alert('일괄 입고 처리 중 오류: ' + err.message);
+      toast('일괄 입고 처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -852,7 +853,7 @@ export default function PurchaseDetailPage() {
       });
       await loadData({ silent: true });
     } catch (err) {
-      alert('입고 취소 중 오류: ' + err.message);
+      toast('입고 취소 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -870,7 +871,7 @@ export default function PurchaseDetailPage() {
       await settlePurchase(purchase, userProfile?.name || '');
       await loadData({ silent: true });
     } catch (err) {
-      alert('정산 중 오류: ' + err.message);
+      toast('정산 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -886,7 +887,7 @@ export default function PurchaseDetailPage() {
       await cancelSettlePurchase(purchase);
       await loadData({ silent: true });
     } catch (err) {
-      alert('정산 취소 중 오류: ' + err.message);
+      toast('정산 취소 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -903,7 +904,7 @@ export default function PurchaseDetailPage() {
         navigate(`/admin/purchase/${purchaseId}`);
       });
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -914,7 +915,7 @@ export default function PurchaseDetailPage() {
       await confirmPurchase(id, userProfile?.name || '');
       await loadData({ silent: true });
     } catch (err) {
-      alert('발주 확정 중 오류: ' + err.message);
+      toast('발주 확정 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -953,7 +954,7 @@ export default function PurchaseDetailPage() {
       setPurchase((prev) => ({ ...prev, supplierSent: nextSent }));
       await maybeAutoConfirm(nextSent);
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1002,7 +1003,7 @@ export default function PurchaseDetailPage() {
       setPurchase((prev) => ({ ...prev, supplierReplied: nextReplied }));
       await maybeAutoReply(nextReplied);
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1019,7 +1020,7 @@ export default function PurchaseDetailPage() {
         return { ...prev, supplierReplied: next };
       });
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1046,7 +1047,7 @@ export default function PurchaseDetailPage() {
       setPurchase((prev) => ({ ...prev, paymentRequested: next }));
       toast('결제 요청했습니다. 결제 페이지에서 확인하세요.');
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
   async function handleCancelPaymentRequest(supplierName) {
@@ -1062,7 +1063,7 @@ export default function PurchaseDetailPage() {
       });
       toast('결제 요청을 취소했습니다.');
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1280,11 +1281,11 @@ export default function PurchaseDetailPage() {
         return { ...prev, supplierSent: next };
       });
     } catch (err) {
-      alert('취소 중 오류: ' + err.message);
+      toast('취소 중 오류가 발생했습니다', 'error');
     }
   }
 
-  if (loading || !purchase) return <div className="loading">로딩 중...</div>;
+  if (loading || !purchase) return <Skeleton.Rows count={6} />;
 
   const status = purchase.status || 'ordered';
   const derivedSupplier =
@@ -2157,11 +2158,11 @@ export default function PurchaseDetailPage() {
                 </div>
 
                 <div className="modal-actions">
-                  <button type="submit" className={`btn ${isClose ? 'btn-danger' : 'btn-primary'}`}>
-                    {isClose ? '종결 처리' : '일괄 입고'}
-                  </button>
                   <button type="button" className="btn btn-outline" onClick={() => setBulkModal(null)}>
                     취소
+                  </button>
+                  <button type="submit" className={`btn ${isClose ? 'btn-danger' : 'btn-primary'}`}>
+                    {isClose ? '종결 처리' : '일괄 입고'}
                   </button>
                 </div>
               </form>
@@ -2233,11 +2234,11 @@ export default function PurchaseDetailPage() {
               표시됩니다.
             </p>
             <div className="modal-actions">
-              <button type="submit" className="btn btn-primary">
-                저장
-              </button>
               <button type="button" className="btn btn-outline" onClick={() => setReceiveModal(null)}>
                 취소
+              </button>
+              <button type="submit" className="btn btn-primary">
+                저장
               </button>
             </div>
           </form>
@@ -2399,14 +2400,14 @@ export default function PurchaseDetailPage() {
             })()}
           </div>
           <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={closeItemPicker}>
+              취소
+            </button>
             {itemPickerTargetIdx === null && (
               <button type="submit" className="btn btn-primary" disabled={itemPicked.size === 0}>
                 {itemPicked.size}개 추가
               </button>
             )}
-            <button type="button" className="btn btn-outline" onClick={closeItemPicker}>
-              취소
-            </button>
           </div>
         </form>
       </Modal>
@@ -2440,6 +2441,9 @@ export default function PurchaseDetailPage() {
           알려드려요 — 기다리실 필요 없습니다.
         </p>
         <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setPdfModalOpen(false)}>
+            취소
+          </button>
           <button
             type="button"
             className="btn btn-primary"
@@ -2447,9 +2451,6 @@ export default function PurchaseDetailPage() {
             disabled={!pdfFileName.trim()}
           >
             자료실에 저장
-          </button>
-          <button type="button" className="btn btn-outline" onClick={() => setPdfModalOpen(false)}>
-            취소
           </button>
         </div>
       </Modal>
@@ -2569,9 +2570,6 @@ export default function PurchaseDetailPage() {
               />
             </div>
             <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmSendMail}>
-                발송
-              </button>
               <button
                 type="button"
                 className="btn btn-outline"
@@ -2581,6 +2579,9 @@ export default function PurchaseDetailPage() {
                 }}
               >
                 취소
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmSendMail}>
+                발송
               </button>
             </div>
           </>
@@ -2662,11 +2663,11 @@ export default function PurchaseDetailPage() {
               />
             </div>
             <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmReplyWithDue}>
-                회신 확인
-              </button>
               <button type="button" className="btn btn-outline" onClick={() => setReplyModal(null)}>
                 취소
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmReplyWithDue}>
+                회신 확인
               </button>
             </div>
           </>
@@ -2690,11 +2691,11 @@ export default function PurchaseDetailPage() {
               />
             </div>
             <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmPaymentRequest}>
-                결제 요청
-              </button>
               <button type="button" className="btn btn-outline" onClick={() => setPayReqModal(null)}>
                 취소
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmPaymentRequest}>
+                결제 요청
               </button>
             </div>
           </>

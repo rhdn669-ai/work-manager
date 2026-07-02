@@ -21,6 +21,7 @@ import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 import {
   DndContext,
@@ -404,7 +405,7 @@ export default function PurchaseItemPage() {
     try {
       await reorderGroupCodes(orderedIds, groupItems, mainCode);
     } catch (err) {
-      alert('순서 변경 저장 중 오류: ' + err.message);
+      toast('순서 변경 저장 중 오류가 발생했습니다', 'error');
       await loadData(); // 롤백
     }
   }
@@ -457,7 +458,7 @@ export default function PurchaseItemPage() {
         await updatePurchaseItem(id, data);
       }
     } catch (err) {
-      alert('저장 중 오류: ' + err.message);
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -507,7 +508,7 @@ export default function PurchaseItemPage() {
       );
       toast('단가 변경 이력이 기록되었습니다.', 'success');
     } catch (err) {
-      alert('기록 실패: ' + err.message);
+      toast('단가 변경 이력 기록 중 오류가 발생했습니다', 'error');
     }
     setPriceChangeModal(null);
   }
@@ -529,7 +530,7 @@ export default function PurchaseItemPage() {
       );
       toast('단가 변경 이력을 삭제했습니다.', 'success');
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -647,7 +648,7 @@ export default function PurchaseItemPage() {
       );
       setItems((prev) => prev.filter((it) => !ids.includes(it.id)));
     } catch (err) {
-      alert('대분류 삭제 중 오류: ' + err.message);
+      toast('대분류 삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -702,7 +703,7 @@ export default function PurchaseItemPage() {
         }
       }
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
       await loadData(); // 코드 재정렬 실패 시 서버 상태로 복구
     }
   }
@@ -813,15 +814,15 @@ export default function PurchaseItemPage() {
       setGroupBulkText('');
       await loadData();
       expandGroup(repItem.groupKey || repItem.id);
-      alert(`${payloads.length}개 규격을 추가했습니다.`);
+      toast(`${payloads.length}개 규격을 추가했습니다.`);
     } catch (err) {
-      alert('일괄 추가 중 오류: ' + err.message);
+      toast('일괄 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setGroupBulkSaving(false);
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="purchase-item-page">
@@ -1401,8 +1402,8 @@ export default function PurchaseItemPage() {
                                                 updatedAt: _u,
                                                 ...data
                                               } = { ...it, defaultSupplierId: val };
-                                              updatePurchaseItem(it.id, data).catch((err) =>
-                                                alert('구매처 저장 오류: ' + err.message),
+                                              updatePurchaseItem(it.id, data).catch(() =>
+                                                toast('구매처 저장 중 오류가 발생했습니다', 'error'),
                                               );
                                             }
                                           }}
@@ -1677,6 +1678,9 @@ export default function PurchaseItemPage() {
         )}
 
         <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setGroupBulk(null)}>
+            취소
+          </button>
           <button
             type="button"
             className="btn btn-primary"
@@ -1684,9 +1688,6 @@ export default function PurchaseItemPage() {
             disabled={groupBulkSaving || parsedGroupBulk.length === 0}
           >
             {groupBulkSaving ? '추가 중…' : `${parsedGroupBulk.length}개 추가`}
-          </button>
-          <button type="button" className="btn btn-outline" onClick={() => setGroupBulk(null)}>
-            취소
           </button>
         </div>
       </Modal>

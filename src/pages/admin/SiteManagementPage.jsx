@@ -6,10 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 export default function SiteManagementPage() {
-  const { confirm, alert, toast } = useDialog();
+  const { confirm, toast } = useDialog();
   const { userProfile } = useAuth();
   const [sites, setSites] = useState([]);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -75,8 +76,8 @@ export default function SiteManagementPage() {
       }
       setShowModal(false);
       await loadData();
-    } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+    } catch {
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -86,8 +87,8 @@ export default function SiteManagementPage() {
       await trashGeneric('sites', site.id, { title: site.name, summary: '' }, userProfile?.name || '');
       toast('휴지통으로 이동했습니다.');
       await loadData();
-    } catch (err) {
-      alert('삭제 오류: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -98,7 +99,7 @@ export default function SiteManagementPage() {
     }));
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   const userMap = Object.fromEntries(users.map((u) => [u.uid, u]));
   // 관리자는 항상 모든 프로젝트 접근 가능하므로 후보에서 제외

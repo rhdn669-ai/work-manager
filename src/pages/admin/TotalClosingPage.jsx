@@ -5,6 +5,7 @@ import { getAllSites, getFinanceItems, getClosingItems } from '../../services/si
 import { getFixedExpenses, saveFixedExpenses } from '../../services/fixedExpenseService';
 import FixedExpensePanel from '../../components/admin/FixedExpensePanel';
 import Select from '../../components/common/Select';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 const isOvertimeItem = (f) => {
@@ -14,7 +15,7 @@ const isOvertimeItem = (f) => {
 
 export default function TotalClosingPage() {
   const { isAdmin, canViewSalary } = useAuth();
-  const { alert } = useDialog();
+  const { toast } = useDialog();
   const navigate = useNavigate();
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,7 +87,7 @@ export default function TotalClosingPage() {
       await saveFixedExpenses(year, month, next);
     } catch (err) {
       console.error(err);
-      alert('저장 중 오류가 발생했습니다.');
+      toast('저장 중 오류가 발생했습니다', 'error');
     } finally {
       setFixedSaving(false);
     }
@@ -178,7 +179,7 @@ export default function TotalClosingPage() {
       </div>
 
       {loading ? (
-        <div className="loading">집계 중...</div>
+        <Skeleton.Rows count={6} />
       ) : (
         <>
           <div className="closing-summary">

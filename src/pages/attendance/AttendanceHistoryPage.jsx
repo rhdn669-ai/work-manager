@@ -11,11 +11,12 @@ import { getMonthStart, getMonthEnd, formatMinutes, getDayName, getToday } from 
 import AttendanceTabs from '../../components/common/AttendanceTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const [records, setRecords] = useState([]);
   const [sites, setSites] = useState([]);
   const [siteMap, setSiteMap] = useState({});
@@ -64,7 +65,7 @@ export default function AttendanceHistoryPage() {
       await deleteOvertimeRecord(id, userProfile?.name || '');
       await loadRecords();
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -99,7 +100,7 @@ export default function AttendanceHistoryPage() {
       setEditingId(null);
       await loadRecords();
     } catch (err) {
-      alert('수정 실패: ' + err.message);
+      toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);
     }
@@ -159,7 +160,7 @@ export default function AttendanceHistoryPage() {
       )}
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : records.length === 0 ? (
         <p className="text-muted">해당 월의 기록이 없습니다.</p>
       ) : (

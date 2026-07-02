@@ -17,6 +17,7 @@ import { getBusinessDaysExcludingHolidays, buildHolidaySet, formatMinutes } from
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 const LEAVE_STATUS_STYLES = {
@@ -62,7 +63,7 @@ function formatDays(d) {
 }
 
 export default function LeaveManagementPage({ embedded = false } = {}) {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
   // 공통
   const [activeTab, setActiveTab] = useState('leave');
@@ -252,8 +253,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
         await cancelLeave(target.id, trimmed);
         await loadLeaves();
         setReasonModal(null);
-      } catch (err) {
-        alert('취소 실패: ' + err.message);
+      } catch {
+        toast('취소 중 오류가 발생했습니다', 'error');
       } finally {
         setLeaveBusy(false);
       }
@@ -263,8 +264,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
         await rejectOvertimeRecord(target.id, trimmed);
         await loadOvertimes();
         setReasonModal(null);
-      } catch (err) {
-        alert('거절 실패: ' + err.message);
+      } catch {
+        toast('거절 중 오류가 발생했습니다', 'error');
       } finally {
         setOtBusy(null);
       }
@@ -282,8 +283,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
     try {
       await deleteLeaveById(l.id, userProfile?.name || '');
       await loadLeaves();
-    } catch (err) {
-      alert('삭제 실패: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setLeaveBusy(false);
     }
@@ -312,8 +313,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
       );
       setEditingLeaveId(null);
       await loadLeaves();
-    } catch (err) {
-      alert('수정 실패: ' + err.message);
+    } catch {
+      toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setLeaveBusy(false);
     }
@@ -354,8 +355,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
       });
       setEditingOtId(null);
       await loadOvertimes();
-    } catch (err) {
-      alert('수정 실패: ' + err.message);
+    } catch {
+      toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setOtBusy(null);
     }
@@ -365,8 +366,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
     try {
       await approveOvertimeRecord(r.id);
       await loadOvertimes();
-    } catch (err) {
-      alert('승인 실패: ' + err.message);
+    } catch {
+      toast('승인 중 오류가 발생했습니다', 'error');
     } finally {
       setOtBusy(null);
     }
@@ -381,8 +382,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
     try {
       await deleteOvertimeRecord(r.id, userProfile?.name || '');
       await loadOvertimes();
-    } catch (err) {
-      alert('삭제 실패: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setOtBusy(null);
     }
@@ -597,7 +598,7 @@ function LeaveTab({
       </div>
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : filtered.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">조건에 맞는 연차 신청이 없습니다.</div>
@@ -863,7 +864,7 @@ function OvertimeTab({
       </div>
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : filtered.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">조건에 맞는 잔업 신청이 없습니다.</div>

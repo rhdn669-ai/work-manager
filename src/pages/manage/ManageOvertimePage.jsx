@@ -16,7 +16,7 @@ const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절
 
 export default function ManageOvertimePage() {
   const { userProfile, isAdmin } = useAuth();
-  const { alert } = useDialog();
+  const { toast } = useDialog();
   const [records, setRecords] = useState([]);
   const [pendingList, setPendingList] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -53,7 +53,7 @@ export default function ManageOvertimePage() {
       await approveOvertimeRecord(id);
       await loadData();
     } catch (err) {
-      alert('승인 실패');
+      toast('승인 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -62,7 +62,7 @@ export default function ManageOvertimePage() {
       await rejectOvertimeRecord(id);
       await loadData();
     } catch (err) {
-      alert('거절 실패');
+      toast('거절 중 오류가 발생했습니다', 'error');
     }
   }
 

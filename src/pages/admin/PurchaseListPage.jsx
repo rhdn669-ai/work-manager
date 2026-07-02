@@ -33,6 +33,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
 import RegenOrderPdfRunner from '../../components/admin/RegenOrderPdfRunner';
 
@@ -230,7 +231,7 @@ function KanbanColumn({ col, cards, onOpen, onEdit, onDelete }) {
 
 export default function PurchaseListPage() {
   const { userProfile } = useAuth();
-  const { alert, confirm } = useDialog();
+  const { alert, confirm, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const navigate = useNavigate();
@@ -427,7 +428,7 @@ export default function PurchaseListPage() {
         navigate(`/admin/purchase/${ref.id}`);
       }
     } catch (err) {
-      alert((editingId ? '수정' : '등록') + ' 중 오류: ' + err.message);
+      toast((editingId ? '수정' : '등록') + ' 중 오류가 발생했습니다', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -445,7 +446,7 @@ export default function PurchaseListPage() {
       setFactories(cleaned);
       setFactoryModalOpen(false);
     } catch (err) {
-      alert('저장 중 오류: ' + err.message);
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -462,7 +463,7 @@ export default function PurchaseListPage() {
         setPurchases(ps);
       });
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -482,7 +483,7 @@ export default function PurchaseListPage() {
     try {
       await savePurchasesOrder(newOrderIds);
     } catch (err) {
-      alert('순서 저장 오류: ' + err.message);
+      toast('순서 저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -507,7 +508,7 @@ export default function PurchaseListPage() {
     try {
       await setPurchaseStatus(cardId, newStatus);
     } catch (err) {
-      alert('상태 변경 오류: ' + err.message);
+      toast('상태 변경 중 오류가 발생했습니다', 'error');
       // 실패 시 원복
       setPurchases((prev) => prev.map((p) => (p.id === cardId ? { ...p, status: card.status } : p)));
     }
@@ -523,7 +524,7 @@ export default function PurchaseListPage() {
     cards: boardSource.filter((p) => (p.status || 'ordered') === col.key),
   }));
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="purchase-list-page printable-page">
@@ -819,11 +820,11 @@ export default function PurchaseListPage() {
           </p>
 
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? (editingId ? '저장 중...' : '등록 중...') : editingId ? '수정 저장' : '등록하고 품목 추가'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setFormModal(false)} disabled={submitting}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? (editingId ? '저장 중...' : '등록 중...') : editingId ? '수정 저장' : '등록하고 품목 추가'}
             </button>
           </div>
         </form>
@@ -876,11 +877,11 @@ export default function PurchaseListPage() {
           공장 추가
         </button>
         <div className="modal-actions">
-          <button type="button" className="btn btn-primary" onClick={handleSaveFactories}>
-            저장
-          </button>
           <button type="button" className="btn btn-outline" onClick={() => setFactoryModalOpen(false)}>
             취소
+          </button>
+          <button type="button" className="btn btn-primary" onClick={handleSaveFactories}>
+            저장
           </button>
         </div>
       </Modal>

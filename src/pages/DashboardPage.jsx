@@ -10,6 +10,7 @@ import { getPurchases } from '../services/purchaseService';
 import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
 import HomeTaskBoard from '../components/common/HomeTaskBoard';
+import Skeleton from '../components/common/Skeleton';
 
 export default function DashboardPage() {
   const { userProfile, isAdmin } = useAuth();
@@ -104,7 +105,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   const today = new Date();
   const weekdayKor = ['일', '월', '화', '수', '목', '금', '토'][today.getDay()];

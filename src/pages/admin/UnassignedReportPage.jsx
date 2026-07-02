@@ -9,6 +9,7 @@ import { getMonthStart, getMonthEnd, formatMinutes, buildHolidaySet } from '../.
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
+import Skeleton from '../../components/common/Skeleton';
 
 function useViewportWidth() {
   const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
@@ -370,7 +371,7 @@ export default function UnassignedReportPage() {
       </div>
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : rows.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">표시할 직원이 없습니다.</div>

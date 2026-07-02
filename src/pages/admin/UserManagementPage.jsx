@@ -11,6 +11,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 function useViewportWidth() {
@@ -198,7 +199,7 @@ export default function UserManagementPage() {
       setShowModal(false);
       await loadData();
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -218,7 +219,7 @@ export default function UserManagementPage() {
       setShowModal(false);
       await loadData();
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -235,9 +236,9 @@ export default function UserManagementPage() {
       setForm((f) => ({ ...f, password: '' }));
       setEditUser((u) => (u ? { ...u, password: '' } : u));
       await loadData();
-      alert(`${editUser.name} 비밀번호 초기화 완료. 다음 로그인 시 비밀번호 설정 화면으로 이동합니다.`);
+      toast(`${editUser.name} 비밀번호 초기화 완료. 다음 로그인 시 비밀번호 설정 화면으로 이동합니다.`);
     } catch (err) {
-      alert('초기화 실패: ' + err.message);
+      toast('초기화 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -256,7 +257,7 @@ export default function UserManagementPage() {
       await impersonate(u);
       navigate('/');
     } catch (err) {
-      alert('전환 오류: ' + err.message);
+      toast('전환 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -289,7 +290,7 @@ export default function UserManagementPage() {
   }
   const archiveViewers = users.map((u) => ({ user: u, reason: getArchiveViewReason(u) })).filter((x) => x.reason);
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="user-management-page">

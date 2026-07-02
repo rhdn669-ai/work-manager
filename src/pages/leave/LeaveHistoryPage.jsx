@@ -7,6 +7,7 @@ import { getBusinessDaysExcludingHolidays, buildHolidaySet, getToday } from '../
 import LeaveTabs from '../../components/common/LeaveTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 const STATUS_STYLES = {
@@ -30,7 +31,7 @@ function isSingleDayType(type) {
 
 export default function LeaveHistoryPage() {
   const { userProfile } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const [leaves, setLeaves] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -95,7 +96,7 @@ export default function LeaveHistoryPage() {
       await cancelLeave(l.id);
       await loadLeaves();
     } catch (err) {
-      alert('취소 실패: ' + err.message);
+      toast('취소 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);
     }
@@ -128,7 +129,7 @@ export default function LeaveHistoryPage() {
       setEditingId(null);
       await loadLeaves();
     } catch (err) {
-      alert('수정 실패: ' + err.message);
+      toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);
     }
@@ -149,7 +150,7 @@ export default function LeaveHistoryPage() {
       </div>
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : leaves.length === 0 ? (
         <p className="text-muted">해당 연도의 기록이 없습니다.</p>
       ) : (

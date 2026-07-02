@@ -17,11 +17,12 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/DialogProvider';
 
 export default function ManageTeamPage() {
   const { userProfile, isAdmin, canApproveLeave } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [overtimeMap, setOvertimeMap] = useState({});
@@ -274,7 +275,7 @@ export default function ManageTeamPage() {
       setShowModal(false);
       await loadData();
     } catch (err) {
-      alert('저장 오류: ' + err.message);
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -288,7 +289,7 @@ export default function ManageTeamPage() {
       await trashGeneric('departments', team.id, { title: team.name }, userProfile?.name || '');
       await loadData();
     } catch (err) {
-      alert('삭제 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -299,7 +300,7 @@ export default function ManageTeamPage() {
     }));
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   // === 일반 직원 뷰: 소속 팀 + 팀원 이름/직급만 ===
   if (!isAdmin && !canApproveLeave) {
@@ -726,11 +727,11 @@ export default function ManageTeamPage() {
             )}
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" style={{ minHeight: 36 }}>
-              {editTeam ? '수정' : '추가'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)} style={{ minHeight: 36 }}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary" style={{ minHeight: 36 }}>
+              {editTeam ? '수정' : '추가'}
             </button>
           </div>
         </form>

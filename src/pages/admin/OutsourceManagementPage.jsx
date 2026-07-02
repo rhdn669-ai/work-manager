@@ -28,6 +28,7 @@ import Select from '../../components/common/Select';
 import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function OutsourceManagementPage() {
   const { isAdmin, canViewSalary, userProfile } = useAuth();
@@ -105,7 +106,7 @@ export default function OutsourceManagementPage() {
       setEditRateFor(null);
       await reloadDetail();
     } catch (err) {
-      alert('단가 저장 실패: ' + err.message);
+      toast('단가 저장 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
     }
@@ -123,7 +124,7 @@ export default function OutsourceManagementPage() {
         prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null,
       );
     } catch (err) {
-      alert('상세 조회 실패: ' + err.message);
+      toast('상세 조회 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailLoading(false);
     }
@@ -155,7 +156,7 @@ export default function OutsourceManagementPage() {
         newFreelancerNameRef.current?.focus();
       }, 0);
     } catch (err) {
-      alert('직원 추가 실패: ' + err.message);
+      toast('직원 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
     }
@@ -178,7 +179,7 @@ export default function OutsourceManagementPage() {
       setNewProject({ name: '', unitPrice: detailVendor.caseRate || 0 });
       await reloadDetail();
     } catch (err) {
-      alert('프로젝트 추가 실패: ' + err.message);
+      toast('프로젝트 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
     }
@@ -191,7 +192,7 @@ export default function OutsourceManagementPage() {
       await removeVendorProject(detailVendor.id, project);
       await reloadDetail();
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
     }
@@ -207,14 +208,12 @@ export default function OutsourceManagementPage() {
     setImporting(true);
     try {
       const stats = await importFromSiteClosings();
-      alert(
-        `가져오기 완료\n\n` +
-          `프리랜서 추가: ${stats.freelancersAdded}명 (기존 유지 ${stats.freelancersSkipped}명)\n` +
-          `업체 추가: ${stats.vendorsAdded}개 (기존 유지 ${stats.vendorsSkipped}개)`,
+      toast(
+        `가져오기 완료 · 프리랜서 ${stats.freelancersAdded}명 추가(유지 ${stats.freelancersSkipped}) · 업체 ${stats.vendorsAdded}개 추가(유지 ${stats.vendorsSkipped})`,
       );
       await loadAll();
     } catch (err) {
-      alert('가져오기 실패: ' + err.message);
+      toast('가져오기 중 오류가 발생했습니다', 'error');
     } finally {
       setImporting(false);
     }
@@ -230,10 +229,10 @@ export default function OutsourceManagementPage() {
     setClearing(true);
     try {
       const count = await clearAllRateHistories();
-      alert(`단가 이력 초기화 완료 (${count}명)`);
+      toast(`단가 이력 초기화 완료 (${count}명)`);
       await loadAll();
     } catch (err) {
-      alert('초기화 실패: ' + err.message);
+      toast('초기화 중 오류가 발생했습니다', 'error');
     } finally {
       setClearing(false);
     }
@@ -347,7 +346,7 @@ export default function OutsourceManagementPage() {
       }
     } catch (err) {
       setPdfStatus('');
-      alert('PDF 처리 오류: ' + err.message);
+      toast('PDF 처리 중 오류가 발생했습니다', 'error');
     } finally {
       setPdfBusy(false);
     }
@@ -380,7 +379,7 @@ export default function OutsourceManagementPage() {
       setPdfFiles([]);
       await loadAll();
     } catch (err) {
-      alert('저장 실패: ' + err.message);
+      toast('저장 중 오류가 발생했습니다', 'error');
       setSubmitting(false);
       return;
     }
@@ -399,7 +398,7 @@ export default function OutsourceManagementPage() {
           );
         }
       } catch (err) {
-        alert('PDF 자료실 보관 중 오류: ' + err.message);
+        toast('PDF 자료실 보관 중 오류가 발생했습니다', 'error');
       }
     }
   }
@@ -429,7 +428,7 @@ export default function OutsourceManagementPage() {
         await loadAll();
       });
     } catch (err) {
-      alert('삭제 실패: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -629,7 +628,7 @@ export default function OutsourceManagementPage() {
       )}
 
       {loading ? (
-        <div className="loading">로딩 중...</div>
+        <Skeleton.Rows count={6} />
       ) : tab === 'freelancer' || tab === 'daily' ? (
         (tab === 'freelancer' ? soloFreelancers : soloDailies).length === 0 ? (
           <div className="card">
@@ -969,9 +968,6 @@ export default function OutsourceManagementPage() {
             </>
           )}
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ minHeight: 36 }}>
-              {submitting ? '저장 중…' : editItem ? '수정' : '추가'}
-            </button>
             <button
               type="button"
               className="btn btn-outline"
@@ -980,6 +976,9 @@ export default function OutsourceManagementPage() {
               style={{ minHeight: 36 }}
             >
               취소
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ minHeight: 36 }}>
+              {submitting ? '저장 중…' : editItem ? '수정' : '추가'}
             </button>
           </div>
         </form>
@@ -1130,7 +1129,7 @@ export default function OutsourceManagementPage() {
             </div>
 
             {detailLoading ? (
-              <div className="loading">로딩 중...</div>
+              <Skeleton.Rows count={6} />
             ) : detailTab === 'freelancers' ? (
               <>
                 {detailVendor.freelancers.length === 0 ? (
@@ -1216,7 +1215,7 @@ export default function OutsourceManagementPage() {
                                   if (editRateFor === f.id) setEditRateFor(null);
                                   await reloadDetail();
                                 } catch (err) {
-                                  alert('삭제 실패: ' + err.message);
+                                  toast('삭제 중 오류가 발생했습니다', 'error');
                                 } finally {
                                   setDetailBusy(false);
                                 }
@@ -1277,7 +1276,7 @@ export default function OutsourceManagementPage() {
                                                 });
                                                 await reloadDetail();
                                               } catch (err) {
-                                                alert('삭제 실패: ' + err.message);
+                                                toast('삭제 중 오류가 발생했습니다', 'error');
                                               } finally {
                                                 setDetailBusy(false);
                                               }

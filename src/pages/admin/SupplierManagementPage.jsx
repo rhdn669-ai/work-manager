@@ -8,6 +8,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 
 const EMPTY_FORM = {
   name: '',
@@ -133,7 +134,7 @@ export default function SupplierManagementPage() {
       }
     } catch (err) {
       setPdfStatus('');
-      alert('PDF 처리 오류: ' + err.message);
+      toast('PDF 처리 중 오류가 발생했습니다', 'error');
     } finally {
       setPdfBusy(false);
     }
@@ -161,7 +162,7 @@ export default function SupplierManagementPage() {
       setPdfFiles([]);
       await loadData();
     } catch (err) {
-      alert('처리 중 오류: ' + err.message);
+      toast('처리 중 오류가 발생했습니다', 'error');
       setSubmitting(false);
       return;
     }
@@ -180,7 +181,7 @@ export default function SupplierManagementPage() {
           );
         }
       } catch (err) {
-        alert('PDF 자료실 보관 중 오류: ' + err.message);
+        toast('PDF 자료실 보관 중 오류가 발생했습니다', 'error');
       }
     }
   }
@@ -206,11 +207,11 @@ export default function SupplierManagementPage() {
       toast('휴지통으로 이동했습니다.');
       await loadData();
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="supplier-management-page">
@@ -438,9 +439,6 @@ export default function SupplierManagementPage() {
             <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} />
           </div>
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ minHeight: 36 }}>
-              {submitting ? '저장 중…' : editTarget ? '수정' : '추가'}
-            </button>
             <button
               type="button"
               className="btn btn-outline"
@@ -449,6 +447,9 @@ export default function SupplierManagementPage() {
               style={{ minHeight: 36 }}
             >
               취소
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ minHeight: 36 }}>
+              {submitting ? '저장 중…' : editTarget ? '수정' : '추가'}
             </button>
           </div>
         </form>

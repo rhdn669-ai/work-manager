@@ -4,9 +4,9 @@ import Icon from './Icon';
 export default function EmptyState({ icon = 'inbox', title, desc, action }) {
   return (
     <div className="empty-state">
-      <Icon name={icon} className="empty-state__icon" />
-      {title && <div className="empty-state__title">{title}</div>}
-      {desc && <div className="empty-state__desc">{desc}</div>}
+      <span className="empty-state-icon"><Icon name={icon} /></span>
+      {title && <div className="empty-state-title">{title}</div>}
+      {desc && <div className="empty-state-desc">{desc}</div>}
       {action}
     </div>
   );

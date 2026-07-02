@@ -27,6 +27,7 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/DialogProvider';
+import Skeleton from '../../components/common/Skeleton';
 import TrashModal from '../../components/common/TrashModal';
 import { trashGeneric } from '../../services/trashService';
 
@@ -149,7 +150,7 @@ export default function SiteClosingPage() {
   const y = Number(year);
   const m = Number(month);
   const { isAdmin, isExecutive, canViewSalary, userProfile } = useAuth();
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const navigate = useNavigate();
   const vw = useViewportWidth();
   const isXSmall = vw <= 360;
@@ -563,10 +564,10 @@ export default function SiteClosingPage() {
     setCopying(true);
     try {
       const count = await initRosterFromPreviousMonth(siteId, y, m);
-      alert(`복사 완료: 명단 ${count}건`);
+      toast(`복사 완료: 명단 ${count}건`);
       await loadAll({ silent: true });
     } catch (err) {
-      alert(err.message || '복사 실패');
+      toast('명단 복사 중 오류가 발생했습니다', 'error');
     } finally {
       setCopying(false);
     }
@@ -590,7 +591,7 @@ export default function SiteClosingPage() {
       }
       await loadAll({ silent: true });
     } catch (err) {
-      alert('삭제 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setClearing(false);
     }
@@ -607,7 +608,7 @@ export default function SiteClosingPage() {
       await updateSite(siteId, { status: 'completed' });
       await loadAll({ silent: true });
     } catch (err) {
-      alert('마감 처리 오류: ' + err.message);
+      toast('마감 처리 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -747,7 +748,7 @@ export default function SiteClosingPage() {
       setDirectInputModal(null);
       await loadAll({ silent: true });
     } catch (err) {
-      alert('추가 실패: ' + (err.message || '알 수 없는 오류'));
+      toast('추가 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -966,7 +967,7 @@ export default function SiteClosingPage() {
       }
       await handleAddEmployee(user);
     } catch (err) {
-      alert('직원 추가 중 오류: ' + err.message);
+      toast('직원 추가 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -979,7 +980,7 @@ export default function SiteClosingPage() {
     try {
       await updateClosingItem(itemId, { autofillDisabled: next });
     } catch (err) {
-      alert('자동 채움 설정 변경 중 오류: ' + err.message);
+      toast('자동 채움 설정 변경 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1000,7 +1001,7 @@ export default function SiteClosingPage() {
         return next;
       });
     } catch (err) {
-      alert('삭제 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1421,11 +1422,11 @@ export default function SiteClosingPage() {
       await trashGeneric('siteFinances', id, { title: cur.description || '지출/매출 항목' }, userProfile?.name || '');
       await loadAll({ silent: true });
     } catch (err) {
-      alert('삭제 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
   if (!site) return <div>프로젝트을 찾을 수 없습니다.</div>;
   if (!isAdmin && !(site.managerIds || []).includes(userProfile?.uid)) {
     return (
@@ -1702,8 +1703,8 @@ export default function SiteClosingPage() {
                         <span className="label">원</span>
                       </div>
                       {canEdit && (
-                        <button className="closing-delete" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">
-                          <Icon name="trash" size={16} />
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">
+                          <Icon name="trash" className="btn-ic" />삭제
                         </button>
                       )}
                     </div>
@@ -1735,11 +1736,11 @@ export default function SiteClosingPage() {
                           {canEdit && (
                             <button
                               type="button"
-                              className="closing-delete"
+                              className="btn btn-sm btn-danger"
                               onClick={() => removeClosingRow(f.id, idx)}
                               aria-label="행 삭제"
                             >
-                              <Icon name="trash" size={16} />
+                              <Icon name="trash" className="btn-ic" />삭제
                             </button>
                           )}
                         </div>
@@ -1865,11 +1866,11 @@ export default function SiteClosingPage() {
                     {canEdit && (
                       <button
                         type="button"
-                        className="closing-delete"
+                        className="btn btn-sm btn-danger"
                         onClick={() => handleDeleteFinance(f.id, false)}
                         aria-label="삭제"
                       >
-                        <Icon name="trash" size={16} />
+                        <Icon name="trash" className="btn-ic" />삭제
                       </button>
                     )}
                   </div>
@@ -2456,11 +2457,11 @@ export default function SiteClosingPage() {
                     {canEdit && (
                       <button
                         type="button"
-                        className="closing-delete"
+                        className="btn btn-sm btn-danger"
                         onClick={() => handleDeleteRow(it.id)}
                         aria-label="삭제"
                       >
-                        <Icon name="trash" size={16} />
+                        <Icon name="trash" className="btn-ic" />삭제
                       </button>
                     )}
                   </div>
@@ -2540,11 +2541,11 @@ export default function SiteClosingPage() {
                                 {canEdit && (
                                   <button
                                     type="button"
-                                    className="closing-delete"
+                                    className="btn btn-sm btn-danger"
                                     onClick={() => removeRowClosing(it.id, idx)}
                                     aria-label="행 삭제"
                                   >
-                                    <Icon name="trash" size={16} />
+                                    <Icon name="trash" className="btn-ic" />삭제
                                   </button>
                                 )}
                               </div>

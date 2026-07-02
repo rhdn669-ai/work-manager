@@ -386,7 +386,7 @@ export default function FileLibraryPage() {
           setUploads((u) => u.map((x) => x.key === key ? { ...x, progress: p } : x)),
         );
       } catch (err) {
-        alert(`"${file.name}" 업로드 실패: ${err.message}`);
+        toast(`"${file.name}" 업로드 중 오류가 발생했습니다`, 'error');
       } finally {
         setUploads((u) => u.filter((x) => x.key !== key));
       }
@@ -412,7 +412,7 @@ export default function FileLibraryPage() {
       pushUndo(`폴더 "${name}" 추가`, async () => {
         await trashGeneric('libraryFolders', newId, { title: name }, userProfile?.name || '');
       });
-    } catch (err) { alert('폴더 생성 오류: ' + err.message); }
+    } catch (err) { toast('폴더 생성 중 오류가 발생했습니다', 'error'); }
   }
 
   // ── 폴더 이름 변경 ──
@@ -425,7 +425,7 @@ export default function FileLibraryPage() {
     try {
       await renameFolder(renameTarget.id, name);
       setRenameTarget(null);
-    } catch (err) { alert('이름 변경 오류: ' + err.message); }
+    } catch (err) { toast('이름 변경 중 오류가 발생했습니다', 'error'); }
   }
 
   // ── 파일 이름 변경 (관리자, 확장자 자동 유지) ──
@@ -444,7 +444,7 @@ export default function FileLibraryPage() {
       await renameFile(fileRenameTarget.id, newName);
       setFileRenameTarget(null);
       toast(`파일 이름을 "${newName}"(으)로 변경했습니다.`);
-    } catch (err) { alert('이름 변경 오류: ' + err.message); }
+    } catch (err) { toast('이름 변경 중 오류가 발생했습니다', 'error'); }
   }
 
   // ── 폴더 삭제 ──
@@ -468,7 +468,7 @@ export default function FileLibraryPage() {
         const allIds = [folderTid, ...subTrashIds.map((x) => x.tid), ...fileTrashIds.map((x) => x.tid)].filter(Boolean);
         await Promise.all(allIds.map((tid) => restoreTrashItem(tid)));
       });
-    } catch (err) { alert('폴더 삭제 오류: ' + err.message); }
+    } catch (err) { toast('폴더 삭제 중 오류가 발생했습니다', 'error'); }
   }
 
   // ── 파일 삭제 ──
@@ -478,7 +478,7 @@ export default function FileLibraryPage() {
       const tid = await trashGeneric('libraryFiles', file.id, { title: file.name }, userProfile?.name || '');
       toast('휴지통으로 이동했습니다.');
       if (tid) pushUndo(`파일 "${file.name}" 삭제`, () => restoreTrashItem(tid));
-    } catch (err) { alert('파일 삭제 오류: ' + err.message); }
+    } catch (err) { toast('파일 삭제 중 오류가 발생했습니다', 'error'); }
   }
 
   // 드롭 영역(폴더 행)의 마우스 Y 위치 → 'before'(위 25%) | 'after'(아래 25%) | 'inside'(가운데 50%)

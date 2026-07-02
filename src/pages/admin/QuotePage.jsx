@@ -6,11 +6,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/DialogProvider';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import { fmtDateKo } from './QuotePrintForm';
 
 export default function QuotePage() {
   const navigate = useNavigate();
-  const { confirm, alert, toast } = useDialog();
+  const { confirm, toast } = useDialog();
   const { userProfile } = useAuth();
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,11 +51,11 @@ export default function QuotePage() {
       toast('휴지통으로 이동했습니다.');
       await loadAll();
     } catch (err) {
-      alert('삭제 중 오류: ' + err.message);
+      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>;
+  if (loading) return <Skeleton.Rows count={6} />;
 
   return (
     <div className="quote-page">

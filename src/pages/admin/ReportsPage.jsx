@@ -17,10 +17,11 @@ import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils
 import { useDialog } from '../../components/common/DialogProvider';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import Skeleton from '../../components/common/Skeleton';
 import LeaveManagementPage from './LeaveManagementPage';
 
 export default function ReportsPage() {
-  const { confirm, alert } = useDialog();
+  const { confirm, toast } = useDialog();
   const { isAdmin } = useAuth();
   const [viewMode, setViewMode] = useState('summary'); // 'summary'(직원별 집계) | 'requests'(신청 내역)
   const [users, setUsers] = useState([]);
@@ -63,8 +64,8 @@ export default function ReportsPage() {
     try {
       await approveOvertimeRecord(id);
       await Promise.all([loadPending(), generateReport()]);
-    } catch (err) {
-      alert('승인 실패: ' + err.message);
+    } catch {
+      toast('승인 중 오류가 발생했습니다', 'error');
     } finally {
       setPendingBusy(null);
     }
@@ -76,8 +77,8 @@ export default function ReportsPage() {
     try {
       await rejectOvertimeRecord(id);
       await loadPending();
-    } catch (err) {
-      alert('거절 실패: ' + err.message);
+    } catch {
+      toast('거절 중 오류가 발생했습니다', 'error');
     } finally {
       setPendingBusy(null);
     }
@@ -308,7 +309,7 @@ export default function ReportsPage() {
           </div>
 
           {loading ? (
-            <div className="loading">로딩 중...</div>
+            <Skeleton.Rows count={6} />
           ) : rows.length === 0 ? (
             <p className="text-muted">직원 정보가 없습니다.</p>
           ) : (
@@ -416,7 +417,7 @@ export function EmployeeDetailModal({
   onClose,
   onChanged,
 }) {
-  const { confirm, alert } = useDialog();
+  const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -469,8 +470,8 @@ export function EmployeeDetailModal({
       }
       setEditingId(null);
       await onChanged();
-    } catch (err) {
-      alert('수정 실패: ' + err.message);
+    } catch {
+      toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);
     }
@@ -488,8 +489,8 @@ export function EmployeeDetailModal({
         await deleteLeaveById(row.id, userProfile?.name || '');
       }
       await onChanged();
-    } catch (err) {
-      alert('삭제 실패: ' + err.message);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);
     }
