@@ -365,6 +365,19 @@ export function subscribePurchases(cb) {
   );
 }
 
+// 사이드바 배지 전용 — 결제요청된 발주만 구독(전체 구독 대신). 발주 누적에 비례하던 읽기 비용 제거.
+export function subscribePaymentPendingPurchases(cb) {
+  const q = query(purchasesRef, where('paymentRequested', '!=', null));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('[결제배지] 구독 오류:', err);
+      cb([]);
+    },
+  );
+}
+
 // 결제 대기(결제 요청됐으나 미결제) (발주×업체) 건수 — 사이드바 배지용
 export function countPaymentPending(purchases) {
   let n = 0;

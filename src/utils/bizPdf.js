@@ -1,8 +1,17 @@
 // 사업자등록증 PDF에서 상호·대표자·사업자등록번호 자동 추출 (텍스트 기반 PDF 전용)
-import * as pdfjsLib from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+// pdfjs(~300KB)는 사업자등록증 처리 시에만 필요하므로 지연 로딩 — 초기 번들에서 제외.
+let _pdfjsPromise = null;
+function loadPdfjs() {
+  if (!_pdfjsPromise) {
+    _pdfjsPromise = (async () => {
+      const pdfjsLib = await import('pdfjs-dist');
+      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+      return pdfjsLib;
+    })();
+  }
+  return _pdfjsPromise;
+}
 
 // PDF 파일 → 전체 텍스트
 export async function extractPdfText(file) {
@@ -11,6 +20,7 @@ export async function extractPdfText(file) {
 
 // PDF 파일 → 페이지별 텍스트 배열 (페이지 분류용)
 export async function extractPdfTextPerPage(file) {
+  const pdfjsLib = await loadPdfjs();
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   const pages = [];
@@ -97,6 +107,7 @@ function preprocessCanvas(canvas) {
 
 // PDF 각 페이지를 캔버스 이미지로 렌더 (스캔 PDF OCR용) — 고해상도 + 전처리
 export async function renderPdfToCanvases(file, scale = 3) {
+  const pdfjsLib = await loadPdfjs();
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   const canvases = [];

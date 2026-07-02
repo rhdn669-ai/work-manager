@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -30,7 +30,11 @@ if (appCheckKey) {
   }
 }
 
-export const db = getFirestore(app);
+// 오프라인 지속 캐시 — 재방문·새로고침 시 서버 재조회 대신 로컬 캐시 사용 (읽기 비용·속도 개선).
+// 여러 탭 동시 사용도 지원.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 export const functions = getFunctions(app, 'asia-northeast3');

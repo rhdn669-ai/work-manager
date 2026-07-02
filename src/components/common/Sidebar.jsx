@@ -7,7 +7,7 @@ import {
   clearSidebarPref,
   setSeededAdminDefaults,
 } from '../../services/userPreferenceService';
-import { subscribePurchases, countPaymentPending } from '../../services/purchaseService';
+import { subscribePaymentPendingPurchases, countPaymentPending } from '../../services/purchaseService';
 import { useDialog } from './DialogProvider';
 import Icon from './Icon';
 
@@ -171,7 +171,7 @@ export default function Sidebar({ isOpen }) {
       setPaymentPending(0);
       return;
     }
-    const unsub = subscribePurchases((list) => setPaymentPending(countPaymentPending(list)));
+    const unsub = subscribePaymentPendingPurchases((list) => setPaymentPending(countPaymentPending(list)));
     return () => unsub();
   }, [isAdmin]);
 

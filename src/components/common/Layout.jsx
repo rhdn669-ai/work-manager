@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -155,7 +155,9 @@ export default function Layout() {
           {/* 힌트 설정 안내 배너 — 고정 헤더 아래 보이는 영역 안에서 렌더(헤더 뒤에 가려져
               빈 공간을 만들던 문제 수정). 힌트 미설정 계정에만 노출. */}
           <HintReminderBanner />
-          <Outlet />
+          <Suspense fallback={<div className="loading">로딩 중...</div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       {!isAdmin && <BottomNav />}
