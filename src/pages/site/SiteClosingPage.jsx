@@ -9,7 +9,6 @@ import {
   getFinanceItems,
   addFinanceItem,
   updateFinanceItem,
-  deleteFinanceItem,
   initRosterFromPreviousMonth,
   updateSite,
   getAssignedEmployeeIds,
@@ -1355,11 +1354,37 @@ export default function SiteClosingPage() {
   }
 
   function toggleFinanceChecked(id) {
-    setFinanceBuf((b) => {
-      const checked = !b[id]?.checked;
-      updateFinanceItem(id, { checked });
-      return { ...b, [id]: { ...b[id], checked } };
-    });
+    // 진행 중이던 자동저장 타이머를 취소 — 이전(토글 전) 값으로 덮어쓰는 레이스 방지
+    const key = 'fin_' + id;
+    if (timersRef.current[key]) {
+      clearTimeout(timersRef.current[key]);
+      delete timersRef.current[key];
+    }
+    const cur = { ...financeBuf[id], checked: !financeBuf[id]?.checked };
+    setFinanceBuf((b) => ({ ...b, [id]: cur }));
+    // 편집 중이던 필드까지 함께 즉시 저장 (체크만 저장해 다른 편집분이 유실되지 않게)
+    setSavingCount((c) => c + 1);
+    updateFinanceItem(id, {
+      description: cur.description,
+      amount: cur.amount,
+      note: cur.note,
+      date: cur.date || '',
+      unitPrice: cur.unitPrice || 0,
+      quantity: cur.quantity || 0,
+      closings: cur.closings || [],
+      checked: cur.checked || false,
+    })
+      .then(() => {
+        setLastSavedAt(new Date());
+        setSaveError(null);
+        setDirtyFinances((s) => {
+          const n = new Set(s);
+          n.delete(id);
+          return n;
+        });
+      })
+      .catch((err) => setSaveError(err.message || '저장 실패'))
+      .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
   }
 
   function flushFinance(id) {
@@ -1391,7 +1416,9 @@ export default function SiteClosingPage() {
       delete timersRef.current[key];
     }
     try {
-      await deleteFinanceItem(id);
+      const cur = financeBuf[id] || {};
+      // 휴지통 경유 소프트 삭제 (복원 가능) — 기존 즉시 영구삭제 대체
+      await trashGeneric('siteFinances', id, { title: cur.description || '지출/매출 항목' }, userProfile?.name || '');
       await loadAll({ silent: true });
     } catch (err) {
       alert('삭제 오류: ' + err.message);
