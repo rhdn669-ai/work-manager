@@ -1,0 +1,10 @@
+rules_version = '2';
+
+// 보안 2단계 — 인증된(익명 포함) 세션만 Storage 접근 허용.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

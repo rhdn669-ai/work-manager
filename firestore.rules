@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// 보안 2단계 — 인증된(익명 포함) 세션만 접근 허용.
+// 무인증 순수 접근(로그인 없이 브라우저 콘솔에서 컬렉션 덤프)을 차단한다.
+// 사용자별 세밀 통제(급여는 관리자만 등)는 3단계(커스텀 토큰)에서 도입.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
