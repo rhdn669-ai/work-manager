@@ -4318,10 +4318,14 @@ table.cards-sm td {
     padding: 4px 16px;
     background: var(--bg-card);
     box-shadow: var(--shadow);
+    /* 카드 모드에서는 행 높이 고정(인라인 height:36 등)을 해제 — 안 그러면 셀이 카드 밖으로 흘러 겹침 */
+    height: auto !important;
   }
 
   table.cards-sm td {
     display: flex;
+    /* 셀도 고정 높이(인라인 minHeight:36) 해제 — 내용 높이만큼 자연 확장 */
+    height: auto !important;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
