@@ -495,7 +495,6 @@ export default function UserManagementPage() {
             <tr>
               <th>이름</th>
               <th>코드</th>
-              <th>비밀번호</th>
               <th style={isSmall ? { display: 'none' } : undefined}>직급</th>
               <th style={isSmall ? { display: 'none' } : undefined}>연락처</th>
               <th>부서</th>
@@ -517,23 +516,6 @@ export default function UserManagementPage() {
                   </td>
                   <td data-label="코드" title={u.code || ''} style={{ minHeight: 36 }}>
                     <code>{u.code}</code>
-                  </td>
-                  <td data-label="비밀번호" style={{ minHeight: 36 }}>
-                    {u.password ? (
-                      <code style={{ fontSize: 13, letterSpacing: 2 }} title="보안상 표시하지 않습니다. 분실 시 편집에서 초기화 또는 재설정.">••••</code>
-                    ) : (
-                      <span
-                        style={{
-                          color: 'var(--danger, #dc2626)',
-                          fontSize: 13,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 3,
-                        }}
-                      >
-                        <Icon name="close" size={13} /> 미설정
-                      </span>
-                    )}
                   </td>
                   <td data-label="직급" title={u.position || ''} style={isSmall ? { display: 'none' } : { minHeight: 36 }}>
                     <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
@@ -634,12 +616,6 @@ export default function UserManagementPage() {
                 </button>
               )}
             </label>
-            {editUser && editUser.password && (
-              <div style={{ marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>
-                현재: <code style={{ background: 'var(--bg-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4, letterSpacing: 2 }}>••••</code>
-                <span style={{ marginLeft: 6, fontSize: 12 }}>설정됨 — 분실 시 아래에 새 비밀번호 입력 또는 초기화</span>
-              </div>
-            )}
             {editUser && !editUser.password && (
               <div
                 style={{
