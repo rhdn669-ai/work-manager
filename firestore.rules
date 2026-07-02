@@ -1,12 +1,13 @@
 rules_version = '2';
 
-// 보안 2단계 — 인증된(익명 포함) 세션만 접근 허용.
-// 무인증 순수 접근(로그인 없이 브라우저 콘솔에서 컬렉션 덤프)을 차단한다.
-// 사용자별 세밀 통제(급여는 관리자만 등)는 3단계(커스텀 토큰)에서 도입.
+// ⚠️ 임시 롤백(2026-07-03) — 오래된 캐시 클라이언트(v12.6 등)가 익명 인증 없이
+// users를 조회하다 "Missing or insufficient permissions"로 로그인 불가해지는 사고로
+// 개방 규칙으로 되돌림. 재조임은 (1) 전 클라이언트가 익명인증 포함 최신버전이거나
+// (2) 로그인을 서버(커스텀 토큰)로 옮긴 뒤에 안전하게 재적용.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
