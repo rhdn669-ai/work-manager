@@ -241,6 +241,7 @@ export default function PurchaseItemPage() {
   const { userProfile } = useAuth();
   const { push: pushUndo } = useUndo();
   const [items, setItems] = useState([]);
+  const origPriceRef = useRef({}); // 품목별 '로드 시점' 개별단가 — 잠금(모달) 판정 기준(입력 중 실시간 값 아님)
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -300,7 +301,12 @@ export default function PurchaseItemPage() {
       const [it, sp] = await Promise.all([getPurchaseItems(), getSuppliers()]);
       // 기존 5자리 코드(IOPN-00001)를 3자리(IOPN-001)로 1회 재패딩 (변경분만 저장)
       const repadded = await repadItemCodes(it);
-      setItems(inferGroupKeys(repadded));
+      const loaded = inferGroupKeys(repadded);
+      // 로드 시점의 개별단가를 기록 — 잠금은 '저장된 값'으로 판정(입력 도중 값 변화에 영향 안 받게)
+      const op = {};
+      for (const x of loaded) op[x.id] = Number(x.unitPrice) || 0;
+      origPriceRef.current = op;
+      setItems(loaded);
       setSuppliers(sp);
     } catch (err) {
       console.error(err);
@@ -1303,6 +1309,8 @@ export default function PurchaseItemPage() {
                                         const cu = parseCompoundUnit(it.unit);
                                         const qty = cu ? cu.qty : 1; // 단순 단위는 qty=1로 취급
                                         const unitPrice = Number(it.unitPrice) || 0;
+                                        // 잠금(모달) 판정 = '저장된' 단가가 있을 때만. 신규/미가격 품목은 입력 도중에도 계속 인라인.
+                                        const priceLocked = (origPriceRef.current[it.id] || 0) > 0;
                                         return (
                                           <td
                                             data-label="개별단가"
@@ -1313,14 +1321,14 @@ export default function PurchaseItemPage() {
                                               inputMode="numeric"
                                               className="num-input"
                                               value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
-                                              readOnly={unitPrice > 0}
-                                              style={unitPrice > 0 ? { cursor: 'pointer' } : undefined}
-                                              title={unitPrice > 0 ? '클릭해서 단가 변경(이력 기록)' : ''}
+                                              readOnly={priceLocked}
+                                              style={priceLocked ? { cursor: 'pointer' } : undefined}
+                                              title={priceLocked ? '클릭해서 단가 변경(이력 기록)' : ''}
                                               onClick={() => {
-                                                if (unitPrice > 0) openPriceEdit(it);
+                                                if (priceLocked) openPriceEdit(it);
                                               }}
                                               onChange={(e) => {
-                                                if (unitPrice > 0) return; // 기존 값은 모달로만 수정(이력 기록)
+                                                if (priceLocked) return; // 저장된 단가는 모달로만 수정(이력 기록)
                                                 const raw = e.target.value.replace(/[^0-9]/g, '');
                                                 const up = raw ? Number(raw) : 0;
                                                 updateField(it.id, {
