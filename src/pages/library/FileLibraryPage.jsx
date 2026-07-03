@@ -892,12 +892,9 @@ export default function FileLibraryPage() {
                           <td className="lib-col-size" data-label="크기">{formatSize(file.size)}</td>
                           <td className="col-action" onClick={(e) => e.stopPropagation()}>
                             <div className="row-actions">
-                              <a className="library-file-btn download" href={file.downloadURL} target="_blank" rel="noopener noreferrer" title="다운로드" aria-label="다운로드">
-                                <Icon name="download" />
-                              </a>
                               {isAdmin && (
-                                <button type="button" className="library-file-btn" title="이름 변경" aria-label="이름 변경" onClick={() => openFileRename(file)}>
-                                  <Icon name="edit" />
+                                <button type="button" className="btn btn-sm btn-outline" title="이름 변경" aria-label="이름 변경" onClick={() => openFileRename(file)}>
+                                  <Icon name="edit" className="btn-ic" />수정
                                 </button>
                               )}
                               <button type="button" className="btn btn-sm btn-danger" title="삭제" aria-label="삭제" onClick={() => handleDeleteFile(file)}>
