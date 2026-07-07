@@ -40,12 +40,23 @@ exports.sendPurchaseOrderEmail = onCall(
       throw new HttpsError('unauthenticated', `네이버 SMTP 로그인 실패: ${e.response || e.message}`);
     }
 
+    // 첨부는 앱이 base64 content로만 전송 — path/href 등 서버 파일 읽기·SSRF 유발 필드는 제거하고
+    // filename/content(base64)/contentType만 허용(화이트리스트).
+    const safeAttachments = (Array.isArray(attachments) ? attachments : [])
+      .map((a) => ({
+        filename: String((a && a.filename) || 'attachment'),
+        content: a && a.content,
+        encoding: 'base64',
+        ...(a && a.contentType ? { contentType: String(a.contentType) } : {}),
+      }))
+      .filter((a) => typeof a.content === 'string' && a.content.length > 0);
+
     await transporter.sendMail({
       from: `"(주)아이오피엔" <${fromAddr}>`,
       to,
       subject,
       html,
-      attachments: attachments || [],
+      attachments: safeAttachments,
     });
 
     return { success: true };
