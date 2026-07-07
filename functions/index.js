@@ -4,18 +4,15 @@ const nodemailer = require('nodemailer');
 
 const NAVER_USER = defineSecret('NAVER_USER');
 const NAVER_PASS = defineSecret('NAVER_PASS');
-const MAIL_TOKEN = defineSecret('MAIL_TOKEN');
 
 exports.sendPurchaseOrderEmail = onCall(
-  { secrets: [NAVER_USER, NAVER_PASS, MAIL_TOKEN], region: 'asia-northeast3' },
+  { secrets: [NAVER_USER, NAVER_PASS], region: 'asia-northeast3' },
   async (request) => {
-    const { to, subject, html, attachments, token } = request.data;
+    const { to, subject, html, attachments } = request.data;
 
-    // 앱에서 발송한 요청인지 공유 토큰으로 검증 — 외부인의 무단 발송(오픈 릴레이) 차단
-    const expected = String(MAIL_TOKEN.value() || '').trim();
-    if (!expected || String(token || '').trim() !== expected) {
-      throw new HttpsError('permission-denied', '허용되지 않은 요청입니다.');
-    }
+    // (2026-07-06) 공유 토큰 검증 제거 — 옛 캐시 클라이언트에서 토큰 미전송으로 발송이
+    // 전면 차단되는 운영 사고 발생. 외부 남용 방지는 추후 App Check 강제 등 캐시에
+    // 영향 없는 방식으로 재도입 예정. (앱은 여전히 token을 함께 보내지만 무시됨)
 
     if (!to || !subject) {
       throw new HttpsError('invalid-argument', '수신자와 제목은 필수입니다.');
