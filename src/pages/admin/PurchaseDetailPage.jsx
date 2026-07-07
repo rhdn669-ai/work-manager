@@ -1996,13 +1996,9 @@ export default function PurchaseDetailPage() {
                               )}
                             </td>
                             <td data-label="입고">
-                              <span
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                                title="상단 품목 입고 처리가 완료되면 자동으로 반영됩니다"
-                              >
-                                <input type="checkbox" checked={recvDone} readOnly disabled />
+                              <span title="상단 품목 입고 처리가 완료되면 자동으로 반영됩니다">
                                 {recvDone ? (
-                                  <span className="purchase-badge purchase-badge-received">
+                                  <span className="purchase-badge purchase-badge-instock">
                                     입고 · {fmtDate(recv.latest)}
                                   </span>
                                 ) : recv.full > 0 ? (
@@ -2010,7 +2006,7 @@ export default function PurchaseDetailPage() {
                                     부분 {recv.full}/{recv.total}
                                   </span>
                                 ) : (
-                                  <span className="text-muted">미입고</span>
+                                  <span className="purchase-badge purchase-badge-draft">미입고</span>
                                 )}
                               </span>
                             </td>

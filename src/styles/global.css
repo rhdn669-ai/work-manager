@@ -4489,6 +4489,11 @@ table.cards-sm td {
   background: #cffafe;
   color: #0e7490;
 }
+/* 입고 완료 — 발주완료(청록)와 구분되는 초록 토글 */
+.purchase-badge-instock {
+  background: #dcfce7;
+  color: #15803d;
+}
 .purchase-badge-settled {
   background: #dcfce7;
   color: #15803d;
