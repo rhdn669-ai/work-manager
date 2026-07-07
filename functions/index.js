@@ -40,15 +40,20 @@ exports.sendPurchaseOrderEmail = onCall(
       throw new HttpsError('unauthenticated', `네이버 SMTP 로그인 실패: ${e.response || e.message}`);
     }
 
-    // 첨부는 앱이 base64 content로만 전송 — path/href 등 서버 파일 읽기·SSRF 유발 필드는 제거하고
-    // filename/content(base64)/contentType만 허용(화이트리스트).
+    // 첨부는 앱이 base64 content로만 전송 — path/href/raw 등 서버 파일 읽기·SSRF 유발 필드는 제거.
+    // filename/content(base64)/contentType + 인라인 이미지용 cid·contentDisposition(inline)만 허용(화이트리스트).
     const safeAttachments = (Array.isArray(attachments) ? attachments : [])
-      .map((a) => ({
-        filename: String((a && a.filename) || 'attachment'),
-        content: a && a.content,
-        encoding: 'base64',
-        ...(a && a.contentType ? { contentType: String(a.contentType) } : {}),
-      }))
+      .map((a) => {
+        const out = {
+          filename: String((a && a.filename) || 'attachment'),
+          content: a && a.content,
+          encoding: 'base64',
+        };
+        if (a && a.contentType) out.contentType = String(a.contentType);
+        if (a && a.cid) out.cid = String(a.cid); // 인라인 이미지(명함 cid:bizcard) 참조 — 안전한 식별자
+        if (a && a.contentDisposition === 'inline') out.contentDisposition = 'inline';
+        return out;
+      })
       .filter((a) => typeof a.content === 'string' && a.content.length > 0);
 
     await transporter.sendMail({
