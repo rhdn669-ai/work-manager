@@ -141,6 +141,8 @@ export default function PurchaseDetailPage() {
 
   // 품목 검색 (표시 필터 — 데이터는 보존, 원본 인덱스 유지)
   const [itemSearch, setItemSearch] = useState('');
+  // 품목 업체별 필터 (기본 구매처 기준 표시 필터)
+  const [itemSupplierFilter, setItemSupplierFilter] = useState('all');
 
   // BOM 가져오기
   const [bomModalOpen, setBomModalOpen] = useState(false);
@@ -451,14 +453,16 @@ export default function PurchaseDetailPage() {
     setItemPickerOpen(false);
   }
 
-  // 품목 검색 매칭 (코드·품명·메이커·규격·분류·구매처·비고)
+  // 품목 검색·업체 매칭 (코드·품명·메이커·규격·분류·구매처·비고 + 기본 구매처 필터)
   function lineMatchesSearch(ln) {
-    const kw = itemSearch.trim().toLowerCase();
-    if (!kw) return true;
     const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
     const supName = master?.defaultSupplierId
       ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
       : '';
+    // 업체별 필터 — 선택된 구매처와 다르면 숨김
+    if (itemSupplierFilter !== 'all' && supName !== itemSupplierFilter) return false;
+    const kw = itemSearch.trim().toLowerCase();
+    if (!kw) return true;
     const dispName = ln.itemId && master ? master.name : ln.name;
     return [master?.code, dispName, master?.maker, master?.spec || ln.spec, master?.category, supName, ln.note].some(
       (v) => (v || '').toLowerCase().includes(kw),
@@ -570,6 +574,24 @@ export default function PurchaseDetailPage() {
     () => form.items.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0),
     [form.items],
   );
+
+  // 품목 업체별 필터 옵션 — 이 발주에 실제 등장하는 기본 구매처만
+  const itemSupplierOptions = useMemo(() => {
+    const set = new Set();
+    for (const ln of form.items) {
+      const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+      const supName = master?.defaultSupplierId
+        ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
+        : '';
+      if (supName) set.add(supName);
+    }
+    return [
+      { value: 'all', label: '전체 업체' },
+      ...Array.from(set)
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((n) => ({ value: n, label: n })),
+    ];
+  }, [form.items, itemMaster, suppliers]);
 
   const isReadOnly = purchase?.status === 'settled';
 
@@ -1538,14 +1560,28 @@ export default function PurchaseDetailPage() {
           기본 구매처로 자동 적용.
         </p>
         {form.items.length > 0 && (
-          <input
-            type="text"
-            className="purchase-filter-search"
-            style={{ width: '100%', maxWidth: 340, marginBottom: 8 }}
-            placeholder="품목 검색 (코드 · 품명 · 메이커 · 규격 · 분류 · 구매처)"
-            value={itemSearch}
-            onChange={(e) => setItemSearch(e.target.value)}
-          />
+          <div
+            style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}
+          >
+            <input
+              type="text"
+              className="purchase-filter-search"
+              style={{ flex: '1 1 220px', maxWidth: 340, marginBottom: 0 }}
+              placeholder="품목 검색 (코드 · 품명 · 메이커 · 규격 · 분류 · 구매처)"
+              value={itemSearch}
+              onChange={(e) => setItemSearch(e.target.value)}
+            />
+            {itemSupplierOptions.length > 2 && (
+              <div style={{ flex: '0 0 auto', minWidth: 150, maxWidth: 220 }}>
+                <Select
+                  value={itemSupplierFilter}
+                  onChange={setItemSupplierFilter}
+                  options={itemSupplierOptions}
+                  ariaLabel="업체별 필터"
+                />
+              </div>
+            )}
+          </div>
         )}
         <div className="item-group is-expanded bom-flat-group">
           <div className="item-group-detail">
@@ -1580,13 +1616,17 @@ export default function PurchaseDetailPage() {
                       </td>
                     </tr>
                   )}
-                  {form.items.length > 0 && itemSearch.trim() && !form.items.some(lineMatchesSearch) && (
-                    <tr>
-                      <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
-                        "{itemSearch}" 검색 결과가 없습니다.
-                      </td>
-                    </tr>
-                  )}
+                  {form.items.length > 0 &&
+                    (itemSearch.trim() || itemSupplierFilter !== 'all') &&
+                    !form.items.some(lineMatchesSearch) && (
+                      <tr>
+                        <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                          {itemSupplierFilter !== 'all' && !itemSearch.trim()
+                            ? `"${itemSupplierFilter}" 업체 품목이 없습니다.`
+                            : `"${itemSearch}" 검색 결과가 없습니다.`}
+                        </td>
+                      </tr>
+                    )}
                   {form.items.map((ln, idx) => {
                     if (!lineMatchesSearch(ln)) return null;
                     const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
