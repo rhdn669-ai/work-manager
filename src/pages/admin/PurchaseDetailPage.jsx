@@ -14,8 +14,6 @@ import {
   unmarkSupplierSent,
   markSupplierReplied,
   unmarkSupplierReplied,
-  markSupplierReceived,
-  unmarkSupplierReceived,
   markPaymentRequested,
   unmarkPaymentRequested,
   setPurchaseReplied,
@@ -926,6 +924,33 @@ export default function PurchaseDetailPage() {
     return computeSupplierListPure(form.items, itemMaster, suppliers, purchaseRef.current || purchase);
   }
 
+  // 업체별 입고 집계 — 상단 품목 입고 처리(receivedQty)를 업체 단위로 모아 자동 판정
+  // { [업체명]: { total, full, latest } }  full===total 이면 전량 입고
+  function computeSupplierReceiveStatus() {
+    const items = form.items || [];
+    const cur = purchaseRef.current || purchase;
+    const fallbackSup = cur?.supplierId ? suppliers.find((s) => s.id === cur.supplierId) : null;
+    const map = {};
+    for (const ln of items) {
+      if (!(ln.name || '').trim()) continue;
+      const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+      const supId = master?.defaultSupplierId || '';
+      const sup = (supId ? suppliers.find((s) => s.id === supId) : null) || fallbackSup || null;
+      const supName = sup?.name || cur?.supplierName || '(구매처 미지정)';
+      const savedQty = Number(ln.qty) || 0;
+      const receivedQty = Number(ln.receivedQty) || 0;
+      const full = savedQty > 0 && receivedQty >= savedQty;
+      if (!map[supName]) map[supName] = { total: 0, full: 0, latest: null };
+      map[supName].total += 1;
+      if (full) map[supName].full += 1;
+      if (ln.receivedAt) {
+        const d = ln.receivedAt.toDate ? ln.receivedAt.toDate() : new Date(ln.receivedAt);
+        if (!Number.isNaN(d.getTime()) && (!map[supName].latest || d > map[supName].latest)) map[supName].latest = d;
+      }
+    }
+    return map;
+  }
+
   // 모든 업체 메일 발송 완료 + 현재 '발주대기' 상태면 → '발주완료'로 자동 확정 (확인창 없이)
   async function maybeAutoConfirm(sentMap) {
     const cur = purchaseRef.current || purchase;
@@ -1021,33 +1046,6 @@ export default function PurchaseDetailPage() {
         purchaseRef.current = { ...(purchaseRef.current || {}), supplierReplied: next };
         return { ...prev, supplierReplied: next };
       });
-    } catch (err) {
-      toast('처리 중 오류가 발생했습니다', 'error');
-    }
-  }
-
-  // 업체별 전량 입고 체크 토글 — 체크 시 입고 일자 기록, 해제 시 삭제
-  async function toggleSupplierReceived(supplierName) {
-    const key = supplierName.replace(/\./g, '_');
-    const already = purchaseRef.current?.supplierReceived?.[key] || purchase.supplierReceived?.[key];
-    try {
-      if (already) {
-        await unmarkSupplierReceived(id, supplierName);
-        setPurchase((prev) => {
-          const next = { ...(prev.supplierReceived || {}) };
-          delete next[key];
-          purchaseRef.current = { ...(purchaseRef.current || {}), supplierReceived: next };
-          return { ...prev, supplierReceived: next };
-        });
-      } else {
-        await markSupplierReceived(id, supplierName, userProfile?.name || '');
-        const next = {
-          ...(purchaseRef.current?.supplierReceived || {}),
-          [key]: { receivedAt: new Date(), receivedBy: userProfile?.name || '' },
-        };
-        purchaseRef.current = { ...(purchaseRef.current || {}), supplierReceived: next };
-        setPurchase((prev) => ({ ...prev, supplierReceived: next }));
-      }
     } catch (err) {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
@@ -1823,6 +1821,7 @@ export default function PurchaseDetailPage() {
       {(() => {
         const supList = computeSupplierList();
         if (supList.length === 0) return null;
+        const recvStatus = computeSupplierReceiveStatus(); // 업체별 입고 자동 집계
         const sentCount = supList.filter((s) => purchase.supplierSent?.[s.name.replace(/\./g, '_')]).length;
         return (
           <div className="form-group screen-only">
@@ -1909,7 +1908,8 @@ export default function PurchaseDetailPage() {
                         const sentKey = sup.name.replace(/\./g, '_');
                         const sent = purchase.supplierSent?.[sentKey];
                         const replied = purchase.supplierReplied?.[sentKey];
-                        const received = purchase.supplierReceived?.[sentKey];
+                        const recv = recvStatus[sup.name] || { total: 0, full: 0, latest: null };
+                        const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
                         const payReq = purchase.paymentRequested?.[sentKey];
                         const paid = purchase.supplierPaid?.[sentKey];
                         // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
@@ -1956,24 +1956,23 @@ export default function PurchaseDetailPage() {
                               )}
                             </td>
                             <td data-label="입고">
-                              <label
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: isReadOnly ? 'default' : 'pointer' }}
-                                title={received ? `입고 완료 · ${received.receivedBy || ''}` : '전량 입고되면 체크'}
+                              <span
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                title="상단 품목 입고 처리가 완료되면 자동으로 반영됩니다"
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={!!received}
-                                  disabled={isReadOnly}
-                                  onChange={() => toggleSupplierReceived(sup.name)}
-                                />
-                                {received ? (
+                                <input type="checkbox" checked={recvDone} readOnly disabled />
+                                {recvDone ? (
                                   <span className="purchase-badge purchase-badge-received">
-                                    입고 · {fmtDate(received.receivedAt)}
+                                    입고 · {fmtDate(recv.latest)}
+                                  </span>
+                                ) : recv.full > 0 ? (
+                                  <span className="purchase-badge purchase-badge-partial">
+                                    부분 {recv.full}/{recv.total}
                                   </span>
                                 ) : (
                                   <span className="text-muted">미입고</span>
                                 )}
-                              </label>
+                              </span>
                             </td>
                             <td data-label="납기">
                               {replied?.deliveryDue ? (
