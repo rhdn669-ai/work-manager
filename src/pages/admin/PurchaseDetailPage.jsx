@@ -14,6 +14,8 @@ import {
   unmarkSupplierSent,
   markSupplierReplied,
   unmarkSupplierReplied,
+  markSupplierReceived,
+  unmarkSupplierReceived,
   markPaymentRequested,
   unmarkPaymentRequested,
   setPurchaseReplied,
@@ -1024,6 +1026,33 @@ export default function PurchaseDetailPage() {
     }
   }
 
+  // 업체별 전량 입고 체크 토글 — 체크 시 입고 일자 기록, 해제 시 삭제
+  async function toggleSupplierReceived(supplierName) {
+    const key = supplierName.replace(/\./g, '_');
+    const already = purchaseRef.current?.supplierReceived?.[key] || purchase.supplierReceived?.[key];
+    try {
+      if (already) {
+        await unmarkSupplierReceived(id, supplierName);
+        setPurchase((prev) => {
+          const next = { ...(prev.supplierReceived || {}) };
+          delete next[key];
+          purchaseRef.current = { ...(purchaseRef.current || {}), supplierReceived: next };
+          return { ...prev, supplierReceived: next };
+        });
+      } else {
+        await markSupplierReceived(id, supplierName, userProfile?.name || '');
+        const next = {
+          ...(purchaseRef.current?.supplierReceived || {}),
+          [key]: { receivedAt: new Date(), receivedBy: userProfile?.name || '' },
+        };
+        purchaseRef.current = { ...(purchaseRef.current || {}), supplierReceived: next };
+        setPurchase((prev) => ({ ...prev, supplierReceived: next }));
+      }
+    } catch (err) {
+      toast('처리 중 오류가 발생했습니다', 'error');
+    }
+  }
+
   // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다
   function handleRequestPayment(supplierName) {
     const key = supplierName.replace(/\./g, '_');
@@ -1869,6 +1898,7 @@ export default function PurchaseDetailPage() {
                     <th style={{ minWidth: 170, width: 200 }}>발행번호</th>
                     <th style={{ minWidth: 170, width: 170 }}>발주 상태</th>
                     <th style={{ minWidth: 170, width: 170 }}>회신</th>
+                    <th style={{ minWidth: 140, width: 150 }}>입고</th>
                     <th style={{ minWidth: 110, width: 130 }}>납기</th>
                     <th style={{ minWidth: 200, width: '100%' }}>특이사항</th>
                     <th className="col-action" aria-label="작업"></th>
@@ -1879,6 +1909,7 @@ export default function PurchaseDetailPage() {
                         const sentKey = sup.name.replace(/\./g, '_');
                         const sent = purchase.supplierSent?.[sentKey];
                         const replied = purchase.supplierReplied?.[sentKey];
+                        const received = purchase.supplierReceived?.[sentKey];
                         const payReq = purchase.paymentRequested?.[sentKey];
                         const paid = purchase.supplierPaid?.[sentKey];
                         // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
@@ -1923,6 +1954,26 @@ export default function PurchaseDetailPage() {
                               ) : (
                                 <span className="purchase-badge purchase-badge-draft">미회신</span>
                               )}
+                            </td>
+                            <td data-label="입고">
+                              <label
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: isReadOnly ? 'default' : 'pointer' }}
+                                title={received ? `입고 완료 · ${received.receivedBy || ''}` : '전량 입고되면 체크'}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={!!received}
+                                  disabled={isReadOnly}
+                                  onChange={() => toggleSupplierReceived(sup.name)}
+                                />
+                                {received ? (
+                                  <span className="purchase-badge purchase-badge-received">
+                                    입고 · {fmtDate(received.receivedAt)}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted">미입고</span>
+                                )}
+                              </label>
                             </td>
                             <td data-label="납기">
                               {replied?.deliveryDue ? (

@@ -492,6 +492,24 @@ export async function unmarkSupplierReplied(purchaseId, supplierName) {
   });
 }
 
+// 업체별 전량 입고 표시 — 체크 시 입고 일자 기록
+export async function markSupplierReceived(purchaseId, supplierName, by = '') {
+  const key = supplierName.replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierReceived.${key}.receivedAt`]: new Date(),
+    [`supplierReceived.${key}.receivedBy`]: by,
+    updatedAt: new Date(),
+  });
+}
+
+// 업체별 전량 입고 표시 취소
+export async function unmarkSupplierReceived(purchaseId, supplierName) {
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierReceived.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
 // 업체별 결제 완료 표시 / 취소 (결제 페이지 노출용)
 export async function markSupplierPaid(purchaseId, supplierName, by = '') {
   const key = supplierName.replace(/\./g, '_');

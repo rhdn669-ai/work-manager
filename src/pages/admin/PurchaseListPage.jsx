@@ -248,6 +248,7 @@ export default function PurchaseListPage() {
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('board'); // 'board'(칸반) | 'list'(목록)
+  const [supplierFilter, setSupplierFilter] = useState('all'); // 업체별 필터
   const [factories, setFactories] = useState([]);
   const [factoryModalOpen, setFactoryModalOpen] = useState(false);
   const [factoryForm, setFactoryForm] = useState([]);
@@ -298,9 +299,20 @@ export default function PurchaseListPage() {
     return c;
   }, [purchases]);
 
+  // 업체별 필터 옵션 — 발주에 실제 등장하는 구매처만
+  const supplierOptions = useMemo(() => {
+    const set = new Set();
+    for (const p of purchases) if (p.supplierName) set.add(p.supplierName);
+    return [
+      { value: 'all', label: '전체 업체' },
+      ...Array.from(set).sort((a, b) => a.localeCompare(b, 'ko')).map((n) => ({ value: n, label: n })),
+    ];
+  }, [purchases]);
+
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     const list = purchases.filter((p) => {
+      if (supplierFilter !== 'all' && p.supplierName !== supplierFilter) return false;
       if (tab === 'printed') {
         if (!(Number(p.printCount) > 0)) return false;
       } else if (tab !== 'all' && p.status !== tab) {
@@ -330,7 +342,7 @@ export default function PurchaseListPage() {
       });
     }
     return list;
-  }, [purchases, tab, search]);
+  }, [purchases, tab, search, supplierFilter]);
 
   function openCreate() {
     setEditingId(null);
@@ -515,6 +527,7 @@ export default function PurchaseListPage() {
   }
   // 보드용: 검색만 적용 후 상태별 그룹
   const boardSource = purchases.filter((p) => {
+    if (supplierFilter !== 'all' && p.supplierName !== supplierFilter) return false;
     const kw = search.trim().toLowerCase();
     if (!kw) return true;
     return [p.title, p.supplierName, p.siteName, p.requesterName].some((v) => (v || '').toLowerCase().includes(kw));
@@ -591,6 +604,14 @@ export default function PurchaseListPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <div style={{ flex: '0 0 auto', minWidth: 150, maxWidth: 220 }}>
+          <Select
+            value={supplierFilter}
+            onChange={setSupplierFilter}
+            options={supplierOptions}
+            ariaLabel="업체별 필터"
+          />
+        </div>
         <div
           className="tab-nav"
           role="tablist"
