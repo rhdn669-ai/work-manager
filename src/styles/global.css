@@ -6169,28 +6169,13 @@ table.cards-sm td {
   border-color: transparent;
   outline: none;
 }
-/* 발주서 수량 변경 버튼 — 기존 읽기전용 셀과 동일한 모양(투명), 클릭하면 수량 변경 모달만 연다 */
-.inline-edit-table button.purchase-qty-btn {
-  width: 100%;
-  height: 32px;
-  padding: 6px 8px;
-  font-size: 13px;
-  line-height: 1.2;
-  text-align: left;
-  color: var(--text);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
+/* 발주서 수량 — 기존 읽기전용 input 그대로, 클릭만 가능(모달 트리거). 레이아웃 변경 없음 */
+.inline-edit-table input.purchase-qty-clickable {
   cursor: pointer;
-  font-family: inherit;
-  box-sizing: border-box;
+  pointer-events: auto;
 }
-.inline-edit-table button.purchase-qty-btn:hover {
+.inline-edit-table input.purchase-qty-clickable:hover {
   background: var(--accent-soft);
-}
-.inline-edit-table button.purchase-qty-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 .inline-edit-table input.bom-code-input {
   font-weight: 600;

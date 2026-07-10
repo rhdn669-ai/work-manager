@@ -1758,24 +1758,15 @@ export default function PurchaseDetailPage() {
                           />
                         </td>
                         <td data-label="수량">
-                          {isReadOnly ? (
-                            <input
-                              className="num-input bom-readonly-input"
-                              type="text"
-                              value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              className="num-input purchase-qty-btn"
-                              onClick={() => openQtyModal(idx)}
-                              title="클릭해 발주 수량 변경 (보유자재 있으면 감량)"
-                            >
-                              {Number(ln.qty) ? Number(ln.qty).toLocaleString() : '0'}
-                            </button>
-                          )}
+                          <input
+                            className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}`}
+                            type="text"
+                            value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
+                            readOnly
+                            tabIndex={-1}
+                            onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
+                            title={isReadOnly ? '' : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'}
+                          />
                         </td>
                         <td data-label="단가">
                           <input
