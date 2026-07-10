@@ -182,6 +182,8 @@ export default function PurchaseDetailPage() {
   const [printHideAmount, setPrintHideAmount] = useState(false);
   const [pdfOptOpen, setPdfOptOpen] = useState(false); // 출력 옵션 모달
   const [pdfShowAmount, setPdfShowAmount] = useState(true); // 옵션: 금액 표기(기본 ON)
+  // 발주 수량 변경 모달 — { idx, name, receivedQty, value } | null (보유자재 반영 감량)
+  const [qtyModal, setQtyModal] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -343,6 +345,31 @@ export default function PurchaseDetailPage() {
       items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)),
     }));
     scheduleAutoSave();
+  }
+
+  // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
+  function openQtyModal(idx) {
+    const ln = formRef.current.items[idx];
+    if (!ln) return;
+    const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+    setQtyModal({
+      idx,
+      name: ln.itemId && master ? master.name : ln.name || '(품목 미지정)',
+      receivedQty: Number(ln.receivedQty) || 0,
+      value: String(Number(ln.qty) || 0),
+    });
+  }
+
+  // 수량 저장 — 입고분 미만으로는 줄일 수 없음(정합성)
+  function saveQtyModal() {
+    if (!qtyModal) return;
+    const n = Number(String(qtyModal.value).replace(/[^\d]/g, '')) || 0;
+    if (qtyModal.receivedQty > 0 && n < qtyModal.receivedQty) {
+      toast(`이미 ${qtyModal.receivedQty}개 입고됨 — 발주 수량을 그보다 작게 할 수 없습니다`, 'error', 0);
+      return;
+    }
+    updateLine(qtyModal.idx, { qty: n });
+    setQtyModal(null);
   }
 
   function updateLineName(idx, name) {
@@ -1655,8 +1682,6 @@ export default function PurchaseDetailPage() {
                     const receivedQty = Number(ln.receivedQty) || 0;
                     const isLineSaved = (ln.name || '').trim().length > 0;
                     const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
-                    // 수량 편집 잠금 — 입고 시작됐거나 정산완료 라인은 정합성 위해 수정 불가
-                    const qtyLocked = isReadOnly || receivedQty > 0;
                     return (
                       <tr key={idx}>
                         <td className="bom-no-col" data-label="No">
@@ -1733,27 +1758,24 @@ export default function PurchaseDetailPage() {
                           />
                         </td>
                         <td data-label="수량">
-                          <input
-                            className={`num-input${qtyLocked ? ' bom-readonly-input' : ' purchase-qty-edit'}`}
-                            type="text"
-                            inputMode="numeric"
-                            value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
-                            onChange={
-                              qtyLocked
-                                ? undefined
-                                : (e) => updateLine(idx, { qty: Number(String(e.target.value).replace(/[^\d]/g, '')) || 0 })
-                            }
-                            readOnly={qtyLocked}
-                            tabIndex={qtyLocked ? -1 : 0}
-                            title={
-                              qtyLocked
-                                ? receivedQty > 0
-                                  ? '입고된 라인은 수량을 변경할 수 없습니다'
-                                  : '정산완료 발주는 수정할 수 없습니다'
-                                : '보유자재가 있으면 발주 수량을 줄이세요'
-                            }
-                            placeholder="0"
-                          />
+                          {isReadOnly ? (
+                            <input
+                              className="num-input bom-readonly-input"
+                              type="text"
+                              value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
+                              readOnly
+                              tabIndex={-1}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="num-input purchase-qty-btn"
+                              onClick={() => openQtyModal(idx)}
+                              title="클릭해 발주 수량 변경 (보유자재 있으면 감량)"
+                            >
+                              {Number(ln.qty) ? Number(ln.qty).toLocaleString() : '0'}
+                            </button>
+                          )}
                         </td>
                         <td data-label="단가">
                           <input
@@ -2597,6 +2619,43 @@ export default function PurchaseDetailPage() {
             PDF 출력
           </button>
         </div>
+      </Modal>
+
+      <Modal isOpen={!!qtyModal} onClose={() => setQtyModal(null)} title="발주 수량 변경">
+        {qtyModal && (
+          <>
+            <p className="field-hint">
+              「<strong>{qtyModal.name}</strong>」의 발주 수량을 입력하세요. 보유자재가 있으면 그만큼 줄이면 됩니다.
+            </p>
+            <div className="form-group">
+              <label>발주 수량</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoFocus
+                value={qtyModal.value}
+                onChange={(e) => setQtyModal({ ...qtyModal, value: e.target.value.replace(/[^\d]/g, '') })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveQtyModal();
+                }}
+                placeholder="0"
+              />
+              {qtyModal.receivedQty > 0 && (
+                <p className="field-hint">
+                  이미 <strong>{qtyModal.receivedQty}개</strong> 입고됨 — 이보다 작게는 설정할 수 없습니다.
+                </p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setQtyModal(null)}>
+                취소
+              </button>
+              <button type="button" className="btn btn-primary" onClick={saveQtyModal}>
+                저장
+              </button>
+            </div>
+          </>
+        )}
       </Modal>
 
       <Modal
