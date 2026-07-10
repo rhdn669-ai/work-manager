@@ -6169,7 +6169,7 @@ table.cards-sm td {
   border-color: transparent;
   outline: none;
 }
-/* 발주서 수량 변경 버튼 — 클릭하면 수량 변경 모달 (보유자재 반영 감량용) */
+/* 발주서 수량 변경 버튼 — 기존 읽기전용 셀과 동일한 모양(투명), 클릭하면 수량 변경 모달만 연다 */
 .inline-edit-table button.purchase-qty-btn {
   width: 100%;
   height: 32px;
@@ -6177,21 +6177,18 @@ table.cards-sm td {
   font-size: 13px;
   line-height: 1.2;
   text-align: left;
-  font-weight: 700;
-  color: var(--primary);
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 6px;
   cursor: pointer;
-  font-variant-numeric: tabular-nums;
+  font-family: inherit;
   box-sizing: border-box;
 }
 .inline-edit-table button.purchase-qty-btn:hover {
-  border-color: var(--accent);
-  background: #fff;
+  background: var(--accent-soft);
 }
 .inline-edit-table button.purchase-qty-btn:focus-visible {
-  border-color: var(--accent);
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
