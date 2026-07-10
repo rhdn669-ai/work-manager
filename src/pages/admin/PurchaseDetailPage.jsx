@@ -178,6 +178,10 @@ export default function PurchaseDetailPage() {
   const [printSiteNameMode, setPrintSiteNameMode] = useState(null);
   // 내부 저장용 PDF에만 구매처 계좌정보 표시 (메일 첨부엔 미표시)
   const [printAccountMode, setPrintAccountMode] = useState(false);
+  // 「PDF 출력」 옵션 — 금액(단가·금액·합계) 표기 여부. 수동 출력 시에만 적용(메일·자료실 저장은 항상 금액 포함)
+  const [printHideAmount, setPrintHideAmount] = useState(false);
+  const [pdfOptOpen, setPdfOptOpen] = useState(false); // 출력 옵션 모달
+  const [pdfShowAmount, setPdfShowAmount] = useState(true); // 옵션: 금액 표기(기본 ON)
 
   useEffect(() => {
     loadData();
@@ -747,10 +751,21 @@ export default function PurchaseDetailPage() {
     setPdfModalOpen(true);
   }
 
-  // 「PDF 출력」 — 대표님이 가장 선명하다고 하신 브라우저 인쇄(window.print)를 그대로 유지.
+  // 「PDF 출력」 — 옵션(금액 표기 등) 선택 모달을 먼저 연다.
   function handlePdfOutput() {
+    setPdfShowAmount(true); // 매번 기본값(금액 표기)으로 리셋
+    setPdfOptOpen(true);
+  }
+
+  // 옵션 선택 후 실제 출력 — 브라우저 인쇄(window.print). 금액 표기 여부만 반영.
+  function runPdfOutput() {
+    setPdfOptOpen(false);
+    setPrintHideAmount(!pdfShowAmount);
     setPrintStamp(fmtDateTime(new Date()));
-    setTimeout(() => window.print(), 120);
+    setTimeout(() => {
+      window.print();
+      setPrintHideAmount(false); // 출력 후 원복 — 메일·자료실 저장에 영향 없음
+    }, 200);
   }
 
   // 자료실 저장 — 버튼 누르면 즉시 모달을 닫고 PDF 생성·업로드는 백그라운드로 진행.
@@ -1504,6 +1519,7 @@ export default function PurchaseDetailPage() {
         printAccountMode={printAccountMode}
         printSiteNameMode={printSiteNameMode}
         printStamp={printStamp}
+        hideAmount={printHideAmount}
       />
 
       <div className="purchase-meta-bar screen-only">
@@ -2537,6 +2553,32 @@ export default function PurchaseDetailPage() {
             disabled={!pdfFileName.trim()}
           >
             자료실에 저장
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={pdfOptOpen} onClose={() => setPdfOptOpen(false)} title="PDF 출력 옵션">
+        <p className="field-hint">발주서 출력 형식을 선택하세요.</p>
+        <div className="form-group">
+          <label className="pdf-opt-row">
+            <input
+              type="checkbox"
+              checked={pdfShowAmount}
+              onChange={(e) => setPdfShowAmount(e.target.checked)}
+            />
+            <span>금액 표기 (단가 · 금액 · 합계 · 총액)</span>
+          </label>
+          <p className="field-hint">
+            체크를 해제하면 <strong>단가·금액·합계가 빠진</strong> 발주서로 출력됩니다. 수량·품목은 그대로
+            표시됩니다. (메일 발송·자료실 저장은 이 옵션과 무관하게 항상 금액이 포함됩니다.)
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setPdfOptOpen(false)}>
+            취소
+          </button>
+          <button type="button" className="btn btn-primary" onClick={runPdfOutput}>
+            PDF 출력
           </button>
         </div>
       </Modal>

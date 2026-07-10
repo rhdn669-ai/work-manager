@@ -18,7 +18,7 @@ import {
 //   printSiteNameMode   : null=실제 현장명 / 'blank'=공백 / 그 외=미공개(외부용)
 //   printStamp          : 하단 출력 일시 스탬프
 const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
-  { purchase, form, suppliers = [], sites = [], itemMaster = [], printSupplierFilter = null, printAccountMode = false, printSiteNameMode = null, printStamp = '' },
+  { purchase, form, suppliers = [], sites = [], itemMaster = [], printSupplierFilter = null, printAccountMode = false, printSiteNameMode = null, printStamp = '', hideAmount = false },
   ref,
 ) {
   if (!purchase || !form) return <div ref={ref} className="print-form-iopn print-form-paged print-only" />;
@@ -177,15 +177,17 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                   <th className="lbl">담당/연락처</th>
                   <td className="val">{src.contactLine}</td>
                 </tr>
-                <tr>
-                  <td colSpan={4} className="iopn-amount-row">
-                    총 금액(VAT 포함) : ₩ {grandTotal.toLocaleString()}원
-                    <span className="iopn-amount-sub">
-                      {' '}
-                      (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})
-                    </span>
-                  </td>
-                </tr>
+                {!hideAmount && (
+                  <tr>
+                    <td colSpan={4} className="iopn-amount-row">
+                      총 금액(VAT 포함) : ₩ {grandTotal.toLocaleString()}원
+                      <span className="iopn-amount-sub">
+                        {' '}
+                        (공급가액 {supplyAmount.toLocaleString()} + VAT {vat.toLocaleString()})
+                      </span>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
@@ -211,13 +213,13 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                     <tr key={`e-${r}`}>
                       <td className="c-no"></td>
                       <td className="c-itemno"></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
+                      <td className="c-name"></td>
+                      <td className="c-spec"></td>
+                      <td className="c-qty"></td>
+                      <td className="c-price"></td>
+                      <td className="c-amount"></td>
+                      <td className="c-recv"></td>
+                      <td className="c-note"></td>
                     </tr>
                   );
                 const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
@@ -271,12 +273,16 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                   <tr>
                     <th className="lbl">수량</th>
                     <td className="num">{totalQty.toLocaleString()}</td>
-                    <th className="lbl">공급가액</th>
-                    <td className="num">{supplyAmount.toLocaleString()}</td>
-                    <th className="lbl">VAT</th>
-                    <td className="num">{vat.toLocaleString()}</td>
-                    <th className="lbl">합계</th>
-                    <td className="num grand">{grandTotal.toLocaleString()}</td>
+                    {!hideAmount && (
+                      <>
+                        <th className="lbl">공급가액</th>
+                        <td className="num">{supplyAmount.toLocaleString()}</td>
+                        <th className="lbl">VAT</th>
+                        <td className="num">{vat.toLocaleString()}</td>
+                        <th className="lbl">합계</th>
+                        <td className="num grand">{grandTotal.toLocaleString()}</td>
+                      </>
+                    )}
                   </tr>
                 </tbody>
               </table>
@@ -298,7 +304,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   };
 
   return (
-    <div ref={ref} className="print-form-iopn print-form-paged print-only">
+    <div ref={ref} className={`print-form-iopn print-form-paged print-only${hideAmount ? ' hide-amount' : ''}`}>
       {docs.map((d, di) => renderDoc(d.items, d.recvTitle, d.supplierLabel, `doc${di}`))}
     </div>
   );

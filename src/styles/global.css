@@ -15638,6 +15638,25 @@ td.mx-dc {
 .iopn-items-table.po-cols .c-amount {
   width: 12%;
 }
+/* PDF 출력 '금액 미표기' 옵션 — 단가·금액 열 숨김 (전 매체 공통) */
+.print-form-iopn.hide-amount .c-price,
+.print-form-iopn.hide-amount .c-amount {
+  display: none;
+}
+/* PDF 출력 옵션 모달 — 체크 옵션 행 */
+.pdf-opt-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.pdf-opt-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
 .iopn-items-table.po-cols .c-recv {
   width: 8%;
 }
@@ -16537,6 +16556,13 @@ td.mx-dc {
   }
   .iopn-items-table.po-cols .c-note {
     width: 9%;
+  }
+  /* 금액 미표기 옵션 — 단가·금액(23%) 숨김분을 규격·비고에 재분배 */
+  .print-form-iopn.hide-amount .iopn-items-table.po-cols .c-spec {
+    width: 45%;
+  }
+  .print-form-iopn.hide-amount .iopn-items-table.po-cols .c-note {
+    width: 17%;
   }
   /* 발주서 출력 목록 전체 중앙정렬 */
   .iopn-items-table.po-cols th,
