@@ -6169,6 +6169,23 @@ table.cards-sm td {
   border-color: transparent;
   outline: none;
 }
+/* 발주서 수량 인라인 편집 — 편집 가능함을 알리는 옅은 테두리·배경 (보유자재 반영 감량용) */
+.inline-edit-table input.purchase-qty-edit {
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: text;
+}
+.inline-edit-table input.purchase-qty-edit:hover {
+  border-color: var(--accent);
+}
+.inline-edit-table input.purchase-qty-edit:focus {
+  border-color: var(--accent);
+  outline: none;
+  background: #fff;
+}
 .inline-edit-table input.bom-code-input {
   font-weight: 600;
   color: var(--text-muted);

@@ -1655,6 +1655,8 @@ export default function PurchaseDetailPage() {
                     const receivedQty = Number(ln.receivedQty) || 0;
                     const isLineSaved = (ln.name || '').trim().length > 0;
                     const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
+                    // 수량 편집 잠금 — 입고 시작됐거나 정산완료 라인은 정합성 위해 수정 불가
+                    const qtyLocked = isReadOnly || receivedQty > 0;
                     return (
                       <tr key={idx}>
                         <td className="bom-no-col" data-label="No">
@@ -1732,11 +1734,25 @@ export default function PurchaseDetailPage() {
                         </td>
                         <td data-label="수량">
                           <input
-                            className="num-input bom-readonly-input"
+                            className={`num-input${qtyLocked ? ' bom-readonly-input' : ' purchase-qty-edit'}`}
                             type="text"
+                            inputMode="numeric"
                             value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
-                            readOnly
-                            tabIndex={-1}
+                            onChange={
+                              qtyLocked
+                                ? undefined
+                                : (e) => updateLine(idx, { qty: Number(String(e.target.value).replace(/[^\d]/g, '')) || 0 })
+                            }
+                            readOnly={qtyLocked}
+                            tabIndex={qtyLocked ? -1 : 0}
+                            title={
+                              qtyLocked
+                                ? receivedQty > 0
+                                  ? '입고된 라인은 수량을 변경할 수 없습니다'
+                                  : '정산완료 발주는 수정할 수 없습니다'
+                                : '보유자재가 있으면 발주 수량을 줄이세요'
+                            }
+                            placeholder="0"
                           />
                         </td>
                         <td data-label="단가">
