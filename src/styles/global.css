@@ -14704,11 +14704,6 @@ td.mx-dc {
     min-height: 44px;
   }
 
-  .closing-delete {
-    min-width: 36px;
-    min-height: 36px;
-  }
-
   /* 모달 → 모바일 바텀시트 전환 */
   .modal-overlay {
     align-items: flex-end;
