@@ -18,7 +18,7 @@ import {
 //   printSiteNameMode   : null=실제 현장명 / 'blank'=공백 / 그 외=미공개(외부용)
 //   printStamp          : 하단 출력 일시 스탬프
 const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
-  { purchase, form, suppliers = [], sites = [], itemMaster = [], printSupplierFilter = null, printAccountMode = false, printSiteNameMode = null, printStamp = '', hideAmount = false },
+  { purchase, form, suppliers = [], sites = [], itemMaster = [], printSupplierFilter = null, printAccountMode = false, printSiteNameMode = null, printStamp = '', hideAmount = false, boxes = [], showBoxes = false },
   ref,
 ) {
   if (!purchase || !form) return <div ref={ref} className="print-form-iopn print-form-paged print-only" />;
@@ -303,9 +303,49 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     });
   };
 
+  // BOX 목록 — 이름만 뽑아 30행씩 열로 분할(한 페이지에 여러 열)
+  const boxNames = (Array.isArray(boxes) ? boxes : [])
+    .map((b) => String((b && b.name) || ''))
+    .filter((n) => n.trim());
+  const BOX_ROWS_PER_COL = 30;
+  const boxCols = [];
+  for (let i = 0; i < boxNames.length; i += BOX_ROWS_PER_COL) {
+    boxCols.push(boxNames.slice(i, i + BOX_ROWS_PER_COL));
+  }
+
   return (
     <div ref={ref} className={`print-form-iopn print-form-paged print-only${hideAmount ? ' hide-amount' : ''}`}>
       {docs.map((d, di) => renderDoc(d.items, d.recvTitle, d.supplierLabel, `doc${di}`))}
+      {showBoxes && boxNames.length > 0 && (
+        <div className="bom-print-page po-doc-page po-box-page">
+          <div className="print-form-title po-form-title">BOX 목록</div>
+          <div className="po-box-cols">
+            {boxCols.map((col, ci) => (
+              <table className="po-box-table" key={`bx${ci}`}>
+                <thead>
+                  <tr>
+                    <th className="bx-no">No</th>
+                    <th className="bx-name">BOX 명</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {col.map((nm, ri) => (
+                    <tr key={ri}>
+                      <td className="bx-no">{ci * BOX_ROWS_PER_COL + ri + 1}</td>
+                      <td className="bx-name">{nm}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ))}
+          </div>
+          <div className="bom-print-footer">
+            <span>
+              BOX 목록 · 총 {boxNames.length}개{printStamp ? ` · 출력 ${printStamp}` : ''}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

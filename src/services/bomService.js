@@ -63,6 +63,14 @@ export async function updateBomProject(projectId, name) {
   });
 }
 
+// BOM 프로젝트의 BOX 목록 저장 — [{ name }] (발주 PDF에 출력되는 박스 명세)
+export async function updateBomProjectBoxes(projectId, boxes) {
+  await updateDoc(doc(db, 'bomProjects', projectId), {
+    boxes: Array.isArray(boxes) ? boxes.map((b) => ({ name: String((b && b.name) || '') })) : [],
+    updatedAt: new Date(),
+  });
+}
+
 export async function deleteBomProject(projectId) {
   const snap = await getDocs(query(bomRef, where('siteId', '==', projectId)));
   const batch = writeBatch(db);
