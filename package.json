@@ -1,7 +1,7 @@
 {
   "name": "work-manager",
   "private": true,
-  "version": "83.5",
+  "version": "83.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,10 @@
     "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"*.{js,json}\"",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
-    "cf:dev": "wrangler dev --remote"
+    "cf:dev": "wrangler dev --remote",
+    "verify:unit": "vitest run tests/unit",
+    "verify:ui": "playwright test",
+    "verify:ui:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -30,6 +33,7 @@
   "devDependencies": {
     "@cloudflare/puppeteer": "^1.1.0",
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.61.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -42,6 +46,7 @@
     "prettier": "^3.8.4",
     "sharp": "^0.34.5",
     "vite": "^8.0.1",
+    "vitest": "^4.1.10",
     "wrangler": "^4.103.0"
   }
 }

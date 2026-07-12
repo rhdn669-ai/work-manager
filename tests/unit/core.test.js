@@ -1,0 +1,110 @@
+// ⑨ 기능 회귀 유닛테스트 — 과거 지적 다발 지점의 순수 로직 고정
+// 대상: 발주 구매처 도출·그룹핑·발행번호 / 연차 계산 / 출력 글자축소 / 날짜 유틸
+import { describe, it, expect } from 'vitest';
+import {
+  poNumber,
+  deriveSupplier,
+  mapPrintItems,
+  computeSupplierList,
+} from '../../src/utils/purchaseOrder';
+import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
+import { effLen, specFontClass } from '../../src/utils/printText';
+import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
+
+const suppliers = [
+  { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
+  { id: 'S2', name: '(주)전설의대장간', email: 'b@x.com' },
+];
+const itemMaster = [
+  { id: 'I1', name: 'SLIDE PACK', spec: '3531-16', defaultSupplierId: 'S1' },
+  { id: 'I2', name: 'BOLT', spec: 'M4', defaultSupplierId: 'S2' },
+  { id: 'I3', name: 'NUT', spec: 'M4', defaultSupplierId: 'S1' },
+];
+
+describe('발주 — deriveSupplier (구매처 자동 도출)', () => {
+  it('전 품목이 같은 구매처면 그 구매처', () => {
+    const r = deriveSupplier([{ itemId: 'I1' }, { itemId: 'I3' }], itemMaster, suppliers);
+    expect(r).toEqual({ supplierId: 'S1', supplierName: '(주)상진미크론' });
+  });
+  it('혼합이면 빈값 (강제 지정 안 함)', () => {
+    const r = deriveSupplier([{ itemId: 'I1' }, { itemId: 'I2' }], itemMaster, suppliers);
+    expect(r.supplierId).toBe('');
+  });
+  it('품목 없음/미매칭이면 빈값', () => {
+    expect(deriveSupplier([], itemMaster, suppliers).supplierId).toBe('');
+    expect(deriveSupplier([{ itemId: 'ZZZ' }], itemMaster, suppliers).supplierId).toBe('');
+  });
+});
+
+describe('발주 — computeSupplierList (구매처별 그룹핑)', () => {
+  it('구매처별 품목수 집계', () => {
+    const items = [
+      { itemId: 'I1', name: 'SLIDE PACK' },
+      { itemId: 'I3', name: 'NUT' },
+      { itemId: 'I2', name: 'BOLT' },
+    ];
+    const r = computeSupplierList(items, itemMaster, suppliers, {});
+    expect(r).toHaveLength(2);
+    expect(r.find((s) => s.name === '(주)상진미크론').count).toBe(2);
+    expect(r.find((s) => s.name === '(주)전설의대장간').count).toBe(1);
+  });
+  it('빈 이름 라인은 제외', () => {
+    const r = computeSupplierList([{ itemId: 'I1', name: '  ' }], itemMaster, suppliers, {});
+    expect(r).toHaveLength(0);
+  });
+  it('마스터 미연결은 발주의 fallback 구매처로', () => {
+    const r = computeSupplierList([{ name: '수기품목' }], itemMaster, suppliers, { supplierId: 'S2' });
+    expect(r[0].name).toBe('(주)전설의대장간');
+  });
+});
+
+describe('발주 — 발행번호·출력 매핑', () => {
+  it('poNumber = IOPN + 발주일 yyyymmdd', () => {
+    expect(poNumber({ orderedAt: '2026-07-07T09:00:00' })).toBe('IOPN20260707');
+  });
+  it('mapPrintItems — 순번(No)이 1부터 순서대로 (④ 정렬 회귀)', () => {
+    const r = mapPrintItems(
+      [{ itemId: 'I1' }, { itemId: 'I2' }, { name: '수기' }],
+      itemMaster,
+      suppliers,
+    );
+    expect(r.map((x) => x._globalNo)).toEqual([1, 2, 3]);
+    expect(r[0]._name).toBe('SLIDE PACK');
+    expect(r[2]._name).toBe('수기');
+  });
+});
+
+describe('연차 계산 (과거 지적: "이번달 입사인데 연차가 왜 8개?")', () => {
+  it('이번 달 입사 = 0일', () => {
+    expect(calculateAccruedLeave('2026-07-01', new Date('2026-07-11'))).toBe(0);
+  });
+  it('입사 3개월 = 월차 3일', () => {
+    expect(calculateAccruedLeave('2026-01-10', new Date('2026-04-15'))).toBe(3);
+  });
+  it('만 1년 = 월차 11 + 연차 15 = 26일', () => {
+    expect(calculateAccruedLeave('2025-01-02', new Date('2026-01-02'))).toBe(26);
+  });
+  it('만 3년 = 11 + 15 + 15 + 16 = 57일 (3년차부터 2년마다 +1)', () => {
+    expect(calculateAccruedLeave('2023-01-02', new Date('2026-01-02'))).toBe(57);
+  });
+});
+
+describe('출력 글자 축소 (잘림 방지 로직)', () => {
+  it('한글은 라틴보다 폭 가중치 (effLen)', () => {
+    expect(effLen('한글')).toBeGreaterThan(effLen('ab'));
+  });
+  it('짧은 문자열은 축소 클래스 없음, 긴 문자열은 축소', () => {
+    expect(specFontClass('짧음', 11)).toBe('');
+    expect(specFontClass('아주아주아주아주아주아주 긴 규격 문자열입니다', 11)).not.toBe('');
+  });
+});
+
+describe('날짜 유틸', () => {
+  it('formatMinutes — 480분 = 8시간 표기', () => {
+    expect(formatMinutes(480)).toMatch(/8/);
+  });
+  it('getMonthEnd — 2월 말일 문자열 (윤년)', () => {
+    expect(getMonthEnd(2024, 2)).toBe('2024-02-29');
+    expect(getMonthEnd(2026, 2)).toBe('2026-02-28');
+  });
+});

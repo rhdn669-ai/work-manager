@@ -36,3 +36,8 @@ dist-ssr
 # 테스트용 임시 이미지
 public/_*.png
 *.traineddata
+
+# Playwright
+test-results/
+playwright-report/
+tests/ui/*-snapshots/
