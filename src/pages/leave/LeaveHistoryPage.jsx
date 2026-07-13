@@ -233,7 +233,7 @@ export default function LeaveHistoryPage() {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{

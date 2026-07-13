@@ -578,7 +578,7 @@ export function EmployeeDetailModal({
                           </div>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{r.date}</div>
                             <div
