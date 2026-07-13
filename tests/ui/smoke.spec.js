@@ -21,6 +21,7 @@ const IGNORE_CONSOLE = [
   /Failed to load resource/i,
   /recaptcha|appcheck|app-check/i,
   /BloomFilter/i,
+  /requestStorageAccess/i, // 파이어베이스 인증 iframe의 브라우저 저장소 API 소음 (자체 코드 미사용 — grep 확인)
 ];
 
 test.beforeEach(async ({ page, baseURL }) => {
