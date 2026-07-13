@@ -29,6 +29,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     printSiteNameMode = null,
     printStamp = '',
     hideAmount = false,
+    showBox = false, // BOX 열 표시 — 「PDF 출력」(전체) 옵션에서만 켬. 업체별·메일·자료실 저장엔 미표시
   },
   ref,
 ) {
@@ -198,12 +199,12 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
             </table>
           )}
 
-          <table className="iopn-items-table po-cols">
+          <table className={`iopn-items-table po-cols${showBox ? ' has-box' : ''}`}>
             <thead>
               <tr>
                 <th className="c-no">NO</th>
                 <th className="c-itemno">품번</th>
-                <th className="c-box">BOX</th>
+                {showBox && <th className="c-box">BOX</th>}
                 <th className="c-name">품목명</th>
                 <th className="c-spec">규격</th>
                 <th className="c-qty">수량</th>
@@ -220,7 +221,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                     <tr key={`e-${r}`}>
                       <td className="c-no"></td>
                       <td className="c-itemno"></td>
-                      <td className="c-box"></td>
+                      {showBox && <td className="c-box"></td>}
                       <td className="c-name"></td>
                       <td className="c-spec"></td>
                       <td className="c-qty"></td>
@@ -238,9 +239,11 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                   <tr key={r}>
                     <td className="c-no">{pg.startNo + r + 1}</td>
                     <td className="c-itemno">{ln._globalNo || ''}</td>
-                    <td className={`c-box ${specFontClass(ln.box, 8)}`} title={ln.box || ''}>
-                      {ln.box || ''}
-                    </td>
+                    {showBox && (
+                      <td className={`c-box ${specFontClass(ln.box, 8)}`} title={ln.box || ''}>
+                        {ln.box || ''}
+                      </td>
+                    )}
                     <td className={`c-name ${specFontClass(ln._name, 11)}`} title={ln._name || ''}>
                       {ln._name || ''}
                     </td>

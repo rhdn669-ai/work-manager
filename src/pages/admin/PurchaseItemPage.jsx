@@ -1113,7 +1113,6 @@ export default function PurchaseItemPage() {
                                     <th style={{ width: 110 }}>메이커</th>
                                     <th style={{ width: 240 }}>규격</th>
                                     <th style={{ width: 170 }}>분류</th>
-                                    <th style={{ width: 170 }}>인증</th>
                                     <th style={{ width: 100 }}>수량/단위</th>
                                     <th style={{ width: 100 }}>개별단가</th>
                                     <th style={{ width: 100 }}>단가</th>
@@ -1151,7 +1150,7 @@ export default function PurchaseItemPage() {
                                   {subItems.length === 0 && (
                                     <tr>
                                       <td
-                                        colSpan={13}
+                                        colSpan={12}
                                         className="text-muted text-sm"
                                         style={{ textAlign: 'center', padding: 16 }}
                                       >
@@ -1273,27 +1272,6 @@ export default function PurchaseItemPage() {
                                               title="드래그하여 아래로 채우기"
                                               onMouseDown={(e) =>
                                                 startFill(e, 'category', it.category || '', subIds, rowIdx)
-                                              }
-                                            />
-                                          </td>
-                                          <td
-                                            data-label="인증"
-                                            className={fillCol('certification')}
-                                            title={it.certification || ''}
-                                          >
-                                            <input
-                                              type="text"
-                                              value={it.certification || ''}
-                                              title={it.certification || ''}
-                                              placeholder="CE · KS …"
-                                              onChange={(e) => updateField(it.id, { certification: e.target.value })}
-                                              onBlur={() => flushItem(it.id)}
-                                            />
-                                            <span
-                                              className="cell-fill"
-                                              title="드래그하여 아래로 채우기"
-                                              onMouseDown={(e) =>
-                                                startFill(e, 'certification', it.certification || '', subIds, rowIdx)
                                               }
                                             />
                                           </td>
@@ -1514,7 +1492,7 @@ export default function PurchaseItemPage() {
                                         {expanded &&
                                           (it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0) && (
                                             <tr className="item-detail-row">
-                                              <td colSpan={13}>
+                                              <td colSpan={12}>
                                                 <div className="item-detail-body">
                                                   {it.priceChangeHistory?.length > 0 && (
                                                     <div className="item-detail-section">

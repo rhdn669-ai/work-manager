@@ -178,6 +178,8 @@ export default function PurchaseDetailPage() {
   const [printHideAmount, setPrintHideAmount] = useState(false);
   const [pdfOptOpen, setPdfOptOpen] = useState(false); // 출력 옵션 모달
   const [pdfShowAmount, setPdfShowAmount] = useState(true); // 옵션: 금액 표기(기본 ON)
+  const [pdfShowBox, setPdfShowBox] = useState(true); // 옵션: BOX 열 표시 (BOX 값이 있을 때만 노출)
+  const [printShowBox, setPrintShowBox] = useState(false); // 실제 출력 시 BOX 열 렌더 여부 — 전체 PDF 출력에서만 켬
   // 발주 수량 변경 모달 — { idx, name, receivedQty, value } | null (보유자재 반영 감량)
   const [qtyModal, setQtyModal] = useState(null);
 
@@ -781,17 +783,20 @@ export default function PurchaseDetailPage() {
   // 「PDF 출력」 — 옵션(금액 표기 등) 선택 모달을 먼저 연다.
   function handlePdfOutput() {
     setPdfShowAmount(true); // 매번 기본값(금액 표기)으로 리셋
+    setPdfShowBox(formRef.current.items.some((ln) => (ln.box || '').trim())); // BOX 값 있으면 기본 ON
     setPdfOptOpen(true);
   }
 
-  // 옵션 선택 후 실제 출력 — 브라우저 인쇄(window.print). 금액 표기 반영.
+  // 옵션 선택 후 실제 출력 — 브라우저 인쇄(window.print). 금액 표기·BOX 열 반영.
   function runPdfOutput() {
     setPdfOptOpen(false);
     setPrintHideAmount(!pdfShowAmount);
+    setPrintShowBox(pdfShowBox);
     setPrintStamp(fmtDateTime(new Date()));
     setTimeout(() => {
       window.print();
       setPrintHideAmount(false); // 출력 후 원복 — 메일·자료실 저장에 영향 없음
+      setPrintShowBox(false); // BOX 열은 전체 PDF 출력에서만 — 업체별·메일·자료실 미표시
     }, 200);
   }
 
@@ -1563,6 +1568,7 @@ export default function PurchaseDetailPage() {
         printSiteNameMode={printSiteNameMode}
         printStamp={printStamp}
         hideAmount={printHideAmount}
+        showBox={printShowBox}
       />
 
       <div className="purchase-meta-bar screen-only">
@@ -1648,12 +1654,10 @@ export default function PurchaseDetailPage() {
                   <tr>
                     <th className="bom-no-col">No</th>
                     <th style={{ minWidth: 90 }}>코드</th>
-                    <th style={{ minWidth: 90 }}>BOX</th>
                     <th style={{ minWidth: 120 }}>품명</th>
                     <th>메이커</th>
                     <th>규격</th>
                     <th>분류</th>
-                    <th>인증</th>
                     <th>moq/단위</th>
                     <th>수량</th>
                     <th>단가</th>
@@ -1669,7 +1673,7 @@ export default function PurchaseDetailPage() {
                 <tbody>
                   {form.items.length === 0 && (
                     <tr>
-                      <td colSpan={16} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                      <td colSpan={14} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                         품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
                       </td>
                     </tr>
@@ -1678,7 +1682,7 @@ export default function PurchaseDetailPage() {
                     (itemSearch.trim() || itemSupplierFilter !== 'all') &&
                     !form.items.some(lineMatchesSearch) && (
                       <tr>
-                        <td colSpan={16} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                        <td colSpan={14} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                           {itemSupplierFilter !== 'all' && !itemSearch.trim()
                             ? `"${itemSupplierFilter}" 업체 품목이 없습니다.`
                             : `"${itemSearch}" 검색 결과가 없습니다.`}
@@ -1707,17 +1711,6 @@ export default function PurchaseDetailPage() {
                             type="text"
                             className="bom-readonly-input bom-code-input"
                             value={master?.code || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="BOX" title={ln.box || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={ln.box || ''}
-                            title={ln.box || ''}
-                            placeholder="-"
                             readOnly
                             tabIndex={-1}
                           />
@@ -1765,15 +1758,6 @@ export default function PurchaseDetailPage() {
                             type="text"
                             className="bom-readonly-input"
                             value={master?.category || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="인증" title={master?.certification || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={master?.certification || ''}
                             readOnly
                             tabIndex={-1}
                           />
@@ -2624,16 +2608,30 @@ export default function PurchaseDetailPage() {
 
       <Modal isOpen={pdfOptOpen} onClose={() => setPdfOptOpen(false)} title="PDF 출력 옵션">
         <p className="field-hint">발주서 출력 형식을 선택하세요.</p>
-        <div className="form-group">
-          <label className="pdf-opt-row">
+        <div className="toggle-row" style={{ marginBottom: 10 }}>
+          <div className="toggle-row-text">
+            <span className="toggle-row-title">금액 표기</span>
+            <small className="text-muted">
+              단가·금액·합계·총액 표시. 끄면 수량·품목만 출력됩니다 (메일 발송·자료실 저장은 항상 금액 포함)
+            </small>
+          </div>
+          <label className="toggle-switch">
             <input type="checkbox" checked={pdfShowAmount} onChange={(e) => setPdfShowAmount(e.target.checked)} />
-            <span>금액 표기 (단가 · 금액 · 합계 · 총액)</span>
+            <span className="toggle-slider" />
           </label>
-          <p className="field-hint">
-            체크를 해제하면 <strong>단가·금액·합계가 빠진</strong> 발주서로 출력됩니다. 수량·품목은 그대로 표시됩니다.
-            (메일 발송·자료실 저장은 이 옵션과 무관하게 항상 금액이 포함됩니다.)
-          </p>
         </div>
+        {form.items.some((ln) => (ln.box || '').trim()) && (
+          <div className="toggle-row" style={{ marginBottom: 10 }}>
+            <div className="toggle-row-text">
+              <span className="toggle-row-title">BOX 표시</span>
+              <small className="text-muted">품목표의 품번 옆에 BOX 열을 추가합니다 (전체 PDF 출력에만 적용)</small>
+            </div>
+            <label className="toggle-switch">
+              <input type="checkbox" checked={pdfShowBox} onChange={(e) => setPdfShowBox(e.target.checked)} />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+        )}
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setPdfOptOpen(false)}>
             취소
