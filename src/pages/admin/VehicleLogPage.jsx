@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getUsers } from '../../services/userService';
-import {
-  getMileagesByMonth,
-  saveMileage,
-} from '../../services/vehicleMileageService';
+import { getMileagesByMonth, saveMileage } from '../../services/vehicleMileageService';
 import { trashGeneric } from '../../services/trashService';
 import { useAuth } from '../../contexts/AuthContext';
 import Modal from '../../components/common/Modal';
@@ -127,8 +124,7 @@ export default function VehicleLogPage() {
     try {
       // recordId(Firestore 문서 id)가 있는 경우만 trashGeneric 사용
       // deterministic docId(`uid_YYYY-MM`)도 Firestore 문서 id이므로 recordId로 처리
-      const targetId = deleteTarget.recordId
-        || `${deleteTarget.uid}_${String(year)}-${String(month).padStart(2, '0')}`;
+      const targetId = deleteTarget.recordId || `${deleteTarget.uid}_${String(year)}-${String(month).padStart(2, '0')}`;
       await trashGeneric(
         'vehicleMileages',
         targetId,
@@ -240,7 +236,8 @@ export default function VehicleLogPage() {
         <h2>운행일지</h2>
         <div className="page-actions">
           <button type="button" className="btn btn-outline btn-sm" onClick={() => setTrashOpen(true)}>
-            <Icon name="trash" className="btn-ic" />휴지통
+            <Icon name="trash" className="btn-ic" />
+            휴지통
           </button>
         </div>
       </div>
@@ -267,18 +264,53 @@ export default function VehicleLogPage() {
             className="vehicle-log-search vehicle-log-search-responsive"
           />
         </div>
-        <div className="vehicle-log-summary" style={{ display: 'flex', flexWrap: 'wrap', gap: isXSmall ? 4 : 'var(--space-2, 8px)' }}>
-          <span className="vehicle-log-summary-item" style={{ padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)', flex: '1 1 auto', fontSize: isXSmall ? 11 : undefined, minHeight: 32 }}>
+        <div
+          className="vehicle-log-summary"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: isXSmall ? 4 : 'var(--space-2, 8px)' }}
+        >
+          <span
+            className="vehicle-log-summary-item"
+            style={{
+              padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)',
+              flex: '1 1 auto',
+              fontSize: isXSmall ? 11 : undefined,
+              minHeight: 32,
+            }}
+          >
             지정 운행자 <strong>{drivers.length}</strong>명
           </span>
-          <span className={`vehicle-log-summary-item ${missingCount > 0 ? 'is-warn' : 'is-ok'}`} style={{ padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)', flex: '1 1 auto', fontSize: isXSmall ? 11 : undefined, minHeight: 32 }}>
+          <span
+            className={`vehicle-log-summary-item ${missingCount > 0 ? 'is-warn' : 'is-ok'}`}
+            style={{
+              padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)',
+              flex: '1 1 auto',
+              fontSize: isXSmall ? 11 : undefined,
+              minHeight: 32,
+            }}
+          >
             미입력 <strong>{missingCount}</strong>명
           </span>
-          <span className="vehicle-log-summary-item vehicle-log-summary-secondary" style={{ padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)', flex: '1 1 auto', fontSize: isXSmall ? 11 : undefined, minHeight: 32 }}>
+          <span
+            className="vehicle-log-summary-item vehicle-log-summary-secondary"
+            style={{
+              padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)',
+              flex: '1 1 auto',
+              fontSize: isXSmall ? 11 : undefined,
+              minHeight: 32,
+            }}
+          >
             합계 운행 <strong>{fmt(totalDrivenKm)}</strong> km
           </span>
           {totalMonthlyCost > 0 && (
-            <span className="vehicle-log-summary-item vehicle-log-summary-secondary" style={{ padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)', flex: '1 1 auto', fontSize: isXSmall ? 11 : undefined, minHeight: 32 }}>
+            <span
+              className="vehicle-log-summary-item vehicle-log-summary-secondary"
+              style={{
+                padding: isXSmall ? '4px 8px' : 'var(--space-1, 4px) var(--space-3, 11px)',
+                flex: '1 1 auto',
+                fontSize: isXSmall ? 11 : undefined,
+                minHeight: 32,
+              }}
+            >
               합계 월 금액 <strong>{fmt(totalMonthlyCost)}</strong> 원
             </span>
           )}
@@ -300,13 +332,35 @@ export default function VehicleLogPage() {
                 <tr>
                   <th style={{ padding: '7px 6px', height: 36 }}>운행자</th>
                   <th style={{ padding: '7px 6px', height: 36 }}>차량번호</th>
-                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>월 금액</th>
-                  <th className="num-col" title="이전월 누적" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>이전월 누적</th>
-                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>이번월 누적</th>
-                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>운행 km</th>
-                  <th className="num-col" title="전월 대비" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>전월 대비</th>
-                  <th title="입력일" style={{ padding: '7px 6px', height: 36 }}>입력일</th>
-                  <th className="col-action" style={{ width: 160, padding: '7px 6px', height: 36 }}>작업</th>
+                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                    월 금액
+                  </th>
+                  <th
+                    className="num-col"
+                    title="이전월 누적"
+                    style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}
+                  >
+                    이전월 누적
+                  </th>
+                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                    이번월 누적
+                  </th>
+                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                    운행 km
+                  </th>
+                  <th
+                    className="num-col"
+                    title="전월 대비"
+                    style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}
+                  >
+                    전월 대비
+                  </th>
+                  <th title="입력일" style={{ padding: '7px 6px', height: 36 }}>
+                    입력일
+                  </th>
+                  <th className="col-action" style={{ width: 160, padding: '7px 6px', height: 36 }}>
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -321,23 +375,88 @@ export default function VehicleLogPage() {
                           : 'var(--text-muted)';
                   return (
                     <tr key={r.uid} className={r.hasInput ? '' : 'is-missing'} style={{ height: 36 }}>
-                      <td title={r.name} style={{ whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '6px 6px', height: 36 }}>
+                      <td
+                        title={r.name}
+                        style={{
+                          whiteSpace: 'normal',
+                          overflowWrap: 'break-word',
+                          wordBreak: 'break-word',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
                         <strong>{r.name}</strong>
                       </td>
-                      <td title={r.plate || ''} style={{ whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word', padding: '6px 6px', height: 36 }}>{r.plate || <span className="text-muted">-</span>}</td>
-                      <td className="num-col" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '6px 6px', height: 36 }}>
+                      <td
+                        title={r.plate || ''}
+                        style={{
+                          whiteSpace: 'normal',
+                          overflowWrap: 'break-word',
+                          wordBreak: 'break-word',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
+                        {r.plate || <span className="text-muted">-</span>}
+                      </td>
+                      <td
+                        className="num-col"
+                        style={{
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
                         {r.monthlyCost > 0 ? fmtMoney(r.monthlyCost) : <span className="text-muted">-</span>}
                       </td>
-                      <td className="num-col" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '6px 6px', height: 36 }}>{fmt(r.prevOdometer)}</td>
-                      <td className="num-col" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '6px 6px', height: 36 }}>
+                      <td
+                        className="num-col"
+                        style={{
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
+                        {fmt(r.prevOdometer)}
+                      </td>
+                      <td
+                        className="num-col"
+                        style={{
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
                         {r.hasInput ? (
                           <strong>{fmt(r.odometer)}</strong>
                         ) : (
                           <span className="vehicle-log-missing-tag">미입력</span>
                         )}
                       </td>
-                      <td className="num-col" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '6px 6px', height: 36 }}>{r.hasInput ? fmt(r.drivenKm) : '-'}</td>
-                      <td className="num-col" style={{ textAlign: 'right', color: dColor, fontVariantNumeric: 'tabular-nums', padding: '6px 6px', height: 36 }}>
+                      <td
+                        className="num-col"
+                        style={{
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
+                        {r.hasInput ? fmt(r.drivenKm) : '-'}
+                      </td>
+                      <td
+                        className="num-col"
+                        style={{
+                          textAlign: 'right',
+                          color: dColor,
+                          fontVariantNumeric: 'tabular-nums',
+                          padding: '6px 6px',
+                          height: 36,
+                        }}
+                      >
                         {fmtDelta(r.deltaVsPrev)}
                       </td>
                       <td style={{ padding: '6px 6px', height: 36 }}>{fmtDate(r.recordedAt)}</td>
@@ -348,7 +467,8 @@ export default function VehicleLogPage() {
                           </button>
                           {r.hasInput && (
                             <button type="button" className="btn btn-sm btn-danger" onClick={() => setDeleteTarget(r)}>
-                              <Icon name="trash" className="btn-ic" />삭제
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
                             </button>
                           )}
                         </div>
@@ -438,7 +558,8 @@ export default function VehicleLogPage() {
                       style={{ flex: 1, minWidth: 80 }}
                       onClick={() => setDeleteTarget(r)}
                     >
-                      <Icon name="trash" className="btn-ic" />삭제
+                      <Icon name="trash" className="btn-ic" />
+                      삭제
                     </button>
                   )}
                 </div>
@@ -506,9 +627,7 @@ export default function VehicleLogPage() {
                     운행 거리: <strong>{fmt(driven)}</strong> km
                   </div>
                 )}
-                {editError && (
-                  <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{editError}</div>
-                )}
+                {editError && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{editError}</div>}
                 <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
                   <button
                     type="button"

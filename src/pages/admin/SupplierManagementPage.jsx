@@ -318,7 +318,8 @@ export default function SupplierManagementPage() {
                         aria-label="삭제"
                         style={{ minHeight: 36 }}
                       >
-                        <Icon name="trash" className="btn-ic" />삭제
+                        <Icon name="trash" className="btn-ic" />
+                        삭제
                       </button>
                     </div>
                   </td>

@@ -423,10 +423,11 @@ export default function OutsourceManagementPage() {
       );
       toast('휴지통으로 이동했습니다.');
       await loadAll();
-      if (tid) pushUndo(`${label} "${item.name}" 삭제`, async () => {
-        await restoreTrashItem(tid);
-        await loadAll();
-      });
+      if (tid)
+        pushUndo(`${label} "${item.name}" 삭제`, async () => {
+          await restoreTrashItem(tid);
+          await loadAll();
+        });
     } catch (err) {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -690,7 +691,8 @@ export default function OutsourceManagementPage() {
                           aria-label="삭제"
                           style={{ minHeight: 36 }}
                         >
-                          <Icon name="trash" className="btn-ic" />삭제
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
                         </button>
                       </div>
                     </td>
@@ -780,7 +782,8 @@ export default function OutsourceManagementPage() {
                         aria-label="삭제"
                         style={{ minHeight: 36 }}
                       >
-                        <Icon name="trash" className="btn-ic" />삭제
+                        <Icon name="trash" className="btn-ic" />
+                        삭제
                       </button>
                     </div>
                   </td>
@@ -1211,7 +1214,12 @@ export default function OutsourceManagementPage() {
                                   return;
                                 setDetailBusy(true);
                                 try {
-                                  await trashGeneric('freelancers', f.id, { title: f.name || '프리랜서' }, userProfile?.name || '');
+                                  await trashGeneric(
+                                    'freelancers',
+                                    f.id,
+                                    { title: f.name || '프리랜서' },
+                                    userProfile?.name || '',
+                                  );
                                   if (editRateFor === f.id) setEditRateFor(null);
                                   await reloadDetail();
                                 } catch (err) {
@@ -1222,7 +1230,8 @@ export default function OutsourceManagementPage() {
                               }}
                               disabled={detailBusy}
                             >
-                              <Icon name="trash" className="btn-ic" />삭제
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
                             </button>
                           </div>
                           {historyList.length > 0 &&
@@ -1283,7 +1292,8 @@ export default function OutsourceManagementPage() {
                                             }}
                                             disabled={detailBusy}
                                           >
-                                            <Icon name="trash" className="btn-ic" />삭제
+                                            <Icon name="trash" className="btn-ic" />
+                                            삭제
                                           </button>
                                         </div>
                                       );
@@ -1389,7 +1399,8 @@ export default function OutsourceManagementPage() {
                           disabled={detailBusy}
                           style={{ minHeight: 36 }}
                         >
-                          <Icon name="trash" className="btn-ic" />삭제
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
                         </button>
                       </li>
                     ))}

@@ -35,7 +35,8 @@ export function UndoProvider({ children }) {
     function handler(e) {
       if (!(e.ctrlKey || e.metaKey) || e.key !== 'z' || e.shiftKey) return;
       const tag = document.activeElement?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable)
+        return;
       e.preventDefault();
       undoLast();
     }
@@ -43,11 +44,7 @@ export function UndoProvider({ children }) {
     return () => window.removeEventListener('keydown', handler);
   }, [undoLast]);
 
-  return (
-    <UndoContext.Provider value={{ push, undoLast, clear }}>
-      {children}
-    </UndoContext.Provider>
-  );
+  return <UndoContext.Provider value={{ push, undoLast, clear }}>{children}</UndoContext.Provider>;
 }
 
 export const useUndo = () => useContext(UndoContext);

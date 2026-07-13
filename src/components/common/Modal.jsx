@@ -41,8 +41,7 @@ export function ensureBodyScrollUnlockedIfIdle() {
   // DOM에 실제 열린 모달 오버레이가 있으면(정상 잠금) 건드리지 않는다.
   if (typeof document !== 'undefined' && document.querySelector('.modal-overlay')) return;
   const { body, documentElement } = document;
-  const wasLocked =
-    body.style.overflow === 'hidden' || documentElement.style.overflow === 'hidden';
+  const wasLocked = body.style.overflow === 'hidden' || documentElement.style.overflow === 'hidden';
   if (wasLocked) {
     body.style.overflow = '';
     documentElement.style.overflow = '';

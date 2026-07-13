@@ -159,7 +159,8 @@ export default function SiteManagementPage() {
                       수정
                     </button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s)}>
-                      <Icon name="trash" className="btn-ic" />삭제
+                      <Icon name="trash" className="btn-ic" />
+                      삭제
                     </button>
                   </div>
                 </td>

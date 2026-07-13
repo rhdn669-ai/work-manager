@@ -172,7 +172,18 @@ export default function MyProjectsPage() {
 
       {!loading && rows.length > 0 && (
         <div className="team-calendar-section" style={{ marginTop: 12 }}>
-          <div className="tab-nav tab-nav-scroll" role="tablist" aria-label="프로젝트별 외주 출근" style={{ overflowX: 'auto', flexWrap: 'nowrap', WebkitOverflowScrolling: 'touch', gap: 8, paddingRight: 16 }}>
+          <div
+            className="tab-nav tab-nav-scroll"
+            role="tablist"
+            aria-label="프로젝트별 외주 출근"
+            style={{
+              overflowX: 'auto',
+              flexWrap: 'nowrap',
+              WebkitOverflowScrolling: 'touch',
+              gap: 8,
+              paddingRight: 16,
+            }}
+          >
             <button
               type="button"
               role="tab"
@@ -256,7 +267,12 @@ export default function MyProjectsPage() {
                       type="button"
                       key={di}
                       className={`team-cal-cell ${events.length > 0 ? 'has-events' : ''} ${isToday ? 'is-today' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${selectedCalDay === dateStr ? 'is-selected' : ''}`}
-                      style={{ minHeight: 'clamp(42px, 8vw, 56px)', display: 'flex', flexDirection: 'column', contain: 'layout' }}
+                      style={{
+                        minHeight: 'clamp(42px, 8vw, 56px)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        contain: 'layout',
+                      }}
                       onClick={() => setSelectedCalDay(selectedCalDay === dateStr ? null : dateStr)}
                       disabled={events.length === 0}
                     >
@@ -284,7 +300,10 @@ export default function MyProjectsPage() {
               const [, mm, dd] = selectedCalDay.split('-');
               return (
                 <div className="team-calendar-day-detail">
-                  <div className="team-calendar-day-detail-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    className="team-calendar-day-detail-head"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
                     <strong>
                       {Number(mm)}/{Number(dd)}
                     </strong>

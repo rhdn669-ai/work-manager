@@ -28,7 +28,10 @@ export default function PurchaseLayout() {
 
   const check = useCallback(() => {
     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    if (maxScroll < 80) { setShowBtn(false); return; }
+    if (maxScroll < 80) {
+      setShowBtn(false);
+      return;
+    }
     setShowBtn(true);
     setScrollDir(window.scrollY / maxScroll >= 0.5 ? 'up' : 'down');
   }, []);

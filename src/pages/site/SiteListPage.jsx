@@ -377,14 +377,16 @@ export default function SiteListPage() {
   async function handleDelete(site, e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!(await confirm(`"${site.name}" 프로젝트를 휴지통으로 이동하시겠습니까?\n(기존 마감 데이터는 남습니다)`))) return;
+    if (!(await confirm(`"${site.name}" 프로젝트를 휴지통으로 이동하시겠습니까?\n(기존 마감 데이터는 남습니다)`)))
+      return;
     try {
       const tid = await trashGeneric('sites', site.id, { title: site.name }, userProfile?.name || '');
       await loadData();
-      if (tid) pushUndo(`프로젝트 "${site.name}" 삭제`, async () => {
-        await restoreTrashItem(tid);
-        await loadData();
-      });
+      if (tid)
+        pushUndo(`프로젝트 "${site.name}" 삭제`, async () => {
+          await restoreTrashItem(tid);
+          await loadData();
+        });
     } catch (err) {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -434,18 +436,25 @@ export default function SiteListPage() {
         {(isAdmin || canCreateSite) && (
           <div className="page-actions">
             {isAdmin && (
-              <button type="button" className="btn btn-sm btn-outline" onClick={handleSyncFolders} disabled={syncingFolders}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={handleSyncFolders}
+                disabled={syncingFolders}
+              >
                 <Icon name="folder" className="btn-ic" />
                 {syncingFolders ? '동기화 중…' : '자료실 폴더 동기화'}
               </button>
             )}
             {isAdmin && (
               <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-                <Icon name="trash" className="btn-ic" />휴지통
+                <Icon name="trash" className="btn-ic" />
+                휴지통
               </button>
             )}
             <button className="btn btn-primary btn-sm" onClick={openCreate}>
-              <Icon name="plus" className="btn-ic" />프로젝트 추가
+              <Icon name="plus" className="btn-ic" />
+              프로젝트 추가
             </button>
           </div>
         )}
@@ -849,7 +858,8 @@ export default function SiteListPage() {
                               handleDelete(s, e);
                             }}
                           >
-                            <Icon name="trash" className="btn-ic" />삭제
+                            <Icon name="trash" className="btn-ic" />
+                            삭제
                           </button>
                         </div>
                       )}

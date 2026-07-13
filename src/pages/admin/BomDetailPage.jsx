@@ -69,7 +69,9 @@ export default function BomDetailPage() {
   const bomUndoStackRef = useRef([]); // bomItems 스냅샷 스택 (최대 30개)
   const handleBomUndoRef = useRef(null);
   const bomItemsRef = useRef(bomItems);
-  useEffect(() => { bomItemsRef.current = bomItems; }, [bomItems]);
+  useEffect(() => {
+    bomItemsRef.current = bomItems;
+  }, [bomItems]);
 
   function pushBomUndo() {
     const clone = JSON.parse(JSON.stringify(bomItemsRef.current));
@@ -96,7 +98,9 @@ export default function BomDetailPage() {
       await Promise.all([
         ...toRestore.map((b) => restoreBomItem(b.id, projectId, b)),
         ...toDelete.map((b) => deleteBomItem(b.id)),
-        ...toUpdate.map((b) => updateBomItem(b.id, { qty: b.qty, unitPrice: b.unitPrice, note: b.note, order: b.order })),
+        ...toUpdate.map((b) =>
+          updateBomItem(b.id, { qty: b.qty, unitPrice: b.unitPrice, note: b.note, order: b.order }),
+        ),
       ]);
       setBomItems(prev);
     } catch {
@@ -554,7 +558,8 @@ export default function BomDetailPage() {
             title="프로젝트명 수정"
             aria-label="프로젝트명 수정"
           >
-            <Icon name="edit" className="btn-ic" />수정
+            <Icon name="edit" className="btn-ic" />
+            수정
           </button>
         </div>
         <div className="page-actions">
@@ -569,12 +574,7 @@ export default function BomDetailPage() {
       </div>
 
       <div className="bom-box-editor screen-only">
-        <button
-          type="button"
-          className="bom-box-head"
-          onClick={() => setBoxOpen((v) => !v)}
-          aria-expanded={boxOpen}
-        >
+        <button type="button" className="bom-box-head" onClick={() => setBoxOpen((v) => !v)} aria-expanded={boxOpen}>
           <span className="bom-box-title">
             BOX 목록 <span className="bom-box-count">{boxes.length}개</span>
           </span>
@@ -607,13 +607,21 @@ export default function BomDetailPage() {
                 }}
                 aria-label="개수"
               />
-              <button type="button" className="btn btn-sm btn-outline" onClick={bulkAddBoxes} disabled={!boxBulkName.trim()}>
-                <Icon name="plus" className="btn-ic" />일괄 추가
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={bulkAddBoxes}
+                disabled={!boxBulkName.trim()}
+              >
+                <Icon name="plus" className="btn-ic" />
+                일괄 추가
               </button>
             </div>
 
             {boxes.length === 0 ? (
-              <p className="field-hint">아직 BOX가 없습니다. 위에서 이름·개수로 일괄 추가하거나 「행 추가」로 하나씩 넣으세요.</p>
+              <p className="field-hint">
+                아직 BOX가 없습니다. 위에서 이름·개수로 일괄 추가하거나 「행 추가」로 하나씩 넣으세요.
+              </p>
             ) : (
               <div className="table-scroll-x">
                 <table className="table cards-sm bom-box-table">
@@ -1074,7 +1082,8 @@ export default function BomDetailPage() {
                                 aria-label="품목 변경"
                                 title="이 행의 품목을 다른 품목으로 변경"
                               >
-                                <Icon name="edit" className="btn-ic" />변경
+                                <Icon name="edit" className="btn-ic" />
+                                변경
                               </button>
                               <button
                                 type="button"
@@ -1083,7 +1092,8 @@ export default function BomDetailPage() {
                                 aria-label="삭제"
                                 title="삭제"
                               >
-                                <Icon name="trash" className="btn-ic" />삭제
+                                <Icon name="trash" className="btn-ic" />
+                                삭제
                               </button>
                             </div>
                           </td>
@@ -1119,7 +1129,11 @@ export default function BomDetailPage() {
         </div>
       )}
 
-      <Modal isOpen={pickerOpen} onClose={closePicker} title={pickerTargetId ? '품목 변경 (다른 품목으로 교체)' : '품목 선택'}>
+      <Modal
+        isOpen={pickerOpen}
+        onClose={closePicker}
+        title={pickerTargetId ? '품목 변경 (다른 품목으로 교체)' : '품목 선택'}
+      >
         <form onSubmit={handlePickerSubmit}>
           <p className="field-hint">
             {pickerTargetId
@@ -1238,26 +1252,26 @@ export default function BomDetailPage() {
                     {meta}
                     {picked.has(m.id) && (
                       <span
-                      className="bom-picker-qty-wrap"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <input
-                        type="number"
-                        min="0"
-                        className="num-input bom-picker-qty"
-                        value={picked.get(m.id)}
-                        onChange={(e) => setPickQty(m.id, e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        autoFocus
-                        aria-label={`${m.name} 수량`}
-                      />
-                      <span className="bom-picker-qty-unit">{m.unit || '개'}</span>
-                    </span>
-                  )}
-                </label>
+                        className="bom-picker-qty-wrap"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
+                        <input
+                          type="number"
+                          min="0"
+                          className="num-input bom-picker-qty"
+                          value={picked.get(m.id)}
+                          onChange={(e) => setPickQty(m.id, e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          autoFocus
+                          aria-label={`${m.name} 수량`}
+                        />
+                        <span className="bom-picker-qty-unit">{m.unit || '개'}</span>
+                      </span>
+                    )}
+                  </label>
                 );
               })
             )}

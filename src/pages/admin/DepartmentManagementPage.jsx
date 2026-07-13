@@ -151,7 +151,11 @@ export default function DepartmentManagementPage() {
                 <td data-label="부서명" title={d.name} style={{ wordBreak: 'break-word', minWidth: 100 }}>
                   {d.name}
                 </td>
-                <td data-label="부서장" title={userMap[d.managerId] || ''} style={{ wordBreak: 'break-word', minWidth: 0, ...(isXSmall ? { maxWidth: 100 } : {}) }}>
+                <td
+                  data-label="부서장"
+                  title={userMap[d.managerId] || ''}
+                  style={{ wordBreak: 'break-word', minWidth: 0, ...(isXSmall ? { maxWidth: 100 } : {}) }}
+                >
                   <span className="u-wrap">{userMap[d.managerId] || '-'}</span>
                 </td>
                 <td className="bom-project-action-col">
@@ -159,8 +163,13 @@ export default function DepartmentManagementPage() {
                     <button className="btn btn-sm btn-outline" style={{ padding: '0 8px' }} onClick={() => openEdit(d)}>
                       수정
                     </button>
-                    <button className="btn btn-sm btn-danger" style={{ padding: '0 8px' }} onClick={() => handleDelete(d)}>
-                      <Icon name="trash" className="btn-ic" />삭제
+                    <button
+                      className="btn btn-sm btn-danger"
+                      style={{ padding: '0 8px' }}
+                      onClick={() => handleDelete(d)}
+                    >
+                      <Icon name="trash" className="btn-ic" />
+                      삭제
                     </button>
                   </div>
                 </td>

@@ -95,7 +95,8 @@ export default function AttendancePage() {
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body">
           {message && <div className="alert alert-info">{message}</div>}
-          <div className="form-group date-picker-cell"
+          <div
+            className="form-group date-picker-cell"
             role="button"
             tabIndex={0}
             onClick={() => openPicker(dateInputRef)}

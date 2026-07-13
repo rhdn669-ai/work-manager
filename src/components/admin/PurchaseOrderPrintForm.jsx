@@ -18,15 +18,27 @@ import {
 //   printSiteNameMode   : null=실제 현장명 / 'blank'=공백 / 그 외=미공개(외부용)
 //   printStamp          : 하단 출력 일시 스탬프
 const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
-  { purchase, form, suppliers = [], sites = [], itemMaster = [], printSupplierFilter = null, printAccountMode = false, printSiteNameMode = null, printStamp = '', hideAmount = false, boxes = [], showBoxes = false },
+  {
+    purchase,
+    form,
+    suppliers = [],
+    sites = [],
+    itemMaster = [],
+    printSupplierFilter = null,
+    printAccountMode = false,
+    printSiteNameMode = null,
+    printStamp = '',
+    hideAmount = false,
+    boxes = [],
+    showBoxes = false,
+  },
   ref,
 ) {
   if (!purchase || !form) return <div ref={ref} className="print-form-iopn print-form-paged print-only" />;
 
   const supplier = suppliers.find((s) => s.id === purchase.supplierId);
   const site = sites.find((s) => s.id === purchase.siteId);
-  const derivedSupplier =
-    purchase.supplierName || deriveSupplier(form.items, itemMaster, suppliers).supplierName;
+  const derivedSupplier = purchase.supplierName || deriveSupplier(form.items, itemMaster, suppliers).supplierName;
   const liveOrderDate = purchase.orderedAt?.toDate
     ? purchase.orderedAt.toDate()
     : purchase.orderedAt
@@ -35,11 +47,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
         ? purchase.createdAt.toDate()
         : new Date();
   const liveOrderDateKo = `${liveOrderDate.getFullYear()}년 ${liveOrderDate.getMonth() + 1}월 ${liveOrderDate.getDate()}일`;
-  const liveSupplierTitle = supplier?.name
-    ? `${supplier.name} 귀하`
-    : derivedSupplier
-      ? `${derivedSupplier} 귀하`
-      : '';
+  const liveSupplierTitle = supplier?.name ? `${supplier.name} 귀하` : derivedSupplier ? `${derivedSupplier} 귀하` : '';
 
   const src = {
     siteName: site?.name || purchase.siteName || '',
@@ -304,9 +312,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   };
 
   // BOX 목록 — 이름만 뽑아 30행씩 열로 분할(한 페이지에 여러 열)
-  const boxNames = (Array.isArray(boxes) ? boxes : [])
-    .map((b) => String((b && b.name) || ''))
-    .filter((n) => n.trim());
+  const boxNames = (Array.isArray(boxes) ? boxes : []).map((b) => String((b && b.name) || '')).filter((n) => n.trim());
   const BOX_ROWS_PER_COL = 30;
   const boxCols = [];
   for (let i = 0; i < boxNames.length; i += BOX_ROWS_PER_COL) {

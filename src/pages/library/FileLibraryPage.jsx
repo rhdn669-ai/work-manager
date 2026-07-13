@@ -22,8 +22,12 @@ import TrashModal from '../../components/common/TrashModal';
 function formatSize(bytes) {
   if (!bytes) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
-  let v = bytes, i = 0;
-  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  let v = bytes,
+    i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
   return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
@@ -44,10 +48,11 @@ function splitExt(name = '') {
 
 function getFileIconName(name = '', contentType = '') {
   const ext = name.split('.').pop()?.toLowerCase() || '';
-  if (contentType.startsWith('image/') || ['png','jpg','jpeg','gif','webp','svg','bmp','heic'].includes(ext)) return 'image';
-  if (contentType.startsWith('video/') || ['mp4','mov','avi','mkv','webm'].includes(ext)) return 'video';
-  if (contentType.startsWith('audio/') || ['mp3','wav','m4a'].includes(ext)) return 'music';
-  if (['zip','rar','7z','tar','gz'].includes(ext)) return 'archive';
+  if (contentType.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'heic'].includes(ext))
+    return 'image';
+  if (contentType.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'video';
+  if (contentType.startsWith('audio/') || ['mp3', 'wav', 'm4a'].includes(ext)) return 'music';
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'archive';
   return 'doc';
 }
 
@@ -56,7 +61,10 @@ function getAncestorIds(folderId, folders) {
   const map = Object.fromEntries(folders.map((f) => [f.id, f]));
   const result = [];
   let cur = map[folderId];
-  while (cur?.parentId) { result.push(cur.parentId); cur = map[cur.parentId]; }
+  while (cur?.parentId) {
+    result.push(cur.parentId);
+    cur = map[cur.parentId];
+  }
   return result;
 }
 
@@ -96,7 +104,23 @@ function getFolderStats(folderId, folders, files) {
 }
 
 // ── 트리 노드 ──
-function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDelete, dragOverId, dndProps, depth, openMap, toggleOpen, folderDragOverId, folderDropMode, draggingFolderId }) {
+function TreeNode({
+  folder,
+  folders,
+  files,
+  selectedId,
+  onSelect,
+  onRename,
+  onDelete,
+  dragOverId,
+  dndProps,
+  depth,
+  openMap,
+  toggleOpen,
+  folderDragOverId,
+  folderDropMode,
+  draggingFolderId,
+}) {
   const children = useMemo(
     () => folders.filter((f) => (f.parentId || null) === folder.id).sort(sortFolders),
     [folders, folder.id],
@@ -123,13 +147,18 @@ function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDe
           type="button"
           className="lib-tree-caret"
           style={{ visibility: hasChildren ? 'visible' : 'hidden' }}
-          onClick={(e) => { e.stopPropagation(); toggleOpen(folder.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleOpen(folder.id);
+          }}
           tabIndex={-1}
           aria-label={isOpen ? '접기' : '펼치기'}
         >
           <Icon name={isOpen ? 'chevronDown' : 'chevronRight'} />
         </button>
-        <span className="lib-tree-ic"><Icon name="folder" /></span>
+        <span className="lib-tree-ic">
+          <Icon name="folder" />
+        </span>
         <span className="lib-tree-name">{folder.name}</span>
         {fileCount > 0 && <span className="lib-tree-badge">{fileCount}</span>}
         {/* hover 시 노출되는 액션 버튼 — 자동생성(protected) 폴더는 숨김 */}
@@ -144,7 +173,10 @@ function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDe
               className="lib-tree-act"
               title="이름 변경"
               aria-label="이름 변경"
-              onClick={(e) => { e.stopPropagation(); onRename(folder); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRename(folder);
+              }}
             >
               <Icon name="edit" />
             </button>
@@ -153,33 +185,37 @@ function TreeNode({ folder, folders, files, selectedId, onSelect, onRename, onDe
               className="lib-tree-act lib-tree-act--del"
               title="폴더 삭제"
               aria-label="폴더 삭제"
-              onClick={(e) => { e.stopPropagation(); onDelete(folder); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(folder);
+              }}
             >
               <Icon name="trash" />
             </button>
           </span>
         )}
       </div>
-      {isOpen && children.map((child) => (
-        <TreeNode
-          key={child.id}
-          folder={child}
-          folders={folders}
-          files={files}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          onRename={onRename}
-          onDelete={onDelete}
-          dragOverId={dragOverId}
-          dndProps={dndProps}
-          depth={depth + 1}
-          openMap={openMap}
-          toggleOpen={toggleOpen}
-          folderDragOverId={folderDragOverId}
-          folderDropMode={folderDropMode}
-          draggingFolderId={draggingFolderId}
-        />
-      ))}
+      {isOpen &&
+        children.map((child) => (
+          <TreeNode
+            key={child.id}
+            folder={child}
+            folders={folders}
+            files={files}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onRename={onRename}
+            onDelete={onDelete}
+            dragOverId={dragOverId}
+            dndProps={dndProps}
+            depth={depth + 1}
+            openMap={openMap}
+            toggleOpen={toggleOpen}
+            folderDragOverId={folderDragOverId}
+            folderDropMode={folderDropMode}
+            draggingFolderId={draggingFolderId}
+          />
+        ))}
     </>
   );
 }
@@ -230,7 +266,11 @@ export default function FileLibraryPage() {
         toast(`"${folder.name}" 폴더를 다시 잠갔습니다.`);
       } else {
         next.add(folder.id);
-        toast(`"${folder.name}" 폴더 잠금을 일시 해제했습니다. 수정·삭제할 수 있습니다(새로고침하면 다시 잠김).`, 'success', 0);
+        toast(
+          `"${folder.name}" 폴더 잠금을 일시 해제했습니다. 수정·삭제할 수 있습니다(새로고침하면 다시 잠김).`,
+          'success',
+          0,
+        );
       }
       return next;
     });
@@ -240,7 +280,11 @@ export default function FileLibraryPage() {
     const unsubF = subscribeFolders(setFolders);
     const unsubFiles = subscribeFiles(setFiles);
     const unsubTrash = subscribeTrashByType(['libraryFiles', 'libraryFolders'], (items) => setTrashCount(items.length));
-    return () => { unsubF(); unsubFiles(); unsubTrash(); };
+    return () => {
+      unsubF();
+      unsubFiles();
+      unsubTrash();
+    };
   }, []);
 
   // 선택 폴더 변경 시 조상 자동 펼침
@@ -250,15 +294,14 @@ export default function FileLibraryPage() {
     if (ancestors.length === 0) return;
     setOpenMap((prev) => {
       const next = { ...prev };
-      ancestors.forEach((id) => { next[id] = true; });
+      ancestors.forEach((id) => {
+        next[id] = true;
+      });
       return next;
     });
   }, [selectedFolderId, folders]);
 
-  const topFolders = useMemo(
-    () => folders.filter((f) => (f.parentId || null) === null).sort(sortFolders),
-    [folders],
-  );
+  const topFolders = useMemo(() => folders.filter((f) => (f.parentId || null) === null).sort(sortFolders), [folders]);
 
   const selectedFolder = selectedFolderId !== null ? folders.find((f) => f.id === selectedFolderId) : null;
 
@@ -280,7 +323,10 @@ export default function FileLibraryPage() {
   const breadcrumb = useMemo(() => {
     const path = [];
     let cur = selectedFolderId ? folders.find((f) => f.id === selectedFolderId) : null;
-    while (cur) { path.unshift(cur); cur = cur.parentId ? folders.find((f) => f.id === cur.parentId) : null; }
+    while (cur) {
+      path.unshift(cur);
+      cur = cur.parentId ? folders.find((f) => f.id === cur.parentId) : null;
+    }
     return path;
   }, [selectedFolderId, folders]);
 
@@ -298,17 +344,26 @@ export default function FileLibraryPage() {
   const allSelected = currentFiles.length > 0 && currentFiles.every((f) => selected.has(f.id));
   function toggleSelect(id, e) {
     e?.stopPropagation();
-    setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   }
   function toggleSelectAll() {
-    setSelected(() => allSelected ? new Set() : new Set(currentFiles.map((f) => f.id)));
+    setSelected(() => (allSelected ? new Set() : new Set(currentFiles.map((f) => f.id))));
   }
 
   async function bulkDelete() {
     if (selected.size === 0) return;
     if (!(await confirm({ title: '파일 삭제', message: `선택한 ${selected.size}개 파일을 삭제할까요?` }))) return;
     for (const f of files.filter((x) => selected.has(x.id))) {
-      try { await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || ''); } catch { /* skip */ }
+      try {
+        await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || '');
+      } catch {
+        /* skip */
+      }
     }
     setSelected(new Set());
     toast('휴지통으로 이동했습니다.');
@@ -363,7 +418,11 @@ export default function FileLibraryPage() {
     if (!v || selected.size === 0) return;
     const folderId = v === '__root' ? null : v;
     for (const id of [...selected]) {
-      try { await moveFile(id, folderId); } catch { /* skip */ }
+      try {
+        await moveFile(id, folderId);
+      } catch {
+        /* skip */
+      }
     }
     toast(`"${folders.find((x) => x.id === folderId)?.name || '전체'}"(으)로 이동했습니다.`);
     setSelected(new Set());
@@ -383,7 +442,7 @@ export default function FileLibraryPage() {
       setUploads((u) => [...u, { key, name: file.name, progress: 0 }]);
       try {
         await uploadFile(file, selectedFolderId, userProfile, (p) =>
-          setUploads((u) => u.map((x) => x.key === key ? { ...x, progress: p } : x)),
+          setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress: p } : x))),
         );
       } catch (err) {
         toast(`"${file.name}" 업로드 중 오류가 발생했습니다`, 'error');
@@ -392,8 +451,15 @@ export default function FileLibraryPage() {
       }
     }
   }
-  function onInputChange(e) { handleFiles(e.target.files); e.target.value = ''; }
-  function onDrop(e) { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }
+  function onInputChange(e) {
+    handleFiles(e.target.files);
+    e.target.value = '';
+  }
+  function onDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  }
 
   // ── 폴더 생성 ──
   async function handleCreateFolder() {
@@ -405,27 +471,43 @@ export default function FileLibraryPage() {
     }
     try {
       const newId = await createFolder(name, userProfile, selectedFolderId);
-      setOpenMap((prev) => selectedFolderId ? { ...prev, [selectedFolderId]: true } : prev);
+      setOpenMap((prev) => (selectedFolderId ? { ...prev, [selectedFolderId]: true } : prev));
       setSelectedFolderId(newId);
       setFolderModalOpen(false);
       setFolderName('');
       pushUndo(`폴더 "${name}" 추가`, async () => {
         await trashGeneric('libraryFolders', newId, { title: name }, userProfile?.name || '');
       });
-    } catch (err) { toast('폴더 생성 중 오류가 발생했습니다', 'error'); }
+    } catch (err) {
+      toast('폴더 생성 중 오류가 발생했습니다', 'error');
+    }
   }
 
   // ── 폴더 이름 변경 ──
   async function handleRename() {
-    if (renameTarget?.protected && !isFolderUnlocked(renameTarget)) { alert('자동 생성된 폴더는 이름을 변경할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)'); setRenameTarget(null); return; }
+    if (renameTarget?.protected && !isFolderUnlocked(renameTarget)) {
+      alert('자동 생성된 폴더는 이름을 변경할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)');
+      setRenameTarget(null);
+      return;
+    }
     const name = renameName.trim();
-    if (!name || name === renameTarget.name) { setRenameTarget(null); return; }
-    const siblings = folders.filter((f) => (f.parentId || null) === (renameTarget.parentId || null) && f.id !== renameTarget.id);
-    if (siblings.some((f) => f.name === name)) { alert('같은 이름의 폴더가 이미 있습니다.'); return; }
+    if (!name || name === renameTarget.name) {
+      setRenameTarget(null);
+      return;
+    }
+    const siblings = folders.filter(
+      (f) => (f.parentId || null) === (renameTarget.parentId || null) && f.id !== renameTarget.id,
+    );
+    if (siblings.some((f) => f.name === name)) {
+      alert('같은 이름의 폴더가 이미 있습니다.');
+      return;
+    }
     try {
       await renameFolder(renameTarget.id, name);
       setRenameTarget(null);
-    } catch (err) { toast('이름 변경 중 오류가 발생했습니다', 'error'); }
+    } catch (err) {
+      toast('이름 변경 중 오류가 발생했습니다', 'error');
+    }
   }
 
   // ── 파일 이름 변경 (관리자, 확장자 자동 유지) ──
@@ -436,39 +518,64 @@ export default function FileLibraryPage() {
   async function handleFileRename() {
     if (!fileRenameTarget) return;
     const base = fileRenameBase.trim();
-    if (!base) { setFileRenameTarget(null); return; }
+    if (!base) {
+      setFileRenameTarget(null);
+      return;
+    }
     const { ext } = splitExt(fileRenameTarget.name || '');
     const newName = base + ext;
-    if (newName === fileRenameTarget.name) { setFileRenameTarget(null); return; }
+    if (newName === fileRenameTarget.name) {
+      setFileRenameTarget(null);
+      return;
+    }
     try {
       await renameFile(fileRenameTarget.id, newName);
       setFileRenameTarget(null);
       toast(`파일 이름을 "${newName}"(으)로 변경했습니다.`);
-    } catch (err) { toast('이름 변경 중 오류가 발생했습니다', 'error'); }
+    } catch (err) {
+      toast('이름 변경 중 오류가 발생했습니다', 'error');
+    }
   }
 
   // ── 폴더 삭제 ──
   async function handleDeleteFolder(folder, e) {
     e?.stopPropagation();
-    if (folder.protected && !isFolderUnlocked(folder)) { alert('자동 생성된 폴더는 삭제할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)'); return; }
+    if (folder.protected && !isFolderUnlocked(folder)) {
+      alert('자동 생성된 폴더는 삭제할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)');
+      return;
+    }
     const filesIn = files.filter((f) => (f.folderId || null) === folder.id);
     const subsIn = folders.filter((f) => (f.parentId || null) === folder.id);
-    const msg = (filesIn.length || subsIn.length)
-      ? `"${folder.name}" 폴더와 안의 파일·하위폴더를 모두 휴지통으로 이동할까요?`
-      : `"${folder.name}" 폴더를 휴지통으로 이동할까요?`;
+    const msg =
+      filesIn.length || subsIn.length
+        ? `"${folder.name}" 폴더와 안의 파일·하위폴더를 모두 휴지통으로 이동할까요?`
+        : `"${folder.name}" 폴더를 휴지통으로 이동할까요?`;
     if (!(await confirm(msg))) return;
     try {
       const fileTrashIds = [];
       const subTrashIds = [];
-      for (const f of filesIn) { const tid = await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || ''); if (tid) fileTrashIds.push({ tid, name: f.name }); }
-      for (const s of subsIn) { const tid = await trashGeneric('libraryFolders', s.id, { title: s.name }, userProfile?.name || ''); if (tid) subTrashIds.push({ tid, name: s.name }); }
-      const folderTid = await trashGeneric('libraryFolders', folder.id, { title: folder.name }, userProfile?.name || '');
+      for (const f of filesIn) {
+        const tid = await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || '');
+        if (tid) fileTrashIds.push({ tid, name: f.name });
+      }
+      for (const s of subsIn) {
+        const tid = await trashGeneric('libraryFolders', s.id, { title: s.name }, userProfile?.name || '');
+        if (tid) subTrashIds.push({ tid, name: s.name });
+      }
+      const folderTid = await trashGeneric(
+        'libraryFolders',
+        folder.id,
+        { title: folder.name },
+        userProfile?.name || '',
+      );
       if (selectedFolderId === folder.id) setSelectedFolderId(null);
       pushUndo(`폴더 "${folder.name}" 삭제`, async () => {
         const allIds = [folderTid, ...subTrashIds.map((x) => x.tid), ...fileTrashIds.map((x) => x.tid)].filter(Boolean);
         await Promise.all(allIds.map((tid) => restoreTrashItem(tid)));
       });
-    } catch (err) { toast('폴더 삭제 중 오류가 발생했습니다', 'error'); }
+    } catch (err) {
+      toast('폴더 삭제 중 오류가 발생했습니다', 'error');
+    }
   }
 
   // ── 파일 삭제 ──
@@ -478,7 +585,9 @@ export default function FileLibraryPage() {
       const tid = await trashGeneric('libraryFiles', file.id, { title: file.name }, userProfile?.name || '');
       toast('휴지통으로 이동했습니다.');
       if (tid) pushUndo(`파일 "${file.name}" 삭제`, () => restoreTrashItem(tid));
-    } catch (err) { toast('파일 삭제 중 오류가 발생했습니다', 'error'); }
+    } catch (err) {
+      toast('파일 삭제 중 오류가 발생했습니다', 'error');
+    }
   }
 
   // 드롭 영역(폴더 행)의 마우스 Y 위치 → 'before'(위 25%) | 'after'(아래 25%) | 'inside'(가운데 50%)
@@ -496,7 +605,10 @@ export default function FileLibraryPage() {
     const dragged = folders.find((f) => f.id === draggedId);
     const target = folders.find((f) => f.id === targetId);
     if (!dragged || !target || draggedId === targetId) return;
-    if (dragged.protected && !isFolderUnlocked(dragged)) { toast('자동 생성된 폴더는 이동할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)', 'error'); return; }
+    if (dragged.protected && !isFolderUnlocked(dragged)) {
+      toast('자동 생성된 폴더는 이동할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)', 'error');
+      return;
+    }
     // 순환 방지 — target이 dragged의 자손이면 이동 금지
     const isDescendant = (id) => {
       let cur = folders.find((f) => f.id === id);
@@ -520,7 +632,9 @@ export default function FileLibraryPage() {
         await setFolderOrder(orderUpdates);
         setOpenMap((prev) => ({ ...prev, [target.id]: true })); // 받은 폴더 자동 펼침
         toast(`"${target.name}" 하위로 이동했습니다.`);
-      } catch (err) { toast(err?.message || '이동에 실패했습니다.', 'error'); }
+      } catch (err) {
+        toast(err?.message || '이동에 실패했습니다.', 'error');
+      }
       return;
     }
 
@@ -537,7 +651,9 @@ export default function FileLibraryPage() {
     try {
       if ((dragged.parentId || null) !== targetParent) await moveFolder(draggedId, targetParent);
       await setFolderOrder(orderUpdates);
-    } catch (err) { toast(err?.message || '이동에 실패했습니다.', 'error'); }
+    } catch (err) {
+      toast(err?.message || '이동에 실패했습니다.', 'error');
+    }
   }
 
   // ── 파일·폴더 트리 DnD ──
@@ -573,8 +689,8 @@ export default function FileLibraryPage() {
       },
       onDragLeave: (e) => {
         if (e.currentTarget.contains(e.relatedTarget)) return;
-        setDragOverId((cur) => cur === folder.id ? undefined : cur);
-        setFolderDragOverId((cur) => cur === folder.id ? undefined : cur);
+        setDragOverId((cur) => (cur === folder.id ? undefined : cur));
+        setFolderDragOverId((cur) => (cur === folder.id ? undefined : cur));
       },
       onDrop: async (e) => {
         e.preventDefault();
@@ -591,7 +707,9 @@ export default function FileLibraryPage() {
           try {
             await moveFile(fileId, folder.id);
             toast(`"${folder.name}"(으)로 이동했습니다.`);
-          } catch (err) { toast(err?.message || '이동에 실패했습니다.', 'error'); }
+          } catch (err) {
+            toast(err?.message || '이동에 실패했습니다.', 'error');
+          }
           return;
         }
         if (foldId && foldId !== folder.id) {
@@ -601,14 +719,15 @@ export default function FileLibraryPage() {
     };
   }
 
-  const selectedFolderName = selectedFolderId === null
-    ? '전체'
-    : (folders.find((f) => f.id === selectedFolderId)?.name || '폴더');
+  const selectedFolderName =
+    selectedFolderId === null ? '전체' : folders.find((f) => f.id === selectedFolderId)?.name || '폴더';
 
   if (!canViewArchive) {
     return (
       <div className="library-page">
-        <div className="page-header"><h2>자료실</h2></div>
+        <div className="page-header">
+          <h2>자료실</h2>
+        </div>
         <p className="purchase-empty">자료실 열람 권한이 없습니다. 관리자에게 문의하세요.</p>
       </div>
     );
@@ -621,11 +740,13 @@ export default function FileLibraryPage() {
         <h2>자료실</h2>
         <div className="page-actions">
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-            <Icon name="trash" className="btn-ic" />휴지통
+            <Icon name="trash" className="btn-ic" />
+            휴지통
             {trashCount > 0 && <span className="trash-count-badge">{trashCount}</span>}
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => fileInputRef.current?.click()}>
-            <Icon name="plus" className="btn-ic" />파일 올리기
+            <Icon name="plus" className="btn-ic" />
+            파일 올리기
           </button>
         </div>
       </div>
@@ -638,7 +759,9 @@ export default function FileLibraryPage() {
           {uploads.map((u) => (
             <div key={u.key} className="library-upload-row">
               <span className="library-upload-name">{u.name}</span>
-              <div className="library-upload-bar"><div className="library-upload-fill" style={{ width: `${u.progress}%` }} /></div>
+              <div className="library-upload-bar">
+                <div className="library-upload-fill" style={{ width: `${u.progress}%` }} />
+              </div>
               <span className="library-upload-pct">{u.progress}%</span>
             </div>
           ))}
@@ -647,10 +770,8 @@ export default function FileLibraryPage() {
 
       {/* 메인 레이아웃 — 사이드바 없이 경로(브레드크럼)로 탐색 */}
       <div className="lib-layout">
-
         {/* 파일/폴더 영역 */}
         <div className="lib-content">
-
           {/* 경로(주소 표시줄) + 뒤로가기 — 모바일 드릴다운 네비 */}
           <div className="lib-breadcrumb">
             <button
@@ -692,7 +813,13 @@ export default function FileLibraryPage() {
               <>
                 <span className="lib-sel-count">{selected.size}개 선택</span>
                 <div className="lib-bulk">
-                  <Select value="" onChange={bulkMove} options={moveOptions} placeholder="이동" ariaLabel="폴더로 이동" />
+                  <Select
+                    value=""
+                    onChange={bulkMove}
+                    options={moveOptions}
+                    placeholder="이동"
+                    ariaLabel="폴더로 이동"
+                  />
                   <button
                     type="button"
                     className="btn btn-sm btn-outline"
@@ -704,9 +831,12 @@ export default function FileLibraryPage() {
                     {merging ? '합치는 중…' : '출력'}
                   </button>
                   <button type="button" className="btn btn-sm btn-danger" onClick={bulkDelete}>
-                    <Icon name="trash" className="btn-ic" />삭제
+                    <Icon name="trash" className="btn-ic" />
+                    삭제
                   </button>
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setSelected(new Set())}>해제</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setSelected(new Set())}>
+                    해제
+                  </button>
                 </div>
               </>
             ) : (
@@ -732,13 +862,18 @@ export default function FileLibraryPage() {
           {/* 탐색기 상세 보기: 폴더 + 파일 한 표 */}
           <div
             className={`library-dropzone${dragOver ? ' drag-over' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
           >
             {currentSubFolders.length === 0 && currentFiles.length === 0 ? (
               <div className="library-empty">
-                <div className="library-empty-art"><Icon name={search.trim() ? 'search' : 'folder'} /></div>
+                <div className="library-empty-art">
+                  <Icon name={search.trim() ? 'search' : 'folder'} />
+                </div>
                 {search.trim() ? (
                   <>
                     <p className="library-empty-title">검색 결과가 없습니다</p>
@@ -748,8 +883,13 @@ export default function FileLibraryPage() {
                   <>
                     <p className="library-empty-title">이 폴더가 비어 있습니다</p>
                     <p className="library-empty-sub">파일을 끌어다 놓거나 버튼으로 올리세요.</p>
-                    <button type="button" className="btn btn-primary btn-sm library-empty-cta" onClick={() => fileInputRef.current?.click()}>
-                      <Icon name="plus" className="btn-ic" />파일 올리기
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm library-empty-cta"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Icon name="plus" className="btn-ic" />
+                      파일 올리기
                     </button>
                   </>
                 )}
@@ -799,13 +939,20 @@ export default function FileLibraryPage() {
                         >
                           <td className="lib-col-check" onClick={(e) => e.stopPropagation()}></td>
                           <td className="lib-col-name" data-label="이름" title={folder.name}>
-                            <span className="lib-row-ic"><Icon name="folder" /></span>
+                            <span className="lib-row-ic">
+                              <Icon name="folder" />
+                            </span>
                             <span className="lib-row-name">{folder.name}</span>
                           </td>
-                          <td className="lib-col-type" data-label="종류">폴더</td>
-                          <td className="lib-col-date" data-label="수정일">{stats.latest ? formatDate(stats.latest) : '—'}</td>
+                          <td className="lib-col-type" data-label="종류">
+                            폴더
+                          </td>
+                          <td className="lib-col-date" data-label="수정일">
+                            {stats.latest ? formatDate(stats.latest) : '—'}
+                          </td>
                           <td className="lib-col-size" data-label="크기">
-                            {subCnt > 0 ? `${subCnt}개 폴더 · ` : ''}{cnt}개 파일
+                            {subCnt > 0 ? `${subCnt}개 폴더 · ` : ''}
+                            {cnt}개 파일
                           </td>
                           <td className="col-action" onClick={(e) => e.stopPropagation()}>
                             {folder.protected && !isFolderUnlocked(folder) ? (
@@ -818,12 +965,14 @@ export default function FileLibraryPage() {
                                     aria-label="잠금 해제"
                                     onClick={(e) => toggleFolderLock(folder, e)}
                                   >
-                                    <Icon name="lock" className="btn-ic" />잠금
+                                    <Icon name="lock" className="btn-ic" />
+                                    잠금
                                   </button>
                                 </div>
                               ) : (
                                 <span className="lib-locked-label" title="자동 생성 폴더 (수정·삭제 불가)">
-                                  <Icon name="lock" className="btn-ic" />자동
+                                  <Icon name="lock" className="btn-ic" />
+                                  자동
                                 </span>
                               )
                             ) : (
@@ -836,7 +985,8 @@ export default function FileLibraryPage() {
                                     aria-label="다시 잠그기"
                                     onClick={(e) => toggleFolderLock(folder, e)}
                                   >
-                                    <Icon name="unlock" className="btn-ic" />해제됨
+                                    <Icon name="unlock" className="btn-ic" />
+                                    해제됨
                                   </button>
                                 )}
                                 <button
@@ -844,9 +994,13 @@ export default function FileLibraryPage() {
                                   className="btn btn-sm btn-outline"
                                   title="이름 변경"
                                   aria-label="이름 변경"
-                                  onClick={() => { setRenameTarget(folder); setRenameName(folder.name); }}
+                                  onClick={() => {
+                                    setRenameTarget(folder);
+                                    setRenameName(folder.name);
+                                  }}
                                 >
-                                  <Icon name="edit" className="btn-ic" />수정
+                                  <Icon name="edit" className="btn-ic" />
+                                  수정
                                 </button>
                                 <button
                                   type="button"
@@ -855,7 +1009,8 @@ export default function FileLibraryPage() {
                                   aria-label="삭제"
                                   onClick={(e) => handleDeleteFolder(folder, e)}
                                 >
-                                  <Icon name="trash" className="btn-ic" />삭제
+                                  <Icon name="trash" className="btn-ic" />
+                                  삭제
                                 </button>
                               </div>
                             )}
@@ -876,29 +1031,64 @@ export default function FileLibraryPage() {
                             e.dataTransfer.effectAllowed = 'move';
                             setDraggingFileId(file.id);
                           }}
-                          onDragEnd={() => { setDraggingFileId(null); setDragOverId(undefined); }}
+                          onDragEnd={() => {
+                            setDraggingFileId(null);
+                            setDragOverId(undefined);
+                          }}
                         >
                           <td className="lib-col-check" onClick={(e) => e.stopPropagation()}>
-                            <input type="checkbox" checked={selected.has(file.id)} onChange={(e) => toggleSelect(file.id, e)} aria-label="파일 선택" />
+                            <input
+                              type="checkbox"
+                              checked={selected.has(file.id)}
+                              onChange={(e) => toggleSelect(file.id, e)}
+                              aria-label="파일 선택"
+                            />
                           </td>
                           <td className="lib-col-name" data-label="이름" title={file.name}>
-                            <span className="lib-row-ic"><Icon name={getFileIconName(file.name, file.contentType)} /></span>
-                            <a className="lib-row-name" href={file.downloadURL} target="_blank" rel="noopener noreferrer">
+                            <span className="lib-row-ic">
+                              <Icon name={getFileIconName(file.name, file.contentType)} />
+                            </span>
+                            <a
+                              className="lib-row-name"
+                              href={file.downloadURL}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               {file.name}
                             </a>
                           </td>
-                          <td className="lib-col-type" data-label="종류">{ext || '파일'}</td>
-                          <td className="lib-col-date" data-label="수정일">{formatDate(file.createdAt)}</td>
-                          <td className="lib-col-size" data-label="크기">{formatSize(file.size)}</td>
+                          <td className="lib-col-type" data-label="종류">
+                            {ext || '파일'}
+                          </td>
+                          <td className="lib-col-date" data-label="수정일">
+                            {formatDate(file.createdAt)}
+                          </td>
+                          <td className="lib-col-size" data-label="크기">
+                            {formatSize(file.size)}
+                          </td>
                           <td className="col-action" onClick={(e) => e.stopPropagation()}>
                             <div className="row-actions">
                               {isAdmin && (
-                                <button type="button" className="btn btn-sm btn-outline" title="이름 변경" aria-label="이름 변경" onClick={() => openFileRename(file)}>
-                                  <Icon name="edit" className="btn-ic" />수정
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline"
+                                  title="이름 변경"
+                                  aria-label="이름 변경"
+                                  onClick={() => openFileRename(file)}
+                                >
+                                  <Icon name="edit" className="btn-ic" />
+                                  수정
                                 </button>
                               )}
-                              <button type="button" className="btn btn-sm btn-danger" title="삭제" aria-label="삭제" onClick={() => handleDeleteFile(file)}>
-                                <Icon name="trash" className="btn-ic" />삭제
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-danger"
+                                title="삭제"
+                                aria-label="삭제"
+                                onClick={() => handleDeleteFile(file)}
+                              >
+                                <Icon name="trash" className="btn-ic" />
+                                삭제
                               </button>
                             </div>
                           </td>
@@ -914,26 +1104,34 @@ export default function FileLibraryPage() {
       </div>
 
       {/* 폴더 추가 모달 */}
-      <Modal isOpen={folderModalOpen} onClose={() => setFolderModalOpen(false)} title={selectedFolderId ? '하위 폴더 추가' : '대분류 추가'}>
+      <Modal
+        isOpen={folderModalOpen}
+        onClose={() => setFolderModalOpen(false)}
+        title={selectedFolderId ? '하위 폴더 추가' : '대분류 추가'}
+      >
         <div className="form-group">
           <label>폴더 이름</label>
           <input
             type="text"
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && folderName.trim()) handleCreateFolder(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && folderName.trim()) handleCreateFolder();
+            }}
             placeholder={selectedFolderId ? '예: 양식, 규정, 교육자료' : '예: 인사자료, 현장자료, 계약서'}
             autoFocus
           />
           {selectedFolderId && (
-            <p className="form-hint">
-              "{folders.find((f) => f.id === selectedFolderId)?.name}" 안에 추가됩니다.
-            </p>
+            <p className="form-hint">"{folders.find((f) => f.id === selectedFolderId)?.name}" 안에 추가됩니다.</p>
           )}
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setFolderModalOpen(false)}>취소</button>
-          <button type="button" className="btn btn-primary" disabled={!folderName.trim()} onClick={handleCreateFolder}>추가</button>
+          <button type="button" className="btn btn-outline" onClick={() => setFolderModalOpen(false)}>
+            취소
+          </button>
+          <button type="button" className="btn btn-primary" disabled={!folderName.trim()} onClick={handleCreateFolder}>
+            추가
+          </button>
         </div>
       </Modal>
 
@@ -945,13 +1143,19 @@ export default function FileLibraryPage() {
             type="text"
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && renameName.trim()) handleRename(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && renameName.trim()) handleRename();
+            }}
             autoFocus
           />
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setRenameTarget(null)}>취소</button>
-          <button type="button" className="btn btn-primary" disabled={!renameName.trim()} onClick={handleRename}>저장</button>
+          <button type="button" className="btn btn-outline" onClick={() => setRenameTarget(null)}>
+            취소
+          </button>
+          <button type="button" className="btn btn-primary" disabled={!renameName.trim()} onClick={handleRename}>
+            저장
+          </button>
         </div>
       </Modal>
 
@@ -963,7 +1167,9 @@ export default function FileLibraryPage() {
               type="text"
               value={fileRenameBase}
               onChange={(e) => setFileRenameBase(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && fileRenameBase.trim()) handleFileRename(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && fileRenameBase.trim()) handleFileRename();
+              }}
               autoFocus
               style={{ flex: 1 }}
             />
@@ -973,15 +1179,31 @@ export default function FileLibraryPage() {
               </span>
             )}
           </div>
-          <small className="text-muted">확장자({splitExt(fileRenameTarget?.name || '').ext || '없음'})는 자동으로 유지됩니다.</small>
+          <small className="text-muted">
+            확장자({splitExt(fileRenameTarget?.name || '').ext || '없음'})는 자동으로 유지됩니다.
+          </small>
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setFileRenameTarget(null)}>취소</button>
-          <button type="button" className="btn btn-primary" disabled={!fileRenameBase.trim()} onClick={handleFileRename}>저장</button>
+          <button type="button" className="btn btn-outline" onClick={() => setFileRenameTarget(null)}>
+            취소
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!fileRenameBase.trim()}
+            onClick={handleFileRename}
+          >
+            저장
+          </button>
         </div>
       </Modal>
 
-      <TrashModal isOpen={trashOpen} onClose={() => setTrashOpen(false)} types={['libraryFiles', 'libraryFolders']} title="자료실 휴지통" />
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['libraryFiles', 'libraryFolders']}
+        title="자료실 휴지통"
+      />
     </div>
   );
 }

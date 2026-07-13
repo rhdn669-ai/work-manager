@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '../common/Modal';
 import { useDialog } from '../common/DialogProvider';
-import {
-  subscribeFolders,
-  subscribeFiles,
-} from '../../services/fileLibraryService';
+import { subscribeFolders, subscribeFiles } from '../../services/fileLibraryService';
 import { getPurchases, getSuppliers, getPurchaseItems } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { poDateStr, computeSupplierList } from '../../utils/purchaseOrder';
@@ -70,11 +67,8 @@ export default function RegenOrderPdfModal({ isOpen, onClose, onStart, busy = fa
     const jobs = [];
     const unresolved = [];
     if (loading) return { jobs, unresolved };
-    const byIdTail = (tail) =>
-      purchases.find((p) => (p.id || '').slice(0, 4).toUpperCase() === tail.toUpperCase());
-    const orderFiles = files.filter(
-      (f) => orderFolderIds.has(f.folderId) && /\.pdf$/i.test(f.name || ''),
-    );
+    const byIdTail = (tail) => purchases.find((p) => (p.id || '').slice(0, 4).toUpperCase() === tail.toUpperCase());
+    const orderFiles = files.filter((f) => orderFolderIds.has(f.folderId) && /\.pdf$/i.test(f.name || ''));
     for (const file of orderFiles) {
       const name = file.name || '';
       // ① 업체별 발행번호: IOPN20260101-2-AB12
@@ -141,8 +135,8 @@ export default function RegenOrderPdfModal({ isOpen, onClose, onStart, busy = fa
     <Modal isOpen={isOpen} onClose={onClose} title="발주서 저장본 일괄 재생성" size="lg">
       <div className="regen-po">
         <p className="regen-po__desc">
-          자료실 <strong>발주이력</strong>에 저장된 발주서 PDF를 현재 <strong>내부용 양식</strong>(구매처 계좌 +
-          실제 현장명 포함)으로 다시 만들어 같은 파일을 갱신합니다. 메일 첨부본(외부용)은 영향이 없습니다.
+          자료실 <strong>발주이력</strong>에 저장된 발주서 PDF를 현재 <strong>내부용 양식</strong>(구매처 계좌 + 실제
+          현장명 포함)으로 다시 만들어 같은 파일을 갱신합니다. 메일 첨부본(외부용)은 영향이 없습니다.
         </p>
         <p className="regen-po__warn">
           ※ 원본 발주 데이터로 재렌더링하므로, 저장 이후 발주 내용이 변경된 건은 그 변경도 함께 반영됩니다. 작업은

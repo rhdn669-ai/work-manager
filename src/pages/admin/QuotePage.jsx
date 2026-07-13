@@ -18,7 +18,9 @@ export default function QuotePage() {
   const [trashOpen, setTrashOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   async function loadAll() {
     try {
@@ -76,7 +78,11 @@ export default function QuotePage() {
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate('/admin/purchase/quotes/new')}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => navigate('/admin/purchase/quotes/new')}
+          >
             <Icon name="plus" className="btn-ic" />
             견적서 작성
           </button>
@@ -133,10 +139,14 @@ export default function QuotePage() {
                     <strong>{q.title}</strong>
                   </td>
                   <td data-label="거래처" className="quote-cell-clamp">
-                    <span className="quote-cell-clamp-text" title={q.supplierName || ''}>{q.supplierName || '-'}</span>
+                    <span className="quote-cell-clamp-text" title={q.supplierName || ''}>
+                      {q.supplierName || '-'}
+                    </span>
                   </td>
                   <td data-label="현장" className="quote-cell-clamp">
-                    <span className="quote-cell-clamp-text" title={q.siteName || ''}>{q.siteName || '-'}</span>
+                    <span className="quote-cell-clamp-text" title={q.siteName || ''}>
+                      {q.siteName || '-'}
+                    </span>
                   </td>
                   <td data-label="공급가액" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                     {Number(q.totalAmount || 0).toLocaleString()}원
@@ -147,7 +157,8 @@ export default function QuotePage() {
                   <td data-label="작성일">{fmtDateKo(q.createdAt)}</td>
                   <td className="bom-project-action-col action-cell" onClick={(e) => e.stopPropagation()}>
                     <button type="button" className="btn btn-sm btn-danger" onClick={(e) => handleDelete(e, q)}>
-                      <Icon name="trash" className="btn-ic" />삭제
+                      <Icon name="trash" className="btn-ic" />
+                      삭제
                     </button>
                   </td>
                 </tr>

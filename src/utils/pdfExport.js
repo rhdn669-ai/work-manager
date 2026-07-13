@@ -5,9 +5,7 @@ import { uploadFile } from '../services/fileLibraryService';
 // ※ 흐린 html2canvas(화면 사진 캡처) 폴백은 제거 — 저화질 파일이 자료실에 저장되지 않게.
 //    서버 렌더가 불가/실패하면 throw하여 호출자가 "실패"로 처리(흐린 파일 저장 안 함).
 export async function captureToPdfBlob(element, fileName) {
-  const cssUrls = [...document.querySelectorAll('link[rel="stylesheet"]')]
-    .map((l) => l.href)
-    .filter(Boolean);
+  const cssUrls = [...document.querySelectorAll('link[rel="stylesheet"]')].map((l) => l.href).filter(Boolean);
   if (cssUrls.length === 0) {
     // 빌드 CSS가 <link>로 없으면(로컬 vite dev) 서버 렌더 불가
     throw new Error('자료실 저장은 배포 환경에서만 동작합니다(로컬 개발 서버 미지원).');

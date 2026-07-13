@@ -39,11 +39,14 @@ function SortableProjectRow({ p, onOpen, onDelete }) {
         </button>
       </td>
       <td data-label="프로젝트명" title={p.name || ''}>
-        <strong className="u-ellipsis-1" title={p.name || ''}>{p.name}</strong>
+        <strong className="u-ellipsis-1" title={p.name || ''}>
+          {p.name}
+        </strong>
       </td>
       <td className="bom-project-action-col action-cell">
         <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
-          <Icon name="trash" className="btn-ic" />삭제
+          <Icon name="trash" className="btn-ic" />
+          삭제
         </button>
       </td>
     </tr>
@@ -131,11 +134,12 @@ export default function BomPage() {
       const tid = await trashBomProject(project.id, userProfile?.name || '');
       await deleteBomProject(project.id);
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
-      if (tid) pushUndo(`BOM 프로젝트 "${project.name}" 삭제`, async () => {
-        await restoreTrashItem(tid);
-        const ps = await getBomProjects();
-        setProjects(ps);
-      });
+      if (tid)
+        pushUndo(`BOM 프로젝트 "${project.name}" 삭제`, async () => {
+          await restoreTrashItem(tid);
+          const ps = await getBomProjects();
+          setProjects(ps);
+        });
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -152,11 +156,7 @@ export default function BomPage() {
       <div className="page-header">
         <h2>프로젝트별 BOM</h2>
         <div className="page-actions">
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            onClick={() => setTrashOpen(true)}
-          >
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
@@ -172,27 +172,27 @@ export default function BomPage() {
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <div className="table-scroll-x">
-          <table className="table cards-sm sortable-rows">
-            <thead>
-              <tr>
-                <th style={{ width: 36 }} aria-label="순서 변경"></th>
-                <th>프로젝트명</th>
-                <th className="bom-project-action-col">작업</th>
-              </tr>
-            </thead>
-            <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-              <tbody>
-                {projects.map((p) => (
-                  <SortableProjectRow
-                    key={p.id}
-                    p={p}
-                    onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
-                    onDelete={handleDeleteProject}
-                  />
-                ))}
-              </tbody>
-            </SortableContext>
-          </table>
+            <table className="table cards-sm sortable-rows">
+              <thead>
+                <tr>
+                  <th style={{ width: 36 }} aria-label="순서 변경"></th>
+                  <th>프로젝트명</th>
+                  <th className="bom-project-action-col">작업</th>
+                </tr>
+              </thead>
+              <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {projects.map((p) => (
+                    <SortableProjectRow
+                      key={p.id}
+                      p={p}
+                      onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
+                      onDelete={handleDeleteProject}
+                    />
+                  ))}
+                </tbody>
+              </SortableContext>
+            </table>
           </div>
         </DndContext>
       )}

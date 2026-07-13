@@ -47,7 +47,10 @@ export default function QuoteFormPage() {
     setLoading(true);
     getQuoteById(quoteId)
       .then((q) => {
-        if (!q) { navigate('/admin/purchase/quotes', { replace: true }); return; }
+        if (!q) {
+          navigate('/admin/purchase/quotes', { replace: true });
+          return;
+        }
         setQuote(q);
         setForm({
           title: q.title || '',
@@ -84,12 +87,19 @@ export default function QuoteFormPage() {
 
   async function handleSubmit(e) {
     e?.preventDefault();
-    if (!form.title.trim()) { alert('제목을 입력해주세요.'); return; }
+    if (!form.title.trim()) {
+      alert('제목을 입력해주세요.');
+      return;
+    }
     const lines = form.items.filter((ln) => (ln.name || '').trim());
     const items = lines.map((ln) => ({
-      name: ln.name, spec: ln.spec || '', unit: ln.unit || '',
-      qty: Number(ln.qty) || 0, unitPrice: Number(ln.unitPrice) || 0,
-      amount: (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), note: ln.note || '',
+      name: ln.name,
+      spec: ln.spec || '',
+      unit: ln.unit || '',
+      qty: Number(ln.qty) || 0,
+      unitPrice: Number(ln.unitPrice) || 0,
+      amount: (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0),
+      note: ln.note || '',
     }));
     const totalAmount = items.reduce((s, it) => s + it.amount, 0);
     const vat = Math.round(totalAmount * 0.1);
@@ -99,7 +109,10 @@ export default function QuoteFormPage() {
       supplierId: form.supplierId,
       supplierName: supplier?.name || form.supplierName || '',
       siteName: form.siteName || '',
-      items, totalAmount, vat, grandTotal: totalAmount + vat,
+      items,
+      totalAmount,
+      vat,
+      grandTotal: totalAmount + vat,
       validity: form.validity || '15일',
       delivery: form.delivery || '일정에 준함',
       payment: form.payment || '협의',
@@ -146,7 +159,14 @@ export default function QuoteFormPage() {
   }
 
   const printQuote = isEditing
-    ? { ...form, id: quoteId || 'new', createdAt: quote?.createdAt || new Date(), totalAmount: supplyAmount, vat: vatAmount, grandTotal }
+    ? {
+        ...form,
+        id: quoteId || 'new',
+        createdAt: quote?.createdAt || new Date(),
+        totalAmount: supplyAmount,
+        vat: vatAmount,
+        grandTotal,
+      }
     : quote;
 
   if (loading) return <Skeleton.Rows count={6} />;
@@ -186,7 +206,7 @@ export default function QuoteFormPage() {
           <Icon name="chevronDown" style={{ transform: 'rotate(90deg)', display: 'block' }} />
           {isEditing && !isNew ? '취소' : '목록'}
         </button>
-        <h2>{isNew ? '새 견적서' : isEditing ? '견적서 수정' : (quote?.title || '견적서')}</h2>
+        <h2>{isNew ? '새 견적서' : isEditing ? '견적서 수정' : quote?.title || '견적서'}</h2>
         <div className="page-actions">
           {isEditing ? (
             <button type="button" className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={saving}>
@@ -255,11 +275,19 @@ export default function QuoteFormPage() {
           <div className="form-group form-row-3">
             <div>
               <label>유효기간</label>
-              <input type="text" value={form.validity} onChange={(e) => setForm({ ...form, validity: e.target.value })} />
+              <input
+                type="text"
+                value={form.validity}
+                onChange={(e) => setForm({ ...form, validity: e.target.value })}
+              />
             </div>
             <div>
               <label>납품기일</label>
-              <input type="text" value={form.delivery} onChange={(e) => setForm({ ...form, delivery: e.target.value })} />
+              <input
+                type="text"
+                value={form.delivery}
+                onChange={(e) => setForm({ ...form, delivery: e.target.value })}
+              />
             </div>
             <div>
               <label>지불조건</label>
@@ -272,22 +300,67 @@ export default function QuoteFormPage() {
             <p className="field-hint">품명·규격·단위·수량·단가를 입력하세요. 합계는 자동 계산됩니다.</p>
             {form.items.map((ln, idx) => (
               <div className="quote-line" key={idx}>
-                <input type="text" placeholder="품명" value={ln.name} title={ln.name || ''} onChange={(e) => updateLine(idx, { name: e.target.value })} />
-                <input type="text" placeholder="규격" value={ln.spec} title={ln.spec || ''} onChange={(e) => updateLine(idx, { spec: e.target.value })} />
-                <input type="text" placeholder="단위" value={ln.unit} title={ln.unit || ''} onChange={(e) => updateLine(idx, { unit: e.target.value })} />
-                <input type="number" min="0" placeholder="수량" value={ln.qty || ''} style={{ textAlign: 'right' }} onChange={(e) => updateLine(idx, { qty: e.target.value })} />
-                <input type="number" min="0" placeholder="단가" value={ln.unitPrice || ''} style={{ textAlign: 'right' }} onChange={(e) => updateLine(idx, { unitPrice: e.target.value })} />
+                <input
+                  type="text"
+                  placeholder="품명"
+                  value={ln.name}
+                  title={ln.name || ''}
+                  onChange={(e) => updateLine(idx, { name: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="규격"
+                  value={ln.spec}
+                  title={ln.spec || ''}
+                  onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="단위"
+                  value={ln.unit}
+                  title={ln.unit || ''}
+                  onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="수량"
+                  value={ln.qty || ''}
+                  style={{ textAlign: 'right' }}
+                  onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="단가"
+                  value={ln.unitPrice || ''}
+                  style={{ textAlign: 'right' }}
+                  onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                />
                 <span className="quote-line-amount">
                   {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
                 </span>
-                <input type="text" placeholder="비고" value={ln.note} title={ln.note || ''} onChange={(e) => updateLine(idx, { note: e.target.value })} />
-                <button type="button" className="btn btn-sm btn-outline purchase-line-del" onClick={() => removeLine(idx)} aria-label="행 삭제" title="행 삭제">
+                <input
+                  type="text"
+                  placeholder="비고"
+                  value={ln.note}
+                  title={ln.note || ''}
+                  onChange={(e) => updateLine(idx, { note: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline purchase-line-del"
+                  onClick={() => removeLine(idx)}
+                  aria-label="행 삭제"
+                  title="행 삭제"
+                >
                   <Icon name="close" />
                 </button>
               </div>
             ))}
             <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
-              <Icon name="plus" className="btn-ic" />품목 추가
+              <Icon name="plus" className="btn-ic" />
+              품목 추가
             </button>
           </div>
 
@@ -325,9 +398,7 @@ export default function QuoteFormPage() {
       {printQuote && <QuotePrintForm quote={printQuote} hostClass="print-only" />}
 
       {/* PDF FAB — 보기 모드에서만 */}
-      {!isEditing && quote && (
-        <PdfFabGroup defaultFileName={() => `견적서_${quote.supplierName || ''}`.trim()} />
-      )}
+      {!isEditing && quote && <PdfFabGroup defaultFileName={() => `견적서_${quote.supplierName || ''}`.trim()} />}
     </div>
   );
 }

@@ -40,8 +40,7 @@ export const auth = getAuth(app);
 export const functions = getFunctions(app, 'asia-northeast3');
 // 메일 발송 — 서버(MAIL_TOKEN 시크릿)와 대조하는 공유 토큰을 자동 주입해 외부 무단 호출 차단
 const _sendEmail = httpsCallable(functions, 'sendPurchaseOrderEmail');
-export const callSendEmail = (data) =>
-  _sendEmail({ ...data, token: import.meta.env.VITE_MAIL_TOKEN || '' });
+export const callSendEmail = (data) => _sendEmail({ ...data, token: import.meta.env.VITE_MAIL_TOKEN || '' });
 
 // Firebase Storage 업로드 권한을 위한 익명 인증 보장
 // 앱 자체 인증(accessCode) 외에 Firebase 세션이 필요한 기능(Storage)용

@@ -327,7 +327,10 @@ export default function UnassignedReportPage() {
         )}
       </div>
 
-      <div className="ua-legend" style={isXSmall ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, fontSize: 10 } : undefined}>
+      <div
+        className="ua-legend"
+        style={isXSmall ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, fontSize: 10 } : undefined}
+      >
         <span>
           <span className="ua-legend-swatch assigned" />
           배정
@@ -381,21 +384,48 @@ export default function UnassignedReportPage() {
           <p className="text-muted text-sm" style={{ marginBottom: 8 }}>
             {year}년 {month}월 — 미배정 직원 {rows.filter((r) => r.unassignedCount > 0).length}명
           </p>
-          {rows.filter((r) => r.unassignedCount > 0 || r.overlapCount > 0).slice(0, 10).map((r) => (
-            <div key={r.uid} className="card" style={{ padding: '8px 12px', marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 700, wordBreak: 'break-word', minWidth: 0 }} title={`${r.name}${r.position ? ` · ${r.position}` : ''}`}>
-                  {r.name}
-                  {r.position && <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>{r.position}</span>}
-                </span>
-                <span style={{ display: 'flex', gap: 8, flexShrink: 0, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
-                  {r.unassignedCount > 0 && <span style={{ color: 'var(--danger)' }}>미배정 <strong>{r.unassignedCount}일</strong></span>}
-                  {r.overlapCount > 0 && <span style={{ color: 'var(--warning, #d97706)' }}>중복 <strong>{r.overlapCount}일</strong></span>}
-                  {r.leaveCount > 0 && <span>연차 <strong>{r.leaveCount % 1 === 0 ? r.leaveCount : r.leaveCount.toFixed(2).replace(/\.?0+$/, '')}일</strong></span>}
-                </span>
+          {rows
+            .filter((r) => r.unassignedCount > 0 || r.overlapCount > 0)
+            .slice(0, 10)
+            .map((r) => (
+              <div key={r.uid} className="card" style={{ padding: '8px 12px', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span
+                    style={{ fontWeight: 700, wordBreak: 'break-word', minWidth: 0 }}
+                    title={`${r.name}${r.position ? ` · ${r.position}` : ''}`}
+                  >
+                    {r.name}
+                    {r.position && (
+                      <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>
+                        {r.position}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    style={{ display: 'flex', gap: 8, flexShrink: 0, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {r.unassignedCount > 0 && (
+                      <span style={{ color: 'var(--danger)' }}>
+                        미배정 <strong>{r.unassignedCount}일</strong>
+                      </span>
+                    )}
+                    {r.overlapCount > 0 && (
+                      <span style={{ color: 'var(--warning, #d97706)' }}>
+                        중복 <strong>{r.overlapCount}일</strong>
+                      </span>
+                    )}
+                    {r.leaveCount > 0 && (
+                      <span>
+                        연차{' '}
+                        <strong>
+                          {r.leaveCount % 1 === 0 ? r.leaveCount : r.leaveCount.toFixed(2).replace(/\.?0+$/, '')}일
+                        </strong>
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           {rows.filter((r) => r.unassignedCount === 0 && r.overlapCount === 0).length > 0 && (
             <p className="text-muted text-sm" style={{ marginTop: 4 }}>
               + 배정 완료 {rows.filter((r) => r.unassignedCount === 0 && r.overlapCount === 0).length}명
@@ -418,7 +448,11 @@ export default function UnassignedReportPage() {
                   );
                   const dowCls = dow === 0 || isHoliday ? 'sun' : dow === 6 ? 'sat' : '';
                   return (
-                    <th key={d} className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`} style={{ minWidth: 18, maxWidth: 24, fontSize: 10, width: 22 }}>
+                    <th
+                      key={d}
+                      className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`}
+                      style={{ minWidth: 18, maxWidth: 24, fontSize: 10, width: 22 }}
+                    >
                       {d}
                     </th>
                   );
@@ -431,9 +465,17 @@ export default function UnassignedReportPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.uid}>
-                  <td className="sticky-col name-col" title={`${r.name}${r.position ? ` · ${r.position}` : ''}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                  <td
+                    className="sticky-col name-col"
+                    title={`${r.name}${r.position ? ` · ${r.position}` : ''}`}
+                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                  >
                     <strong>{r.name}</strong>
-                    {r.position && <span className="position-tag position-tag-mobile-hide" title={r.position}>{r.position}</span>}
+                    {r.position && (
+                      <span className="position-tag position-tag-mobile-hide" title={r.position}>
+                        {r.position}
+                      </span>
+                    )}
                   </td>
                   {r.days.map((c) => {
                     const hasOT = c.overtimeMin > 0;

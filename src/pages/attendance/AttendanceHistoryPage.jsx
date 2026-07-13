@@ -245,7 +245,9 @@ export default function AttendanceHistoryPage() {
                           }}
                         >
                           <span style={{ whiteSpace: 'nowrap' }}>{r.date}</span>
-                          <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          <span
+                            style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
+                          >
                             ({getDayName(r.date)})
                           </span>
                           {r.status === 'pending' && (
@@ -293,10 +295,34 @@ export default function AttendanceHistoryPage() {
                             overflow: 'hidden',
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>{formatMinutes(r.minutes)}</span>
-                          <span style={{ minWidth: 0, maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }} title={siteMap[r.siteId] || '기타'}>{siteMap[r.siteId] || '기타'}</span>
+                          <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>
+                            {formatMinutes(r.minutes)}
+                          </span>
+                          <span
+                            style={{
+                              minWidth: 0,
+                              maxWidth: '70px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 1,
+                            }}
+                            title={siteMap[r.siteId] || '기타'}
+                          >
+                            {siteMap[r.siteId] || '기타'}
+                          </span>
                           {r.reason && (
-                            <span style={{ color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 2 }} title={r.reason}>
+                            <span
+                              style={{
+                                color: 'var(--text-muted)',
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 2,
+                              }}
+                              title={r.reason}
+                            >
                               {r.reason}
                             </span>
                           )}
@@ -320,12 +346,24 @@ export default function AttendanceHistoryPage() {
                         )}
                       </div>
                       {(r.status === 'pending' || isToday) && (
-                        <div className="btn-group" style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}>
-                          <button className="btn btn-sm btn-outline" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={() => startEdit(r)}>
+                        <div
+                          className="btn-group"
+                          style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}
+                        >
+                          <button
+                            className="btn btn-sm btn-outline"
+                            style={{ flex: 1, whiteSpace: 'nowrap' }}
+                            onClick={() => startEdit(r)}
+                          >
                             수정
                           </button>
-                          <button className="btn btn-sm btn-danger" style={{ flex: 1, whiteSpace: 'nowrap' }} onClick={() => handleDelete(r.id)}>
-                            <Icon name="trash" className="btn-ic" />삭제
+                          <button
+                            className="btn btn-sm btn-danger"
+                            style={{ flex: 1, whiteSpace: 'nowrap' }}
+                            onClick={() => handleDelete(r.id)}
+                          >
+                            <Icon name="trash" className="btn-ic" />
+                            삭제
                           </button>
                         </div>
                       )}

@@ -344,7 +344,14 @@ export default function UserManagementPage() {
             관리자·대표·부사장은 자동 포함. 그 외 직원은 아래에서 권한 부여 가능.
           </span>
         </div>
-        <div className="permission-badge-row" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`, gap: isXSmall ? 4 : 'var(--space-2, 8px)' }}>
+        <div
+          className="permission-badge-row"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`,
+            gap: isXSmall ? 4 : 'var(--space-2, 8px)',
+          }}
+        >
           {salaryViewers.length === 0 ? (
             <span className="text-muted text-sm">권한자가 없습니다.</span>
           ) : (
@@ -401,7 +408,14 @@ export default function UserManagementPage() {
             관리자는 자동 포함. 그 외 직원은 아래 직원 행을 눌러 권한 부여.
           </span>
         </div>
-        <div className="permission-badge-row" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`, gap: isXSmall ? 4 : 'var(--space-2, 8px)' }}>
+        <div
+          className="permission-badge-row"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`,
+            gap: isXSmall ? 4 : 'var(--space-2, 8px)',
+          }}
+        >
           {siteCreators.length === 0 ? (
             <span className="text-muted text-sm">권한자가 없습니다.</span>
           ) : (
@@ -458,7 +472,14 @@ export default function UserManagementPage() {
             관리자·대표·부사장은 자동 포함. 그 외 직원은 아래 직원 행을 눌러 권한 부여.
           </span>
         </div>
-        <div className="permission-badge-row" style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`, gap: isXSmall ? 4 : 'var(--space-2, 8px)' }}>
+        <div
+          className="permission-badge-row"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`,
+            gap: isXSmall ? 4 : 'var(--space-2, 8px)',
+          }}
+        >
           {archiveViewers.length === 0 ? (
             <span className="text-muted text-sm">권한자가 없습니다.</span>
           ) : (
@@ -512,32 +533,74 @@ export default function UserManagementPage() {
               const isSelf = u.uid === userProfile?.uid;
               return (
                 <tr key={u.uid} onClick={() => openEdit(u)} style={{ cursor: 'pointer', height: 36 }}>
-                  <td data-label="이름" title={u.name} style={{ wordBreak: 'break-word', overflowWrap: 'break-word', minHeight: 36 }}>
+                  <td
+                    data-label="이름"
+                    title={u.name}
+                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word', minHeight: 36 }}
+                  >
                     {u.name}
                   </td>
                   <td data-label="코드" title={u.code || ''} style={{ minHeight: 36 }}>
                     <code>{u.code}</code>
                   </td>
-                  <td data-label="직급" title={u.position || ''} style={isSmall ? { display: 'none' } : { minHeight: 36 }}>
+                  <td
+                    data-label="직급"
+                    title={u.position || ''}
+                    style={isSmall ? { display: 'none' } : { minHeight: 36 }}
+                  >
                     <span className={`badge badge-position${u.position ? `-${u.position}` : ''}`}>
                       {u.position || '-'}
                     </span>
                   </td>
-                  <td data-label="연락처" title={u.phone || ''} style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', minHeight: 36, ...(isSmall ? { display: 'none' } : {}) }}>
+                  <td
+                    data-label="연락처"
+                    title={u.phone || ''}
+                    style={{
+                      fontSize: 12,
+                      fontVariantNumeric: 'tabular-nums',
+                      minHeight: 36,
+                      ...(isSmall ? { display: 'none' } : {}),
+                    }}
+                  >
                     {u.phone || '-'}
                   </td>
                   <td data-label="부서" title={deptMap[u.departmentId] || ''} style={{ minHeight: 36 }}>
                     {deptMap[u.departmentId] || '-'}
                   </td>
-                  <td data-label="고정비용" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, minHeight: 36 }}>{u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}</td>
-                  <td data-label="시급" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, minHeight: 36, ...(isSmall ? { display: 'none' } : {}) }}>{u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}</td>
-                  <td data-label="입사일" style={{ fontSize: 12, minHeight: 36, ...(isSmall ? { display: 'none' } : {}) }}>{u.joinDate || '-'}</td>
+                  <td data-label="고정비용" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, minHeight: 36 }}>
+                    {u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}
+                  </td>
+                  <td
+                    data-label="시급"
+                    style={{
+                      fontVariantNumeric: 'tabular-nums',
+                      fontSize: 12,
+                      minHeight: 36,
+                      ...(isSmall ? { display: 'none' } : {}),
+                    }}
+                  >
+                    {u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}
+                  </td>
+                  <td
+                    data-label="입사일"
+                    style={{ fontSize: 12, minHeight: 36, ...(isSmall ? { display: 'none' } : {}) }}
+                  >
+                    {u.joinDate || '-'}
+                  </td>
                   <td data-label="연차 (누적/사용/잔여)">
                     {bal ? (
                       <span
                         className="leave-balance-cell"
                         title={`누적 ${bal.totalDays} / 사용 ${bal.usedDays} / 잔여 ${bal.remainingDays}`}
-                        style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, whiteSpace: 'normal', overflowWrap: 'break-word', display: 'inline-flex', flexWrap: 'wrap', gap: 2 }}
+                        style={{
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: 12,
+                          whiteSpace: 'normal',
+                          overflowWrap: 'break-word',
+                          display: 'inline-flex',
+                          flexWrap: 'wrap',
+                          gap: 2,
+                        }}
                       >
                         <span className="leave-total leave-balance-detail">{bal.totalDays}</span>
                         <span className="leave-sep leave-balance-detail">/</span>
@@ -854,7 +917,8 @@ export default function UserManagementPage() {
           <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
             {editUser ? (
               <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(editUser)}>
-                <Icon name="trash" className="btn-ic" />삭제
+                <Icon name="trash" className="btn-ic" />
+                삭제
               </button>
             ) : (
               <span />

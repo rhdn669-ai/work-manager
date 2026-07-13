@@ -280,7 +280,12 @@ export default function ManageTeamPage() {
   }
 
   async function handleDelete(team) {
-    if (!(await confirm(`"${team.name}" 팀을 삭제하시겠습니까?\n소속 팀원의 부서가 초기화됩니다.\n(휴지통에서 복원할 수 있습니다)`))) return;
+    if (
+      !(await confirm(
+        `"${team.name}" 팀을 삭제하시겠습니까?\n소속 팀원의 부서가 초기화됩니다.\n(휴지통에서 복원할 수 있습니다)`,
+      ))
+    )
+      return;
     try {
       const members = users.filter((u) => u.departmentId === team.id);
       for (const u of members) {
@@ -323,15 +328,26 @@ export default function ManageTeamPage() {
         ) : (
           <>
             {(leader || subLeader) && (
-              <div className="meta-bar" style={{ marginBottom: 8, padding: '6px 8px', display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+              <div
+                className="meta-bar"
+                style={{ marginBottom: 8, padding: '6px 8px', display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}
+              >
                 {leader && (
                   <span style={{ whiteSpace: 'nowrap', minWidth: 0 }}>
-                    팀장: <strong className="u-ellipsis-1" title={leader.name}>{leader.name}</strong> {leader.position && `(${leader.position})`}
+                    팀장:{' '}
+                    <strong className="u-ellipsis-1" title={leader.name}>
+                      {leader.name}
+                    </strong>{' '}
+                    {leader.position && `(${leader.position})`}
                   </span>
                 )}
                 {subLeader && (
                   <span style={{ whiteSpace: 'nowrap', minWidth: 0 }}>
-                    부팀장: <strong className="u-ellipsis-1" title={subLeader.name}>{subLeader.name}</strong> {subLeader.position && `(${subLeader.position})`}
+                    부팀장:{' '}
+                    <strong className="u-ellipsis-1" title={subLeader.name}>
+                      {subLeader.name}
+                    </strong>{' '}
+                    {subLeader.position && `(${subLeader.position})`}
                   </span>
                 )}
               </div>
@@ -347,26 +363,65 @@ export default function ManageTeamPage() {
                 {members.map((u) => (
                   <tr key={u.uid}>
                     <td data-label="이름" title={u.name}>
-                      <div style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 4px', minWidth: 0 }}>
-                        <strong className="u-ellipsis-1" title={u.name} style={{ minHeight: 22 }}>{u.name}</strong>
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: '2px 4px',
+                          minWidth: 0,
+                        }}
+                      >
+                        <strong className="u-ellipsis-1" title={u.name} style={{ minHeight: 22 }}>
+                          {u.name}
+                        </strong>
                         {u.uid === myTeam.managerId && (
-                          <span className="badge badge-role-manager" style={{ display: 'inline-flex', alignItems: 'center', minWidth: 0, minHeight: 22, height: 22 }}>
+                          <span
+                            className="badge badge-role-manager"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              minWidth: 0,
+                              minHeight: 22,
+                              height: 22,
+                            }}
+                          >
                             팀장
                           </span>
                         )}
                         {u.uid === myTeam.subManagerId && (
-                          <span className="badge badge-role-manager" style={{ display: 'inline-flex', alignItems: 'center', minWidth: 0, minHeight: 22, height: 22 }}>
+                          <span
+                            className="badge badge-role-manager"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              minWidth: 0,
+                              minHeight: 22,
+                              height: 22,
+                            }}
+                          >
                             부팀장
                           </span>
                         )}
                         {u.uid === userProfile.uid && (
-                          <span className="badge badge-position" style={{ display: 'inline-flex', alignItems: 'center', minWidth: 0, minHeight: 22, height: 22 }}>
+                          <span
+                            className="badge badge-position"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              minWidth: 0,
+                              minHeight: 22,
+                              height: 22,
+                            }}
+                          >
                             나
                           </span>
                         )}
                       </div>
                     </td>
-                    <td data-label="직급" title={u.position || ''}>{u.position || '-'}</td>
+                    <td data-label="직급" title={u.position || ''}>
+                      {u.position || '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -430,7 +485,12 @@ export default function ManageTeamPage() {
                           type="button"
                           key={di}
                           className={`team-cal-cell ${events.length > 0 ? 'has-events' : ''} ${isToday ? 'is-today' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${selectedCalDay === dateStr ? 'is-selected' : ''}`}
-                          style={{ minHeight: 'clamp(42px, 8vw, 56px)', display: 'flex', flexDirection: 'column', contain: 'layout' }}
+                          style={{
+                            minHeight: 'clamp(42px, 8vw, 56px)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            contain: 'layout',
+                          }}
                           onClick={() => setSelectedCalDay(selectedCalDay === dateStr ? null : dateStr)}
                           disabled={events.length === 0}
                         >
@@ -458,7 +518,10 @@ export default function ManageTeamPage() {
                   const [y, m, d] = selectedCalDay.split('-');
                   return (
                     <div className="team-calendar-day-detail">
-                      <div className="team-calendar-day-detail-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div
+                        className="team-calendar-day-detail-head"
+                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                      >
                         <strong>
                           {Number(m)}월 {Number(d)}일
                         </strong>
@@ -480,12 +543,26 @@ export default function ManageTeamPage() {
                               <span
                                 className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`}
                               />
-                              <strong className="u-ellipsis-1" title={e.label} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: '1 1 auto' }}>{e.label}</strong>
+                              <strong
+                                className="u-ellipsis-1"
+                                title={e.label}
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 0,
+                                  flex: '1 1 auto',
+                                }}
+                              >
+                                {e.label}
+                              </strong>
                               <span className="team-calendar-ev-detail">
                                 {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
                               </span>
                               {e.kind === 'overtime' && e.siteName && (
-                                <span className="team-calendar-ev-site u-ellipsis-1" title={e.siteName}>{e.siteName}</span>
+                                <span className="team-calendar-ev-site u-ellipsis-1" title={e.siteName}>
+                                  {e.siteName}
+                                </span>
                               )}
                             </>
                           );
@@ -495,13 +572,30 @@ export default function ManageTeamPage() {
                                 to={`/sites/${e.siteId}/${calYear}/${calMonth}`}
                                 className="team-calendar-day-link"
                                 title={`${e.siteName} 마감 페이지로 이동`}
-                                style={{ display: 'flex', alignItems: 'center', gap: 4, minHeight: 44, padding: '10px 12px' }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  minHeight: 44,
+                                  padding: '10px 12px',
+                                }}
                               >
                                 {inner}
                               </Link>
                             </li>
                           ) : (
-                            <li key={i} style={{ minHeight: 44, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>{inner}</li>
+                            <li
+                              key={i}
+                              style={{
+                                minHeight: 44,
+                                padding: '10px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              {inner}
+                            </li>
                           );
                         })}
                       </ul>
@@ -549,7 +643,9 @@ export default function ManageTeamPage() {
                     <td data-label="이름" title={u.name}>
                       <strong>{u.name}</strong>
                     </td>
-                    <td data-label="직급" title={u.position || ''}>{u.position || '-'}</td>
+                    <td data-label="직급" title={u.position || ''}>
+                      {u.position || '-'}
+                    </td>
                     <td data-label="이번 달 잔업">
                       {minutes > 0 ? (
                         <strong style={{ color: 'var(--primary)' }}>{formatMinutes(minutes)}</strong>
@@ -574,7 +670,8 @@ export default function ManageTeamPage() {
         <h2>팀 관리</h2>
         <div className="page-actions">
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-            <Icon name="trash" className="btn-ic" />휴지통
+            <Icon name="trash" className="btn-ic" />
+            휴지통
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
             <Icon name="plus" className="btn-ic" />팀 추가
@@ -610,24 +707,21 @@ export default function ManageTeamPage() {
                   <td data-label="팀 이름" title={t.name || ''}>
                     <strong>{t.name}</strong>
                   </td>
-                  <td data-label="팀장" title={leader?.name || ''}>{leader?.name || '-'}</td>
-                  <td data-label="부팀장" title={subLeader?.name || ''}>{subLeader?.name || '-'}</td>
+                  <td data-label="팀장" title={leader?.name || ''}>
+                    {leader?.name || '-'}
+                  </td>
+                  <td data-label="부팀장" title={subLeader?.name || ''}>
+                    {subLeader?.name || '-'}
+                  </td>
                   <td data-label="팀원">{members.length}명</td>
                   <td className="col-action">
                     <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => openEdit(t)}
-                      >
+                      <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>
                         수정
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(t)}
-                      >
-                        <Icon name="trash" className="btn-ic" />삭제
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(t)}>
+                        <Icon name="trash" className="btn-ic" />
+                        삭제
                       </button>
                     </div>
                   </td>
@@ -713,7 +807,11 @@ export default function ManageTeamPage() {
                   .map((u) => {
                     const checked = form.memberIds.includes(u.uid);
                     return (
-                      <label key={u.uid} className={`select-list-item ${checked ? 'is-checked' : ''}`} style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                      <label
+                        key={u.uid}
+                        className={`select-list-item ${checked ? 'is-checked' : ''}`}
+                        style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}
+                      >
                         <input type="checkbox" checked={checked} onChange={() => toggleMember(u.uid)} />
                         <span className="select-list-name">{u.name}</span>
                         <span className="select-list-sub">
@@ -727,7 +825,12 @@ export default function ManageTeamPage() {
             )}
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)} style={{ minHeight: 36 }}>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setShowModal(false)}
+              style={{ minHeight: 36 }}
+            >
               취소
             </button>
             <button type="submit" className="btn btn-primary" style={{ minHeight: 36 }}>

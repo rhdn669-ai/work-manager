@@ -246,28 +246,84 @@ export default function TeamReportsPage() {
               {rows.map((r) => (
                 <tr key={r.uid}>
                   <td data-label="이름" title={r.name}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: 'wrap', rowGap: 2 }}>
-                      <strong title={r.name} className="u-ellipsis-1" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 60, flexShrink: 1, minHeight: 22 }}>{r.name}</strong>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        minWidth: 0,
+                        flexWrap: 'wrap',
+                        rowGap: 2,
+                      }}
+                    >
+                      <strong
+                        title={r.name}
+                        className="u-ellipsis-1"
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          minWidth: 60,
+                          flexShrink: 1,
+                          minHeight: 22,
+                        }}
+                      >
+                        {r.name}
+                      </strong>
                       {r.isLeader && (
-                        <span className="badge badge-role-manager" style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, height: 22, minHeight: 22 }}>
+                        <span
+                          className="badge badge-role-manager"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            height: 22,
+                            minHeight: 22,
+                          }}
+                        >
                           팀장
                         </span>
                       )}
                       {r.isSubLeader && (
-                        <span className="badge badge-role-manager" style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, height: 22, minHeight: 22 }}>
+                        <span
+                          className="badge badge-role-manager"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            height: 22,
+                            minHeight: 22,
+                          }}
+                        >
                           부팀장
                         </span>
                       )}
                       {r.isMe && (
-                        <span className="badge badge-position" style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, height: 22, minHeight: 22 }}>
+                        <span
+                          className="badge badge-position"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            height: 22,
+                            minHeight: 22,
+                          }}
+                        >
                           나
                         </span>
                       )}
                     </div>
                   </td>
-                  <td data-label="직급" title={r.position || ''}>{r.position || '-'}</td>
+                  <td data-label="직급" title={r.position || ''}>
+                    {r.position || '-'}
+                  </td>
                   <td data-label="잔업">
-                    <button type="button" className="team-detail-btn" style={{ width: '100%', alignItems: 'center', gap: 4, minHeight: 36 }} onClick={() => openDetail(r, 'overtime')}>
+                    <button
+                      type="button"
+                      className="team-detail-btn"
+                      style={{ width: '100%', alignItems: 'center', gap: 4, minHeight: 36 }}
+                      onClick={() => openDetail(r, 'overtime')}
+                    >
                       {r.overtimeMinutes > 0 ? (
                         <>
                           <strong>{formatMinutes(r.overtimeMinutes)}</strong>{' '}
@@ -279,7 +335,12 @@ export default function TeamReportsPage() {
                     </button>
                   </td>
                   <td data-label="연차">
-                    <button type="button" className="team-detail-btn" style={{ width: '100%', alignItems: 'center', gap: 4, minHeight: 36 }} onClick={() => openDetail(r, 'leave')}>
+                    <button
+                      type="button"
+                      className="team-detail-btn"
+                      style={{ width: '100%', alignItems: 'center', gap: 4, minHeight: 36 }}
+                      onClick={() => openDetail(r, 'leave')}
+                    >
                       {r.leaveDays > 0 ? (
                         <>
                           <strong>{r.leaveDays}일</strong> <Icon name="chevronRight" className="team-detail-arrow" />
@@ -394,7 +455,10 @@ export default function TeamReportsPage() {
               const [, mm, dd] = selectedCalDay.split('-');
               return (
                 <div className="team-calendar-day-detail">
-                  <div className="team-calendar-day-detail-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    className="team-calendar-day-detail-head"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
                     <strong>
                       {Number(mm)}월 {Number(dd)}일
                     </strong>
@@ -416,12 +480,26 @@ export default function TeamReportsPage() {
                           <span
                             className={`team-cal-ev-dot team-cal-ev-${e.kind}${e.kind === 'leave' ? ` team-cal-ev-leave-${e.type || 'annual'}` : ''}`}
                           />
-                          <strong className="u-ellipsis-1" title={e.label} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: '1 1 auto' }}>{e.label}</strong>
+                          <strong
+                            className="u-ellipsis-1"
+                            title={e.label}
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              minWidth: 0,
+                              flex: '1 1 auto',
+                            }}
+                          >
+                            {e.label}
+                          </strong>
                           <span className="team-calendar-ev-detail">
                             {e.kind === 'leave' ? leaveTypeLabel(e.type) : `잔업 ${formatMinutes(e.minutes)}`}
                           </span>
                           {e.kind === 'overtime' && e.siteName && (
-                            <span className="team-calendar-ev-site u-ellipsis-1" title={e.siteName}>{e.siteName}</span>
+                            <span className="team-calendar-ev-site u-ellipsis-1" title={e.siteName}>
+                              {e.siteName}
+                            </span>
                           )}
                         </>
                       );
@@ -437,7 +515,9 @@ export default function TeamReportsPage() {
                           </Link>
                         </li>
                       ) : (
-                        <li key={i} style={{ minHeight: 48, display: 'flex', alignItems: 'center' }}>{inner}</li>
+                        <li key={i} style={{ minHeight: 48, display: 'flex', alignItems: 'center' }}>
+                          {inner}
+                        </li>
                       );
                     })}
                   </ul>

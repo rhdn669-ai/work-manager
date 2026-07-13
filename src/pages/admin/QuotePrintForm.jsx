@@ -9,8 +9,7 @@ export const SELF_INFO = {
   contact: '손성욱 / 010-7704-0331',
 };
 
-export const DEFAULT_NOTE =
-  '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.';
+export const DEFAULT_NOTE = '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.';
 
 export const PRINT_ROWS = 15;
 
@@ -133,9 +132,7 @@ export default function QuotePrintForm({ quote, hostClass }) {
                 </td>
                 <td className="c-unit">{ln.unit || ''}</td>
                 <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
-                <td className="c-price">
-                  {Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}
-                </td>
+                <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                 <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
                 <td className={`c-note ${specFontClass(ln.note, 12)}`} title={ln.note || ''}>
                   {ln.note || ''}

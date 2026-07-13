@@ -115,12 +115,7 @@ export function DialogProvider({ children }) {
                 )}
               </svg>
               <span>{t.message}</span>
-              <button
-                type="button"
-                className="toast__close"
-                onClick={() => removeToast(t.id)}
-                aria-label="닫기"
-              >
+              <button type="button" className="toast__close" onClick={() => removeToast(t.id)} aria-label="닫기">
                 ×
               </button>
             </div>

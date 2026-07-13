@@ -56,9 +56,7 @@ const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice
 
 // SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
 // 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
-const BUSINESS_CARD_NAMES = [
-  '이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱',
-];
+const BUSINESS_CARD_NAMES = ['이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱'];
 function cardFileFor(name) {
   const n = (name || '').trim();
   return BUSINESS_CARD_NAMES.includes(n) ? `/cards/${encodeURIComponent(n)}.png` : '';
@@ -74,7 +72,6 @@ function buildDefaultMailBody(name) {
     '감사합니다.',
   ].join('\n');
 }
-
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -95,7 +92,6 @@ function fmtDateTime(ts) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-
 
 export default function PurchaseDetailPage() {
   const { id } = useParams();
@@ -235,7 +231,10 @@ export default function PurchaseDetailPage() {
       });
       if (!changed) return prev;
       skipUndoPushRef.current = true;
-      setTimeout(() => { scheduleAutoSave(); skipUndoPushRef.current = false; }, 0);
+      setTimeout(() => {
+        scheduleAutoSave();
+        skipUndoPushRef.current = false;
+      }, 0);
       return { ...prev, items };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -272,9 +271,7 @@ export default function PurchaseDetailPage() {
         boxes: Array.isArray(p.boxes) ? p.boxes.map((b) => ({ name: String((b && b.name) || '') })) : [],
         // 비어 있으면 기본 공통 문구를 '실제 값'으로 채워 바로 편집 가능하게 (placeholder만 보여 수정 불가처럼 보이던 문제)
         mailBody:
-          p.mailBody && String(p.mailBody).trim()
-            ? p.mailBody
-            : buildDefaultMailBody(p.contactName || p.requesterName),
+          p.mailBody && String(p.mailBody).trim() ? p.mailBody : buildDefaultMailBody(p.contactName || p.requesterName),
       });
     } catch (err) {
       console.error(err);
@@ -299,8 +296,7 @@ export default function PurchaseDetailPage() {
     const col = td.cellIndex;
     if (startRow < 0) return;
     e.preventDefault();
-    const clear = () =>
-      tbody.querySelectorAll('.col-copy-sel').forEach((el) => el.classList.remove('col-copy-sel'));
+    const clear = () => tbody.querySelectorAll('.col-copy-sel').forEach((el) => el.classList.remove('col-copy-sel'));
     const apply = (r) => {
       const a = Math.min(startRow, r);
       const b = Math.max(startRow, r);
@@ -666,7 +662,10 @@ export default function PurchaseDetailPage() {
     if (s.length === 0) return;
     const prev = s.pop();
     setForm(prev);
-    if (autoSaveRef.current) { clearTimeout(autoSaveRef.current); autoSaveRef.current = null; }
+    if (autoSaveRef.current) {
+      clearTimeout(autoSaveRef.current);
+      autoSaveRef.current = null;
+    }
     setSaveState('saving');
     autoSaveRef.current = setTimeout(() => persistPO(), 700);
   }
@@ -980,10 +979,11 @@ export default function PurchaseDetailPage() {
       const title = purchase.title;
       const purchaseId = id;
       navigate('/admin/purchase');
-      if (tid) pushGlobalUndo(`발주 "${title}" 삭제`, async () => {
-        await restoreTrashItem(tid);
-        navigate(`/admin/purchase/${purchaseId}`);
-      });
+      if (tid)
+        pushGlobalUndo(`발주 "${title}" 삭제`, async () => {
+          await restoreTrashItem(tid);
+          navigate(`/admin/purchase/${purchaseId}`);
+        });
     } catch (err) {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -1190,7 +1190,11 @@ export default function PurchaseDetailPage() {
   // 저장(자료실) 파일명 = 발주서_제목_부제_업체명_발행번호 (부제 포함 — 내부 식별)
   function openMailPreview(supplierName, toEmail, subject, htmlBody, poNo) {
     const build = (arr) =>
-      `${arr.filter(Boolean).map((s) => String(s).trim()).filter(Boolean).join('_')}.pdf`.replace(/[/\\]/g, '_');
+      `${arr
+        .filter(Boolean)
+        .map((s) => String(s).trim())
+        .filter(Boolean)
+        .join('_')}.pdf`.replace(/[/\\]/g, '_');
     const fileName = build(['발주서', purchase.title, supplierName]); // 발송용(제목·업체명까지만)
     const saveFileName = build(['발주서', purchase.title, purchase.subtitle, supplierName, poNo]); // 저장용(부제 포함)
     setMailExtraFiles([]); // 추가 첨부 초기화
@@ -1436,7 +1440,10 @@ export default function PurchaseDetailPage() {
         .purchase-line-item-wrap .purchase-line-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
       `}</style>
       <div className="page-header screen-only">
-        <div className="purchase-detail-header-left" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
+        <div
+          className="purchase-detail-header-left"
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: 0 }}>
             <h2 style={{ margin: 0 }}>{purchase.title || '(제목 없음)'}</h2>
             <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
@@ -1449,7 +1456,15 @@ export default function PurchaseDetailPage() {
             )}
           </div>
           {purchase.subtitle && (
-            <div style={{ margin: 0, fontSize: 16, color: 'var(--text-secondary, #6b7280)', fontWeight: 600, letterSpacing: '-0.02em' }}>
+            <div
+              style={{
+                margin: 0,
+                fontSize: 16,
+                color: 'var(--text-secondary, #6b7280)',
+                fontWeight: 600,
+                letterSpacing: '-0.02em',
+              }}
+            >
               {purchase.subtitle}
             </div>
           )}
@@ -1622,9 +1637,7 @@ export default function PurchaseDetailPage() {
           기본 구매처로 자동 적용.
         </p>
         {form.items.length > 0 && (
-          <div
-            style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}
-          >
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
               className="purchase-filter-search"
@@ -1715,14 +1728,18 @@ export default function PurchaseDetailPage() {
                             tabIndex={-1}
                           />
                         </td>
-                        <td data-label="품명" title={(ln.itemId && master) ? master.name : (ln.name || '')} style={{ minWidth: 90, maxWidth: 200 }}>
+                        <td
+                          data-label="품명"
+                          title={ln.itemId && master ? master.name : ln.name || ''}
+                          style={{ minWidth: 90, maxWidth: 200 }}
+                        >
                           <div className="purchase-line-item-wrap">
                             <input
                               className="purchase-line-item bom-readonly-input"
                               type="text"
                               placeholder="‘변경’ 버튼으로 품목 선택"
-                              value={(ln.itemId && master) ? master.name : ln.name}
-                              title={(ln.itemId && master) ? master.name : (ln.name || '')}
+                              value={ln.itemId && master ? master.name : ln.name}
+                              title={ln.itemId && master ? master.name : ln.name || ''}
                               readOnly
                               tabIndex={-1}
                               autoComplete="off"
@@ -1840,7 +1857,9 @@ export default function PurchaseDetailPage() {
                             ) : receivedQty > 0 ? (
                               isReadOnly ? (
                                 // 정산완료 등 읽기전용 — 상태만 표시
-                                <span className={`purchase-recv-chip is-readonly ${isFullyReceived ? 'is-full' : 'is-partial'}`}>
+                                <span
+                                  className={`purchase-recv-chip is-readonly ${isFullyReceived ? 'is-full' : 'is-partial'}`}
+                                >
                                   <span className="purchase-recv-chip-qty">
                                     {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty}
                                   </span>
@@ -1855,7 +1874,8 @@ export default function PurchaseDetailPage() {
                                   title="클릭하면 입고 기록을 취소합니다"
                                 >
                                   <span className="purchase-recv-cancel-status">
-                                    {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty} · {fmtDate(ln.receivedAt)}
+                                    {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty} ·{' '}
+                                    {fmtDate(ln.receivedAt)}
                                   </span>
                                   <span className="purchase-recv-cancel-act">입고 취소</span>
                                 </button>
@@ -1883,7 +1903,8 @@ export default function PurchaseDetailPage() {
                               disabled={isReadOnly}
                               title="이 행의 품목을 다른 품목으로 변경"
                             >
-                              <Icon name="edit" className="btn-ic" />변경
+                              <Icon name="edit" className="btn-ic" />
+                              변경
                             </button>
                             <button
                               type="button"
@@ -1893,7 +1914,8 @@ export default function PurchaseDetailPage() {
                               disabled={isReadOnly}
                               title="삭제"
                             >
-                              <Icon name="trash" className="btn-ic" />삭제
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
                             </button>
                           </div>
                         </td>
@@ -1958,9 +1980,7 @@ export default function PurchaseDetailPage() {
               </div>
             )}
             {!isReadOnly && (
-              <div
-                style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}
-              >
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>납품 공장</span>
                 {factories.length > 0 && (
                   <Select
@@ -2007,191 +2027,196 @@ export default function PurchaseDetailPage() {
                     <th className="col-action" aria-label="작업"></th>
                   </tr>
                 </thead>
-                    <tbody>
-                      {supList.map((sup, supIdx) => {
-                        const sentKey = sup.name.replace(/\./g, '_');
-                        const sent = purchase.supplierSent?.[sentKey];
-                        const replied = purchase.supplierReplied?.[sentKey];
-                        const recv = recvStatus[sup.name] || { total: 0, full: 0, latest: null };
-                        const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
-                        const payReq = purchase.paymentRequested?.[sentKey];
-                        const paid = purchase.supplierPaid?.[sentKey];
-                        // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
-                        const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
-                        const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
-                        const mailSubject = `[주식회사 아이오피엔] ${purchase.title || ''}`;
-                        const cardSrc = cardFileFor(purchase.contactName);
-                        const cardHtml = cardSrc
-                          ? `<br><br><br><img src="${cardSrc}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
-                          : '';
-                        // 발주별 메일 본문(form.mailBody) 사용, 비었으면 공통 기본 문구
-                        const bodyText = (form.mailBody && form.mailBody.trim())
-                          ? form.mailBody
-                          : buildDefaultMailBody(purchase.contactName);
-                        const bodyHtml = bodyText
-                          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                          .replace(/\n/g, '<br>');
-                        const mailHtml = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.name}</p><br><br><p>${bodyHtml}</p>${cardHtml}`;
-                        return (
-                          <tr key={sup.name}>
-                            <td data-label="구매처" title={sup.name}>
-                              <strong>{sup.name}</strong>
-                            </td>
-                            <td data-label="품목">{sup.count}품목</td>
-                            <td data-label="발행번호">
-                              <strong className="purchase-sup-pono">{supPoNo}</strong>
-                            </td>
-                            <td data-label="발주 상태">
-                              {sent ? (
-                                <span className="purchase-badge purchase-badge-received">
-                                  발주완료 · {fmtDate(sent.sentAt)}
-                                </span>
-                              ) : (
-                                <span className="purchase-badge purchase-badge-draft">미발주</span>
-                              )}
-                            </td>
-                            <td data-label="회신">
-                              {replied ? (
-                                <span className="purchase-badge purchase-badge-replied">
-                                  회신 · {fmtDate(replied.repliedAt)}
-                                </span>
-                              ) : (
-                                <span className="purchase-badge purchase-badge-draft">미회신</span>
-                              )}
-                            </td>
-                            <td data-label="입고">
-                              <span title="상단 품목 입고 처리가 완료되면 자동으로 반영됩니다">
-                                {recvDone ? (
-                                  <span className="purchase-badge purchase-badge-instock">
-                                    입고 · {fmtDate(recv.latest)}
-                                  </span>
-                                ) : recv.full > 0 ? (
-                                  <span className="purchase-badge purchase-badge-partial">
-                                    부분 {recv.full}/{recv.total}
-                                  </span>
-                                ) : (
-                                  <span className="purchase-badge purchase-badge-draft">미입고</span>
-                                )}
+                <tbody>
+                  {supList.map((sup, supIdx) => {
+                    const sentKey = sup.name.replace(/\./g, '_');
+                    const sent = purchase.supplierSent?.[sentKey];
+                    const replied = purchase.supplierReplied?.[sentKey];
+                    const recv = recvStatus[sup.name] || { total: 0, full: 0, latest: null };
+                    const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
+                    const payReq = purchase.paymentRequested?.[sentKey];
+                    const paid = purchase.supplierPaid?.[sentKey];
+                    // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
+                    const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
+                    const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
+                    const mailSubject = `[주식회사 아이오피엔] ${purchase.title || ''}`;
+                    const cardSrc = cardFileFor(purchase.contactName);
+                    const cardHtml = cardSrc
+                      ? `<br><br><br><img src="${cardSrc}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
+                      : '';
+                    // 발주별 메일 본문(form.mailBody) 사용, 비었으면 공통 기본 문구
+                    const bodyText =
+                      form.mailBody && form.mailBody.trim()
+                        ? form.mailBody
+                        : buildDefaultMailBody(purchase.contactName);
+                    const bodyHtml = bodyText
+                      .replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/\n/g, '<br>');
+                    const mailHtml = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.name}</p><br><br><p>${bodyHtml}</p>${cardHtml}`;
+                    return (
+                      <tr key={sup.name}>
+                        <td data-label="구매처" title={sup.name}>
+                          <strong>{sup.name}</strong>
+                        </td>
+                        <td data-label="품목">{sup.count}품목</td>
+                        <td data-label="발행번호">
+                          <strong className="purchase-sup-pono">{supPoNo}</strong>
+                        </td>
+                        <td data-label="발주 상태">
+                          {sent ? (
+                            <span className="purchase-badge purchase-badge-received">
+                              발주완료 · {fmtDate(sent.sentAt)}
+                            </span>
+                          ) : (
+                            <span className="purchase-badge purchase-badge-draft">미발주</span>
+                          )}
+                        </td>
+                        <td data-label="회신">
+                          {replied ? (
+                            <span className="purchase-badge purchase-badge-replied">
+                              회신 · {fmtDate(replied.repliedAt)}
+                            </span>
+                          ) : (
+                            <span className="purchase-badge purchase-badge-draft">미회신</span>
+                          )}
+                        </td>
+                        <td data-label="입고">
+                          <span title="상단 품목 입고 처리가 완료되면 자동으로 반영됩니다">
+                            {recvDone ? (
+                              <span className="purchase-badge purchase-badge-instock">
+                                입고 · {fmtDate(recv.latest)}
                               </span>
-                            </td>
-                            <td data-label="납기">
-                              {replied?.deliveryDue ? (
-                                <strong className="purchase-sup-due">{replied.deliveryDue}</strong>
-                              ) : (
-                                <span className="text-muted">-</span>
-                              )}
-                            </td>
-                            <td data-label="특이사항">
-                              <input
-                                type="text"
-                                value={form.supplierNotes?.[sup.name.replace(/\./g, '_')] || ''}
-                                onChange={(e) => {
-                                  const key = sup.name.replace(/\./g, '_');
-                                  setForm((f) => ({
-                                    ...f,
-                                    supplierNotes: { ...f.supplierNotes, [key]: e.target.value },
-                                  }));
-                                  scheduleAutoSave();
-                                }}
-                                placeholder=""
-                                disabled={isReadOnly}
-                                style={{ width: '100%', minWidth: 100 }}
-                              />
-                            </td>
-                            <td data-label="작업" className="col-action">
-                              <div className="row-actions purchase-sup-actions">
-                                <button
-                                  type="button"
-                                  className="btn btn-sm po-act-btn"
-                                  onClick={() => printForSupplier(sup.name)}
-                                  title={`${sup.name} 품목만 발주서 PDF 출력`}
-                                >
-                                  <Icon name="download" className="btn-ic" />
-                                  PDF 출력
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${mailSending[sup.name] != null ? ' is-sending' : ''}`}
-                                  disabled={mailSending[sup.name] != null}
-                                  onClick={() => {
-                                    if (!sup.email) {
-                                      alert(`"${sup.name}"에 등록된 이메일이 없습니다.\n구매처 관리에서 이메일을 먼저 등록해주세요.`);
-                                      return;
-                                    }
-                                    openMailPreview(sup.name, sup.email, mailSubject, mailHtml, supPoNo);
-                                  }}
-                                  title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}
-                                >
-                                  {mailSending[sup.name] != null ? `발송 중 ${mailSending[sup.name]}%` : '메일 발송'}
-                                </button>
-                                {sent ? (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                    onClick={() => handleUnmarkSupplierSent(sup.name)}
-                                  >
-                                    발주 취소
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline purchase-sup-toggle"
-                                    onClick={() => handleMarkSupplierSent(sup.name)}
-                                  >
-                                    발주 완료 표시
-                                  </button>
-                                )}
-                                {replied ? (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                    onClick={() => handleUnmarkSupplierReplied(sup.name)}
-                                  >
-                                    회신 취소
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline purchase-sup-toggle"
-                                    onClick={() => handleMarkSupplierReplied(sup.name)}
-                                  >
-                                    회신 확인
-                                  </button>
-                                )}
-                                {paid ? (
-                                  <span
-                                    className="btn btn-sm purchase-sup-toggle is-static po-act-paid"
-                                    title={`결제 완료 ${fmtDate(paid.paidAt)} — 결제 페이지에서 처리됨`}
-                                  >
-                                    결제완료
-                                  </span>
-                                ) : payReq ? (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                    onClick={() => handleCancelPaymentRequest(sup.name)}
-                                    title={`결제 요청됨 ${fmtDate(payReq.requestedAt)} — 클릭 시 요청 취소`}
-                                  >
-                                    요청 취소
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-primary purchase-sup-toggle"
-                                    onClick={() => handleRequestPayment(sup.name)}
-                                    title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
-                                  >
-                                    결제 요청
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            ) : recv.full > 0 ? (
+                              <span className="purchase-badge purchase-badge-partial">
+                                부분 {recv.full}/{recv.total}
+                              </span>
+                            ) : (
+                              <span className="purchase-badge purchase-badge-draft">미입고</span>
+                            )}
+                          </span>
+                        </td>
+                        <td data-label="납기">
+                          {replied?.deliveryDue ? (
+                            <strong className="purchase-sup-due">{replied.deliveryDue}</strong>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td data-label="특이사항">
+                          <input
+                            type="text"
+                            value={form.supplierNotes?.[sup.name.replace(/\./g, '_')] || ''}
+                            onChange={(e) => {
+                              const key = sup.name.replace(/\./g, '_');
+                              setForm((f) => ({
+                                ...f,
+                                supplierNotes: { ...f.supplierNotes, [key]: e.target.value },
+                              }));
+                              scheduleAutoSave();
+                            }}
+                            placeholder=""
+                            disabled={isReadOnly}
+                            style={{ width: '100%', minWidth: 100 }}
+                          />
+                        </td>
+                        <td data-label="작업" className="col-action">
+                          <div className="row-actions purchase-sup-actions">
+                            <button
+                              type="button"
+                              className="btn btn-sm po-act-btn"
+                              onClick={() => printForSupplier(sup.name)}
+                              title={`${sup.name} 품목만 발주서 PDF 출력`}
+                            >
+                              <Icon name="download" className="btn-ic" />
+                              PDF 출력
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${mailSending[sup.name] != null ? ' is-sending' : ''}`}
+                              disabled={mailSending[sup.name] != null}
+                              onClick={() => {
+                                if (!sup.email) {
+                                  alert(
+                                    `"${sup.name}"에 등록된 이메일이 없습니다.\n구매처 관리에서 이메일을 먼저 등록해주세요.`,
+                                  );
+                                  return;
+                                }
+                                openMailPreview(sup.name, sup.email, mailSubject, mailHtml, supPoNo);
+                              }}
+                              title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}
+                            >
+                              {mailSending[sup.name] != null ? `발송 중 ${mailSending[sup.name]}%` : '메일 발송'}
+                            </button>
+                            {sent ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm po-act-btn--on purchase-sup-toggle"
+                                onClick={() => handleUnmarkSupplierSent(sup.name)}
+                              >
+                                발주 취소
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline purchase-sup-toggle"
+                                onClick={() => handleMarkSupplierSent(sup.name)}
+                              >
+                                발주 완료 표시
+                              </button>
+                            )}
+                            {replied ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm po-act-btn--on purchase-sup-toggle"
+                                onClick={() => handleUnmarkSupplierReplied(sup.name)}
+                              >
+                                회신 취소
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline purchase-sup-toggle"
+                                onClick={() => handleMarkSupplierReplied(sup.name)}
+                              >
+                                회신 확인
+                              </button>
+                            )}
+                            {paid ? (
+                              <span
+                                className="btn btn-sm purchase-sup-toggle is-static po-act-paid"
+                                title={`결제 완료 ${fmtDate(paid.paidAt)} — 결제 페이지에서 처리됨`}
+                              >
+                                결제완료
+                              </span>
+                            ) : payReq ? (
+                              <button
+                                type="button"
+                                className="btn btn-sm po-act-btn--on purchase-sup-toggle"
+                                onClick={() => handleCancelPaymentRequest(sup.name)}
+                                title={`결제 요청됨 ${fmtDate(payReq.requestedAt)} — 클릭 시 요청 취소`}
+                              >
+                                요청 취소
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary purchase-sup-toggle"
+                                onClick={() => handleRequestPayment(sup.name)}
+                                title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
+                              >
+                                결제 요청
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
       })()}
@@ -2411,9 +2436,7 @@ export default function PurchaseDetailPage() {
             placeholder="1"
             style={{ maxWidth: 160, fontSize: 18, fontWeight: 700, textAlign: 'center' }}
           />
-          <p className="field-hint">
-            BOM 1세트 기준 수량에 곱해집니다. 예) 5세트 입력 → 각 품목 수량 ×5로 불러옵니다.
-          </p>
+          <p className="field-hint">BOM 1세트 기준 수량에 곱해집니다. 예) 5세트 입력 → 각 품목 수량 ×5로 불러옵니다.</p>
         </div>
         {bomLoading ? (
           <p className="purchase-empty">불러오는 중...</p>
@@ -2525,26 +2548,26 @@ export default function PurchaseDetailPage() {
                     {meta}
                     {itemPicked.has(m.id) && (
                       <span
-                      className="bom-picker-qty-wrap"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <input
-                        type="number"
-                        min="0"
-                        className="num-input bom-picker-qty"
-                        value={itemPicked.get(m.id)}
-                        onChange={(e) => setItemPickQty(m.id, e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        autoFocus
-                        aria-label={`${m.name} 수량`}
-                      />
-                      <span className="bom-picker-qty-unit">{m.unit || '개'}</span>
-                    </span>
-                  )}
-                </label>
+                        className="bom-picker-qty-wrap"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
+                        <input
+                          type="number"
+                          min="0"
+                          className="num-input bom-picker-qty"
+                          value={itemPicked.get(m.id)}
+                          onChange={(e) => setItemPickQty(m.id, e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          autoFocus
+                          aria-label={`${m.name} 수량`}
+                        />
+                        <span className="bom-picker-qty-unit">{m.unit || '개'}</span>
+                      </span>
+                    )}
+                  </label>
                 );
               });
             })()}
@@ -2609,26 +2632,18 @@ export default function PurchaseDetailPage() {
         <p className="field-hint">발주서 출력 형식을 선택하세요.</p>
         <div className="form-group">
           <label className="pdf-opt-row">
-            <input
-              type="checkbox"
-              checked={pdfShowAmount}
-              onChange={(e) => setPdfShowAmount(e.target.checked)}
-            />
+            <input type="checkbox" checked={pdfShowAmount} onChange={(e) => setPdfShowAmount(e.target.checked)} />
             <span>금액 표기 (단가 · 금액 · 합계 · 총액)</span>
           </label>
           <p className="field-hint">
-            체크를 해제하면 <strong>단가·금액·합계가 빠진</strong> 발주서로 출력됩니다. 수량·품목은 그대로
-            표시됩니다. (메일 발송·자료실 저장은 이 옵션과 무관하게 항상 금액이 포함됩니다.)
+            체크를 해제하면 <strong>단가·금액·합계가 빠진</strong> 발주서로 출력됩니다. 수량·품목은 그대로 표시됩니다.
+            (메일 발송·자료실 저장은 이 옵션과 무관하게 항상 금액이 포함됩니다.)
           </p>
         </div>
         {(form.boxes || []).length > 0 && (
           <div className="form-group">
             <label className="pdf-opt-row">
-              <input
-                type="checkbox"
-                checked={pdfShowBoxes}
-                onChange={(e) => setPdfShowBoxes(e.target.checked)}
-              />
+              <input type="checkbox" checked={pdfShowBoxes} onChange={(e) => setPdfShowBoxes(e.target.checked)} />
               <span>BOX 목록 포함 ({(form.boxes || []).length}개)</span>
             </label>
             <p className="field-hint">발주서 뒤에 BOX 목록(No · BOX 명) 페이지가 추가됩니다.</p>
@@ -2790,10 +2805,7 @@ export default function PurchaseDetailPage() {
             </div>
             <div className="form-group">
               <label>본문 미리보기</label>
-              <div
-                className="mail-body-preview"
-                dangerouslySetInnerHTML={{ __html: mailPreview.html }}
-              />
+              <div className="mail-body-preview" dangerouslySetInnerHTML={{ __html: mailPreview.html }} />
             </div>
             <div className="modal-actions">
               <button
@@ -2829,7 +2841,9 @@ export default function PurchaseDetailPage() {
                   <th style={{ width: 70 }}>수량</th>
                   <th style={{ width: 90 }}>단가</th>
                   <th style={{ width: 130 }}>삭제일시</th>
-                  <th className="col-action" style={{ width: 150 }}>작업</th>
+                  <th className="col-action" style={{ width: 150 }}>
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -2852,14 +2866,12 @@ export default function PurchaseDetailPage() {
                             onClick={() => restoreDeletedItem(i)}
                             disabled={isReadOnly}
                           >
-                            <Icon name="restore" className="btn-ic" />복원
+                            <Icon name="restore" className="btn-ic" />
+                            복원
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-danger"
-                            onClick={() => purgeDeletedItem(i)}
-                          >
-                            <Icon name="trash" className="btn-ic" />영구삭제
+                          <button type="button" className="btn btn-sm btn-danger" onClick={() => purgeDeletedItem(i)}>
+                            <Icon name="trash" className="btn-ic" />
+                            영구삭제
                           </button>
                         </div>
                       </td>
@@ -2905,7 +2917,8 @@ export default function PurchaseDetailPage() {
         {payReqModal && (
           <>
             <p className="field-hint">
-              <strong>{payReqModal.supplierName}</strong> 업체 건의 결제를 요청합니다. 결제 마감일을 입력하면 결제 페이지에 함께 전달됩니다.
+              <strong>{payReqModal.supplierName}</strong> 업체 건의 결제를 요청합니다. 결제 마감일을 입력하면 결제
+              페이지에 함께 전달됩니다.
             </p>
             <div className="form-group">
               <label>결제 마감일</label>

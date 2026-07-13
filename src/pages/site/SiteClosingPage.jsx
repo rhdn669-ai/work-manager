@@ -208,9 +208,7 @@ export default function SiteClosingPage() {
   // 공수표 보기 방식 — PC는 'matrix'(표), 모바일은 'card'(인원별 카드+달력)로 시작.
   // 표는 날짜 30칸 가로스크롤이라 폰에서 불편 → DESIGN-SYSTEM(모바일=달력/카드) 방향.
   const [viewMode, setViewMode] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
-      ? 'card'
-      : 'matrix',
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches ? 'card' : 'matrix',
   );
   // 공수표 휴지통 모달
   const [trashOpen, setTrashOpen] = useState(false);
@@ -1703,8 +1701,13 @@ export default function SiteClosingPage() {
                         <span className="label">원</span>
                       </div>
                       {canEdit && (
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteFinance(f.id)} aria-label="삭제">
-                          <Icon name="trash" className="btn-ic" />삭제
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDeleteFinance(f.id)}
+                          aria-label="삭제"
+                        >
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
                         </button>
                       )}
                     </div>
@@ -1740,7 +1743,8 @@ export default function SiteClosingPage() {
                               onClick={() => removeClosingRow(f.id, idx)}
                               aria-label="행 삭제"
                             >
-                              <Icon name="trash" className="btn-ic" />삭제
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
                             </button>
                           )}
                         </div>
@@ -1870,7 +1874,8 @@ export default function SiteClosingPage() {
                         onClick={() => handleDeleteFinance(f.id, false)}
                         aria-label="삭제"
                       >
-                        <Icon name="trash" className="btn-ic" />삭제
+                        <Icon name="trash" className="btn-ic" />
+                        삭제
                       </button>
                     )}
                   </div>
@@ -2205,37 +2210,32 @@ export default function SiteClosingPage() {
             <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
               <td className="mx-name">
                 <div className="mx-name-inner">
-                <span className={`mx-type mx-type-${cardType}`}>{TYPE_SHORT[cardType] || ''}</span>
-                <input
-                  className="mx-name-input"
-                  value={buf[nameField] || ''}
-                  placeholder={cardType === 'vendor' ? '업체' : '이름'}
-                  onChange={(e) => updateField(it.id, nameField, e.target.value)}
-                  onBlur={() => flushRow(it.id)}
-                  disabled={!canEdit}
-                  readOnly={isEmployee}
-                  title={buf[nameField] || ''}
-                />
-                {canEdit && isEmployee && site?.projectType === 'recurring' && (
-                  <button
-                    type="button"
-                    className={`mx-auto ${buf.autofillDisabled ? 'off' : ''}`}
-                    onClick={() => toggleEmployeeAutofill(it.id)}
-                    title={buf.autofillDisabled ? '자동채움 꺼짐 — 켜기' : '자동채움 켜짐 — 끄기'}
-                  >
-                    {buf.autofillDisabled ? 'OFF' : 'ON'}
-                  </button>
-                )}
-                {canEdit && (
-                  <button
-                    type="button"
-                    className="mx-del"
-                    onClick={() => handleDeleteRow(it.id)}
-                    aria-label="삭제"
-                  >
-                    <Icon name="trash" size={13} />
-                  </button>
-                )}
+                  <span className={`mx-type mx-type-${cardType}`}>{TYPE_SHORT[cardType] || ''}</span>
+                  <input
+                    className="mx-name-input"
+                    value={buf[nameField] || ''}
+                    placeholder={cardType === 'vendor' ? '업체' : '이름'}
+                    onChange={(e) => updateField(it.id, nameField, e.target.value)}
+                    onBlur={() => flushRow(it.id)}
+                    disabled={!canEdit}
+                    readOnly={isEmployee}
+                    title={buf[nameField] || ''}
+                  />
+                  {canEdit && isEmployee && site?.projectType === 'recurring' && (
+                    <button
+                      type="button"
+                      className={`mx-auto ${buf.autofillDisabled ? 'off' : ''}`}
+                      onClick={() => toggleEmployeeAutofill(it.id)}
+                      title={buf.autofillDisabled ? '자동채움 꺼짐 — 켜기' : '자동채움 켜짐 — 끄기'}
+                    >
+                      {buf.autofillDisabled ? 'OFF' : 'ON'}
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button type="button" className="mx-del" onClick={() => handleDeleteRow(it.id)} aria-label="삭제">
+                      <Icon name="trash" size={13} />
+                    </button>
+                  )}
                 </div>
               </td>
               <td className="mx-qty">{Number(buf.quantity || 0)}</td>
@@ -2256,491 +2256,486 @@ export default function SiteClosingPage() {
         };
         return (
           <>
-          <div className="closing-cards-toolbar">
-            <div className="closing-viewtog">
-              <button
-                type="button"
-                className={viewMode === 'matrix' ? 'on' : ''}
-                onClick={() => setViewMode('matrix')}
-              >
-                표
-              </button>
-              <button
-                type="button"
-                className={viewMode === 'card' ? 'on' : ''}
-                onClick={() => setViewMode('card')}
-              >
-                카드
-              </button>
+            <div className="closing-cards-toolbar">
+              <div className="closing-viewtog">
+                <button
+                  type="button"
+                  className={viewMode === 'matrix' ? 'on' : ''}
+                  onClick={() => setViewMode('matrix')}
+                >
+                  표
+                </button>
+                <button type="button" className={viewMode === 'card' ? 'on' : ''} onClick={() => setViewMode('card')}>
+                  카드
+                </button>
+              </div>
+              {viewMode === 'card' && (
+                <button
+                  type="button"
+                  className="closing-expand-all"
+                  onClick={() => {
+                    if (allExpanded) {
+                      // 전체 접기 — 작성중(이름 없는) 행은 펼침 유지
+                      const keep = new Set();
+                      items.forEach((it) => {
+                        if (!(it.detail || '').trim() && !(it.vendor || '').trim()) keep.add(it.id);
+                      });
+                      setExpandedRows(keep);
+                      setAllExpanded(false);
+                    } else {
+                      setAllExpanded(true);
+                    }
+                  }}
+                >
+                  <Icon name="chevronDown" size={14} className={allExpanded ? 'is-open' : ''} />
+                  {allExpanded ? '전체 접기' : '전체 펼치기'}
+                </button>
+              )}
             </div>
-            {viewMode === 'card' && (
-              <button
-                type="button"
-                className="closing-expand-all"
-                onClick={() => {
-                  if (allExpanded) {
-                    // 전체 접기 — 작성중(이름 없는) 행은 펼침 유지
-                    const keep = new Set();
-                    items.forEach((it) => {
-                      if (!(it.detail || '').trim() && !(it.vendor || '').trim()) keep.add(it.id);
-                    });
-                    setExpandedRows(keep);
-                    setAllExpanded(false);
-                  } else {
-                    setAllExpanded(true);
-                  }
-                }}
-              >
-                <Icon name="chevronDown" size={14} className={allExpanded ? 'is-open' : ''} />
-                {allExpanded ? '전체 접기' : '전체 펼치기'}
-              </button>
-            )}
-          </div>
 
-          {viewMode === 'matrix' && dayItems.length > 0 && (
-            <div className="closing-matrix-wrap">
-              <table className="closing-matrix">
-                <thead>
-                  <tr>
-                    <th className="mx-name">이름</th>
-                    <th className="mx-qty">공수</th>
-                    {canViewSalary && <th className="mx-price">단가</th>}
-                    {canViewSalary && <th className="mx-amt">금액</th>}
-                    {mxDays.map((d) => {
-                      const dow = new Date(y, m - 1, d).getDay();
-                      const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                      const isToday = mxThisMonth && d === mxToday;
-                      return (
-                        <th
-                          key={d}
-                          className={`mx-dh ${dow === 6 ? 'sat' : ''} ${dow === 0 ? 'sun' : ''} ${holidaySet.has(dayIso) ? 'hol' : ''} ${isToday ? 'today' : ''}`}
-                        >
-                          <span className="mx-dn">{d}</span>
-                          <span className="mx-dw">{DOW[dow]}</span>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>{dayItems.map((it) => renderMxRow(it))}</tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="closing-cards">
-            {cardsToRender.map((it) => {
-              const buf = editBuf[it.id] || it;
-              const cardType = it.itemType || buf.itemType || 'freelancer';
-              const isDaily = cardType === 'daily';
-              const isVendorCase = cardType === 'vendor_case';
-              const unitLabel = isDaily ? '시간' : isVendorCase ? '대' : '일';
-              const priceLabel = isDaily ? '시급' : isVendorCase ? '1대당' : '단가';
-              // 모달 전용 생성 유형은 과거 데이터도 파생 잠금.
-              // - employee: 항상 모달 → 업체/이름 둘 다 잠금
-              // - vendor / vendor_case: 업체는 항상 모달 → 업체 잠금. 이름은 값 있을 때만(모달 선택) 잠금.
-              // - freelancer / daily: 직접 입력 경로 있음 → 플래그만 사용
-              const isEmployee = cardType === 'employee';
-              const isVendorType = cardType === 'vendor' || cardType === 'vendor_case';
-              const vendorLocked = !!buf.vendorLocked || isEmployee || (isVendorType && !!(buf.vendor || '').trim());
-              const detailLocked = !!buf.detailLocked || isEmployee || (isVendorType && !!(buf.detail || '').trim());
-
-              // ── 접힘 요약(미니 스트립 + 예외칩) 계산 ──
-              // 직원=차감식(풀출근 자동, 예외 강조) / 프리랜서·일용직·업체=적산식(일한 날만) / 업체PJ=건당
-              const hasName = !!(buf.detail || '').trim() || !!(buf.vendor || '').trim();
-              const rowExpanded = allExpanded || expandedRows.has(it.id);
-              const nameKey = buf.detail;
-              const dq = buf.dailyQuantities || {};
-              const stripDays = daysInMonth(y, m);
-              let workCnt = 0;
-              let leaveFullCnt = 0;
-              let leaveHalfCnt = 0;
-              let overCnt = 0;
-              const stripSegs = [];
-              if (!isVendorCase) {
-                for (let d = 1; d <= stripDays; d++) {
-                  const dow = new Date(y, m - 1, d).getDay();
-                  const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                  const isHol = holidaySet.has(iso);
-                  const isWknd = dow === 0 || dow === 6;
-                  const rawV = dq[d];
-                  const hasV = rawV !== undefined && rawV !== null && rawV !== '' && Number(rawV) > 0;
-                  const lvType = isEmployee ? leaveDays[nameKey]?.[d] : undefined;
-                  const hasOver =
-                    isEmployee && (isWknd || isHol) && !!siteOvertimeDays[nameKey]?.has(d);
-                  let seg;
-                  if (lvType && leaveWorkFraction(lvType) <= 0) {
-                    seg = 'leave';
-                    leaveFullCnt += 1;
-                  } else if (lvType) {
-                    seg = 'half';
-                    leaveHalfCnt += 1;
-                    if (hasV) workCnt += 1;
-                  } else if (hasOver) {
-                    seg = 'over';
-                    overCnt += 1;
-                  } else if (hasV) {
-                    seg = 'work';
-                    workCnt += 1;
-                  } else if (isWknd || isHol) {
-                    seg = 'rest';
-                  } else {
-                    seg = rawV === 0 || rawV === '0' ? 'zero' : 'empty';
-                  }
-                  stripSegs.push(seg);
-                }
-              }
-              return (
-                <div className={`closing-card closing-card-${cardType}`} key={it.id}>
-                  <div className="closing-card-head">
-                    <span className="closing-no">#{buf.no || '-'}</span>
-                    <input
-                      className="closing-vendor"
-                      value={buf.vendor || ''}
-                      placeholder="업체명"
-                      list={!vendorLocked && cardType !== 'employee' ? 'closing-vendor-list' : undefined}
-                      onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                      readOnly={vendorLocked}
-                      title={
-                        vendorLocked
-                          ? `${buf.vendor || ''}${buf.vendor ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
-                          : buf.vendor || undefined
-                      }
-                    />
-                    <input
-                      className="closing-name"
-                      value={buf.detail || ''}
-                      placeholder={cardType === 'vendor_case' ? '프로젝트명' : '이름'}
-                      list={
-                        detailLocked
-                          ? undefined
-                          : cardType === 'vendor_case'
-                            ? 'closing-vendor-project-list'
-                            : cardType !== 'employee'
-                              ? 'closing-freelancer-list'
-                              : undefined
-                      }
-                      onChange={(e) => updateField(it.id, 'detail', e.target.value)}
-                      onBlur={() => flushRow(it.id)}
-                      disabled={!canEdit}
-                      readOnly={detailLocked}
-                      title={
-                        detailLocked
-                          ? `${buf.detail || ''}${buf.detail ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
-                          : buf.detail || undefined
-                      }
-                    />
-                    {canEdit && isEmployee && site?.projectType === 'recurring' && (
-                      <button
-                        type="button"
-                        className={`closing-autofill-btn ${buf.autofillDisabled ? 'is-disabled' : ''}`}
-                        onClick={() => toggleEmployeeAutofill(it.id)}
-                        title={
-                          buf.autofillDisabled ? '자동 채움 꺼짐 — 클릭해서 켜기' : '자동 채움 켜짐 — 클릭해서 끄기'
-                        }
-                      >
-                        {buf.autofillDisabled ? '자동 OFF' : '자동 ON'}
-                      </button>
-                    )}
-                    {hasName && (
-                      <button
-                        type="button"
-                        className={`closing-collapse-toggle ${rowExpanded ? 'is-open' : ''}`}
-                        onClick={() => toggleRow(it.id)}
-                        aria-label={rowExpanded ? '접기' : '펼치기'}
-                        title={rowExpanded ? '접기' : '펼쳐서 편집'}
-                      >
-                        <Icon name="chevronDown" size={16} />
-                      </button>
-                    )}
-                    {canEdit && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDeleteRow(it.id)}
-                        aria-label="삭제"
-                      >
-                        <Icon name="trash" className="btn-ic" />삭제
-                      </button>
-                    )}
-                  </div>
-
-                  {!rowExpanded && (
-                    <button
-                      type="button"
-                      className="closing-collapsed"
-                      onClick={() => toggleRow(it.id)}
-                      title="펼쳐서 편집"
-                    >
-                      {!isVendorCase && (
-                        <div className="closing-strip" aria-hidden="true">
-                          {stripSegs.map((seg, i) => (
-                            <span key={i} className={`cstrip-seg cstrip-${seg}`} />
-                          ))}
-                        </div>
-                      )}
-                      <div className="closing-collapsed-chips">
-                        {isVendorCase ? (
-                          <span className="cc-chip cc-work">
-                            {(Array.isArray(buf.closings) ? buf.closings.length : 0)}건 ·{' '}
-                            {Number(buf.quantity || 0)}대
-                          </span>
-                        ) : (
-                          <>
-                            <span className="cc-chip cc-work">
-                              근무 {workCnt}
-                              {unitLabel}
-                            </span>
-                            {leaveFullCnt > 0 && (
-                              <span className="cc-chip cc-leave">연차 {leaveFullCnt}</span>
-                            )}
-                            {leaveHalfCnt > 0 && (
-                              <span className="cc-chip cc-leave">반차 {leaveHalfCnt}</span>
-                            )}
-                            {overCnt > 0 && <span className="cc-chip cc-over">잔업 {overCnt}</span>}
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  )}
-
-                  {rowExpanded &&
-                    (isVendorCase
-                      ? (() => {
-                        const closings = Array.isArray(buf.closings) ? buf.closings : [];
+            {viewMode === 'matrix' && dayItems.length > 0 && (
+              <div className="closing-matrix-wrap">
+                <table className="closing-matrix">
+                  <thead>
+                    <tr>
+                      <th className="mx-name">이름</th>
+                      <th className="mx-qty">공수</th>
+                      {canViewSalary && <th className="mx-price">단가</th>}
+                      {canViewSalary && <th className="mx-amt">금액</th>}
+                      {mxDays.map((d) => {
+                        const dow = new Date(y, m - 1, d).getDay();
+                        const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const isToday = mxThisMonth && d === mxToday;
                         return (
-                          <div className="vendor-case-rows">
-                            <div className="vendor-case-row vendor-case-row-head">
-                              <span>납기일</span>
-                              <span>호기</span>
-                              <span className="vendor-case-count-head">댓수</span>
-                              <span></span>
-                            </div>
-                            {closings.length === 0 && (
-                              <div className="vendor-case-row-empty">납기일 행을 추가해주세요.</div>
-                            )}
-                            {closings.map((c, idx) => (
-                              <div className="vendor-case-row" key={c.id || idx}>
-                                <input
-                                  type="date"
-                                  value={c.date || ''}
-                                  onChange={(e) => updateRowClosing(it.id, idx, 'date', e.target.value)}
-                                  onBlur={() => flushRow(it.id)}
-                                  disabled={!canEdit}
-                                />
-                                <input
-                                  type="text"
-                                  value={c.units || ''}
-                                  onChange={(e) => updateRowClosing(it.id, idx, 'units', e.target.value)}
-                                  onBlur={() => flushRow(it.id)}
-                                  disabled={!canEdit}
-                                  placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
-                                />
-                                <span className="vendor-case-count">{Number(c.count) || 0}대</span>
+                          <th
+                            key={d}
+                            className={`mx-dh ${dow === 6 ? 'sat' : ''} ${dow === 0 ? 'sun' : ''} ${holidaySet.has(dayIso) ? 'hol' : ''} ${isToday ? 'today' : ''}`}
+                          >
+                            <span className="mx-dn">{d}</span>
+                            <span className="mx-dw">{DOW[dow]}</span>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>{dayItems.map((it) => renderMxRow(it))}</tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="closing-cards">
+              {cardsToRender.map((it) => {
+                const buf = editBuf[it.id] || it;
+                const cardType = it.itemType || buf.itemType || 'freelancer';
+                const isDaily = cardType === 'daily';
+                const isVendorCase = cardType === 'vendor_case';
+                const unitLabel = isDaily ? '시간' : isVendorCase ? '대' : '일';
+                const priceLabel = isDaily ? '시급' : isVendorCase ? '1대당' : '단가';
+                // 모달 전용 생성 유형은 과거 데이터도 파생 잠금.
+                // - employee: 항상 모달 → 업체/이름 둘 다 잠금
+                // - vendor / vendor_case: 업체는 항상 모달 → 업체 잠금. 이름은 값 있을 때만(모달 선택) 잠금.
+                // - freelancer / daily: 직접 입력 경로 있음 → 플래그만 사용
+                const isEmployee = cardType === 'employee';
+                const isVendorType = cardType === 'vendor' || cardType === 'vendor_case';
+                const vendorLocked = !!buf.vendorLocked || isEmployee || (isVendorType && !!(buf.vendor || '').trim());
+                const detailLocked = !!buf.detailLocked || isEmployee || (isVendorType && !!(buf.detail || '').trim());
+
+                // ── 접힘 요약(미니 스트립 + 예외칩) 계산 ──
+                // 직원=차감식(풀출근 자동, 예외 강조) / 프리랜서·일용직·업체=적산식(일한 날만) / 업체PJ=건당
+                const hasName = !!(buf.detail || '').trim() || !!(buf.vendor || '').trim();
+                const rowExpanded = allExpanded || expandedRows.has(it.id);
+                const nameKey = buf.detail;
+                const dq = buf.dailyQuantities || {};
+                const stripDays = daysInMonth(y, m);
+                let workCnt = 0;
+                let leaveFullCnt = 0;
+                let leaveHalfCnt = 0;
+                let overCnt = 0;
+                const stripSegs = [];
+                if (!isVendorCase) {
+                  for (let d = 1; d <= stripDays; d++) {
+                    const dow = new Date(y, m - 1, d).getDay();
+                    const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const isHol = holidaySet.has(iso);
+                    const isWknd = dow === 0 || dow === 6;
+                    const rawV = dq[d];
+                    const hasV = rawV !== undefined && rawV !== null && rawV !== '' && Number(rawV) > 0;
+                    const lvType = isEmployee ? leaveDays[nameKey]?.[d] : undefined;
+                    const hasOver = isEmployee && (isWknd || isHol) && !!siteOvertimeDays[nameKey]?.has(d);
+                    let seg;
+                    if (lvType && leaveWorkFraction(lvType) <= 0) {
+                      seg = 'leave';
+                      leaveFullCnt += 1;
+                    } else if (lvType) {
+                      seg = 'half';
+                      leaveHalfCnt += 1;
+                      if (hasV) workCnt += 1;
+                    } else if (hasOver) {
+                      seg = 'over';
+                      overCnt += 1;
+                    } else if (hasV) {
+                      seg = 'work';
+                      workCnt += 1;
+                    } else if (isWknd || isHol) {
+                      seg = 'rest';
+                    } else {
+                      seg = rawV === 0 || rawV === '0' ? 'zero' : 'empty';
+                    }
+                    stripSegs.push(seg);
+                  }
+                }
+                return (
+                  <div className={`closing-card closing-card-${cardType}`} key={it.id}>
+                    <div className="closing-card-head">
+                      <span className="closing-no">#{buf.no || '-'}</span>
+                      <input
+                        className="closing-vendor"
+                        value={buf.vendor || ''}
+                        placeholder="업체명"
+                        list={!vendorLocked && cardType !== 'employee' ? 'closing-vendor-list' : undefined}
+                        onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
+                        onBlur={() => flushRow(it.id)}
+                        disabled={!canEdit}
+                        readOnly={vendorLocked}
+                        title={
+                          vendorLocked
+                            ? `${buf.vendor || ''}${buf.vendor ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
+                            : buf.vendor || undefined
+                        }
+                      />
+                      <input
+                        className="closing-name"
+                        value={buf.detail || ''}
+                        placeholder={cardType === 'vendor_case' ? '프로젝트명' : '이름'}
+                        list={
+                          detailLocked
+                            ? undefined
+                            : cardType === 'vendor_case'
+                              ? 'closing-vendor-project-list'
+                              : cardType !== 'employee'
+                                ? 'closing-freelancer-list'
+                                : undefined
+                        }
+                        onChange={(e) => updateField(it.id, 'detail', e.target.value)}
+                        onBlur={() => flushRow(it.id)}
+                        disabled={!canEdit}
+                        readOnly={detailLocked}
+                        title={
+                          detailLocked
+                            ? `${buf.detail || ''}${buf.detail ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
+                            : buf.detail || undefined
+                        }
+                      />
+                      {canEdit && isEmployee && site?.projectType === 'recurring' && (
+                        <button
+                          type="button"
+                          className={`closing-autofill-btn ${buf.autofillDisabled ? 'is-disabled' : ''}`}
+                          onClick={() => toggleEmployeeAutofill(it.id)}
+                          title={
+                            buf.autofillDisabled ? '자동 채움 꺼짐 — 클릭해서 켜기' : '자동 채움 켜짐 — 클릭해서 끄기'
+                          }
+                        >
+                          {buf.autofillDisabled ? '자동 OFF' : '자동 ON'}
+                        </button>
+                      )}
+                      {hasName && (
+                        <button
+                          type="button"
+                          className={`closing-collapse-toggle ${rowExpanded ? 'is-open' : ''}`}
+                          onClick={() => toggleRow(it.id)}
+                          aria-label={rowExpanded ? '접기' : '펼치기'}
+                          title={rowExpanded ? '접기' : '펼쳐서 편집'}
+                        >
+                          <Icon name="chevronDown" size={16} />
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDeleteRow(it.id)}
+                          aria-label="삭제"
+                        >
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
+                        </button>
+                      )}
+                    </div>
+
+                    {!rowExpanded && (
+                      <button
+                        type="button"
+                        className="closing-collapsed"
+                        onClick={() => toggleRow(it.id)}
+                        title="펼쳐서 편집"
+                      >
+                        {!isVendorCase && (
+                          <div className="closing-strip" aria-hidden="true">
+                            {stripSegs.map((seg, i) => (
+                              <span key={i} className={`cstrip-seg cstrip-${seg}`} />
+                            ))}
+                          </div>
+                        )}
+                        <div className="closing-collapsed-chips">
+                          {isVendorCase ? (
+                            <span className="cc-chip cc-work">
+                              {Array.isArray(buf.closings) ? buf.closings.length : 0}건 · {Number(buf.quantity || 0)}대
+                            </span>
+                          ) : (
+                            <>
+                              <span className="cc-chip cc-work">
+                                근무 {workCnt}
+                                {unitLabel}
+                              </span>
+                              {leaveFullCnt > 0 && <span className="cc-chip cc-leave">연차 {leaveFullCnt}</span>}
+                              {leaveHalfCnt > 0 && <span className="cc-chip cc-leave">반차 {leaveHalfCnt}</span>}
+                              {overCnt > 0 && <span className="cc-chip cc-over">잔업 {overCnt}</span>}
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    )}
+
+                    {rowExpanded &&
+                      (isVendorCase
+                        ? (() => {
+                            const closings = Array.isArray(buf.closings) ? buf.closings : [];
+                            return (
+                              <div className="vendor-case-rows">
+                                <div className="vendor-case-row vendor-case-row-head">
+                                  <span>납기일</span>
+                                  <span>호기</span>
+                                  <span className="vendor-case-count-head">댓수</span>
+                                  <span></span>
+                                </div>
+                                {closings.length === 0 && (
+                                  <div className="vendor-case-row-empty">납기일 행을 추가해주세요.</div>
+                                )}
+                                {closings.map((c, idx) => (
+                                  <div className="vendor-case-row" key={c.id || idx}>
+                                    <input
+                                      type="date"
+                                      value={c.date || ''}
+                                      onChange={(e) => updateRowClosing(it.id, idx, 'date', e.target.value)}
+                                      onBlur={() => flushRow(it.id)}
+                                      disabled={!canEdit}
+                                    />
+                                    <input
+                                      type="text"
+                                      value={c.units || ''}
+                                      onChange={(e) => updateRowClosing(it.id, idx, 'units', e.target.value)}
+                                      onBlur={() => flushRow(it.id)}
+                                      disabled={!canEdit}
+                                      placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
+                                    />
+                                    <span className="vendor-case-count">{Number(c.count) || 0}대</span>
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-danger"
+                                        onClick={() => removeRowClosing(it.id, idx)}
+                                        aria-label="행 삭제"
+                                      >
+                                        <Icon name="trash" className="btn-ic" />
+                                        삭제
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
                                 {canEdit && (
                                   <button
                                     type="button"
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() => removeRowClosing(it.id, idx)}
-                                    aria-label="행 삭제"
+                                    className="btn btn-sm btn-outline vendor-case-add-row"
+                                    onClick={() => addRowClosing(it.id)}
                                   >
-                                    <Icon name="trash" className="btn-ic" />삭제
+                                    + 납기 추가
                                   </button>
                                 )}
                               </div>
-                            ))}
-                            {canEdit && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline vendor-case-add-row"
-                                onClick={() => addRowClosing(it.id)}
-                              >
-                                + 납기 추가
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })()
-                    : (() => {
-                        // 캘린더 형식 생성
-                        const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
-                        const totalDays = daysInMonth(y, m);
-                        const weeks = [];
-                        let week = new Array(firstDow).fill(null);
-                        for (let d = 1; d <= totalDays; d++) {
-                          week.push(d);
-                          if (week.length === 7) {
-                            weeks.push(week);
-                            week = [];
-                          }
-                        }
-                        if (week.length > 0) {
-                          while (week.length < 7) week.push(null);
-                          weeks.push(week);
-                        }
-                        return (
-                          <div className="day-calendar">
-                            <div className="day-calendar-header">
-                              {['일', '월', '화', '수', '목', '금', '토'].map((dn, i) => (
-                                <div
-                                  key={dn}
-                                  className={`day-calendar-dow ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}
-                                >
-                                  {dn}
-                                </div>
-                              ))}
-                            </div>
-                            {weeks.map((wk, wi) => (
-                              <div className="day-calendar-row" key={wi}>
-                                {wk.map((d, di) => {
-                                  if (d === null) return <div className="day-cal-cell day-cal-empty" key={di} />;
-                                  const v = buf.dailyQuantities?.[d];
-                                  const hasValue = v !== undefined && v !== null && v !== '';
-                                  const isSunday = di === 0;
-                                  const isSaturday = di === 6;
-                                  const isEmployee = cardType === 'employee';
-                                  const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                  const isHoliday = holidaySet.has(dayIso);
-                                  // 직원 공수표: 토/일/공휴일 = 입력 차단 (잔업 별도 등록 영역)
-                                  const isEmpRest = isEmployee && (isSaturday || isSunday || isHoliday);
-                                  // 휴무일에 잔업 신청 있으면 자동으로 "출근" 표시
-                                  const hasSiteOvertime = isEmployee && siteOvertimeDays[buf.detail]?.has(d);
-                                  const showAttendance = isEmpRest && hasSiteOvertime;
-                                  const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
-                                  const isOnLeave = !!leaveType;
-                                  const workFraction = leaveWorkFraction(leaveType);
-                                  const isFullLeave = isOnLeave && workFraction === 0;
-                                  const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
-                                  // CS 프로젝트: 셀 탭 → 모달로 공수+현장명 입력
-                                  const isCSMode = !!site?.isCS && !isVendorCase;
-                                  const csSiteName = isCSMode ? buf.dailySites?.[d] || '' : '';
-                                  return (
+                            );
+                          })()
+                        : (() => {
+                            // 캘린더 형식 생성
+                            const firstDow = new Date(y, m - 1, 1).getDay(); // 0=일
+                            const totalDays = daysInMonth(y, m);
+                            const weeks = [];
+                            let week = new Array(firstDow).fill(null);
+                            for (let d = 1; d <= totalDays; d++) {
+                              week.push(d);
+                              if (week.length === 7) {
+                                weeks.push(week);
+                                week = [];
+                              }
+                            }
+                            if (week.length > 0) {
+                              while (week.length < 7) week.push(null);
+                              weeks.push(week);
+                            }
+                            return (
+                              <div className="day-calendar">
+                                <div className="day-calendar-header">
+                                  {['일', '월', '화', '수', '목', '금', '토'].map((dn, i) => (
                                     <div
-                                      className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''} ${isCSMode ? 'is-cs-cell' : ''}`}
-                                      key={di}
+                                      key={dn}
+                                      className={`day-calendar-dow ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}
                                     >
-                                      <label>{d}</label>
-                                      {isEmpRest ? (
-                                        showAttendance ? (
-                                          <div className="emp-rest-attendance" title="잔업 신청에 따라 자동 출근 표시">
-                                            출근
-                                          </div>
-                                        ) : (
-                                          <div
-                                            className="emp-rest-blocked"
-                                            title="휴무일은 잔업 신청 시 자동 출근 표시됩니다"
-                                          />
-                                        )
-                                      ) : isFullLeave ? (
+                                      {dn}
+                                    </div>
+                                  ))}
+                                </div>
+                                {weeks.map((wk, wi) => (
+                                  <div className="day-calendar-row" key={wi}>
+                                    {wk.map((d, di) => {
+                                      if (d === null) return <div className="day-cal-cell day-cal-empty" key={di} />;
+                                      const v = buf.dailyQuantities?.[d];
+                                      const hasValue = v !== undefined && v !== null && v !== '';
+                                      const isSunday = di === 0;
+                                      const isSaturday = di === 6;
+                                      const isEmployee = cardType === 'employee';
+                                      const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                      const isHoliday = holidaySet.has(dayIso);
+                                      // 직원 공수표: 토/일/공휴일 = 입력 차단 (잔업 별도 등록 영역)
+                                      const isEmpRest = isEmployee && (isSaturday || isSunday || isHoliday);
+                                      // 휴무일에 잔업 신청 있으면 자동으로 "출근" 표시
+                                      const hasSiteOvertime = isEmployee && siteOvertimeDays[buf.detail]?.has(d);
+                                      const showAttendance = isEmpRest && hasSiteOvertime;
+                                      const leaveType = isEmployee ? leaveDays[buf.detail]?.[d] : undefined;
+                                      const isOnLeave = !!leaveType;
+                                      const workFraction = leaveWorkFraction(leaveType);
+                                      const isFullLeave = isOnLeave && workFraction === 0;
+                                      const leaveCls = isOnLeave ? `leave-${leaveType}` : '';
+                                      // CS 프로젝트: 셀 탭 → 모달로 공수+현장명 입력
+                                      const isCSMode = !!site?.isCS && !isVendorCase;
+                                      const csSiteName = isCSMode ? buf.dailySites?.[d] || '' : '';
+                                      return (
                                         <div
-                                          className={`leave-badge-input leave-badge-${leaveType}`}
-                                          title={`${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`}
+                                          className={`day-cal-cell ${hasValue ? 'has-value' : ''} ${isSunday ? 'sunday' : ''} ${isSaturday ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''} ${isOnLeave ? 'on-leave' : ''} ${leaveCls} ${isEmpRest ? 'is-emp-rest' : ''} ${isCSMode ? 'is-cs-cell' : ''}`}
+                                          key={di}
                                         >
-                                          {leaveBadgeLabel(leaveType)}
-                                        </div>
-                                      ) : isCSMode ? (
-                                        <button
-                                          type="button"
-                                          className={`cs-cell-btn ${hasValue ? 'has-value' : ''}`}
-                                          onClick={() => canEdit && openCsCellModal(it.id, d)}
-                                          disabled={!canEdit}
-                                          title={
-                                            canEdit
-                                              ? '탭하여 공수·현장 입력'
-                                              : csSiteName
-                                                ? `${csSiteName} · ${v}공수`
-                                                : ''
-                                          }
-                                        >
-                                          <span className="cs-cell-qty">{hasValue ? v : '+'}</span>
-                                          {csSiteName && <span className="cs-cell-site">{csSiteName}</span>}
-                                        </button>
-                                      ) : (
-                                        <div className="day-cal-input-wrap">
-                                          <input
-                                            type="number"
-                                            style={{
-                                              textAlign: 'center',
-                                              fontVariantNumeric: 'tabular-nums',
-                                              minHeight: 32,
-                                              outline: 'none',
-                                            }}
-                                            step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
-                                            min="0"
-                                            max={
-                                              isDaily
-                                                ? '24'
-                                                : isVendorCase
-                                                  ? '99'
-                                                  : // 직원 휴가일 최대값: 반차 0.5 / 반반차 0.75 / 그 외 1
-                                                    leaveType === 'half_am' || leaveType === 'half_pm'
-                                                    ? '0.5'
-                                                    : QUARTER_LEAVE_TYPES.includes(leaveType)
-                                                      ? '0.75'
-                                                      : '1'
-                                            }
-                                            value={v ?? ''}
-                                            onChange={(e) => updateDay(it.id, d, e.target.value)}
-                                            onBlur={() => flushRow(it.id)}
-                                            disabled={!canEdit}
-                                            title={
-                                              isOnLeave
-                                                ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`
-                                                : isDaily
-                                                  ? '시간 입력'
-                                                  : isVendorCase
-                                                    ? '납품 건수'
-                                                    : ''
-                                            }
-                                          />
-                                          {isOnLeave && (
-                                            <span className={`leave-badge-tag leave-badge-${leaveType}`}>
+                                          <label>{d}</label>
+                                          {isEmpRest ? (
+                                            showAttendance ? (
+                                              <div
+                                                className="emp-rest-attendance"
+                                                title="잔업 신청에 따라 자동 출근 표시"
+                                              >
+                                                출근
+                                              </div>
+                                            ) : (
+                                              <div
+                                                className="emp-rest-blocked"
+                                                title="휴무일은 잔업 신청 시 자동 출근 표시됩니다"
+                                              />
+                                            )
+                                          ) : isFullLeave ? (
+                                            <div
+                                              className={`leave-badge-input leave-badge-${leaveType}`}
+                                              title={`${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`}
+                                            >
                                               {leaveBadgeLabel(leaveType)}
-                                            </span>
+                                            </div>
+                                          ) : isCSMode ? (
+                                            <button
+                                              type="button"
+                                              className={`cs-cell-btn ${hasValue ? 'has-value' : ''}`}
+                                              onClick={() => canEdit && openCsCellModal(it.id, d)}
+                                              disabled={!canEdit}
+                                              title={
+                                                canEdit
+                                                  ? '탭하여 공수·현장 입력'
+                                                  : csSiteName
+                                                    ? `${csSiteName} · ${v}공수`
+                                                    : ''
+                                              }
+                                            >
+                                              <span className="cs-cell-qty">{hasValue ? v : '+'}</span>
+                                              {csSiteName && <span className="cs-cell-site">{csSiteName}</span>}
+                                            </button>
+                                          ) : (
+                                            <div className="day-cal-input-wrap">
+                                              <input
+                                                type="number"
+                                                style={{
+                                                  textAlign: 'center',
+                                                  fontVariantNumeric: 'tabular-nums',
+                                                  minHeight: 32,
+                                                  outline: 'none',
+                                                }}
+                                                step={isDaily ? '0.5' : isVendorCase ? '1' : '0.25'}
+                                                min="0"
+                                                max={
+                                                  isDaily
+                                                    ? '24'
+                                                    : isVendorCase
+                                                      ? '99'
+                                                      : // 직원 휴가일 최대값: 반차 0.5 / 반반차 0.75 / 그 외 1
+                                                        leaveType === 'half_am' || leaveType === 'half_pm'
+                                                        ? '0.5'
+                                                        : QUARTER_LEAVE_TYPES.includes(leaveType)
+                                                          ? '0.75'
+                                                          : '1'
+                                                }
+                                                value={v ?? ''}
+                                                onChange={(e) => updateDay(it.id, d, e.target.value)}
+                                                onBlur={() => flushRow(it.id)}
+                                                disabled={!canEdit}
+                                                title={
+                                                  isOnLeave
+                                                    ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`
+                                                    : isDaily
+                                                      ? '시간 입력'
+                                                      : isVendorCase
+                                                        ? '납품 건수'
+                                                        : ''
+                                                }
+                                              />
+                                              {isOnLeave && (
+                                                <span className={`leave-badge-tag leave-badge-${leaveType}`}>
+                                                  {leaveBadgeLabel(leaveType)}
+                                                </span>
+                                              )}
+                                            </div>
                                           )}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                      );
+                                    })}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        );
-                        })())}
+                            );
+                          })())}
 
-                  <div className="closing-card-foot">
-                    <div className="foot-field">
-                      <span className="label">수량</span>
-                      <strong>
-                        {Number(buf.quantity || 0)}
-                        {unitLabel}
-                      </strong>
+                    <div className="closing-card-foot">
+                      <div className="foot-field">
+                        <span className="label">수량</span>
+                        <strong>
+                          {Number(buf.quantity || 0)}
+                          {unitLabel}
+                        </strong>
+                      </div>
+                      {canViewSalary && (
+                        <>
+                          <div className="foot-field">
+                            <span className="label">{priceLabel}</span>
+                            <MoneyInput
+                              className="closing-price"
+                              value={buf.unitPrice || 0}
+                              onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
+                              onBlur={() => flushRow(it.id)}
+                              disabled={!canEdit || cardType === 'employee'}
+                            />
+                          </div>
+                          <div className="foot-field closing-amount">
+                            <span className="label">금액</span>
+                            <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    {canViewSalary && (
-                      <>
-                        <div className="foot-field">
-                          <span className="label">{priceLabel}</span>
-                          <MoneyInput
-                            className="closing-price"
-                            value={buf.unitPrice || 0}
-                            onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
-                            onBlur={() => flushRow(it.id)}
-                            disabled={!canEdit || cardType === 'employee'}
-                          />
-                        </div>
-                        <div className="foot-field closing-amount">
-                          <span className="label">금액</span>
-                          <strong>{Number(buf.amount || 0).toLocaleString()}원</strong>
-                        </div>
-                      </>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
           </>
         );
       })()}

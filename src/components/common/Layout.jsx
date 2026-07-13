@@ -55,7 +55,6 @@ export default function Layout() {
   // 새 버전 배포 감지 — 토스트로 알림 후 사용자가 새로고침
   const { hasNewVersion, latestVersion, latestBuildTime } = useVersionCheck();
 
-
   // 차량 운행자 — 이번달 키로수 미입력 시 자동 안내 모달 (1회 체크 / 로그인당 1회)
   // 자동 안내 시작일 — 이 날짜 이전에는 자동 모달이 뜨지 않음 (수동 메뉴 입력은 항상 가능)
   const VEHICLE_PROMPT_START_DATE = '2026-05-01';

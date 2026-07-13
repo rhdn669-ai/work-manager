@@ -22,9 +22,7 @@ export default function Select({
   const selected = options.find((o) => String(o.value) === String(value));
   // 모바일에서는 OS 기본 드롭다운(네이티브 select)을 쓴다 — 운영체제가 화면에 맞춰
   // 띄우므로 절대 잘리지 않는다. (커스텀 위치계산이 폰마다 어긋나던 문제 근본 해결)
-  const [isNative] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
-  );
+  const [isNative] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
 
   const reposition = useCallback(() => {
     const el = triggerRef.current;

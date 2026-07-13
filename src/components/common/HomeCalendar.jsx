@@ -378,7 +378,11 @@ export default function HomeCalendar() {
           <div className="home-calendar-grid" style={{ maxWidth: '100%', overflowX: 'auto' }}>
             <div className="home-cal-row home-cal-dow">
               {['일', '월', '화', '수', '목', '금', '토'].map((dn, i) => (
-                <div key={dn} className={`home-cal-dow-cell ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`} aria-label={dn}>
+                <div
+                  key={dn}
+                  className={`home-cal-dow-cell ${i === 0 ? 'sunday' : ''} ${i === 6 ? 'saturday' : ''}`}
+                  aria-label={dn}
+                >
                   <span className="dow-label-full">{dn}</span>
                 </div>
               ))}
@@ -406,13 +410,27 @@ export default function HomeCalendar() {
                         setSelectedDate(iso);
                       }}
                     >
-                      <span className="home-cal-date-row" style={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 2 }}>
-                        <span className="home-cal-date" style={{ flexShrink: 0, fontSize: 13 }}>{d}</span>
+                      <span
+                        className="home-cal-date-row"
+                        style={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: 2 }}
+                      >
+                        <span className="home-cal-date" style={{ flexShrink: 0, fontSize: 13 }}>
+                          {d}
+                        </span>
                         {holidayEv && (
                           <span
                             className="home-cal-holiday-label"
                             title={holidayEv.title}
-                            style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10, display: 'flex', alignItems: 'center' }}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              fontSize: 10,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
                           >
                             {holidayEv.title}
                           </span>
@@ -422,9 +440,7 @@ export default function HomeCalendar() {
                         {otherEvents.slice(0, 4).map((e, ei) => (
                           <span key={ei} className={`home-cal-dot type-${e.type || 'event'}`} title={e.title} />
                         ))}
-                        {otherEvents.length > 4 && (
-                          <span className="home-cal-ev-more">+{otherEvents.length - 4}</span>
-                        )}
+                        {otherEvents.length > 4 && <span className="home-cal-ev-more">+{otherEvents.length - 4}</span>}
                       </div>
                     </button>
                   );
@@ -433,7 +449,15 @@ export default function HomeCalendar() {
             ))}
           </div>
 
-          <div className="home-calendar-list" style={{ maxHeight: '45vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
+          <div
+            className="home-calendar-list"
+            style={{
+              maxHeight: '45vh',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)',
+            }}
+          >
             {selectedDate ? (
               <>
                 <div
@@ -462,11 +486,35 @@ export default function HomeCalendar() {
                     >
                       <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
                       <div className="home-cal-item-body" style={{ flex: 1, minWidth: 0 }}>
-                        <div className="home-cal-item-title" title={e.title} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>
+                        <div
+                          className="home-cal-item-title"
+                          title={e.title}
+                          style={{
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            wordBreak: 'break-word',
+                          }}
+                        >
                           {e.title}
                         </div>
                         {e._kind === 'event' && e.description && (
-                          <div className="home-cal-item-desc" title={e.description} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>
+                          <div
+                            className="home-cal-item-desc"
+                            title={e.description}
+                            style={{
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              wordBreak: 'break-word',
+                            }}
+                          >
                             {e.description}
                           </div>
                         )}
@@ -490,7 +538,16 @@ export default function HomeCalendar() {
                         {e._kind === 'personal' && (
                           <>
                             {e.note && (
-                              <div className="home-cal-item-desc" title={e.note} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div
+                                className="home-cal-item-desc"
+                                title={e.note}
+                                style={{
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
                                 {e.note}
                               </div>
                             )}
@@ -509,7 +566,8 @@ export default function HomeCalendar() {
                           onClick={() => handleDeletePersonal(e.id)}
                           style={{ flexShrink: 0 }}
                         >
-                          <Icon name="trash" className="btn-ic" />삭제
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
                         </button>
                       )}
                     </div>
@@ -527,7 +585,19 @@ export default function HomeCalendar() {
                   >
                     <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
                     <div className="home-cal-item-body" style={{ flex: 1, minWidth: 0 }}>
-                      <div className="home-cal-item-title" title={e.title} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}>
+                      <div
+                        className="home-cal-item-title"
+                        title={e.title}
+                        style={{
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          wordBreak: 'break-word',
+                        }}
+                      >
                         {e.title}
                       </div>
                       <div className="home-cal-item-meta">
@@ -574,7 +644,12 @@ export default function HomeCalendar() {
             <button type="submit" className="btn btn-primary" disabled={personalBusy} style={{ minHeight: 36 }}>
               {personalBusy ? '저장 중...' : '추가'}
             </button>
-            <button type="button" className="btn btn-outline" onClick={() => setShowPersonalModal(false)} style={{ minHeight: 36 }}>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setShowPersonalModal(false)}
+              style={{ minHeight: 36 }}
+            >
               취소
             </button>
           </div>

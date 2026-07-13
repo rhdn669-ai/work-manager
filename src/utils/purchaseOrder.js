@@ -58,7 +58,13 @@ export function mapPrintItems(items, itemMaster, suppliers) {
   return (items || []).map((ln, idx) => {
     const mst = itemMaster.find((x) => x.id === ln.itemId);
     const sup = mst ? suppliers.find((s) => s.id === mst.defaultSupplierId) : null;
-    return { ...ln, _globalNo: idx + 1, _supplier: sup?.name || '', _name: mst?.name || ln.name, _spec: mst?.spec || ln.spec };
+    return {
+      ...ln,
+      _globalNo: idx + 1,
+      _supplier: sup?.name || '',
+      _name: mst?.name || ln.name,
+      _spec: mst?.spec || ln.spec,
+    };
   });
 }
 

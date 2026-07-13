@@ -283,7 +283,13 @@ export default function EventManagementPage() {
         <div className="card" style={{ marginBottom: 12, borderLeft: '3px solid var(--primary)' }}>
           <div className="card-body" style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text-light)' }}>
             <strong
-              style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: 4, verticalAlign: 'middle' }}
+              style={{
+                color: 'var(--primary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                verticalAlign: 'middle',
+              }}
             >
               <Icon name="calendar" size={14} /> 신규 연도 알림
             </strong>{' '}
@@ -354,12 +360,16 @@ export default function EventManagementPage() {
                   </div>
                 )}
               </div>
-              <div className="event-actions" style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              <div
+                className="event-actions"
+                style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'flex-start' }}
+              >
                 <button className="btn btn-sm btn-outline" onClick={() => openEdit(ev)}>
                   수정
                 </button>
                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(ev)}>
-                  <Icon name="trash" className="btn-ic" />삭제
+                  <Icon name="trash" className="btn-ic" />
+                  삭제
                 </button>
               </div>
             </div>

@@ -189,7 +189,9 @@ export default function TotalClosingPage() {
             </div>
             <div className="closing-summary-item">
               <span className="label">매출</span>
-              <strong style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}>{totals.revenue.toLocaleString()}원</strong>
+              <strong style={{ color: 'var(--primary, #002050)', fontVariantNumeric: 'tabular-nums' }}>
+                {totals.revenue.toLocaleString()}원
+              </strong>
             </div>
             <div className="closing-summary-item">
               <span className="label">지출</span>
@@ -216,7 +218,12 @@ export default function TotalClosingPage() {
               style={{ border: '2px solid var(--primary, #002050)', background: 'var(--primary-soft, #e6ecf5)' }}
             >
               <span className="label">합계</span>
-              <strong style={{ color: totals.balance >= 0 ? 'var(--success)' : 'var(--danger)', fontVariantNumeric: 'tabular-nums' }}>
+              <strong
+                style={{
+                  color: totals.balance >= 0 ? 'var(--success)' : 'var(--danger)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {totals.balance >= 0 ? '+' : ''}
                 {totals.balance.toLocaleString()}원
               </strong>
@@ -240,11 +247,21 @@ export default function TotalClosingPage() {
                   <thead>
                     <tr>
                       <th style={{ minWidth: 80 }}>프로젝트</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="매출">매출</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="지출">지출</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="인건비">인건비</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="잔업">잔업</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="합계">합계</th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="매출">
+                        매출
+                      </th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="지출">
+                        지출
+                      </th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="인건비">
+                        인건비
+                      </th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="잔업">
+                        잔업
+                      </th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="합계">
+                        합계
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -267,11 +284,7 @@ export default function TotalClosingPage() {
                           className="table-clickable-row"
                           style={{ cursor: 'pointer' }}
                         >
-                          <td
-                            data-label="프로젝트"
-                            title={s.name}
-                            style={{ fontWeight: 600, wordBreak: 'break-word' }}
-                          >
+                          <td data-label="프로젝트" title={s.name} style={{ fontWeight: 600, wordBreak: 'break-word' }}>
                             {s.name}
                           </td>
                           <td data-label="매출" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>

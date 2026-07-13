@@ -96,11 +96,7 @@ export default function FixedExpensePanel({ year, month, items, onChange, saving
                   <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(it)}>
                     수정
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleDelete(it.id)}
-                  >
+                  <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(it.id)}>
                     삭제
                   </button>
                 </span>

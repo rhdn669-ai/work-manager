@@ -48,7 +48,15 @@ function fmtDateTime(d) {
   }
 }
 
-export default function TrashList({ items, loading, busy, onRestore, onPurge, canPurge = false, emptyText = '휴지통이 비어 있습니다.' }) {
+export default function TrashList({
+  items,
+  loading,
+  busy,
+  onRestore,
+  onPurge,
+  canPurge = false,
+  emptyText = '휴지통이 비어 있습니다.',
+}) {
   if (loading) return <div className="trash-empty">불러오는 중...</div>;
   if (!items || items.length === 0) return <div className="trash-empty">{emptyText}</div>;
 
@@ -62,7 +70,9 @@ export default function TrashList({ items, loading, busy, onRestore, onPurge, ca
             <th>내용</th>
             <th style={{ width: 130 }}>삭제일시</th>
             <th style={{ width: 76 }}>삭제자</th>
-            <th className="col-action" style={{ width: canPurge ? 168 : 80, minWidth: canPurge ? 168 : 80 }}>작업</th>
+            <th className="col-action" style={{ width: canPurge ? 168 : 80, minWidth: canPurge ? 168 : 80 }}>
+              작업
+            </th>
           </tr>
         </thead>
         <tbody>

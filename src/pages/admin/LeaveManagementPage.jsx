@@ -635,8 +635,14 @@ function LeaveTab({
                           flexWrap: 'wrap',
                         }}
                       >
-                        <span title={userName} style={{ whiteSpace: 'nowrap' }}>{userName}</span>
-                        {u?.position && <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>{u.position}</span>}
+                        <span title={userName} style={{ whiteSpace: 'nowrap' }}>
+                          {userName}
+                        </span>
+                        {u?.position && (
+                          <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>
+                            {u.position}
+                          </span>
+                        )}
                         {deptName && (
                           <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
                             · {deptName}
@@ -694,10 +700,20 @@ function LeaveTab({
                         />
                       </div>
                       <div className="btn-group">
-                        <button className="btn btn-sm btn-primary" style={{ minHeight: 36, whiteSpace: 'nowrap' }} disabled={busy} onClick={() => saveEdit(l)}>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          style={{ minHeight: 36, whiteSpace: 'nowrap' }}
+                          disabled={busy}
+                          onClick={() => saveEdit(l)}
+                        >
                           저장
                         </button>
-                        <button className="btn btn-sm btn-outline" style={{ minHeight: 36, whiteSpace: 'nowrap' }} disabled={busy} onClick={cancelEdit}>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          style={{ minHeight: 36, whiteSpace: 'nowrap' }}
+                          disabled={busy}
+                          onClick={cancelEdit}
+                        >
                           닫기
                         </button>
                       </div>
@@ -717,8 +733,14 @@ function LeaveTab({
                             minWidth: 0,
                           }}
                         >
-                          <span title={userName} style={{ whiteSpace: 'nowrap' }}>{userName}</span>
-                          {u?.position && <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>{u.position}</span>}
+                          <span title={userName} style={{ whiteSpace: 'nowrap' }}>
+                            {userName}
+                          </span>
+                          {u?.position && (
+                            <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>
+                              {u.position}
+                            </span>
+                          )}
                           {deptName && (
                             <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
                               · {deptName}
@@ -789,12 +811,9 @@ function LeaveTab({
                               <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>
                                 수정
                               </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                disabled={busy}
-                                onClick={() => handleCancel(l)}
-                              >
-                                <Icon name="trash" className="btn-ic" />취소
+                              <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => handleCancel(l)}>
+                                <Icon name="trash" className="btn-ic" />
+                                취소
                               </button>
                             </>
                           )}
@@ -805,7 +824,8 @@ function LeaveTab({
                               onClick={() => handleDelete(l)}
                               title="기록 삭제"
                             >
-                              <Icon name="trash" className="btn-ic" />삭제
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
                             </button>
                           )}
                         </div>
@@ -895,8 +915,14 @@ function OvertimeTab({
                           flexWrap: 'wrap',
                         }}
                       >
-                        <span title={userName} style={{ whiteSpace: 'nowrap' }}>{userName}</span>
-                        {u?.position && <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>{u.position}</span>}
+                        <span title={userName} style={{ whiteSpace: 'nowrap' }}>
+                          {userName}
+                        </span>
+                        {u?.position && (
+                          <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>
+                            {u.position}
+                          </span>
+                        )}
                         {deptName && (
                           <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
                             · {deptName}
@@ -958,10 +984,20 @@ function OvertimeTab({
                         />
                       </div>
                       <div className="btn-group">
-                        <button className="btn btn-sm btn-primary" style={{ minHeight: 36, whiteSpace: 'nowrap' }} disabled={rowBusy} onClick={() => save(r)}>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          style={{ minHeight: 36, whiteSpace: 'nowrap' }}
+                          disabled={rowBusy}
+                          onClick={() => save(r)}
+                        >
                           저장
                         </button>
-                        <button className="btn btn-sm btn-outline" style={{ minHeight: 36, whiteSpace: 'nowrap' }} disabled={rowBusy} onClick={cancelEdit}>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          style={{ minHeight: 36, whiteSpace: 'nowrap' }}
+                          disabled={rowBusy}
+                          onClick={cancelEdit}
+                        >
                           닫기
                         </button>
                       </div>
@@ -981,8 +1017,14 @@ function OvertimeTab({
                             minWidth: 0,
                           }}
                         >
-                          <span title={userName} style={{ whiteSpace: 'nowrap' }}>{userName}</span>
-                          {u?.position && <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>{u.position}</span>}
+                          <span title={userName} style={{ whiteSpace: 'nowrap' }}>
+                            {userName}
+                          </span>
+                          {u?.position && (
+                            <span className={`badge badge-position-${u.position}`} style={{ flexShrink: 0 }}>
+                              {u.position}
+                            </span>
+                          )}
                           {deptName && (
                             <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
                               · {deptName}
@@ -1065,11 +1107,7 @@ function OvertimeTab({
                               <button className="btn btn-sm btn-primary" disabled={rowBusy} onClick={() => approve(r)}>
                                 승인
                               </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                disabled={rowBusy}
-                                onClick={() => reject(r)}
-                              >
+                              <button className="btn btn-sm btn-danger" disabled={rowBusy} onClick={() => reject(r)}>
                                 거절
                               </button>
                             </>
@@ -1077,12 +1115,9 @@ function OvertimeTab({
                           <button className="btn btn-sm btn-outline" disabled={rowBusy} onClick={() => startEdit(r)}>
                             수정
                           </button>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            disabled={rowBusy}
-                            onClick={() => remove(r)}
-                          >
-                            <Icon name="trash" className="btn-ic" />삭제
+                          <button className="btn btn-sm btn-danger" disabled={rowBusy} onClick={() => remove(r)}>
+                            <Icon name="trash" className="btn-ic" />
+                            삭제
                           </button>
                         </div>
                       </div>

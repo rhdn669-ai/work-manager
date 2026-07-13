@@ -56,7 +56,17 @@ const TABS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-const EMPTY_FORM = { title: '', subtitle: '', siteId: '', supplierId: '', deliveryDue: '', contactName: '', contactPhone: '', factoryKey: '', deliveryPlace: '' };
+const EMPTY_FORM = {
+  title: '',
+  subtitle: '',
+  siteId: '',
+  supplierId: '',
+  deliveryDue: '',
+  contactName: '',
+  contactPhone: '',
+  factoryKey: '',
+  deliveryPlace: '',
+};
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -64,7 +74,6 @@ function fmtDate(ts) {
   if (Number.isNaN(d.getTime())) return '-';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-
 
 // 드래그 가능한 발주 카드 (전체 탭에서만 순서변경 활성)
 function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
@@ -137,7 +146,8 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
             수정
           </button>
           <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
-            <Icon name="trash" className="btn-ic" />삭제
+            <Icon name="trash" className="btn-ic" />
+            삭제
           </button>
         </div>
       </div>
@@ -203,7 +213,8 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
             수정
           </button>
           <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
-            <Icon name="trash" className="btn-ic" />삭제
+            <Icon name="trash" className="btn-ic" />
+            삭제
           </button>
         </div>
       </div>
@@ -457,11 +468,12 @@ export default function PurchaseListPage() {
       const tid = await trashPurchase(p.id, userProfile?.name || '');
       await deletePurchase(p.id);
       setPurchases((prev) => prev.filter((x) => x.id !== p.id));
-      if (tid) pushUndo(`구매 "${p.title}" 삭제`, async () => {
-        await restoreTrashItem(tid);
-        const ps = await getPurchases();
-        setPurchases(ps);
-      });
+      if (tid)
+        pushUndo(`구매 "${p.title}" 삭제`, async () => {
+          await restoreTrashItem(tid);
+          const ps = await getPurchases();
+          setPurchases(ps);
+        });
     } catch (err) {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -534,11 +546,7 @@ export default function PurchaseListPage() {
           <button type="button" className="btn btn-sm btn-outline" onClick={openFactoryModal}>
             공장 관리
           </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            onClick={() => setTrashOpen(true)}
-          >
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
@@ -749,7 +757,11 @@ export default function PurchaseListPage() {
                 value={form.factoryKey}
                 onChange={(v) => {
                   const factory = factories.find((f) => f.name === v);
-                  setForm((prev) => ({ ...prev, factoryKey: v, deliveryPlace: factory?.address || prev.deliveryPlace }));
+                  setForm((prev) => ({
+                    ...prev,
+                    factoryKey: v,
+                    deliveryPlace: factory?.address || prev.deliveryPlace,
+                  }));
                 }}
                 options={factories.map((f) => ({ value: f.name, label: f.name }))}
                 placeholder="선택"
@@ -831,9 +843,7 @@ export default function PurchaseListPage() {
       </Modal>
 
       <Modal isOpen={factoryModalOpen} onClose={() => setFactoryModalOpen(false)} title="공장 관리">
-        <p className="field-hint">
-          납품 장소 프리셋을 설정합니다. 발주서에서 공장을 선택하면 주소가 자동 입력됩니다.
-        </p>
+        <p className="field-hint">납품 장소 프리셋을 설정합니다. 발주서에서 공장을 선택하면 주소가 자동 입력됩니다.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
           {factoryForm.map((f, i) => (
             <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -865,7 +875,9 @@ export default function PurchaseListPage() {
             </div>
           ))}
           {factoryForm.length === 0 && (
-            <p className="text-muted" style={{ fontSize: 13 }}>등록된 공장이 없습니다.</p>
+            <p className="text-muted" style={{ fontSize: 13 }}>
+              등록된 공장이 없습니다.
+            </p>
           )}
         </div>
         <button

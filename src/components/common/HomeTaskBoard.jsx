@@ -129,10 +129,7 @@ function TaskCard({ t, onEdit, onDelete, onMove }) {
                 {t.dueDate.slice(5)}
               </span>
             ) : (
-              <span
-                className={`task-dday task-dday--${ddayLevel(ddayDiff(t.dueDate))}`}
-                title={`마감 ${t.dueDate}`}
-              >
+              <span className={`task-dday task-dday--${ddayLevel(ddayDiff(t.dueDate))}`} title={`마감 ${t.dueDate}`}>
                 {ddayLabel(ddayDiff(t.dueDate))}
               </span>
             ))}
@@ -300,9 +297,7 @@ export default function HomeTaskBoard() {
     }
   }
 
-  const visibleTasks = canSeeAll
-    ? tasks
-    : tasks.filter((t) => !t.assigneeId || t.assigneeId === userProfile?.uid);
+  const visibleTasks = canSeeAll ? tasks : tasks.filter((t) => !t.assigneeId || t.assigneeId === userProfile?.uid);
 
   const groups = COLS.map((col) => ({ col, cards: visibleTasks.filter((t) => (t.status || 'todo') === col.key) }));
 

@@ -201,7 +201,11 @@ export default function MailSendPage() {
         toast(`${ok}개 업체에 발송 완료했습니다.`, 'success', 0);
         setSelected(new Set());
       } else {
-        toast(`${ok}개 발송 · 실패 ${fail.length}개 (${fail.join(', ')})${firstErr ? ` — ${firstErr}` : ''}`, 'error', 0);
+        toast(
+          `${ok}개 발송 · 실패 ${fail.length}개 (${fail.join(', ')})${firstErr ? ` — ${firstErr}` : ''}`,
+          'error',
+          0,
+        );
       }
     } catch (err) {
       toast('발송 오류: ' + (err.message || err), 'error');
@@ -274,14 +278,22 @@ export default function MailSendPage() {
                       <td data-label="대상">{l.targetType === 'vendor' ? '외주' : '구매처'}</td>
                       <td data-label="제목">
                         <strong>{l.subject || '(제목 없음)'}</strong>
-                        <div className="field-hint" style={{ margin: '2px 0 0' }} title={(l.recipients || []).map((r) => r.name).join(', ')}>
+                        <div
+                          className="field-hint"
+                          style={{ margin: '2px 0 0' }}
+                          title={(l.recipients || []).map((r) => r.name).join(', ')}
+                        >
                           {(l.recipients || []).map((r) => r.name).join(', ')}
                           {l.fileNames?.length ? ` · 첨부 ${l.fileNames.length}` : ''}
                         </div>
                       </td>
                       <td data-label="수신/성공">
                         {l.okCount ?? 0}/{l.total ?? 0}
-                        {l.failCount ? <span style={{ color: 'var(--danger,#dc2626)' }}> (실패 {l.failCount})</span> : ''}
+                        {l.failCount ? (
+                          <span style={{ color: 'var(--danger,#dc2626)' }}> (실패 {l.failCount})</span>
+                        ) : (
+                          ''
+                        )}
                       </td>
                       <td data-label="발송자">{l.by || '-'}</td>
                     </tr>
@@ -293,172 +305,187 @@ export default function MailSendPage() {
         </div>
       ) : (
         <>
-      <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        업체를 여러 개 선택해 같은 내용의 메일을 한 번에 보냅니다. 이메일이 등록된 업체만 발송됩니다. <strong>발주서로 선택</strong>하면 그 발주서에 속한 구매처만 자동 선택됩니다.
-      </p>
+          <p className="field-hint" style={{ margin: '0 0 12px' }}>
+            업체를 여러 개 선택해 같은 내용의 메일을 한 번에 보냅니다. 이메일이 등록된 업체만 발송됩니다.{' '}
+            <strong>발주서로 선택</strong>하면 그 발주서에 속한 구매처만 자동 선택됩니다.
+          </p>
 
-      {/* 대상 유형 */}
-      <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
-        <button
-          type="button"
-          className={`tab-nav-item ${targetType === 'supplier' ? 'active' : ''}`}
-          onClick={() => setTargetType('supplier')}
-        >
-          구매처
-        </button>
-        <button
-          type="button"
-          className={`tab-nav-item ${targetType === 'vendor' ? 'active' : ''}`}
-          onClick={() => setTargetType('vendor')}
-        >
-          외주 업체
-        </button>
-      </div>
-
-      <div className="mail-send-grid">
-        {/* 수신 업체 선택 */}
-        <div className="mail-send-recipients">
-          <label className="mail-send-label">수신 업체</label>
-          {targetType === 'supplier' && (
-            <div className="mail-send-po-row">
-              <select
-                className="payment-month-select mail-send-po-select"
-                value={poFilter}
-                onChange={(e) => selectByPO(e.target.value)}
-                aria-label="발주서로 업체 선택"
-              >
-                <option value="">발주서로 선택…</option>
-                {purchases.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title || '(제목 없음)'}{p.siteName ? ` · ${p.siteName}` : ''}
-                  </option>
-                ))}
-              </select>
-              {poFilter && (
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => selectByPO('')}>
-                  해제
-                </button>
-              )}
-            </div>
-          )}
-          <div className="mail-send-recipients__bar">
-            <input
-              type="search"
-              placeholder="업체명·이메일 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="업체 검색"
-            />
-            <button type="button" className="btn btn-sm btn-outline" onClick={toggleAll} disabled={withEmail.length === 0}>
-              {allSel ? '전체 해제' : '전체 선택'}
+          {/* 대상 유형 */}
+          <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
+            <button
+              type="button"
+              className={`tab-nav-item ${targetType === 'supplier' ? 'active' : ''}`}
+              onClick={() => setTargetType('supplier')}
+            >
+              구매처
+            </button>
+            <button
+              type="button"
+              className={`tab-nav-item ${targetType === 'vendor' ? 'active' : ''}`}
+              onClick={() => setTargetType('vendor')}
+            >
+              외주 업체
             </button>
           </div>
-          <div className="mail-send-list">
-            {filtered.length === 0 ? (
-              <p className="purchase-empty">업체가 없습니다.</p>
-            ) : (
-              filtered.map((c) => {
-                const noEmail = !c.email;
-                return (
-                  <label key={c.id} className={`mail-send-item ${selected.has(c.id) ? 'is-checked' : ''} ${noEmail ? 'is-disabled' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(c.id)}
-                      onChange={() => !noEmail && toggle(c.id)}
-                      disabled={noEmail}
-                    />
-                    <span className="mail-send-item__name">{c.name || '(이름 없음)'}</span>
-                    <span className="mail-send-item__email">{c.email || '이메일 없음'}</span>
-                  </label>
-                );
-              })
-            )}
-          </div>
-          <p className="field-hint" style={{ margin: '6px 2px 0' }}>
-            선택 {selectedCount}개 · 이메일 등록 {withEmail.length}개 / 전체 {filtered.length}개
-          </p>
-        </div>
 
-        {/* 메일 작성 */}
-        <div className="mail-send-compose">
-          <div className="form-group">
-            <label>제목</label>
-            <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="메일 제목" />
-          </div>
-          <div className="form-group">
-            <label>본문</label>
-            <textarea
-              rows={10}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="메일 본문을 입력하세요. (발신: (주)아이오피엔 이 자동으로 상단에 표시됩니다)"
-              style={{ fontSize: 14, lineHeight: 1.6 }}
-            />
-          </div>
-          <div className="form-group">
-            <label>첨부파일 (선택)</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const fl = e.target.files;
-                e.target.value = '';
-                addFiles(fl);
-              }}
-            />
-            <div
-              className={`pdf-dropzone ${dragOver ? 'is-over' : ''}`}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={(e) => {
-                if (e.currentTarget.contains(e.relatedTarget)) return;
-                setDragOver(false);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                addFiles(e.dataTransfer.files);
-              }}
-            >
-              <Icon name="plus" className="pdf-dropzone-icon" />
-              <span>파일을 끌어다 놓거나 클릭해서 첨부 (총 8MB 이하)</span>
-            </div>
-            {files.length > 0 && (
-              <ul className="mail-extra-list">
-                {files.map((f, i) => (
-                  <li key={`${f.name}-${i}`} className="mail-extra-item">
-                    <Icon name="doc" className="mail-extra-ic" />
-                    <span className="mail-extra-name" title={f.name}>
-                      {f.name}
-                    </span>
-                    <span className="mail-extra-size">
-                      {f.size < 1024 * 1024
-                        ? `${Math.max(1, Math.round(f.size / 1024))}KB`
-                        : `${(f.size / 1024 / 1024).toFixed(1)}MB`}
-                    </span>
-                    <button
-                      type="button"
-                      className="mail-extra-del"
-                      onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                      aria-label="첨부 제거"
-                    >
-                      ×
+          <div className="mail-send-grid">
+            {/* 수신 업체 선택 */}
+            <div className="mail-send-recipients">
+              <label className="mail-send-label">수신 업체</label>
+              {targetType === 'supplier' && (
+                <div className="mail-send-po-row">
+                  <select
+                    className="payment-month-select mail-send-po-select"
+                    value={poFilter}
+                    onChange={(e) => selectByPO(e.target.value)}
+                    aria-label="발주서로 업체 선택"
+                  >
+                    <option value="">발주서로 선택…</option>
+                    {purchases.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title || '(제목 없음)'}
+                        {p.siteName ? ` · ${p.siteName}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {poFilter && (
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => selectByPO('')}>
+                      해제
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  )}
+                </div>
+              )}
+              <div className="mail-send-recipients__bar">
+                <input
+                  type="search"
+                  placeholder="업체명·이메일 검색"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="업체 검색"
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={toggleAll}
+                  disabled={withEmail.length === 0}
+                >
+                  {allSel ? '전체 해제' : '전체 선택'}
+                </button>
+              </div>
+              <div className="mail-send-list">
+                {filtered.length === 0 ? (
+                  <p className="purchase-empty">업체가 없습니다.</p>
+                ) : (
+                  filtered.map((c) => {
+                    const noEmail = !c.email;
+                    return (
+                      <label
+                        key={c.id}
+                        className={`mail-send-item ${selected.has(c.id) ? 'is-checked' : ''} ${noEmail ? 'is-disabled' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.has(c.id)}
+                          onChange={() => !noEmail && toggle(c.id)}
+                          disabled={noEmail}
+                        />
+                        <span className="mail-send-item__name">{c.name || '(이름 없음)'}</span>
+                        <span className="mail-send-item__email">{c.email || '이메일 없음'}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p className="field-hint" style={{ margin: '6px 2px 0' }}>
+                선택 {selectedCount}개 · 이메일 등록 {withEmail.length}개 / 전체 {filtered.length}개
+              </p>
+            </div>
+
+            {/* 메일 작성 */}
+            <div className="mail-send-compose">
+              <div className="form-group">
+                <label>제목</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="메일 제목"
+                />
+              </div>
+              <div className="form-group">
+                <label>본문</label>
+                <textarea
+                  rows={10}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="메일 본문을 입력하세요. (발신: (주)아이오피엔 이 자동으로 상단에 표시됩니다)"
+                  style={{ fontSize: 14, lineHeight: 1.6 }}
+                />
+              </div>
+              <div className="form-group">
+                <label>첨부파일 (선택)</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const fl = e.target.files;
+                    e.target.value = '';
+                    addFiles(fl);
+                  }}
+                />
+                <div
+                  className={`pdf-dropzone ${dragOver ? 'is-over' : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget)) return;
+                    setDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    addFiles(e.dataTransfer.files);
+                  }}
+                >
+                  <Icon name="plus" className="pdf-dropzone-icon" />
+                  <span>파일을 끌어다 놓거나 클릭해서 첨부 (총 8MB 이하)</span>
+                </div>
+                {files.length > 0 && (
+                  <ul className="mail-extra-list">
+                    {files.map((f, i) => (
+                      <li key={`${f.name}-${i}`} className="mail-extra-item">
+                        <Icon name="doc" className="mail-extra-ic" />
+                        <span className="mail-extra-name" title={f.name}>
+                          {f.name}
+                        </span>
+                        <span className="mail-extra-size">
+                          {f.size < 1024 * 1024
+                            ? `${Math.max(1, Math.round(f.size / 1024))}KB`
+                            : `${(f.size / 1024 / 1024).toFixed(1)}MB`}
+                        </span>
+                        <button
+                          type="button"
+                          className="mail-extra-del"
+                          onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                          aria-label="첨부 제거"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <p className="field-hint" style={{ margin: '4px 2px 0' }}>
+                우측 상단 <strong>발송</strong> 버튼으로 선택한 업체에 한 번에 보냅니다.
+              </p>
+            </div>
           </div>
-          <p className="field-hint" style={{ margin: '4px 2px 0' }}>
-            우측 상단 <strong>발송</strong> 버튼으로 선택한 업체에 한 번에 보냅니다.
-          </p>
-        </div>
-      </div>
         </>
       )}
 

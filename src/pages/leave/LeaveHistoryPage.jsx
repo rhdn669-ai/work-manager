@@ -262,9 +262,21 @@ export default function LeaveHistoryPage() {
                           }}
                         >
                           <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>{l.days}일</span>
-                          <span style={{ flexShrink: 0 }} title={LEAVE_TYPE_LABELS[l.type] || l.type}>{LEAVE_TYPE_LABELS[l.type] || l.type}</span>
+                          <span style={{ flexShrink: 0 }} title={LEAVE_TYPE_LABELS[l.type] || l.type}>
+                            {LEAVE_TYPE_LABELS[l.type] || l.type}
+                          </span>
                           {l.reason && (
-                            <span style={{ color: 'var(--text-muted)', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.reason}>
+                            <span
+                              style={{
+                                color: 'var(--text-muted)',
+                                minWidth: 0,
+                                flex: 1,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={l.reason}
+                            >
                               {l.reason}
                             </span>
                           )}
@@ -290,8 +302,16 @@ export default function LeaveHistoryPage() {
                         </div>
                       </div>
                       {isToday && l.status !== 'cancelled' && (
-                        <div className="btn-group" style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}>
-                          <button className="btn btn-sm btn-outline" style={{ whiteSpace: 'nowrap', minWidth: 50, padding: '0 14px' }} disabled={busy} onClick={() => startEdit(l)}>
+                        <div
+                          className="btn-group"
+                          style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}
+                        >
+                          <button
+                            className="btn btn-sm btn-outline"
+                            style={{ whiteSpace: 'nowrap', minWidth: 50, padding: '0 14px' }}
+                            disabled={busy}
+                            onClick={() => startEdit(l)}
+                          >
                             수정
                           </button>
                           <button
@@ -300,7 +320,8 @@ export default function LeaveHistoryPage() {
                             disabled={busy}
                             onClick={() => handleCancel(l)}
                           >
-                            <Icon name="trash" className="btn-ic" />취소
+                            <Icon name="trash" className="btn-ic" />
+                            취소
                           </button>
                         </div>
                       )}

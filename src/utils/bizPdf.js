@@ -230,7 +230,8 @@ export function parseBank(rawText) {
   // ★ 공백 완전 제거(compact) + 하이픈 변형 정규화 — 스캔 OCR이 하이픈을 em-dash(—)·
   //   다른 기호로 읽어도 계좌번호가 매칭되게 ASCII '-'로 통일한다.
   const c = String(rawText || '')
-    .replace(/[—–―‒−﹣－‐ー]/g, '-').replace(/-{2,}/g, '-')
+    .replace(/[—–―‒−﹣－‐ー]/g, '-')
+    .replace(/-{2,}/g, '-')
     .replace(/\s+/g, '');
   const out = { bankName: '', bankAccount: '' };
   for (const b of BANK_NAMES) {
@@ -267,15 +268,10 @@ export function classifyPage(rawText) {
 // onStage(stage, progress?) : 'reading' | 'rendering' | 'ocr'
 // 첨부 가능 여부 — PDF 또는 이미지(휴대폰 사진·스캔)
 export function isImageFile(file) {
-  return (
-    (file?.type || '').startsWith('image/') ||
-    /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(file?.name || '')
-  );
+  return (file?.type || '').startsWith('image/') || /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(file?.name || '');
 }
 export function isSupportedBizFile(file) {
-  return (
-    file?.type === 'application/pdf' || /\.pdf$/i.test(file?.name || '') || isImageFile(file)
-  );
+  return file?.type === 'application/pdf' || /\.pdf$/i.test(file?.name || '') || isImageFile(file);
 }
 
 // 이미지 파일 → OCR용 캔버스 (작으면 확대해 인식률↑, 큰 건 maxDim로 축소)
@@ -399,7 +395,8 @@ export function parseBizReg(rawText) {
   // ★ 공백 완전 제거(compact) + 하이픈 변형 정규화 — "주 식 회 사", "1 5 6 - 8 7",
   //   OCR이 em-dash로 읽은 "156—87—03859" 같은 경우에도 라벨·숫자가 잡힌다.
   const c = String(rawText || '')
-    .replace(/[—–―‒−﹣－‐ー]/g, '-').replace(/-{2,}/g, '-')
+    .replace(/[—–―‒−﹣－‐ー]/g, '-')
+    .replace(/-{2,}/g, '-')
     .replace(/\s+/g, '');
   const out = { name: '', representative: '', businessNumber: '' };
 

@@ -181,7 +181,12 @@ export default function LeaveRequestPage() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap', width: '100%' }} disabled={loading}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ whiteSpace: 'nowrap', width: '100%' }}
+            disabled={loading}
+          >
             {loading ? '신청 중...' : '신청하기'}
           </button>
         </div>

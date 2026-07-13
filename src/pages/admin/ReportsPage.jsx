@@ -602,12 +602,9 @@ export function EmployeeDetailModal({
                               <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>
                                 수정
                               </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                disabled={busy}
-                                onClick={() => removeRow(r)}
-                              >
-                                <Icon name="trash" className="btn-ic" />삭제
+                              <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => removeRow(r)}>
+                                <Icon name="trash" className="btn-ic" />
+                                삭제
                               </button>
                             </div>
                           )}
@@ -714,12 +711,9 @@ export function EmployeeDetailModal({
                             <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>
                               수정
                             </button>
-                            <button
-                              className="btn btn-sm btn-danger"
-                              disabled={busy}
-                              onClick={() => removeRow(l)}
-                            >
-                              <Icon name="trash" className="btn-ic" />삭제
+                            <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => removeRow(l)}>
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
                             </button>
                           </div>
                         )}

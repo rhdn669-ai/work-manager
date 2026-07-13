@@ -156,7 +156,14 @@ export default function PaymentPage() {
       if (filterMode === 'pending' && r.paid) return false;
       if (filterMode === 'paid' && !r.paid) return false;
       if (monthFilter !== 'all' && monthKey(r.dueDate) !== monthFilter) return false; // 결제마감월 기준
-      if (kw && !(r.title.toLowerCase().includes(kw) || r.supplier.toLowerCase().includes(kw) || (r.siteName || '').toLowerCase().includes(kw)))
+      if (
+        kw &&
+        !(
+          r.title.toLowerCase().includes(kw) ||
+          r.supplier.toLowerCase().includes(kw) ||
+          (r.siteName || '').toLowerCase().includes(kw)
+        )
+      )
         return false;
       return true;
     });
@@ -182,7 +189,10 @@ export default function PaymentPage() {
       f.paidCount = f.rows.filter((r) => r.paid).length;
       f.total = f.rows.reduce((s, r) => s + r.total, 0);
       // 미결제 건 중 가장 임박한 결제 마감일
-      const dues = f.rows.filter((r) => !r.paid && r.dueDate).map((r) => r.dueDate).sort();
+      const dues = f.rows
+        .filter((r) => !r.paid && r.dueDate)
+        .map((r) => r.dueDate)
+        .sort();
       f.nearestDue = dues[0] || '';
       f.rows.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     }
@@ -227,7 +237,8 @@ export default function PaymentPage() {
       // 조회 기간: 결제요청 가장 이른 달 ~ 오늘 (없으면 최근 3개월)
       const reqDates = allRows.map((r) => ms(r.requestedAt)).filter(Boolean);
       const start = reqDates.length ? new Date(Math.min(...reqDates)) : new Date(Date.now() - 90 * 864e5);
-      const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const fmt = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const res = await fetch('/api/hometax/taxinvoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +273,12 @@ export default function PaymentPage() {
   }
 
   async function pay(r) {
-    if (!(await confirm({ title: '결제 완료', message: `"${r.supplier}" · ${r.total.toLocaleString()}원(VAT 포함)\n결제 완료로 처리할까요?` })))
+    if (
+      !(await confirm({
+        title: '결제 완료',
+        message: `"${r.supplier}" · ${r.total.toLocaleString()}원(VAT 포함)\n결제 완료로 처리할까요?`,
+      }))
+    )
       return;
     setBusy(`${r.purchaseId}-${r.supplier}`);
     try {
@@ -305,18 +321,31 @@ export default function PaymentPage() {
         </div>
       </div>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 업체명을 누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후 <strong>결제 완료</strong> 처리하세요.
+        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 업체명을
+        누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후 <strong>결제 완료</strong> 처리하세요.
       </p>
 
       {/* 결제 상태 탭 */}
       <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
-        <button type="button" className={`tab-nav-item ${filterMode === 'pending' ? 'active' : ''}`} onClick={() => setFilterMode('pending')}>
+        <button
+          type="button"
+          className={`tab-nav-item ${filterMode === 'pending' ? 'active' : ''}`}
+          onClick={() => setFilterMode('pending')}
+        >
           결제 대기{pendingCount > 0 && <span className="tab-nav-count">{pendingCount}</span>}
         </button>
-        <button type="button" className={`tab-nav-item ${filterMode === 'paid' ? 'active' : ''}`} onClick={() => setFilterMode('paid')}>
+        <button
+          type="button"
+          className={`tab-nav-item ${filterMode === 'paid' ? 'active' : ''}`}
+          onClick={() => setFilterMode('paid')}
+        >
           결제 완료{paidCount > 0 && <span className="tab-nav-count">{paidCount}</span>}
         </button>
-        <button type="button" className={`tab-nav-item ${filterMode === 'all' ? 'active' : ''}`} onClick={() => setFilterMode('all')}>
+        <button
+          type="button"
+          className={`tab-nav-item ${filterMode === 'all' ? 'active' : ''}`}
+          onClick={() => setFilterMode('all')}
+        >
           전체
         </button>
       </div>
@@ -337,7 +366,13 @@ export default function PaymentPage() {
           ))}
         </select>
         <div className="lib-search-inline" style={{ flex: '1 1 240px', maxWidth: 360 }}>
-          <input type="search" placeholder="발주 제목 · 업체 · 프로젝트 검색" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="검색" />
+          <input
+            type="search"
+            placeholder="발주 제목 · 업체 · 프로젝트 검색"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="검색"
+          />
         </div>
       </div>
 
@@ -345,7 +380,11 @@ export default function PaymentPage() {
         <p className="text-muted">불러오는 중...</p>
       ) : folders.length === 0 ? (
         <div className="trash-empty">
-          {filterMode === 'pending' ? '결제 대기 중인 발주가 없습니다.' : filterMode === 'paid' ? '결제 완료된 발주가 없습니다.' : '결제 요청된 건이 없습니다.'}
+          {filterMode === 'pending'
+            ? '결제 대기 중인 발주가 없습니다.'
+            : filterMode === 'paid'
+              ? '결제 완료된 발주가 없습니다.'
+              : '결제 요청된 건이 없습니다.'}
         </div>
       ) : (
         <>
@@ -354,15 +393,22 @@ export default function PaymentPage() {
               const open = expanded.has(f.purchaseId);
               const allPaid = f.pending === 0 && f.paidCount > 0;
               return (
-                <div key={f.purchaseId} className={`payment-folder ${open ? 'is-open' : ''} ${allPaid ? 'is-paid' : ''}`}>
+                <div
+                  key={f.purchaseId}
+                  className={`payment-folder ${open ? 'is-open' : ''} ${allPaid ? 'is-paid' : ''}`}
+                >
                   <button type="button" className="payment-folder-head" onClick={() => toggleFolder(f.purchaseId)}>
                     <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
                     <Icon name="folder" className="payment-folder-ic" />
-                    <span className="payment-folder-title" title={f.title}>{f.title}</span>
+                    <span className="payment-folder-title" title={f.title}>
+                      {f.title}
+                    </span>
                     {f.siteName && <span className="payment-folder-site">{f.siteName}</span>}
                     <span className="payment-folder-spacer" />
                     {f.nearestDue && (
-                      <span className={`payment-folder-due${f.nearestDue < todayStr ? ' is-overdue' : ''}`}>~{f.nearestDue} 마감</span>
+                      <span className={`payment-folder-due${f.nearestDue < todayStr ? ' is-overdue' : ''}`}>
+                        ~{f.nearestDue} 마감
+                      </span>
                     )}
                     {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
                     {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
@@ -388,7 +434,9 @@ export default function PaymentPage() {
                             <th style={{ width: 96 }}>결제요청일</th>
                             <th style={{ width: 104 }}>결제마감일</th>
                             <th style={{ width: 150 }}>세금계산서</th>
-                            <th className="col-action" style={{ width: 280 }}>작업</th>
+                            <th className="col-action" style={{ width: 280 }}>
+                              작업
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -397,37 +445,64 @@ export default function PaymentPage() {
                             return (
                               <tr key={k} className={r.paid ? 'is-paid-row' : ''}>
                                 <td data-label="상태">
-                                  <span className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}>
+                                  <span
+                                    className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}
+                                  >
                                     {r.paid ? '결제완료' : '결제대기'}
                                   </span>
                                 </td>
                                 <td data-label="상호" title={r.supplier}>
                                   <strong>{r.supplier}</strong>
                                 </td>
-                                <td data-label="대표" className="u-ellipsis" title={r.representative || ''}>{r.representative || '-'}</td>
-                                <td data-label="연락처" className="u-ellipsis" title={r.contact || ''}>{r.contact || '-'}</td>
-                                <td data-label="이메일" className="u-ellipsis" title={r.email || ''}>{r.email || '-'}</td>
-                                <td data-label="사업자번호" className="u-ellipsis" title={r.businessNumber || ''}>{r.businessNumber || '-'}</td>
-                                <td data-label="은행" className="u-ellipsis" title={r.bankName || ''}>{r.bankName || '-'}</td>
-                                <td data-label="계좌번호" className="u-wrap" title={r.bankAccount || ''}>{r.bankAccount || '-'}</td>
-                                <td data-label="분류" className="u-ellipsis" title={r.category || ''}>{r.category || '-'}</td>
+                                <td data-label="대표" className="u-ellipsis" title={r.representative || ''}>
+                                  {r.representative || '-'}
+                                </td>
+                                <td data-label="연락처" className="u-ellipsis" title={r.contact || ''}>
+                                  {r.contact || '-'}
+                                </td>
+                                <td data-label="이메일" className="u-ellipsis" title={r.email || ''}>
+                                  {r.email || '-'}
+                                </td>
+                                <td data-label="사업자번호" className="u-ellipsis" title={r.businessNumber || ''}>
+                                  {r.businessNumber || '-'}
+                                </td>
+                                <td data-label="은행" className="u-ellipsis" title={r.bankName || ''}>
+                                  {r.bankName || '-'}
+                                </td>
+                                <td data-label="계좌번호" className="u-wrap" title={r.bankAccount || ''}>
+                                  {r.bankAccount || '-'}
+                                </td>
+                                <td data-label="분류" className="u-ellipsis" title={r.category || ''}>
+                                  {r.category || '-'}
+                                </td>
                                 <td data-label="비고" className="supplier-note-cell" title={r.note || ''}>
                                   <span className="cell-clamp-2">{r.note || '-'}</span>
                                 </td>
-                                <td data-label="결제금액(VAT포함)" className="payment-amount-cell" title={`공급가 ${r.supply.toLocaleString()}`}>
+                                <td
+                                  data-label="결제금액(VAT포함)"
+                                  className="payment-amount-cell"
+                                  title={`공급가 ${r.supply.toLocaleString()}`}
+                                >
                                   {r.total.toLocaleString()}원
                                 </td>
                                 <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
                                 <td data-label="결제마감일">
                                   {r.dueDate ? (
-                                    <strong className={`payment-due${!r.paid && r.dueDate < todayStr ? ' is-overdue' : ''}`}>{r.dueDate}</strong>
+                                    <strong
+                                      className={`payment-due${!r.paid && r.dueDate < todayStr ? ' is-overdue' : ''}`}
+                                    >
+                                      {r.dueDate}
+                                    </strong>
                                   ) : (
                                     <span className="text-muted">-</span>
                                   )}
                                 </td>
                                 <td data-label="세금계산서">
                                   {r.taxInvoice ? (
-                                    <span className="purchase-badge purchase-badge-received" title={`승인번호 ${r.taxInvoice.approvalNo || '-'} · 공급가 ${(r.taxInvoice.supplyValue || 0).toLocaleString()} · 세액 ${(r.taxInvoice.tax || 0).toLocaleString()}`}>
+                                    <span
+                                      className="purchase-badge purchase-badge-received"
+                                      title={`승인번호 ${r.taxInvoice.approvalNo || '-'} · 공급가 ${(r.taxInvoice.supplyValue || 0).toLocaleString()} · 세액 ${(r.taxInvoice.tax || 0).toLocaleString()}`}
+                                    >
                                       발행 {r.taxInvoice.writeDate || ''}
                                     </span>
                                   ) : (
@@ -436,18 +511,39 @@ export default function PaymentPage() {
                                 </td>
                                 <td data-label="작업" className="col-action">
                                   <div className="row-actions">
-                                    <button type="button" className="btn btn-sm btn-outline" onClick={() => openBizDoc(r.supplier)} title="사업자등록증 보기/출력">
-                                      <Icon name="doc" className="btn-ic" />PDF 출력
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline"
+                                      onClick={() => openBizDoc(r.supplier)}
+                                      title="사업자등록증 보기/출력"
+                                    >
+                                      <Icon name="doc" className="btn-ic" />
+                                      PDF 출력
                                     </button>
-                                    <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}>
-                                      <Icon name="chevronRight" className="btn-ic" />발주서
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline"
+                                      onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}
+                                    >
+                                      <Icon name="chevronRight" className="btn-ic" />
+                                      발주서
                                     </button>
                                     {r.paid ? (
-                                      <button type="button" className="btn btn-sm po-act-btn--on" onClick={() => cancelPay(r)} disabled={busy === k}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm po-act-btn--on"
+                                        onClick={() => cancelPay(r)}
+                                        disabled={busy === k}
+                                      >
                                         결제 취소
                                       </button>
                                     ) : (
-                                      <button type="button" className="btn btn-sm btn-primary" onClick={() => pay(r)} disabled={busy === k}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-primary"
+                                        onClick={() => pay(r)}
+                                        disabled={busy === k}
+                                      >
                                         결제 완료
                                       </button>
                                     )}
@@ -471,7 +567,12 @@ export default function PaymentPage() {
       )}
 
       {/* 사업자등록증 미리보기 모달 */}
-      <Modal isOpen={!!bizDoc} onClose={() => setBizDoc(null)} title={bizDoc ? `${bizDoc.supplier} · 거래처 정보` : '거래처 정보'} size="lg">
+      <Modal
+        isOpen={!!bizDoc}
+        onClose={() => setBizDoc(null)}
+        title={bizDoc ? `${bizDoc.supplier} · 거래처 정보` : '거래처 정보'}
+        size="lg"
+      >
         {bizDoc?.loading ? (
           <p className="text-muted">불러오는 중...</p>
         ) : bizDoc?.error ? (
@@ -491,10 +592,11 @@ export default function PaymentPage() {
                 <div key={f.id} className="biz-doc-item">
                   <div className="biz-doc-head">
                     <Icon name="doc" className="biz-doc-ic" />
-                    <span className="biz-doc-name" title={f.name}>{f.name}</span>
+                    <span className="biz-doc-name" title={f.name}>
+                      {f.name}
+                    </span>
                     <a className="btn btn-sm btn-outline" href={f.downloadURL} target="_blank" rel="noreferrer">
-                      <Icon name="download" className="btn-ic" />
-                      새 창
+                      <Icon name="download" className="btn-ic" />새 창
                     </a>
                   </div>
                   {isImg ? (
@@ -502,7 +604,9 @@ export default function PaymentPage() {
                   ) : isPdf ? (
                     <iframe className="biz-doc-frame" src={f.downloadURL} title={f.name} />
                   ) : (
-                    <p className="text-muted" style={{ margin: '6px 0 0' }}>미리보기를 지원하지 않는 형식입니다. "새 창"으로 열어주세요.</p>
+                    <p className="text-muted" style={{ margin: '6px 0 0' }}>
+                      미리보기를 지원하지 않는 형식입니다. "새 창"으로 열어주세요.
+                    </p>
                   )}
                 </div>
               );

@@ -11,7 +11,12 @@ const Tab = ({ to, end, label, icon, badge }) => (
       <Icon name={icon} className="bottom-nav-icon" />
       {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
     </div>
-    <span title={label} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{label}</span>
+    <span
+      title={label}
+      style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}
+    >
+      {label}
+    </span>
   </NavLink>
 );
 

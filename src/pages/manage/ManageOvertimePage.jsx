@@ -192,14 +192,10 @@ export default function ManageOvertimePage() {
                       <strong>합계</strong>
                     </td>
                     <td data-label="총 잔업" className="num-col">
-                      <strong>
-                        {formatMinutes(totalMinutes)}
-                      </strong>
+                      <strong>{formatMinutes(totalMinutes)}</strong>
                     </td>
                     <td data-label="등록 건수" className="num-col">
-                      <strong>
-                        {approvedRecords.length}건
-                      </strong>
+                      <strong>{approvedRecords.length}건</strong>
                     </td>
                   </tr>
                 </tfoot>
