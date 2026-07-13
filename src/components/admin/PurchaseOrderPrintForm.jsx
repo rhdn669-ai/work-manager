@@ -29,8 +29,6 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     printSiteNameMode = null,
     printStamp = '',
     hideAmount = false,
-    boxes = [],
-    showBoxes = false,
   },
   ref,
 ) {
@@ -205,6 +203,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
               <tr>
                 <th className="c-no">NO</th>
                 <th className="c-itemno">품번</th>
+                <th className="c-box">BOX</th>
                 <th className="c-name">품목명</th>
                 <th className="c-spec">규격</th>
                 <th className="c-qty">수량</th>
@@ -221,6 +220,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                     <tr key={`e-${r}`}>
                       <td className="c-no"></td>
                       <td className="c-itemno"></td>
+                      <td className="c-box"></td>
                       <td className="c-name"></td>
                       <td className="c-spec"></td>
                       <td className="c-qty"></td>
@@ -238,6 +238,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                   <tr key={r}>
                     <td className="c-no">{pg.startNo + r + 1}</td>
                     <td className="c-itemno">{ln._globalNo || ''}</td>
+                    <td className={`c-box ${specFontClass(ln.box, 8)}`} title={ln.box || ''}>
+                      {ln.box || ''}
+                    </td>
                     <td className={`c-name ${specFontClass(ln._name, 11)}`} title={ln._name || ''}>
                       {ln._name || ''}
                     </td>
@@ -311,47 +314,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     });
   };
 
-  // BOX 목록 — 이름만 뽑아 30행씩 열로 분할(한 페이지에 여러 열)
-  const boxNames = (Array.isArray(boxes) ? boxes : []).map((b) => String((b && b.name) || '')).filter((n) => n.trim());
-  const BOX_ROWS_PER_COL = 30;
-  const boxCols = [];
-  for (let i = 0; i < boxNames.length; i += BOX_ROWS_PER_COL) {
-    boxCols.push(boxNames.slice(i, i + BOX_ROWS_PER_COL));
-  }
-
   return (
     <div ref={ref} className={`print-form-iopn print-form-paged print-only${hideAmount ? ' hide-amount' : ''}`}>
       {docs.map((d, di) => renderDoc(d.items, d.recvTitle, d.supplierLabel, `doc${di}`))}
-      {showBoxes && boxNames.length > 0 && (
-        <div className="bom-print-page po-doc-page po-box-page">
-          <div className="print-form-title po-form-title">BOX 목록</div>
-          <div className="po-box-cols">
-            {boxCols.map((col, ci) => (
-              <table className="po-box-table" key={`bx${ci}`}>
-                <thead>
-                  <tr>
-                    <th className="bx-no">No</th>
-                    <th className="bx-name">BOX 명</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {col.map((nm, ri) => (
-                    <tr key={ri}>
-                      <td className="bx-no">{ci * BOX_ROWS_PER_COL + ri + 1}</td>
-                      <td className="bx-name">{nm}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ))}
-          </div>
-          <div className="bom-print-footer">
-            <span>
-              BOX 목록 · 총 {boxNames.length}개{printStamp ? ` · 출력 ${printStamp}` : ''}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 });

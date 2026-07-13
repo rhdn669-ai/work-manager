@@ -52,7 +52,7 @@ const STATUS = {
   settled: { label: '정산완료', cls: 'settled' },
 };
 
-const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0 };
+const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0, box: '' };
 
 // SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
 // 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
@@ -117,7 +117,6 @@ export default function PurchaseDetailPage() {
     note: '',
     supplierNotes: {},
     setCount: 0,
-    boxes: [], // BOX 목록 (BOM에서 가져옴) — 발주 PDF 출력용 [{ name }]
     mailBody: '',
     deletedItems: [], // 삭제된 품목 행 휴지통
   });
@@ -179,8 +178,6 @@ export default function PurchaseDetailPage() {
   const [printHideAmount, setPrintHideAmount] = useState(false);
   const [pdfOptOpen, setPdfOptOpen] = useState(false); // 출력 옵션 모달
   const [pdfShowAmount, setPdfShowAmount] = useState(true); // 옵션: 금액 표기(기본 ON)
-  const [pdfShowBoxes, setPdfShowBoxes] = useState(true); // 옵션: BOX 목록 표시
-  const [printShowBoxes, setPrintShowBoxes] = useState(false); // 실제 출력 시 BOX 목록 렌더 여부
   // 발주 수량 변경 모달 — { idx, name, receivedQty, value } | null (보유자재 반영 감량)
   const [qtyModal, setQtyModal] = useState(null);
 
@@ -268,7 +265,6 @@ export default function PurchaseDetailPage() {
         note: p.note || '',
         supplierNotes: p.supplierNotes || {},
         setCount: Number(p.setCount) || 0,
-        boxes: Array.isArray(p.boxes) ? p.boxes.map((b) => ({ name: String((b && b.name) || '') })) : [],
         // 비어 있으면 기본 공통 문구를 '실제 값'으로 채워 바로 편집 가능하게 (placeholder만 보여 수정 불가처럼 보이던 문제)
         mailBody:
           p.mailBody && String(p.mailBody).trim() ? p.mailBody : buildDefaultMailBody(p.contactName || p.requesterName),
@@ -584,24 +580,17 @@ export default function PurchaseDetailPage() {
             unit: m?.unit || b.unit || '',
             qty: (Number(b.qty) || 1) * setCount, // 세트 수량(배수) 반영
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
+            box: b.box || '', // 품목별 소속 BOX (BOM에서 그대로 복사, PDF 품목표에 출력)
             note: b.note || '',
           };
         });
-      // BOM에 정의된 BOX 목록도 함께 가져온다 (발주 PDF 출력용)
-      const importedBoxes = Array.isArray(bp.boxes)
-        ? bp.boxes.map((b) => ({ name: String((b && b.name) || '') })).filter((b) => b.name.trim())
-        : [];
       setForm((f) => {
         const existing = f.items.filter((ln) => (ln.name || '').trim()); // 빈 라인 제거 후 합치기
-        // 기존 박스에 이어붙임(여러 BOM 합칠 때 누적). 처음 가져오면 그대로.
-        const mergedBoxes = [...(Array.isArray(f.boxes) ? f.boxes : []), ...importedBoxes];
-        return { ...f, items: [...existing, ...newLines], setCount, boxes: mergedBoxes };
+        return { ...f, items: [...existing, ...newLines], setCount };
       });
       scheduleAutoSave();
       setBomModalOpen(false);
-      toast(
-        `"${bp.name}" BOM에서 품목 ${newLines.length}개${importedBoxes.length ? ` · BOX ${importedBoxes.length}개` : ''}를 가져왔습니다.`,
-      );
+      toast(`"${bp.name}" BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
     } catch (err) {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
@@ -721,7 +710,6 @@ export default function PurchaseDetailPage() {
         note: f.note,
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
-        boxes: Array.isArray(f.boxes) ? f.boxes.map((b) => ({ name: String((b && b.name) || '') })) : [],
         mailBody: f.mailBody || '',
         deletedItems: f.deletedItems || [],
       });
@@ -734,7 +722,6 @@ export default function PurchaseDetailPage() {
         note: f.note,
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
-        boxes: Array.isArray(f.boxes) ? f.boxes.map((b) => ({ name: String((b && b.name) || '') })) : [],
         mailBody: f.mailBody || '',
         deletedItems: f.deletedItems || [],
         title: f.title.trim(),
@@ -794,20 +781,17 @@ export default function PurchaseDetailPage() {
   // 「PDF 출력」 — 옵션(금액 표기 등) 선택 모달을 먼저 연다.
   function handlePdfOutput() {
     setPdfShowAmount(true); // 매번 기본값(금액 표기)으로 리셋
-    setPdfShowBoxes((formRef.current.boxes || []).length > 0); // BOX 있으면 기본 체크
     setPdfOptOpen(true);
   }
 
-  // 옵션 선택 후 실제 출력 — 브라우저 인쇄(window.print). 금액 표기·BOX 목록 반영.
+  // 옵션 선택 후 실제 출력 — 브라우저 인쇄(window.print). 금액 표기 반영.
   function runPdfOutput() {
     setPdfOptOpen(false);
     setPrintHideAmount(!pdfShowAmount);
-    setPrintShowBoxes(pdfShowBoxes);
     setPrintStamp(fmtDateTime(new Date()));
     setTimeout(() => {
       window.print();
       setPrintHideAmount(false); // 출력 후 원복 — 메일·자료실 저장에 영향 없음
-      setPrintShowBoxes(false);
     }, 200);
   }
 
@@ -1579,8 +1563,6 @@ export default function PurchaseDetailPage() {
         printSiteNameMode={printSiteNameMode}
         printStamp={printStamp}
         hideAmount={printHideAmount}
-        boxes={form.boxes}
-        showBoxes={printShowBoxes}
       />
 
       <div className="purchase-meta-bar screen-only">
@@ -1666,6 +1648,7 @@ export default function PurchaseDetailPage() {
                   <tr>
                     <th className="bom-no-col">No</th>
                     <th style={{ minWidth: 90 }}>코드</th>
+                    <th style={{ minWidth: 90 }}>BOX</th>
                     <th style={{ minWidth: 120 }}>품명</th>
                     <th>메이커</th>
                     <th>규격</th>
@@ -1686,7 +1669,7 @@ export default function PurchaseDetailPage() {
                 <tbody>
                   {form.items.length === 0 && (
                     <tr>
-                      <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                      <td colSpan={16} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                         품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
                       </td>
                     </tr>
@@ -1695,7 +1678,7 @@ export default function PurchaseDetailPage() {
                     (itemSearch.trim() || itemSupplierFilter !== 'all') &&
                     !form.items.some(lineMatchesSearch) && (
                       <tr>
-                        <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                        <td colSpan={16} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                           {itemSupplierFilter !== 'all' && !itemSearch.trim()
                             ? `"${itemSupplierFilter}" 업체 품목이 없습니다.`
                             : `"${itemSearch}" 검색 결과가 없습니다.`}
@@ -1724,6 +1707,17 @@ export default function PurchaseDetailPage() {
                             type="text"
                             className="bom-readonly-input bom-code-input"
                             value={master?.code || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="BOX" title={ln.box || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={ln.box || ''}
+                            title={ln.box || ''}
+                            placeholder="-"
                             readOnly
                             tabIndex={-1}
                           />
@@ -2640,15 +2634,6 @@ export default function PurchaseDetailPage() {
             (메일 발송·자료실 저장은 이 옵션과 무관하게 항상 금액이 포함됩니다.)
           </p>
         </div>
-        {(form.boxes || []).length > 0 && (
-          <div className="form-group">
-            <label className="pdf-opt-row">
-              <input type="checkbox" checked={pdfShowBoxes} onChange={(e) => setPdfShowBoxes(e.target.checked)} />
-              <span>BOX 목록 포함 ({(form.boxes || []).length}개)</span>
-            </label>
-            <p className="field-hint">발주서 뒤에 BOX 목록(No · BOX 명) 페이지가 추가됩니다.</p>
-          </div>
-        )}
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setPdfOptOpen(false)}>
             취소

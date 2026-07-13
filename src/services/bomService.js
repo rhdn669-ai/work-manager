@@ -63,14 +63,6 @@ export async function updateBomProject(projectId, name) {
   });
 }
 
-// BOM 프로젝트의 BOX 목록 저장 — [{ name }] (발주 PDF에 출력되는 박스 명세)
-export async function updateBomProjectBoxes(projectId, boxes) {
-  await updateDoc(doc(db, 'bomProjects', projectId), {
-    boxes: Array.isArray(boxes) ? boxes.map((b) => ({ name: String((b && b.name) || '') })) : [],
-    updatedAt: new Date(),
-  });
-}
-
 export async function deleteBomProject(projectId) {
   const snap = await getDocs(query(bomRef, where('siteId', '==', projectId)));
   const batch = writeBatch(db);
@@ -103,6 +95,7 @@ export async function addBomItem(siteId, data) {
     unit: data.unit || '',
     qty: Number(data.qty) || 0,
     unitPrice: Number(data.unitPrice) || 0,
+    box: data.box || '',
     note: data.note || '',
     order: Number(data.order) || 0,
     createdAt: new Date(),
@@ -128,6 +121,7 @@ export async function restoreBomItem(id, siteId, data) {
     unit: data.unit || '',
     qty: Number(data.qty) || 0,
     unitPrice: Number(data.unitPrice) || 0,
+    box: data.box || '',
     note: data.note || '',
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),

@@ -8,7 +8,6 @@ import {
   restoreBomItem,
   getBomProjectById,
   updateBomProject,
-  updateBomProjectBoxes,
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
@@ -58,12 +57,6 @@ export default function BomDetailPage() {
   // 프로젝트명 수정
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [nameInput, setNameInput] = useState('');
-  // BOX 목록 (발주 PDF에 출력) — [{ name }]. 수동 입력, 프로젝트 문서에 저장
-  const [boxes, setBoxes] = useState([]);
-  const [boxOpen, setBoxOpen] = useState(false); // 편집 섹션 펼침
-  const [boxBulkName, setBoxBulkName] = useState(''); // 일괄 추가 이름
-  const [boxBulkCount, setBoxBulkCount] = useState('1'); // 일괄 추가 개수
-  const boxSaveRef = useRef(null); // 박스 저장 디바운스
 
   // ---- Ctrl+Z 실행취소 ----
   const bomUndoStackRef = useRef([]); // bomItems 스냅샷 스택 (최대 30개)
@@ -125,7 +118,6 @@ export default function BomDetailPage() {
         setProject(p);
         setSuppliers(sp);
         setBomItems(items);
-        setBoxes(Array.isArray(p.boxes) ? p.boxes.map((b) => ({ name: String((b && b.name) || '') })) : []);
       } catch (err) {
         console.error(err);
         toast('불러오기 중 오류가 발생했습니다', 'error');
@@ -476,32 +468,6 @@ export default function BomDetailPage() {
     }
   }
 
-  // ---- BOX 목록 편집 (수동 입력, 자동 저장) ----
-  function commitBoxes(next) {
-    setBoxes(next);
-    setProject((p) => ({ ...p, boxes: next }));
-    if (boxSaveRef.current) clearTimeout(boxSaveRef.current);
-    boxSaveRef.current = setTimeout(() => {
-      updateBomProjectBoxes(projectId, next).catch(() => toast('BOX 목록 저장 실패', 'error'));
-    }, 700);
-  }
-  function updateBoxName(idx, name) {
-    commitBoxes(boxes.map((b, i) => (i === idx ? { ...b, name } : b)));
-  }
-  function addBoxRow() {
-    commitBoxes([...boxes, { name: '' }]);
-  }
-  function removeBoxRow(idx) {
-    commitBoxes(boxes.filter((_, i) => i !== idx));
-  }
-  function bulkAddBoxes() {
-    const name = boxBulkName.trim();
-    const count = Math.max(1, Math.min(500, Number(boxBulkCount) || 0));
-    if (!name) return;
-    commitBoxes([...boxes, ...Array.from({ length: count }, () => ({ name }))]);
-    setBoxBulkName('');
-    setBoxBulkCount('1');
-  }
 
   if (loading || !project) return <Skeleton.Rows count={6} />;
 
@@ -571,103 +537,6 @@ export default function BomDetailPage() {
             목록
           </button>
         </div>
-      </div>
-
-      <div className="bom-box-editor screen-only">
-        <button type="button" className="bom-box-head" onClick={() => setBoxOpen((v) => !v)} aria-expanded={boxOpen}>
-          <span className="bom-box-title">
-            BOX 목록 <span className="bom-box-count">{boxes.length}개</span>
-          </span>
-          <span className="bom-box-sub">발주서에서 이 BOM을 가져오면 PDF에 출력됩니다</span>
-          <Icon name={boxOpen ? 'chevronDown' : 'chevronRight'} className="btn-ic" />
-        </button>
-
-        {boxOpen && (
-          <div className="bom-box-body">
-            <div className="bom-box-bulk">
-              <input
-                type="text"
-                className="bom-box-bulk-name"
-                placeholder="BOX 명 (예: POWER BOX)"
-                value={boxBulkName}
-                onChange={(e) => setBoxBulkName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') bulkAddBoxes();
-                }}
-              />
-              <span className="bom-box-x">×</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                className="bom-box-bulk-count"
-                value={boxBulkCount}
-                onChange={(e) => setBoxBulkCount(e.target.value.replace(/[^\d]/g, ''))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') bulkAddBoxes();
-                }}
-                aria-label="개수"
-              />
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={bulkAddBoxes}
-                disabled={!boxBulkName.trim()}
-              >
-                <Icon name="plus" className="btn-ic" />
-                일괄 추가
-              </button>
-            </div>
-
-            {boxes.length === 0 ? (
-              <p className="field-hint">
-                아직 BOX가 없습니다. 위에서 이름·개수로 일괄 추가하거나 「행 추가」로 하나씩 넣으세요.
-              </p>
-            ) : (
-              <div className="table-scroll-x">
-                <table className="table cards-sm bom-box-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 60 }}>No</th>
-                      <th>BOX 명</th>
-                      <th style={{ width: 70 }} className="col-action"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {boxes.map((b, i) => (
-                      <tr key={i}>
-                        <td data-label="No">{i + 1}</td>
-                        <td data-label="BOX 명">
-                          <input
-                            type="text"
-                            className="bom-box-name-input"
-                            value={b.name}
-                            placeholder="BOX 명 입력"
-                            onChange={(e) => updateBoxName(i, e.target.value)}
-                          />
-                        </td>
-                        <td className="col-action">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-danger"
-                            onClick={() => removeBoxRow(i)}
-                            aria-label="삭제"
-                            title="삭제"
-                          >
-                            <Icon name="trash" className="btn-ic" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <button type="button" className="btn btn-sm btn-outline" onClick={addBoxRow} style={{ marginTop: 8 }}>
-              <Icon name="plus" className="btn-ic" />행 추가
-            </button>
-          </div>
-        )}
       </div>
 
       <PdfFabGroup
@@ -913,6 +782,7 @@ export default function BomDetailPage() {
                     <th className="bom-spacer-col" aria-hidden="true"></th>
                     <th className="bom-no-col">No</th>
                     <th style={{ minWidth: 90 }}>코드</th>
+                    <th style={{ minWidth: 90 }}>BOX</th>
                     <th style={{ minWidth: 120 }}>품명</th>
                     <th>메이커</th>
                     <th>규격</th>
@@ -939,7 +809,7 @@ export default function BomDetailPage() {
                         {isGroupStart && (
                           <tr className="bom-supplier-header">
                             <td className="bom-spacer-col" aria-hidden="true"></td>
-                            <td colSpan={12} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
+                            <td colSpan={13} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
                               <span
                                 className="bom-supplier-header-text"
                                 title={sup}
@@ -972,6 +842,16 @@ export default function BomDetailPage() {
                               value={it.code || ''}
                               readOnly
                               tabIndex={-1}
+                            />
+                          </td>
+                          <td data-label="BOX" title={it.box || ''}>
+                            <input
+                              type="text"
+                              value={it.box || ''}
+                              title={it.box || ''}
+                              placeholder="-"
+                              onChange={(e) => updateField(it.id, { box: e.target.value })}
+                              onBlur={() => flushItem(it.id)}
                             />
                           </td>
                           <td data-label="품명" title={it.name || ''}>
