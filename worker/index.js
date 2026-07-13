@@ -19,7 +19,13 @@ export default {
       return hometaxTaxInvoice(request, env);
     }
     // 정적 자산(SPA) — not_found_handling=single-page-application
-    return env.ASSETS.fetch(request);
+    // 단, /assets/* 해시 자산에는 SPA 폴백(HTML) 금지 — 배포 전파 중 폴백 HTML이
+    // immutable 캐시 헤더로 브라우저에 1년 저장되어 앱이 영구히 깨지는 사고 방지.
+    const res = await env.ASSETS.fetch(request);
+    if (url.pathname.startsWith('/assets/') && (res.headers.get('content-type') || '').includes('text/html')) {
+      return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
+    }
+    return res;
   },
 };
 
