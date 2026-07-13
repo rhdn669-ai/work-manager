@@ -2632,18 +2632,16 @@ export default function PurchaseDetailPage() {
             <span className="toggle-slider" />
           </label>
         </div>
-        {form.items.some((ln) => (ln.box || '').trim()) && (
-          <div className="toggle-row" style={{ marginBottom: 10 }}>
-            <div className="toggle-row-text">
-              <span className="toggle-row-title">BOX 표시</span>
-              <small className="text-muted">품목표의 품번 옆에 BOX 열을 추가합니다 (전체 PDF 출력에만 적용)</small>
-            </div>
-            <label className="toggle-switch">
-              <input type="checkbox" checked={pdfShowBox} onChange={(e) => setPdfShowBox(e.target.checked)} />
-              <span className="toggle-slider" />
-            </label>
+        <div className="toggle-row" style={{ marginBottom: 10 }}>
+          <div className="toggle-row-text">
+            <span className="toggle-row-title">BOX 표시</span>
+            <small className="text-muted">품목표의 품번 옆에 BOX 열을 추가합니다 (전체 PDF 출력에만 적용)</small>
           </div>
-        )}
+          <label className="toggle-switch">
+            <input type="checkbox" checked={pdfShowBox} onChange={(e) => setPdfShowBox(e.target.checked)} />
+            <span className="toggle-slider" />
+          </label>
+        </div>
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setPdfOptOpen(false)}>
             취소
