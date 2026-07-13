@@ -1654,6 +1654,7 @@ export default function PurchaseDetailPage() {
                   <tr>
                     <th className="bom-no-col">No</th>
                     <th style={{ minWidth: 90 }}>코드</th>
+                    <th style={{ minWidth: 90 }}>BOX</th>
                     <th style={{ minWidth: 120 }}>품명</th>
                     <th>메이커</th>
                     <th>규격</th>
@@ -1673,7 +1674,7 @@ export default function PurchaseDetailPage() {
                 <tbody>
                   {form.items.length === 0 && (
                     <tr>
-                      <td colSpan={14} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                      <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                         품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
                       </td>
                     </tr>
@@ -1682,7 +1683,7 @@ export default function PurchaseDetailPage() {
                     (itemSearch.trim() || itemSupplierFilter !== 'all') &&
                     !form.items.some(lineMatchesSearch) && (
                       <tr>
-                        <td colSpan={14} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                        <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                           {itemSupplierFilter !== 'all' && !itemSearch.trim()
                             ? `"${itemSupplierFilter}" 업체 품목이 없습니다.`
                             : `"${itemSearch}" 검색 결과가 없습니다.`}
@@ -1711,6 +1712,17 @@ export default function PurchaseDetailPage() {
                             type="text"
                             className="bom-readonly-input bom-code-input"
                             value={master?.code || ''}
+                            readOnly
+                            tabIndex={-1}
+                          />
+                        </td>
+                        <td data-label="BOX" title={ln.box || ''}>
+                          <input
+                            type="text"
+                            className="bom-readonly-input"
+                            value={ln.box || ''}
+                            title={ln.box || ''}
+                            placeholder="-"
                             readOnly
                             tabIndex={-1}
                           />
