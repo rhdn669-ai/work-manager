@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import ForgotPasswordModal from '../components/common/ForgotPasswordModal';
 import Icon from '../components/common/Icon';
 import { isPlatformAuthAvailable, hasBioRegistered, verifyBio, clearBio } from '../utils/webauthn';

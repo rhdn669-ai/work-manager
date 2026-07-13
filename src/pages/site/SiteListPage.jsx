@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   getAllSites,
   getSitesByManager,
@@ -15,12 +15,12 @@ import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 import TrashModal from '../../components/common/TrashModal';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
-import { useUndo } from '../../contexts/UndoContext';
+import { useUndo } from '../../contexts/useUndo';
 import { ensureProjectFolders, organizeOrderHistory } from '../../services/fileLibraryService';
 
 const TYPE_LABELS = { recurring: '양산', once: '단발' };
@@ -43,8 +43,8 @@ function getIconColor(key) {
 }
 
 export default function SiteListPage() {
-  const { userProfile, isAdmin, isExecutive, canViewSalary, canCreateSite } = useAuth();
-  const { confirm, alert, toast } = useDialog();
+  const { userProfile, isAdmin, canViewSalary, canCreateSite } = useAuth();
+  const { confirm, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const [searchParams, setSearchParams] = useSearchParams();
   const [sites, setSites] = useState([]);
@@ -251,11 +251,6 @@ export default function SiteListPage() {
     completed: sites.filter((s) => !isBeforeStart(s) && !isAfterEnd(s) && s.status === 'completed').length,
   };
 
-  function managerNames(site) {
-    const ids = site.managerIds || [];
-    const names = ids.map((uid) => userMap[uid]?.name).filter(Boolean);
-    return names.length ? names.join(', ') : '-';
-  }
   function managerNameArr(site) {
     const ids = site.managerIds || [];
     return ids.map((uid) => userMap[uid]?.name).filter(Boolean);
@@ -333,7 +328,7 @@ export default function SiteListPage() {
       }
       setShowModal(false);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -367,7 +362,7 @@ export default function SiteListPage() {
         console.warn('[자료실] 발주이력 월별 정리 실패:', err);
       }
       toast(`${ok}/${all.length}개 프로젝트의 자료실 폴더를 동기화했습니다.${movedMsg}`);
-    } catch (err) {
+    } catch {
       toast('동기화 중 오류가 발생했습니다', 'error');
     } finally {
       setSyncingFolders(false);
@@ -387,7 +382,7 @@ export default function SiteListPage() {
           await restoreTrashItem(tid);
           await loadData();
         });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -404,7 +399,7 @@ export default function SiteListPage() {
     try {
       await updateSite(site.id, { status: next });
       await loadData();
-    } catch (err) {
+    } catch {
       toast('상태 변경 중 오류가 발생했습니다', 'error');
     }
   }
@@ -581,7 +576,6 @@ export default function SiteListPage() {
               const st = s.status || 'active';
               const hideRev = !!s.hideRevenue;
               const period = periodLabel(s);
-              const isOnce = pt === 'once';
 
               // 단발성: 전체 누적 통계 / 양산: 선택 월 통계
               const raw = siteStats[s.id] || { revenue: 0, expense: 0, overtime: 0, labor: 0 };

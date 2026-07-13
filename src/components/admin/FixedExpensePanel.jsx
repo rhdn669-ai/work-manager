@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import FixedExpenseModal from './FixedExpenseModal';
-import { useDialog } from '../common/DialogProvider';
+import { useDialog } from '../common/useDialog';
 
 // 목록 행에 표시할 핵심 정보 칩 (간결하게 1~3개)
 function buildDetailChips(it) {

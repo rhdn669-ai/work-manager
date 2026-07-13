@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import Select from '../../components/common/Select';
-import { useDialog } from '../../components/common/DialogProvider';
-import { useUndo } from '../../contexts/UndoContext';
+import { useDialog } from '../../components/common/useDialog';
+import { useUndo } from '../../contexts/useUndo';
 import {
   subscribeFolders,
   subscribeFiles,
@@ -230,7 +230,7 @@ export default function FileLibraryPage() {
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
   const [selectedFolderId, setSelectedFolderId] = useState(null); // null = 전체
-  const [openMap, setOpenMap] = useState({});
+  const [, setOpenMap] = useState({});
 
   const [draggingFileId, setDraggingFileId] = useState(null);
   const [dragOverId, setDragOverId] = useState(undefined);
@@ -301,8 +301,6 @@ export default function FileLibraryPage() {
     });
   }, [selectedFolderId, folders]);
 
-  const topFolders = useMemo(() => folders.filter((f) => (f.parentId || null) === null).sort(sortFolders), [folders]);
-
   const selectedFolder = selectedFolderId !== null ? folders.find((f) => f.id === selectedFolderId) : null;
 
   // 현재 폴더의 하위 폴더 (탐색기: 폴더가 위)
@@ -334,10 +332,6 @@ export default function FileLibraryPage() {
     setSelectedFolderId(id);
     setSearch('');
     setSelected(new Set());
-  }
-
-  function toggleOpen(id) {
-    setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   // ── 다중 선택 ──
@@ -444,7 +438,7 @@ export default function FileLibraryPage() {
         await uploadFile(file, selectedFolderId, userProfile, (p) =>
           setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress: p } : x))),
         );
-      } catch (err) {
+      } catch {
         toast(`"${file.name}" 업로드 중 오류가 발생했습니다`, 'error');
       } finally {
         setUploads((u) => u.filter((x) => x.key !== key));
@@ -478,7 +472,7 @@ export default function FileLibraryPage() {
       pushUndo(`폴더 "${name}" 추가`, async () => {
         await trashGeneric('libraryFolders', newId, { title: name }, userProfile?.name || '');
       });
-    } catch (err) {
+    } catch {
       toast('폴더 생성 중 오류가 발생했습니다', 'error');
     }
   }
@@ -505,7 +499,7 @@ export default function FileLibraryPage() {
     try {
       await renameFolder(renameTarget.id, name);
       setRenameTarget(null);
-    } catch (err) {
+    } catch {
       toast('이름 변경 중 오류가 발생했습니다', 'error');
     }
   }
@@ -532,7 +526,7 @@ export default function FileLibraryPage() {
       await renameFile(fileRenameTarget.id, newName);
       setFileRenameTarget(null);
       toast(`파일 이름을 "${newName}"(으)로 변경했습니다.`);
-    } catch (err) {
+    } catch {
       toast('이름 변경 중 오류가 발생했습니다', 'error');
     }
   }
@@ -573,7 +567,7 @@ export default function FileLibraryPage() {
         const allIds = [folderTid, ...subTrashIds.map((x) => x.tid), ...fileTrashIds.map((x) => x.tid)].filter(Boolean);
         await Promise.all(allIds.map((tid) => restoreTrashItem(tid)));
       });
-    } catch (err) {
+    } catch {
       toast('폴더 삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -585,7 +579,7 @@ export default function FileLibraryPage() {
       const tid = await trashGeneric('libraryFiles', file.id, { title: file.name }, userProfile?.name || '');
       toast('휴지통으로 이동했습니다.');
       if (tid) pushUndo(`파일 "${file.name}" 삭제`, () => restoreTrashItem(tid));
-    } catch (err) {
+    } catch {
       toast('파일 삭제 중 오류가 발생했습니다', 'error');
     }
   }

@@ -22,9 +22,9 @@ import {
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getBomProjects, getBomBySite } from '../../services/bomService';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDialog } from '../../components/common/DialogProvider';
-import { useUndo } from '../../contexts/UndoContext';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from '../../components/common/useDialog';
+import { useUndo } from '../../contexts/useUndo';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
@@ -332,11 +332,6 @@ export default function PurchaseDetailPage() {
     document.addEventListener('mouseup', up);
   }
 
-  function patchForm(patch) {
-    setForm((f) => ({ ...f, ...patch }));
-    scheduleAutoSave();
-  }
-
   function updateLine(idx, patch) {
     setForm((f) => ({
       ...f,
@@ -368,29 +363,6 @@ export default function PurchaseDetailPage() {
     }
     updateLine(qtyModal.idx, { qty: n });
     setQtyModal(null);
-  }
-
-  function updateLineName(idx, name) {
-    const trimmed = name;
-    setForm((f) => ({
-      ...f,
-      items: f.items.map((ln, i) => {
-        if (i !== idx) return ln;
-        const m = itemMaster.find((x) => x.name === trimmed);
-        if (m) {
-          return {
-            ...ln,
-            itemId: m.id,
-            name: m.name,
-            spec: m.spec || ln.spec,
-            unit: m.unit || ln.unit,
-            unitPrice: Number(ln.unitPrice) > 0 ? ln.unitPrice : Number(m.standardPrice) || 0,
-          };
-        }
-        return { ...ln, itemId: '', name: trimmed };
-      }),
-    }));
-    scheduleAutoSave();
   }
 
   // ---- 품목 불러오기 (BOM 상세 「품목 선택」 피커와 동일: 체크박스 다중선택 + 수량) ----
@@ -552,7 +524,7 @@ export default function PurchaseDetailPage() {
       try {
         const projs = await getBomProjects();
         setBomProjects(projs);
-      } catch (err) {
+      } catch {
         toast('BOM 목록 불러오기 중 오류가 발생했습니다', 'error');
       } finally {
         setBomLoading(false);
@@ -593,7 +565,7 @@ export default function PurchaseDetailPage() {
       scheduleAutoSave();
       setBomModalOpen(false);
       toast(`"${bp.name}" BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
-    } catch (err) {
+    } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
       setBomImporting(false);
@@ -866,7 +838,7 @@ export default function PurchaseDetailPage() {
       });
       setReceiveModal(null);
       await loadData({ silent: true });
-    } catch (err) {
+    } catch {
       toast('입고 처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -905,7 +877,7 @@ export default function PurchaseDetailPage() {
       });
       setBulkModal(null);
       await loadData({ silent: true });
-    } catch (err) {
+    } catch {
       toast('일괄 입고 처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -921,7 +893,7 @@ export default function PurchaseDetailPage() {
         receivedBy: '',
       });
       await loadData({ silent: true });
-    } catch (err) {
+    } catch {
       toast('입고 취소 중 오류가 발생했습니다', 'error');
     }
   }
@@ -939,7 +911,7 @@ export default function PurchaseDetailPage() {
     try {
       await settlePurchase(purchase, userProfile?.name || '');
       await loadData({ silent: true });
-    } catch (err) {
+    } catch {
       toast('정산 중 오류가 발생했습니다', 'error');
     }
   }
@@ -955,7 +927,7 @@ export default function PurchaseDetailPage() {
     try {
       await cancelSettlePurchase(purchase);
       await loadData({ silent: true });
-    } catch (err) {
+    } catch {
       toast('정산 취소 중 오류가 발생했습니다', 'error');
     }
   }
@@ -973,7 +945,7 @@ export default function PurchaseDetailPage() {
           await restoreTrashItem(tid);
           navigate(`/admin/purchase/${purchaseId}`);
         });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -984,7 +956,7 @@ export default function PurchaseDetailPage() {
       await flushAutoSave();
       await confirmPurchase(id, userProfile?.name || '');
       await loadData({ silent: true });
-    } catch (err) {
+    } catch {
       toast('발주 확정 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1050,7 +1022,7 @@ export default function PurchaseDetailPage() {
       purchaseRef.current = { ...(purchaseRef.current || {}), supplierSent: nextSent };
       setPurchase((prev) => ({ ...prev, supplierSent: nextSent }));
       await maybeAutoConfirm(nextSent);
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1099,7 +1071,7 @@ export default function PurchaseDetailPage() {
       purchaseRef.current = { ...(purchaseRef.current || {}), supplierReplied: nextReplied };
       setPurchase((prev) => ({ ...prev, supplierReplied: nextReplied }));
       await maybeAutoReply(nextReplied);
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1116,7 +1088,7 @@ export default function PurchaseDetailPage() {
         purchaseRef.current = { ...(purchaseRef.current || {}), supplierReplied: next };
         return { ...prev, supplierReplied: next };
       });
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1143,7 +1115,7 @@ export default function PurchaseDetailPage() {
       purchaseRef.current = { ...(purchaseRef.current || {}), paymentRequested: next };
       setPurchase((prev) => ({ ...prev, paymentRequested: next }));
       toast('결제 요청했습니다. 결제 페이지에서 확인하세요.');
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1159,7 +1131,7 @@ export default function PurchaseDetailPage() {
         return { ...prev, paymentRequested: next };
       });
       toast('결제 요청을 취소했습니다.');
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1381,7 +1353,7 @@ export default function PurchaseDetailPage() {
         delete next[sentKey];
         return { ...prev, supplierSent: next };
       });
-    } catch (err) {
+    } catch {
       toast('취소 중 오류가 발생했습니다', 'error');
     }
   }

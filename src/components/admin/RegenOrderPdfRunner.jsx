@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useDialog } from '../common/DialogProvider';
-import { useAuth } from '../../contexts/AuthContext';
+import { useDialog } from '../common/useDialog';
+import { useAuth } from '../../contexts/useAuth';
 import PurchaseOrderPrintForm from './PurchaseOrderPrintForm';
 import { captureToPdfBlob } from '../../utils/pdfExport';
 import { replaceLibraryFile } from '../../services/fileLibraryService';

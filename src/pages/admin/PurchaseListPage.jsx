@@ -26,9 +26,9 @@ import {
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDialog } from '../../components/common/DialogProvider';
-import { useUndo } from '../../contexts/UndoContext';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from '../../components/common/useDialog';
+import { useUndo } from '../../contexts/useUndo';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
@@ -254,7 +254,7 @@ export default function PurchaseListPage() {
   const [sites, setSites] = useState([]);
   const [users, setUsers] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [recentSiteId, setRecentSiteId] = useState('');
+  const [, setRecentSiteId] = useState('');
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -438,7 +438,7 @@ export default function PurchaseListPage() {
         setFormModal(false);
         navigate(`/admin/purchase/${ref.id}`);
       }
-    } catch (err) {
+    } catch {
       toast((editingId ? '수정' : '등록') + ' 중 오류가 발생했습니다', 'error');
     } finally {
       setSubmitting(false);
@@ -456,7 +456,7 @@ export default function PurchaseListPage() {
       await saveFactories(cleaned);
       setFactories(cleaned);
       setFactoryModalOpen(false);
-    } catch (err) {
+    } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
@@ -474,7 +474,7 @@ export default function PurchaseListPage() {
           const ps = await getPurchases();
           setPurchases(ps);
         });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -494,7 +494,7 @@ export default function PurchaseListPage() {
     setPurchases((prev) => prev.map((p) => (orderMap.has(p.id) ? { ...p, order: orderMap.get(p.id) } : p)));
     try {
       await savePurchasesOrder(newOrderIds);
-    } catch (err) {
+    } catch {
       toast('순서 저장 중 오류가 발생했습니다', 'error');
     }
   }
@@ -519,7 +519,7 @@ export default function PurchaseListPage() {
     setPurchases((prev) => prev.map((p) => (p.id === cardId ? { ...p, status: newStatus } : p)));
     try {
       await setPurchaseStatus(cardId, newStatus);
-    } catch (err) {
+    } catch {
       toast('상태 변경 중 오류가 발생했습니다', 'error');
       // 실패 시 원복
       setPurchases((prev) => prev.map((p) => (p.id === cardId ? { ...p, status: card.status } : p)));

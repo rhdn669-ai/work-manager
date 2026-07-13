@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '../common/Modal';
-import { useDialog } from '../common/DialogProvider';
+import { useDialog } from '../common/useDialog';
 import { subscribeFolders, subscribeFiles } from '../../services/fileLibraryService';
 import { getPurchases, getSuppliers, getPurchaseItems } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';

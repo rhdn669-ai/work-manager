@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getUsers, updateUser } from '../../services/userService';
 import {
   getDepartments,
@@ -18,7 +18,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 export default function ManageTeamPage() {
   const { userProfile, isAdmin, canApproveLeave } = useAuth();
@@ -274,7 +274,7 @@ export default function ManageTeamPage() {
 
       setShowModal(false);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
@@ -293,7 +293,7 @@ export default function ManageTeamPage() {
       }
       await trashGeneric('departments', team.id, { title: team.name }, userProfile?.name || '');
       await loadData();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -515,7 +515,7 @@ export default function ManageTeamPage() {
               {selectedCalDay &&
                 (() => {
                   const evs = calendarEventsByDate[selectedCalDay] || [];
-                  const [y, m, d] = selectedCalDay.split('-');
+                  const [, m, d] = selectedCalDay.split('-');
                   return (
                     <div className="team-calendar-day-detail">
                       <div

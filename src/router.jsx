@@ -1,4 +1,3 @@
-import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -7,41 +6,42 @@ import PurchaseLayout from './pages/admin/PurchaseLayout';
 import LoginPage from './pages/LoginPage';
 import SetPasswordPage from './pages/SetPasswordPage';
 
-// 나머지 페이지는 지연 로딩 — 초기 번들에서 제외하고, 방문 시 해당 페이지 코드만 로드.
-// Suspense fallback은 Layout의 <Outlet> 래퍼에서 처리.
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
-const AttendanceHistoryPage = lazy(() => import('./pages/attendance/AttendanceHistoryPage'));
-const LeaveRequestPage = lazy(() => import('./pages/leave/LeaveRequestPage'));
-const LeaveHistoryPage = lazy(() => import('./pages/leave/LeaveHistoryPage'));
-const LeaveBalancePage = lazy(() => import('./pages/leave/LeaveBalancePage'));
-const TeamReportsPage = lazy(() => import('./pages/manage/TeamReportsPage'));
-const ManageTeamPage = lazy(() => import('./pages/manage/ManageTeamPage'));
-const MyProjectsPage = lazy(() => import('./pages/manage/MyProjectsPage'));
-const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
-const UnassignedReportPage = lazy(() => import('./pages/admin/UnassignedReportPage'));
-const OutsourceManagementPage = lazy(() => import('./pages/admin/OutsourceManagementPage'));
-const SiteManagementPage = lazy(() => import('./pages/admin/SiteManagementPage'));
-const EventManagementPage = lazy(() => import('./pages/admin/EventManagementPage'));
-const LeaveManagementPage = lazy(() => import('./pages/admin/LeaveManagementPage'));
-const TotalClosingPage = lazy(() => import('./pages/admin/TotalClosingPage'));
-const VehicleLogPage = lazy(() => import('./pages/admin/VehicleLogPage'));
-const PurchaseDetailPage = lazy(() => import('./pages/admin/PurchaseDetailPage'));
-const SupplierManagementPage = lazy(() => import('./pages/admin/SupplierManagementPage'));
-const QuotePage = lazy(() => import('./pages/admin/QuotePage'));
-const QuoteFormPage = lazy(() => import('./pages/admin/QuoteFormPage'));
-const PurchaseItemPage = lazy(() => import('./pages/admin/PurchaseItemPage'));
-const BomPage = lazy(() => import('./pages/admin/BomPage'));
-const BomDetailPage = lazy(() => import('./pages/admin/BomDetailPage'));
-const PurchaseTrashPage = lazy(() => import('./pages/admin/PurchaseTrashPage'));
-const PurchaseListPage = lazy(() => import('./pages/admin/PurchaseListPage'));
-const StaffHubPage = lazy(() => import('./pages/admin/StaffHubPage'));
-const TrashPage = lazy(() => import('./pages/admin/TrashPage'));
-const MailSendPage = lazy(() => import('./pages/admin/MailSendPage'));
-const PaymentPage = lazy(() => import('./pages/admin/PaymentPage'));
-const SiteListPage = lazy(() => import('./pages/site/SiteListPage'));
-const SiteClosingPage = lazy(() => import('./pages/site/SiteClosingPage'));
-const FileLibraryPage = lazy(() => import('./pages/library/FileLibraryPage'));
+// 나머지 페이지는 지연 로딩 — routerPages.js 참조.
+import {
+  DashboardPage,
+  AttendancePage,
+  AttendanceHistoryPage,
+  LeaveRequestPage,
+  LeaveHistoryPage,
+  LeaveBalancePage,
+  TeamReportsPage,
+  ManageTeamPage,
+  MyProjectsPage,
+  ReportsPage,
+  UnassignedReportPage,
+  OutsourceManagementPage,
+  SiteManagementPage,
+  EventManagementPage,
+  LeaveManagementPage,
+  TotalClosingPage,
+  VehicleLogPage,
+  PurchaseDetailPage,
+  SupplierManagementPage,
+  QuotePage,
+  QuoteFormPage,
+  PurchaseItemPage,
+  BomPage,
+  BomDetailPage,
+  PurchaseTrashPage,
+  PurchaseListPage,
+  StaffHubPage,
+  TrashPage,
+  MailSendPage,
+  PaymentPage,
+  SiteListPage,
+  SiteClosingPage,
+  FileLibraryPage,
+} from './routerPages';
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },

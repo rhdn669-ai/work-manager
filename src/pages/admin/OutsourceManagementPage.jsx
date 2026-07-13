@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   getFreelancers,
   addFreelancer,
@@ -7,26 +7,24 @@ import {
   getVendors,
   addVendor,
   updateVendor,
-  importFromSiteClosings,
   getVendorDetail,
   addFreelancerToVendor,
   addVendorProject,
   removeVendorProject,
   setFreelancerRate,
-  clearAllRateHistories,
   removeRateHistoryByFields,
   getAllClosingItems,
 } from '../../services/outsourceService';
 import { getAllSites } from '../../services/siteService';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
-import { useUndo } from '../../contexts/UndoContext';
+import { useUndo } from '../../contexts/useUndo';
 import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
 import { extractBizInfo, normalizeCompany, isSupportedBizFile } from '../../utils/bizPdf';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Select from '../../components/common/Select';
 import TrashModal from '../../components/common/TrashModal';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -58,8 +56,6 @@ export default function OutsourceManagementPage() {
   const [pdfDragOver, setPdfDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const pdfInputRef = useRef(null);
-  const [importing, setImporting] = useState(false);
-  const [clearing, setClearing] = useState(false);
   const [detailVendor, setDetailVendor] = useState(null);
   const [detailTab, setDetailTab] = useState('freelancers');
   const [detailLoading, setDetailLoading] = useState(false);
@@ -105,7 +101,7 @@ export default function OutsourceManagementPage() {
       });
       setEditRateFor(null);
       await reloadDetail();
-    } catch (err) {
+    } catch {
       toast('단가 저장 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
@@ -123,7 +119,7 @@ export default function OutsourceManagementPage() {
       setDetailVendor((prev) =>
         prev ? { ...prev, freelancers: detail.freelancers, projects: detail.projects } : null,
       );
-    } catch (err) {
+    } catch {
       toast('상세 조회 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailLoading(false);
@@ -155,7 +151,7 @@ export default function OutsourceManagementPage() {
       setTimeout(() => {
         newFreelancerNameRef.current?.focus();
       }, 0);
-    } catch (err) {
+    } catch {
       toast('직원 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
@@ -178,7 +174,7 @@ export default function OutsourceManagementPage() {
       await addVendorProject(detailVendor.id, { name, unitPrice: newProject.unitPrice });
       setNewProject({ name: '', unitPrice: detailVendor.caseRate || 0 });
       await reloadDetail();
-    } catch (err) {
+    } catch {
       toast('프로젝트 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
@@ -191,50 +187,10 @@ export default function OutsourceManagementPage() {
     try {
       await removeVendorProject(detailVendor.id, project);
       await reloadDetail();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setDetailBusy(false);
-    }
-  }
-
-  async function handleImport() {
-    if (
-      !(await confirm(
-        '모든 프로젝트 공수표에서 프리랜서·업체 정보를 가져옵니다.\n기존 외주관리에 없는 항목만 추가됩니다.\n\n계속하시겠습니까?',
-      ))
-    )
-      return;
-    setImporting(true);
-    try {
-      const stats = await importFromSiteClosings();
-      toast(
-        `가져오기 완료 · 프리랜서 ${stats.freelancersAdded}명 추가(유지 ${stats.freelancersSkipped}) · 업체 ${stats.vendorsAdded}개 추가(유지 ${stats.vendorsSkipped})`,
-      );
-      await loadAll();
-    } catch (err) {
-      toast('가져오기 중 오류가 발생했습니다', 'error');
-    } finally {
-      setImporting(false);
-    }
-  }
-
-  async function handleClearHistories() {
-    if (
-      !(await confirm(
-        '모든 프리랜서의 단가 변경 이력을 초기화합니다.\n현재 단가는 유지되고, 이전 단가 기록만 전부 삭제됩니다.\n되돌릴 수 없습니다.\n\n계속하시겠습니까?',
-      ))
-    )
-      return;
-    setClearing(true);
-    try {
-      const count = await clearAllRateHistories();
-      toast(`단가 이력 초기화 완료 (${count}명)`);
-      await loadAll();
-    } catch (err) {
-      toast('초기화 중 오류가 발생했습니다', 'error');
-    } finally {
-      setClearing(false);
     }
   }
 
@@ -344,7 +300,7 @@ export default function OutsourceManagementPage() {
       } else {
         setPdfStatus(usedOcr ? 'OCR로 자동 입력됨 (값 확인 권장)' : '자동 입력됨');
       }
-    } catch (err) {
+    } catch {
       setPdfStatus('');
       toast('PDF 처리 중 오류가 발생했습니다', 'error');
     } finally {
@@ -378,7 +334,7 @@ export default function OutsourceManagementPage() {
       setShowModal(false);
       setPdfFiles([]);
       await loadAll();
-    } catch (err) {
+    } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
       setSubmitting(false);
       return;
@@ -397,7 +353,7 @@ export default function OutsourceManagementPage() {
             `${vendorName}_${filesToUpload[i].name}`,
           );
         }
-      } catch (err) {
+      } catch {
         toast('PDF 자료실 보관 중 오류가 발생했습니다', 'error');
       }
     }
@@ -428,7 +384,7 @@ export default function OutsourceManagementPage() {
           await restoreTrashItem(tid);
           await loadAll();
         });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -483,7 +439,6 @@ export default function OutsourceManagementPage() {
 
   // 인원/업체별 집계 — key = 이름(freelancer/daily) 또는 업체명(vendor)
   const groupKey = (it) => (tab === 'vendor' ? it.vendor || '(미지정)' : it.detail || '(이름없음)');
-  const groupLabel = tab === 'vendor' ? '업체명' : '이름';
   const perPerson = Object.values(
     currentTabItems
       .filter((it) => Number(it.amount) > 0) // 금액 0은 집계 모달에서 제외
@@ -1222,7 +1177,7 @@ export default function OutsourceManagementPage() {
                                   );
                                   if (editRateFor === f.id) setEditRateFor(null);
                                   await reloadDetail();
-                                } catch (err) {
+                                } catch {
                                   toast('삭제 중 오류가 발생했습니다', 'error');
                                 } finally {
                                   setDetailBusy(false);
@@ -1284,7 +1239,7 @@ export default function OutsourceManagementPage() {
                                                   isLegacy: h.isLegacy,
                                                 });
                                                 await reloadDetail();
-                                              } catch (err) {
+                                              } catch {
                                                 toast('삭제 중 오류가 발생했습니다', 'error');
                                               } finally {
                                                 setDetailBusy(false);

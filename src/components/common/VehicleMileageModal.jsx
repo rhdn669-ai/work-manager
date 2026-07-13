@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getMileage, getLatestPrevMileage, saveMileage } from '../../services/vehicleMileageService';
 
 // 차량 운행 키로수 입력 모달

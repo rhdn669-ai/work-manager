@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getQuoteById, addQuote, updateQuote } from '../../services/quoteService';
 import { getSuppliers } from '../../services/purchaseService';
 import { trashGeneric } from '../../services/trashService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Select from '../../components/common/Select';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
-import QuotePrintForm, { DEFAULT_NOTE, SELF_INFO } from './QuotePrintForm';
+import QuotePrintForm, { DEFAULT_NOTE } from './QuotePrintForm';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
 const EMPTY_FORM = {
@@ -130,7 +130,7 @@ export default function QuoteFormPage() {
         setIsEditing(false);
         toast('저장되었습니다.');
       }
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     } finally {
       setSaving(false);
@@ -148,7 +148,7 @@ export default function QuoteFormPage() {
       );
       toast('휴지통으로 이동했습니다.');
       navigate('/admin/purchase/quotes');
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }

@@ -3,13 +3,13 @@ import { getDepartments, addDepartment, updateDepartment } from '../../services/
 import { getUsers } from '../../services/userService';
 import { ensureDeptChannel, deleteDeptChannel } from '../../services/channelService';
 import { trashGeneric } from '../../services/trashService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 function useViewportWidth() {
   const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));

@@ -15,14 +15,14 @@ import {
 } from '../../services/purchaseService';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
 import { getToday } from '../../utils/dateUtils';
-import { useUndo } from '../../contexts/UndoContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useUndo } from '../../contexts/useUndo';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import {
   DndContext,
   closestCenter,
@@ -327,14 +327,6 @@ export default function PurchaseItemPage() {
     }
   }
 
-  const categories = useMemo(() => {
-    const set = new Set();
-    items.forEach((it) => {
-      if (it.category) set.add(it.category);
-    });
-    return [...set].sort();
-  }, [items]);
-
   const hasActiveFilter = !!(search.trim() || filterCategory || filterSupplier);
 
   const filtered = useMemo(() => {
@@ -422,7 +414,7 @@ export default function PurchaseItemPage() {
 
     try {
       await reorderGroupCodes(orderedIds, groupItems, mainCode);
-    } catch (err) {
+    } catch {
       toast('순서 변경 저장 중 오류가 발생했습니다', 'error');
       await loadData(); // 롤백
     }
@@ -475,7 +467,7 @@ export default function PurchaseItemPage() {
         const { id: _id, createdAt: _c, updatedAt: _u, ...data } = payload;
         await updatePurchaseItem(id, data);
       }
-    } catch (err) {
+    } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
@@ -530,7 +522,7 @@ export default function PurchaseItemPage() {
         ),
       );
       toast('단가 변경 이력이 기록되었습니다.', 'success');
-    } catch (err) {
+    } catch {
       toast('단가 변경 이력 기록 중 오류가 발생했습니다', 'error');
     }
     setPriceChangeModal(null);
@@ -550,7 +542,7 @@ export default function PurchaseItemPage() {
         ),
       );
       toast('단가 변경 이력을 삭제했습니다.', 'success');
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -581,38 +573,6 @@ export default function PurchaseItemPage() {
     setFilterCategory('');
     setFilterSupplier('');
     expandGroup(tmpId); // groupKey = own id (베어의 tmp id, flushItem에서 real id로 교체됨)
-  }
-
-  function duplicateItem(item) {
-    const code = nextSubCode(items, item.code);
-    if (!code) {
-      alert('코드 자동 부여 실패 — 부모 코드를 확인하세요.');
-      return;
-    }
-    const tmpId = `tmp-${Date.now()}`;
-    const groupKey = item.groupKey || item.id;
-    const newItem = {
-      id: tmpId,
-      code,
-      name: item.name || '',
-      spec: item.spec || '',
-      maker: item.maker || '',
-      unit: item.unit || '',
-      category: item.category || '',
-      standardPrice: Number(item.standardPrice) || 0,
-      unitPrice: Number(item.unitPrice) || 0,
-      defaultSupplierId: item.defaultSupplierId || '',
-      note: item.note || '',
-      priceHistory: [],
-      groupKey,
-    };
-    setItems((prev) => {
-      const idx = prev.findIndex((x) => x.id === item.id);
-      if (idx < 0) return [...prev, newItem];
-      return [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)];
-    });
-    expandGroup(groupKey);
-    markHighlight(tmpId);
   }
 
   function addSameItem(parent) {
@@ -668,7 +628,7 @@ export default function PurchaseItemPage() {
         ),
       );
       setItems((prev) => prev.filter((it) => !ids.includes(it.id)));
-    } catch (err) {
+    } catch {
       toast('대분류 삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -724,7 +684,7 @@ export default function PurchaseItemPage() {
           }
         }
       }
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
       await loadData(); // 코드 재정렬 실패 시 서버 상태로 복구
     }
@@ -837,7 +797,7 @@ export default function PurchaseItemPage() {
       await loadData();
       expandGroup(repItem.groupKey || repItem.id);
       toast(`${payloads.length}개 규격을 추가했습니다.`);
-    } catch (err) {
+    } catch {
       toast('일괄 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setGroupBulkSaving(false);

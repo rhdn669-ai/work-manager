@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getWeeklySummary, getOvertimeSummaries, getOvertimeWarningLevel } from '../../services/overtimeService';
 import { getWeekStart, formatMinutes, getDayName } from '../../utils/dateUtils';
 import { WEEKLY_OVERTIME_LIMIT } from '../../utils/constants';

@@ -1,7 +1,7 @@
-import { createContext, useContext, useRef, useCallback, useEffect } from 'react';
-import { useDialog } from '../components/common/DialogProvider';
+import { useRef, useCallback, useEffect } from 'react';
+import { UndoContext } from './useUndo';
+import { useDialog } from '../components/common/useDialog';
 
-const UndoContext = createContext(null);
 const MAX_STACK = 30;
 
 export function UndoProvider({ children }) {
@@ -46,5 +46,3 @@ export function UndoProvider({ children }) {
 
   return <UndoContext.Provider value={{ push, undoLast, clear }}>{children}</UndoContext.Provider>;
 }
-
-export const useUndo = () => useContext(UndoContext);

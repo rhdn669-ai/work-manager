@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { getAllSites, createSite, updateSite } from '../../services/siteService';
 import { getUsers } from '../../services/userService';
 import { trashGeneric } from '../../services/trashService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 export default function SiteManagementPage() {
   const { confirm, toast } = useDialog();

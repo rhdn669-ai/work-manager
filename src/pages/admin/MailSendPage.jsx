@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
 import { getSuppliers, getPurchases, subscribePurchaseItems } from '../../services/purchaseService';
@@ -28,7 +28,7 @@ function fmtDateTime(ts) {
 
 // 업체 다중 선택 → 동일한 메일을 한 번에 발송 (구매처 / 외주)
 export default function MailSendPage() {
-  const { toast, confirm } = useDialog();
+  const { toast } = useDialog();
   const { userProfile } = useAuth();
   const [mode, setMode] = useState('compose'); // 'compose' | 'history'
   const [logs, setLogs] = useState([]);
@@ -177,7 +177,7 @@ export default function MailSendPage() {
         } catch (e) {
           fail.push(r.name);
           if (!firstErr) firstErr = e?.message || String(e);
-          // eslint-disable-next-line no-console
+
           console.error('메일 발송 실패', r.email, e);
         }
         setProgress({ done: i + 1, total: recipients.length });

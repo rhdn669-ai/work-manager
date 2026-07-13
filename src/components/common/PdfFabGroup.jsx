@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Select from './Select';
-import { useDialog } from './DialogProvider';
-import { useAuth } from '../../contexts/AuthContext';
+import { useDialog } from './useDialog';
+import { useAuth } from '../../contexts/useAuth';
 import { subscribeFolders } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   getSite,
   getClosingItems,
@@ -26,7 +26,7 @@ import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 import TrashModal from '../../components/common/TrashModal';
 import { trashGeneric } from '../../services/trashService';
@@ -149,7 +149,7 @@ export default function SiteClosingPage() {
   const { siteId, year, month } = useParams();
   const y = Number(year);
   const m = Number(month);
-  const { isAdmin, isExecutive, canViewSalary, userProfile } = useAuth();
+  const { isAdmin, canViewSalary, userProfile } = useAuth();
   const { confirm, alert, toast } = useDialog();
   const navigate = useNavigate();
   const vw = useViewportWidth();
@@ -250,7 +250,6 @@ export default function SiteClosingPage() {
       });
       return changed ? next : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
   function resetVendorPicker() {
@@ -282,8 +281,6 @@ export default function SiteClosingPage() {
   const canEdit = canEditSite(site) && !isCompleted;
   const [copying, setCopying] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const dayCount = daysInMonth(y, m);
-  const days = Array.from({ length: dayCount }, (_, i) => i + 1);
 
   useEffect(() => {
     loadAll();
@@ -564,7 +561,7 @@ export default function SiteClosingPage() {
       const count = await initRosterFromPreviousMonth(siteId, y, m);
       toast(`복사 완료: 명단 ${count}건`);
       await loadAll({ silent: true });
-    } catch (err) {
+    } catch {
       toast('명단 복사 중 오류가 발생했습니다', 'error');
     } finally {
       setCopying(false);
@@ -588,7 +585,7 @@ export default function SiteClosingPage() {
         await trashClosingItem(item);
       }
       await loadAll({ silent: true });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setClearing(false);
@@ -605,7 +602,7 @@ export default function SiteClosingPage() {
     try {
       await updateSite(siteId, { status: 'completed' });
       await loadAll({ silent: true });
-    } catch (err) {
+    } catch {
       toast('마감 처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -745,7 +742,7 @@ export default function SiteClosingPage() {
       });
       setDirectInputModal(null);
       await loadAll({ silent: true });
-    } catch (err) {
+    } catch {
       toast('추가 중 오류가 발생했습니다', 'error');
     }
   }
@@ -964,7 +961,7 @@ export default function SiteClosingPage() {
         await Promise.all(others.map((o) => updateClosingItem(o.id, { autofillDisabled: true })));
       }
       await handleAddEmployee(user);
-    } catch (err) {
+    } catch {
       toast('직원 추가 중 오류가 발생했습니다', 'error');
     }
   }
@@ -977,7 +974,7 @@ export default function SiteClosingPage() {
     setItems((prev) => prev.map((it) => (it.id === itemId ? { ...it, autofillDisabled: next } : it)));
     try {
       await updateClosingItem(itemId, { autofillDisabled: next });
-    } catch (err) {
+    } catch {
       toast('자동 채움 설정 변경 중 오류가 발생했습니다', 'error');
     }
   }
@@ -998,7 +995,7 @@ export default function SiteClosingPage() {
         delete next[itemId];
         return next;
       });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -1352,40 +1349,6 @@ export default function SiteClosingPage() {
     }, AUTO_SAVE_DELAY_MS);
   }
 
-  function toggleFinanceChecked(id) {
-    // 진행 중이던 자동저장 타이머를 취소 — 이전(토글 전) 값으로 덮어쓰는 레이스 방지
-    const key = 'fin_' + id;
-    if (timersRef.current[key]) {
-      clearTimeout(timersRef.current[key]);
-      delete timersRef.current[key];
-    }
-    const cur = { ...financeBuf[id], checked: !financeBuf[id]?.checked };
-    setFinanceBuf((b) => ({ ...b, [id]: cur }));
-    // 편집 중이던 필드까지 함께 즉시 저장 (체크만 저장해 다른 편집분이 유실되지 않게)
-    setSavingCount((c) => c + 1);
-    updateFinanceItem(id, {
-      description: cur.description,
-      amount: cur.amount,
-      note: cur.note,
-      date: cur.date || '',
-      unitPrice: cur.unitPrice || 0,
-      quantity: cur.quantity || 0,
-      closings: cur.closings || [],
-      checked: cur.checked || false,
-    })
-      .then(() => {
-        setLastSavedAt(new Date());
-        setSaveError(null);
-        setDirtyFinances((s) => {
-          const n = new Set(s);
-          n.delete(id);
-          return n;
-        });
-      })
-      .catch((err) => setSaveError(err.message || '저장 실패'))
-      .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
-  }
-
   function flushFinance(id) {
     const key = 'fin_' + id;
     if (!timersRef.current[key]) return;
@@ -1419,7 +1382,7 @@ export default function SiteClosingPage() {
       // 휴지통 경유 소프트 삭제 (복원 가능) — 기존 즉시 영구삭제 대체
       await trashGeneric('siteFinances', id, { title: cur.description || '지출/매출 항목' }, userProfile?.name || '');
       await loadAll({ silent: true });
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }

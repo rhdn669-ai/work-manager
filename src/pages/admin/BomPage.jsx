@@ -10,9 +10,9 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
-import { useAuth } from '../../contexts/AuthContext';
-import { useUndo } from '../../contexts/UndoContext';
+import { useDialog } from '../../components/common/useDialog';
+import { useAuth } from '../../contexts/useAuth';
+import { useUndo } from '../../contexts/useUndo';
 import { restoreTrashItem } from '../../services/trashService';
 
 // 드래그 가능한 프로젝트 행

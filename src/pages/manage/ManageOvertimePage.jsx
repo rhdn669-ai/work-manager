@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   getDepartmentOvertimeRecords,
   getAllOvertimeRecords,
@@ -9,7 +9,7 @@ import {
 } from '../../services/attendanceService';
 import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
 import StatusBadge from '../../components/common/StatusBadge';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
 
 const STATUS_LABELS = { approved: '승인', pending: '대기', rejected: '거절' };
@@ -21,7 +21,7 @@ export default function ManageOvertimePage() {
   const [pendingList, setPendingList] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     if (userProfile) loadData();
@@ -52,7 +52,7 @@ export default function ManageOvertimePage() {
     try {
       await approveOvertimeRecord(id);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('승인 중 오류가 발생했습니다', 'error');
     }
   }
@@ -61,7 +61,7 @@ export default function ManageOvertimePage() {
     try {
       await rejectOvertimeRecord(id);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('거절 중 오류가 발생했습니다', 'error');
     }
   }

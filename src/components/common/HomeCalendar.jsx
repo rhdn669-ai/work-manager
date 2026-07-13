@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getEvents } from '../../services/eventService';
 import { getMyOvertimeRecords, getAllOvertimeRecords } from '../../services/attendanceService';
 import { getMyLeaves, getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -8,10 +8,10 @@ import { getAllSites } from '../../services/siteService';
 import { getMyPersonalEvents, addPersonalEvent } from '../../services/personalEventService';
 import { trashGeneric } from '../../services/trashService';
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
-import { getKoreanHolidaysAsEvents, getKoreanHolidayDates } from '../../utils/koreanHolidays';
+import { getKoreanHolidaysAsEvents } from '../../utils/koreanHolidays';
 import Modal from './Modal';
 import Icon from './Icon';
-import { useDialog } from './DialogProvider';
+import { useDialog } from './useDialog';
 
 const TYPE_LABEL = {
   event: '이벤트',
@@ -170,7 +170,7 @@ export default function HomeCalendar() {
       });
       setShowPersonalModal(false);
       await reloadPersonal();
-    } catch (err) {
+    } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     } finally {
       setPersonalBusy(false);
@@ -184,7 +184,7 @@ export default function HomeCalendar() {
       const title = [ev?.title || '내 일정', ev?.startDate].filter(Boolean).join(' ');
       await trashGeneric('personalEvents', id, { title }, userProfile?.name || '');
       await reloadPersonal();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }

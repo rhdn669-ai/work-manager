@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getMyLeaves, editLeaveWithBalance, cancelLeave } from '../../services/leaveService';
 import { getEvents } from '../../services/eventService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
@@ -8,7 +8,7 @@ import LeaveTabs from '../../components/common/LeaveTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 const STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },
@@ -95,7 +95,7 @@ export default function LeaveHistoryPage() {
     try {
       await cancelLeave(l.id);
       await loadLeaves();
-    } catch (err) {
+    } catch {
       toast('취소 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);
@@ -128,7 +128,7 @@ export default function LeaveHistoryPage() {
       );
       setEditingId(null);
       await loadLeaves();
-    } catch (err) {
+    } catch {
       toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);

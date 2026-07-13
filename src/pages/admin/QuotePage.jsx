@@ -2,12 +2,17 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getQuotes } from '../../services/quoteService';
 import { trashGeneric } from '../../services/trashService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import TrashModal from '../../components/common/TrashModal';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { fmtDateKo } from './QuotePrintForm';
+
+function fmtDateKo(ts) {
+  const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 export default function QuotePage() {
   const navigate = useNavigate();
@@ -52,7 +57,7 @@ export default function QuotePage() {
       );
       toast('휴지통으로 이동했습니다.');
       await loadAll();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }

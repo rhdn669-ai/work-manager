@@ -8,7 +8,7 @@
 //   canPurge  : 영구삭제 버튼 노출 여부 (관리자만 true)
 //   emptyText : 비었을 때 문구
 
-export const TRASH_TYPE_LABEL = {
+const TRASH_TYPE_LABEL = {
   departments: { label: '부서', cls: 'ordered' },
   events: { label: '행사', cls: 'partial' },
   vendors: { label: '업체', cls: 'received' },
@@ -33,7 +33,7 @@ export const TRASH_TYPE_LABEL = {
   personalEvents: { label: '개인일정', cls: 'received' },
 };
 
-export function trashTypeInfo(t) {
+function trashTypeInfo(t) {
   return TRASH_TYPE_LABEL[t.type] || TRASH_TYPE_LABEL[t.collection] || { label: t.type || '-', cls: 'ordered' };
 }
 

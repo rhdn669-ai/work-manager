@@ -15,9 +15,9 @@ import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
-import { useDialog } from '../../components/common/DialogProvider';
-import { useUndo } from '../../contexts/UndoContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useDialog } from '../../components/common/useDialog';
+import { useUndo } from '../../contexts/useUndo';
+import { useAuth } from '../../contexts/useAuth';
 import { trashGeneric } from '../../services/trashService';
 import { specFontClass } from '../../utils/printText';
 
@@ -467,7 +467,6 @@ export default function BomDetailPage() {
       toast('프로젝트명 수정 중 오류가 발생했습니다', 'error');
     }
   }
-
 
   if (loading || !project) return <Skeleton.Rows count={6} />;
 

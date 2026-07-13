@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Modal from './Modal';
-import { useDialog } from './DialogProvider';
-import { useAuth } from '../../contexts/AuthContext';
+import { useDialog } from './useDialog';
+import { useAuth } from '../../contexts/useAuth';
 import TrashList from './TrashList';
 import { getTrashByType, restoreTrashItem, purgeTrashItem } from '../../services/trashService';
 

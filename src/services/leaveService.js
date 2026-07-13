@@ -1,16 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-} from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { calculateAccruedLeave } from '../utils/leaveCalculator';
 import { getUser } from './userService';
@@ -19,7 +7,6 @@ import { QUARTER_LEAVE_TYPES } from '../utils/constants';
 import { trashGeneric } from './trashService';
 
 const leavesRef = collection(db, 'leaves');
-const balancesRef = collection(db, 'leaveBalances');
 
 // 같은 날 복수 연차 시 더 강한 유형 우선 (annual/sick > 반차 > 반반차)
 function _typeRank(t) {

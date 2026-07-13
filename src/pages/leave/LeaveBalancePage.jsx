@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getLeaveBalance } from '../../services/leaveService';
 import LeaveTabs from '../../components/common/LeaveTabs';
 import Skeleton from '../../components/common/Skeleton';

@@ -1,11 +1,10 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { AuthContext } from './useAuth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getDepartmentsByLeader } from '../services/departmentService';
 import { getAllSites } from '../services/siteService';
 import { INACTIVITY_TIMEOUT_MS, SESSION_ACTIVITY_KEY as ACTIVITY_KEY } from '../utils/sessionConfig';
-
-const AuthContext = createContext(null);
 
 const ACTIVITY_THROTTLE_MS = 5000;
 
@@ -241,12 +240,4 @@ export function AuthProvider({ children }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth는 AuthProvider 안에서 사용해야 합니다');
-  }
-  return context;
 }

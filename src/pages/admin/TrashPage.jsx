@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useDialog } from '../../components/common/DialogProvider';
-import { useAuth } from '../../contexts/AuthContext';
+import { useDialog } from '../../components/common/useDialog';
+import { useAuth } from '../../contexts/useAuth';
 import Icon from '../../components/common/Icon';
 import TrashList from '../../components/common/TrashList';
 import { getTrashItems, restoreTrashItem, purgeTrashItem } from '../../services/trashService';

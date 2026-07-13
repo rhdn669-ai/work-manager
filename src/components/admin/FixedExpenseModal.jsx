@@ -3,7 +3,11 @@ import Modal from '../common/Modal';
 import Select from '../common/Select';
 import MoneyInput from '../common/MoneyInput';
 import { FIXED_EXPENSE_CATEGORIES } from '../../services/fixedExpenseService';
-import { useDialog } from '../common/DialogProvider';
+import { useDialog } from '../common/useDialog';
+
+function makeExpenseId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 // 카테고리별 추가 필드 정의 — type: 'text' | 'money' | 'percent'
 const CATEGORY_FIELDS = {
@@ -62,7 +66,7 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
       }
     });
     onSave({
-      id: initial?.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: initial?.id || makeExpenseId(),
       category,
       name: name.trim(),
       amount: numeric,

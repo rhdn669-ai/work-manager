@@ -1,25 +1,11 @@
 import { specFontClass } from '../../utils/printText';
-
-export const SELF_INFO = {
-  companyAndCeo: '(주)아이오피엔 / 이종현',
-  businessNumber: '222-81-36621',
-  address: '충남 천안시 서북구 성환읍 율금1길 8-15',
-  telFax: '041-415-0766 / 041-415-0767',
-  email: 'iopn2024@naver.com',
-  contact: '손성욱 / 010-7704-0331',
-};
+import { SELF_INFO } from '../../utils/purchaseOrder';
 
 export const DEFAULT_NOTE = '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.';
 
 export const PRINT_ROWS = 15;
 
-export function fmtDateKo(ts) {
-  const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : new Date();
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
-}
-
-export function quoteNumber(quote) {
+function quoteNumber(quote) {
   const d = quote.createdAt?.toDate
     ? quote.createdAt.toDate()
     : quote.createdAt

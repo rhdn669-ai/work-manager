@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getAllSites, getFinanceItems, getClosingItems } from '../../services/siteService';
 import { getFixedExpenses, saveFixedExpenses } from '../../services/fixedExpenseService';
 import FixedExpensePanel from '../../components/admin/FixedExpensePanel';
 import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 const isOvertimeItem = (f) => {
   const d = (f.description || '').trim();

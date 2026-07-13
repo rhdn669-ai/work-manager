@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { getAllSites } from '../../services/siteService';
@@ -14,7 +14,7 @@ import {
 } from '../../services/attendanceService';
 import { getApprovedLeavesByMonth, deleteLeaveById, updateLeaveRecord } from '../../services/leaveService';
 import { getMonthStart, getMonthEnd, formatMinutes } from '../../utils/dateUtils';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';

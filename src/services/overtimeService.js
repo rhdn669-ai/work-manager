@@ -49,7 +49,6 @@ export async function updateWeeklySummary(userId, departmentId, date) {
 // 본인 주간 초과근무 조회
 export async function getWeeklySummary(userId, date) {
   const weekStart = getWeekStart(date);
-  const docId = `${userId}_${weekStart}`;
   const q = query(overtimeRef, where('userId', '==', userId), where('weekStart', '==', weekStart));
   const snapshot = await getDocs(q);
   if (snapshot.empty) return null;

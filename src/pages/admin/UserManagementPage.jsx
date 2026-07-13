@@ -5,14 +5,14 @@ import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { trashGeneric } from '../../services/trashService';
 import { POSITIONS } from '../../utils/constants';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 function useViewportWidth() {
   const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
@@ -64,7 +64,8 @@ export default function UserManagementPage() {
 
   async function loadData() {
     try {
-      let [u, d] = await Promise.all([getUsers(), getDepartments()]);
+      const [loadedUsers, d] = await Promise.all([getUsers(), getDepartments()]);
+      let u = loadedUsers;
       // 일회성 — 명단 직원에게 프로젝트 추가 권한 부여 (한 번만 실행)
       const seedNames = ['이종현', '손성욱', '이주현', '하성민', '박정현'];
       const granted = await seedSiteCreatorsIfNeeded(seedNames, u).catch(() => []);
@@ -198,7 +199,7 @@ export default function UserManagementPage() {
 
       setShowModal(false);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
@@ -218,7 +219,7 @@ export default function UserManagementPage() {
       toast('휴지통으로 이동했습니다.');
       setShowModal(false);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -237,7 +238,7 @@ export default function UserManagementPage() {
       setEditUser((u) => (u ? { ...u, password: '' } : u));
       await loadData();
       toast(`${editUser.name} 비밀번호 초기화 완료. 다음 로그인 시 비밀번호 설정 화면으로 이동합니다.`);
-    } catch (err) {
+    } catch {
       toast('초기화 중 오류가 발생했습니다', 'error');
     }
   }
@@ -256,7 +257,7 @@ export default function UserManagementPage() {
     try {
       await impersonate(u);
       navigate('/');
-    } catch (err) {
+    } catch {
       toast('전환 중 오류가 발생했습니다', 'error');
     }
   }

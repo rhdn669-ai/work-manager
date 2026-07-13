@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getUsers } from '../../services/userService';
 import { getAllSites, getClosingItems } from '../../services/siteService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
@@ -121,7 +121,7 @@ export default function UnassignedReportPage() {
     })();
   }, [sites, year, month]);
 
-  const { rows, topUnassigned, topOvertime, totalUnassignedAmount, totalUnassignedDays } = useMemo(() => {
+  const { rows, totalUnassignedAmount, totalUnassignedDays } = useMemo(() => {
     const totalDays = daysInMonth(year, month);
     // assigned[userName][day] = { siteName: qty누적합, ... }
     const assigned = {};

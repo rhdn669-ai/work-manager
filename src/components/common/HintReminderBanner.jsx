@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useState } from 'react';
+import { useAuth } from '../../contexts/useAuth';
 import HintSettingModal from './HintSettingModal';
 
 const DISMISS_KEY = 'hint-reminder-dismissed-until';
 const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000; // 24시간
 
+function isDismissedNow() {
+  if (typeof window === 'undefined') return false;
+  const until = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+  return until > Date.now();
+}
+
 export default function HintReminderBanner() {
   const { userProfile } = useAuth();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(isDismissedNow);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const until = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
-    setDismissed(until > Date.now());
-  }, []);
 
   // 힌트 미설정이고, dismiss 기간이 지났으며, 로그인된 사용자에게만 노출
   const hasHint = !!userProfile?.passwordHintQuestion;

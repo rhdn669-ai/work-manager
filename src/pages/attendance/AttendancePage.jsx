@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { addOvertimeRecord } from '../../services/attendanceService';
 import { getAllSites } from '../../services/siteService';
 import { getToday } from '../../utils/dateUtils';
@@ -7,7 +7,7 @@ import AttendanceTabs from '../../components/common/AttendanceTabs';
 import Select from '../../components/common/Select';
 
 export default function AttendancePage() {
-  const { userProfile, isAdmin } = useAuth();
+  const { userProfile } = useAuth();
   const [date, setDate] = useState(getToday());
   const [hours, setHours] = useState('');
   const [minutesInput, setMinutesInput] = useState('');

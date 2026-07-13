@@ -1,14 +1,5 @@
 import { useRef, useLayoutEffect } from 'react';
 
-function formatNumber(v) {
-  const n = Number(v) || 0;
-  return n.toLocaleString();
-}
-
-function parseNumber(s) {
-  return Number(String(s).replace(/,/g, '')) || 0;
-}
-
 export default function MoneyInput({ value, onChange, onBlur, className, disabled, placeholder }) {
   const ref = useRef(null);
   const cursorRef = useRef(null);
@@ -68,5 +59,3 @@ export default function MoneyInput({ value, onChange, onBlur, className, disable
     />
   );
 }
-
-export { formatNumber, parseNumber };

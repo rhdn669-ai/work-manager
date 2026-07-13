@@ -1,12 +1,5 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-
-const DialogContext = createContext(null);
-
-export function useDialog() {
-  const ctx = useContext(DialogContext);
-  if (!ctx) throw new Error('useDialog must be used within DialogProvider');
-  return ctx;
-}
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { DialogContext } from './useDialog';
 
 function normalize(input) {
   if (typeof input === 'string') return { message: input };

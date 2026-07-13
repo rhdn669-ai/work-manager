@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getTrashItems, restoreTrashItem, purgeTrashItem } from '../../services/trashService';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 
 const TYPE_LABEL = {
@@ -60,7 +60,7 @@ export default function PurchaseTrashPage() {
       } else if (t.type === 'bomProject') {
         if (await confirm('복원 완료. 해당 프로젝트 BOM으로 이동할까요?')) navigate(`/admin/purchase/bom/${t.refId}`);
       }
-    } catch (err) {
+    } catch {
       toast('복원 중 오류가 발생했습니다', 'error');
     } finally {
       setBusyId('');
@@ -73,7 +73,7 @@ export default function PurchaseTrashPage() {
     try {
       await purgeTrashItem(t.id);
       setItems((prev) => prev.filter((x) => x.id !== t.id));
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setBusyId('');

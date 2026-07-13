@@ -3,14 +3,14 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
-import { ensureBodyScrollUnlockedIfIdle } from './Modal';
+import { ensureBodyScrollUnlockedIfIdle } from './bodyScrollLock';
 import HintReminderBanner from './HintReminderBanner';
 import VehicleMileageModal from './VehicleMileageModal';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { useVersionCheck } from '../../hooks/useVersionCheck';
 import { getMileage } from '../../services/vehicleMileageService';
 import { formatRelativeKo } from '../../utils/dateUtils';
-import { useDialog } from './DialogProvider';
+import { useDialog } from './useDialog';
 
 export default function Layout() {
   const { isImpersonating, impersonator, userProfile, stopImpersonation, isAdmin } = useAuth();

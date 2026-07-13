@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { getUsers } from '../../services/userService';
 import { getMileagesByMonth, saveMileage } from '../../services/vehicleMileageService';
 import { trashGeneric } from '../../services/trashService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 // 관리자 운행일지 — 차량 운행자 지정자의 월별 누적 키로수 / 운행 km 모니터링
 // /admin/vehicle-log
@@ -141,7 +141,7 @@ export default function VehicleLogPage() {
         /* 다음 새로고침 때 재동기화 */
       });
       setDeleteTarget(null);
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
       setDeleting(false);

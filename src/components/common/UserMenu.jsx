@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDialog } from './DialogProvider';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from './useDialog';
 import Icon from './Icon';
 import PasswordChangeModal from './PasswordChangeModal';
 import HintSettingModal from './HintSettingModal';

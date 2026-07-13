@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { requestLeave } from '../../services/leaveService';
 import { getEvents } from '../../services/eventService';
 import { LEAVE_TYPES, LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
@@ -77,7 +77,7 @@ export default function LeaveRequestPage() {
       setStartDate('');
       setEndDate('');
       setReason('');
-    } catch (err) {
+    } catch {
       setError('신청 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

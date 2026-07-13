@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   subscribePreferences,
   setSidebarPref,
@@ -8,7 +8,7 @@ import {
   setSeededAdminDefaults,
 } from '../../services/userPreferenceService';
 import { subscribePaymentPendingPurchases, countPaymentPending } from '../../services/purchaseService';
-import { useDialog } from './DialogProvider';
+import { useDialog } from './useDialog';
 import Icon from './Icon';
 
 // 관리자에게만 1회 자동 추가되는 기본 대분류 (삭제 후 재등장 방지를 위해 didSeedAdminDefaults 플래그로 관리)
@@ -84,14 +84,22 @@ export default function Sidebar({ isOpen }) {
   // - 이후 모든 변경은 Firestore가 source of truth (다른 PC/기기 실시간 반영)
   const migratedRef = useRef(false);
   const seedAttemptedRef = useRef(false);
-  useEffect(() => {
-    const uid = userProfile?.uid;
+  // 계정(uid) 변경 시 편집모드·목록 리셋 — 이전 렌더 값 비교 패턴 (effect 내 동기 setState 회피)
+  const uid = userProfile?.uid;
+  const [prevUid, setPrevUid] = useState(uid);
+  if (prevUid !== uid) {
+    setPrevUid(uid);
     setEditing(false);
-    migratedRef.current = false;
-    seedAttemptedRef.current = false;
     if (!uid) {
       setOrder(null);
       setGroups([]);
+    }
+  }
+  useEffect(() => {
+    const uid = userProfile?.uid;
+    migratedRef.current = false;
+    seedAttemptedRef.current = false;
+    if (!uid) {
       return;
     }
 
@@ -167,10 +175,7 @@ export default function Sidebar({ isOpen }) {
   // 결제 대기 건수 — 관리자만 실시간 구독해 '결제' 메뉴에 배지로 표시
   const [paymentPending, setPaymentPending] = useState(0);
   useEffect(() => {
-    if (!isAdmin) {
-      setPaymentPending(0);
-      return;
-    }
+    if (!isAdmin) return undefined;
     const unsub = subscribePaymentPendingPurchases((list) => setPaymentPending(countPaymentPending(list)));
     return () => unsub();
   }, [isAdmin]);
@@ -178,7 +183,7 @@ export default function Sidebar({ isOpen }) {
   const allItems = useMemo(
     () =>
       buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }).map((it) =>
-        it.key === 'admin-payment' ? { ...it, badgeCount: paymentPending } : it,
+        it.key === 'admin-payment' ? { ...it, badgeCount: isAdmin ? paymentPending : 0 } : it,
       ),
     [isAdmin, canApproveLeave, canCreateSite, canViewArchive, paymentPending],
   );

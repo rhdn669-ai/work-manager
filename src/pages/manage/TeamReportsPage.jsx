@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getUsers } from '../../services/userService';
 import { getDepartments, getDepartmentsByLeader } from '../../services/departmentService';
 import { getAllSites } from '../../services/siteService';
@@ -16,7 +16,7 @@ export default function TeamReportsPage() {
   const { userProfile, isAdmin, canApproveAll } = useAuth();
   const [allUsers, setAllUsers] = useState([]);
   const [scopedUsers, setScopedUsers] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [, setDepartments] = useState([]);
   const [myDepts, setMyDepts] = useState([]);
   const [sites, setSites] = useState([]);
   const [rawRecords, setRawRecords] = useState([]);
@@ -116,7 +116,6 @@ export default function TeamReportsPage() {
     }));
 
   const totalOT = rows.reduce((s, r) => s + r.overtimeMinutes, 0);
-  const totalOTCount = rows.reduce((s, r) => s + r.overtimeCount, 0);
   const totalLeave = rows.reduce((s, r) => s + r.leaveDays, 0);
 
   function openDetail(row, tab) {

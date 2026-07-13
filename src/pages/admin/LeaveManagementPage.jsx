@@ -7,7 +7,7 @@ import {
   updateOvertimeRecord,
   deleteOvertimeRecord,
 } from '../../services/attendanceService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getUsers } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { getEvents } from '../../services/eventService';
@@ -18,7 +18,7 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 const LEAVE_STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },

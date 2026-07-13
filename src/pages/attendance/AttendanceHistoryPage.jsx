@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   getMyOvertimeRecords,
   deleteOvertimeRecord,
@@ -12,7 +12,7 @@ import AttendanceTabs from '../../components/common/AttendanceTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 
 export default function AttendanceHistoryPage() {
   const { userProfile } = useAuth();
@@ -64,7 +64,7 @@ export default function AttendanceHistoryPage() {
     try {
       await deleteOvertimeRecord(id, userProfile?.name || '');
       await loadRecords();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
@@ -99,7 +99,7 @@ export default function AttendanceHistoryPage() {
       });
       setEditingId(null);
       await loadRecords();
-    } catch (err) {
+    } catch {
       toast('수정 중 오류가 발생했습니다', 'error');
     } finally {
       setBusy(false);

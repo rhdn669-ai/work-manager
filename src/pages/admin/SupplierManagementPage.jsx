@@ -3,10 +3,10 @@ import { getSuppliers, addSupplier, updateSupplier } from '../../services/purcha
 import { trashGeneric } from '../../services/trashService';
 import { ensureFolderPath, uploadFile } from '../../services/fileLibraryService';
 import { extractBizInfo, normalizeCompany, isSupportedBizFile } from '../../utils/bizPdf';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
-import { useDialog } from '../../components/common/DialogProvider';
+import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -132,7 +132,7 @@ export default function SupplierManagementPage() {
       } else {
         setPdfStatus(usedOcr ? 'OCR로 자동 입력됨 (값 확인 권장)' : '자동 입력됨');
       }
-    } catch (err) {
+    } catch {
       setPdfStatus('');
       toast('PDF 처리 중 오류가 발생했습니다', 'error');
     } finally {
@@ -161,7 +161,7 @@ export default function SupplierManagementPage() {
       setShowModal(false);
       setPdfFiles([]);
       await loadData();
-    } catch (err) {
+    } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
       setSubmitting(false);
       return;
@@ -180,7 +180,7 @@ export default function SupplierManagementPage() {
             `${supplierName}_${filesToUpload[i].name}`,
           );
         }
-      } catch (err) {
+      } catch {
         toast('PDF 자료실 보관 중 오류가 발생했습니다', 'error');
       }
     }
@@ -206,7 +206,7 @@ export default function SupplierManagementPage() {
       );
       toast('휴지통으로 이동했습니다.');
       await loadData();
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }

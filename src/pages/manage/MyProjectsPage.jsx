@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { getSitesByManager, getClosingItems } from '../../services/siteService';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';

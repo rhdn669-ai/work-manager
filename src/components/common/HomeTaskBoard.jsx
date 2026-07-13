@@ -12,8 +12,8 @@ import {
 import { getTasks, addTask, updateTask, setTaskStatus } from '../../services/taskService';
 import { trashGeneric } from '../../services/trashService';
 import { getUsers } from '../../services/userService';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDialog } from './DialogProvider';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from './useDialog';
 import Modal from './Modal';
 import Select from './Select';
 import Icon from './Icon';
@@ -249,7 +249,7 @@ export default function HomeTaskBoard() {
       else await addTask(payload);
       setModalOpen(false);
       await load();
-    } catch (err) {
+    } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   }
@@ -259,7 +259,7 @@ export default function HomeTaskBoard() {
     setTasks((prev) => prev.filter((x) => x.id !== t.id));
     try {
       await trashGeneric('tasks', t.id, { title: t.title || '업무' }, userProfile?.name || '');
-    } catch (err) {
+    } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
       load();
     }
@@ -275,7 +275,7 @@ export default function HomeTaskBoard() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: next.key } : t)));
     try {
       await setTaskStatus(id, next.key);
-    } catch (err) {
+    } catch {
       toast('상태 변경 중 오류가 발생했습니다', 'error');
       load();
     }
@@ -291,7 +291,7 @@ export default function HomeTaskBoard() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
     try {
       await setTaskStatus(id, newStatus);
-    } catch (err) {
+    } catch {
       toast('상태 변경 중 오류가 발생했습니다', 'error');
       load();
     }

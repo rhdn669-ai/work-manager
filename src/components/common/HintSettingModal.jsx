@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Modal from './Modal';
 import Select from './Select';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { updateUser } from '../../services/userService';
 import { hashAnswer } from '../../utils/hash';
 

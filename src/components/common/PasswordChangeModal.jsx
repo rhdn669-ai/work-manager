@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { updateUser } from '../../services/userService';
 
 export default function PasswordChangeModal({ isOpen, onClose }) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import Icon from './Icon';
 
 const MAX_TABS = 7; // 직원 하단탭 최대 7개. 초과분만 '더보기'로.
@@ -26,9 +26,12 @@ export default function BottomNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
+  // 경로가 바뀌면 더보기 시트 닫기 — 이전 렌더 값 비교 패턴 (effect 내 동기 setState 회피)
+  const [prevPath, setPrevPath] = useState(location.pathname);
+  if (prevPath !== location.pathname) {
+    setPrevPath(location.pathname);
     setMoreOpen(false);
-  }, [location.pathname]);
+  }
   useEffect(() => {
     if (!moreOpen) return undefined;
     const onKey = (e) => {
