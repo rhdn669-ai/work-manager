@@ -609,7 +609,7 @@ export default function BomDetailPage() {
               />
               <button
                 type="button"
-                className="btn btn-sm btn-outline"
+                className="btn btn-outline"
                 onClick={bulkAddBoxes}
                 disabled={!boxBulkName.trim()}
               >

@@ -6231,12 +6231,33 @@ table.cards-sm td {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+.bom-box-bulk-name,
+.bom-box-bulk-count {
+  min-height: 44px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-card);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.bom-box-bulk-name:focus,
+.bom-box-bulk-count:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
 .bom-box-bulk-name {
   flex: 1 1 200px;
   max-width: 320px;
 }
 .bom-box-bulk-count {
-  width: 64px;
+  width: 76px;
+  padding-left: 8px;
+  padding-right: 8px;
   text-align: center;
 }
 .bom-box-x {
@@ -6246,13 +6267,19 @@ table.cards-sm td {
 .bom-box-table .bom-box-name-input {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-radius: 8px;
+  padding: 8px 12px;
   font-size: 13px;
+  color: var(--text);
+  background: var(--bg-card);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .bom-box-table .bom-box-name-input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
 }
 .inline-edit-table input.bom-code-input {
   font-weight: 600;
