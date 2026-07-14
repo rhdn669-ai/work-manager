@@ -103,6 +103,16 @@ export async function addBomItem(siteId, data) {
   });
 }
 
+// 드래그 순서변경 — 전달된 id 순서대로 order 저장 (프로젝트 목록 saveBomProjectsOrder와 동일 패턴)
+// ※ 발주서 품목은 가져올 때 복사본이므로 기존 발주서에는 영향 없음 — 이후 「품목 불러오기」부터 새 순서 적용
+export async function saveBomItemsOrder(orderedIds) {
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, idx) => {
+    batch.update(doc(db, 'bom', id), { order: idx, updatedAt: new Date() });
+  });
+  await batch.commit();
+}
+
 export async function updateBomItem(id, data) {
   await updateDoc(doc(db, 'bom', id), { ...data, updatedAt: new Date() });
 }

@@ -1,6 +1,23 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   getBomBySite,
   addBomItem,
   updateBomItem,
@@ -8,6 +25,7 @@ import {
   restoreBomItem,
   getBomProjectById,
   updateBomProject,
+  saveBomItemsOrder,
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
@@ -24,6 +42,43 @@ import { specFontClass } from '../../utils/printText';
 function fmtDateTime(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// 드래그 가능한 품목 행 — 첫 칸(spacer)에 핸들을 넣는다 (품목 관리 페이지와 동일 패턴)
+// canDrag=false면 핸들 없이 기존 spacer 칸 그대로 렌더 (코드순·구매처별·검색 중엔 드래그 무의미)
+function SortableBomRow({ id, canDrag, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !canDrag,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    background: isDragging ? 'var(--bg-card)' : undefined,
+    boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.15)' : undefined,
+    zIndex: isDragging ? 2 : undefined,
+    position: isDragging ? 'relative' : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td className="bom-spacer-col" aria-hidden={!canDrag}>
+        {canDrag && (
+          <button
+            type="button"
+            className="drag-handle-btn"
+            aria-label="드래그하여 순서 변경"
+            title="드래그하여 순서 변경"
+            {...attributes}
+            {...listeners}
+          >
+            <Icon name="move" />
+          </button>
+        )}
+      </td>
+      {children}
+    </tr>
+  );
 }
 
 // 글자가 길면 PDF 1줄에 맞게 글자 크기 자동 축소
@@ -186,6 +241,32 @@ export default function BomDetailPage() {
     }
     return sorted;
   }, [displayItems, search, sortBy, supplierFilter]);
+
+  // ---- 드래그 순서변경 (추가순·전체보기에서만 — 코드순/구매처별/검색/필터 중엔 순서가 화면과 달라 비활성) ----
+  const canDragRows = sortBy === 'order' && !groupBySupplier && !supplierFilter && !search.trim();
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  async function handleRowDragEnd(event) {
+    const { active, over } = event;
+    if (!canDragRows || !over || active.id === over.id) return;
+    const orderedIds = rows.map((it) => it.id);
+    const oldIndex = orderedIds.indexOf(active.id);
+    const newIndex = orderedIds.indexOf(over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    pushBomUndo(); // Ctrl+Z로 되돌리기 가능
+    const newIds = arrayMove(orderedIds, oldIndex, newIndex);
+    const orderById = new Map(newIds.map((id, idx) => [id, idx]));
+    // 낙관적 로컬 반영 → 실패 시 토스트 (기존 발주서는 복사본이라 영향 없음)
+    setBomItems((prev) => prev.map((b) => ({ ...b, order: orderById.has(b.id) ? orderById.get(b.id) : b.order })));
+    try {
+      await saveBomItemsOrder(newIds);
+    } catch {
+      toast('순서 저장 중 오류가 발생했습니다', 'error');
+    }
+  }
 
   // 화면에 보이는 구매처 목록 (필터 드롭다운용)
   const supplierOptions = useMemo(() => {
@@ -774,236 +855,239 @@ export default function BomDetailPage() {
       ) : (
         <div className="item-group is-expanded bom-flat-group screen-only">
           <div className="item-group-detail">
-            <div className="table-scroll-x">
-              <table className="table inline-edit-table cards-sm bom-flat-table">
-                <thead>
-                  <tr>
-                    <th className="bom-spacer-col" aria-hidden="true"></th>
-                    <th className="bom-no-col">No</th>
-                    <th style={{ minWidth: 90 }}>코드</th>
-                    <th style={{ minWidth: 90 }}>BOX</th>
-                    <th style={{ minWidth: 120 }}>품명</th>
-                    <th>메이커</th>
-                    <th>규격</th>
-                    <th>분류</th>
-                    <th>수량</th>
-                    <th>단가</th>
-                    <th>합계</th>
-                    <th>구매처</th>
-                    <th style={{ minWidth: 120 }}>비고</th>
-                    <th className="bom-action-col no-print" aria-hidden="true"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows).map((it, idx, arr) => {
-                    const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
-                    const sup = it.supplier || '(구매처 미지정)';
-                    const prevSup = idx > 0 ? arr[idx - 1].supplier || '(구매처 미지정)' : null;
-                    const nextSup = idx < arr.length - 1 ? arr[idx + 1].supplier || '(구매처 미지정)' : null;
-                    const isGroupStart = groupBySupplier && sup !== prevSup;
-                    const isGroupEnd = groupBySupplier && sup !== nextSup;
-                    const grp = isGroupEnd ? supplierGroups.find((g) => g.name === sup) : null;
-                    return (
-                      <Fragment key={it.id}>
-                        {isGroupStart && (
-                          <tr className="bom-supplier-header">
-                            <td className="bom-spacer-col" aria-hidden="true"></td>
-                            <td colSpan={13} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
-                              <span
-                                className="bom-supplier-header-text"
-                                title={sup}
-                                style={{
-                                  padding: '6px 8px',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  wordBreak: 'break-word',
-                                  whiteSpace: 'normal',
-                                  minWidth: 0,
-                                  maxWidth: '100%',
-                                }}
-                              >
-                                <Icon name="folder" className="btn-ic" /> {sup}
-                              </span>
-                            </td>
-                          </tr>
-                        )}
-                        <tr>
-                          <td className="bom-spacer-col" aria-hidden="true"></td>
-                          <td className="bom-no-col" data-label="No">
-                            {idx + 1}
-                          </td>
-                          <td data-label="코드" title={it.code || ''}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input bom-code-input"
-                              value={it.code || ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="BOX" title={it.box || ''}>
-                            <input
-                              type="text"
-                              value={it.box || ''}
-                              title={it.box || ''}
-                              placeholder="-"
-                              onChange={(e) => updateField(it.id, { box: e.target.value })}
-                              onBlur={() => flushItem(it.id)}
-                            />
-                          </td>
-                          <td data-label="품명" title={it.name || ''}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input"
-                              value={it.name || ''}
-                              title={it.name || ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="메이커" title={it.maker || ''}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input"
-                              value={it.maker || ''}
-                              title={it.maker || ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="규격" title={it.spec || ''}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input"
-                              value={it.spec || ''}
-                              title={it.spec || ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="분류" title={it.category || ''}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input"
-                              value={it.category || ''}
-                              title={it.category || ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="수량">
-                            <input
-                              className="num-input"
-                              type="number"
-                              min="0"
-                              value={it.qty || ''}
-                              onChange={(e) => updateField(it.id, { qty: e.target.value })}
-                              onBlur={() => flushItem(it.id)}
-                            />
-                          </td>
-                          <td data-label="단가">
-                            <input
-                              type="text"
-                              className="bom-readonly-input"
-                              value={Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="합계" className="bom-cell-amount" title={amount.toLocaleString()}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input bom-amount-input"
-                              value={amount.toLocaleString()}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="구매처" title={it.supplier || ''}>
-                            <input
-                              type="text"
-                              className="bom-readonly-input"
-                              value={it.supplier || ''}
-                              title={it.supplier || ''}
-                              readOnly
-                              tabIndex={-1}
-                            />
-                          </td>
-                          <td data-label="비고" title={it.note || ''}>
-                            <input
-                              type="text"
-                              value={it.note || ''}
-                              title={it.note || ''}
-                              placeholder="-"
-                              onChange={(e) => updateField(it.id, { note: e.target.value })}
-                              onBlur={() => flushItem(it.id)}
-                            />
-                          </td>
-                          <td className="bom-action-col no-print">
-                            <div className="bom-action-wrap">
-                              <button
-                                type="button"
-                                className="bom-goto-item"
-                                onClick={() =>
-                                  navigate(`/admin/purchase?tab=items&focus=${encodeURIComponent(it.code || '')}`)
-                                }
-                                aria-label="품목 등록 페이지로 이동"
-                                title="이 품목 등록(구매품목 관리) 페이지로 이동"
-                              >
-                                <Icon name="chevronRight" />
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline"
-                                onClick={() => openPickerReplace(it.id)}
-                                aria-label="품목 변경"
-                                title="이 행의 품목을 다른 품목으로 변경"
-                              >
-                                <Icon name="edit" className="btn-ic" />
-                                변경
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger"
-                                onClick={() => removeRow(it.id)}
-                                aria-label="삭제"
-                                title="삭제"
-                              >
-                                <Icon name="trash" className="btn-ic" />
-                                삭제
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                        {isGroupEnd && grp && (
-                          <tr className="bom-supplier-subtotal">
-                            <td className="bom-spacer-col" aria-hidden="true"></td>
-                            <td
-                              colSpan={8}
-                              className="u-wrap"
-                              style={{ textAlign: 'right', overflowWrap: 'break-word', wordBreak: 'break-word' }}
-                              title={`${sup} 소계`}
-                            >
-                              {sup} 소계
-                            </td>
-                            <td
-                              className="u-right-numeric"
-                              style={{ textAlign: 'right' }}
-                              title={`${grp.subtotal.toLocaleString()}원`}
-                            >
-                              {grp.subtotal.toLocaleString()}원
-                            </td>
-                            <td colSpan={3}></td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+              <SortableContext items={rows.map((it) => it.id)} strategy={verticalListSortingStrategy}>
+                <div className="table-scroll-x">
+                  <table className="table inline-edit-table cards-sm bom-flat-table">
+                    <thead>
+                      <tr>
+                        <th className="bom-spacer-col" aria-hidden="true"></th>
+                        <th className="bom-no-col">No</th>
+                        <th style={{ minWidth: 90 }}>코드</th>
+                        <th style={{ minWidth: 90 }}>BOX</th>
+                        <th style={{ minWidth: 120 }}>품명</th>
+                        <th>메이커</th>
+                        <th>규격</th>
+                        <th>분류</th>
+                        <th>수량</th>
+                        <th>단가</th>
+                        <th>합계</th>
+                        <th>구매처</th>
+                        <th style={{ minWidth: 120 }}>비고</th>
+                        <th className="bom-action-col no-print" aria-hidden="true"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows).map((it, idx, arr) => {
+                        const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+                        const sup = it.supplier || '(구매처 미지정)';
+                        const prevSup = idx > 0 ? arr[idx - 1].supplier || '(구매처 미지정)' : null;
+                        const nextSup = idx < arr.length - 1 ? arr[idx + 1].supplier || '(구매처 미지정)' : null;
+                        const isGroupStart = groupBySupplier && sup !== prevSup;
+                        const isGroupEnd = groupBySupplier && sup !== nextSup;
+                        const grp = isGroupEnd ? supplierGroups.find((g) => g.name === sup) : null;
+                        return (
+                          <Fragment key={it.id}>
+                            {isGroupStart && (
+                              <tr className="bom-supplier-header">
+                                <td className="bom-spacer-col" aria-hidden="true"></td>
+                                <td colSpan={13} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
+                                  <span
+                                    className="bom-supplier-header-text"
+                                    title={sup}
+                                    style={{
+                                      padding: '6px 8px',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      wordBreak: 'break-word',
+                                      whiteSpace: 'normal',
+                                      minWidth: 0,
+                                      maxWidth: '100%',
+                                    }}
+                                  >
+                                    <Icon name="folder" className="btn-ic" /> {sup}
+                                  </span>
+                                </td>
+                              </tr>
+                            )}
+                            <SortableBomRow id={it.id} canDrag={canDragRows}>
+                              <td className="bom-no-col" data-label="No">
+                                {idx + 1}
+                              </td>
+                              <td data-label="코드" title={it.code || ''}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input bom-code-input"
+                                  value={it.code || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="BOX" title={it.box || ''}>
+                                <input
+                                  type="text"
+                                  value={it.box || ''}
+                                  title={it.box || ''}
+                                  placeholder="-"
+                                  onChange={(e) => updateField(it.id, { box: e.target.value })}
+                                  onBlur={() => flushItem(it.id)}
+                                />
+                              </td>
+                              <td data-label="품명" title={it.name || ''}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input"
+                                  value={it.name || ''}
+                                  title={it.name || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="메이커" title={it.maker || ''}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input"
+                                  value={it.maker || ''}
+                                  title={it.maker || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="규격" title={it.spec || ''}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input"
+                                  value={it.spec || ''}
+                                  title={it.spec || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="분류" title={it.category || ''}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input"
+                                  value={it.category || ''}
+                                  title={it.category || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="수량">
+                                <input
+                                  className="num-input"
+                                  type="number"
+                                  min="0"
+                                  value={it.qty || ''}
+                                  onChange={(e) => updateField(it.id, { qty: e.target.value })}
+                                  onBlur={() => flushItem(it.id)}
+                                />
+                              </td>
+                              <td data-label="단가">
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input"
+                                  value={Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="합계" className="bom-cell-amount" title={amount.toLocaleString()}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input bom-amount-input"
+                                  value={amount.toLocaleString()}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="구매처" title={it.supplier || ''}>
+                                <input
+                                  type="text"
+                                  className="bom-readonly-input"
+                                  value={it.supplier || ''}
+                                  title={it.supplier || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="비고" title={it.note || ''}>
+                                <input
+                                  type="text"
+                                  value={it.note || ''}
+                                  title={it.note || ''}
+                                  placeholder="-"
+                                  onChange={(e) => updateField(it.id, { note: e.target.value })}
+                                  onBlur={() => flushItem(it.id)}
+                                />
+                              </td>
+                              <td className="bom-action-col no-print">
+                                <div className="bom-action-wrap">
+                                  <button
+                                    type="button"
+                                    className="bom-goto-item"
+                                    onClick={() =>
+                                      navigate(`/admin/purchase?tab=items&focus=${encodeURIComponent(it.code || '')}`)
+                                    }
+                                    aria-label="품목 등록 페이지로 이동"
+                                    title="이 품목 등록(구매품목 관리) 페이지로 이동"
+                                  >
+                                    <Icon name="chevronRight" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    onClick={() => openPickerReplace(it.id)}
+                                    aria-label="품목 변경"
+                                    title="이 행의 품목을 다른 품목으로 변경"
+                                  >
+                                    <Icon name="edit" className="btn-ic" />
+                                    변경
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => removeRow(it.id)}
+                                    aria-label="삭제"
+                                    title="삭제"
+                                  >
+                                    <Icon name="trash" className="btn-ic" />
+                                    삭제
+                                  </button>
+                                </div>
+                              </td>
+                            </SortableBomRow>
+                            {isGroupEnd && grp && (
+                              <tr className="bom-supplier-subtotal">
+                                <td className="bom-spacer-col" aria-hidden="true"></td>
+                                <td
+                                  colSpan={8}
+                                  className="u-wrap"
+                                  style={{ textAlign: 'right', overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                                  title={`${sup} 소계`}
+                                >
+                                  {sup} 소계
+                                </td>
+                                <td
+                                  className="u-right-numeric"
+                                  style={{ textAlign: 'right' }}
+                                  title={`${grp.subtotal.toLocaleString()}원`}
+                                >
+                                  {grp.subtotal.toLocaleString()}원
+                                </td>
+                                <td colSpan={3}></td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
       )}
