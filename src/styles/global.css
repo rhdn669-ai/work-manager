@@ -15660,10 +15660,10 @@ td.mx-dc {
 }
 /* BOX 열 표시 옵션(전체 PDF 출력) — 규격 폭 일부를 BOX에 양보 */
 .iopn-items-table.po-cols.has-box .c-box {
-  width: 8%;
+  width: 12%;
 }
 .iopn-items-table.po-cols.has-box .c-spec {
-  width: 22%;
+  width: 18%;
 }
 /* 품목명·BOX — 글자를 극소로 줄이는 대신 규격처럼 줄바꿈으로 다 보이게 */
 .iopn-items-table.po-cols .c-name,
@@ -16605,10 +16605,10 @@ td.mx-dc {
     width: 30%;
   }
   .iopn-items-table.po-cols.has-box .c-box {
-    width: 8%;
+    width: 12%;
   }
   .iopn-items-table.po-cols.has-box .c-spec {
-    width: 22%;
+    width: 18%;
   }
   .iopn-items-table.po-cols .c-name,
   .iopn-items-table.po-cols .c-box {
