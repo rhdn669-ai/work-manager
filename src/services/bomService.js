@@ -63,6 +63,32 @@ export async function updateBomProject(projectId, name) {
   });
 }
 
+// BOM 프로젝트 복사 — 프로젝트 문서 + 품목 전체(BOX·순서 포함)를 새 프로젝트로 복제
+export async function duplicateBomProject(projectId, newName) {
+  const src = await getBomProjectById(projectId);
+  if (!src) throw new Error('원본 프로젝트를 찾을 수 없습니다');
+  const newRef = await addDoc(projectsRef, {
+    name: String(newName || `${src.name} (복사)`).trim(),
+    createdAt: new Date(),
+  });
+  const items = await getBomBySite(projectId);
+  // writeBatch는 500건 제한 — BOM 품목 수백 건 수준이므로 450개씩 분할
+  for (let i = 0; i < items.length; i += 450) {
+    const batch = writeBatch(db);
+    items.slice(i, i + 450).forEach((b) => {
+      const { id: _id, siteId: _s, createdAt: _c, updatedAt: _u, ...data } = b;
+      batch.set(doc(bomRef), {
+        ...data,
+        siteId: newRef.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    });
+    await batch.commit();
+  }
+  return newRef.id;
+}
+
 export async function deleteBomProject(projectId) {
   const snap = await getDocs(query(bomRef, where('siteId', '==', projectId)));
   const batch = writeBatch(db);

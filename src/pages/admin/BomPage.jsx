@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getBomProjects, addBomProject, deleteBomProject, saveBomProjectsOrder } from '../../services/bomService';
+import {
+  getBomProjects,
+  addBomProject,
+  deleteBomProject,
+  saveBomProjectsOrder,
+  duplicateBomProject,
+} from '../../services/bomService';
 // getBomProjects는 undo 복원 후 목록 갱신에도 사용
 import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
@@ -16,7 +22,7 @@ import { useUndo } from '../../contexts/useUndo';
 import { restoreTrashItem } from '../../services/trashService';
 
 // 드래그 가능한 프로젝트 행
-function SortableProjectRow({ p, onOpen, onDelete }) {
+function SortableProjectRow({ p, onOpen, onCopy, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -44,6 +50,10 @@ function SortableProjectRow({ p, onOpen, onDelete }) {
         </strong>
       </td>
       <td className="bom-project-action-col action-cell">
+        <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onCopy(e, p)}>
+          <Icon name="copy" className="btn-ic" />
+          복사
+        </button>
         <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
           <Icon name="trash" className="btn-ic" />
           삭제
@@ -82,6 +92,10 @@ export default function BomPage() {
   const [newProjectName, setNewProjectName] = useState('');
   const [addingProject, setAddingProject] = useState(false);
 
+  // BOM 복사 — { project, name } | null
+  const [copyTarget, setCopyTarget] = useState(null);
+  const [copying, setCopying] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -119,6 +133,34 @@ export default function BomPage() {
       toast('프로젝트 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setAddingProject(false);
+    }
+  }
+
+  function openCopyProject(e, project) {
+    e.stopPropagation();
+    setCopyTarget({ project, name: `${project.name} (복사)` });
+  }
+
+  async function submitCopyProject() {
+    const name = (copyTarget?.name || '').trim();
+    if (!name) {
+      alert('새 프로젝트 이름을 입력하세요.');
+      return;
+    }
+    if (projects.some((p) => (p.name || '').trim().toLowerCase() === name.toLowerCase())) {
+      alert('같은 이름의 프로젝트가 이미 있습니다.');
+      return;
+    }
+    setCopying(true);
+    try {
+      const newId = await duplicateBomProject(copyTarget.project.id, name);
+      setCopyTarget(null);
+      toast(`"${copyTarget.project.name}" BOM을 복사했습니다.`);
+      navigate(`/admin/purchase/bom/${newId}`);
+    } catch {
+      toast('복사 중 오류가 발생했습니다', 'error');
+    } finally {
+      setCopying(false);
     }
   }
 
@@ -187,6 +229,7 @@ export default function BomPage() {
                       key={p.id}
                       p={p}
                       onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
+                      onCopy={openCopyProject}
                       onDelete={handleDeleteProject}
                     />
                   ))}
@@ -225,6 +268,42 @@ export default function BomPage() {
             {addingProject ? '추가 중…' : '추가하고 열기'}
           </button>
         </div>
+      </Modal>
+
+      <Modal isOpen={!!copyTarget} onClose={() => setCopyTarget(null)} title="BOM 복사">
+        {copyTarget && (
+          <>
+            <p className="field-hint">
+              「<strong>{copyTarget.project.name}</strong>」의 품목 전체(BOX·순서 포함)를 새 프로젝트로 복사합니다.
+            </p>
+            <div className="form-group">
+              <label>새 프로젝트 이름</label>
+              <input
+                type="text"
+                value={copyTarget.name}
+                onChange={(e) => setCopyTarget((t) => ({ ...t, name: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitCopyProject();
+                }}
+                autoFocus
+              />
+            </div>
+            <p className="field-hint">복사 후 자동으로 새 BOM 편집 페이지로 이동합니다.</p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setCopyTarget(null)}>
+                취소
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={submitCopyProject}
+                disabled={copying || !(copyTarget.name || '').trim()}
+              >
+                {copying ? '복사 중…' : '복사하고 열기'}
+              </button>
+            </div>
+          </>
+        )}
       </Modal>
 
       <TrashModal

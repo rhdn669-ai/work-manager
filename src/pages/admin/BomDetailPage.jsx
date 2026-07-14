@@ -44,9 +44,9 @@ function fmtDateTime(d) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// 드래그 가능한 품목 행 — 첫 칸(spacer)에 핸들을 넣는다 (품목 관리 페이지와 동일 패턴)
-// canDrag=false면 핸들 없이 기존 spacer 칸 그대로 렌더 (코드순·구매처별·검색 중엔 드래그 무의미)
-function SortableBomRow({ id, canDrag, children }) {
+// 드래그 가능한 품목 행 — 핸들을 No 칸 안에 넣어 표 모양(스페이서 0폭)은 원본 그대로 유지
+// canDrag=false면 핸들 없이 번호만 렌더 (코드순·구매처별·검색 중엔 드래그 무의미)
+function SortableBomRow({ id, canDrag, no, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !canDrag,
@@ -62,19 +62,23 @@ function SortableBomRow({ id, canDrag, children }) {
   };
   return (
     <tr ref={setNodeRef} style={style}>
-      <td className="bom-spacer-col" aria-hidden={!canDrag}>
-        {canDrag && (
-          <button
-            type="button"
-            className="drag-handle-btn"
-            aria-label="드래그하여 순서 변경"
-            title="드래그하여 순서 변경"
-            {...attributes}
-            {...listeners}
-          >
-            <Icon name="move" />
-          </button>
-        )}
+      <td className="bom-spacer-col" aria-hidden="true"></td>
+      <td className="bom-no-col" data-label="No">
+        <span className="bom-no-wrap">
+          {canDrag && (
+            <button
+              type="button"
+              className="drag-handle-btn"
+              aria-label="드래그하여 순서 변경"
+              title="드래그하여 순서 변경"
+              {...attributes}
+              {...listeners}
+            >
+              <Icon name="move" />
+            </button>
+          )}
+          {no}
+        </span>
       </td>
       {children}
     </tr>
@@ -912,10 +916,7 @@ export default function BomDetailPage() {
                                 </td>
                               </tr>
                             )}
-                            <SortableBomRow id={it.id} canDrag={canDragRows}>
-                              <td className="bom-no-col" data-label="No">
-                                {idx + 1}
-                              </td>
+                            <SortableBomRow id={it.id} canDrag={canDragRows} no={idx + 1}>
                               <td data-label="코드" title={it.code || ''}>
                                 <input
                                   type="text"
