@@ -15658,19 +15658,23 @@ td.mx-dc {
 .iopn-items-table.po-cols .c-spec {
   width: 30%;
 }
-/* BOX 열 표시 옵션(전체 PDF 출력) — 규격 폭 일부를 BOX에 양보 */
+/* BOX 열 표시 옵션(전체 PDF 출력) — "H/T BOX 상/하"가 한 줄에 들어가는 폭. 규격이 양보 */
 .iopn-items-table.po-cols.has-box .c-box {
-  width: 12%;
+  width: 15%;
 }
 .iopn-items-table.po-cols.has-box .c-spec {
-  width: 18%;
+  width: 15%;
 }
-/* 품목명·BOX — 글자를 극소로 줄이는 대신 규격처럼 줄바꿈으로 다 보이게 */
-.iopn-items-table.po-cols .c-name,
-.iopn-items-table.po-cols .c-box {
+/* 품목명 — 글자를 극소로 줄이는 대신 규격처럼 줄바꿈으로 다 보이게 */
+.iopn-items-table.po-cols .c-name {
   white-space: normal;
   word-break: break-word;
   overflow: visible;
+  line-height: 1.2;
+}
+/* BOX — 항상 한 줄 유지 (폭 15%가 최장 값 기준) */
+.iopn-items-table.po-cols .c-box {
+  white-space: nowrap;
   line-height: 1.2;
 }
 /* 전체 출력(품번 숨김 — NO와 중복) — 품번 폭 5%를 품목명에 재배분 */
@@ -16605,16 +16609,19 @@ td.mx-dc {
     width: 30%;
   }
   .iopn-items-table.po-cols.has-box .c-box {
-    width: 12%;
+    width: 15%;
   }
   .iopn-items-table.po-cols.has-box .c-spec {
-    width: 18%;
+    width: 15%;
   }
-  .iopn-items-table.po-cols .c-name,
-  .iopn-items-table.po-cols .c-box {
+  .iopn-items-table.po-cols .c-name {
     white-space: normal;
     word-break: break-word;
     overflow: visible;
+    line-height: 1.2;
+  }
+  .iopn-items-table.po-cols .c-box {
+    white-space: nowrap;
     line-height: 1.2;
   }
   .iopn-items-table.po-cols.no-itemno .c-name {
