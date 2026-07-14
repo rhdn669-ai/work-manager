@@ -15665,6 +15665,18 @@ td.mx-dc {
 .iopn-items-table.po-cols.has-box .c-spec {
   width: 22%;
 }
+/* 품목명·BOX — 글자를 극소로 줄이는 대신 규격처럼 줄바꿈으로 다 보이게 */
+.iopn-items-table.po-cols .c-name,
+.iopn-items-table.po-cols .c-box {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  line-height: 1.2;
+}
+/* 전체 출력(품번 숨김 — NO와 중복) — 품번 폭 5%를 품목명에 재배분 */
+.iopn-items-table.po-cols.no-itemno .c-name {
+  width: 20%;
+}
 .iopn-items-table.po-cols .c-qty {
   width: 5%;
 }
@@ -16597,6 +16609,16 @@ td.mx-dc {
   }
   .iopn-items-table.po-cols.has-box .c-spec {
     width: 22%;
+  }
+  .iopn-items-table.po-cols .c-name,
+  .iopn-items-table.po-cols .c-box {
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+    line-height: 1.2;
+  }
+  .iopn-items-table.po-cols.no-itemno .c-name {
+    width: 20%;
   }
   .iopn-items-table.po-cols .c-qty {
     width: 5%;

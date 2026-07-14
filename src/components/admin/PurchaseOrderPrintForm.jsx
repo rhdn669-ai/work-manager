@@ -110,6 +110,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   const TOTALS_ROWS = 5; // 마지막 페이지 합계+특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
   const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
 
+  // 품번(_globalNo)은 전체 발주 기준 번호 — 업체별 출력에서만 의미 있음 (전체 출력은 NO와 중복이라 숨김)
+  const showItemNo = !!printSupplierFilter;
+
   // 한 문서(구매처)를 페이지 div 배열로 렌더
   const renderDoc = (rows, recvTitle, supplierLabel, docKey) => {
     const supplyAmount = rows.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0);
@@ -199,11 +202,11 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
             </table>
           )}
 
-          <table className={`iopn-items-table po-cols${showBox ? ' has-box' : ''}`}>
+          <table className={`iopn-items-table po-cols${showBox ? ' has-box' : ''}${showItemNo ? '' : ' no-itemno'}`}>
             <thead>
               <tr>
                 <th className="c-no">NO</th>
-                <th className="c-itemno">품번</th>
+                {showItemNo && <th className="c-itemno">품번</th>}
                 {showBox && <th className="c-box">BOX</th>}
                 <th className="c-name">품목명</th>
                 <th className="c-spec">규격</th>
@@ -220,7 +223,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                   return (
                     <tr key={`e-${r}`}>
                       <td className="c-no"></td>
-                      <td className="c-itemno"></td>
+                      {showItemNo && <td className="c-itemno"></td>}
                       {showBox && <td className="c-box"></td>}
                       <td className="c-name"></td>
                       <td className="c-spec"></td>
@@ -238,13 +241,13 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                 return (
                   <tr key={r}>
                     <td className="c-no">{pg.startNo + r + 1}</td>
-                    <td className="c-itemno">{ln._globalNo || ''}</td>
+                    {showItemNo && <td className="c-itemno">{ln._globalNo || ''}</td>}
                     {showBox && (
-                      <td className={`c-box ${specFontClass(ln.box, 8)}`} title={ln.box || ''}>
+                      <td className="c-box" title={ln.box || ''}>
                         {ln.box || ''}
                       </td>
                     )}
-                    <td className={`c-name ${specFontClass(ln._name, 11)}`} title={ln._name || ''}>
+                    <td className="c-name" title={ln._name || ''}>
                       {ln._name || ''}
                     </td>
                     <td className="c-spec" title={ln._spec || ''}>
