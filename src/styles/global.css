@@ -5363,8 +5363,17 @@ table.cards-sm td {
   padding: 0 !important;
   border-right: none;
 }
-.bom-flat-table th.bom-spacer-col {
-  border-bottom: 1px solid var(--border);
+/* 드래그 핸들 칸(v84.6~)은 표 왼쪽 바깥 여백처럼 — 헤더 남색·행 구분선이 침범하지 않게 투명 처리 */
+.bom-flat-table th.bom-spacer-col,
+.bom-flat-table td.bom-spacer-col {
+  background: transparent !important;
+  border-bottom: none;
+  text-align: center;
+  vertical-align: middle;
+}
+/* 남색 헤더 띠는 No 칸부터 둥근 모서리로 시작 (핸들 칸 제외) */
+.bom-flat-table thead th.bom-no-col {
+  border-top-left-radius: 15px;
 }
 .bom-flat-table tbody td {
   vertical-align: middle;
