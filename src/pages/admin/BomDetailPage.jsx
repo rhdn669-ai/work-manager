@@ -1029,7 +1029,7 @@ export default function BomDetailPage() {
                                     type="button"
                                     className="bom-goto-item"
                                     onClick={() =>
-                                      navigate(`/admin/purchase?tab=items&focus=${encodeURIComponent(it.code || '')}`)
+                                      navigate(`/admin/purchase/items?focus=${encodeURIComponent(it.code || '')}`)
                                     }
                                     aria-label="품목 등록 페이지로 이동"
                                     title="이 품목 등록(구매품목 관리) 페이지로 이동"
