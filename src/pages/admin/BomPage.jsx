@@ -57,7 +57,7 @@ function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
         {stat ? `${stat.count.toLocaleString()}개` : '—'}
       </td>
       <td data-label="개별수량 합" className="u-right-numeric">
-        {stat ? stat.qty.toLocaleString() : '—'}
+        {stat ? `${stat.qty.toLocaleString()}개` : '—'}
       </td>
       <td data-label="예상 총액" className="u-right-numeric">
         {stat ? <strong>{won(stat.amount)}</strong> : '—'}
