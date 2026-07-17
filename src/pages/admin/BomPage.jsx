@@ -9,7 +9,9 @@ import {
   deleteBomProject,
   saveBomProjectsOrder,
   duplicateBomProject,
+  getBomBySite,
 } from '../../services/bomService';
+import { getPurchaseItems } from '../../services/purchaseService';
 // getBomProjects는 undo 복원 후 목록 갱신에도 사용
 import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
@@ -21,8 +23,10 @@ import { useAuth } from '../../contexts/useAuth';
 import { useUndo } from '../../contexts/useUndo';
 import { restoreTrashItem } from '../../services/trashService';
 
+const won = (n) => `${Math.round(n || 0).toLocaleString()}원`;
+
 // 드래그 가능한 프로젝트 행
-function SortableProjectRow({ p, onOpen, onCopy, onDelete }) {
+function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -48,6 +52,15 @@ function SortableProjectRow({ p, onOpen, onCopy, onDelete }) {
         <strong className="u-ellipsis-1" title={p.name || ''}>
           {p.name}
         </strong>
+      </td>
+      <td data-label="품목 수" className="u-right-numeric">
+        {stat ? `${stat.count.toLocaleString()}개` : '—'}
+      </td>
+      <td data-label="개별수량 합" className="u-right-numeric">
+        {stat ? stat.qty.toLocaleString() : '—'}
+      </td>
+      <td data-label="예상 총액" className="u-right-numeric">
+        {stat ? <strong>{won(stat.amount)}</strong> : '—'}
       </td>
       <td className="bom-project-action-col action-cell">
         <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onCopy(e, p)}>
@@ -86,6 +99,7 @@ export default function BomPage() {
   }
   const [trashOpen, setTrashOpen] = useState(false);
   const [projects, setProjects] = useState([]);
+  const [stats, setStats] = useState({}); // projectId → { count, qty, amount }
   const [loading, setLoading] = useState(true);
 
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -101,13 +115,40 @@ export default function BomPage() {
       try {
         const ps = await getBomProjects();
         setProjects(ps);
+        loadStats(ps); // 목록 렌더 후 프로젝트별 합계는 백그라운드로 채움
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 프로젝트별 품목 수·개별수량 합·예상 총액 — BomDetailPage와 동일 기준(마스터 표준단가 우선)
+  async function loadStats(ps) {
+    try {
+      const master = await getPurchaseItems();
+      const priceById = new Map(master.map((m) => [m.id, Number(m.standardPrice) || 0]));
+      const entries = await Promise.all(
+        ps.map(async (p) => {
+          const items = await getBomBySite(p.id);
+          let qty = 0;
+          let amount = 0;
+          for (const b of items) {
+            const q = Number(b.qty) || 0;
+            const unit = b.itemId && priceById.has(b.itemId) ? priceById.get(b.itemId) : Number(b.unitPrice) || 0;
+            qty += q;
+            amount += q * unit;
+          }
+          return [p.id, { count: items.length, qty, amount }];
+        }),
+      );
+      setStats(Object.fromEntries(entries));
+    } catch (err) {
+      console.error('BOM 합계 계산 실패', err);
+    }
+  }
 
   function openAddProject() {
     setNewProjectName('');
@@ -181,6 +222,7 @@ export default function BomPage() {
           await restoreTrashItem(tid);
           const ps = await getBomProjects();
           setProjects(ps);
+          loadStats(ps);
         });
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -219,6 +261,15 @@ export default function BomPage() {
                 <tr>
                   <th style={{ width: 36 }} aria-label="순서 변경"></th>
                   <th>프로젝트명</th>
+                  <th style={{ width: 90 }} className="u-right-numeric">
+                    품목 수
+                  </th>
+                  <th style={{ width: 110 }} className="u-right-numeric">
+                    개별수량 합
+                  </th>
+                  <th style={{ width: 150 }} className="u-right-numeric">
+                    예상 총액
+                  </th>
                   <th className="bom-project-action-col">작업</th>
                 </tr>
               </thead>
@@ -228,6 +279,7 @@ export default function BomPage() {
                     <SortableProjectRow
                       key={p.id}
                       p={p}
+                      stat={stats[p.id]}
                       onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
                       onCopy={openCopyProject}
                       onDelete={handleDeleteProject}
