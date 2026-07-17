@@ -1936,6 +1936,10 @@ body {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* 예상 총액 열 — 우측 '작업' 열과 붙지 않도록 오른쪽 여백 확보 */
+.bom-amount-col {
+  padding-right: 18px !important;
+}
 /* 순위 배지 — 상위 3명 네이비/오렌지 포인트 */
 .ua-rank {
   flex-shrink: 0;

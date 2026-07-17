@@ -59,7 +59,7 @@ function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
       <td data-label="개별수량 합" className="u-right-numeric">
         {stat ? `${stat.qty.toLocaleString()}개` : '—'}
       </td>
-      <td data-label="예상 총액" className="u-right-numeric">
+      <td data-label="예상 총액" className="u-right-numeric bom-amount-col">
         {stat ? <strong>{won(stat.amount)}</strong> : '—'}
       </td>
       <td className="bom-project-action-col action-cell">
@@ -267,7 +267,7 @@ export default function BomPage() {
                   <th style={{ width: 110 }} className="u-right-numeric">
                     개별수량 합
                   </th>
-                  <th style={{ width: 150 }} className="u-right-numeric">
+                  <th style={{ width: 160 }} className="u-right-numeric bom-amount-col">
                     예상 총액
                   </th>
                   <th className="bom-project-action-col">작업</th>
