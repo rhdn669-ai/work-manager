@@ -53,13 +53,13 @@ function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
           {p.name}
         </strong>
       </td>
-      <td data-label="품목 수" className="u-right-numeric">
+      <td data-label="품목 수" className="u-num">
         {stat ? `${stat.count.toLocaleString()}개` : '—'}
       </td>
-      <td data-label="개별수량 합" className="u-right-numeric">
+      <td data-label="개별수량 합" className="u-num">
         {stat ? `${stat.qty.toLocaleString()}개` : '—'}
       </td>
-      <td data-label="예상 총액" className="u-right-numeric bom-amount-col">
+      <td data-label="예상 총액" className="u-num">
         {stat ? <strong>{won(stat.amount)}</strong> : '—'}
       </td>
       <td className="bom-project-action-col action-cell">
@@ -261,13 +261,13 @@ export default function BomPage() {
                 <tr>
                   <th style={{ width: 36 }} aria-label="순서 변경"></th>
                   <th>프로젝트명</th>
-                  <th style={{ width: 90 }} className="u-right-numeric">
+                  <th style={{ width: 90 }} className="u-num">
                     품목 수
                   </th>
-                  <th style={{ width: 110 }} className="u-right-numeric">
+                  <th style={{ width: 110 }} className="u-num">
                     개별수량 합
                   </th>
-                  <th style={{ width: 160 }} className="u-right-numeric bom-amount-col">
+                  <th style={{ width: 160 }} className="u-num">
                     예상 총액
                   </th>
                   <th className="bom-project-action-col">작업</th>
