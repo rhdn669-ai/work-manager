@@ -20,6 +20,13 @@ function getInsp(p) {
   return p.검수 || { 공정작업자: {}, 차1: { 공정비고: {} }, 차2: { 공정비고: {} } };
 }
 
+// 부품의 1·2차 불량항목으로 상태 파생: 항목 있으면 전부완료→완료 / 아니면 불량, 없으면 null(유지)
+function partDefectStatus(insp, part) {
+  const items = [1, 2].flatMap((r) => insp?.[`차${r}`]?.공정비고?.[part]?.항목 || []);
+  if (items.length === 0) return null;
+  return items.every((it) => it.완료) ? '완료' : '불량';
+}
+
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
 export default function ProductionPanelModal({ panel: p, canEdit, checkerName = '', onClose }) {
   const insp = getInsp(p);
@@ -37,6 +44,19 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
     mut(next);
     save({ 검수: next });
   };
+  // 불량항목 변경 시 검수(insp) + 부품상태(자동 불량/완료) + 검수자를 함께 저장
+  const saveInspDerive = (part, mut) => {
+    if (!canEdit) return;
+    const next = structuredClone(getInsp(p));
+    mut(next);
+    const patch = { 검수: next };
+    const st = partDefectStatus(next, part);
+    if (st) {
+      patch.부품상태 = { ...(p.부품상태 || {}), [part]: st };
+      patch.부품검수자 = { ...(p.부품검수자 || {}), [part]: st === '완료' ? checkerName : '' };
+    }
+    save(patch);
+  };
 
   function openCamera(part, round, index = null, kind = '사진') {
     photoTargetRef.current = { part, round, index, kind };
@@ -50,12 +70,11 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
     setUploading(true);
     try {
       const url = await uploadDefectPhoto(file);
-      saveInsp((n) => {
-        const { part, round, index } = target;
+      const { part, round, index, kind } = target;
+      saveInspDerive(part, (n) => {
         if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
         if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
-        const { kind } = target;
         const sec = n[`차${round}`].공정비고[part];
         if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url });
         else sec.항목[index][kind] = url;
@@ -85,7 +104,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
     const sec = insp[`차${round}`]?.공정비고?.[part] || { 항목: [] };
     const items = sec.항목 || [];
     const mutSec = (mut) =>
-      saveInsp((n) => {
+      saveInspDerive(part, (n) => {
         if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
         if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
