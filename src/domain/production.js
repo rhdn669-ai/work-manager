@@ -19,6 +19,7 @@ export const TASK_CFG = {
   진행중: { dot: '#2272eb', bg: 'var(--status-progress-bg)', fg: 'var(--status-progress-fg)' },
   완료: { dot: '#15803d', bg: 'var(--status-done-bg)', fg: 'var(--status-done-fg)' },
   문제: { dot: '#d6303f', bg: 'var(--status-cancel-bg)', fg: 'var(--status-cancel-fg)' },
+  불량: { dot: '#d6303f', bg: 'var(--status-cancel-bg)', fg: 'var(--status-cancel-fg)' }, // 구 데이터 방어(불량=문제)
 };
 
 /* ── 종합(overall) 상태 ── */
@@ -63,7 +64,7 @@ export const getProjGroup = (p) => String(p || '').replace(/[_-]\d+$/, '');
 
 // MP 하위 상태들 → MP 종합 상태 파생
 export function deriveMpState(mp = {}) {
-  const v = MP_SUBS.map((k) => mp[k] || '대기');
+  const v = MP_SUBS.map((k) => normState(mp[k]));
   if (v.some((s) => s === '문제')) return '문제';
   if (v.some((s) => s === '진행중')) return '진행중';
   if (v.every((s) => s === '완료')) return '완료';
@@ -71,9 +72,12 @@ export function deriveMpState(mp = {}) {
 }
 
 // 진행률 + 종합상태 산출 (기존 recompute 이식)
+// 저장값 정규화 — 표시라벨 '불량'이 잘못 저장된 경우 '문제'로
+export const normState = (s) => (s === '불량' ? '문제' : s || '대기');
+
 export function recompute(p) {
   const mpS = deriveMpState(p.mp하위상태 || {});
-  const all = BUPMOK.map((b) => (p.부품상태 || {})[b] || '대기');
+  const all = BUPMOK.map((b) => normState((p.부품상태 || {})[b]));
   const done = all.filter((s) => s === '완료').length;
   const hasIssue = all.some((s) => s === '문제');
   const hasProgress = all.some((s) => s === '진행중' || s === '완료');

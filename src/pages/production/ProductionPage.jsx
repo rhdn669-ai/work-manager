@@ -47,7 +47,7 @@ function Dots({ panel }) {
   return (
     <div className="parts-mini">
       {states.map((s, i) => (
-        <i key={i} title={`${BUPMOK[i]}: ${TASK_LABEL[s] || s}`} style={{ background: TASK_CFG[s].dot }} />
+        <i key={i} title={`${BUPMOK[i]}: ${TASK_LABEL[s] || s}`} style={{ background: (TASK_CFG[s] || TASK_CFG['대기']).dot }} />
       ))}
     </div>
   );
