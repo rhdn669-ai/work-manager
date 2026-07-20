@@ -4,7 +4,6 @@ import Icon from '../../components/common/Icon';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
 import {
   BUPMOK,
-  JAIP,
   MP_SUBS,
   COMPANIES,
   UI_TASK_STATES,
@@ -249,35 +248,9 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
       </div>
 
       <div className="pm-section">
-        <div className="pm-section-title">자재입고</div>
-        <div className="jaip-row">
-          {JAIP.map((k) => {
-            const on = !!(p.자재입고상태 || {})[k];
-            const d = (p.자재입고일자 || {})[k];
-            return (
-              <button
-                key={k}
-                className={`jaip-chip ${on ? 'on' : ''}`}
-                disabled={!canEdit}
-                onClick={() =>
-                  save({
-                    자재입고상태: { ...(p.자재입고상태 || {}), [k]: !on },
-                    자재입고일자: { ...(p.자재입고일자 || {}), [k]: !on ? today() : '' },
-                  })
-                }
-              >
-                {on ? '✓ ' : ''}
-                {k}
-                {on && d ? <small className="chip-date">{mmddDot(d)}</small> : null}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="pm-section">
         <div className="pm-section-title">
-          부품 진행 <span className="sub">{canEdit ? '상태 클릭으로 변경 · 작업자/불량 기록' : ''}</span>
+          부품 진행{' '}
+          <span className="sub">{canEdit ? '자재입고·불량은 생산현황 표에서 · 여기선 작업자/사진 기록' : ''}</span>
         </div>
         {BUPMOK.map((b) => {
           const cur = (p.부품상태 || {})[b] || '대기';

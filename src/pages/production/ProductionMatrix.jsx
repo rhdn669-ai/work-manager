@@ -3,12 +3,16 @@ import { updatePanel } from '../../services/productionService';
 import {
   BUPMOK,
   JAIP,
+  MP_SUBS,
+  UI_TASK_STATES,
   TASK_CFG,
   OVERALL_CFG,
   getDday,
   boxMat,
   boxHasDefect,
   deriveBoxStatus,
+  deriveMpState,
+  normState,
 } from '../../domain/production';
 
 // 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
@@ -26,6 +30,14 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     const nextBoxIn = { ...(p.박스입고 || {}), [box]: nextMat };
     const st = deriveBoxStatus(p, box, p.검수, nextMat);
     setField(p, { 박스입고: nextBoxIn, 부품상태: { ...(p.부품상태 || {}), [box]: st } });
+  };
+
+  // MP 하위 종목 상태 순환(대기→완료→불량) — 진행률은 구독 recompute가 자동 반영
+  const cycleMpSub = (p, k) => {
+    if (!canEdit) return;
+    const cur = normState((p.mp하위상태 || {})[k]);
+    const next = UI_TASK_STATES[(UI_TASK_STATES.indexOf(cur) + 1) % UI_TASK_STATES.length];
+    setField(p, { mp하위상태: { ...(p.mp하위상태 || {}), [k]: next } });
   };
 
   const DateCell = ({ p, field }) => (
@@ -52,7 +64,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
               기본
             </th>
             {BUPMOK.map((b) => (
-              <th key={b} colSpan={6}>
+              <th key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : 6}>
                 {b}
               </th>
             ))}
@@ -66,7 +78,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
             <th>정역</th>
             <th>자재</th>
             {BUPMOK.map((b) =>
-              [...JAIP, '불량', '상태'].map((sub) => (
+              (b === 'MP' ? [...MP_SUBS, '상태'] : [...JAIP, '불량', '상태']).map((sub) => (
                 <th key={`${b}-${sub}`} className="mx-sub-th">
                   {sub}
                 </th>
@@ -101,6 +113,19 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 </td>
                 <td className="mx-cell mx-jaje">{p.자재 || ''}</td>
                 {BUPMOK.map((b) => {
+                  if (b === 'MP') {
+                    const st = deriveMpState(p.mp하위상태 || {});
+                    return (
+                      <MpGroup
+                        key={b}
+                        p={p}
+                        st={st}
+                        sc={TASK_CFG[st] || TASK_CFG['대기']}
+                        canEdit={canEdit}
+                        onToggle={(k) => cycleMpSub(p, k)}
+                      />
+                    );
+                  }
                   const mat = boxMat(p, b);
                   const defect = boxHasDefect(p.검수, b);
                   const st = deriveBoxStatus(p, b);
@@ -140,6 +165,36 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
         </tbody>
       </table>
     </div>
+  );
+}
+
+// MP 하위: 전장 9종 각 셀(대기→완료→불량 순환) + 종합상태(자동)
+function MpGroup({ p, st, sc, canEdit, onToggle }) {
+  return (
+    <>
+      {MP_SUBS.map((k) => {
+        const s = normState((p.mp하위상태 || {})[k]);
+        const c = TASK_CFG[s] || TASK_CFG['대기'];
+        return (
+          <td
+            key={k}
+            className="mx-cell mx-boxmat"
+            style={{
+              background: s === '완료' ? '#e7f4ec' : s === '문제' ? '#fdebec' : undefined,
+              color: c.dot,
+              cursor: canEdit ? 'pointer' : 'default',
+            }}
+            onClick={() => onToggle(k)}
+            title={`${k} — ${s === '문제' ? '불량' : s}`}
+          >
+            {s === '완료' ? '○' : s === '문제' ? '✕' : ''}
+          </td>
+        );
+      })}
+      <td className="mx-cell mx-boxstate" style={{ background: sc.bg, color: sc.fg }} title={st}>
+        {st === '완료' ? '○' : st === '문제' ? '✕' : ''}
+      </td>
+    </>
   );
 }
 

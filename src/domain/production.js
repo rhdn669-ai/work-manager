@@ -65,6 +65,11 @@ export function unresolvedDefectParts(p, round) {
 export function boxMat(p, box) {
   return (p.박스입고 || {})[box] || {};
 }
+// 판넬 전체 자재입고 요약(모바일 카드용): 각 자재가 실물 BOX(MP 제외) 전부에 입고됐으면 완료
+export function jaipRollup(p) {
+  const boxes = BUPMOK.filter((b) => b !== 'MP');
+  return Object.fromEntries(JAIP.map((k) => [k, boxes.length > 0 && boxes.every((b) => boxMat(p, b)[k])]));
+}
 // 해당 박스에 미해결 불량이 있나 (검수 1·2차 공정비고 항목 중 내용 있고 미완료)
 export function boxHasDefect(insp, box) {
   return [1, 2].some((r) => (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).some((it) => it.내용 && !it.완료));

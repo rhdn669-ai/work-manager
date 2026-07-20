@@ -20,6 +20,7 @@ import {
   emptyPanel,
   napgiColorOf,
   unresolvedDefectParts,
+  jaipRollup,
 } from '../../domain/production';
 import '../../styles/production.css';
 
@@ -58,7 +59,7 @@ function Dots({ panel }) {
   );
 }
 function JaipDots({ panel }) {
-  const st = panel.자재입고상태 || {};
+  const st = jaipRollup(panel);
   const n = JAIP.filter((k) => st[k]).length;
   return (
     <div className="jaip-dots">
