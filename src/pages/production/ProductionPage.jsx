@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import ProductionPanelModal from './ProductionPanelModal';
@@ -117,6 +118,7 @@ const VIEWS = ['현황', '불량현황', '통계'];
 
 export default function ProductionPage() {
   const { userProfile, isAdmin } = useAuth();
+  const { confirm } = useDialog();
   const [panels, setPanels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('현황');
@@ -172,6 +174,14 @@ export default function ProductionPage() {
   }
   async function handleRemove(e, p) {
     e.stopPropagation();
+    const name = `${p.프로젝트 || '이 판넬'}${p.호기 ? ` · ${p.호기}` : ''}`;
+    if (
+      !(await confirm({
+        title: '판넬 삭제',
+        message: `"${name}"을(를) 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
+      }))
+    )
+      return;
     await trashPanel(p, userProfile?.name || '');
     if (openId === p.id) setOpenId(null);
   }
