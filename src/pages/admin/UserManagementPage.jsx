@@ -679,7 +679,7 @@ export default function UserManagementPage() {
                   type="button"
                   className="btn btn-sm btn-danger"
                   onClick={handleResetPassword}
-                  style={{ float: 'right', fontSize: 11, padding: '3px 8px' }}
+                  style={{ float: 'right', fontSize: 'var(--font-xs)', padding: 'var(--space-1) var(--space-2)' }}
                   title="비밀번호를 지워 다음 로그인 시 본인이 직접 재설정하게 함"
                 >
                   초기화

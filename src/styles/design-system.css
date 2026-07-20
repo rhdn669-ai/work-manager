@@ -653,7 +653,7 @@ body {
 }
 .ds-select__value.is-placeholder {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 /* 모바일: OS 기본 드롭다운 — trigger와 동일한 박스, caret만 우측 겹쳐 표시 */
 .ds-select--native {
@@ -1014,7 +1014,7 @@ body {
 .home-task-board__head h3 {
   margin: 0;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary);
 }
 .task-board {
@@ -1165,7 +1165,7 @@ body {
   display: inline-flex;
   align-items: center;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.02em;
   padding: 2px 8px;
   border-radius: 999px;
@@ -1249,7 +1249,7 @@ body {
 }
 .task-form__input {
   width: 100%;
-  height: 40px;
+  height: var(--btn-h-md);
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -1346,7 +1346,7 @@ body {
 /* brand-color fix: amount always uses accent orange (#F05819) for brand consistency. */
 .kb-card__amount {
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 700;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
@@ -1675,7 +1675,7 @@ body {
 }
 .lib-search-inline input {
   width: 100%;
-  height: 38px;
+  height: var(--btn-h-md);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0 12px;
@@ -1695,7 +1695,7 @@ body {
 .purchase-filter-search,
 .vehicle-log-search,
 .lib-search-inline input {
-  height: 40px;
+  height: var(--btn-h-md);
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: 9px;

@@ -138,7 +138,7 @@ function TreeNode({
         role="button"
         tabIndex={0}
         className={`lib-tree-row${isActive ? ' is-active' : ''}${isDragOver ? ' drag-over' : ''}${isFolderTarget && folderDropMode === 'before' ? ' drag-folder-before' : ''}${isFolderTarget && folderDropMode === 'after' ? ' drag-folder-after' : ''}${isFolderTarget && folderDropMode === 'inside' ? ' drag-folder-inside' : ''}`}
-        style={{ paddingLeft: 10 + depth * 14 }}
+        style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => onSelect(folder.id)}
         onKeyDown={(e) => e.key === 'Enter' && onSelect(folder.id)}
         {...dndProps(folder)}

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
+import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
 import { COMPANIES, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
 
@@ -21,13 +22,14 @@ export default function ProductionPanelModal({
   part = null,
 }) {
   const insp = getInsp(p);
+  const { toast } = useDialog();
   // 불량 사진 촬영/첨부 — 하나의 숨은 input을 공유, 대상(부품·차수·행)을 ref에 보관
   const photoInputRef = useRef(null);
   const photoTargetRef = useRef(null); // { part, round, index|null(null=새 행 추가) }
   const [uploading, setUploading] = useState(false);
 
   const save = (patch) => {
-    if (canEdit) updatePanel(p.id, patch);
+    if (canEdit) updatePanel(p.id, patch).catch(() => toast('저장 중 오류가 발생했습니다', 'error'));
   };
   const saveInsp = (mut) => {
     if (!canEdit) return;
@@ -135,7 +137,7 @@ export default function ProductionPanelModal({
                 />
                 {canEdit && (
                   <button className="defect-del" onClick={() => mutSec((s) => s.항목.splice(i, 1))} aria-label="삭제">
-                    <Icon name="close" />
+                    <Icon name="trash" />
                   </button>
                 )}
               </div>
@@ -273,7 +275,7 @@ export default function ProductionPanelModal({
                     disabled={!canEdit}
                     onClick={() => save({ 회사: on ? '' : c })}
                   >
-                    {on ? '✓ ' : ''}
+                    {on && <Icon name="check" className="btn-ic" />}
                     {c}
                   </button>
                 );
@@ -324,7 +326,7 @@ export default function ProductionPanelModal({
                   })
                 }
               >
-                {p.검수완료 ? '✓ ' : ''}검수완료
+                {p.검수완료 && <Icon name="check" className="btn-ic" />}검수완료
                 {p.검수완료 && p.검수완료일 ? (
                   <small className="chip-date">
                     {mmddDot(p.검수완료일)}
@@ -343,7 +345,7 @@ export default function ProductionPanelModal({
                   })
                 }
               >
-                {p.출고완료 ? '✓ ' : ''}출고완료
+                {p.출고완료 && <Icon name="check" className="btn-ic" />}출고완료
                 {p.출고완료 && p.출고완료일 ? (
                   <small className="chip-date">
                     {mmddDot(p.출고완료일)}

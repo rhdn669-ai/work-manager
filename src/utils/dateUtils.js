@@ -15,7 +15,7 @@ export function formatRelativeKo(iso) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return `${yyyy}.${mm}.${dd}`;
 }
 
 // 날짜를 "YYYY-MM-DD" 형식으로 변환
@@ -30,6 +30,21 @@ export function formatDate(date) {
 // 오늘 날짜 문자열
 export function getToday() {
   return formatDate(new Date());
+}
+
+// 화면 표시용 날짜 — 'YYYY-MM-DD'(또는 ISO/Date)를 회계 관행 'YYYY.MM.DD'로. 빈값·비ISO는 원본 유지.
+export function formatDisplayDate(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[1]}.${m[2]}.${m[3]}`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) {
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    }
+  }
+  return s;
 }
 
 // 해당 날짜가 속한 주의 월요일 반환

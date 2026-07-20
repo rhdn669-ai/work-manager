@@ -474,7 +474,7 @@ export default function MailSendPage() {
                           onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
                           aria-label="첨부 제거"
                         >
-                          ×
+                          <Icon name="close" />
                         </button>
                       </li>
                     ))}

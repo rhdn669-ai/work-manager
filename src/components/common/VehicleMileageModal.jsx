@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
+import Icon from './Icon';
 import { useAuth } from '../../contexts/useAuth';
 import { getMileage, getLatestPrevMileage, saveMileage } from '../../services/vehicleMileageService';
 
@@ -142,7 +143,9 @@ export default function VehicleMileageModal({ isOpen, onClose, onSaved }) {
             {odometerNum > 0 && (
               <div className={`vmm-driven ${isInvalid ? 'is-invalid' : ''}`}>
                 {isInvalid ? (
-                  <>⚠ 이전월보다 작습니다 — 다시 확인해 주세요</>
+                  <>
+                    <Icon name="alert" /> 이전월보다 작습니다 — 다시 확인해 주세요
+                  </>
                 ) : (
                   <>
                     이번달 운행 거리: <strong>{fmtNumber(drivenKm)}</strong> km

@@ -7,7 +7,7 @@ import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
 import { getPurchases } from '../services/purchaseService';
-import { formatMinutes, getMonthStart, getMonthEnd } from '../utils/dateUtils';
+import { formatMinutes, getMonthStart, getMonthEnd, formatDisplayDate } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
 import HomeTaskBoard from '../components/common/HomeTaskBoard';
 import Skeleton from '../components/common/Skeleton';
@@ -154,9 +154,9 @@ export default function DashboardPage() {
             </div>
             <div className="tile-body" style={{ gap: 2 }}>
               <div className="tile-title">사용자</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
+              <div className="tile-value" style={{ fontSize: 'var(--font-lg)', lineHeight: 1.3 }}>
                 {adminStats.users}
-                <span style={{ fontSize: 13, marginLeft: 3 }}>명</span>
+                <span style={{ fontSize: 13, marginLeft: 'var(--space-1)' }}>명</span>
               </div>
               <div className="tile-sub">활성 {adminStats.activeUsers}명</div>
             </div>
@@ -314,7 +314,7 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <span className="approval-date">{a.date}</span>
+                <span className="approval-date">{formatDisplayDate(a.date)}</span>
               </li>
             ))}
           </ul>

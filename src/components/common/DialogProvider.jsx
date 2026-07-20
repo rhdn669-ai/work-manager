@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { DialogContext } from './useDialog';
+import Icon from './Icon';
 
 function normalize(input) {
   if (typeof input === 'string') return { message: input };
@@ -109,7 +110,7 @@ export function DialogProvider({ children }) {
               </svg>
               <span>{t.message}</span>
               <button type="button" className="toast__close" onClick={() => removeToast(t.id)} aria-label="닫기">
-                ×
+                <Icon name="close" className="btn-ic" />
               </button>
             </div>
           ))}

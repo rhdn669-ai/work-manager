@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { updateUser } from '../services/userService';
+import Icon from '../components/common/Icon';
 
 export default function SetPasswordPage() {
   const { userProfile, refreshProfile, logout } = useAuth();
@@ -50,7 +51,7 @@ export default function SetPasswordPage() {
           aria-label="로그인 화면으로 돌아가기"
           title="로그인 화면으로 돌아가기"
         >
-          ← 로그인으로
+          <Icon name="chevronLeft" /> 로그인으로
         </button>
         <div className="login-logo" role="img" aria-label="IOPN" />
         <h3 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 700 }}>비밀번호 설정</h3>

@@ -122,14 +122,14 @@ function parseSimpleBulk(text) {
     .filter((r) => r.name && r.name !== '품명');
 }
 
-// 변동률 배지 — 상승 ▲빨강 / 하락 ▼파랑 / 동일 −회색
+// 변동률 배지 — 상승 chevronUp빨강 / 하락 chevronDown파랑 / 동일 −회색
 function RateBadge({ from, to, rate }) {
   const r = rate != null ? Number(rate) : Number(from) > 0 ? ((Number(to) - Number(from)) / Number(from)) * 100 : 0;
   const up = r > 0;
   const down = r < 0;
   return (
     <span className={`rate-badge ${up ? 'up' : down ? 'down' : 'flat'}`}>
-      {up ? '▲' : down ? '▼' : '−'} {up ? '+' : ''}
+      {up ? <Icon name="chevronUp" /> : down ? <Icon name="chevronDown" /> : '−'} {up ? '+' : ''}
       {r.toFixed(1)}%
     </span>
   );
@@ -230,12 +230,13 @@ function PriceHistoryView({ items, onDelete }) {
                   <td className="c">
                     <button
                       type="button"
-                      className="btn btn-sm btn-danger pc-del"
+                      className="btn btn-sm btn-danger"
                       onClick={() => onDelete(h.itemId, h.entry)}
                       title="이 이력 삭제"
                       aria-label="삭제"
                     >
                       <Icon name="trash" className="btn-ic" />
+                      삭제
                     </button>
                   </td>
                 </tr>
@@ -847,7 +848,7 @@ export default function PurchaseItemPage() {
           overflow: hidden; white-space: normal; word-break: break-word;
         }
         /* 작업 셀 — table-cell 유지(헤더 +추가/일괄 컬럼과 정렬 일치). flex 금지 */
-        .item-actions-cell { text-align: center; white-space: nowrap; vertical-align: middle; min-height: 36px; overflow: visible; }
+        .item-actions-cell { white-space: nowrap; vertical-align: middle; min-height: 36px; overflow: visible; }
         .item-actions-cell > * + * { margin-left: 6px; }
         .item-actions-cell .btn { min-height: var(--btn-h-sm); vertical-align: middle; }
         .item-actions-cell .item-expand-btn { min-height: var(--btn-h-sm); vertical-align: middle; }
@@ -863,12 +864,12 @@ export default function PurchaseItemPage() {
         .pi-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); }
         .pi-tabs button { padding:9px 16px; font-size:13px; font-weight:700; color:var(--text-muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px; }
         .pi-tabs button.on { color:var(--primary); border-bottom-color:var(--primary); }
-        .rate-badge { display:inline-flex; align-items:center; gap:2px; font-size:12px; font-weight:800; padding:2px 8px; border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+        .rate-badge { display:inline-flex; align-items:center; gap:var(--space-1); font-size:12px; font-weight:700; padding:var(--space-1) var(--space-2); border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
         .rate-badge.up { color:#c53030; background:#fdecec; }
         .rate-badge.down { color:#1d4ed8; background:#e8f0fe; }
         .rate-badge.flat { color:#6b7280; background:#f1f3f5; }
         .pc-modal { display:flex; flex-direction:column; gap:14px; }
-        .pc-change { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:800; flex-wrap:wrap; }
+        .pc-change { display:flex; align-items:center; gap:var(--space-2); font-size:16px; font-weight:700; flex-wrap:wrap; }
         .pc-price { color:#6b7280; }
         .pc-price.to { color:var(--primary); }
         .pc-arrow { color:#9aa0ad; }
@@ -877,7 +878,7 @@ export default function PurchaseItemPage() {
         .pc-cur strong { color:var(--primary); font-size:16px; }
         .pc-cur-sub { color:#6b7280; font-size:12px; }
         .pc-filters { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
-        .pc-filters input[type=date] { height:36px; border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:13px; color:var(--text); background:#fff; }
+        .pc-filters input[type=date] { height:var(--btn-h-md); border:1px solid var(--border); border-radius:8px; padding:0 10px; font-size:13px; color:var(--text); background:#fff; }
         .pc-flabel { font-size:12px; font-weight:700; color:var(--text-muted); }
         .pc-tilde { color:var(--text-muted); }
         .pc-filters .pc-supplier { width:180px; }
@@ -887,7 +888,6 @@ export default function PurchaseItemPage() {
         .pc-history-table td.c, .pc-history-table th.c { text-align:center; }
         .pc-history-table td { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .pc-history-table th, .pc-history-table td { padding:10px 14px; vertical-align:middle; }
-        .pc-del { padding:4px 8px; min-height:30px; }
       `}</style>
       <div className="page-header">
         <h2>구매 품목 관리</h2>
@@ -943,7 +943,7 @@ export default function PurchaseItemPage() {
           {groups.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '20px 0', textAlign: 'center' }}>
               {items.length === 0
-                ? '등록된 품목이 없습니다 — 우측 상단 "+ 품목 추가" 또는 "엑셀 일괄 추가"'
+                ? '등록된 품목이 없습니다 — 우측 상단 "품목 추가" 또는 "엑셀 일괄 추가"'
                 : '조건에 맞는 품목이 없습니다.'}
             </p>
           ) : (
@@ -1128,7 +1128,7 @@ export default function PurchaseItemPage() {
                                         className="text-muted text-sm"
                                         style={{ textAlign: 'center', padding: 16 }}
                                       >
-                                        소분류가 없습니다 — 우측 상단 "+ 추가"로 등록하세요.
+                                        소분류가 없습니다 — 우측 상단 "추가"로 등록하세요.
                                       </td>
                                     </tr>
                                   )}

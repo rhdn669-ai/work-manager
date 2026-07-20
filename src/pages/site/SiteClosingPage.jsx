@@ -2075,7 +2075,7 @@ export default function SiteClosingPage() {
           return (
             <div className="card">
               <div className="card-body empty-state">
-                항목이 없습니다.{canEdit && ' 우측 상단 "+ 항목 추가" 버튼으로 시작하세요.'}
+                항목이 없습니다.{canEdit && ' 우측 상단 "항목 추가" 버튼으로 시작하세요.'}
               </div>
             </div>
           );
@@ -2195,7 +2195,13 @@ export default function SiteClosingPage() {
                     </button>
                   )}
                   {canEdit && (
-                    <button type="button" className="mx-del" onClick={() => handleDeleteRow(it.id)} aria-label="삭제">
+                    <button
+                      type="button"
+                      className="mx-del"
+                      style={{ color: 'var(--btn-danger-fg)' }}
+                      onClick={() => handleDeleteRow(it.id)}
+                      aria-label="삭제"
+                    >
                       <Icon name="trash" size={13} />
                     </button>
                   )}
@@ -3101,7 +3107,7 @@ export default function SiteClosingPage() {
                         style={{
                           listStyle: 'none',
                           padding: '12px',
-                          color: '#64748b',
+                          color: 'var(--text-secondary)',
                           fontSize: 13,
                           textAlign: 'center',
                         }}

@@ -280,12 +280,12 @@ export default function LeaveHistoryPage() {
                               {l.reason}
                             </span>
                           )}
-                          <span style={{ color: statusStyle.color, fontWeight: 500 }}>{statusStyle.label}</span>
+                          <span style={{ color: statusStyle.color, fontWeight: 600 }}>{statusStyle.label}</span>
                           {l.status === 'cancelled' && l.cancelReason && (
                             <span
                               style={{
                                 color: 'var(--danger)',
-                                fontWeight: 500,
+                                fontWeight: 600,
                                 display: '-webkit-box',
                                 WebkitLineClamp: 2,
                                 WebkitBoxOrient: 'vertical',

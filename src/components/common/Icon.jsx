@@ -82,6 +82,11 @@ const PATHS = {
       <path d="M6 9l6 6 6-6" />
     </>
   ),
+  chevronUp: (
+    <>
+      <path d="M6 15l6-6 6 6" />
+    </>
+  ),
   calendar: (
     <>
       <rect x="3" y="4" width="18" height="17" rx="2" />

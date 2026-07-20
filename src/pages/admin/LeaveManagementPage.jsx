@@ -13,7 +13,12 @@ import { getDepartments } from '../../services/departmentService';
 import { getEvents } from '../../services/eventService';
 import { getAllSites } from '../../services/siteService';
 import { LEAVE_TYPE_LABELS, QUARTER_LEAVE_TYPES } from '../../utils/constants';
-import { getBusinessDaysExcludingHolidays, buildHolidaySet, formatMinutes } from '../../utils/dateUtils';
+import {
+  getBusinessDaysExcludingHolidays,
+  buildHolidaySet,
+  formatMinutes,
+  formatDisplayDate,
+} from '../../utils/dateUtils';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
@@ -609,7 +614,10 @@ function LeaveTab({
             const isEditing = editingId === l.id;
             const u = userMap[l.userId];
             const statusStyle = LEAVE_STATUS_STYLES[l.status] || {};
-            const period = l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`;
+            const period =
+              l.startDate === l.endDate
+                ? formatDisplayDate(l.startDate)
+                : `${formatDisplayDate(l.startDate)} ~ ${formatDisplayDate(l.endDate)}`;
             const userName = u ? u.name : '(알 수 없음)';
             const deptName = u && u.departmentId ? deptMap[u.departmentId] || '' : '';
             const previewDays = calcDays(
@@ -624,7 +632,7 @@ function LeaveTab({
               <div key={l.id} className="card" style={{ marginBottom: 8 }}>
                 <div className="card-body" style={{ padding: '10px 12px' }}>
                   {isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                       <div
                         style={{
                           fontWeight: 700,
@@ -644,7 +652,7 @@ function LeaveTab({
                           </span>
                         )}
                         {deptName && (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 400 }}>
                             · {deptName}
                           </span>
                         )}
@@ -742,12 +750,12 @@ function LeaveTab({
                             </span>
                           )}
                           {deptName && (
-                            <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 400 }}>
                               · {deptName}
                             </span>
                           )}
                         </div>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{period}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 'var(--space-1)' }}>{period}</div>
                         <div
                           style={{
                             fontSize: 12,
@@ -904,7 +912,7 @@ function OvertimeTab({
               <div key={r.id} className="card" style={{ marginBottom: 8 }}>
                 <div className="card-body" style={{ padding: '10px 12px' }}>
                   {isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                       <div
                         style={{
                           fontWeight: 700,
@@ -924,7 +932,7 @@ function OvertimeTab({
                           </span>
                         )}
                         {deptName && (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 400 }}>
                             · {deptName}
                           </span>
                         )}
@@ -1026,12 +1034,14 @@ function OvertimeTab({
                             </span>
                           )}
                           {deptName && (
-                            <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500 }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 400 }}>
                               · {deptName}
                             </span>
                           )}
                         </div>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{r.date}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 'var(--space-1)' }}>
+                          {formatDisplayDate(r.date)}
+                        </div>
                         <div
                           style={{
                             fontSize: 12,

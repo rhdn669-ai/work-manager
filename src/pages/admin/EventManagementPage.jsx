@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { getEvents, addEvent, updateEvent } from '../../services/eventService';
 import { trashGeneric } from '../../services/trashService';
 import { getKoreanHolidaysAsEvents } from '../../utils/koreanHolidays';
+import { formatDisplayDate } from '../../utils/dateUtils';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
@@ -336,10 +337,12 @@ export default function EventManagementPage() {
                 </div>
                 <div
                   className="event-meta"
-                  title={`${ev.startDate}${ev.endDate && ev.endDate !== ev.startDate ? ` ~ ${ev.endDate}` : ''}`}
+                  title={`${formatDisplayDate(ev.startDate)}${
+                    ev.endDate && ev.endDate !== ev.startDate ? ` ~ ${formatDisplayDate(ev.endDate)}` : ''
+                  }`}
                 >
-                  {ev.startDate}
-                  {ev.endDate && ev.endDate !== ev.startDate ? ` ~ ${ev.endDate}` : ''}
+                  {formatDisplayDate(ev.startDate)}
+                  {ev.endDate && ev.endDate !== ev.startDate ? ` ~ ${formatDisplayDate(ev.endDate)}` : ''}
                 </div>
                 {ev.description && (
                   <div

@@ -127,7 +127,7 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
         )}
       </div>
       <div className="po-card__bottom">
-        <span className="po-card__amount" style={{ color: 'var(--accent, #F05819)' }}>
+        <span className="po-card__amount" style={{ color: 'var(--text)' }}>
           {Number(p.totalAmount || 0).toLocaleString()}
           <em>원</em>
         </span>
@@ -195,7 +195,7 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
         {p.siteName || '프로젝트 미지정'}
         {p.supplierName ? ` · ${p.supplierName}` : ''}
       </div>
-      <div className="kb-card__amount" style={{ color: 'var(--accent, #F05819)' }}>
+      <div className="kb-card__amount" style={{ color: 'var(--text)' }}>
         {Number(p.totalAmount || 0).toLocaleString()}
         <em>원</em>
       </div>
@@ -572,6 +572,7 @@ export default function PurchaseListPage() {
         onClick={() => window.print()}
         title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
       >
+        <Icon name="doc" />
         PDF 출력
       </button>
 
@@ -645,7 +646,7 @@ export default function PurchaseListPage() {
             @media (max-width: 768px) { .kb-board { grid-template-columns: 1fr !important; } }
             .po-card { gap: 5px; width: 100%; box-sizing: border-box; padding: 14px; }
             .po-card__title { font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .po-card__subtitle, .kb-card__subtitle { font-size: 12px; font-weight: 500; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__subtitle, .kb-card__subtitle { font-size: 12px; font-weight: 400; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__meta { font-size: 12px; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__by { overflow: hidden; text-overflow: ellipsis; word-break: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; min-width: 0; }
             .po-card__actions { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; flex-shrink: 0; }

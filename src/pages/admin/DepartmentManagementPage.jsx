@@ -158,8 +158,8 @@ export default function DepartmentManagementPage() {
                 >
                   <span className="u-wrap">{userMap[d.managerId] || '-'}</span>
                 </td>
-                <td className="bom-project-action-col">
-                  <div className="btn-group" style={{ flexWrap: 'wrap', gap: 6 }}>
+                <td className="col-action">
+                  <div className="btn-group" style={{ gap: 'var(--space-2)' }}>
                     <button className="btn btn-sm btn-outline" style={{ padding: '0 8px' }} onClick={() => openEdit(d)}>
                       수정
                     </button>

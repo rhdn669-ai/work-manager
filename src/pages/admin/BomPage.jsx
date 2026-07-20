@@ -251,7 +251,7 @@ export default function BomPage() {
       </div>
 
       {projects.length === 0 ? (
-        <p className="purchase-empty">등록된 프로젝트가 없습니다 — 우측 상단 "+ 프로젝트 추가"로 시작하세요.</p>
+        <p className="purchase-empty">등록된 프로젝트가 없습니다 — 우측 상단 "프로젝트 추가"로 시작하세요.</p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <div className="table-scroll-x">

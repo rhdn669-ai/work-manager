@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
+import Icon from './Icon';
 import Select from './Select';
 import { useDialog } from './useDialog';
 import { useAuth } from '../../contexts/useAuth';
@@ -92,6 +93,7 @@ export default function PdfFabGroup({
           onClick={openModal}
           title="PDF 파일로 만들어 사내 자료실에 저장합니다"
         >
+          <Icon name="folder" />
           자료실 저장
         </button>
         <button
@@ -100,6 +102,7 @@ export default function PdfFabGroup({
           onClick={handleOutput}
           title="브라우저 인쇄로 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
         >
+          <Icon name="doc" />
           PDF 출력
         </button>
       </div>

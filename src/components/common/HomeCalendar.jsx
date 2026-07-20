@@ -404,7 +404,7 @@ export default function HomeCalendar() {
                       type="button"
                       key={di}
                       className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''}`}
-                      style={{ padding: 5, lineHeight: 1.3 }}
+                      style={{ padding: 'var(--space-1)', lineHeight: 1.3 }}
                       onPointerDown={(e) => {
                         e.preventDefault();
                         setSelectedDate(iso);
@@ -427,7 +427,7 @@ export default function HomeCalendar() {
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
-                              fontSize: 10,
+                              fontSize: 'var(--font-xs)',
                               display: 'flex',
                               alignItems: 'center',
                             }}

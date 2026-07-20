@@ -7,7 +7,7 @@ import {
   approveOvertimeRecord,
   rejectOvertimeRecord,
 } from '../../services/attendanceService';
-import { getMonthStart, getMonthEnd, formatMinutes, getDayName } from '../../utils/dateUtils';
+import { getMonthStart, getMonthEnd, formatMinutes, getDayName, formatDisplayDate } from '../../utils/dateUtils';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
@@ -102,7 +102,7 @@ export default function ManageOvertimePage() {
                       <td data-label="이름" title={r.userName || ''}>
                         {r.userName}
                       </td>
-                      <td data-label="날짜">{r.date}</td>
+                      <td data-label="날짜">{formatDisplayDate(r.date)}</td>
                       <td data-label="잔업 시간" className="num-col">
                         {formatMinutes(r.minutes)}
                       </td>
@@ -228,7 +228,7 @@ export default function ManageOvertimePage() {
                       <td data-label="이름" title={r.userName || ''}>
                         {r.userName}
                       </td>
-                      <td data-label="날짜">{r.date}</td>
+                      <td data-label="날짜">{formatDisplayDate(r.date)}</td>
                       <td data-label="요일" className="hide-mobile">
                         {getDayName(r.date)}
                       </td>

@@ -1411,7 +1411,7 @@ export default function PurchaseDetailPage() {
               {STATUS[status]?.label || status}
             </span>
             {Number(form.setCount) > 0 && (
-              <span className="purchase-badge" style={{ background: '#e0e7ff', color: '#3730a3' }}>
+              <span className="purchase-badge" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
                 {form.setCount}세트
               </span>
             )}
@@ -1515,6 +1515,7 @@ export default function PurchaseDetailPage() {
           onClick={openPdfModal}
           title="발주서를 PDF 파일로 만들어 사내 자료실에 저장합니다"
         >
+          <Icon name="folder" />
           자료실 저장
         </button>
         <button
@@ -1523,6 +1524,7 @@ export default function PurchaseDetailPage() {
           onClick={handlePdfOutput}
           title="브라우저 인쇄로 발주서를 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
         >
+          <Icon name="doc" />
           PDF 출력
         </button>
       </div>
@@ -1942,7 +1944,15 @@ export default function PurchaseDetailPage() {
               </div>
             )}
             {!isReadOnly && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  marginBottom: 'var(--space-3)',
+                }}
+              >
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>납품 공장</span>
                 {factories.length > 0 && (
                   <Select

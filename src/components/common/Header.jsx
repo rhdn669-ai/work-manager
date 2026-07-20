@@ -31,7 +31,7 @@ export default function Header({ onToggleSidebar }) {
             <Icon name="list" />
           </button>
         )}
-        <div className="header-brand" style={{ marginLeft: 10 }}>
+        <div className="header-brand" style={{ marginLeft: 'var(--space-3)' }}>
           <img src="/icnp-emblem.png" className="header-logo" alt="IOPN" draggable="false" />
         </div>
         <span className="header-version" title={new Date(__APP_BUILD_TIME__).toLocaleString('ko-KR')}>

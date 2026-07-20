@@ -306,6 +306,7 @@ body {
 /* ===== 레이아웃 ===== */
 .app-layout {
   min-height: 100vh;
+  min-height: 100dvh; /* 모바일 동적 뷰포트 — 주소창 변화에도 높이 정확 */
 }
 
 /* 프로젝트 아이콘 선택 그리드 */
@@ -494,7 +495,7 @@ body {
   flex-wrap: wrap;
 }
 .impersonation-banner-text strong {
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 2px;
 }
 .impersonation-banner-btn {
@@ -592,7 +593,7 @@ body {
 }
 .header-wordmark {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--navy);
   line-height: 1;
@@ -618,14 +619,14 @@ body {
 }
 
 .header-version-rel {
-  font-weight: 500;
+  font-weight: 400;
   opacity: 0.75;
   font-size: 11px;
   margin-top: 1px;
 }
 
 .update-toast-rel {
-  font-weight: 500;
+  font-weight: 400;
   opacity: 0.85;
   margin-left: 2px;
 }
@@ -822,7 +823,7 @@ body {
 }
 .user-menu-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-light);
   white-space: nowrap;
   overflow: hidden;
@@ -872,7 +873,7 @@ body {
   border: none;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -1469,7 +1470,7 @@ body {
 }
 .nav-group .nav-group-label {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   color: rgba(226, 234, 247, 0.7);
   white-space: nowrap;
@@ -1568,7 +1569,7 @@ body {
   margin-left: 8px;
   padding: 0 6px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   min-width: 20px;
   height: 20px;
   border-radius: 10px;
@@ -1870,7 +1871,7 @@ body {
 }
 .overtime-summary-value {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
@@ -1946,7 +1947,7 @@ body {
   justify-content: center;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   background: var(--grey-100);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -2148,7 +2149,7 @@ body {
 .ua-timeline-name-col .position-tag {
   font-size: 10px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
   flex-shrink: 0;
 }
 
@@ -2237,7 +2238,7 @@ body {
   display: block;
   font-size: 10px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
   margin-bottom: 2px;
 }
 .ua-timeline-stat strong {
@@ -2399,7 +2400,7 @@ body {
   font-size: 10px;
   color: var(--text-light);
   margin-left: 6px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* 카운트 컬럼 */
@@ -2449,7 +2450,7 @@ body {
 }
 .unassigned-table thead th.day-col.col-hover {
   color: var(--primary-hover);
-  font-weight: 800;
+  font-weight: 700;
   background: var(--primary-soft);
   border-radius: 6px;
 }
@@ -2857,7 +2858,7 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff;
   padding: 3px 8px;
   border-radius: 5px;
@@ -2865,10 +2866,12 @@ body {
   white-space: nowrap;
 }
 .approval-badge-approved {
-  background: #16a34a;
+  background: var(--status-done-bg);
+  color: var(--status-done-fg);
 }
 .approval-badge-rejected {
-  background: #dc2626;
+  background: var(--status-cancel-bg);
+  color: var(--status-cancel-fg);
 }
 .approval-badge-pending {
   background: #64748b;
@@ -3151,7 +3154,7 @@ body {
   margin-left: 22px; /* dot(10px) + gap(10px) 만큼 들여쓰기 */
   font-size: 12px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 .team-cal-ev-dot {
   display: inline-block;
@@ -3409,7 +3412,7 @@ body {
 }
 .outsource-spend-summary-amount {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--accent-press);
   letter-spacing: -0.01em;
 }
@@ -3442,7 +3445,7 @@ body {
 }
 .outsource-pp-total strong {
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--accent-press);
   letter-spacing: -0.01em;
 }
@@ -3492,7 +3495,7 @@ body {
 }
 .outsource-pp-amount {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary-hover);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -3569,7 +3572,7 @@ body {
 }
 .outsource-detail-amount {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary-hover);
   font-variant-numeric: tabular-nums;
 }
@@ -4709,7 +4712,7 @@ table.cards-sm td {
   margin-bottom: 12px;
 }
 .payment-month-select {
-  height: 40px;
+  height: var(--btn-h-md);
   padding: 0 34px 0 12px;
   border: 1px solid var(--border, #e5e7eb);
   border-radius: var(--radius-sm, 10px);
@@ -4812,7 +4815,7 @@ table.cards-sm td {
   /* 대기 = 결제 필요(주의) → 빨강 솔리드로 강조 */
   flex: 0 0 auto;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 4px 11px;
   border-radius: 999px;
   background: var(--danger, #ef4444);
@@ -5600,7 +5603,7 @@ table.cards-sm td {
 }
 .bom-flat-table tr.bom-supplier-header td {
   background: var(--primary-soft);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary-hover);
   font-size: var(--font-md);
   padding: 9px 12px !important;
@@ -5613,13 +5616,13 @@ table.cards-sm td {
 }
 .bom-flat-table tr.bom-supplier-subtotal td:nth-child(3) {
   color: var(--primary-hover);
-  font-weight: 900;
+  font-weight: 700;
   text-align: right;
 }
 
 /* 인쇄 — 구매처 밴드 */
 .bom-print-supplier-band {
-  font-weight: 800;
+  font-weight: 700;
   font-size: 12pt;
   padding: 2mm 3mm;
   margin-bottom: 2mm;
@@ -6783,7 +6786,7 @@ table.cards-sm td {
 }
 .item-group-name-input::placeholder {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 .item-group-name-input:hover {
   background: rgba(0, 0, 0, 0.025);
@@ -6989,7 +6992,7 @@ tr.is-newly-added > td {
 }
 .purchase-filters input,
 .purchase-filters select {
-  height: 38px;
+  height: var(--btn-h-md);
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -7025,7 +7028,7 @@ tr.is-newly-added > td {
   gap: 4px;
   padding: 6px 13px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg-card);
@@ -7215,7 +7218,7 @@ tr.is-newly-added > td {
 
 .dashboard-welcome h2 {
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.022em;
   line-height: 1.12;
@@ -7313,7 +7316,7 @@ tr.is-newly-added > td {
 
 .admin-stat-value {
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   letter-spacing: -0.025em;
   line-height: 1.1;
@@ -7510,7 +7513,7 @@ tr.is-newly-added > td {
 
 .tile-value {
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   letter-spacing: -0.025em;
   line-height: 1.1;
@@ -7521,7 +7524,7 @@ tr.is-newly-added > td {
 .tile-sub {
   font-size: 11px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .tile-arrow {
@@ -7565,7 +7568,7 @@ tr.is-newly-added > td {
   align-items: center;
   justify-content: center;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .dashboard-pending strong {
@@ -7762,6 +7765,7 @@ tr.is-newly-added > td {
 /* ===== 로그인 ===== */
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh; /* 모바일 동적 뷰포트 — iOS 주소창 변화에도 흔들림 없음 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8175,7 +8179,7 @@ tr.is-newly-added > td {
   border-radius: 50%;
   background: var(--primary-soft);
   color: var(--primary);
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -8200,7 +8204,7 @@ tr.is-newly-added > td {
 .member-me-badge {
   flex-shrink: 0;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 7px;
   background: var(--primary);
   color: #fff;
@@ -8356,7 +8360,7 @@ tr.is-newly-added > td {
 }
 .chat-file-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8477,7 +8481,7 @@ tr.is-newly-added > td {
   background: #fb923c;
   color: #fff;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   border-radius: 50%;
   z-index: 1;
 }
@@ -8872,7 +8876,7 @@ tr.is-newly-added > td {
   border: none;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   cursor: pointer;
 }
@@ -8942,7 +8946,7 @@ tr.is-newly-added > td {
 
 /* 채팅 목록 — 읽지 않은 방 강조 */
 .channel-row.has-unread .channel-name {
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
 }
 .channel-row.has-unread::before {
@@ -8981,7 +8985,7 @@ tr.is-newly-added > td {
 .channel-when {
   font-size: 11px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -9017,7 +9021,7 @@ tr.is-newly-added > td {
   height: 20px;
   padding: 0 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff;
   background: var(--danger);
   border-radius: 10px;
@@ -9338,7 +9342,7 @@ tr.is-newly-added > td {
 
 .page-header h2 {
   font-size: 19px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary-hover);
   line-height: 1.3;
   letter-spacing: -0.02em;
@@ -9355,7 +9359,7 @@ tr.is-newly-added > td {
 }
 .main-content .dashboard-welcome h2 {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.022em;
   line-height: 1.1;
   margin: 0;
@@ -9405,7 +9409,7 @@ tr.is-newly-added > td {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .save-status-idle {
@@ -9512,7 +9516,7 @@ tr.is-newly-added > td {
   margin-top: 6px;
   font-size: var(--font-sm);
   color: var(--primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* ===== 프로젝트 목록 ===== */
@@ -9726,7 +9730,7 @@ tr.is-newly-added > td {
 
 .total-summary-item strong {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
@@ -9940,7 +9944,7 @@ tr.is-newly-added > td {
 }
 .site-row-stats-panel .stat-row > span {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
   font-size: 11px;
   flex-shrink: 0;
   width: 30px;
@@ -10062,7 +10066,7 @@ tr.is-newly-added > td {
 
 .site-row-period .period-m {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   margin-top: 2px;
   letter-spacing: -0.02em;
@@ -10198,7 +10202,7 @@ tr.is-newly-added > td {
   border: none;
   text-align: left;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -10213,7 +10217,7 @@ tr.is-newly-added > td {
 }
 .site-row-menu-danger:hover {
   background: var(--danger-tint);
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 /* ===== 셀렉트 드롭다운 (팀원 선택 등) ===== */
@@ -10467,6 +10471,7 @@ tr.is-newly-added > td {
 
 .loading-screen {
   min-height: 100vh;
+  min-height: 100dvh; /* 모바일 동적 뷰포트 */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10673,7 +10678,7 @@ tr.is-newly-added > td {
 }
 .overflow-alert-who {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
 }
 .overflow-alert-when {
@@ -10963,7 +10968,7 @@ tr.is-newly-added > td {
 }
 .revenue-card-foot .foot-field strong {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -11377,7 +11382,7 @@ tr.is-newly-added > td {
 }
 
 .expense-input-desc {
-  font-weight: 500;
+  font-weight: 400;
   min-width: 0;
 }
 .expense-input-amount {
@@ -11815,7 +11820,7 @@ tr.is-newly-added > td {
 
 .home-cal-list-hint {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-muted);
   margin-left: 6px;
 }
@@ -12155,7 +12160,7 @@ tr.is-newly-added > td {
 /* ===== 프로젝트 마감리스트 — 카드 그리드 뷰 ===== */
 .closing-period {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-light);
   margin-left: 6px;
 }
@@ -12228,7 +12233,7 @@ tr.is-newly-added > td {
 .closing-summary-item strong {
   font-size: 15px;
   color: var(--text);
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   line-height: 1.2;
@@ -12357,7 +12362,7 @@ tr.is-newly-added > td {
 }
 .fixed-expense-chip {
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted, #6b7280);
   background: rgba(0, 0, 0, 0.04);
   border: 1px solid var(--border);
@@ -12374,10 +12379,10 @@ tr.is-newly-added > td {
 .fixed-expense-row.fixed-expense-total-row {
   background: var(--bg-card);
   border: 2px solid var(--primary);
-  font-weight: 800;
+  font-weight: 700;
 }
 .fixed-expense-row.fixed-expense-total-row .fixed-expense-name {
-  font-weight: 800;
+  font-weight: 700;
 }
 .fixed-expense-row.fixed-expense-total-row .fixed-expense-amount {
   font-size: 15px;
@@ -12437,7 +12442,7 @@ tr.is-newly-added > td {
 }
 .fixed-expense-section-label {
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-muted, #6b7280);
   letter-spacing: 0.04em;
   margin-bottom: 10px;
@@ -12445,7 +12450,7 @@ tr.is-newly-added > td {
 }
 .form-row-hint {
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-muted);
   margin-left: 4px;
 }
@@ -12547,7 +12552,7 @@ tr.is-newly-added > td {
 .total-closing-item .label {
   font-size: 11px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .total-closing-item strong {
@@ -12674,7 +12679,7 @@ table.closing-matrix thead th {
   background: #fff;
   min-width: 46px;
   max-width: 46px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
@@ -12694,7 +12699,7 @@ table.closing-matrix thead th {
   background: #fff;
   min-width: 96px;
   max-width: 96px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -12723,7 +12728,7 @@ table.closing-matrix thead th {
 }
 .mx-type {
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 5px;
   border-radius: 5px;
   flex-shrink: 0;
@@ -12762,7 +12767,7 @@ table.closing-matrix thead th {
 }
 .mx-auto {
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 5px;
   border-radius: 5px;
   border: none;
@@ -12811,7 +12816,7 @@ table.closing-matrix thead th {
 .mx-dh .mx-dn {
   display: block;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
 }
 .mx-dh .mx-dw {
@@ -12882,7 +12887,7 @@ td.mx-dc.has input {
   background: #d2e0f6;
   border-color: #a6c0e6;
   color: var(--primary);
-  font-weight: 800;
+  font-weight: 700;
 }
 /* 채움 칸 색을 행 분류 색에 맞춤 — 직원=라벤더 / 프리=블루 / 일용=오렌지 / 업체=그린 */
 .closing-matrix .mx-row-employee td.mx-dc.has input {
@@ -12910,7 +12915,7 @@ td.mx-dc.half input {
   background: #ffedd5;
   border-color: #fdba74;
   color: #b45309;
-  font-weight: 800;
+  font-weight: 700;
 }
 td.mx-dc.rest {
   background: repeating-linear-gradient(45deg, #f5f6f8, #f5f6f8 3px, #edeff2 3px, #edeff2 6px);
@@ -12930,7 +12935,7 @@ td.mx-dc.rest input {
   color: #fff;
   border-radius: 5px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.3px;
 }
 .mx-lvtag {
@@ -12938,7 +12943,7 @@ td.mx-dc.rest input {
   top: 1px;
   right: 1px;
   font-size: 7px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--danger);
 }
 td.mx-dc {
@@ -12957,7 +12962,7 @@ td.mx-dc {
   border: 1px solid #86efac;
   border-radius: 5px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .mx-cs {
   width: 100%;
@@ -13078,10 +13083,10 @@ td.mx-dc {
   border: 1px solid #4a6fa5;
 }
 .cstrip-over {
-  background: #16a34a;
+  background: var(--success);
 }
 .cstrip-leave {
-  background: #dc2626;
+  background: var(--danger);
 }
 .cstrip-rest {
   background: repeating-linear-gradient(45deg, #eef0f3, #eef0f3 3px, #e1e5ea 3px, #e1e5ea 6px);
@@ -14156,7 +14161,7 @@ td.mx-dc {
   }
   .reports-page .team-stats-table tbody .team-detail-btn strong {
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: normal;
   }
   /* tfoot 합계 행 */
@@ -14339,7 +14344,7 @@ td.mx-dc {
     background: var(--danger);
     color: #fff;
     font-size: 9px;
-    font-weight: 800;
+    font-weight: 700;
     min-width: 17px;
     height: 17px;
     border-radius: 9px;
@@ -14810,13 +14815,13 @@ td.mx-dc {
       gap: 6px;
     }
     .chat-attach-btn {
-      width: 34px;
-      height: 34px;
+      width: 40px;
+      height: 40px;
       flex-shrink: 0;
     }
     .chat-send-btn {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       flex-shrink: 0;
     }
     .chat-input {
@@ -14915,7 +14920,7 @@ td.mx-dc {
   }
   .closing-summary-item strong {
     font-size: 17px;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.2;
     text-align: right;
   }
@@ -14959,7 +14964,7 @@ td.mx-dc {
 }
 .vehicle-mileage-greet strong {
   color: var(--primary-hover);
-  font-weight: 800;
+  font-weight: 700;
 }
 .vehicle-mileage-info {
   display: grid;
@@ -14989,7 +14994,7 @@ td.mx-dc {
   text-align: right;
 }
 .vmm-value strong {
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -15004,7 +15009,7 @@ td.mx-dc {
   font-weight: 600;
 }
 .vmm-driven strong {
-  font-weight: 800;
+  font-weight: 700;
   font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
@@ -15084,7 +15089,7 @@ td.mx-dc {
 .vehicle-log-summary-item strong {
   font-size: 16px;
   color: var(--text);
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   margin: 0 2px;
 }
@@ -15230,7 +15235,7 @@ td.mx-dc {
   }
   .vlc-name strong {
     font-size: 15px;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--text);
   }
   .vlc-plate {
@@ -15281,7 +15286,7 @@ td.mx-dc {
     font-variant-numeric: tabular-nums;
   }
   .vlc-value.vlc-strong {
-    font-weight: 800;
+    font-weight: 700;
   }
   .vlc-value.vlc-driven {
     color: var(--success);
@@ -15303,7 +15308,7 @@ td.mx-dc {
   }
   .vlc-value.vlc-cost {
     color: var(--accent-press);
-    font-weight: 800;
+    font-weight: 700;
     font-size: 15px;
   }
 }
@@ -15331,7 +15336,7 @@ td.mx-dc {
   background: linear-gradient(135deg, var(--accent-soft), var(--accent-tint));
   color: var(--accent-press);
   border: 1px solid var(--accent);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.4px;
 }
 
@@ -15395,7 +15400,7 @@ td.mx-dc {
 }
 .cs-cell-btn:not(.has-value) .cs-cell-qty {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: #cbd5e1;
 }
 .cs-cell-site {
@@ -15486,7 +15491,7 @@ td.mx-dc {
 }
 .print-form-iopn .print-form-title {
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 700;
   text-align: center;
   letter-spacing: 0.7em;
   padding: 4px 0 14px;
@@ -15542,7 +15547,7 @@ td.mx-dc {
 .iopn-info-table .iopn-amount-row {
   text-align: center;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   background: var(--bg-card);
   letter-spacing: 0.05em;
   padding: 10px 0;
@@ -15830,7 +15835,7 @@ td.mx-dc {
   width: 15%;
 }
 .iopn-total-table .grand {
-  font-weight: 900;
+  font-weight: 700;
   font-size: 13px;
 }
 
@@ -15875,11 +15880,11 @@ td.mx-dc {
   font-variant-numeric: tabular-nums;
 }
 .iopn-pagetotal-table .grand {
-  font-weight: 900;
+  font-weight: 700;
 }
 .iopn-amount-sub {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   color: #444;
   letter-spacing: 0;
 }
@@ -16192,8 +16197,8 @@ td.mx-dc {
   transform: translateX(-50%);
   bottom: 24px;
   z-index: 89;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   background: var(--bg-card);
@@ -16248,10 +16253,6 @@ td.mx-dc {
     transform 0.12s,
     box-shadow 0.12s;
 }
-.pdf-print-fab::before {
-  content: '📄';
-  font-size: 14px;
-}
 /* PDF 출력 + 자료실 저장 FAB 묶음 — 우하단 세로 스택 */
 .pdf-fab-group {
   position: fixed;
@@ -16275,13 +16276,10 @@ td.mx-dc {
   border: 1px solid var(--primary) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
 }
-.pdf-fab-secondary::before {
-  content: '🗂';
-}
 @media (max-width: 480px) {
   .pdf-fab-group {
     right: 16px;
-    bottom: 80px; /* 모바일 BottomNav 위 */
+    bottom: calc(80px + env(safe-area-inset-bottom)); /* 홈인디케이터/BottomNav 겹침 방지 */
   }
 }
 .pdf-print-fab:hover {
@@ -16438,7 +16436,7 @@ td.mx-dc {
   }
   .print-form-iopn .print-form-title {
     font-size: 22pt;
-    font-weight: 900;
+    font-weight: 700;
     text-align: center;
     letter-spacing: 0.7em;
     padding: 1mm 0 4mm;
@@ -16492,7 +16490,7 @@ td.mx-dc {
   .iopn-info-table .iopn-amount-row {
     text-align: center;
     font-size: 13pt;
-    font-weight: 800;
+    font-weight: 700;
     background: #fff !important;
     letter-spacing: 0.05em;
     padding: 3mm 0;
@@ -16777,7 +16775,7 @@ td.mx-dc {
     width: 15%;
   }
   .iopn-total-table .grand {
-    font-weight: 900;
+    font-weight: 700;
     font-size: 11pt;
   }
 
@@ -16869,12 +16867,12 @@ td.mx-dc {
     font-variant-numeric: tabular-nums;
   }
   .iopn-pagetotal-table .grand {
-    font-weight: 900;
+    font-weight: 700;
     font-size: 11pt;
   }
   .iopn-amount-sub {
     font-size: 9pt;
-    font-weight: 500;
+    font-weight: 400;
   }
   .bom-print-cont-title {
     font-weight: 700;
@@ -16898,7 +16896,7 @@ td.mx-dc {
   }
   .print-form-title {
     font-size: 22pt;
-    font-weight: 900;
+    font-weight: 700;
     text-align: center;
     letter-spacing: 0.5em;
     padding: 4mm 0;
@@ -17601,6 +17599,9 @@ td.mx-dc {
   background: rgba(0, 0, 0, 0.07);
   color: var(--text);
 }
+.lib-tree-act--del {
+  color: var(--btn-danger-fg);
+}
 .lib-tree-act--del:hover {
   background: var(--danger-tint);
   color: var(--danger);
@@ -17675,7 +17676,7 @@ td.mx-dc {
   line-height: 1;
 }
 .lib-subfolder-card__name {
-  font-weight: 500;
+  font-weight: 600;
   word-break: break-all;
 }
 .lib-subfolder-card__count {
@@ -17752,7 +17753,7 @@ td.mx-dc {
 .lib-row-name {
   color: var(--text);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
   vertical-align: middle;
 }
 .lib-row--folder .lib-row-name {
@@ -17897,7 +17898,7 @@ a.lib-row-name:hover {
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
   transition:
     background 0.12s,

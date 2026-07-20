@@ -35,7 +35,7 @@ function DdayBadge({ date, os }) {
   return <span className={`badge badge-sm ${cls}`}>{d < 0 ? `D+${-d}` : d === 0 ? 'D-Day' : `D-${d}`}</span>;
 }
 function Prog({ val, hasIssue }) {
-  const fill = hasIssue ? '#fc8181' : val === 100 ? '#48bb78' : '#667eea';
+  const fill = hasIssue ? 'var(--danger)' : val === 100 ? 'var(--success)' : 'var(--primary)';
   return (
     <div className="prog-cell">
       <div className="prog-track">
@@ -299,7 +299,7 @@ export default function ProductionPage() {
                     <div
                       key={p.id}
                       className="card pcard"
-                      style={{ borderLeft: `4px solid ${d1.length || d2.length ? '#c53030' : nc}` }}
+                      style={{ borderLeft: `4px solid ${d1.length || d2.length ? 'var(--danger)' : nc}` }}
                       onClick={() => openModal(p.id, 'info')}
                     >
                       <div className="pcard-top">
@@ -313,8 +313,18 @@ export default function ProductionPage() {
                       </div>
                       {(d1.length > 0 || d2.length > 0) && (
                         <div className="defect-tags" style={{ marginBottom: 8 }}>
-                          {d1.length > 0 && <span className="dtag d1">⚠ 1차 {d1.join(', ')}</span>}
-                          {d2.length > 0 && <span className="dtag d2">⚠ 2차 {d2.join(', ')}</span>}
+                          {d1.length > 0 && (
+                            <span className="dtag d1">
+                              <Icon name="alert" className="btn-ic" />
+                              1차 {d1.join(', ')}
+                            </span>
+                          )}
+                          {d2.length > 0 && (
+                            <span className="dtag d2">
+                              <Icon name="alert" className="btn-ic" />
+                              2차 {d2.join(', ')}
+                            </span>
+                          )}
                         </div>
                       )}
                       <Prog val={p.progress} hasIssue={Object.values(p.부품상태 || {}).some((s) => s === '문제')} />
@@ -393,7 +403,7 @@ export default function ProductionPage() {
                           미조치 {s.open}
                         </span>
                       )}
-                      <span style={{ marginLeft: 'auto', fontWeight: 800, color: rateColor }}>불량률 {s.rate}%</span>
+                      <span style={{ marginLeft: 'auto', fontWeight: 700, color: rateColor }}>불량률 {s.rate}%</span>
                     </div>
                     <div className="prog-track" style={{ height: 8 }}>
                       <div
@@ -450,13 +460,13 @@ export default function ProductionPage() {
           </div>
           <div className="card" style={{ padding: 20 }}>
             <div style={{ fontSize: 'var(--font-lg)', fontWeight: 600, marginBottom: 14 }}>종합상태 분포</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {OVERALL_ORDER.map((s) => {
                 const n = stats.byStatus[s] || 0;
                 const pct = stats.total ? Math.round((n / stats.total) * 100) : 0;
                 const c = OVERALL_CFG[s];
                 return (
-                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                     <div style={{ width: 68, fontSize: 'var(--font-base)', color: 'var(--text-light)' }}>{s}</div>
                     <div className="prog-track" style={{ flex: 1, height: 10 }}>
                       <div style={{ width: `${pct}%`, height: '100%', background: c.fg, borderRadius: 10 }} />
@@ -493,9 +503,17 @@ export default function ProductionPage() {
 
 function SummaryCard({ label, value, color }) {
   return (
-    <div className="card" style={{ padding: 18 }}>
+    <div className="card" style={{ padding: 'var(--space-5)' }}>
       <div style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+      <div
+        style={{
+          fontSize: 'var(--font-2xl)',
+          fontWeight: 700,
+          color,
+          marginTop: 'var(--space-1)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {value}
       </div>
     </div>

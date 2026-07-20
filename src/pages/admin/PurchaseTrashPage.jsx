@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getTrashItems, restoreTrashItem, purgeTrashItem } from '../../services/trashService';
 import { useDialog } from '../../components/common/useDialog';
+import { useAuth } from '../../contexts/useAuth';
 import Skeleton from '../../components/common/Skeleton';
 
 const TYPE_LABEL = {
@@ -25,6 +26,7 @@ function fmtDateTime(ts) {
 
 export default function PurchaseTrashPage() {
   const { confirm, toast } = useDialog();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const typeFilter = searchParams.get('type'); // 'purchase' | 'bomProject' | null
@@ -68,6 +70,7 @@ export default function PurchaseTrashPage() {
   }
 
   async function handlePurge(t) {
+    if (!isAdmin) return;
     if (!(await confirm(`"${t.title}"을(를) 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`))) return;
     setBusyId(t.id);
     try {
@@ -137,9 +140,15 @@ export default function PurchaseTrashPage() {
                     >
                       복원
                     </button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handlePurge(t)} disabled={busyId === t.id}>
-                      영구삭제
-                    </button>
+                    {isAdmin && (
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handlePurge(t)}
+                        disabled={busyId === t.id}
+                      >
+                        영구삭제
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

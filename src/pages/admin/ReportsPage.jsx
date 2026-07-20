@@ -510,7 +510,7 @@ export function EmployeeDetailModal({
             ×
           </button>
         </div>
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {tab === 'overtime' ? (
             overtimesSorted.length === 0 ? (
               <p className="text-muted text-center">등록된 잔업이 없습니다.</p>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
 import HintSettingModal from './HintSettingModal';
+import Icon from './Icon';
 
 const DISMISS_KEY = 'hint-reminder-dismissed-until';
 const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000; // 24시간
@@ -33,7 +34,7 @@ export default function HintReminderBanner() {
     <>
       <div className="hint-reminder-banner" role="status">
         <span className="hint-reminder-icon" aria-hidden="true">
-          🔐
+          <Icon name="lock" />
         </span>
         <span className="hint-reminder-text">
           비밀번호 분실 시 직접 재설정할 수 있도록 <strong>힌트를 설정</strong>해주세요.

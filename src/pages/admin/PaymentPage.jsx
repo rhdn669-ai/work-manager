@@ -365,15 +365,15 @@ export default function PaymentPage() {
             </option>
           ))}
         </select>
-        <div className="lib-search-inline" style={{ flex: '1 1 240px', maxWidth: 360 }}>
-          <input
-            type="search"
-            placeholder="발주 제목 · 업체 · 프로젝트 검색"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="검색"
-          />
-        </div>
+        <input
+          className="purchase-filter-search"
+          type="search"
+          placeholder="발주 제목 · 업체 · 프로젝트 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="검색"
+          style={{ flex: '1 1 240px', maxWidth: 360 }}
+        />
       </div>
 
       {loading ? (
@@ -491,7 +491,7 @@ export default function PaymentPage() {
                                     <strong
                                       className={`payment-due${!r.paid && r.dueDate < todayStr ? ' is-overdue' : ''}`}
                                     >
-                                      {r.dueDate}
+                                      {fmtDate(r.dueDate)}
                                     </strong>
                                   ) : (
                                     <span className="text-muted">-</span>

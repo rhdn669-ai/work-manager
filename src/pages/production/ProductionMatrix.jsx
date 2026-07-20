@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import Icon from '../../components/common/Icon';
+import { useDialog } from '../../components/common/useDialog';
 import { updatePanel } from '../../services/productionService';
 import {
   BUPMOK,
@@ -26,7 +27,14 @@ const mmdd = (d) => (d ? String(d).slice(5) : '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) {
-  const setField = (p, patch) => canEdit && updatePanel(p.id, patch);
+  const { toast } = useDialog();
+  const setField = (p, patch) => {
+    if (!canEdit) return;
+    updatePanel(p.id, patch).catch((e) => {
+      console.error(e);
+      toast('저장에 실패했습니다. 다시 시도해 주세요.', 'error', 0);
+    });
+  };
 
   // BOX 자재입고 항목 토글 → 박스입고 + 체크일자 갱신 + 박스 상태 자동 산출
   const toggleBoxMat = (p, box, k) => {
@@ -245,19 +253,19 @@ function MpGroup({ p, st, sc, canEdit, onToggle }) {
             key={k}
             className="mx-cell mx-boxmat"
             style={{
-              background: s === '완료' ? '#e7f4ec' : s === '문제' ? '#fdebec' : undefined,
+              background: s === '완료' ? 'var(--status-done-bg)' : s === '문제' ? 'var(--status-cancel-bg)' : undefined,
               color: c.dot,
               cursor: canEdit ? 'pointer' : 'default',
             }}
             onClick={() => onToggle(k)}
             title={`${k} — ${s === '문제' ? '불량' : s}`}
           >
-            {s === '완료' ? '○' : s === '문제' ? '✕' : ''}
+            {s === '완료' ? <Icon name="check" /> : s === '문제' ? <Icon name="close" /> : ''}
           </td>
         );
       })}
       <td className="mx-cell mx-boxstate" style={{ background: sc.bg, color: sc.fg }} title={st}>
-        {st === '완료' ? '○' : st === '문제' ? '✕' : ''}
+        {st === '완료' ? <Icon name="check" /> : st === '문제' ? <Icon name="close" /> : ''}
       </td>
     </>
   );
@@ -276,24 +284,32 @@ function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit,
           <td
             key={k}
             className={`mx-cell mx-boxmat mx-dcell${GRP_START.has(k) ? ' mx-grp-start' : ''}`}
-            style={{ background: on ? '#e7f4ec' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
+            style={{ background: on ? 'var(--status-done-bg)' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onMat(k)}
             title={k}
           >
-            {on ? mmdd(matDate[k]) || '○' : ''}
+            {on ? mmdd(matDate[k]) || <Icon name="check" /> : ''}
           </td>
         );
       })}
       <td
         className="mx-cell mx-boxdefect mx-dcell mx-grp-start"
-        style={{ cursor: 'pointer', color: '#d6303f', background: defect ? '#fdebec' : undefined }}
+        style={{
+          cursor: 'pointer',
+          color: 'var(--status-cancel-fg)',
+          background: defect ? 'var(--status-cancel-bg)' : undefined,
+        }}
         onClick={onDefect}
         title="불량 기록/사진 (클릭: 상세)"
       >
-        {defect ? mmdd(defectDate) || '✕' : ''}
+        {defect ? mmdd(defectDate) || <Icon name="close" /> : ''}
       </td>
       <td className="mx-cell mx-boxstate mx-dcell" style={{ background: sc.bg, color: sc.fg }} title={st}>
-        {st === '완료' ? mmdd(doneDate) || '○' : st === '문제' ? mmdd(defectDate) || '✕' : ''}
+        {st === '완료'
+          ? mmdd(doneDate) || <Icon name="check" />
+          : st === '문제'
+            ? mmdd(defectDate) || <Icon name="close" />
+            : ''}
       </td>
     </>
   );

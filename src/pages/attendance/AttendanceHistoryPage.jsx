@@ -7,7 +7,14 @@ import {
   OVERTIME_MULTIPLIER,
 } from '../../services/attendanceService';
 import { getAllSites } from '../../services/siteService';
-import { getMonthStart, getMonthEnd, formatMinutes, getDayName, getToday } from '../../utils/dateUtils';
+import {
+  getMonthStart,
+  getMonthEnd,
+  formatMinutes,
+  getDayName,
+  getToday,
+  formatDisplayDate,
+} from '../../utils/dateUtils';
 import AttendanceTabs from '../../components/common/AttendanceTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
@@ -174,7 +181,7 @@ export default function AttendanceHistoryPage() {
                   {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                        {r.date} ({getDayName(r.date)})
+                        {formatDisplayDate(r.date)} ({getDayName(r.date)})
                       </div>
                       <div className="form-row" style={{ gap: 8 }}>
                         <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
@@ -244,7 +251,7 @@ export default function AttendanceHistoryPage() {
                             flexWrap: 'wrap',
                           }}
                         >
-                          <span style={{ whiteSpace: 'nowrap' }}>{r.date}</span>
+                          <span style={{ whiteSpace: 'nowrap' }}>{formatDisplayDate(r.date)}</span>
                           <span
                             style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
                           >

@@ -853,7 +853,7 @@ export default function BomDetailPage() {
       {rows.length === 0 ? (
         <p className="purchase-empty screen-only">
           {bomItems.length === 0
-            ? '품목이 없습니다 — 우측 상단 "+ 품목 불러오기"로 추가하세요.'
+            ? '품목이 없습니다 — 우측 상단 "품목 불러오기"로 추가하세요.'
             : '검색 조건에 맞는 품목이 없습니다.'}
         </p>
       ) : (
