@@ -1068,9 +1068,9 @@
   z-index: 3;
 }
 .mx-rot {
-  writing-mode: vertical-lr;
-  height: 74px;
-  padding: 4px 2px;
+  white-space: nowrap;
+  font-size: 10px;
+  padding: 5px 6px;
 }
 /* 좌측 고정 컬럼 */
 .mx-sticky {
