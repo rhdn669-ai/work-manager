@@ -845,3 +845,29 @@
   font-weight: 700;
   opacity: 0.75;
 }
+
+/* 조치 사진 촬영 버튼 — 완료 행에서 확실히 보이게 (초록 채움) */
+.defect-after-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #15803d;
+  color: #fff;
+  border: 0;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.defect-after-btn:hover {
+  background: #116a33;
+}
+.defect-after-btn .btn-ic {
+  width: 14px;
+  height: 14px;
+}
