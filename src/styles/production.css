@@ -1094,7 +1094,8 @@
 }
 .mx-c2 {
   left: 144px;
-  min-width: 50px;
+  min-width: 64px;
+  width: 64px;
   box-shadow: 2px 0 0 var(--border, #e5e8eb);
 }
 .mx-no {
@@ -1109,19 +1110,24 @@
   font-weight: 800;
   cursor: pointer;
 }
+.mx-status,
+.mx-jaip,
+.mx-dir,
 .mx-jaje {
-  font-weight: 700;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
 }
 .mx-status,
 .mx-jaip {
-  width: 46px;
-  min-width: 46px;
-  max-width: 46px;
   font-weight: 800;
   font-size: 15px;
 }
 .mx-jaip {
   color: #276749;
+}
+.mx-jaje {
+  font-weight: 700;
 }
 .mx-prog {
   font-weight: 700;

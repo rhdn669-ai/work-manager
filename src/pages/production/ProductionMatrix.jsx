@@ -129,7 +129,7 @@ export default function ProductionMatrix({ panels, canEdit, checkerName, onOpen,
                 <td className="mx-sticky mx-c2 mx-hogi" onClick={() => onOpen(p.id)}>
                   {(p.호기 || '').slice(-3)}
                 </td>
-                <td className="mx-cell">
+                <td className="mx-cell mx-dir">
                   {p.정역 ? <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span> : ''}
                 </td>
                 <td className="mx-cell mx-jaje">{p.자재 || ''}</td>
