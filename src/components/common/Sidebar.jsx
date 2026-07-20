@@ -67,6 +67,7 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive
     { key: 'admin-purchase', to: '/admin/purchase', label: '구매', icon: 'cart', show: isAdmin, end: false },
     { key: 'admin-payment', to: '/admin/payment', label: '결제', icon: 'card', show: isAdmin, end: false },
     { key: 'admin-mail', to: '/admin/mail', label: '메일 발송', icon: 'mail', show: isAdmin, end: false },
+    { key: 'production', to: '/production', label: '생산현황', icon: 'grid', show: true, end: false },
     { key: 'admin-quality', to: '/admin/quality', label: '품질', icon: 'doc', show: isAdmin, end: false },
     { key: 'admin-trash', to: '/admin/trash', label: '휴지통', icon: 'trash', show: isAdmin, end: false },
   ];

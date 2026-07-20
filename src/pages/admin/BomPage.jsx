@@ -122,7 +122,6 @@ export default function BomPage() {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 프로젝트별 품목 수·개별수량 합·예상 총액 — BomDetailPage와 동일 기준(마스터 표준단가 우선)

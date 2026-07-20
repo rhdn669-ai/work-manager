@@ -1,0 +1,574 @@
+import { useEffect, useMemo, useState } from 'react';
+import Icon from '../../components/common/Icon';
+import TrashModal from '../../components/common/TrashModal';
+import { useAuth } from '../../contexts/useAuth';
+import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
+import ProductionPanelModal from './ProductionPanelModal';
+import ProductionImportModal from './ProductionImportModal';
+import {
+  BUPMOK,
+  JAIP,
+  COMPANIES,
+  TASK_CFG,
+  OVERALL_CFG,
+  OVERALL_ORDER,
+  getDday,
+  emptyPanel,
+  getProjGroup,
+  deriveMpState,
+  napgiColorOf,
+  projColorOf,
+  unresolvedDefectParts,
+} from '../../domain/production';
+import '../../styles/production.css';
+
+/* ── 공용 조각 (legacy 이식) ── */
+function DdayBadge({ date, os }) {
+  if (os === '출고숨김') return <span className="badge badge-sm dd-hide">숨김</span>;
+  if (os === '출고완료') return <span className="badge badge-sm dd-done">출고</span>;
+  if (!date) return <span className="dd-none">-</span>;
+  const d = getDday(date);
+  const cls = d < 0 ? 'dd-over' : d <= 3 ? 'dd-urgent' : d <= 7 ? 'dd-soon' : 'dd-ok';
+  return <span className={`badge badge-sm ${cls}`}>{d < 0 ? `D+${-d}` : d === 0 ? 'D-Day' : `D-${d}`}</span>;
+}
+function Prog({ val, hasIssue }) {
+  const fill = hasIssue ? '#fc8181' : val === 100 ? '#48bb78' : '#667eea';
+  return (
+    <div className="prog-cell">
+      <div className="prog-track">
+        <div className="prog-fill" style={{ width: `${val}%`, background: fill }} />
+      </div>
+      <b style={{ color: fill }}>{val}%</b>
+    </div>
+  );
+}
+function Dots({ panel }) {
+  const states = [...BUPMOK.map((b) => (panel.부품상태 || {})[b] || '대기'), deriveMpState(panel.mp하위상태 || {})];
+  return (
+    <div className="parts-mini">
+      {states.map((s, i) => (
+        <i key={i} title={i < 6 ? `${BUPMOK[i]}: ${s}` : `MP: ${s}`} style={{ background: TASK_CFG[s].dot }} />
+      ))}
+    </div>
+  );
+}
+function JaipDots({ panel }) {
+  const st = panel.자재입고상태 || {};
+  const n = JAIP.filter((k) => st[k]).length;
+  return (
+    <div className="jaip-dots">
+      {JAIP.map((k) => (
+        <i key={k} title={k} className={st[k] ? 'on' : ''} />
+      ))}
+      <b className={n === JAIP.length ? 'full' : ''}>
+        {n}/{JAIP.length}
+      </b>
+    </div>
+  );
+}
+function OverallBadge({ status }) {
+  const c = OVERALL_CFG[status] || OVERALL_CFG['대기중'];
+  return (
+    <span className="badge" style={{ background: c.bg, color: c.fg }}>
+      <span className="dot" style={{ background: c.fg }} />
+      {status}
+    </span>
+  );
+}
+const mmdd = (d) => (d ? String(d).slice(5) : '-');
+
+/* ── 불량현황 집계 (legacy collectWorkerStats 이식) ── */
+function collectWorkerStats(panels) {
+  const stats = {};
+  panels.forEach((p) => {
+    const insp = p.검수 || {};
+    const workers = insp.공정작업자 || {};
+    BUPMOK.forEach((b) => {
+      const worker = workers[b];
+      if (!worker) return;
+      if (!stats[worker]) stats[worker] = { 담당: 0, 불량건: [] };
+      stats[worker].담당++;
+      [1, 2].forEach((n) => {
+        const sec = insp[`차${n}`]?.공정비고?.[b] || { 항목: [] };
+        (sec.항목 || []).forEach((item) => {
+          if (!item.내용) return;
+          stats[worker].불량건.push({
+            proj: p.프로젝트,
+            호기: p.호기,
+            공정: b,
+            차수: `${n}차`,
+            내용: item.내용,
+            완료: !!item.완료,
+          });
+        });
+      });
+    });
+  });
+  return stats;
+}
+
+const VIEWS = ['현황', '불량현황', '통계'];
+
+export default function ProductionPage() {
+  const { userProfile, isAdmin } = useAuth();
+  const [panels, setPanels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('현황');
+  const [q, setQ] = useState('');
+  const [company, setCompany] = useState('전체');
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [hideShipped, setHideShipped] = useState(true);
+  const [openId, setOpenId] = useState(null);
+  const [showImport, setShowImport] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribePanels((rows) => {
+      setPanels(rows);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  const allNapgi = useMemo(() => [...new Set(panels.map((p) => p.납기).filter(Boolean))], [panels]);
+  const allGroups = useMemo(() => [...new Set(panels.map((p) => getProjGroup(p.프로젝트)).filter(Boolean))], [panels]);
+
+  const filtered = useMemo(() => {
+    return panels.filter((p) => {
+      const shipped = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
+      if (company !== '전체' && (p.회사 || '') !== company) return false;
+      if (hideShipped && shipped) return false;
+      if (urgentOnly && (getDday(p.납기) > 7 || shipped)) return false;
+      if (q) {
+        const hay = `${p.프로젝트} ${p.호기} ${p.자재} ${p.기구제작} ${p.비고 || ''} ${p.정역}`.toLowerCase();
+        if (!hay.includes(q.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }, [panels, q, company, urgentOnly, hideShipped]);
+
+  const openPanel = openId ? panels.find((p) => p.id === openId) : null;
+
+  async function handleAdd() {
+    const row = await addPanel(emptyPanel({ 프로젝트: '새 프로젝트', 회사: company !== '전체' ? company : '' }));
+    if (row?.id) setOpenId(row.id);
+  }
+  async function handleRemove(e, p) {
+    e.stopPropagation();
+    await trashPanel(p, userProfile?.name || '');
+    if (openId === p.id) setOpenId(null);
+  }
+
+  /* ── 통계 파생 ── */
+  const stats = useMemo(() => {
+    const target = company === '전체' ? panels : panels.filter((p) => (p.회사 || '') === company);
+    const byStatus = Object.fromEntries(OVERALL_ORDER.map((s) => [s, 0]));
+    let urgent = 0;
+    for (const p of target) {
+      byStatus[p.overallStatus] = (byStatus[p.overallStatus] || 0) + 1;
+      const d = getDday(p.납기);
+      if (d <= 3 && p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김') urgent++;
+    }
+    const active = target.filter((p) => p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김').length;
+    return { byStatus, urgent, active, total: target.length };
+  }, [panels, company]);
+
+  const workerStats = useMemo(() => {
+    const target = company === '전체' ? panels : panels.filter((p) => (p.회사 || '') === company);
+    return Object.entries(collectWorkerStats(target))
+      .filter(([, v]) => v.담당 > 0)
+      .map(([name, v]) => {
+        const total = v.불량건.length;
+        const open = v.불량건.filter((d) => !d.완료).length;
+        const rate = v.담당 > 0 ? Math.round((total / v.담당) * 100) : 0;
+        return { name, 담당: v.담당, total, open, rate, items: v.불량건 };
+      })
+      .sort((a, b) => b.rate - a.rate || b.open - a.open);
+  }, [panels, company]);
+  const maxRate = Math.max(...workerStats.map((s) => s.rate), 1);
+
+  return (
+    <div>
+      <div className="page-header">
+        <h2>생산현황</h2>
+        <div className="page-actions" style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+          {isAdmin && (
+            <>
+              <button className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+                <Icon name="trash" className="btn-ic" />
+                휴지통
+              </button>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowImport(true)}>
+                <Icon name="image" className="btn-ic" />
+                사진 가져오기
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={handleAdd}>
+                <Icon name="plus" className="btn-ic" />
+                판넬 추가
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 회사 탭 — 메티스 · 디에이치 */}
+      <div className="company-tabs">
+        {['전체', ...COMPANIES].map((c) => (
+          <button key={c} className={`company-tab ${company === c ? 'on' : ''}`} onClick={() => setCompany(c)}>
+            {c}
+            <b>{c === '전체' ? panels.length : panels.filter((p) => (p.회사 || '') === c).length}</b>
+          </button>
+        ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
+          {VIEWS.map((v) => (
+            <button key={v} className={`pr-chip ${view === v ? 'on' : ''}`} onClick={() => setView(v)}>
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === '현황' && (
+        <>
+          <div className="board-toolbar">
+            <div className="search-box">
+              <Icon name="search" />
+              <input placeholder="프로젝트·호기·자재·납입처 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            <button className={`pr-chip ${urgentOnly ? 'on' : ''}`} onClick={() => setUrgentOnly((v) => !v)}>
+              긴급 D-7
+            </button>
+            <button className={`pr-chip ${hideShipped ? 'on' : ''}`} onClick={() => setHideShipped((v) => !v)}>
+              출고 숨김
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="empty">불러오는 중…</div>
+          ) : filtered.length === 0 ? (
+            <div className="empty">
+              <Icon name="list" style={{ width: 40, height: 40 }} />
+              <div>표시할 판넬이 없습니다</div>
+            </div>
+          ) : (
+            <>
+              <div className="board-table-wrap card" style={{ padding: 4 }}>
+                <table className="board-table board-table-dense">
+                  <thead>
+                    <tr>
+                      <th className="col-stripe"></th>
+                      <th>#</th>
+                      <th>프로젝트</th>
+                      <th>납입처</th>
+                      <th>정역</th>
+                      <th>제작</th>
+                      <th>호기</th>
+                      <th>자재구분</th>
+                      <th>자재입고예정</th>
+                      <th>입고현황</th>
+                      <th>납기</th>
+                      <th>D-납기</th>
+                      <th>턴온</th>
+                      <th>D-턴온</th>
+                      <th style={{ minWidth: 100 }}>진행률</th>
+                      <th>공정</th>
+                      <th>상태</th>
+                      {isAdmin && <th className="col-action">작업</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((p, idx) => {
+                      const nc = napgiColorOf(allNapgi, p.납기 || '');
+                      const pc = projColorOf(allGroups, getProjGroup(p.프로젝트));
+                      const hasIssue = Object.values(p.부품상태 || {}).some((s) => s === '문제');
+                      const dday = getDday(p.납기);
+                      const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
+                      const isOD = dday < 0 && !isDone;
+                      const isUrg = dday >= 0 && dday <= 3 && !isDone;
+                      const d1 = unresolvedDefectParts(p, 1);
+                      const d2 = unresolvedDefectParts(p, 2);
+                      const hasDefect = d1.length > 0 || d2.length > 0;
+                      const rowBg = hasDefect ? '#fff0f0' : isOD ? '#fff5f5' : isUrg ? '#fffaf0' : undefined;
+                      return (
+                        <tr key={p.id} onClick={() => setOpenId(p.id)} style={{ background: rowBg, cursor: 'pointer' }}>
+                          <td className="col-stripe">
+                            <div className="stripe" style={{ background: hasDefect ? '#c53030' : nc }} />
+                          </td>
+                          <td className="cell-no">{idx + 1}</td>
+                          <td>
+                            <div className="proj-name">{p.프로젝트 || '—'}</div>
+                            <div className="proj-group" style={{ color: pc }}>
+                              {getProjGroup(p.프로젝트)}
+                            </div>
+                            {hasDefect && (
+                              <div className="defect-tags">
+                                {d1.length > 0 && <span className="dtag d1">⚠ 1차 {d1.join(', ')}</span>}
+                                {d2.length > 0 && <span className="dtag d2">⚠ 2차 {d2.join(', ')}</span>}
+                              </div>
+                            )}
+                          </td>
+                          <td className="cell-sub" title={p.비고 || ''}>
+                            {p.비고 || ''}
+                          </td>
+                          <td>
+                            {p.정역 ? (
+                              <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span>
+                            ) : (
+                              ''
+                            )}
+                          </td>
+                          <td className="cell-sub">{p.기구제작 || ''}</td>
+                          <td className="cell-hogi" title={p.호기}>
+                            {(p.호기 || '').slice(-3)}
+                          </td>
+                          <td className="cell-jaje">{p.자재 || ''}</td>
+                          <td>
+                            <span className="cell-date" style={{ color: nc }}>
+                              {mmdd(p.자재입고)}
+                            </span>
+                          </td>
+                          <td>
+                            <JaipDots panel={p} />
+                          </td>
+                          <td>
+                            <span className="cell-date" style={{ color: nc }}>
+                              {mmdd(p.납기)}
+                            </span>
+                          </td>
+                          <td>
+                            <DdayBadge date={p.납기} os={p.overallStatus} />
+                          </td>
+                          <td>
+                            <span className="cell-date" style={{ color: nc }}>
+                              {mmdd(p.턴온)}
+                            </span>
+                          </td>
+                          <td>
+                            <DdayBadge date={p.턴온} os={p.overallStatus} />
+                          </td>
+                          <td>
+                            <Prog val={p.progress} hasIssue={hasIssue} />
+                          </td>
+                          <td>
+                            <Dots panel={p} />
+                          </td>
+                          <td>
+                            <OverallBadge status={p.overallStatus} />
+                          </td>
+                          {isAdmin && (
+                            <td className="col-action">
+                              <button className="btn btn-sm btn-danger" onClick={(e) => handleRemove(e, p)}>
+                                <Icon name="trash" className="btn-ic" />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 모바일 카드 */}
+              <div className="board-cards">
+                {filtered.map((p) => {
+                  const nc = napgiColorOf(allNapgi, p.납기 || '');
+                  const d1 = unresolvedDefectParts(p, 1);
+                  const d2 = unresolvedDefectParts(p, 2);
+                  return (
+                    <div
+                      key={p.id}
+                      className="card pcard"
+                      style={{ borderLeft: `4px solid ${d1.length || d2.length ? '#c53030' : nc}` }}
+                      onClick={() => setOpenId(p.id)}
+                    >
+                      <div className="pcard-top">
+                        <div className="grow">
+                          <div className="proj-name">{p.프로젝트 || '—'}</div>
+                          <div className="proj-sub">
+                            {p.호기 || '호기 미정'} · {p.정역 || '-'} · {p.기구제작 || '-'} · {p.자재 || '-'}
+                          </div>
+                        </div>
+                        <OverallBadge status={p.overallStatus} />
+                      </div>
+                      {(d1.length > 0 || d2.length > 0) && (
+                        <div className="defect-tags" style={{ marginBottom: 8 }}>
+                          {d1.length > 0 && <span className="dtag d1">⚠ 1차 {d1.join(', ')}</span>}
+                          {d2.length > 0 && <span className="dtag d2">⚠ 2차 {d2.join(', ')}</span>}
+                        </div>
+                      )}
+                      <Prog val={p.progress} hasIssue={Object.values(p.부품상태 || {}).some((s) => s === '문제')} />
+                      <div className="pcard-parts">
+                        <Dots panel={p} />
+                        <JaipDots panel={p} />
+                      </div>
+                      <div className="pcard-foot">
+                        <span>
+                          납기 <b style={{ color: nc }}>{mmdd(p.납기)}</b>
+                        </span>
+                        <DdayBadge date={p.납기} os={p.overallStatus} />
+                        {isAdmin && (
+                          <button className="btn btn-sm btn-danger" onClick={(e) => handleRemove(e, p)}>
+                            <Icon name="trash" className="btn-ic" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {view === '불량현황' && (
+        <div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))',
+              gap: 12,
+              marginBottom: 20,
+            }}
+          >
+            <SummaryCard label="작업자" value={workerStats.length} color="var(--primary)" />
+            <SummaryCard label="총 불량" value={workerStats.reduce((a, s) => a + s.total, 0)} color="var(--warning)" />
+            <SummaryCard label="미조치" value={workerStats.reduce((a, s) => a + s.open, 0)} color="var(--danger)" />
+          </div>
+          {workerStats.length === 0 ? (
+            <div className="empty">
+              <Icon name="alert" style={{ width: 40, height: 40 }} />
+              <div>작업자가 배정된 공정이 없습니다</div>
+              <div style={{ fontSize: 'var(--font-sm)' }}>판넬 상세에서 부품별 작업자를 입력하면 집계됩니다</div>
+            </div>
+          ) : (
+            workerStats.map((s) => {
+              const rateColor =
+                s.rate >= 50
+                  ? 'var(--danger)'
+                  : s.rate >= 25
+                    ? 'var(--warning)'
+                    : s.rate > 0
+                      ? '#975a16'
+                      : 'var(--success)';
+              return (
+                <div className="card" key={s.name} style={{ marginBottom: 12, overflow: 'hidden' }}>
+                  <div
+                    style={{ padding: '14px 16px', borderBottom: s.items.length ? '1px solid var(--border)' : 'none' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <b>{s.name}</b>
+                      <span
+                        className="badge badge-sm"
+                        style={{ background: 'var(--grey-100)', color: 'var(--text-light)' }}
+                      >
+                        담당 {s.담당}건
+                      </span>
+                      {s.open > 0 && (
+                        <span
+                          className="badge badge-sm"
+                          style={{ background: 'var(--status-cancel-bg)', color: 'var(--status-cancel-fg)' }}
+                        >
+                          미조치 {s.open}
+                        </span>
+                      )}
+                      <span style={{ marginLeft: 'auto', fontWeight: 800, color: rateColor }}>불량률 {s.rate}%</span>
+                    </div>
+                    <div className="prog-track" style={{ height: 8 }}>
+                      <div
+                        style={{
+                          width: `${Math.max((s.rate / maxRate) * 100, 2)}%`,
+                          height: '100%',
+                          background: rateColor,
+                          borderRadius: 10,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {s.items.length > 0 && (
+                    <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {s.items.map((d, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span
+                            className="badge badge-sm"
+                            style={{
+                              background: d.완료 ? 'var(--status-done-bg)' : 'var(--status-cancel-bg)',
+                              color: d.완료 ? 'var(--status-done-fg)' : 'var(--status-cancel-fg)',
+                            }}
+                          >
+                            {d.완료 ? '조치' : '미조치'}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
+                            {d.proj} · {d.호기} · {d.공정} · {d.차수}
+                          </span>
+                          <span style={{ flex: 1, minWidth: 120 }}>{d.내용}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {view === '통계' && (
+        <div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))',
+              gap: 12,
+              marginBottom: 20,
+            }}
+          >
+            <SummaryCard label="전체 판넬" value={stats.total} color="var(--primary)" />
+            <SummaryCard label="진행 중" value={stats.active} color="var(--accent)" />
+            <SummaryCard label="긴급(D-3)" value={stats.urgent} color="var(--danger)" />
+          </div>
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 'var(--font-lg)', fontWeight: 600, marginBottom: 14 }}>종합상태 분포</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {OVERALL_ORDER.map((s) => {
+                const n = stats.byStatus[s] || 0;
+                const pct = stats.total ? Math.round((n / stats.total) * 100) : 0;
+                const c = OVERALL_CFG[s];
+                return (
+                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 68, fontSize: 'var(--font-base)', color: 'var(--text-light)' }}>{s}</div>
+                    <div className="prog-track" style={{ flex: 1, height: 10 }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: c.fg, borderRadius: 10 }} />
+                    </div>
+                    <b style={{ width: 28, textAlign: 'right' }}>{n}</b>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openPanel && <ProductionPanelModal panel={openPanel} canEdit={isAdmin} onClose={() => setOpenId(null)} />}
+      {showImport && <ProductionImportModal company={company} onClose={() => setShowImport(false)} />}
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        types={['productionPanels']}
+        title="생산현황 휴지통"
+      />
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, color }) {
+  return (
+    <div className="card" style={{ padding: 18 }}>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </div>
+    </div>
+  );
+}

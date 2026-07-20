@@ -31,6 +31,7 @@ const TRASH_TYPE_LABEL = {
   leaves: { label: '연차', cls: 'partial' },
   tasks: { label: '업무', cls: 'ordered' },
   personalEvents: { label: '개인일정', cls: 'received' },
+  productionPanels: { label: '생산판넬', cls: 'ordered' },
 };
 
 function trashTypeInfo(t) {

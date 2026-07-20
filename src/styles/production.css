@@ -1,0 +1,753 @@
+/* 생산현황 보드 — 표(PC) / 카드(모바일) */
+.board-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+}
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 17px;
+  height: 17px;
+  color: var(--text-muted);
+}
+.search-box input {
+  width: 100%;
+  height: var(--btn-h-md);
+  padding: 0 12px 0 36px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text);
+}
+.search-box input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring-accent);
+}
+.pr-chip {
+  height: var(--btn-h-md);
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-light);
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+.pr-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-press);
+}
+
+.badge-sm {
+  padding: 2px 8px;
+  font-size: var(--font-xs);
+}
+
+/* ── 표(PC) ── */
+.board-table-wrap {
+  overflow-x: auto;
+}
+.board-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 880px;
+}
+.board-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.board-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-size: var(--font-base);
+}
+.board-table tbody tr {
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.board-table tbody tr:hover td {
+  background: var(--primary-softer);
+}
+.board-table .col-action {
+  text-align: right;
+  padding-right: 16px;
+  white-space: nowrap;
+}
+.proj-name {
+  font-weight: 700;
+  color: var(--text);
+}
+.proj-sub {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  margin-top: 2px;
+}
+.prog-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+.prog-cell .prog-track {
+  flex: 1;
+}
+.prog-cell b {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+  width: 34px;
+  text-align: right;
+}
+.parts-mini {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.parts-mini i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.dday {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dday.urgent {
+  color: var(--danger);
+}
+.dday.soon {
+  color: var(--warning);
+}
+
+/* ── 회사 탭 (메티스·디에이치) ── */
+.company-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.company-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 9px;
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+}
+.company-tab b {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  background: var(--grey-100);
+  color: var(--text-muted);
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.company-tab:hover {
+  color: var(--text);
+}
+.company-tab.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.company-tab.on b {
+  background: var(--accent-soft);
+  color: var(--accent-press);
+}
+
+/* ── legacy 17컬럼 밀도 표 ── */
+.page-wide {
+  max-width: none;
+}
+.head-sub {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+.board-table-dense {
+  min-width: 1240px;
+}
+.board-table-dense th {
+  padding: 8px 8px;
+  font-size: 10px;
+}
+.board-table-dense td {
+  padding: 8px 8px;
+  font-size: var(--font-sm);
+}
+.col-stripe {
+  width: 8px;
+  padding: 0 !important;
+}
+.col-stripe .stripe {
+  width: 4px;
+  height: 44px;
+  border-radius: 2px;
+}
+.cell-no {
+  font-size: 10px;
+  color: var(--grey-400);
+  font-variant-numeric: tabular-nums;
+}
+.proj-group {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 1px;
+}
+.cell-sub {
+  font-size: 11px;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+.cell-hogi {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--grey-800);
+}
+.cell-jaje {
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--grey-700);
+}
+.cell-date {
+  font-size: var(--font-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.dd-none {
+  font-size: 10px;
+  color: var(--grey-300);
+}
+
+/* 정역 배지 (정=파랑 / 역=빨강) */
+.dir-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.dir-badge.jung {
+  background: #ebf4ff;
+  color: #3182ce;
+  border: 1px solid #bee3f8;
+}
+.dir-badge.yeok {
+  background: #fff5f5;
+  color: #c53030;
+  border: 1px solid #fed7d7;
+}
+
+/* D-day 배지 */
+.dd-over {
+  background: #fff5f5;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+}
+.dd-urgent {
+  background: #fffaf0;
+  color: #c05621;
+  border: 1px solid #fbd38d;
+}
+.dd-soon {
+  background: #e6fffa;
+  color: #0987a0;
+  border: 1px solid #81e6d9;
+}
+.dd-ok {
+  background: #f0fff4;
+  color: #276749;
+  border: 1px solid #9ae6b4;
+}
+.dd-done {
+  background: #f0fff4;
+  color: #276749;
+  border: 1px solid #9ae6b4;
+}
+.dd-hide {
+  background: var(--grey-100);
+  color: var(--grey-600);
+  border: 1px solid var(--grey-300);
+}
+
+/* 입고현황 4점 + n/4 */
+.jaip-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.jaip-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--grey-200);
+  border: 1.5px solid var(--grey-300);
+  display: inline-block;
+}
+.jaip-dots i.on {
+  background: #48bb78;
+  border-color: #9ae6b4;
+}
+.jaip-dots b {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--grey-400);
+  margin-left: 2px;
+}
+.jaip-dots b.full {
+  color: #276749;
+}
+
+/* 불량 경고 태그 */
+.defect-tags {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.dtag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.dtag.d1 {
+  background: #fee2e2;
+  color: #c53030;
+  border: 1px solid #fca5a5;
+}
+.dtag.d2 {
+  background: #c53030;
+  color: #fff;
+}
+
+/* ── 카드(모바일) ── */
+.board-cards {
+  display: none;
+}
+.pcard {
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.pcard-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.pcard-top .grow {
+  flex: 1;
+  min-width: 0;
+}
+.pcard-parts {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.pcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: var(--font-sm);
+  color: var(--text-light);
+}
+
+@media (max-width: 768px) {
+  .board-table-wrap {
+    display: none;
+  }
+  .board-cards {
+    display: block;
+  }
+}
+/* ── 판넬 상세 모달 내부 ── */
+.pm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px 12px;
+  margin-bottom: 16px;
+}
+.pm-field label {
+  display: block;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.pm-field input,
+.pm-field textarea {
+  width: 100%;
+  height: var(--btn-h-sm);
+  padding: 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: var(--font-base);
+}
+.pm-field textarea {
+  height: auto;
+  min-height: 60px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.pm-field input:focus,
+.pm-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring-accent);
+}
+.pm-section {
+  margin-bottom: 18px;
+}
+.pm-section-title {
+  font-size: var(--font-md);
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pm-section-title .sub {
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* 자재입고 체크 4종 */
+.jaip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.jaip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--btn-h-sm);
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-light);
+}
+.jaip-chip.on {
+  border-color: var(--status-done-fg);
+  background: var(--status-done-bg);
+  color: var(--status-done-fg);
+}
+
+/* 부품 카드 */
+.part-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--grey-50);
+}
+.part-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.part-name {
+  font-weight: 700;
+  font-size: var(--font-base);
+  min-width: 74px;
+}
+.state-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.state-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.state-btn.on-대기 {
+  border-color: var(--grey-400);
+  background: var(--status-wait-bg);
+  color: var(--status-wait-fg);
+}
+.state-btn.on-진행중 {
+  border-color: var(--status-progress-fg);
+  background: var(--status-progress-bg);
+  color: var(--status-progress-fg);
+}
+.state-btn.on-완료 {
+  border-color: var(--status-done-fg);
+  background: var(--status-done-bg);
+  color: var(--status-done-fg);
+}
+.state-btn.on-문제 {
+  border-color: var(--status-cancel-fg);
+  background: var(--status-cancel-bg);
+  color: var(--status-cancel-fg);
+}
+.worker-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.worker-input span {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.worker-input input {
+  width: 110px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: var(--font-sm);
+}
+.worker-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* 불량 리스트 */
+.defect-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.defect-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.defect-row input[type='checkbox'] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--success);
+  flex-shrink: 0;
+}
+.defect-row input[type='text'] {
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: var(--font-sm);
+}
+.defect-row input[type='text']:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.defect-row input.done {
+  background: var(--status-done-bg);
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.defect-del {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--btn-danger-fg);
+  flex-shrink: 0;
+}
+.defect-del:hover {
+  background: var(--btn-danger-bg);
+}
+.defect-del svg {
+  width: 14px;
+  height: 14px;
+}
+.defect-add {
+  height: 32px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 8px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-light);
+  background: var(--bg-card);
+}
+.defect-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.defect-round-label {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 6px 0 2px;
+}
+
+/* MP 하위 그리드 */
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 6px;
+}
+.mp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: var(--bg-card);
+}
+.mp-item b {
+  font-size: var(--font-sm);
+}
+
+/* 완료 토글 행 */
+.done-toggles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.done-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--btn-h-md);
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  font-size: var(--font-base);
+  font-weight: 700;
+  color: var(--text-light);
+}
+.done-toggle.on {
+  border-color: var(--status-done-fg);
+  background: var(--status-done-bg);
+  color: var(--status-done-fg);
+}
+
+@media (max-width: 768px) {
+  .overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-box {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 94dvh;
+  }
+  .worker-input {
+    margin-left: 0;
+    width: 100%;
+  }
+  .worker-input input {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* ── 생산현황 공용 조각 (panel-status 이식분) ── */
+.badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+  margin-right: 4px;
+}
+.prog-track {
+  height: 6px;
+  background: var(--grey-100);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.prog-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border-strong, #d1d6db);
+  border-radius: var(--radius-lg);
+  padding: 44px 20px;
+  text-align: center;
+  background: var(--grey-50);
+  cursor: pointer;
+  color: var(--text-light);
+}
+.dropzone:hover,
+.dropzone.drag {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+/* pr-chip 활성 (뷰 전환·필터) */
+.pr-chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-md, 13px);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card, #fff);
+  color: var(--text-light);
+  font-size: var(--font-base, 13px);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pr-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-press, #a83409);
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 64px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
