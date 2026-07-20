@@ -125,6 +125,8 @@ export default function ProductionPage() {
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [hideShipped, setHideShipped] = useState(true);
   const [openId, setOpenId] = useState(null);
+  const [openMode, setOpenMode] = useState('info'); // 'info'(기본정보) | 'defect'(부품 불량)
+  const [openPart, setOpenPart] = useState(null); // defect 모드일 때 대상 BOX
   const [showImport, setShowImport] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
 
@@ -157,9 +159,16 @@ export default function ProductionPage() {
 
   const openPanel = openId ? panels.find((p) => p.id === openId) : null;
 
+  // 칸별 컨텍스트 모달 진입 — 프로젝트 칸→기본정보, 불량 칸→그 부품 불량
+  const openModal = (id, mode = 'info', part = null) => {
+    setOpenId(id);
+    setOpenMode(mode);
+    setOpenPart(part);
+  };
+
   async function handleAdd() {
     const row = await addPanel(emptyPanel({ 프로젝트: '새 프로젝트', 회사: company }));
-    if (row?.id) setOpenId(row.id);
+    if (row?.id) openModal(row.id, 'info');
   }
   async function handleRemove(e, p) {
     e.stopPropagation();
@@ -266,7 +275,7 @@ export default function ProductionPage() {
                 panels={filtered}
                 canEdit={isAdmin}
                 checkerName={userProfile?.name || ''}
-                onOpen={setOpenId}
+                onOpen={openModal}
                 onRemove={handleRemove}
               />
 
@@ -281,7 +290,7 @@ export default function ProductionPage() {
                       key={p.id}
                       className="card pcard"
                       style={{ borderLeft: `4px solid ${d1.length || d2.length ? '#c53030' : nc}` }}
-                      onClick={() => setOpenId(p.id)}
+                      onClick={() => openModal(p.id, 'info')}
                     >
                       <div className="pcard-top">
                         <div className="grow">
@@ -454,6 +463,8 @@ export default function ProductionPage() {
       {openPanel && (
         <ProductionPanelModal
           panel={openPanel}
+          mode={openMode}
+          part={openPart}
           canEdit={isAdmin}
           checkerName={userProfile?.name || ''}
           onClose={() => setOpenId(null)}

@@ -2,16 +2,7 @@ import { useRef, useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
-import {
-  BUPMOK,
-  MP_SUBS,
-  COMPANIES,
-  UI_TASK_STATES,
-  TASK_LABEL,
-  TASK_CFG,
-  OVERALL_CFG,
-  deriveBoxStatus,
-} from '../../domain/production';
+import { COMPANIES, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
@@ -21,7 +12,14 @@ function getInsp(p) {
 }
 
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
-export default function ProductionPanelModal({ panel: p, canEdit, checkerName = '', onClose }) {
+export default function ProductionPanelModal({
+  panel: p,
+  canEdit,
+  checkerName = '',
+  onClose,
+  mode = 'info',
+  part = null,
+}) {
   const insp = getInsp(p);
   // 불량 사진 촬영/첨부 — 하나의 숨은 input을 공유, 대상(부품·차수·행)을 ref에 보관
   const photoInputRef = useRef(null);
@@ -198,181 +196,139 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
     );
   };
 
+  const title =
+    mode === 'defect'
+      ? `${p.프로젝트 || '판넬'} ${part || ''} · 불량`
+      : `${p.프로젝트 || '판넬'} · ${p.호기 || '호기 미정'}`;
+
   return (
-    <Modal isOpen onClose={onClose} title={`${p.프로젝트 || '판넬'} · ${p.호기 || '호기 미정'}`} size="lg">
+    <Modal isOpen onClose={onClose} title={title} size="lg">
       {/* 불량 사진 촬영 — 모바일에서 후면 카메라 바로 열림 */}
       <input ref={photoInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handlePhoto} />
-      <div style={{ marginBottom: 14 }}>
-        <span className="badge" style={{ background: oc.bg, color: oc.fg }}>
-          {p.overallStatus}
-        </span>
-        {!canEdit && (
-          <span className="badge" style={{ background: 'var(--grey-100)', color: 'var(--text-muted)', marginLeft: 6 }}>
-            조회 전용
-          </span>
-        )}
-      </div>
 
-      <div className="pm-section">
-        <div className="pm-section-title">기본정보</div>
-        <div className="jaip-row" style={{ marginBottom: 12 }}>
-          {COMPANIES.map((c) => {
-            const on = p.회사 === c;
-            return (
-              <button
-                key={c}
-                className={`jaip-chip ${on ? 'on' : ''}`}
+      {mode === 'defect' && (
+        <div className="part-card">
+          <div className="part-head">
+            <span className="part-name">{part}</span>
+            <div className="worker-input">
+              <span>작업자</span>
+              <input
+                defaultValue={insp.공정작업자?.[part] || ''}
+                placeholder="이름"
                 disabled={!canEdit}
-                onClick={() => save({ 회사: on ? '' : c })}
-              >
-                {on ? '✓ ' : ''}
-                {c}
-              </button>
-            );
-          })}
-        </div>
-        <div className="pm-grid">
-          {field('프로젝트', '프로젝트')}
-          {field('호기', '호기')}
-          {field('정/역', '정역')}
-          {field('자재', '자재')}
-          {field('기구제작', '기구제작')}
-          {field('자재입고일', '자재입고', 'date')}
-          {field('납기', '납기', 'date')}
-          {field('턴온', '턴온', 'date')}
-        </div>
-        <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          {field('비고', '비고')}
-          {field('현장메모', '현장메모')}
-        </div>
-      </div>
-
-      <div className="pm-section">
-        <div className="pm-section-title">
-          부품 진행{' '}
-          <span className="sub">{canEdit ? '자재입고·불량은 생산현황 표에서 · 여기선 작업자/사진 기록' : ''}</span>
-        </div>
-        {BUPMOK.map((b) => {
-          const cur = (p.부품상태 || {})[b] || '대기';
-          return (
-            <div className="part-card" key={b}>
-              <div className="part-head">
-                <span className="part-name" style={{ color: TASK_CFG[cur].dot }}>
-                  {b}
-                </span>
-                <div className="state-group">
-                  {UI_TASK_STATES.map((s) => (
-                    <button
-                      key={s}
-                      className={`state-btn ${cur === s ? `on-${s}` : ''}`}
-                      disabled={!canEdit}
-                      onClick={() =>
-                        save({
-                          부품상태: { ...(p.부품상태 || {}), [b]: s },
-                          부품검수자: { ...(p.부품검수자 || {}), [b]: s === '대기' ? '' : checkerName },
-                        })
-                      }
-                    >
-                      {TASK_LABEL[s]}
-                    </button>
-                  ))}
-                </div>
-                <div className="worker-input">
-                  <span>작업자</span>
-                  <input
-                    defaultValue={insp.공정작업자?.[b] || ''}
-                    placeholder="이름"
-                    disabled={!canEdit}
-                    onBlur={(e) => {
-                      if (e.target.value !== (insp.공정작업자?.[b] || ''))
-                        saveInsp((n) => {
-                          if (!n.공정작업자) n.공정작업자 = {};
-                          n.공정작업자[b] = e.target.value;
-                        });
-                    }}
-                  />
-                  {(p.부품검수자 || {})[b] ? (
-                    <span className="part-checker">검수 {(p.부품검수자 || {})[b]}</span>
-                  ) : null}
-                </div>
-              </div>
-              {defectBlock(b, 1)}
-              {defectBlock(b, 2)}
+                onBlur={(e) => {
+                  if (e.target.value !== (insp.공정작업자?.[part] || ''))
+                    saveInsp((n) => {
+                      if (!n.공정작업자) n.공정작업자 = {};
+                      n.공정작업자[part] = e.target.value;
+                    });
+                }}
+              />
+              {(p.부품검수자 || {})[part] ? (
+                <span className="part-checker">검수 {(p.부품검수자 || {})[part]}</span>
+              ) : null}
             </div>
-          );
-        })}
-      </div>
-
-      <div className="pm-section">
-        <div className="pm-section-title">
-          MP 판넬 <span className="sub">{canEdit ? '클릭 시 대기→완료→불량 순환' : ''}</span>
+          </div>
+          {defectBlock(part, 1)}
+          {defectBlock(part, 2)}
         </div>
-        <div className="mp-grid">
-          {MP_SUBS.map((k) => {
-            const cur = (p.mp하위상태 || {})[k] || '대기';
-            const idx = UI_TASK_STATES.indexOf(cur);
-            const next = UI_TASK_STATES[(idx + 1) % UI_TASK_STATES.length];
-            return (
-              <button
-                key={k}
-                className="mp-item"
-                disabled={!canEdit}
-                onClick={() => save({ mp하위상태: { ...(p.mp하위상태 || {}), [k]: next } })}
+      )}
+
+      {mode !== 'defect' && (
+        <>
+          <div style={{ marginBottom: 14 }}>
+            <span className="badge" style={{ background: oc.bg, color: oc.fg }}>
+              {p.overallStatus}
+            </span>
+            {!canEdit && (
+              <span
+                className="badge"
+                style={{ background: 'var(--grey-100)', color: 'var(--text-muted)', marginLeft: 6 }}
               >
-                <b>{k}</b>
-                <span className="badge badge-sm" style={{ background: TASK_CFG[cur].bg, color: TASK_CFG[cur].fg }}>
-                  <span className="dot" style={{ background: TASK_CFG[cur].dot }} />
-                  {TASK_LABEL[cur] || cur}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                조회 전용
+              </span>
+            )}
+          </div>
 
-      <div className="pm-section">
-        <div className="pm-section-title">검수 · 출고</div>
-        <div className="done-toggles">
-          <button
-            className={`done-toggle ${p.검수완료 ? 'on' : ''}`}
-            disabled={!canEdit}
-            onClick={() =>
-              save({
-                검수완료: !p.검수완료,
-                검수완료일: !p.검수완료 ? today() : '',
-                검수완료자: !p.검수완료 ? checkerName : '',
-              })
-            }
-          >
-            {p.검수완료 ? '✓ ' : ''}검수완료
-            {p.검수완료 && p.검수완료일 ? (
-              <small className="chip-date">
-                {mmddDot(p.검수완료일)}
-                {p.검수완료자 ? ` · ${p.검수완료자}` : ''}
-              </small>
-            ) : null}
-          </button>
-          <button
-            className={`done-toggle ${p.출고완료 ? 'on' : ''}`}
-            disabled={!canEdit}
-            onClick={() =>
-              save({
-                출고완료: !p.출고완료,
-                출고완료일: !p.출고완료 ? today() : '',
-                출고완료자: !p.출고완료 ? checkerName : '',
-              })
-            }
-          >
-            {p.출고완료 ? '✓ ' : ''}출고완료
-            {p.출고완료 && p.출고완료일 ? (
-              <small className="chip-date">
-                {mmddDot(p.출고완료일)}
-                {p.출고완료자 ? ` · ${p.출고완료자}` : ''}
-              </small>
-            ) : null}
-          </button>
-        </div>
-      </div>
+          <div className="pm-section">
+            <div className="pm-section-title">기본정보</div>
+            <div className="jaip-row" style={{ marginBottom: 12 }}>
+              {COMPANIES.map((c) => {
+                const on = p.회사 === c;
+                return (
+                  <button
+                    key={c}
+                    className={`jaip-chip ${on ? 'on' : ''}`}
+                    disabled={!canEdit}
+                    onClick={() => save({ 회사: on ? '' : c })}
+                  >
+                    {on ? '✓ ' : ''}
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="pm-grid">
+              {field('프로젝트', '프로젝트')}
+              {field('호기', '호기')}
+              {field('정/역', '정역')}
+              {field('자재', '자재')}
+              {field('기구제작', '기구제작')}
+              {field('자재입고일', '자재입고', 'date')}
+              {field('납기', '납기', 'date')}
+              {field('턴온', '턴온', 'date')}
+            </div>
+            <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              {field('비고', '비고')}
+              {field('현장메모', '현장메모')}
+            </div>
+          </div>
+
+          <div className="pm-section">
+            <div className="pm-section-title">검수 · 출고</div>
+            <div className="done-toggles">
+              <button
+                className={`done-toggle ${p.검수완료 ? 'on' : ''}`}
+                disabled={!canEdit}
+                onClick={() =>
+                  save({
+                    검수완료: !p.검수완료,
+                    검수완료일: !p.검수완료 ? today() : '',
+                    검수완료자: !p.검수완료 ? checkerName : '',
+                  })
+                }
+              >
+                {p.검수완료 ? '✓ ' : ''}검수완료
+                {p.검수완료 && p.검수완료일 ? (
+                  <small className="chip-date">
+                    {mmddDot(p.검수완료일)}
+                    {p.검수완료자 ? ` · ${p.검수완료자}` : ''}
+                  </small>
+                ) : null}
+              </button>
+              <button
+                className={`done-toggle ${p.출고완료 ? 'on' : ''}`}
+                disabled={!canEdit}
+                onClick={() =>
+                  save({
+                    출고완료: !p.출고완료,
+                    출고완료일: !p.출고완료 ? today() : '',
+                    출고완료자: !p.출고완료 ? checkerName : '',
+                  })
+                }
+              >
+                {p.출고완료 ? '✓ ' : ''}출고완료
+                {p.출고완료 && p.출고완료일 ? (
+                  <small className="chip-date">
+                    {mmddDot(p.출고완료일)}
+                    {p.출고완료자 ? ` · ${p.출고완료자}` : ''}
+                  </small>
+                ) : null}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }
