@@ -36,6 +36,7 @@ import {
   PurchaseListPage,
   StaffHubPage,
   TrashPage,
+  QualityPage,
   MailSendPage,
   PaymentPage,
   SiteListPage,
@@ -95,6 +96,7 @@ const router = createBrowserRouter([
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
           { path: '/admin/trash', element: <TrashPage /> },
+          { path: '/admin/quality', element: <QualityPage /> },
           { path: '/admin/mail', element: <MailSendPage /> },
           { path: '/admin/payment', element: <PaymentPage /> },
           {

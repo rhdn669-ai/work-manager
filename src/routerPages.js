@@ -30,6 +30,7 @@ export const PurchaseTrashPage = lazy(() => import('./pages/admin/PurchaseTrashP
 export const PurchaseListPage = lazy(() => import('./pages/admin/PurchaseListPage'));
 export const StaffHubPage = lazy(() => import('./pages/admin/StaffHubPage'));
 export const TrashPage = lazy(() => import('./pages/admin/TrashPage'));
+export const QualityPage = lazy(() => import('./pages/admin/QualityPage'));
 export const MailSendPage = lazy(() => import('./pages/admin/MailSendPage'));
 export const PaymentPage = lazy(() => import('./pages/admin/PaymentPage'));
 export const SiteListPage = lazy(() => import('./pages/site/SiteListPage'));
