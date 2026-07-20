@@ -1041,20 +1041,21 @@
 }
 .mx-table {
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .mx-table th,
 .mx-table td {
   border: 1px solid var(--border, #e5e8eb);
-  padding: 3px 6px;
+  padding: 7px 6px;
   text-align: center;
+  height: 40px;
 }
 .mx-group-row th {
   background: var(--primary, #002050);
   color: #fff;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
   position: sticky;
   top: 0;
   z-index: 3;
@@ -1063,14 +1064,14 @@
   background: var(--grey-100, #f2f4f6);
   color: var(--text-light, #4e5968);
   font-weight: 700;
+  font-size: 12px;
   position: sticky;
-  top: 26px;
+  top: 40px;
   z-index: 3;
 }
 .mx-rot {
   white-space: nowrap;
-  font-size: 10px;
-  padding: 5px 6px;
+  font-size: 12px;
 }
 /* 좌측 고정 컬럼 */
 .mx-sticky {
@@ -1084,16 +1085,16 @@
 }
 .mx-c0 {
   left: 0;
-  min-width: 30px;
+  min-width: 34px;
 }
 .mx-c1 {
-  left: 30px;
-  min-width: 96px;
+  left: 34px;
+  min-width: 110px;
   text-align: left;
 }
 .mx-c2 {
-  left: 126px;
-  min-width: 44px;
+  left: 144px;
+  min-width: 50px;
   box-shadow: 2px 0 0 var(--border, #e5e8eb);
 }
 .mx-no {
@@ -1111,14 +1112,16 @@
 .mx-jaje {
   font-weight: 700;
 }
-.mx-status {
-  min-width: 22px;
+.mx-status,
+.mx-jaip {
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
   font-weight: 800;
+  font-size: 15px;
 }
 .mx-jaip {
-  min-width: 22px;
   color: #276749;
-  font-weight: 800;
 }
 .mx-prog {
   font-weight: 700;
@@ -1127,8 +1130,8 @@
 .mx-date-input {
   border: 0;
   background: transparent;
-  font-size: 10px;
-  width: 78px;
+  font-size: 12px;
+  width: 96px;
   font-family: inherit;
   text-align: center;
 }
