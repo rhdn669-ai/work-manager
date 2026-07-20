@@ -60,7 +60,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
       <table className="mx-table">
         <thead>
           <tr className="mx-group-row">
-            <th className="mx-sticky" colSpan={4}>
+            <th className="mx-sticky" colSpan={5}>
               기본
             </th>
             {BUPMOK.map((b) => (
@@ -76,6 +76,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
             <th className="mx-sticky mx-c1">프로젝트 호기</th>
             <th>정역</th>
             <th>자재</th>
+            <th>기구</th>
             {BUPMOK.map((b) =>
               (b === 'MP' ? [...MP_SUBS, '상태'] : [...JAIP, '불량', '상태']).map((sub) => (
                 <th key={`${b}-${sub}`} className="mx-sub-th">
@@ -109,6 +110,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                   {p.정역 ? <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span> : ''}
                 </td>
                 <td className="mx-cell mx-jaje">{p.자재 || ''}</td>
+                <td className="mx-cell mx-gigu">{p.기구제작 || ''}</td>
                 {BUPMOK.map((b) => {
                   if (b === 'MP') {
                     const st = deriveMpState(p.mp하위상태 || {});

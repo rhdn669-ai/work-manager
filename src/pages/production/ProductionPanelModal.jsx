@@ -271,7 +271,22 @@ export default function ProductionPanelModal({
             <div className="pm-grid">
               {field('프로젝트', '프로젝트')}
               {field('호기', '호기')}
-              {field('정/역', '정역')}
+              <div className="pm-field" key="정역">
+                <label>정/역</label>
+                <div className="jaip-row">
+                  {['정', '역'].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`jaip-chip ${p.정역 === v ? 'on' : ''}`}
+                      disabled={!canEdit}
+                      onClick={() => save({ 정역: p.정역 === v ? '' : v })}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {field('자재', '자재')}
               {field('기구제작', '기구제작')}
               {field('자재입고일', '자재입고', 'date')}
