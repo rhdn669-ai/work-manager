@@ -37,7 +37,7 @@ export default function LoginPage() {
     try {
       const savedCode = await verifyBio();
       await loginByCode(savedCode);
-      window.location.href = '/dashboard';
+      window.location.href = '/workspace';
     } catch (err) {
       if (err?.name === 'NotAllowedError') {
         setError('지문 인증이 취소되었습니다.');
@@ -59,7 +59,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(code, password);
-      window.location.href = '/dashboard';
+      window.location.href = '/workspace';
     } catch (err) {
       setError(err.message || '로그인 실패');
     } finally {

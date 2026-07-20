@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import Icon from './Icon';
+import { getWorkspaceMode, canProduction } from '../../utils/workspace';
 
 const MAX_TABS = 7; // 직원 하단탭 최대 7개. 초과분만 '더보기'로.
 
@@ -22,7 +23,7 @@ const Tab = ({ to, end, label, icon, badge }) => (
 
 // 역할별 실제 메뉴만 직접 노출 (중복 더보기 없음). 6개 이하면 전부 탭, 초과 시 5개+더보기(초과분).
 export default function BottomNav() {
-  const { canApproveLeave, canViewArchive } = useAuth();
+  const { userProfile, canApproveLeave, canViewArchive } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
 
@@ -40,6 +41,17 @@ export default function BottomNav() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [moreOpen]);
+
+  // 생산·품질 워크스페이스 — 전용 하단탭 (완전 분리)
+  if (getWorkspaceMode() === 'production' && canProduction(userProfile)) {
+    return (
+      <nav className="bottom-nav">
+        <Tab to="/production" end label="생산현황" icon="grid" />
+        <Tab to="/quality" end label="품질" icon="doc" />
+        <Tab to="/workspace" end label="모드" icon="home" />
+      </nav>
+    );
+  }
 
   const menu = [
     { to: '/dashboard', end: true, label: '홈', icon: 'home' },

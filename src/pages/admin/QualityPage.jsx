@@ -1,4 +1,7 @@
+import { Navigate } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
+import { useAuth } from '../../contexts/useAuth';
+import { canProduction } from '../../utils/workspace';
 
 // 관리자 품질 이력 관리 (SSQ 인증 대응) — /admin/quality
 // 엑셀 양식(공구관리·부적합·수입검사 등 10종+) 접수 후 양식 엔진으로 모듈별 활성화 예정.
@@ -9,6 +12,8 @@ const MODULES = [
 ];
 
 export default function QualityPage() {
+  const { userProfile } = useAuth();
+  if (userProfile && !canProduction(userProfile)) return <Navigate to="/dashboard" replace />;
   return (
     <div>
       <div className="page-header">

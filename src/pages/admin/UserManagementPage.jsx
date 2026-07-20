@@ -53,6 +53,7 @@ export default function UserManagementPage() {
     canViewSalary: false,
     canCreateSite: false,
     canViewArchive: false,
+    productionAccess: false,
     usesVehicle: false,
     vehiclePlate: '',
     vehicleMonthlyCost: '',
@@ -105,6 +106,7 @@ export default function UserManagementPage() {
       canViewSalary: false,
       canCreateSite: false,
       canViewArchive: false,
+      productionAccess: false,
       usesVehicle: false,
       vehiclePlate: '',
       vehicleMonthlyCost: '',
@@ -130,6 +132,7 @@ export default function UserManagementPage() {
       canViewSalary: !!user.canViewSalary,
       canCreateSite: !!user.canCreateSite,
       canViewArchive: !!user.canViewArchive,
+      productionAccess: !!user.productionAccess,
       usesVehicle: !!user.usesVehicle,
       vehiclePlate: user.vehiclePlate || '',
       vehicleMonthlyCost: user.vehicleMonthlyCost ? Number(user.vehicleMonthlyCost).toLocaleString() : '',
@@ -156,6 +159,7 @@ export default function UserManagementPage() {
           canViewSalary: !!form.canViewSalary,
           canCreateSite: !!form.canCreateSite,
           canViewArchive: !!form.canViewArchive,
+          productionAccess: !!form.productionAccess,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
@@ -180,6 +184,7 @@ export default function UserManagementPage() {
           canViewSalary: !!form.canViewSalary,
           canCreateSite: !!form.canCreateSite,
           canViewArchive: !!form.canViewArchive,
+          productionAccess: !!form.productionAccess,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
@@ -835,6 +840,33 @@ export default function UserManagementPage() {
                       checked={on}
                       disabled={autoGranted}
                       onChange={(e) => setForm({ ...form, canViewArchive: e.target.checked })}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            );
+          })()}
+          {(() => {
+            const autoGranted = form.role === 'admin';
+            const on = autoGranted || !!form.productionAccess;
+            return (
+              <div className="form-group">
+                <div className="toggle-row">
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">생산·품질 접근</span>
+                    <small className="text-muted">
+                      {autoGranted
+                        ? '관리자는 자동으로 부여됩니다.'
+                        : '켜면 로그인 후 생산·품질 워크스페이스를 선택할 수 있습니다.'}
+                    </small>
+                  </div>
+                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={autoGranted}
+                      onChange={(e) => setForm({ ...form, productionAccess: e.target.checked })}
                     />
                     <span className="toggle-slider" />
                   </label>

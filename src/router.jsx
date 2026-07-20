@@ -38,6 +38,7 @@ import {
   TrashPage,
   QualityPage,
   ProductionPage,
+  WorkspaceSelectPage,
   MailSendPage,
   PaymentPage,
   SiteListPage,
@@ -49,6 +50,10 @@ const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/set-password', element: <SetPasswordPage /> },
   { path: '/', element: <Navigate to="/dashboard" replace /> },
+  {
+    element: <ProtectedRoute />,
+    children: [{ path: '/workspace', element: <WorkspaceSelectPage /> }],
+  },
   {
     element: <ProtectedRoute />,
     children: [
@@ -66,6 +71,7 @@ const router = createBrowserRouter([
           { path: '/manage/team', element: <ManageTeamPage /> },
           { path: '/library', element: <FileLibraryPage /> },
           { path: '/production', element: <ProductionPage /> },
+          { path: '/quality', element: <QualityPage /> },
         ],
       },
     ],
@@ -98,7 +104,6 @@ const router = createBrowserRouter([
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
           { path: '/admin/trash', element: <TrashPage /> },
-          { path: '/admin/quality', element: <QualityPage /> },
           { path: '/admin/mail', element: <MailSendPage /> },
           { path: '/admin/payment', element: <PaymentPage /> },
           {

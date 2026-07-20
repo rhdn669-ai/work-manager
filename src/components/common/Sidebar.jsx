@@ -10,6 +10,7 @@ import {
 import { subscribePaymentPendingPurchases, countPaymentPending } from '../../services/purchaseService';
 import { useDialog } from './useDialog';
 import Icon from './Icon';
+import { getWorkspaceMode, canProduction } from '../../utils/workspace';
 
 // 관리자에게만 1회 자동 추가되는 기본 대분류 (삭제 후 재등장 방지를 위해 didSeedAdminDefaults 플래그로 관리)
 const ADMIN_DEFAULT_GROUP_LABELS = ['직원', '외주', '비용'];
@@ -67,9 +68,15 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive
     { key: 'admin-purchase', to: '/admin/purchase', label: '구매', icon: 'cart', show: isAdmin, end: false },
     { key: 'admin-payment', to: '/admin/payment', label: '결제', icon: 'card', show: isAdmin, end: false },
     { key: 'admin-mail', to: '/admin/mail', label: '메일 발송', icon: 'mail', show: isAdmin, end: false },
-    { key: 'production', to: '/production', label: '생산현황', icon: 'grid', show: true, end: false },
-    { key: 'admin-quality', to: '/admin/quality', label: '품질', icon: 'doc', show: isAdmin, end: false },
     { key: 'admin-trash', to: '/admin/trash', label: '휴지통', icon: 'trash', show: isAdmin, end: false },
+  ];
+}
+
+// 생산·품질 워크스페이스 전용 메뉴 (완전 분리 — 업무 메뉴 미노출)
+function buildProductionItems() {
+  return [
+    { key: 'production', to: '/production', label: '생산현황', icon: 'grid', show: true, end: false },
+    { key: 'quality', to: '/quality', label: '품질', icon: 'doc', show: true, end: false },
   ];
 }
 
@@ -192,6 +199,10 @@ export default function Sidebar({ isOpen }) {
 
   // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬
   const visibleItems = useMemo(() => {
+    // 생산·품질 워크스페이스 — 전용 메뉴만 (순서·대분류 미적용, 완전 분리)
+    if (getWorkspaceMode() === 'production' && canProduction(userProfile)) {
+      return buildProductionItems();
+    }
     const visibles = allItems.filter((it) => it.show);
     const groupItems = (groups || []).map((g) => ({ ...g, isGroup: true }));
     const merged = [...visibles, ...groupItems];
@@ -295,49 +306,53 @@ export default function Sidebar({ isOpen }) {
     setOrder((o) => (o ? o.filter((k) => k !== groupKey) : o));
   }
 
+  const isProductionMode = getWorkspaceMode() === 'production' && canProduction(userProfile);
+
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <nav className="sidebar-nav">
-        <div className="sidebar-edit-header">
-          {editing && (
+        {!isProductionMode && (
+          <div className="sidebar-edit-header">
+            {editing && (
+              <button
+                type="button"
+                className="sidebar-edit-icon ghost"
+                onClick={resetOrder}
+                title="기본값 복원"
+                aria-label="기본값 복원"
+              >
+                <Icon name="restore" />
+              </button>
+            )}
             <button
               type="button"
-              className="sidebar-edit-icon ghost"
-              onClick={resetOrder}
-              title="기본값 복원"
-              aria-label="기본값 복원"
+              className={`sidebar-edit-icon ${editing ? 'is-editing' : ''}`}
+              onClick={() => setEditing((e) => !e)}
+              title={editing ? '편집 완료' : '순서 수정'}
+              aria-label={editing ? '편집 완료' : '순서 수정'}
             >
-              <Icon name="restore" />
+              {editing ? (
+                <Icon name="check" />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              )}
             </button>
-          )}
-          <button
-            type="button"
-            className={`sidebar-edit-icon ${editing ? 'is-editing' : ''}`}
-            onClick={() => setEditing((e) => !e)}
-            title={editing ? '편집 완료' : '순서 수정'}
-            aria-label={editing ? '편집 완료' : '순서 수정'}
-          >
-            {editing ? (
-              <Icon name="check" />
-            ) : (
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            )}
-          </button>
-        </div>
+          </div>
+        )}
 
-        {editing && (
+        {editing && !isProductionMode && (
           <button type="button" className="sidebar-add-group-btn" onClick={openAddGroup}>
             + 대분류 추가
           </button>

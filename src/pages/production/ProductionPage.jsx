@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
+import { canProduction } from '../../utils/workspace';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import ProductionPanelModal from './ProductionPanelModal';
 import ProductionImportModal from './ProductionImportModal';
@@ -122,13 +124,15 @@ export default function ProductionPage() {
   const [showImport, setShowImport] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
 
+  const allowed = canProduction(userProfile);
   useEffect(() => {
+    if (!allowed) return undefined;
     const unsub = subscribePanels((rows) => {
       setPanels(rows);
       setLoading(false);
     });
     return unsub;
-  }, []);
+  }, [allowed]);
 
   const allNapgi = useMemo(() => [...new Set(panels.map((p) => p.납기).filter(Boolean))], [panels]);
   const allGroups = useMemo(() => [...new Set(panels.map((p) => getProjGroup(p.프로젝트)).filter(Boolean))], [panels]);
@@ -187,6 +191,8 @@ export default function ProductionPage() {
       .sort((a, b) => b.rate - a.rate || b.open - a.open);
   }, [panels, company]);
   const maxRate = Math.max(...workerStats.map((s) => s.rate), 1);
+
+  if (userProfile && !allowed) return <Navigate to="/dashboard" replace />;
 
   return (
     <div>

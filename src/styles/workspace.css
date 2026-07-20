@@ -1,0 +1,97 @@
+/* 워크스페이스 선택 화면 — 로그인 직후, 토스풍 카드 2장 */
+.ws-wrap {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #f2f4f6);
+  padding: 24px;
+}
+.ws-inner {
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+}
+.ws-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: 16px;
+}
+.ws-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text, #19222f);
+}
+.ws-sub {
+  margin-top: 6px;
+  font-size: var(--font-md, 14px);
+  color: var(--text-muted, #8b95a1);
+}
+.ws-cards {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.ws-card {
+  appearance: none;
+  border: 1.5px solid var(--border, #e5e8eb);
+  background: var(--bg-card, #fff);
+  border-radius: 20px;
+  padding: 28px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 23, 51, 0.05);
+  transition:
+    transform 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s;
+  font-family: inherit;
+}
+.ws-card:hover {
+  border-color: var(--accent, #f05819);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 23, 51, 0.1);
+}
+.ws-card:active {
+  transform: scale(0.98);
+}
+.ws-card b {
+  font-size: 17px;
+  color: var(--text, #19222f);
+}
+.ws-card small {
+  font-size: var(--font-sm, 12px);
+  color: var(--text-muted, #8b95a1);
+  line-height: 1.4;
+}
+.ws-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+.ws-card-icon svg {
+  width: 28px;
+  height: 28px;
+}
+.ws-card-icon.work {
+  background: var(--primary-soft, #e7ebf2);
+  color: var(--primary, #002050);
+}
+.ws-card-icon.prod {
+  background: var(--accent-soft, #feefe7);
+  color: var(--accent, #f05819);
+}
+
+@media (max-width: 480px) {
+  .ws-cards {
+    grid-template-columns: 1fr;
+  }
+}

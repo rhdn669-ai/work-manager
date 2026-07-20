@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import UserMenu from './UserMenu';
 import SessionTimerBadge from './SessionTimerBadge';
+import { canProduction } from '../../utils/workspace';
 import Icon from './Icon';
 import { formatRelativeKo } from '../../utils/dateUtils';
 
@@ -44,6 +45,17 @@ export default function Header({ onToggleSidebar }) {
           <>
             <SessionTimerBadge />
             <UserMenu />
+            {canProduction(userProfile) && (
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => {
+                  window.location.href = '/workspace';
+                }}
+                title="업무/생산 모드 전환"
+              >
+                모드
+              </button>
+            )}
             <button className="btn btn-sm btn-outline" onClick={handleLogout}>
               로그아웃
             </button>
