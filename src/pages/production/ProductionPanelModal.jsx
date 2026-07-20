@@ -53,7 +53,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
     const st = partDefectStatus(next, part);
     if (st) {
       patch.부품상태 = { ...(p.부품상태 || {}), [part]: st };
-      patch.부품검수자 = { ...(p.부품검수자 || {}), [part]: st === '완료' ? checkerName : '' };
+      patch.부품검수자 = { ...(p.부품검수자 || {}), [part]: st === '대기' ? '' : checkerName };
     }
     save(patch);
   };
@@ -299,7 +299,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
                       onClick={() =>
                         save({
                           부품상태: { ...(p.부품상태 || {}), [b]: s },
-                          부품검수자: { ...(p.부품검수자 || {}), [b]: s === '완료' ? checkerName : '' },
+                          부품검수자: { ...(p.부품검수자 || {}), [b]: s === '대기' ? '' : checkerName },
                         })
                       }
                     >

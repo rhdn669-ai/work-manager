@@ -898,3 +898,31 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* 발생/조치 사진 구분 라벨 */
+.defect-photo-fig {
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: zoom-in;
+  line-height: 0;
+}
+.defect-photo-cap {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  right: 2px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.3;
+  border-radius: 0 0 6px 6px;
+  padding: 1px 0;
+  color: #fff;
+}
+.defect-photo-cap.before {
+  background: rgba(197, 48, 48, 0.85);
+}
+.defect-photo-cap.after {
+  background: rgba(21, 128, 61, 0.85);
+}
