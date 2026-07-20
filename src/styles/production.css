@@ -1154,21 +1154,28 @@
 /* 매트릭스로 통일 — 모바일 카드 미사용(매트릭스가 가로스크롤로 대체) */
 .board-cards { display: none !important; }
 
-/* BOX 그룹 하위 셀 */
+/* BOX 그룹 하위 셀 — th·td 동일 고정폭으로 칸 폭 완전 통일 */
+.mx-sub-th,
+.mx-boxmat,
+.mx-boxdefect,
+.mx-boxstate {
+  width: 54px;
+  min-width: 54px;
+  max-width: 54px;
+  box-sizing: border-box;
+  padding-left: 2px;
+  padding-right: 2px;
+  text-align: center;
+}
 .mx-sub-th {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
   letter-spacing: -0.3px;
-  padding-left: 2px;
-  padding-right: 2px;
 }
 .mx-boxmat,
 .mx-boxdefect,
 .mx-boxstate {
-  width: 44px;
-  min-width: 44px;
-  max-width: 44px;
   font-weight: 800;
   font-size: 13px;
 }
