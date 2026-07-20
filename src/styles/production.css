@@ -883,3 +883,18 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* 부품 검수자 (완료 체크 시 자동, 작업자 칸 옆) */
+.part-checker {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 20px;
+  background: var(--status-done-bg, #e7f4ec);
+  color: #276749;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

@@ -277,7 +277,12 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
                       key={s}
                       className={`state-btn ${cur === s ? `on-${s}` : ''}`}
                       disabled={!canEdit}
-                      onClick={() => save({ 부품상태: { ...(p.부품상태 || {}), [b]: s } })}
+                      onClick={() =>
+                        save({
+                          부품상태: { ...(p.부품상태 || {}), [b]: s },
+                          부품검수자: { ...(p.부품검수자 || {}), [b]: s === '완료' ? checkerName : '' },
+                        })
+                      }
                     >
                       {TASK_LABEL[s]}
                     </button>
@@ -297,6 +302,9 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
                         });
                     }}
                   />
+                  {(p.부품검수자 || {})[b] ? (
+                    <span className="part-checker">검수 {(p.부품검수자 || {})[b]}</span>
+                  ) : null}
                 </div>
               </div>
               {defectBlock(b, 1)}
