@@ -132,7 +132,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                   <Icon name="image" />
                 </button>
               )}
-              {canEdit && it.완료 && !it.조치사진 && (
+              {canEdit && !it.조치사진 && (
                 <button
                   className="defect-after-btn"
                   onClick={() => openCamera(part, round, i, '조치사진')}
