@@ -116,71 +116,74 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
         <div className="defect-round-label">{round}차 불량</div>
         <div className="defect-list">
           {items.map((it, i) => (
-            <div className="defect-row" key={i}>
-              <input
-                type="checkbox"
-                checked={!!it.완료}
-                disabled={!canEdit}
-                onChange={(e) =>
-                  mutSec((s) => {
-                    s.항목[i].완료 = e.target.checked;
-                    if (e.target.checked) s.항목[i].검수자 = checkerName; // 완료 체크 시 검수자 기록(해제해도 유지)
-                  })
-                }
-              />
-              {it.사진 && (
-                <img
-                  className="defect-photo"
-                  src={it.사진}
-                  alt="불량 사진"
-                  title="불량 사진"
-                  onClick={() => window.open(it.사진, '_blank', 'noopener')}
+            <div className={`defect-card ${it.완료 ? 'done' : ''}`} key={i}>
+              {/* 상단: 완료 체크 + 내용 + 삭제 */}
+              <div className="defect-card-top">
+                <input
+                  type="checkbox"
+                  checked={!!it.완료}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    mutSec((s) => {
+                      s.항목[i].완료 = e.target.checked;
+                      if (e.target.checked) s.항목[i].검수자 = checkerName;
+                    })
+                  }
                 />
-              )}
-              {it.검수자 ? <span className="checker-name">검수 {it.검수자}</span> : null}
-              {it.조치사진 && (
-                <img
-                  className="defect-photo after"
-                  src={it.조치사진}
-                  alt="조치 사진"
-                  title="조치 후 사진"
-                  onClick={() => window.open(it.조치사진, '_blank', 'noopener')}
+                <input
+                  type="text"
+                  defaultValue={it.내용 || ''}
+                  placeholder="불량 내용…"
+                  disabled={!canEdit}
+                  onBlur={(e) => {
+                    if (e.target.value !== (it.내용 || '')) mutSec((s) => (s.항목[i].내용 = e.target.value));
+                  }}
                 />
-              )}
-              <input
-                type="text"
-                className={it.완료 ? 'done' : ''}
-                defaultValue={it.내용 || ''}
-                placeholder="불량 내용…"
-                disabled={!canEdit}
-                onBlur={(e) => {
-                  if (e.target.value !== (it.내용 || '')) mutSec((s) => (s.항목[i].내용 = e.target.value));
-                }}
-              />
-              {canEdit && !it.사진 && (
-                <button
-                  className="defect-cam"
-                  onClick={() => openCamera(part, round, i, '사진')}
-                  title="불량 사진 촬영"
-                >
-                  <Icon name="image" />
-                </button>
-              )}
-              {canEdit && !it.조치사진 && (
-                <button
-                  className="defect-after-btn"
-                  onClick={() => openCamera(part, round, i, '조치사진')}
-                  title="조치 후 사진 촬영"
-                >
-                  <Icon name="image" className="btn-ic" />
-                  조치 사진
-                </button>
-              )}
-              {canEdit && (
-                <button className="defect-del" onClick={() => mutSec((s) => s.항목.splice(i, 1))} aria-label="삭제">
-                  <Icon name="close" />
-                </button>
-              )}
+                {canEdit && (
+                  <button className="defect-del" onClick={() => mutSec((s) => s.항목.splice(i, 1))} aria-label="삭제">
+                    <Icon name="close" />
+                  </button>
+                )}
+              </div>
+              {/* 하단 좌우 2칸: 발생 / 조치 */}
+              <div className="defect-ba">
+                <div className="defect-ba-col before">
+                  <div className="defect-ba-head">발생</div>
+                  {it.사진 ? (
+                    <img
+                      className="defect-ba-photo"
+                      src={it.사진}
+                      alt="발생 사진"
+                      onClick={() => window.open(it.사진, '_blank', 'noopener')}
+                    />
+                  ) : canEdit ? (
+                    <button className="defect-ba-add before" onClick={() => openCamera(part, round, i, '사진')}>
+                      <Icon name="image" className="btn-ic" />
+                      발생 사진
+                    </button>
+                  ) : (
+                    <div className="defect-ba-empty">사진 없음</div>
+                  )}
+                </div>
+                <div className="defect-ba-col after">
+                  <div className="defect-ba-head">조치{it.검수자 ? ` · ${it.검수자}` : ''}</div>
+                  {it.조치사진 ? (
+                    <img
+                      className="defect-ba-photo"
+                      src={it.조치사진}
+                      alt="조치 사진"
+                      onClick={() => window.open(it.조치사진, '_blank', 'noopener')}
+                    />
+                  ) : canEdit ? (
+                    <button className="defect-ba-add after" onClick={() => openCamera(part, round, i, '조치사진')}>
+                      <Icon name="image" className="btn-ic" />
+                      조치 사진
+                    </button>
+                  ) : (
+                    <div className="defect-ba-empty">사진 없음</div>
+                  )}
+                </div>
+              </div>
             </div>
           ))}
           {canEdit && (

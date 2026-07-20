@@ -926,3 +926,110 @@
 .defect-photo-cap.after {
   background: rgba(21, 128, 61, 0.85);
 }
+
+/* ── 불량 카드 (A안: 발생/조치 좌우 2칸) ── */
+.defect-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--bg-card, #fff);
+}
+.defect-card.done {
+  background: var(--status-done-bg, #e7f4ec);
+  border-color: #9ae6b4;
+}
+.defect-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.defect-card-top input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: #15803d;
+  flex-shrink: 0;
+}
+.defect-card-top input[type='text'] {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: var(--font-sm, 12px);
+  background: #fff;
+}
+.defect-ba {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.defect-ba-col {
+  border-radius: 10px;
+  padding: 6px;
+  border: 1px solid;
+}
+.defect-ba-col.before {
+  background: #fff5f5;
+  border-color: #fbd5d5;
+}
+.defect-ba-col.after {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.defect-ba-head {
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 5px;
+  text-align: center;
+}
+.defect-ba-col.before .defect-ba-head {
+  color: #c53030;
+}
+.defect-ba-col.after .defect-ba-head {
+  color: #15803d;
+}
+.defect-ba-photo {
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: zoom-in;
+  display: block;
+}
+.defect-ba-add {
+  width: 100%;
+  height: 84px;
+  border-radius: 8px;
+  border: 1.5px dashed;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.defect-ba-add .btn-ic {
+  width: 18px;
+  height: 18px;
+}
+.defect-ba-add.before {
+  border-color: #f6a5a5;
+  color: #c53030;
+}
+.defect-ba-add.after {
+  border-color: #86e0a3;
+  color: #15803d;
+}
+.defect-ba-empty {
+  height: 84px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
