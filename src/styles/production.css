@@ -1089,26 +1089,25 @@
 }
 .mx-c1 {
   left: 34px;
-  min-width: 110px;
+  min-width: 150px;
   text-align: left;
-}
-.mx-c2 {
-  left: 144px;
-  min-width: 64px;
-  width: 64px;
   box-shadow: 2px 0 0 var(--border, #e5e8eb);
 }
 .mx-no {
   color: var(--grey-400);
 }
 .mx-proj {
-  font-weight: 700;
   cursor: pointer;
+}
+.mx-proj-name {
+  font-weight: 700;
   color: var(--primary, #002050);
 }
-.mx-hogi {
+.mx-proj-hogi {
+  margin-left: 6px;
   font-weight: 800;
-  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-light, #6b7684);
 }
 .mx-status,
 .mx-jaip,

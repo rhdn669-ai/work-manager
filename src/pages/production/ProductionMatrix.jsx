@@ -60,7 +60,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
       <table className="mx-table">
         <thead>
           <tr className="mx-group-row">
-            <th className="mx-sticky" colSpan={5}>
+            <th className="mx-sticky" colSpan={4}>
               기본
             </th>
             {BUPMOK.map((b) => (
@@ -73,8 +73,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
           </tr>
           <tr className="mx-sub-row">
             <th className="mx-sticky mx-c0">#</th>
-            <th className="mx-sticky mx-c1">프로젝트</th>
-            <th className="mx-sticky mx-c2">호기</th>
+            <th className="mx-sticky mx-c1">프로젝트 호기</th>
             <th>정역</th>
             <th>자재</th>
             {BUPMOK.map((b) =>
@@ -103,10 +102,8 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
               <tr key={p.id} className={od ? 'mx-od' : urg ? 'mx-urg' : ''}>
                 <td className="mx-sticky mx-c0 mx-no">{idx + 1}</td>
                 <td className="mx-sticky mx-c1 mx-proj" onClick={() => onOpen(p.id)} title="클릭: 상세">
-                  {p.프로젝트 || '—'}
-                </td>
-                <td className="mx-sticky mx-c2 mx-hogi" onClick={() => onOpen(p.id)}>
-                  {(p.호기 || '').slice(-3)}
+                  <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
+                  {p.호기 ? <span className="mx-proj-hogi">{(p.호기 || '').slice(-3)}</span> : null}
                 </td>
                 <td className="mx-cell mx-dir">
                   {p.정역 ? <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span> : ''}
