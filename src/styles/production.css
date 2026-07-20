@@ -871,3 +871,15 @@
   width: 14px;
   height: 14px;
 }
+
+/* 불량 검수자(체크한 직원) 자동 표시 */
+.checker-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: #276749;
+  background: var(--status-done-bg, #e7f4ec);
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

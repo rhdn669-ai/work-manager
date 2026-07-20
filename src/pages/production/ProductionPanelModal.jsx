@@ -21,7 +21,7 @@ function getInsp(p) {
 }
 
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
-export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
+export default function ProductionPanelModal({ panel: p, canEdit, checkerName = '', onClose }) {
   const insp = getInsp(p);
   // 불량 사진 촬영/첨부 — 하나의 숨은 input을 공유, 대상(부품·차수·행)을 ref에 보관
   const photoInputRef = useRef(null);
@@ -102,7 +102,12 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                 type="checkbox"
                 checked={!!it.완료}
                 disabled={!canEdit}
-                onChange={(e) => mutSec((s) => (s.항목[i].완료 = e.target.checked))}
+                onChange={(e) =>
+                  mutSec((s) => {
+                    s.항목[i].완료 = e.target.checked;
+                    s.항목[i].검수자 = e.target.checked ? checkerName : '';
+                  })
+                }
               />
               {it.사진 && (
                 <img
@@ -113,6 +118,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                   onClick={() => window.open(it.사진, '_blank', 'noopener')}
                 />
               )}
+              {it.완료 && it.검수자 ? <span className="checker-name">검수 {it.검수자}</span> : null}
               {it.조치사진 && (
                 <img
                   className="defect-photo after"
@@ -333,18 +339,40 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
           <button
             className={`done-toggle ${p.검수완료 ? 'on' : ''}`}
             disabled={!canEdit}
-            onClick={() => save({ 검수완료: !p.검수완료, 검수완료일: !p.검수완료 ? today() : '' })}
+            onClick={() =>
+              save({
+                검수완료: !p.검수완료,
+                검수완료일: !p.검수완료 ? today() : '',
+                검수완료자: !p.검수완료 ? checkerName : '',
+              })
+            }
           >
             {p.검수완료 ? '✓ ' : ''}검수완료
-            {p.검수완료 && p.검수완료일 ? <small className="chip-date">{mmddDot(p.검수완료일)}</small> : null}
+            {p.검수완료 && p.검수완료일 ? (
+              <small className="chip-date">
+                {mmddDot(p.검수완료일)}
+                {p.검수완료자 ? ` · ${p.검수완료자}` : ''}
+              </small>
+            ) : null}
           </button>
           <button
             className={`done-toggle ${p.출고완료 ? 'on' : ''}`}
             disabled={!canEdit}
-            onClick={() => save({ 출고완료: !p.출고완료, 출고완료일: !p.출고완료 ? today() : '' })}
+            onClick={() =>
+              save({
+                출고완료: !p.출고완료,
+                출고완료일: !p.출고완료 ? today() : '',
+                출고완료자: !p.출고완료 ? checkerName : '',
+              })
+            }
           >
             {p.출고완료 ? '✓ ' : ''}출고완료
-            {p.출고완료 && p.출고완료일 ? <small className="chip-date">{mmddDot(p.출고완료일)}</small> : null}
+            {p.출고완료 && p.출고완료일 ? (
+              <small className="chip-date">
+                {mmddDot(p.출고완료일)}
+                {p.출고완료자 ? ` · ${p.출고완료자}` : ''}
+              </small>
+            ) : null}
           </button>
         </div>
       </div>

@@ -546,7 +546,14 @@ export default function ProductionPage() {
         </div>
       )}
 
-      {openPanel && <ProductionPanelModal panel={openPanel} canEdit={isAdmin} onClose={() => setOpenId(null)} />}
+      {openPanel && (
+        <ProductionPanelModal
+          panel={openPanel}
+          canEdit={isAdmin}
+          checkerName={userProfile?.name || ''}
+          onClose={() => setOpenId(null)}
+        />
+      )}
       {showImport && <ProductionImportModal company={company} onClose={() => setShowImport(false)} />}
       <TrashModal
         isOpen={trashOpen}
