@@ -248,6 +248,19 @@ function PriceHistoryView({ items, onDelete }) {
   );
 }
 
+// 소수 허용 표시 포맷 (모듈 레벨): 정수부 콤마 + 소수부/끝점 유지
+function fmtDec(v) {
+  let x = String(v ?? '').replace(/[^0-9.]/g, '');
+  const fi = x.indexOf('.');
+  if (fi !== -1) x = x.slice(0, fi + 1) + x.slice(fi + 1).replace(/\./g, '');
+  const [i, d] = x.split('.');
+  const ii = (i || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return d !== undefined ? `${ii}.${d}` : ii;
+}
+function toNum(v) {
+  return Number(String(v ?? '').replace(/[^0-9.]/g, '')) || 0;
+}
+
 export default function PurchaseItemPage() {
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
@@ -268,6 +281,7 @@ export default function PurchaseItemPage() {
   const [priceChangeModal, setPriceChangeModal] = useState(null); // { itemId, currentUnit, qty, oldStd, supplierName }
   const [pcReason, setPcReason] = useState('');
   const [pcNewValue, setPcNewValue] = useState(''); // 모달에서 입력하는 새 개별단가
+  const [unitEdit, setUnitEdit] = useState({}); // 인라인 개별단가 편집 중 문자열 {id: '12.5'}
   // 헤더 코드 입력 — 편집 중에는 로컬 state로 임시 보관 (items state 즉시 변경 X → 그룹 키 안 흔들림)
   const [editingHeaderCode, setEditingHeaderCode] = useState(null); // { repId, value } | null
 
@@ -1275,25 +1289,46 @@ export default function PurchaseItemPage() {
                                               >
                                                 <input
                                                   type="text"
-                                                  inputMode="numeric"
+                                                  inputMode="decimal"
                                                   className="num-input"
-                                                  value={unitPrice ? Number(unitPrice).toLocaleString() : ''}
+                                                  value={
+                                                    unitEdit[it.id] !== undefined
+                                                      ? unitEdit[it.id]
+                                                      : unitPrice
+                                                        ? Number(unitPrice).toLocaleString()
+                                                        : ''
+                                                  }
                                                   readOnly={priceLocked}
                                                   style={priceLocked ? { cursor: 'pointer' } : undefined}
                                                   title={priceLocked ? '클릭해서 단가 변경(이력 기록)' : ''}
                                                   onClick={() => {
                                                     if (priceLocked) openPriceEdit(it);
                                                   }}
+                                                  onFocus={() =>
+                                                    !priceLocked &&
+                                                    setUnitEdit((m) => ({
+                                                      ...m,
+                                                      [it.id]: unitPrice ? String(unitPrice) : '',
+                                                    }))
+                                                  }
                                                   onChange={(e) => {
                                                     if (priceLocked) return; // 저장된 단가는 모달로만 수정(이력 기록)
-                                                    const raw = e.target.value.replace(/[^0-9]/g, '');
-                                                    const up = raw ? Number(raw) : 0;
+                                                    const disp = fmtDec(e.target.value);
+                                                    setUnitEdit((m) => ({ ...m, [it.id]: disp }));
+                                                    const up = toNum(disp);
                                                     updateField(it.id, {
                                                       unitPrice: up,
                                                       standardPrice: Math.round(up * qty),
                                                     });
                                                   }}
-                                                  onBlur={() => flushItem(it.id)}
+                                                  onBlur={() => {
+                                                    setUnitEdit((m) => {
+                                                      const n = { ...m };
+                                                      delete n[it.id];
+                                                      return n;
+                                                    });
+                                                    flushItem(it.id);
+                                                  }}
                                                 />
                                                 <span
                                                   className="cell-fill"
@@ -1531,7 +1566,7 @@ export default function PurchaseItemPage() {
       <Modal isOpen={!!priceChangeModal} onClose={cancelPriceChange} title="단가 변경">
         {priceChangeModal &&
           (() => {
-            const newUnit = Number(String(pcNewValue).replace(/[^0-9]/g, '')) || 0;
+            const newUnit = toNum(pcNewValue);
             const newStd = Math.round(newUnit * (priceChangeModal.qty || 1));
             return (
               <div className="pc-modal">
@@ -1547,9 +1582,9 @@ export default function PurchaseItemPage() {
                   <label>새 개별단가</label>
                   <input
                     type="text"
-                    inputMode="numeric"
-                    value={newUnit ? newUnit.toLocaleString() : ''}
-                    onChange={(e) => setPcNewValue(e.target.value)}
+                    inputMode="decimal"
+                    value={fmtDec(pcNewValue)}
+                    onChange={(e) => setPcNewValue(fmtDec(e.target.value))}
                     placeholder="새 개별단가 입력"
                     autoFocus
                   />
