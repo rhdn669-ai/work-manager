@@ -1,8 +1,10 @@
+import { Fragment } from 'react';
 import Icon from '../../components/common/Icon';
 import { updatePanel } from '../../services/productionService';
 import {
   BUPMOK,
   JAIP,
+  JAIP_GROUPS,
   MP_SUBS,
   UI_TASK_STATES,
   TASK_CFG,
@@ -70,37 +72,86 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     <div className="mx-wrap card">
       <table className="mx-table">
         <thead>
+          {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
           <tr className="mx-group-row">
             <th className="mx-sticky" colSpan={5}>
               기본
             </th>
             {BUPMOK.map((b) => (
-              <th key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : 6}>
+              <th key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 2}>
                 {b}
               </th>
             ))}
             <th colSpan={3}>일정</th>
             <th colSpan={canEdit ? 3 : 2}>판정</th>
           </tr>
+          {/* 2행: 자재 그룹(판금·하네스·자재) + 불량·상태 — 하위 없는 칸은 rowSpan 2 */}
           <tr className="mx-sub-row">
-            <th className="mx-sticky mx-c0">#</th>
-            <th className="mx-sticky mx-c1">프로젝트 호기</th>
-            <th>정역</th>
-            <th>자재</th>
-            <th>기구</th>
+            <th className="mx-sticky mx-c0" rowSpan={2}>
+              #
+            </th>
+            <th className="mx-sticky mx-c1" rowSpan={2}>
+              프로젝트 호기
+            </th>
+            <th rowSpan={2}>정역</th>
+            <th rowSpan={2}>자재</th>
+            <th rowSpan={2}>기구</th>
             {BUPMOK.map((b) =>
-              (b === 'MP' ? [...MP_SUBS, '상태'] : [...JAIP, '불량', '상태']).map((sub) => (
-                <th key={`${b}-${sub}`} className="mx-sub-th">
-                  {sub}
-                </th>
-              )),
+              b === 'MP' ? (
+                <Fragment key={b}>
+                  {MP_SUBS.map((s) => (
+                    <th key={s} className="mx-sub-th" rowSpan={2}>
+                      {s}
+                    </th>
+                  ))}
+                  <th className="mx-sub-th" rowSpan={2}>
+                    상태
+                  </th>
+                </Fragment>
+              ) : (
+                <Fragment key={b}>
+                  {JAIP_GROUPS.map((g) =>
+                    g.leaves.length === 1 ? (
+                      <th key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
+                        {g.label}
+                      </th>
+                    ) : (
+                      <th key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
+                        {g.label}
+                      </th>
+                    ),
+                  )}
+                  <th className="mx-sub-th mx-grp-start" rowSpan={2}>
+                    불량
+                  </th>
+                  <th className="mx-sub-th" rowSpan={2}>
+                    상태
+                  </th>
+                </Fragment>
+              ),
             )}
-            <th>자재입고</th>
-            <th>납기</th>
-            <th>턴온</th>
-            <th>진행</th>
-            <th>상태</th>
-            {canEdit && <th>작업</th>}
+            <th rowSpan={2}>자재입고</th>
+            <th rowSpan={2}>납기</th>
+            <th rowSpan={2}>턴온</th>
+            <th rowSpan={2}>진행</th>
+            <th rowSpan={2}>상태</th>
+            {canEdit && <th rowSpan={2}>작업</th>}
+          </tr>
+          {/* 3행: 하네스·자재 하위 leaf (non-MP만) */}
+          <tr className="mx-sub-row mx-leaf-row">
+            {BUPMOK.map((b) => (
+              <Fragment key={b}>
+                {b === 'MP'
+                  ? null
+                  : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
+                      g.leaves.map((l) => (
+                        <th key={`${b}-${l.key}`} className="mx-sub-th">
+                          {l.label}
+                        </th>
+                      )),
+                    )}
+              </Fragment>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -212,7 +263,10 @@ function MpGroup({ p, st, sc, canEdit, onToggle }) {
   );
 }
 
-// BOX 하위 6칸: 판금·하네스·사급·도급 · 불량 · 상태 — 체크 시 일자(MM-DD) 표기
+// 각 자재 그룹의 첫 leaf = 그룹 경계(좌측 구분선)
+const GRP_START = new Set(JAIP_GROUPS.map((g) => g.leaves[0].key));
+
+// BOX 하위: 판금 · 하네스{사급·제작} · 자재{사급·도급} · 불량 · 상태 — 체크 시 일자(MM-DD)
 function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit, onMat, onDefect }) {
   return (
     <>
@@ -221,7 +275,7 @@ function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit,
         return (
           <td
             key={k}
-            className="mx-cell mx-boxmat mx-dcell"
+            className={`mx-cell mx-boxmat mx-dcell${GRP_START.has(k) ? ' mx-grp-start' : ''}`}
             style={{ background: on ? '#e7f4ec' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onMat(k)}
             title={k}
@@ -231,7 +285,7 @@ function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit,
         );
       })}
       <td
-        className="mx-cell mx-boxdefect mx-dcell"
+        className="mx-cell mx-boxdefect mx-dcell mx-grp-start"
         style={{ cursor: 'pointer', color: '#d6303f', background: defect ? '#fdebec' : undefined }}
         onClick={onDefect}
         title="불량 기록/사진 (클릭: 상세)"

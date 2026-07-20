@@ -4,8 +4,28 @@
 /* ── 부품/공정 상수 ── */
 // 부품(BOX·판넬) 6종 — 명판(P/W BOX·S/D·H/T·ROBOT 등)과 동일 도메인
 export const BUPMOK = ['P/W BOX', 'LODER', 'S/D', 'H/T상', 'H/T하', 'ROBOT', 'MP'];
-// 자재 입고 항목 4종 (boolean)
-export const JAIP = ['판금', '하네스', '사급', '도급'];
+// 자재 입고 항목 — 2단 구조: 판금(단일) · 하네스{사급·제작} · 자재{사급·도급}
+export const JAIP_GROUPS = [
+  { key: '판금', label: '판금', leaves: [{ key: '판금', label: '판금' }] },
+  {
+    key: '하네스',
+    label: '하네스',
+    leaves: [
+      { key: '하네스_사급', label: '사급' },
+      { key: '하네스_제작', label: '제작' },
+    ],
+  },
+  {
+    key: '자재',
+    label: '자재',
+    leaves: [
+      { key: '자재_사급', label: '사급' },
+      { key: '자재_도급', label: '도급' },
+    ],
+  },
+];
+// 자재입고 leaf 키 목록 (완료·일자·롤업 등 파생은 전부 이 목록 기반)
+export const JAIP = JAIP_GROUPS.flatMap((g) => g.leaves.map((l) => l.key));
 // MP 판넬 하위 10종
 export const MP_SUBS = ['PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타']; // MAIN → 부품 'MP'로 승격 (2026-07-20)
 // 진행률에서 MP가 차지하는 고정 비중(12.5%). 하위 9종으로 다시 분할, 나머지 부품은 87.5% 균등.
