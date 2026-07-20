@@ -9,6 +9,9 @@ import {
   OVERALL_CFG,
   getDday,
   boxMat,
+  boxMatDate,
+  boxDoneDate,
+  boxDefectDate,
   boxHasDefect,
   deriveBoxStatus,
   deriveMpState,
@@ -18,18 +21,26 @@ import {
 // 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
 // BOX 상태는 하위(자재입고4·불량)에서 자동 산출. 셀 직접 입력. MP 하위 상세는 상세모달.
 const mmdd = (d) => (d ? String(d).slice(5) : '');
+const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) {
   const setField = (p, patch) => canEdit && updatePanel(p.id, patch);
 
-  // BOX 자재입고 항목 토글 → 박스입고 갱신 + 박스 상태 자동 산출
+  // BOX 자재입고 항목 토글 → 박스입고 + 체크일자 갱신 + 박스 상태 자동 산출
   const toggleBoxMat = (p, box, k) => {
     if (!canEdit) return;
     const cur = boxMat(p, box);
-    const nextMat = { ...cur, [k]: !cur[k] };
+    const on = !cur[k];
+    const nextMat = { ...cur, [k]: on };
     const nextBoxIn = { ...(p.박스입고 || {}), [box]: nextMat };
+    const curDate = boxMatDate(p, box);
+    const nextBoxDate = { ...(p.박스입고일자 || {}), [box]: { ...curDate, [k]: on ? todayStr() : '' } };
     const st = deriveBoxStatus(p, box, p.검수, nextMat);
-    setField(p, { 박스입고: nextBoxIn, 부품상태: { ...(p.부품상태 || {}), [box]: st } });
+    setField(p, {
+      박스입고: nextBoxIn,
+      박스입고일자: nextBoxDate,
+      부품상태: { ...(p.부품상태 || {}), [box]: st },
+    });
   };
 
   // MP 하위 종목 상태 순환(대기→완료→불량) — 진행률은 구독 recompute가 자동 반영
@@ -126,6 +137,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                     );
                   }
                   const mat = boxMat(p, b);
+                  const matDate = boxMatDate(p, b);
                   const defect = boxHasDefect(p.검수, b);
                   const st = deriveBoxStatus(p, b);
                   const sc = TASK_CFG[st] || TASK_CFG['대기'];
@@ -133,7 +145,10 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                     <BoxGroup
                       key={b}
                       mat={mat}
+                      matDate={matDate}
                       defect={defect}
+                      defectDate={boxDefectDate(p.검수, b)}
+                      doneDate={boxDoneDate(p, b)}
                       st={st}
                       sc={sc}
                       canEdit={canEdit}
@@ -197,8 +212,8 @@ function MpGroup({ p, st, sc, canEdit, onToggle }) {
   );
 }
 
-// BOX 하위 6칸: 판금·하네스·사급·도급 · 불량 · 상태(자동)
-function BoxGroup({ mat, defect, st, sc, canEdit, onMat, onDefect }) {
+// BOX 하위 6칸: 판금·하네스·사급·도급 · 불량 · 상태 — 체크 시 일자(MM-DD) 표기
+function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit, onMat, onDefect }) {
   return (
     <>
       {JAIP.map((k) => {
@@ -206,25 +221,25 @@ function BoxGroup({ mat, defect, st, sc, canEdit, onMat, onDefect }) {
         return (
           <td
             key={k}
-            className="mx-cell mx-boxmat"
+            className="mx-cell mx-boxmat mx-dcell"
             style={{ background: on ? '#e7f4ec' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onMat(k)}
             title={k}
           >
-            {on ? '○' : ''}
+            {on ? mmdd(matDate[k]) || '○' : ''}
           </td>
         );
       })}
       <td
-        className="mx-cell mx-boxdefect"
+        className="mx-cell mx-boxdefect mx-dcell"
         style={{ cursor: 'pointer', color: '#d6303f', background: defect ? '#fdebec' : undefined }}
         onClick={onDefect}
         title="불량 기록/사진 (클릭: 상세)"
       >
-        {defect ? '✕' : ''}
+        {defect ? mmdd(defectDate) || '✕' : ''}
       </td>
-      <td className="mx-cell mx-boxstate" style={{ background: sc.bg, color: sc.fg }} title={st}>
-        {st === '완료' ? '○' : st === '문제' ? '✕' : ''}
+      <td className="mx-cell mx-boxstate mx-dcell" style={{ background: sc.bg, color: sc.fg }} title={st}>
+        {st === '완료' ? mmdd(doneDate) || '○' : st === '문제' ? mmdd(defectDate) || '✕' : ''}
       </td>
     </>
   );

@@ -74,6 +74,26 @@ export function jaipRollup(p) {
 export function boxHasDefect(insp, box) {
   return [1, 2].some((r) => (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).some((it) => it.내용 && !it.완료));
 }
+// BOX별 자재입고 체크 일자: p.박스입고일자 = { box: { 판금:'YYYY-MM-DD', ... } }
+export function boxMatDate(p, box) {
+  return (p.박스입고일자 || {})[box] || {};
+}
+// BOX 완료 일자 = 4종 자재입고일 중 가장 늦은 날 (완료는 4종 전부 입고 시점)
+export function boxDoneDate(p, box) {
+  const d = boxMatDate(p, box);
+  const arr = JAIP.map((k) => d[k]).filter(Boolean);
+  return arr.length ? [...arr].sort().slice(-1)[0] : '';
+}
+// BOX 불량 최초 등록 일자 (미해결 항목 중 가장 이른 일자)
+export function boxDefectDate(insp, box) {
+  let earliest = '';
+  [1, 2].forEach((r) => {
+    (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).forEach((it) => {
+      if (it.내용 && !it.완료 && it.일자 && (!earliest || it.일자 < earliest)) earliest = it.일자;
+    });
+  });
+  return earliest;
+}
 // 박스 종합상태: 미해결 불량→문제 / 입고4개 완료→완료 / 그 외 대기
 export function deriveBoxStatus(p, box, inspOverride, matOverride) {
   const insp = inspOverride || p.검수;

@@ -67,7 +67,7 @@ export default function ProductionPanelModal({
         if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
         const sec = n[`차${round}`].공정비고[part];
-        if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url, 검수자: checkerName });
+        if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url, 검수자: checkerName, 일자: today() });
         else sec.항목[index][kind] = url;
       });
     } finally {
@@ -94,6 +94,9 @@ export default function ProductionPanelModal({
   const defectBlock = (part, round) => {
     const sec = insp[`차${round}`]?.공정비고?.[part] || { 항목: [] };
     const items = sec.항목 || [];
+    // 작업자 입력이 있어야 불량 등록 가능 (대표님 지시)
+    const workerName = insp.공정작업자?.[part] || '';
+    const canAdd = canEdit && !!workerName;
     const mutSec = (mut) =>
       saveInspDerive(part, (n) => {
         if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
@@ -179,16 +182,24 @@ export default function ProductionPanelModal({
           ))}
           {canEdit && (
             <div className="defect-add-row">
-              <button className="defect-add" disabled={uploading} onClick={() => openCamera(part, round, null)}>
+              <button
+                className="defect-add"
+                disabled={!canAdd || uploading}
+                onClick={() => openCamera(part, round, null)}
+              >
                 <Icon name="image" className="btn-ic" />{' '}
                 {uploading ? '사진 업로드 중…' : `${round}차 불량 추가 (사진 촬영)`}
               </button>
               <button
                 className="defect-add-plain"
-                onClick={() => mutSec((s) => s.항목.push({ 내용: '', 완료: false }))}
+                disabled={!canAdd}
+                onClick={() =>
+                  mutSec((s) => s.항목.push({ 내용: '', 완료: false, 검수자: checkerName, 일자: today() }))
+                }
               >
                 사진 없이
               </button>
+              {!workerName && <span className="defect-worker-hint">작업자 입력 후 등록 가능</span>}
             </div>
           )}
         </div>
@@ -214,7 +225,7 @@ export default function ProductionPanelModal({
               <span>작업자</span>
               <input
                 defaultValue={insp.공정작업자?.[part] || ''}
-                placeholder="이름"
+                placeholder="작업자명(필수)"
                 disabled={!canEdit}
                 onBlur={(e) => {
                   if (e.target.value !== (insp.공정작업자?.[part] || ''))
