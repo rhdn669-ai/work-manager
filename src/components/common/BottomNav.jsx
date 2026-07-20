@@ -48,7 +48,6 @@ export default function BottomNav() {
       <nav className="bottom-nav">
         <Tab to="/production" end label="생산현황" icon="grid" />
         <Tab to="/quality" end label="품질" icon="doc" />
-        <Tab to="/workspace" end label="모드" icon="home" />
       </nav>
     );
   }

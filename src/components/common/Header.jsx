@@ -2,7 +2,6 @@ import { useAuth } from '../../contexts/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import UserMenu from './UserMenu';
-import SessionTimerBadge from './SessionTimerBadge';
 import { canProduction } from '../../utils/workspace';
 import Icon from './Icon';
 import { formatRelativeKo } from '../../utils/dateUtils';
@@ -43,7 +42,6 @@ export default function Header({ onToggleSidebar }) {
       <div className="header-right">
         {userProfile && (
           <>
-            <SessionTimerBadge />
             <UserMenu />
             {canProduction(userProfile) && (
               <button

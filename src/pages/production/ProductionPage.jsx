@@ -266,7 +266,6 @@ export default function ProductionPage() {
                       <th className="col-stripe"></th>
                       <th>#</th>
                       <th>프로젝트</th>
-                      <th>납입처</th>
                       <th>정역</th>
                       <th>제작</th>
                       <th>호기</th>
@@ -313,9 +312,6 @@ export default function ProductionPage() {
                                 {d2.length > 0 && <span className="dtag d2">⚠ 2차 {d2.join(', ')}</span>}
                               </div>
                             )}
-                          </td>
-                          <td className="cell-sub" title={p.비고 || ''}>
-                            {p.비고 || ''}
                           </td>
                           <td>
                             {p.정역 ? (
