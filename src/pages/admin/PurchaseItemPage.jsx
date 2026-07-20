@@ -506,7 +506,7 @@ export default function PurchaseItemPage() {
   async function confirmPriceChange() {
     const m = priceChangeModal;
     if (!m) return;
-    const newUnit = Number(String(pcNewValue).replace(/[^0-9]/g, '')) || 0;
+    const newUnit = toNum(pcNewValue);
     if (!newUnit) return;
     const newStd = Math.round(newUnit * (m.qty || 1));
     const f = Number(m.oldStd) || 0;
@@ -717,11 +717,11 @@ export default function PurchaseItemPage() {
     if (field === 'unitPrice') {
       const cu = parseCompoundUnit(it.unit);
       const qty = cu ? cu.qty : 1;
-      const up = Number(String(value).replace(/[^0-9]/g, '')) || 0;
+      const up = toNum(value);
       return { unitPrice: up, standardPrice: Math.round(up * qty) };
     }
     if (field === 'standardPrice') {
-      return { standardPrice: Number(String(value).replace(/[^0-9]/g, '')) || 0 };
+      return { standardPrice: toNum(value) };
     }
     return { [field]: value };
   }
