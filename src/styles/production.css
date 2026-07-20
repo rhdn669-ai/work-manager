@@ -604,8 +604,6 @@
 }
 .defect-row input.done {
   background: var(--status-done-bg);
-  text-decoration: line-through;
-  color: var(--text-muted);
 }
 .defect-del {
   width: 28px;
@@ -825,4 +823,25 @@
 .defect-add-plain:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* 조치(완료 후) 사진 — 초록 계열로 구분 */
+.defect-photo.after {
+  border: 2px solid #48bb78;
+}
+.defect-cam.after {
+  border-color: #9ae6b4;
+  color: #276749;
+}
+.defect-cam.after:hover {
+  border-color: #48bb78;
+  color: #276749;
+}
+
+/* 체크 일자 표시 (자재입고 칩·검수/출고 토글) */
+.chip-date {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.75;
 }

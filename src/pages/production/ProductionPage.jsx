@@ -16,10 +16,8 @@ import {
   OVERALL_ORDER,
   getDday,
   emptyPanel,
-  getProjGroup,
   deriveMpState,
   napgiColorOf,
-  projColorOf,
   unresolvedDefectParts,
 } from '../../domain/production';
 import '../../styles/production.css';
@@ -135,7 +133,6 @@ export default function ProductionPage() {
   }, [allowed]);
 
   const allNapgi = useMemo(() => [...new Set(panels.map((p) => p.납기).filter(Boolean))], [panels]);
-  const allGroups = useMemo(() => [...new Set(panels.map((p) => getProjGroup(p.프로젝트)).filter(Boolean))], [panels]);
 
   const filtered = useMemo(() => {
     return panels.filter((p) => {
@@ -285,7 +282,6 @@ export default function ProductionPage() {
                   <tbody>
                     {filtered.map((p, idx) => {
                       const nc = napgiColorOf(allNapgi, p.납기 || '');
-                      const pc = projColorOf(allGroups, getProjGroup(p.프로젝트));
                       const hasIssue = Object.values(p.부품상태 || {}).some((s) => s === '문제');
                       const dday = getDday(p.납기);
                       const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
@@ -303,9 +299,6 @@ export default function ProductionPage() {
                           <td className="cell-no">{idx + 1}</td>
                           <td>
                             <div className="proj-name">{p.프로젝트 || '—'}</div>
-                            <div className="proj-group" style={{ color: pc }}>
-                              {getProjGroup(p.프로젝트)}
-                            </div>
                             {hasDefect && (
                               <div className="defect-tags">
                                 {d1.length > 0 && <span className="dtag d1">⚠ 1차 {d1.join(', ')}</span>}

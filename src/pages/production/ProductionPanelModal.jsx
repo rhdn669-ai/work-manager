@@ -4,6 +4,9 @@ import Icon from '../../components/common/Icon';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
 import { BUPMOK, JAIP, MP_SUBS, COMPANIES, TASK_STATES, TASK_CFG, OVERALL_CFG } from '../../domain/production';
 
+const today = () => new Date().toISOString().slice(0, 10);
+const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
+
 function getInsp(p) {
   return p.검수 || { 공정작업자: {}, 차1: { 공정비고: {} }, 차2: { 공정비고: {} } };
 }
@@ -26,8 +29,8 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
     save({ 검수: next });
   };
 
-  function openCamera(part, round, index = null) {
-    photoTargetRef.current = { part, round, index };
+  function openCamera(part, round, index = null, kind = '사진') {
+    photoTargetRef.current = { part, round, index, kind };
     photoInputRef.current?.click();
   }
   async function handlePhoto(e) {
@@ -43,9 +46,10 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
         if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
         if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
+        const { kind } = target;
         const sec = n[`차${round}`].공정비고[part];
         if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url });
-        else sec.항목[index].사진 = url;
+        else sec.항목[index][kind] = url;
       });
     } finally {
       setUploading(false);
@@ -96,7 +100,17 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                   className="defect-photo"
                   src={it.사진}
                   alt="불량 사진"
+                  title="불량 사진"
                   onClick={() => window.open(it.사진, '_blank', 'noopener')}
+                />
+              )}
+              {it.조치사진 && (
+                <img
+                  className="defect-photo after"
+                  src={it.조치사진}
+                  alt="조치 사진"
+                  title="조치 후 사진"
+                  onClick={() => window.open(it.조치사진, '_blank', 'noopener')}
                 />
               )}
               <input
@@ -110,8 +124,21 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                 }}
               />
               {canEdit && !it.사진 && (
-                <button className="defect-cam" onClick={() => openCamera(part, round, i)} title="사진 촬영/첨부">
+                <button
+                  className="defect-cam"
+                  onClick={() => openCamera(part, round, i, '사진')}
+                  title="불량 사진 촬영"
+                >
                   <Icon name="image" />
+                </button>
+              )}
+              {canEdit && it.완료 && !it.조치사진 && (
+                <button
+                  className="defect-cam after"
+                  onClick={() => openCamera(part, round, i, '조치사진')}
+                  title="조치 후 사진 촬영"
+                >
+                  <Icon name="check" />
                 </button>
               )}
               {canEdit && (
@@ -184,7 +211,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
           {field('턴온', '턴온', 'date')}
         </div>
         <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          {field('납입처/비고', '비고')}
+          {field('비고', '비고')}
           {field('현장메모', '현장메모')}
         </div>
       </div>
@@ -194,15 +221,22 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
         <div className="jaip-row">
           {JAIP.map((k) => {
             const on = !!(p.자재입고상태 || {})[k];
+            const d = (p.자재입고일자 || {})[k];
             return (
               <button
                 key={k}
                 className={`jaip-chip ${on ? 'on' : ''}`}
                 disabled={!canEdit}
-                onClick={() => save({ 자재입고상태: { ...(p.자재입고상태 || {}), [k]: !on } })}
+                onClick={() =>
+                  save({
+                    자재입고상태: { ...(p.자재입고상태 || {}), [k]: !on },
+                    자재입고일자: { ...(p.자재입고일자 || {}), [k]: !on ? today() : '' },
+                  })
+                }
               >
                 {on ? '✓ ' : ''}
                 {k}
+                {on && d ? <small className="chip-date">{mmddDot(d)}</small> : null}
               </button>
             );
           })}
@@ -288,16 +322,18 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
           <button
             className={`done-toggle ${p.검수완료 ? 'on' : ''}`}
             disabled={!canEdit}
-            onClick={() => save({ 검수완료: !p.검수완료 })}
+            onClick={() => save({ 검수완료: !p.검수완료, 검수완료일: !p.검수완료 ? today() : '' })}
           >
             {p.검수완료 ? '✓ ' : ''}검수완료
+            {p.검수완료 && p.검수완료일 ? <small className="chip-date">{mmddDot(p.검수완료일)}</small> : null}
           </button>
           <button
             className={`done-toggle ${p.출고완료 ? 'on' : ''}`}
             disabled={!canEdit}
-            onClick={() => save({ 출고완료: !p.출고완료 })}
+            onClick={() => save({ 출고완료: !p.출고완료, 출고완료일: !p.출고완료 ? today() : '' })}
           >
             {p.출고완료 ? '✓ ' : ''}출고완료
+            {p.출고완료 && p.출고완료일 ? <small className="chip-date">{mmddDot(p.출고완료일)}</small> : null}
           </button>
         </div>
       </div>
