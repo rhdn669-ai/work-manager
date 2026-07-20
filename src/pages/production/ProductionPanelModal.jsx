@@ -11,6 +11,7 @@ import {
   TASK_LABEL,
   TASK_CFG,
   OVERALL_CFG,
+  deriveBoxStatus,
 } from '../../domain/production';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -18,13 +19,6 @@ const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
 
 function getInsp(p) {
   return p.검수 || { 공정작업자: {}, 차1: { 공정비고: {} }, 차2: { 공정비고: {} } };
-}
-
-// 부품의 1·2차 불량항목으로 상태 파생: 항목 있으면 전부완료→완료 / 아니면 불량, 없으면 null(유지)
-function partDefectStatus(insp, part) {
-  const items = [1, 2].flatMap((r) => insp?.[`차${r}`]?.공정비고?.[part]?.항목 || []);
-  if (items.length === 0) return null;
-  return items.every((it) => it.완료) ? '완료' : '문제';
 }
 
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
@@ -49,13 +43,13 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
     if (!canEdit) return;
     const next = structuredClone(getInsp(p));
     mut(next);
-    const patch = { 검수: next };
-    const st = partDefectStatus(next, part);
-    if (st) {
-      patch.부품상태 = { ...(p.부품상태 || {}), [part]: st };
-      patch.부품검수자 = { ...(p.부품검수자 || {}), [part]: st === '대기' ? '' : checkerName };
-    }
-    save(patch);
+    // 박스 상태 = 자재입고+불량 종합 자동산출 (매트릭스와 동일 규칙)
+    const st = deriveBoxStatus(p, part, next);
+    save({
+      검수: next,
+      부품상태: { ...(p.부품상태 || {}), [part]: st },
+      부품검수자: { ...(p.부품검수자 || {}), [part]: st === '대기' ? '' : checkerName },
+    });
   };
 
   function openCamera(part, round, index = null, kind = '사진') {

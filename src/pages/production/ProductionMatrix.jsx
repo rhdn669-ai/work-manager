@@ -3,58 +3,29 @@ import { updatePanel } from '../../services/productionService';
 import {
   BUPMOK,
   JAIP,
-  MP_SUBS,
-  UI_TASK_STATES,
-  TASK_LABEL,
   TASK_CFG,
   OVERALL_CFG,
   getDday,
+  boxMat,
+  boxHasDefect,
+  deriveBoxStatus,
 } from '../../domain/production';
 
-// 엑셀식 가로 매트릭스 — 호기(행) × BOX/공정(컬럼). 셀 직접 입력, 가로 스크롤.
-// v1: 현재 도메인(부품7·MP하위9·자재입고4·일정) 기준. 엑셀 정밀컬럼(Bracket·케이블 도급/제작 등)은 파일 수령 후 확장.
-const today = () => new Date().toISOString().slice(0, 10);
+// 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
+// BOX 상태는 하위(자재입고4·불량)에서 자동 산출. 셀 직접 입력. MP 하위 상세는 상세모달.
 const mmdd = (d) => (d ? String(d).slice(5) : '');
-const norm = (s) => (s === '불량' ? '문제' : s || '대기');
 
-export default function ProductionMatrix({ panels, canEdit, checkerName, onOpen, onRemove }) {
+export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) {
   const setField = (p, patch) => canEdit && updatePanel(p.id, patch);
 
-  // 부품/ MP 상태 셀 — 클릭 시 대기→완료→불량 순환
-  const cyclePart = (p, key, isMp) => {
+  // BOX 자재입고 항목 토글 → 박스입고 갱신 + 박스 상태 자동 산출
+  const toggleBoxMat = (p, box, k) => {
     if (!canEdit) return;
-    const cur = norm((isMp ? p.mp하위상태 : p.부품상태)?.[key]);
-    const next = UI_TASK_STATES[(UI_TASK_STATES.indexOf(cur) + 1) % UI_TASK_STATES.length];
-    if (isMp) setField(p, { mp하위상태: { ...(p.mp하위상태 || {}), [key]: next } });
-    else
-      setField(p, {
-        부품상태: { ...(p.부품상태 || {}), [key]: next },
-        부품검수자: { ...(p.부품검수자 || {}), [key]: next === '대기' ? '' : checkerName },
-      });
-  };
-
-  const toggleJaip = (p, k) => {
-    if (!canEdit) return;
-    const on = !!(p.자재입고상태 || {})[k];
-    setField(p, {
-      자재입고상태: { ...(p.자재입고상태 || {}), [k]: !on },
-      자재입고일자: { ...(p.자재입고일자 || {}), [k]: !on ? today() : '' },
-    });
-  };
-
-  const StatusCell = ({ p, fieldKey, isMp }) => {
-    const st = norm((isMp ? p.mp하위상태 : p.부품상태)?.[fieldKey]);
-    const c = TASK_CFG[st] || TASK_CFG['대기'];
-    return (
-      <td
-        className="mx-cell mx-status"
-        style={{ background: c.bg, color: c.fg, cursor: canEdit ? 'pointer' : 'default' }}
-        onClick={() => cyclePart(p, fieldKey, isMp)}
-        title={`${fieldKey}: ${TASK_LABEL[st] || st}`}
-      >
-        {st === '완료' ? '○' : st === '문제' ? '✕' : ''}
-      </td>
-    );
+    const cur = boxMat(p, box);
+    const nextMat = { ...cur, [k]: !cur[k] };
+    const nextBoxIn = { ...(p.박스입고 || {}), [box]: nextMat };
+    const st = deriveBoxStatus(p, box, p.검수, nextMat);
+    setField(p, { 박스입고: nextBoxIn, 부품상태: { ...(p.부품상태 || {}), [box]: st } });
   };
 
   const DateCell = ({ p, field }) => (
@@ -80,9 +51,11 @@ export default function ProductionMatrix({ panels, canEdit, checkerName, onOpen,
             <th className="mx-sticky" colSpan={5}>
               기본
             </th>
-            <th colSpan={JAIP.length}>자재입고</th>
-            <th colSpan={BUPMOK.length}>부품 · BOX</th>
-            <th colSpan={MP_SUBS.length}>MP 하위</th>
+            {BUPMOK.map((b) => (
+              <th key={b} colSpan={6}>
+                {b}
+              </th>
+            ))}
             <th colSpan={3}>일정</th>
             <th colSpan={canEdit ? 3 : 2}>판정</th>
           </tr>
@@ -92,19 +65,13 @@ export default function ProductionMatrix({ panels, canEdit, checkerName, onOpen,
             <th className="mx-sticky mx-c2">호기</th>
             <th>정역</th>
             <th>자재</th>
-            {JAIP.map((k) => (
-              <th key={k}>{k}</th>
-            ))}
-            {BUPMOK.map((b) => (
-              <th key={b} className="mx-rot">
-                {b}
-              </th>
-            ))}
-            {MP_SUBS.map((k) => (
-              <th key={k} className="mx-rot">
-                {k}
-              </th>
-            ))}
+            {BUPMOK.map((b) =>
+              [...JAIP, '불량', '상태'].map((sub) => (
+                <th key={`${b}-${sub}`} className="mx-sub-th">
+                  {sub}
+                </th>
+              )),
+            )}
             <th>자재입고</th>
             <th>납기</th>
             <th>턴온</th>
@@ -133,26 +100,24 @@ export default function ProductionMatrix({ panels, canEdit, checkerName, onOpen,
                   {p.정역 ? <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span> : ''}
                 </td>
                 <td className="mx-cell mx-jaje">{p.자재 || ''}</td>
-                {JAIP.map((k) => {
-                  const on = !!(p.자재입고상태 || {})[k];
+                {BUPMOK.map((b) => {
+                  const mat = boxMat(p, b);
+                  const defect = boxHasDefect(p.검수, b);
+                  const st = deriveBoxStatus(p, b);
+                  const sc = TASK_CFG[st] || TASK_CFG['대기'];
                   return (
-                    <td
-                      key={k}
-                      className="mx-cell mx-jaip"
-                      style={{ background: on ? '#e7f4ec' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
-                      onClick={() => toggleJaip(p, k)}
-                      title={on ? (p.자재입고일자 || {})[k] || '완료' : ''}
-                    >
-                      {on ? '○' : ''}
-                    </td>
+                    <BoxGroup
+                      key={b}
+                      mat={mat}
+                      defect={defect}
+                      st={st}
+                      sc={sc}
+                      canEdit={canEdit}
+                      onMat={(k) => toggleBoxMat(p, b, k)}
+                      onDefect={() => onOpen(p.id)}
+                    />
                   );
                 })}
-                {BUPMOK.map((b) => (
-                  <StatusCell key={b} p={p} fieldKey={b} isMp={false} />
-                ))}
-                {MP_SUBS.map((k) => (
-                  <StatusCell key={k} p={p} fieldKey={k} isMp />
-                ))}
                 <DateCell p={p} field="자재입고" />
                 <DateCell p={p} field="납기" />
                 <DateCell p={p} field="턴온" />
@@ -175,5 +140,38 @@ export default function ProductionMatrix({ panels, canEdit, checkerName, onOpen,
         </tbody>
       </table>
     </div>
+  );
+}
+
+// BOX 하위 6칸: 판금·하네스·사급·도급 · 불량 · 상태(자동)
+function BoxGroup({ mat, defect, st, sc, canEdit, onMat, onDefect }) {
+  return (
+    <>
+      {JAIP.map((k) => {
+        const on = !!mat[k];
+        return (
+          <td
+            key={k}
+            className="mx-cell mx-boxmat"
+            style={{ background: on ? '#e7f4ec' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
+            onClick={() => onMat(k)}
+            title={k}
+          >
+            {on ? '○' : ''}
+          </td>
+        );
+      })}
+      <td
+        className="mx-cell mx-boxdefect"
+        style={{ cursor: 'pointer', color: '#d6303f', background: defect ? '#fdebec' : undefined }}
+        onClick={onDefect}
+        title="불량 기록/사진 (클릭: 상세)"
+      >
+        {defect ? '✕' : ''}
+      </td>
+      <td className="mx-cell mx-boxstate" style={{ background: sc.bg, color: sc.fg }} title={st}>
+        {st === '완료' ? '○' : st === '문제' ? '✕' : ''}
+      </td>
+    </>
   );
 }

@@ -58,6 +58,24 @@ export function unresolvedDefectParts(p, round) {
   return BUPMOK.filter((b) => (sec[b]?.항목 || []).some((it) => it.내용 && !it.완료));
 }
 
+/* ── BOX별 하위(자재입고·불량) → 상태 자동 산출 (2026-07-20) ── */
+// 박스입고: p.박스입고 = { 'P/W BOX': {판금,하네스,사급,도급 boolean}, ... }
+export function boxMat(p, box) {
+  return (p.박스입고 || {})[box] || {};
+}
+// 해당 박스에 미해결 불량이 있나 (검수 1·2차 공정비고 항목 중 내용 있고 미완료)
+export function boxHasDefect(insp, box) {
+  return [1, 2].some((r) => (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).some((it) => it.내용 && !it.완료));
+}
+// 박스 종합상태: 미해결 불량→문제 / 입고4개 완료→완료 / 그 외 대기
+export function deriveBoxStatus(p, box, inspOverride, matOverride) {
+  const insp = inspOverride || p.검수;
+  if (boxHasDefect(insp, box)) return '문제';
+  const mat = matOverride || boxMat(p, box);
+  if (JAIP.every((k) => mat[k])) return '완료';
+  return '대기';
+}
+
 /* ── 로직 ── */
 // 프로젝트 그룹(납기 묶음) — 뒤 _N / -N 제거
 export const getProjGroup = (p) => String(p || '').replace(/[_-]\d+$/, '');
@@ -75,13 +93,24 @@ export function deriveMpState(mp = {}) {
 // 저장값 정규화 — 표시라벨 '불량'이 잘못 저장된 경우 '문제'로
 export const normState = (s) => (s === '불량' ? '문제' : s || '대기');
 
+// 부품별 완성 분율(0~1): 일반 부품은 완료=1, MP는 하위 9종 완료율로 부분 반영
+export function boxFraction(p, box) {
+  if (box === 'MP') {
+    const done = MP_SUBS.filter((k) => normState((p.mp하위상태 || {})[k]) === '완료').length;
+    return MP_SUBS.length ? done / MP_SUBS.length : 0;
+  }
+  return normState((p.부품상태 || {})[box]) === '완료' ? 1 : 0;
+}
+
 export function recompute(p) {
   const mpS = deriveMpState(p.mp하위상태 || {});
   const all = BUPMOK.map((b) => normState((p.부품상태 || {})[b]));
   const done = all.filter((s) => s === '완료').length;
   const hasIssue = all.some((s) => s === '문제');
-  const hasProgress = all.some((s) => s === '진행중' || s === '완료');
-  const progress = Math.round((done / all.length) * 100);
+  const hasProgress = all.some((s) => s === '진행중' || s === '완료') || boxFraction(p, 'MP') > 0;
+  // 진행률: 각 부품 동일 가중(1/부품수), MP는 하위 9종 완료율로 부분 반영
+  const frac = BUPMOK.reduce((a, b) => a + boxFraction(p, b), 0) / BUPMOK.length;
+  const progress = Math.round(frac * 100);
   let os;
   if (p.insp2done) os = '출고숨김';
   else if (p.출고완료) os = '출고완료';
