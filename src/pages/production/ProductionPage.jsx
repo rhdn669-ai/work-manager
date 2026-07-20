@@ -12,6 +12,7 @@ import {
   JAIP,
   COMPANIES,
   TASK_CFG,
+  TASK_LABEL,
   OVERALL_CFG,
   OVERALL_ORDER,
   getDday,
@@ -47,7 +48,11 @@ function Dots({ panel }) {
   return (
     <div className="parts-mini">
       {states.map((s, i) => (
-        <i key={i} title={i < 6 ? `${BUPMOK[i]}: ${s}` : `MP: ${s}`} style={{ background: TASK_CFG[s].dot }} />
+        <i
+          key={i}
+          title={i < 6 ? `${BUPMOK[i]}: ${TASK_LABEL[s] || s}` : `MP: ${TASK_LABEL[s] || s}`}
+          style={{ background: TASK_CFG[s].dot }}
+        />
       ))}
     </div>
   );

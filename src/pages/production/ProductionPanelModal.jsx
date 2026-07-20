@@ -2,7 +2,16 @@ import { useRef, useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
-import { BUPMOK, JAIP, MP_SUBS, COMPANIES, TASK_STATES, TASK_CFG, OVERALL_CFG } from '../../domain/production';
+import {
+  BUPMOK,
+  JAIP,
+  MP_SUBS,
+  COMPANIES,
+  UI_TASK_STATES,
+  TASK_LABEL,
+  TASK_CFG,
+  OVERALL_CFG,
+} from '../../domain/production';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
@@ -257,14 +266,14 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                   {b}
                 </span>
                 <div className="state-group">
-                  {TASK_STATES.map((s) => (
+                  {UI_TASK_STATES.map((s) => (
                     <button
                       key={s}
                       className={`state-btn ${cur === s ? `on-${s}` : ''}`}
                       disabled={!canEdit}
                       onClick={() => save({ 부품상태: { ...(p.부품상태 || {}), [b]: s } })}
                     >
-                      {s}
+                      {TASK_LABEL[s]}
                     </button>
                   ))}
                 </div>
@@ -293,12 +302,13 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
 
       <div className="pm-section">
         <div className="pm-section-title">
-          MP 판넬 <span className="sub">{canEdit ? '클릭 시 대기→진행중→완료→문제 순환' : ''}</span>
+          MP 판넬 <span className="sub">{canEdit ? '클릭 시 대기→완료→불량 순환' : ''}</span>
         </div>
         <div className="mp-grid">
           {MP_SUBS.map((k) => {
             const cur = (p.mp하위상태 || {})[k] || '대기';
-            const next = TASK_STATES[(TASK_STATES.indexOf(cur) + 1) % TASK_STATES.length];
+            const idx = UI_TASK_STATES.indexOf(cur);
+            const next = UI_TASK_STATES[(idx + 1) % UI_TASK_STATES.length];
             return (
               <button
                 key={k}
@@ -309,7 +319,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                 <b>{k}</b>
                 <span className="badge badge-sm" style={{ background: TASK_CFG[cur].bg, color: TASK_CFG[cur].fg }}>
                   <span className="dot" style={{ background: TASK_CFG[cur].dot }} />
-                  {cur}
+                  {TASK_LABEL[cur] || cur}
                 </span>
               </button>
             );

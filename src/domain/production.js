@@ -11,6 +11,9 @@ export const MP_SUBS = ['MAIN', 'PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORA
 
 /* ── 부품 작업 상태 4단계 ── */
 export const TASK_STATES = ['대기', '진행중', '완료', '문제'];
+// UI 입력용 3종 (2026-07-20 대표님: 대기·완료·불량) — 저장값 '문제'의 표시명은 '불량'
+export const UI_TASK_STATES = ['대기', '완료', '문제'];
+export const TASK_LABEL = { 대기: '대기', 진행중: '진행중', 완료: '완료', 문제: '불량' };
 export const TASK_CFG = {
   대기: { dot: '#8b95a1', bg: 'var(--status-wait-bg)', fg: 'var(--status-wait-fg)' },
   진행중: { dot: '#2272eb', bg: 'var(--status-progress-bg)', fg: 'var(--status-progress-fg)' },
