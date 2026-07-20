@@ -7,6 +7,7 @@ import { canProduction } from '../../utils/workspace';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import ProductionPanelModal from './ProductionPanelModal';
 import ProductionImportModal from './ProductionImportModal';
+import ProductionMatrix from './ProductionMatrix';
 import {
   BUPMOK,
   JAIP,
@@ -260,114 +261,13 @@ export default function ProductionPage() {
             </div>
           ) : (
             <>
-              <div className="board-table-wrap card" style={{ padding: 4 }}>
-                <table className="board-table board-table-dense">
-                  <thead>
-                    <tr>
-                      <th className="col-stripe"></th>
-                      <th>#</th>
-                      <th>프로젝트</th>
-                      <th>정역</th>
-                      <th>제작</th>
-                      <th>호기</th>
-                      <th>자재구분</th>
-                      <th>자재입고예정</th>
-                      <th>입고현황</th>
-                      <th>납기</th>
-                      <th>D-납기</th>
-                      <th>턴온</th>
-                      <th>D-턴온</th>
-                      <th style={{ minWidth: 100 }}>진행률</th>
-                      <th>공정</th>
-                      <th>상태</th>
-                      {isAdmin && <th className="col-action">작업</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((p, idx) => {
-                      const nc = napgiColorOf(allNapgi, p.납기 || '');
-                      const hasIssue = Object.values(p.부품상태 || {}).some((s) => s === '문제');
-                      const dday = getDday(p.납기);
-                      const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
-                      const isOD = dday < 0 && !isDone;
-                      const isUrg = dday >= 0 && dday <= 3 && !isDone;
-                      const d1 = unresolvedDefectParts(p, 1);
-                      const d2 = unresolvedDefectParts(p, 2);
-                      const hasDefect = d1.length > 0 || d2.length > 0;
-                      const rowBg = hasDefect ? '#fff0f0' : isOD ? '#fff5f5' : isUrg ? '#fffaf0' : undefined;
-                      return (
-                        <tr key={p.id} onClick={() => setOpenId(p.id)} style={{ background: rowBg, cursor: 'pointer' }}>
-                          <td className="col-stripe">
-                            <div className="stripe" style={{ background: hasDefect ? '#c53030' : nc }} />
-                          </td>
-                          <td className="cell-no">{idx + 1}</td>
-                          <td>
-                            <div className="proj-name">{p.프로젝트 || '—'}</div>
-                            {hasDefect && (
-                              <div className="defect-tags">
-                                {d1.length > 0 && <span className="dtag d1">⚠ 1차 {d1.join(', ')}</span>}
-                                {d2.length > 0 && <span className="dtag d2">⚠ 2차 {d2.join(', ')}</span>}
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            {p.정역 ? (
-                              <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span>
-                            ) : (
-                              ''
-                            )}
-                          </td>
-                          <td className="cell-sub">{p.기구제작 || ''}</td>
-                          <td className="cell-hogi" title={p.호기}>
-                            {(p.호기 || '').slice(-3)}
-                          </td>
-                          <td className="cell-jaje">{p.자재 || ''}</td>
-                          <td>
-                            <span className="cell-date" style={{ color: nc }}>
-                              {mmdd(p.자재입고)}
-                            </span>
-                          </td>
-                          <td>
-                            <JaipDots panel={p} />
-                          </td>
-                          <td>
-                            <span className="cell-date" style={{ color: nc }}>
-                              {mmdd(p.납기)}
-                            </span>
-                          </td>
-                          <td>
-                            <DdayBadge date={p.납기} os={p.overallStatus} />
-                          </td>
-                          <td>
-                            <span className="cell-date" style={{ color: nc }}>
-                              {mmdd(p.턴온)}
-                            </span>
-                          </td>
-                          <td>
-                            <DdayBadge date={p.턴온} os={p.overallStatus} />
-                          </td>
-                          <td>
-                            <Prog val={p.progress} hasIssue={hasIssue} />
-                          </td>
-                          <td>
-                            <Dots panel={p} />
-                          </td>
-                          <td>
-                            <OverallBadge status={p.overallStatus} />
-                          </td>
-                          {isAdmin && (
-                            <td className="col-action">
-                              <button className="btn btn-sm btn-danger" onClick={(e) => handleRemove(e, p)}>
-                                <Icon name="trash" className="btn-ic" />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ProductionMatrix
+                panels={filtered}
+                canEdit={isAdmin}
+                checkerName={userProfile?.name || ''}
+                onOpen={setOpenId}
+                onRemove={handleRemove}
+              />
 
               {/* 모바일 카드 */}
               <div className="board-cards">
