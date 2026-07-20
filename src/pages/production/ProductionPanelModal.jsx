@@ -1,6 +1,7 @@
+import { useRef, useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
-import { updatePanel } from '../../services/productionService';
+import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
 import { BUPMOK, JAIP, MP_SUBS, COMPANIES, TASK_STATES, TASK_CFG, OVERALL_CFG } from '../../domain/production';
 
 function getInsp(p) {
@@ -10,6 +11,11 @@ function getInsp(p) {
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
 export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
   const insp = getInsp(p);
+  // 불량 사진 촬영/첨부 — 하나의 숨은 input을 공유, 대상(부품·차수·행)을 ref에 보관
+  const photoInputRef = useRef(null);
+  const photoTargetRef = useRef(null); // { part, round, index|null(null=새 행 추가) }
+  const [uploading, setUploading] = useState(false);
+
   const save = (patch) => {
     if (canEdit) updatePanel(p.id, patch);
   };
@@ -19,6 +25,32 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
     mut(next);
     save({ 검수: next });
   };
+
+  function openCamera(part, round, index = null) {
+    photoTargetRef.current = { part, round, index };
+    photoInputRef.current?.click();
+  }
+  async function handlePhoto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const target = photoTargetRef.current;
+    if (!file || !target) return;
+    setUploading(true);
+    try {
+      const url = await uploadDefectPhoto(file);
+      saveInsp((n) => {
+        const { part, round, index } = target;
+        if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
+        if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
+        if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
+        const sec = n[`차${round}`].공정비고[part];
+        if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url });
+        else sec.항목[index].사진 = url;
+      });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
 
@@ -59,6 +91,14 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                 disabled={!canEdit}
                 onChange={(e) => mutSec((s) => (s.항목[i].완료 = e.target.checked))}
               />
+              {it.사진 && (
+                <img
+                  className="defect-photo"
+                  src={it.사진}
+                  alt="불량 사진"
+                  onClick={() => window.open(it.사진, '_blank', 'noopener')}
+                />
+              )}
               <input
                 type="text"
                 className={it.완료 ? 'done' : ''}
@@ -69,6 +109,11 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
                   if (e.target.value !== (it.내용 || '')) mutSec((s) => (s.항목[i].내용 = e.target.value));
                 }}
               />
+              {canEdit && !it.사진 && (
+                <button className="defect-cam" onClick={() => openCamera(part, round, i)} title="사진 촬영/첨부">
+                  <Icon name="image" />
+                </button>
+              )}
               {canEdit && (
                 <button className="defect-del" onClick={() => mutSec((s) => s.항목.splice(i, 1))} aria-label="삭제">
                   <Icon name="close" />
@@ -77,9 +122,18 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
             </div>
           ))}
           {canEdit && (
-            <button className="defect-add" onClick={() => mutSec((s) => s.항목.push({ 내용: '', 완료: false }))}>
-              <Icon name="plus" className="btn-ic" /> {round}차 불량 추가
-            </button>
+            <div className="defect-add-row">
+              <button className="defect-add" disabled={uploading} onClick={() => openCamera(part, round, null)}>
+                <Icon name="image" className="btn-ic" />{' '}
+                {uploading ? '사진 업로드 중…' : `${round}차 불량 추가 (사진 촬영)`}
+              </button>
+              <button
+                className="defect-add-plain"
+                onClick={() => mutSec((s) => s.항목.push({ 내용: '', 완료: false }))}
+              >
+                사진 없이
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -88,6 +142,8 @@ export default function ProductionPanelModal({ panel: p, canEdit, onClose }) {
 
   return (
     <Modal isOpen onClose={onClose} title={`${p.프로젝트 || '판넬'} · ${p.호기 || '호기 미정'}`} size="lg">
+      {/* 불량 사진 촬영 — 모바일에서 후면 카메라 바로 열림 */}
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handlePhoto} />
       <div style={{ marginBottom: 14 }}>
         <span className="badge" style={{ background: oc.bg, color: oc.fg }}>
           {p.overallStatus}

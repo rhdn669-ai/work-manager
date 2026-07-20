@@ -1,3 +1,24 @@
+/* ── 생산현황 전용 버튼 리셋 — panel-status 전역 리셋 대체 (WM엔 bare button 리셋 없음) ── */
+.company-tab,
+.pr-chip,
+.state-btn,
+.jaip-chip,
+.mp-item,
+.done-toggle,
+.defect-add,
+.defect-del {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* 생산현황 보드 — 표(PC) / 카드(모바일) */
 .board-toolbar {
   display: flex;
@@ -750,4 +771,58 @@
   padding: 64px 20px;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* ── 불량 사진 ── */
+.defect-photo {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  flex-shrink: 0;
+}
+.defect-cam {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  background: none;
+  border: 1.5px dashed var(--border-strong, #d1d6db);
+  cursor: pointer;
+}
+.defect-cam:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.defect-cam svg {
+  width: 16px;
+  height: 16px;
+}
+.defect-add-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.defect-add-row .defect-add {
+  flex: 1;
+}
+.defect-add-plain {
+  padding: 0 12px;
+  border: 1.5px dashed var(--border-strong, #d1d6db);
+  border-radius: 8px;
+  font-size: var(--font-sm, 12px);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.defect-add-plain:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }

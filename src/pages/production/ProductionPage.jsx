@@ -115,7 +115,7 @@ export default function ProductionPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('현황');
   const [q, setQ] = useState('');
-  const [company, setCompany] = useState('전체');
+  const [company, setCompany] = useState(COMPANIES[0]); // 메티스 · 디에이치 (전체 탭 없음 — 대표님 지시)
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [hideShipped, setHideShipped] = useState(true);
   const [openId, setOpenId] = useState(null);
@@ -136,7 +136,8 @@ export default function ProductionPage() {
   const filtered = useMemo(() => {
     return panels.filter((p) => {
       const shipped = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
-      if (company !== '전체' && (p.회사 || '') !== company) return false;
+      // 회사 미지정 판넬은 어느 탭에서든 표시(유실 방지) — 지정되면 해당 탭에만
+      if (p.회사 && p.회사 !== company) return false;
       if (hideShipped && shipped) return false;
       if (urgentOnly && (getDday(p.납기) > 7 || shipped)) return false;
       if (q) {
@@ -150,7 +151,7 @@ export default function ProductionPage() {
   const openPanel = openId ? panels.find((p) => p.id === openId) : null;
 
   async function handleAdd() {
-    const row = await addPanel(emptyPanel({ 프로젝트: '새 프로젝트', 회사: company !== '전체' ? company : '' }));
+    const row = await addPanel(emptyPanel({ 프로젝트: '새 프로젝트', 회사: company }));
     if (row?.id) setOpenId(row.id);
   }
   async function handleRemove(e, p) {
@@ -161,7 +162,7 @@ export default function ProductionPage() {
 
   /* ── 통계 파생 ── */
   const stats = useMemo(() => {
-    const target = company === '전체' ? panels : panels.filter((p) => (p.회사 || '') === company);
+    const target = panels.filter((p) => !p.회사 || p.회사 === company);
     const byStatus = Object.fromEntries(OVERALL_ORDER.map((s) => [s, 0]));
     let urgent = 0;
     for (const p of target) {
@@ -174,7 +175,7 @@ export default function ProductionPage() {
   }, [panels, company]);
 
   const workerStats = useMemo(() => {
-    const target = company === '전체' ? panels : panels.filter((p) => (p.회사 || '') === company);
+    const target = panels.filter((p) => !p.회사 || p.회사 === company);
     return Object.entries(collectWorkerStats(target))
       .filter(([, v]) => v.담당 > 0)
       .map(([name, v]) => {
@@ -213,10 +214,10 @@ export default function ProductionPage() {
 
       {/* 회사 탭 — 메티스 · 디에이치 */}
       <div className="company-tabs">
-        {['전체', ...COMPANIES].map((c) => (
+        {COMPANIES.map((c) => (
           <button key={c} className={`company-tab ${company === c ? 'on' : ''}`} onClick={() => setCompany(c)}>
             {c}
-            <b>{c === '전체' ? panels.length : panels.filter((p) => (p.회사 || '') === c).length}</b>
+            <b>{panels.filter((p) => (p.회사 || '') === c).length}</b>
           </button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
