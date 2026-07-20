@@ -76,7 +76,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
         if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
         const sec = n[`차${round}`].공정비고[part];
-        if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url });
+        if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url, 검수자: checkerName });
         else sec.항목[index][kind] = url;
       });
     } finally {
@@ -124,7 +124,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
                 onChange={(e) =>
                   mutSec((s) => {
                     s.항목[i].완료 = e.target.checked;
-                    s.항목[i].검수자 = e.target.checked ? checkerName : '';
+                    if (e.target.checked) s.항목[i].검수자 = checkerName; // 완료 체크 시 검수자 기록(해제해도 유지)
                   })
                 }
               />
@@ -137,7 +137,7 @@ export default function ProductionPanelModal({ panel: p, canEdit, checkerName = 
                   onClick={() => window.open(it.사진, '_blank', 'noopener')}
                 />
               )}
-              {it.완료 && it.검수자 ? <span className="checker-name">검수 {it.검수자}</span> : null}
+              {it.검수자 ? <span className="checker-name">검수 {it.검수자}</span> : null}
               {it.조치사진 && (
                 <img
                   className="defect-photo after"
