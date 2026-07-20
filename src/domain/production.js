@@ -3,11 +3,11 @@
 
 /* ── 부품/공정 상수 ── */
 // 부품(BOX·판넬) 6종 — 명판(P/W BOX·S/D·H/T·ROBOT 등)과 동일 도메인
-export const BUPMOK = ['P/W BOX', 'LODER', 'S/D', 'H/T상', 'H/T하', 'ROBOT'];
+export const BUPMOK = ['P/W BOX', 'LODER', 'S/D', 'H/T상', 'H/T하', 'ROBOT', 'MP'];
 // 자재 입고 항목 4종 (boolean)
 export const JAIP = ['판금', '하네스', '사급', '도급'];
 // MP 판넬 하위 10종
-export const MP_SUBS = ['MAIN', 'PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타'];
+export const MP_SUBS = ['PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타']; // MAIN → 부품 'MP'로 승격 (2026-07-20)
 
 /* ── 부품 작업 상태 4단계 ── */
 export const TASK_STATES = ['대기', '진행중', '완료', '문제'];
@@ -73,7 +73,7 @@ export function deriveMpState(mp = {}) {
 // 진행률 + 종합상태 산출 (기존 recompute 이식)
 export function recompute(p) {
   const mpS = deriveMpState(p.mp하위상태 || {});
-  const all = [...BUPMOK.map((b) => (p.부품상태 || {})[b] || '대기'), mpS];
+  const all = BUPMOK.map((b) => (p.부품상태 || {})[b] || '대기');
   const done = all.filter((s) => s === '완료').length;
   const hasIssue = all.some((s) => s === '문제');
   const hasProgress = all.some((s) => s === '진행중' || s === '완료');

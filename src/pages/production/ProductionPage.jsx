@@ -17,7 +17,6 @@ import {
   OVERALL_ORDER,
   getDday,
   emptyPanel,
-  deriveMpState,
   napgiColorOf,
   unresolvedDefectParts,
 } from '../../domain/production';
@@ -44,15 +43,11 @@ function Prog({ val, hasIssue }) {
   );
 }
 function Dots({ panel }) {
-  const states = [...BUPMOK.map((b) => (panel.부품상태 || {})[b] || '대기'), deriveMpState(panel.mp하위상태 || {})];
+  const states = BUPMOK.map((b) => (panel.부품상태 || {})[b] || '대기');
   return (
     <div className="parts-mini">
       {states.map((s, i) => (
-        <i
-          key={i}
-          title={i < 6 ? `${BUPMOK[i]}: ${TASK_LABEL[s] || s}` : `MP: ${TASK_LABEL[s] || s}`}
-          style={{ background: TASK_CFG[s].dot }}
-        />
+        <i key={i} title={`${BUPMOK[i]}: ${TASK_LABEL[s] || s}`} style={{ background: TASK_CFG[s].dot }} />
       ))}
     </div>
   );
