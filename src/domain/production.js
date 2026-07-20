@@ -8,6 +8,8 @@ export const BUPMOK = ['P/W BOX', 'LODER', 'S/D', 'H/T상', 'H/T하', 'ROBOT', '
 export const JAIP = ['판금', '하네스', '사급', '도급'];
 // MP 판넬 하위 10종
 export const MP_SUBS = ['PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타']; // MAIN → 부품 'MP'로 승격 (2026-07-20)
+// 진행률에서 MP가 차지하는 고정 비중(12.5%). 하위 9종으로 다시 분할, 나머지 부품은 87.5% 균등.
+export const MP_WEIGHT = 0.125;
 
 /* ── 부품 작업 상태 4단계 ── */
 export const TASK_STATES = ['대기', '진행중', '완료', '문제'];
@@ -108,8 +110,11 @@ export function recompute(p) {
   const done = all.filter((s) => s === '완료').length;
   const hasIssue = all.some((s) => s === '문제');
   const hasProgress = all.some((s) => s === '진행중' || s === '완료') || boxFraction(p, 'MP') > 0;
-  // 진행률: 각 부품 동일 가중(1/부품수), MP는 하위 9종 완료율로 부분 반영
-  const frac = BUPMOK.reduce((a, b) => a + boxFraction(p, b), 0) / BUPMOK.length;
+  // 진행률: MP는 전체의 12.5% 고정(하위 9종으로 분할), 나머지 부품이 87.5%를 균등 분할
+  const others = BUPMOK.filter((b) => b !== 'MP');
+  const otherW = others.length ? (1 - MP_WEIGHT) / others.length : 0;
+  const frac =
+    others.reduce((a, b) => a + boxFraction(p, b) * otherW, 0) + boxFraction(p, 'MP') * MP_WEIGHT;
   const progress = Math.round(frac * 100);
   let os;
   if (p.insp2done) os = '출고숨김';
