@@ -113,8 +113,7 @@ export function recompute(p) {
   // 진행률: MP는 전체의 12.5% 고정(하위 9종으로 분할), 나머지 부품이 87.5%를 균등 분할
   const others = BUPMOK.filter((b) => b !== 'MP');
   const otherW = others.length ? (1 - MP_WEIGHT) / others.length : 0;
-  const frac =
-    others.reduce((a, b) => a + boxFraction(p, b) * otherW, 0) + boxFraction(p, 'MP') * MP_WEIGHT;
+  const frac = others.reduce((a, b) => a + boxFraction(p, b) * otherW, 0) + boxFraction(p, 'MP') * MP_WEIGHT;
   const progress = Math.round(frac * 100);
   let os;
   if (p.insp2done) os = '출고숨김';
