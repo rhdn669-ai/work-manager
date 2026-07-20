@@ -1068,8 +1068,7 @@
   z-index: 3;
 }
 .mx-rot {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  writing-mode: vertical-lr;
   height: 74px;
   padding: 4px 2px;
 }
