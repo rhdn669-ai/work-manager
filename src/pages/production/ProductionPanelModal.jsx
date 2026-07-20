@@ -24,7 +24,7 @@ function getInsp(p) {
 function partDefectStatus(insp, part) {
   const items = [1, 2].flatMap((r) => insp?.[`차${r}`]?.공정비고?.[part]?.항목 || []);
   if (items.length === 0) return null;
-  return items.every((it) => it.완료) ? '완료' : '불량';
+  return items.every((it) => it.완료) ? '완료' : '문제';
 }
 
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
