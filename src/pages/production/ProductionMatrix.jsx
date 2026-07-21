@@ -173,8 +173,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
               <tr key={p.id} className={od ? 'mx-od' : urg ? 'mx-urg' : ''}>
                 <td className="mx-sticky mx-c0 mx-no">{idx + 1}</td>
                 <td className="mx-sticky mx-c1 mx-proj" onClick={() => onOpen(p.id, 'info')} title="클릭: 기본정보">
-                  <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
-                  {p.호기 ? <span className="mx-proj-hogi">{(p.호기 || '').slice(-3)}</span> : null}
+                  <span className="mx-proj-name">{`${p.프로젝트 || '—'}${p.호기 ? ' ' + p.호기 : ''}`}</span>
                 </td>
                 <td className="mx-cell mx-dir">
                   {p.정역 ? <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span> : ''}

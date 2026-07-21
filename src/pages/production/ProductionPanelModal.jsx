@@ -212,7 +212,7 @@ export default function ProductionPanelModal({
   const title =
     mode === 'defect'
       ? `${p.프로젝트 || '판넬'} ${part || ''} · 불량`
-      : `${p.프로젝트 || '판넬'} · ${p.호기 || '호기 미정'}`;
+      : `${p.프로젝트 || '판넬'}${p.호기 ? ' ' + p.호기 : ''}`;
 
   return (
     <Modal isOpen onClose={onClose} title={title} size="lg">
@@ -266,8 +266,19 @@ export default function ProductionPanelModal({
           <div className="pm-section">
             <div className="pm-section-title">기본정보</div>
             <div className="pm-grid">
-              {field('프로젝트', '프로젝트')}
-              {field('호기', '호기')}
+              <div className="pm-field" key="프로젝트호기">
+                <label>프로젝트 호기</label>
+                <input
+                  type="text"
+                  defaultValue={`${p.프로젝트 || ''}${p.호기 ? ' ' + p.호기 : ''}`.trim()}
+                  disabled={!canEdit}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    const cur = `${p.프로젝트 || ''}${p.호기 ? ' ' + p.호기 : ''}`.trim();
+                    if (v !== cur) save(p.호기 ? { 프로젝트: v, 호기: '' } : { 프로젝트: v });
+                  }}
+                />
+              </div>
               <div className="pm-field" key="정역">
                 <label>정/역</label>
                 <div className="jaip-row">
