@@ -6,6 +6,7 @@ import {
   BUPMOK,
   JAIP,
   JAIP_GROUPS,
+  GIGU_MAKERS,
   MP_SUBS,
   UI_TASK_STATES,
   TASK_CFG,
@@ -34,6 +35,16 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
       console.error(e);
       toast('저장에 실패했습니다. 다시 시도해 주세요.', 'error', 0);
     });
+  };
+
+  // 정/역 인라인 토글 (빈값 → 정 → 역 → 빈값)
+  const DIR_CYCLE = ['', '정', '역'];
+  const cycleDir = (p) => setField(p, { 정역: DIR_CYCLE[(DIR_CYCLE.indexOf(p.정역 || '') + 1) % DIR_CYCLE.length] });
+  // 기구제작 인라인 토글 (회사별 선택지 순환, 빈값 포함)
+  const gigusOf = (p) => GIGU_MAKERS[p.회사] || [...GIGU_MAKERS['메티스'], ...GIGU_MAKERS['디에이치']];
+  const cycleGigu = (p) => {
+    const opts = ['', ...gigusOf(p)];
+    setField(p, { 기구제작: opts[(opts.indexOf(p.기구제작 || '') + 1) % opts.length] });
   };
 
   // BOX 자재입고 항목 토글 → 박스입고 + 체크일자 갱신 + 박스 상태 자동 산출
@@ -175,11 +186,31 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 <td className="mx-sticky mx-c1 mx-proj" onClick={() => onOpen(p.id, 'info')} title="클릭: 기본정보">
                   <span className="mx-proj-name">{`${p.프로젝트 || '—'}${p.호기 ? ' ' + p.호기 : ''}`}</span>
                 </td>
-                <td className="mx-cell mx-dir">
-                  {p.정역 ? <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span> : ''}
+                <td
+                  className="mx-cell mx-dir"
+                  style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                  onClick={() => cycleDir(p)}
+                  title="클릭: 정 / 역 전환"
+                >
+                  {p.정역 ? (
+                    <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span>
+                  ) : (
+                    <span className="mx-cell-empty">·</span>
+                  )}
                 </td>
                 <td className="mx-cell mx-jaje">{p.자재 || ''}</td>
-                <td className="mx-cell mx-gigu">{p.기구제작 || ''}</td>
+                <td
+                  className="mx-cell mx-gigu"
+                  style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                  onClick={() => cycleGigu(p)}
+                  title="클릭: 기구제작 선택"
+                >
+                  {p.기구제작 ? (
+                    <span className="mx-gigu-badge">{p.기구제작}</span>
+                  ) : (
+                    <span className="mx-cell-empty">·</span>
+                  )}
+                </td>
                 {BUPMOK.map((b) => {
                   if (b === 'MP') {
                     const st = deriveMpState(p.mp하위상태 || {});

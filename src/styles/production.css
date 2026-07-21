@@ -1140,6 +1140,19 @@
 .mx-jaje {
   font-weight: 700;
 }
+/* 인라인 토글 셀(정역·기구) 빈값 힌트 + 기구 배지 */
+.mx-cell-empty {
+  color: var(--grey-300, #d1d6db);
+}
+.mx-gigu-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft, #e7ebf2);
+  color: var(--primary, #002050);
+  font-size: 11px;
+  font-weight: 700;
+}
 .mx-prog {
   font-weight: 700;
   color: var(--text-light);
@@ -1212,5 +1225,6 @@
 /* BOX 그룹 경계 — 그룹 첫 컬럼(판금) 좌측 진한 선 */
 .mx-group-row th {
   border-left: 2px solid #0a1a3a;
-  border-bottom: 2px solid #0a1a3a;
+  /* 3px = 서브행 세로선(≤2px)보다 우세 → 세로 구분선이 네이비 헤더로 삐치는 T-교차 번짐 차단 */
+  border-bottom: 3px solid #0a1a3a;
 }
