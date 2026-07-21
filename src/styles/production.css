@@ -1225,6 +1225,7 @@
 /* BOX 그룹 경계 — 그룹 첫 컬럼(판금) 좌측 진한 선 */
 .mx-group-row th {
   border-left: 2px solid #0a1a3a;
-  /* 3px = 서브행 세로선(≤2px)보다 우세 → 세로 구분선이 네이비 헤더로 삐치는 T-교차 번짐 차단 */
+  /* 상·하단 3px = 세로선(≤2px)보다 우세 → 세로 구분선이 네이비 헤더 위/아래로 삐치는 T-교차 번짐 차단 */
+  border-top: 3px solid #0a1a3a;
   border-bottom: 3px solid #0a1a3a;
 }
