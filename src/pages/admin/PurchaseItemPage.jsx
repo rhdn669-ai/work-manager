@@ -865,9 +865,9 @@ export default function PurchaseItemPage() {
         .pi-tabs button { padding:9px 16px; font-size:13px; font-weight:700; color:var(--text-muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px; }
         .pi-tabs button.on { color:var(--primary); border-bottom-color:var(--primary); }
         .rate-badge { display:inline-flex; align-items:center; gap:var(--space-1); font-size:12px; font-weight:700; padding:var(--space-1) var(--space-2); border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
-        .rate-badge.up { color:#c53030; background:#fdecec; }
-        .rate-badge.down { color:#1d4ed8; background:#e8f0fe; }
-        .rate-badge.flat { color:#6b7280; background:#f1f3f5; }
+        .rate-badge.up { color:var(--success); background:var(--status-done-bg); }
+        .rate-badge.down { color:var(--danger); background:var(--status-cancel-bg); }
+        .rate-badge.flat { color:var(--text-secondary); background:var(--grey-100); }
         .pc-modal { display:flex; flex-direction:column; gap:14px; }
         .pc-change { display:flex; align-items:center; gap:var(--space-2); font-size:16px; font-weight:700; flex-wrap:wrap; }
         .pc-price { color:#6b7280; }

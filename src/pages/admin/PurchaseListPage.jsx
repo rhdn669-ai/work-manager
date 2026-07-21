@@ -127,7 +127,7 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
         )}
       </div>
       <div className="po-card__bottom">
-        <span className="po-card__amount" style={{ color: 'var(--text)' }}>
+        <span className="po-card__amount" style={{ color: 'var(--accent)' }}>
           {Number(p.totalAmount || 0).toLocaleString()}
           <em>원</em>
         </span>
@@ -195,7 +195,7 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
         {p.siteName || '프로젝트 미지정'}
         {p.supplierName ? ` · ${p.supplierName}` : ''}
       </div>
-      <div className="kb-card__amount" style={{ color: 'var(--text)' }}>
+      <div className="kb-card__amount" style={{ color: 'var(--accent)' }}>
         {Number(p.totalAmount || 0).toLocaleString()}
         <em>원</em>
       </div>

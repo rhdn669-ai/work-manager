@@ -9,7 +9,6 @@ import { getDepartments } from '../services/departmentService';
 import { getPurchases } from '../services/purchaseService';
 import { formatMinutes, getMonthStart, getMonthEnd, formatDisplayDate } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
-import HomeTaskBoard from '../components/common/HomeTaskBoard';
 import Skeleton from '../components/common/Skeleton';
 
 export default function DashboardPage() {
@@ -320,8 +319,6 @@ export default function DashboardPage() {
           </ul>
         </div>
       )}
-
-      <HomeTaskBoard />
 
       <HomeCalendar />
     </div>
