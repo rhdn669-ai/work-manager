@@ -58,6 +58,8 @@ export const OVERALL_ORDER = Object.keys(OVERALL_CFG);
 
 /* ── 발주사 (2026-07 대표님 확정: 메티스·디에이치 2개사 체제) ── */
 export const COMPANIES = ['메티스', '디에이치'];
+// 기구제작 업체 — 회사별 선택지 (2026-07-21 대표님: 메티스=TSW·엘트, 디에이치=건일·두원)
+export const GIGU_MAKERS = { 메티스: ['TSW', '엘트'], 디에이치: ['건일', '두원'] };
 
 /* ── 그룹 색상 (legacy 이식) ── */
 export const PROJ_COLORS = ['#667eea', '#48bb78', '#ed8936', '#ed64a6', '#4299e1', '#38b2ac'];

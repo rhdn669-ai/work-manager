@@ -1078,6 +1078,7 @@
   position: sticky;
   top: 40px;
   z-index: 3;
+  border-bottom: 1.5px solid var(--border-strong, #d1d6db);
 }
 .mx-rot {
   white-space: nowrap;
@@ -1200,7 +1201,7 @@
 }
 /* 자재 그룹(판금·하네스·자재·불량) 경계 좌측선 */
 .mx-grp-start {
-  border-left: 1.5px solid var(--border-strong, #d1d6db);
+  border-left: 2px solid var(--border-strong, #d1d6db);
 }
 /* 3행 leaf 헤더(사급·제작·도급) — 약간 작게 */
 .mx-leaf-row .mx-sub-th {
@@ -1211,4 +1212,5 @@
 /* BOX 그룹 경계 — 그룹 첫 컬럼(판금) 좌측 진한 선 */
 .mx-group-row th {
   border-left: 2px solid #0a1a3a;
+  border-bottom: 2px solid #0a1a3a;
 }

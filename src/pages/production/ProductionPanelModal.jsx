@@ -3,7 +3,7 @@ import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
-import { COMPANIES, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
+import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
@@ -265,22 +265,6 @@ export default function ProductionPanelModal({
 
           <div className="pm-section">
             <div className="pm-section-title">기본정보</div>
-            <div className="jaip-row" style={{ marginBottom: 12 }}>
-              {COMPANIES.map((c) => {
-                const on = p.회사 === c;
-                return (
-                  <button
-                    key={c}
-                    className={`jaip-chip ${on ? 'on' : ''}`}
-                    disabled={!canEdit}
-                    onClick={() => save({ 회사: on ? '' : c })}
-                  >
-                    {on && <Icon name="check" className="btn-ic" />}
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
             <div className="pm-grid">
               {field('프로젝트', '프로젝트')}
               {field('호기', '호기')}
@@ -301,7 +285,22 @@ export default function ProductionPanelModal({
                 </div>
               </div>
               {field('자재', '자재')}
-              {field('기구제작', '기구제작')}
+              <div className="pm-field" key="기구제작">
+                <label>기구제작</label>
+                <div className="jaip-row">
+                  {(GIGU_MAKERS[p.회사] || [...GIGU_MAKERS['메티스'], ...GIGU_MAKERS['디에이치']]).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`jaip-chip ${p.기구제작 === v ? 'on' : ''}`}
+                      disabled={!canEdit}
+                      onClick={() => save({ 기구제작: p.기구제작 === v ? '' : v })}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {field('자재입고일', '자재입고', 'date')}
               {field('납기', '납기', 'date')}
               {field('턴온', '턴온', 'date')}
