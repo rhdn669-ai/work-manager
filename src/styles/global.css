@@ -13888,7 +13888,7 @@ td.mx-dc {
   width: auto;
   height: 3px;
   border-radius: 2px 2px 0 0;
-  background: #ff7a45; /* 활성 띠 — 기본 오렌지(#f05819)보다 밝게 */
+  background: #ffa46b; /* 활성 띠 — 기본 오렌지(#f05819)보다 뚜렷하게 밝게 */
 }
 
 /* 중간 폰(≤480px) — 탭 패딩 1차 압축 */
