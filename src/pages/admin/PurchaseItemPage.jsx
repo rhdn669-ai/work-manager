@@ -863,7 +863,7 @@ export default function PurchaseItemPage() {
         /* 탭 · 단가 변경 이력 */
         .pi-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); }
         .pi-tabs button { padding:9px 16px; font-size:13px; font-weight:700; color:var(--text-muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px; }
-        .pi-tabs button.on { color:var(--primary); border-bottom-color:var(--primary); }
+        .pi-tabs button.on { color:var(--accent); border-bottom-color:var(--accent); } /* 상단 탭 표준: 활성=오렌지 언더라인 */
         .rate-badge { display:inline-flex; align-items:center; gap:var(--space-1); font-size:12px; font-weight:700; padding:var(--space-1) var(--space-2); border-radius:999px; font-variant-numeric:tabular-nums; white-space:nowrap; }
         .rate-badge.up { color:var(--success); background:var(--status-done-bg); }
         .rate-badge.down { color:var(--danger); background:var(--status-cancel-bg); }
