@@ -13824,14 +13824,13 @@ td.mx-dc {
   gap: 2px;
   margin-bottom: 14px;
   padding: 0;
-  background: transparent;
+  background: #fff; /* 탭 띠 영역 전체 흰색 */
   border: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  box-shadow: inset 0 1px 2px rgba(17, 24, 39, 0.05);
 }
 .tab-nav::-webkit-scrollbar {
   display: none;
@@ -13872,7 +13871,7 @@ td.mx-dc {
 .tab-nav-item.active {
   position: relative;
   color: var(--accent);
-  background: var(--accent-soft, rgba(240, 88, 25, 0.08));
+  background: var(--accent-soft, rgba(240, 88, 25, 0.08)); /* 살구색 채움 유지 */
   font-weight: 700;
   box-shadow: none;
 }
@@ -13888,7 +13887,7 @@ td.mx-dc {
   width: auto;
   height: 3px;
   border-radius: 2px 2px 0 0;
-  background: #ffa46b; /* 활성 띠 — 기본 오렌지(#f05819)보다 뚜렷하게 밝게 */
+  background: #ffa46b; /* 활성 언더라인 */
 }
 
 /* 중간 폰(≤480px) — 탭 패딩 1차 압축 */
