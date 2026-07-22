@@ -113,36 +113,21 @@ export default function DashboardPage() {
 
   return (
     <div className="dashboard-page">
-      <div className="dashboard-welcome" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <div className="dashboard-welcome-text" style={{ minWidth: 0, flex: 1 }}>
-          <h2
-            title={userProfile?.name}
-            style={{
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              lineHeight: 1.3,
-            }}
-          >
-            {userProfile?.name}
-          </h2>
+      <div className="dashboard-welcome">
+        <div className="dashboard-welcome-text">
+          <h2 title={userProfile?.name}>{userProfile?.name}</h2>
           <p title={userProfile?.position || (isAdmin ? '관리자' : '')}>
             {userProfile?.position || (isAdmin ? '관리자' : '')}
           </p>
         </div>
-        <div
-          className="dashboard-welcome-date"
-          title={todayLabelFull}
-          style={{ minHeight: 32, display: 'flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'normal' }}
-        >
+        <div className="dashboard-welcome-date" title={todayLabelFull}>
           {todayLabel}
         </div>
       </div>
 
       {isAdmin && (
-        <div className="dashboard-tiles" style={{ gap: 3 }}>
-          <div className="dashboard-tile tile-users is-static" style={{ padding: 6 }}>
+        <div className="dashboard-tiles">
+          <div className="dashboard-tile tile-users is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -151,17 +136,17 @@ export default function DashboardPage() {
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">사용자</div>
-              <div className="tile-value" style={{ fontSize: 'var(--font-lg)', lineHeight: 1.3 }}>
+              <div className="tile-value">
                 {adminStats.users}
-                <span style={{ fontSize: 13, marginLeft: 'var(--space-1)' }}>명</span>
+                <span>명</span>
               </div>
               <div className="tile-sub">활성 {adminStats.activeUsers}명</div>
             </div>
           </div>
 
-          <div className="dashboard-tile tile-departments is-static" style={{ padding: 6 }}>
+          <div className="dashboard-tile tile-departments is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 21h18" />
@@ -171,17 +156,17 @@ export default function DashboardPage() {
                 <line x1="10" y1="16" x2="14" y2="16" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">부서</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
+              <div className="tile-value">
                 {adminStats.departments}
-                <span style={{ fontSize: 13, marginLeft: 3 }}>개</span>
+                <span>개</span>
               </div>
               <div className="tile-sub">조직 단위</div>
             </div>
           </div>
 
-          <div className="dashboard-tile tile-site is-static" style={{ padding: 6 }}>
+          <div className="dashboard-tile tile-site is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 21h18" />
@@ -194,32 +179,28 @@ export default function DashboardPage() {
                 <path d="M15 17h.01" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">프로젝트</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
+              <div className="tile-value">
                 {siteCount}
-                <span style={{ fontSize: 13, marginLeft: 3 }}>개</span>
+                <span>개</span>
               </div>
               <div className="tile-sub">등록 프로젝트</div>
             </div>
           </div>
 
-          <Link
-            to="/admin/reports"
-            className={`dashboard-tile tile-pending ${pendingCount > 0 ? 'is-urgent' : ''}`}
-            style={{ padding: 6 }}
-          >
+          <Link to="/admin/reports" className={`dashboard-tile tile-pending ${pendingCount > 0 ? 'is-urgent' : ''}`}>
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">잔업 승인 대기</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
+              <div className="tile-value">
                 {pendingCount}
-                <span style={{ fontSize: 13, marginLeft: 3 }}>건</span>
+                <span>건</span>
               </div>
               <div className="tile-sub">{pendingCount > 0 ? '탭해서 승인' : '대기 없음'}</div>
             </div>
@@ -228,7 +209,6 @@ export default function DashboardPage() {
           <Link
             to="/admin/purchase"
             className={`dashboard-tile tile-purchase ${purchasePending > 0 ? 'is-urgent' : ''}`}
-            style={{ padding: 6 }}
           >
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -237,11 +217,11 @@ export default function DashboardPage() {
                 <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">입고 대기 구매</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
+              <div className="tile-value">
                 {purchasePending}
-                <span style={{ fontSize: 13, marginLeft: 3 }}>건</span>
+                <span>건</span>
               </div>
               <div className="tile-sub">{purchasePending > 0 ? '탭해서 입고처리' : '대기 없음'}</div>
             </div>
@@ -250,26 +230,24 @@ export default function DashboardPage() {
       )}
 
       {!isAdmin && (
-        <div className="dashboard-tiles" style={{ gap: 3 }}>
+        <div className="dashboard-tiles">
           {/* 잔업 (지표 카드 - 클릭 불가) */}
-          <div className="dashboard-tile tile-overtime is-static" style={{ padding: 6 }}>
+          <div className="dashboard-tile tile-overtime is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">이번 달 잔업</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
-                {formatMinutes(monthlyOvertime)}
-              </div>
+              <div className="tile-value">{formatMinutes(monthlyOvertime)}</div>
               <div className="tile-sub">{overtimeCount}건 등록</div>
             </div>
           </div>
 
           {/* 연차 (지표 카드 - 클릭 불가) */}
-          <div className="dashboard-tile tile-leave is-static" style={{ padding: 6 }}>
+          <div className="dashboard-tile tile-leave is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -278,11 +256,9 @@ export default function DashboardPage() {
                 <line x1="3" y1="10" x2="21" y2="10" />
               </svg>
             </div>
-            <div className="tile-body" style={{ gap: 2 }}>
+            <div className="tile-body">
               <div className="tile-title">연차 잔여</div>
-              <div className="tile-value" style={{ fontSize: 18, lineHeight: 1.3 }}>
-                {leaveBalance ? `${leaveBalance.remainingDays}일` : '-'}
-              </div>
+              <div className="tile-value">{leaveBalance ? `${leaveBalance.remainingDays}일` : '-'}</div>
               <div className="tile-sub">
                 {leaveBalance ? `누적 ${leaveBalance.totalDays}일 · 사용 ${leaveBalance.usedDays}일` : '연차 정보 없음'}
               </div>

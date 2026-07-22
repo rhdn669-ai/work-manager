@@ -7222,6 +7222,10 @@ tr.is-newly-added > td {
   color: var(--primary);
   letter-spacing: -0.022em;
   line-height: 1.12;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-welcome p {
@@ -7519,6 +7523,12 @@ tr.is-newly-added > td {
   line-height: 1.1;
   margin-bottom: 4px;
   font-variant-numeric: tabular-nums;
+}
+.tile-value span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-left: 3px;
 }
 
 .tile-sub {
