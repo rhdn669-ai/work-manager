@@ -13852,7 +13852,7 @@ td.mx-dc {
   font-weight: 600;
   background: transparent;
   border: 0;
-  border-radius: 8px 8px 0 0;
+  border-radius: 0; /* 상단 라운드 제거 — 살구색 채움 모서리 빈틈 방지 */
   cursor: pointer;
   font-family: inherit;
   transition:
