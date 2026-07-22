@@ -307,25 +307,7 @@ export default function PaymentPage() {
 
   return (
     <div className="payment-page">
-      <div className="page-header">
-        <h2>결제</h2>
-        <div className="page-actions">
-          <button type="button" className="btn btn-sm btn-outline" onClick={syncTaxInvoices} disabled={taxSyncing}>
-            <Icon name={taxSyncing ? 'clock' : 'download'} className="btn-ic" />
-            {taxSyncing ? '불러오는 중…' : '홈택스 세금계산서'}
-          </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={load} disabled={loading}>
-            <Icon name="restore" className="btn-ic" />
-            새로고침
-          </button>
-        </div>
-      </div>
-      <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 업체명을
-        누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후 <strong>결제 완료</strong> 처리하세요.
-      </p>
-
-      {/* 결제 상태 탭 */}
+      {/* 결제 상태 탭 (제목 위 — 상단 탭 표준) */}
       <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
         <button
           type="button"
@@ -349,6 +331,24 @@ export default function PaymentPage() {
           전체
         </button>
       </div>
+
+      <div className="page-header">
+        <h2>결제</h2>
+        <div className="page-actions">
+          <button type="button" className="btn btn-sm btn-outline" onClick={syncTaxInvoices} disabled={taxSyncing}>
+            <Icon name={taxSyncing ? 'clock' : 'download'} className="btn-ic" />
+            {taxSyncing ? '불러오는 중…' : '홈택스 세금계산서'}
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={load} disabled={loading}>
+            <Icon name="restore" className="btn-ic" />
+            새로고침
+          </button>
+        </div>
+      </div>
+      <p className="field-hint" style={{ margin: '0 0 12px' }}>
+        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 업체명을
+        누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후 <strong>결제 완료</strong> 처리하세요.
+      </p>
 
       {/* 년월 드롭다운 + 검색 */}
       <div className="payment-filterbar no-print">

@@ -217,19 +217,7 @@ export default function MailSendPage() {
 
   return (
     <div className="mail-send-page">
-      <div className="page-header">
-        <h2>메일 발송</h2>
-        <div className="page-actions">
-          {mode === 'compose' && (
-            <button type="button" className="btn btn-sm btn-primary" onClick={openPreview} disabled={sending}>
-              <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
-              {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 상단 탭 — 메일 작성 / 발송 이력 */}
+      {/* 상단 탭 — 메일 작성 / 발송 이력 (제목 위 — 상단 탭 표준) */}
       <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
         <button
           type="button"
@@ -245,6 +233,18 @@ export default function MailSendPage() {
         >
           발송 이력
         </button>
+      </div>
+
+      <div className="page-header">
+        <h2>메일 발송</h2>
+        <div className="page-actions">
+          {mode === 'compose' && (
+            <button type="button" className="btn btn-sm btn-primary" onClick={openPreview} disabled={sending}>
+              <Icon name={sending ? 'clock' : 'mail'} className="btn-ic" />
+              {sending && progress ? `발송 중 ${progress.done}/${progress.total}` : `발송 (${selectedCount})`}
+            </button>
+          )}
+        </div>
       </div>
 
       {mode === 'history' ? (

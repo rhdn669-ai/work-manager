@@ -453,6 +453,32 @@ export default function OutsourceManagementPage() {
 
   return (
     <div className="outsource-management-page">
+      {/* 주 탭 (제목 위 — 상단 탭 표준) */}
+      <div className="tab-nav" style={{ marginBottom: 14 }}>
+        <button
+          type="button"
+          className={`tab-nav-item ${tab === 'freelancer' ? 'active' : ''}`}
+          onClick={() => setTab('freelancer')}
+        >
+          프리랜서{' '}
+          {soloFreelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloFreelancers.length}</span>}
+        </button>
+        <button
+          type="button"
+          className={`tab-nav-item ${tab === 'daily' ? 'active' : ''}`}
+          onClick={() => setTab('daily')}
+        >
+          일용직 {soloDailies.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloDailies.length}</span>}
+        </button>
+        <button
+          type="button"
+          className={`tab-nav-item ${tab === 'vendor' ? 'active' : ''}`}
+          onClick={() => setTab('vendor')}
+        >
+          업체 {vendors.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{vendors.length}</span>}
+        </button>
+      </div>
+
       <div className="page-header">
         <h2>외주 관리</h2>
         <div className="page-actions">
@@ -479,31 +505,6 @@ export default function OutsourceManagementPage() {
         title="외주 휴지통"
         onChange={loadAll}
       />
-
-      <div className="tab-nav" style={{ marginBottom: 14 }}>
-        <button
-          type="button"
-          className={`tab-nav-item ${tab === 'freelancer' ? 'active' : ''}`}
-          onClick={() => setTab('freelancer')}
-        >
-          프리랜서{' '}
-          {soloFreelancers.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloFreelancers.length}</span>}
-        </button>
-        <button
-          type="button"
-          className={`tab-nav-item ${tab === 'daily' ? 'active' : ''}`}
-          onClick={() => setTab('daily')}
-        >
-          일용직 {soloDailies.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{soloDailies.length}</span>}
-        </button>
-        <button
-          type="button"
-          className={`tab-nav-item ${tab === 'vendor' ? 'active' : ''}`}
-          onClick={() => setTab('vendor')}
-        >
-          업체 {vendors.length > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{vendors.length}</span>}
-        </button>
-      </div>
 
       {/* 탭별 지출 합계 — 월별 필터 + 인원별 상세 진입 */}
       {canViewSalary && !loading && (

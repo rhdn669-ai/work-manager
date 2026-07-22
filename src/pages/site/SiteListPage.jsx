@@ -426,6 +426,25 @@ export default function SiteListPage() {
 
   return (
     <div className="site-list-page">
+      {/* 필터 탭 (제목 위 — 상단 탭 표준) */}
+      <div className="tab-nav" style={{ marginBottom: 12 }}>
+        {[
+          { key: 'all', label: '전체' },
+          { key: 'recurring', label: '양산' },
+          { key: 'once', label: '단발' },
+          { key: 'completed', label: '완료' },
+        ].map((t) => (
+          <button
+            key={t.key}
+            className={`tab-nav-item ${filter === t.key ? 'active' : ''}`}
+            onClick={() => setFilter(t.key)}
+          >
+            {t.label}{' '}
+            {filterCounts[t.key] > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{filterCounts[t.key]}</span>}
+          </button>
+        ))}
+      </div>
+
       <div className="page-header">
         <h2>프로젝트</h2>
         {(isAdmin || canCreateSite) && (
@@ -453,25 +472,6 @@ export default function SiteListPage() {
             </button>
           </div>
         )}
-      </div>
-
-      {/* 필터 탭 */}
-      <div className="tab-nav" style={{ marginBottom: 12 }}>
-        {[
-          { key: 'all', label: '전체' },
-          { key: 'recurring', label: '양산' },
-          { key: 'once', label: '단발' },
-          { key: 'completed', label: '완료' },
-        ].map((t) => (
-          <button
-            key={t.key}
-            className={`tab-nav-item ${filter === t.key ? 'active' : ''}`}
-            onClick={() => setFilter(t.key)}
-          >
-            {t.label}{' '}
-            {filterCounts[t.key] > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{filterCounts[t.key]}</span>}
-          </button>
-        ))}
       </div>
 
       <div className="filters">

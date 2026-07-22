@@ -13846,14 +13846,14 @@ td.mx-dc {
   align-items: center;
   justify-content: center;
   min-height: var(--btn-h-sm);
-  padding: 8px 14px;
+  padding: 9px 16px;
   text-decoration: none;
   color: var(--text-light);
   font-size: 14px;
   font-weight: 600;
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: 8px 8px 0 0;
   cursor: pointer;
   font-family: inherit;
   transition:
@@ -13866,23 +13866,27 @@ td.mx-dc {
 
 .tab-nav-item:hover {
   color: var(--text);
+  background: var(--bg-subtle);
 }
 
 .tab-nav-item.active {
   position: relative;
   color: var(--accent);
-  background: transparent;
+  background: var(--accent-soft, rgba(240, 88, 25, 0.08));
   font-weight: 700;
   box-shadow: none;
+}
+.tab-nav-item.active:hover {
+  background: var(--accent-soft, rgba(240, 88, 25, 0.08));
 }
 .tab-nav-item.active::after {
   content: '';
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: -1px; /* 컨테이너 하단 구분선 위에 겹침 */
-  transform: translateX(-50%);
-  width: calc(100% - 12px);
-  height: 2.5px;
+  width: auto;
+  height: 3px;
   border-radius: 2px 2px 0 0;
   background: var(--accent);
 }

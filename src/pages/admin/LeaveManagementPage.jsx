@@ -396,8 +396,6 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
 
   return (
     <div className="leave-management-page">
-      {!embedded && <h2>연차/잔업 신청 목록</h2>}
-
       <div className="tab-nav">
         <button
           className={`tab-nav-item ${activeTab === 'leave' ? 'active' : ''}`}
@@ -412,6 +410,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
           잔업 {otStats.pending > 0 && <span style={{ opacity: 0.6, marginLeft: 3 }}>{otStats.pending}</span>}
         </button>
       </div>
+
+      {!embedded && <h2>연차/잔업 신청 목록</h2>}
 
       <div className="filters">
         <Select
