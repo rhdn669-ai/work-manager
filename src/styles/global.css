@@ -11732,21 +11732,25 @@ tr.is-newly-added > td {
 .home-calendar-grid {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
+  background: #e6eaf0;
+  border: 1px solid #e6eaf0;
+  border-radius: 12px;
+  overflow: hidden;
 }
 .home-cal-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 1px;
 }
 .home-cal-dow-cell {
-  padding: 6px 0;
+  padding: 9px 0;
   text-align: center;
   font-size: 11px;
   font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: #8792a3;
+  letter-spacing: 0.04em;
+  background: #f5f7fa;
 }
 .home-cal-dow-cell.sunday {
   color: var(--danger);
@@ -11771,24 +11775,21 @@ tr.is-newly-added > td {
   align-items: stretch;
   justify-content: flex-start;
   gap: 2px;
-  min-height: 44px;
-  padding: 5px 6px;
-  background: var(--bg-card);
-  border: 1px solid #eef1f5;
-  border-radius: 8px;
+  min-height: 64px;
+  padding: 7px 8px;
+  background: #fff;
+  border: 0;
+  border-radius: 0;
   font-family: inherit;
   cursor: pointer;
   text-align: left;
   min-width: 0;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background 0.12s,
-    border-color 0.12s;
+  transition: background 0.12s;
 }
 .home-cal-cell:not(.empty):hover {
-  border-color: var(--primary-soft);
-  background: var(--bg-subtle);
+  background: #f7f9fc;
 }
 .home-cal-cell:active:not(.empty) {
   background: var(--accent);
@@ -11801,21 +11802,23 @@ tr.is-newly-added > td {
 .home-cal-cell:active:not(.empty) .home-cal-dot {
   background: #fff !important;
 }
+.home-cal-cell:active:not(.empty) .home-cal-chip {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border-left-color: rgba(255, 255, 255, 0.9);
+}
 .home-cal-cell:active:not(.empty) .home-cal-more {
   color: #fff;
 }
 .home-cal-cell.empty {
-  background: transparent;
-  border-color: transparent;
+  background: #fbfcfe;
   cursor: default;
 }
 .home-cal-cell.today {
   background: var(--accent-soft);
-  border-color: var(--accent-tint);
 }
 .home-cal-cell.selected {
   background: var(--accent);
-  border-color: var(--accent);
 }
 .home-cal-cell.selected .home-cal-date {
   color: #fff;
@@ -11931,6 +11934,62 @@ tr.is-newly-added > td {
 .home-cal-dot.type-notice,
 .home-cal-dot.type-event {
   background: var(--primary-hover);
+}
+
+/* 일정 텍스트 칩 (스티치 시안 스타일 — 왼쪽 액센트 바 + 옅은 배경) */
+.home-cal-events-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 3px;
+  min-width: 0;
+}
+.home-cal-chip {
+  font-size: 10px;
+  line-height: 1.35;
+  padding: 1px 4px 1px 5px;
+  border-radius: 3px;
+  border-left: 2px solid var(--primary);
+  background: var(--primary-softer);
+  color: var(--primary-hover);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: left;
+}
+.home-cal-chip.type-overtime {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-press);
+}
+.home-cal-chip.type-notice,
+.home-cal-chip.type-event {
+  border-left-color: var(--primary-hover);
+}
+.home-cal-chip.type-leave {
+  border-left-color: #10b981;
+  background: #ecfdf5;
+  color: #047857;
+}
+.home-cal-chip.type-personal {
+  border-left-color: var(--text-muted);
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.home-cal-more {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-left: 5px;
+}
+.home-cal-cell.selected .home-cal-chip {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border-left-color: rgba(255, 255, 255, 0.9);
+}
+.home-cal-cell.selected .home-cal-more {
+  color: rgba(255, 255, 255, 0.9);
 }
 .home-cal-ev {
   font-size: 10px;

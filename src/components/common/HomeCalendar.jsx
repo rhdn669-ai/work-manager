@@ -404,7 +404,7 @@ export default function HomeCalendar() {
                       type="button"
                       key={di}
                       className={`home-cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${di === 0 ? 'sunday' : ''} ${di === 6 ? 'saturday' : ''} ${isHoliday ? 'is-holiday' : ''}`}
-                      style={{ padding: 'var(--space-1)', lineHeight: 1.3 }}
+                      style={{ lineHeight: 1.3 }}
                       onPointerDown={(e) => {
                         e.preventDefault();
                         setSelectedDate(iso);
@@ -436,11 +436,13 @@ export default function HomeCalendar() {
                           </span>
                         )}
                       </span>
-                      <div className="home-cal-events home-cal-events-dots">
-                        {otherEvents.slice(0, 4).map((e, ei) => (
-                          <span key={ei} className={`home-cal-dot type-${e.type || 'event'}`} title={e.title} />
+                      <div className="home-cal-events home-cal-events-labels">
+                        {otherEvents.slice(0, 2).map((e, ei) => (
+                          <span key={ei} className={`home-cal-chip type-${e.type || 'event'}`} title={e.title}>
+                            {e.title}
+                          </span>
                         ))}
-                        {otherEvents.length > 4 && <span className="home-cal-ev-more">+{otherEvents.length - 4}</span>}
+                        {otherEvents.length > 2 && <span className="home-cal-more">+{otherEvents.length - 2}</span>}
                       </div>
                     </button>
                   );
