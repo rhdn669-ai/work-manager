@@ -11770,12 +11770,12 @@ tr.is-newly-added > td {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 3px;
-  min-height: 50px;
-  padding: 4px 5px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  gap: 2px;
+  min-height: 44px;
+  padding: 5px 6px;
+  background: var(--bg-card);
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
   font-family: inherit;
   cursor: pointer;
   text-align: left;
@@ -11783,8 +11783,12 @@ tr.is-newly-added > td {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition:
-    background 0.05s,
-    border-color 0.05s;
+    background 0.12s,
+    border-color 0.12s;
+}
+.home-cal-cell:not(.empty):hover {
+  border-color: var(--primary-soft);
+  background: var(--bg-subtle);
 }
 .home-cal-cell:active:not(.empty) {
   background: var(--accent);
@@ -11802,6 +11806,7 @@ tr.is-newly-added > td {
 }
 .home-cal-cell.empty {
   background: transparent;
+  border-color: transparent;
   cursor: default;
 }
 .home-cal-cell.today {
@@ -11905,14 +11910,14 @@ tr.is-newly-added > td {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 3px;
-  margin-top: auto;
-  padding-bottom: 2px;
+  margin-top: 1px;
+  padding-bottom: 0;
 }
 .home-cal-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--primary);
   flex-shrink: 0;
