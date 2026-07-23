@@ -7531,6 +7531,150 @@ tr.is-newly-added > td {
   margin-left: 3px;
 }
 
+/* ===== 홈 본문 2단 (결재 대기 목록 / 공지사항) ===== */
+@media (min-width: 720px) {
+  .dashboard-tiles-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (min-width: 900px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1.7fr 1fr;
+  }
+}
+.home-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+}
+.home-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.home-panel-head strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.home-panel-more {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.home-panel-more:hover {
+  color: var(--accent);
+}
+.home-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.home-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+.home-list-item:first-child {
+  border-top: 0;
+}
+.home-list-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.home-list-link:hover .home-list-body strong {
+  color: var(--accent);
+}
+.home-list-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.home-list-body strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-list-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-list-date {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.home-badge {
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.home-badge-ot {
+  background: var(--primary-softer);
+  color: var(--primary-hover);
+}
+.home-badge-leave {
+  background: #dcfce7;
+  color: #166534;
+}
+.home-badge-pay {
+  background: var(--accent-soft);
+  color: var(--accent-press);
+}
+.home-badge-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+.home-badge-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.home-notice-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin: 0 17px;
+}
+.home-empty {
+  padding: 20px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .tile-sub {
   font-size: 11px;
   color: var(--text-muted);

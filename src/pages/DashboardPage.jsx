@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { getMyOvertimeRecords, getPendingOvertimeRecords } from '../services/attendanceService';
-import { getLeaveBalance, getMyLeaves } from '../services/leaveService';
+import { getLeaveBalance, getMyLeaves, getAllLeavesByYear } from '../services/leaveService';
 import { getSitesByManager, getAllSites } from '../services/siteService';
 import { getUsers } from '../services/userService';
 import { getDepartments } from '../services/departmentService';
 import { getPurchases } from '../services/purchaseService';
+import { getEvents } from '../services/eventService';
 import { formatMinutes, getMonthStart, getMonthEnd, formatDisplayDate } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
 import Skeleton from '../components/common/Skeleton';
@@ -17,10 +18,10 @@ export default function DashboardPage() {
   const [overtimeCount, setOvertimeCount] = useState(0);
   const [leaveBalance, setLeaveBalance] = useState(null);
   const [siteCount, setSiteCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [purchasePending, setPurchasePending] = useState(0);
-  const [adminStats, setAdminStats] = useState({ users: 0, activeUsers: 0, departments: 0 });
-  const [recentApprovals, setRecentApprovals] = useState([]); // 최근 결재 결과 (비관리자)
+  const [adminStats, setAdminStats] = useState({ users: 0, departments: 0 });
+  const [pendingList, setPendingList] = useState([]); // 결재 대기 목록 (관리자)
+  const [recentApprovals, setRecentApprovals] = useState([]); // 최근 결재 결과 (직원)
+  const [notices, setNotices] = useState([]); // 공지사항
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,46 +32,95 @@ export default function DashboardPage() {
   async function loadDashboard() {
     try {
       const now = new Date();
-      const start = getMonthStart(now.getFullYear(), now.getMonth() + 1);
-      const end = getMonthEnd(now.getFullYear(), now.getMonth() + 1);
+      const year = now.getFullYear();
+      const start = getMonthStart(year, now.getMonth() + 1);
+      const end = getMonthEnd(year, now.getMonth() + 1);
 
-      const [records, balance, sites, users, departments] = await Promise.all([
+      const [records, balance, sites, users, departments, events] = await Promise.all([
         isAdmin ? Promise.resolve([]) : getMyOvertimeRecords(userProfile.uid, start, end),
         isAdmin ? Promise.resolve(null) : getLeaveBalance(userProfile.uid),
         isAdmin ? getAllSites() : getSitesByManager(userProfile.uid),
         isAdmin ? getUsers() : Promise.resolve([]),
         isAdmin ? getDepartments() : Promise.resolve([]),
+        getEvents().catch(() => []),
       ]);
 
       const activeRecords = records.filter((r) => r.status === 'approved');
-      const total = activeRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
-      setMonthlyOvertime(total);
+      setMonthlyOvertime(activeRecords.reduce((sum, r) => sum + (r.minutes || 0), 0));
       setOvertimeCount(activeRecords.length);
       setLeaveBalance(balance);
       setSiteCount(sites.length);
+      setNotices((events || []).slice(0, 4));
 
       if (isAdmin) {
         const activeUsers = users.filter((u) => u.isActive !== false).length;
-        setAdminStats({
-          users: users.length,
-          activeUsers,
-          departments: departments.length,
+        setAdminStats({ users: activeUsers, departments: departments.length });
+
+        const [pendingOt, purchases, leaves] = await Promise.all([
+          getPendingOvertimeRecords(),
+          getPurchases(),
+          getAllLeavesByYear(year).catch(() => []),
+        ]);
+
+        const userName = {};
+        users.forEach((u) => {
+          userName[u.uid || u.id] = u.name;
         });
-        const [pending, purchases] = await Promise.all([getPendingOvertimeRecords(), getPurchases()]);
-        setPendingCount(pending.length);
-        setPurchasePending(purchases.filter((p) => p.status === 'ordered').length);
+
+        const otItems = pendingOt.map((r) => ({
+          key: `ot-${r.id}`,
+          badge: '잔업',
+          badgeType: 'ot',
+          title: r.userName || userName[r.userId] || '직원',
+          sub: `잔업 ${formatMinutes(r.minutes || 0)} · ${r.date}`,
+          sortKey: r.date || '',
+          to: '/admin/reports',
+        }));
+
+        const leaveItems = (leaves || [])
+          .filter((l) => l.status === 'pending')
+          .map((l) => ({
+            key: `lv-${l.id}`,
+            badge: '연차',
+            badgeType: 'leave',
+            title: userName[l.userId] || '직원',
+            sub: `연차 ${l.startDate}${l.endDate && l.endDate !== l.startDate ? ` ~ ${l.endDate}` : ''} (${l.days || 1}일)`,
+            sortKey: l.startDate || '',
+            to: '/admin/leaves',
+          }));
+
+        const payItems = [];
+        for (const p of purchases) {
+          const req = p.paymentRequested;
+          if (!req) continue;
+          const paid = p.supplierPaid || {};
+          const unpaid = Object.keys(req).filter((k) => !paid[k]);
+          if (unpaid.length === 0) continue;
+          payItems.push({
+            key: `pay-${p.id}`,
+            badge: '결제',
+            badgeType: 'pay',
+            title: p.title || p.projectName || '구매 건',
+            sub: `결제 대기 ${unpaid.length}건`,
+            sortKey: '9999-99-99', // 결제 대기는 최상단 고정
+            to: '/admin/payment',
+          });
+        }
+
+        const merged = [...payItems, ...otItems, ...leaveItems]
+          .sort((a, b) => (b.sortKey || '').localeCompare(a.sortKey || ''))
+          .slice(0, 8);
+        setPendingList(merged);
       } else {
-        // 비관리자 — 최근 14일 결재 결과 (잔업/연차)
+        // 직원 — 최근 1일 결재 결과 (잔업/연차)
         const since = new Date();
         since.setDate(since.getDate() - 1);
         const sinceStr = `${since.getFullYear()}-${String(since.getMonth() + 1).padStart(2, '0')}-${String(since.getDate()).padStart(2, '0')}`;
-        const myLeaves = await getMyLeaves(userProfile.uid, now.getFullYear()).catch(() => []);
-        const otRecent = records;
+        const myLeaves = await getMyLeaves(userProfile.uid, year).catch(() => []);
         const approvals = [];
-        otRecent.forEach((r) => {
+        records.forEach((r) => {
           if ((r.status === 'approved' || r.status === 'rejected') && r.date >= sinceStr) {
             approvals.push({
-              kind: 'overtime',
               status: r.status,
               date: r.date,
               key: `ot-${r.id}`,
@@ -85,7 +135,6 @@ export default function DashboardPage() {
             (l.startDate || '') >= sinceStr
           ) {
             approvals.push({
-              kind: 'leave',
               status: l.status === 'confirmed' ? 'approved' : l.status,
               date: l.startDate,
               key: `lv-${l.id}`,
@@ -95,7 +144,7 @@ export default function DashboardPage() {
           }
         });
         approvals.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-        setRecentApprovals(approvals.slice(0, 5));
+        setRecentApprovals(approvals.slice(0, 6));
       }
     } catch (err) {
       console.error('대시보드 로드 실패:', err);
@@ -125,8 +174,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {isAdmin && (
-        <div className="dashboard-tiles">
+      {isAdmin ? (
+        <div className="dashboard-tiles dashboard-tiles-3">
           <div className="dashboard-tile tile-users is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -142,7 +191,7 @@ export default function DashboardPage() {
                 {adminStats.users}
                 <span>명</span>
               </div>
-              <div className="tile-sub">활성 {adminStats.activeUsers}명</div>
+              <div className="tile-sub">활성 사용자</div>
             </div>
           </div>
 
@@ -188,50 +237,9 @@ export default function DashboardPage() {
               <div className="tile-sub">등록 프로젝트</div>
             </div>
           </div>
-
-          <Link to="/admin/reports" className={`dashboard-tile tile-pending ${pendingCount > 0 ? 'is-urgent' : ''}`}>
-            <div className="tile-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <div className="tile-body">
-              <div className="tile-title">잔업 승인 대기</div>
-              <div className="tile-value">
-                {pendingCount}
-                <span>건</span>
-              </div>
-              <div className="tile-sub">{pendingCount > 0 ? '탭해서 승인' : '대기 없음'}</div>
-            </div>
-          </Link>
-
-          <Link
-            to="/admin/purchase"
-            className={`dashboard-tile tile-purchase ${purchasePending > 0 ? 'is-urgent' : ''}`}
-          >
-            <div className="tile-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                <line x1="12" y1="22.08" x2="12" y2="12" />
-              </svg>
-            </div>
-            <div className="tile-body">
-              <div className="tile-title">입고 대기 구매</div>
-              <div className="tile-value">
-                {purchasePending}
-                <span>건</span>
-              </div>
-              <div className="tile-sub">{purchasePending > 0 ? '탭해서 입고처리' : '대기 없음'}</div>
-            </div>
-          </Link>
         </div>
-      )}
-
-      {!isAdmin && (
-        <div className="dashboard-tiles">
-          {/* 잔업 (지표 카드 - 클릭 불가) */}
+      ) : (
+        <div className="dashboard-tiles dashboard-tiles-3">
           <div className="dashboard-tile tile-overtime is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -246,7 +254,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 연차 (지표 카드 - 클릭 불가) */}
           <div className="dashboard-tile tile-leave is-static">
             <div className="tile-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -265,36 +272,119 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 팀장의 "팀원 잔업·연차" 타일은 우리 팀 탭으로 이동했으므로 홈에선 숨김 */}
+          <div className="dashboard-tile tile-site is-static">
+            <div className="tile-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 21h18" />
+                <path d="M5 21V7l7-4 7 4v14" />
+                <path d="M9 9h.01" />
+                <path d="M9 13h.01" />
+                <path d="M9 17h.01" />
+                <path d="M15 9h.01" />
+                <path d="M15 13h.01" />
+                <path d="M15 17h.01" />
+              </svg>
+            </div>
+            <div className="tile-body">
+              <div className="tile-title">담당 프로젝트</div>
+              <div className="tile-value">
+                {siteCount}
+                <span>개</span>
+              </div>
+              <div className="tile-sub">진행 중</div>
+            </div>
+          </div>
         </div>
       )}
 
-      {!isAdmin && recentApprovals.length > 0 && (
-        <div className="approvals-widget">
-          <div className="approvals-widget-head">
-            <strong>최근 결재 결과</strong>
-            <span className="text-muted text-sm">최근 1일</span>
+      <div className="dashboard-main-grid">
+        <section className="home-panel">
+          <div className="home-panel-head">
+            <strong>{isAdmin ? '결재 대기 목록' : '최근 결재 결과'}</strong>
+            {isAdmin ? (
+              <Link className="home-panel-more" to="/admin/reports">
+                전체보기
+              </Link>
+            ) : (
+              <span className="text-muted text-sm">최근 1일</span>
+            )}
           </div>
-          <ul className="approvals-list">
-            {recentApprovals.map((a) => (
-              <li key={a.key} className={`approval-item approval-${a.status}`}>
-                <span className={`approval-badge approval-badge-${a.status}`}>
-                  {a.status === 'approved' ? '승인' : a.status === 'rejected' ? '반려' : '대기'}
-                </span>
-                <div className="approval-body">
-                  <strong title={a.label}>{a.label}</strong>
-                  {a.sub && (
-                    <span className="approval-sub" title={a.sub}>
-                      {a.sub}
-                    </span>
-                  )}
-                </div>
-                <span className="approval-date">{formatDisplayDate(a.date)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+
+          {isAdmin ? (
+            pendingList.length > 0 ? (
+              <ul className="home-list">
+                {pendingList.map((it) => (
+                  <li key={it.key} className="home-list-item">
+                    <Link to={it.to} className="home-list-link">
+                      <span className={`home-badge home-badge-${it.badgeType}`}>{it.badge}</span>
+                      <div className="home-list-body">
+                        <strong title={it.title}>{it.title}</strong>
+                        <span className="home-list-sub" title={it.sub}>
+                          {it.sub}
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="home-empty">결재 대기 항목이 없습니다.</div>
+            )
+          ) : recentApprovals.length > 0 ? (
+            <ul className="home-list">
+              {recentApprovals.map((a) => (
+                <li key={a.key} className="home-list-item">
+                  <span className={`home-badge home-badge-${a.status}`}>
+                    {a.status === 'approved' ? '승인' : a.status === 'rejected' ? '반려' : '대기'}
+                  </span>
+                  <div className="home-list-body">
+                    <strong title={a.label}>{a.label}</strong>
+                    {a.sub && (
+                      <span className="home-list-sub" title={a.sub}>
+                        {a.sub}
+                      </span>
+                    )}
+                  </div>
+                  <span className="home-list-date">{formatDisplayDate(a.date)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="home-empty">최근 결재 결과가 없습니다.</div>
+          )}
+        </section>
+
+        <section className="home-panel">
+          <div className="home-panel-head">
+            <strong>공지사항</strong>
+            {isAdmin && (
+              <Link className="home-panel-more" to="/admin/events">
+                전체보기
+              </Link>
+            )}
+          </div>
+          {notices.length > 0 ? (
+            <ul className="home-list">
+              {notices.map((n) => (
+                <li key={n.id} className="home-list-item">
+                  <span className="home-notice-dot" />
+                  <div className="home-list-body">
+                    <strong title={n.title}>{n.title}</strong>
+                    {n.location && (
+                      <span className="home-list-sub" title={n.location}>
+                        {n.location}
+                      </span>
+                    )}
+                  </div>
+                  <span className="home-list-date">{formatDisplayDate(n.startDate)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="home-empty">등록된 공지가 없습니다.</div>
+          )}
+        </section>
+      </div>
 
       <HomeCalendar />
     </div>
