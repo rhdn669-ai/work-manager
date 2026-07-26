@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
@@ -21,7 +21,32 @@ export default function Layout() {
     return window.matchMedia('(min-width: 769px)').matches;
   });
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+  // 마우스 옆 버튼(뒤로 4번 / 앞으로 5번) → 이전·다음 화면으로 이동.
+  // 브라우저 기본 뒤로가기와 이중 이동하지 않도록 preventDefault로 차단하고 SPA 라우팅으로 처리.
+  // (설치형 PWA처럼 주소창이 없는 창에서도 동일하게 동작)
+  useEffect(() => {
+    const suppress = (e) => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
+    };
+    const onMouseUp = (e) => {
+      if (e.button === 3) {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.button === 4) {
+        e.preventDefault();
+        navigate(1);
+      }
+    };
+    window.addEventListener('mousedown', suppress);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousedown', suppress);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [navigate]);
 
   // 모바일에서 라우트 변경 시 사이드바 자동 닫기 + 스크롤 잠금 잔재 자동 해제
   useEffect(() => {
