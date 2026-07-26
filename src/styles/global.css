@@ -8553,6 +8553,148 @@ tr.is-newly-added > td {
   cursor: pointer;
 }
 
+/* ── 자료실 이미지 라이트박스 (폴더 내 이미지 ←/→ 순회) ── */
+.lib-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.lib-lightbox-stage {
+  margin: 0;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.lib-lightbox-stage img {
+  max-width: 92vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+.lib-lightbox-cap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 92vw;
+  color: #fff;
+  font-size: var(--font-sm);
+}
+.lib-lightbox-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-lightbox-count {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+.lib-lightbox-dl {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+.lib-lightbox-dl:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.lib-lightbox-dl svg {
+  width: 16px;
+  height: 16px;
+}
+.lib-lightbox-close {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+}
+.lib-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.lib-lightbox-close svg {
+  width: 20px;
+  height: 20px;
+}
+.lib-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+}
+.lib-lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.lib-lightbox-nav svg {
+  width: 26px;
+  height: 26px;
+}
+.lib-lightbox-nav.is-prev {
+  left: 16px;
+}
+.lib-lightbox-nav.is-next {
+  right: 16px;
+}
+.lib-row-name--img {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-row-name--img:hover {
+  text-decoration: underline;
+}
+@media (max-width: 480px) {
+  .lib-lightbox-nav {
+    width: 40px;
+    height: 40px;
+  }
+  .lib-lightbox-stage img {
+    max-height: 72vh;
+  }
+}
+
 /* 읽음 수 */
 .chat-read-count {
   font-size: 10px;

@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import Select from '../../components/common/Select';
+import ImageLightbox from '../../components/common/ImageLightbox';
 import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
 import { useUploads } from '../../contexts/useUploads';
@@ -54,6 +55,11 @@ function getFileIconName(name = '', contentType = '') {
   if (contentType.startsWith('audio/') || ['mp3', 'wav', 'm4a'].includes(ext)) return 'music';
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'archive';
   return 'doc';
+}
+
+// 라이트박스 뷰어 대상 여부 (이미지 파일)
+function isImageFile(file) {
+  return !!file?.downloadURL && getFileIconName(file.name, file.contentType) === 'image';
 }
 
 // 폴더 ID → 조상 ID 목록
@@ -250,6 +256,7 @@ export default function FileLibraryPage() {
   const [fileRenameBase, setFileRenameBase] = useState(''); // 확장자 제외한 이름 부분
 
   const [dragOver, setDragOver] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(null); // 라이트박스: 현재 폴더 이미지 목록 내 인덱스 (null=닫힘)
   const fileInputRef = useRef(null);
 
   // 관리자가 자물쇠를 눌러 일시 해제한 잠금(protected) 폴더 ID 모음.
@@ -317,6 +324,15 @@ export default function FileLibraryPage() {
     return base;
   }, [files, selectedFolderId, search]);
 
+  // 현재 폴더의 이미지 파일만(라이트박스 순회 대상) — 표에 보이는 순서 그대로
+  const imageFiles = useMemo(() => currentFiles.filter(isImageFile), [currentFiles]);
+
+  // 이미지 파일을 라이트박스로 열기 (imageFiles 내 위치로 시작)
+  function openViewer(file) {
+    const idx = imageFiles.findIndex((f) => f.id === file.id);
+    if (idx >= 0) setViewerIndex(idx);
+  }
+
   // 브레드크럼 경로 [최상위 … 현재]
   const breadcrumb = useMemo(() => {
     const path = [];
@@ -332,6 +348,7 @@ export default function FileLibraryPage() {
     setSelectedFolderId(id);
     setSearch('');
     setSelected(new Set());
+    setViewerIndex(null); // 폴더 이동 시 뷰어 닫기(목록이 바뀌므로)
   }
 
   // ── 다중 선택 ──
@@ -1019,14 +1036,25 @@ export default function FileLibraryPage() {
                             <span className="lib-row-ic">
                               <Icon name={getFileIconName(file.name, file.contentType)} />
                             </span>
-                            <a
-                              className="lib-row-name"
-                              href={file.downloadURL}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {file.name}
-                            </a>
+                            {isImageFile(file) ? (
+                              <button
+                                type="button"
+                                className="lib-row-name lib-row-name--img"
+                                onClick={() => openViewer(file)}
+                                title="미리보기 (←/→로 넘기기)"
+                              >
+                                {file.name}
+                              </button>
+                            ) : (
+                              <a
+                                className="lib-row-name"
+                                href={file.downloadURL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {file.name}
+                              </a>
+                            )}
                           </td>
                           <td className="lib-col-type" data-label="종류">
                             {ext || '파일'}
@@ -1175,6 +1203,15 @@ export default function FileLibraryPage() {
         types={['libraryFiles', 'libraryFolders']}
         title="자료실 휴지통"
       />
+
+      {viewerIndex !== null && imageFiles[viewerIndex] && (
+        <ImageLightbox
+          images={imageFiles}
+          index={viewerIndex}
+          onIndex={setViewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
+      )}
     </div>
   );
 }
