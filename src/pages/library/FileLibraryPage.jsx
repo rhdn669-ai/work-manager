@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
@@ -236,7 +237,11 @@ export default function FileLibraryPage() {
   const [files, setFiles] = useState([]);
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
-  const [selectedFolderId, setSelectedFolderId] = useState(null); // null = 전체
+  // 선택 폴더를 URL(?folder=id)에 반영 → 폴더 진입이 브라우저 히스토리에 쌓여
+  // 뒤로가기(마우스 옆 버튼 포함)가 이전 폴더로 돌아간다(사이드바 탭으로 이탈하지 않음).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedFolderId = searchParams.get('folder') || null;
+  const setSelectedFolderId = (id) => setSearchParams(id ? { folder: id } : {});
   const [, setOpenMap] = useState({});
 
   const [draggingFileId, setDraggingFileId] = useState(null);
@@ -346,10 +351,14 @@ export default function FileLibraryPage() {
 
   function selectFolder(id) {
     setSelectedFolderId(id);
+  }
+
+  // 폴더가 바뀌면(직접 선택이든 뒤로/앞으로 이동이든) 검색·선택·뷰어 초기화
+  useEffect(() => {
     setSearch('');
     setSelected(new Set());
-    setViewerIndex(null); // 폴더 이동 시 뷰어 닫기(목록이 바뀌므로)
-  }
+    setViewerIndex(null);
+  }, [selectedFolderId]);
 
   // ── 다중 선택 ──
   const allSelected = currentFiles.length > 0 && currentFiles.every((f) => selected.has(f.id));
