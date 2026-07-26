@@ -17254,44 +17254,120 @@ td.mx-dc {
   text-align: center;
 }
 
-/* 업로드 진행률 */
-.library-uploads {
+/* ── 전역 업로드 진행률 독 (항상 화면 우하단 · 비차단 · 화면 이동해도 유지) ── */
+.upload-dock {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 9000; /* 토스트(9999)보다 아래 */
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.upload-dock-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  background: var(--primary);
+  color: #fff;
+  font-size: var(--font-sm);
+  font-weight: 700;
+}
+.upload-dock-head-ic {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.upload-dock-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  padding: 12px 14px;
+  max-height: 40vh;
+  overflow-y: auto;
 }
-.library-upload-row {
+.upload-dock-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--font-sm);
 }
-.library-upload-name {
-  flex: 0 0 38%;
+.upload-dock-name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-light);
 }
-.library-upload-bar {
-  flex: 1;
+.upload-dock-bar {
+  flex: 0 0 96px;
   height: 8px;
   background: var(--border);
   border-radius: 99px;
   overflow: hidden;
 }
-.library-upload-fill {
+.upload-dock-fill {
   height: 100%;
   background: var(--primary);
   border-radius: 99px;
   transition: width 0.2s;
 }
-.library-upload-pct {
-  flex: 0 0 38px;
+.upload-dock-pct {
+  flex: 0 0 36px;
   text-align: right;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.upload-dock-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+}
+.upload-dock-badge svg {
+  width: 16px;
+  height: 16px;
+}
+.upload-dock-badge.is-done {
+  color: var(--success, #15803d);
+}
+.upload-dock-badge.is-error {
+  color: var(--danger, #b91c1c);
+}
+.upload-dock-row.is-error .upload-dock-name {
+  color: var(--danger, #b91c1c);
+}
+.upload-dock-x {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.upload-dock-x:hover {
+  background: var(--border);
+}
+.upload-dock-x svg {
+  width: 14px;
+  height: 14px;
+}
+@media (max-width: 480px) {
+  .upload-dock {
+    right: 8px;
+    left: 8px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+  }
 }
 
 /* ── 자료실 폴더 탭 바 (tab-nav 패턴 동일) ── */

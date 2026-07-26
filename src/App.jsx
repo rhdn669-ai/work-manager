@@ -2,6 +2,8 @@ import { RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { DialogProvider } from './components/common/DialogProvider';
 import { UndoProvider } from './contexts/UndoContext';
+import { UploadProvider } from './contexts/UploadContext';
+import UploadDock from './components/common/UploadDock';
 import router from './router';
 
 export default function App() {
@@ -9,7 +11,10 @@ export default function App() {
     <AuthProvider>
       <DialogProvider>
         <UndoProvider>
-          <RouterProvider router={router} />
+          <UploadProvider>
+            <RouterProvider router={router} />
+            <UploadDock />
+          </UploadProvider>
         </UndoProvider>
       </DialogProvider>
     </AuthProvider>

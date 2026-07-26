@@ -5,13 +5,13 @@ import Icon from '../../components/common/Icon';
 import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
+import { useUploads } from '../../contexts/useUploads';
 import {
   subscribeFolders,
   subscribeFiles,
   createFolder,
   renameFolder,
   renameFile,
-  uploadFile,
   moveFile,
   moveFolder,
   setFolderOrder,
@@ -224,6 +224,7 @@ export default function FileLibraryPage() {
   const { userProfile, canViewArchive, isAdmin } = useAuth();
   const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
+  const { startUploads } = useUploads();
 
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
@@ -248,7 +249,6 @@ export default function FileLibraryPage() {
   const [fileRenameTarget, setFileRenameTarget] = useState(null); // 파일명 변경 대상
   const [fileRenameBase, setFileRenameBase] = useState(''); // 확장자 제외한 이름 부분
 
-  const [uploads, setUploads] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -427,23 +427,13 @@ export default function FileLibraryPage() {
     ...folders.map((f) => ({ value: f.id, label: f.name })),
   ];
 
-  // ── 업로드 ──
-  async function handleFiles(fileList) {
+  // ── 업로드 ── 전역 UploadContext에 위임 → 다른 화면으로 이동해도 진행률 유지
+  function handleFiles(fileList) {
     const arr = Array.from(fileList || []);
     if (!arr.length) return;
-    for (const file of arr) {
-      const key = `${file.name}-${file.size}-${Math.random()}`;
-      setUploads((u) => [...u, { key, name: file.name, progress: 0 }]);
-      try {
-        await uploadFile(file, selectedFolderId, userProfile, (p) =>
-          setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress: p } : x))),
-        );
-      } catch {
-        toast(`"${file.name}" 업로드 중 오류가 발생했습니다`, 'error');
-      } finally {
-        setUploads((u) => u.filter((x) => x.key !== key));
-      }
-    }
+    const folderName =
+      selectedFolderId === null ? '전체' : folders.find((f) => f.id === selectedFolderId)?.name || '폴더';
+    startUploads(arr, selectedFolderId, folderName, userProfile);
   }
   function onInputChange(e) {
     handleFiles(e.target.files);
@@ -747,20 +737,7 @@ export default function FileLibraryPage() {
 
       <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={onInputChange} />
 
-      {/* 업로드 진행률 */}
-      {uploads.length > 0 && (
-        <div className="library-uploads">
-          {uploads.map((u) => (
-            <div key={u.key} className="library-upload-row">
-              <span className="library-upload-name">{u.name}</span>
-              <div className="library-upload-bar">
-                <div className="library-upload-fill" style={{ width: `${u.progress}%` }} />
-              </div>
-              <span className="library-upload-pct">{u.progress}%</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* 업로드 진행률은 전역 UploadDock(항상 화면 우하단)에서 표시 — 화면 이동해도 유지 */}
 
       {/* 메인 레이아웃 — 사이드바 없이 경로(브레드크럼)로 탐색 */}
       <div className="lib-layout">
