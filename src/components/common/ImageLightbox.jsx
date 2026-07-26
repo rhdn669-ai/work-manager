@@ -26,6 +26,19 @@ export default function ImageLightbox({ images, index, onIndex, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [go, onClose]);
 
+  // 인접 이미지(±2)를 미리 받아둔다 → 화살표 누르는 즉시 캐시에서 표시(넘김 지연 제거)
+  useEffect(() => {
+    for (let d = -2; d <= 2; d++) {
+      const i = index + d;
+      if (i < 0 || i >= total || d === 0) continue;
+      const url = images[i]?.downloadURL;
+      if (url) {
+        const img = new Image();
+        img.src = url;
+      }
+    }
+  }, [index, total, images]);
+
   if (!cur) return null;
 
   return (
