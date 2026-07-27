@@ -2170,7 +2170,9 @@ export default function SiteClosingPage() {
           const buf = editBuf[it.id] || it;
           const cardType = it.itemType || buf.itemType || 'freelancer';
           const isEmployee = cardType === 'employee';
-          const nameField = cardType === 'vendor' ? 'vendor' : 'detail';
+          const isVendor = cardType === 'vendor';
+          // 업체(공수)도 이름 칸엔 개인 이름(detail) — 업체명은 우측 토글로
+          const nameField = 'detail';
           return (
             <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
               <td className="mx-name">
@@ -2179,13 +2181,41 @@ export default function SiteClosingPage() {
                   <input
                     className="mx-name-input"
                     value={buf[nameField] || ''}
-                    placeholder={cardType === 'vendor' ? '업체' : '이름'}
+                    placeholder="이름"
                     onChange={(e) => updateField(it.id, nameField, e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}
                     readOnly={isEmployee}
                     title={buf[nameField] || ''}
                   />
+                  {isVendor &&
+                    (vendorOpen.has(it.id) ? (
+                      <input
+                        className="mx-name-input mx-vendor-inline"
+                        value={buf.vendor || ''}
+                        placeholder="업체명"
+                        onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
+                        onBlur={() => flushRow(it.id)}
+                        disabled={!canEdit}
+                        autoFocus
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="mx-vendor-toggle"
+                        onClick={() =>
+                          setVendorOpen((s) => {
+                            const n = new Set(s);
+                            if (n.has(it.id)) n.delete(it.id);
+                            else n.add(it.id);
+                            return n;
+                          })
+                        }
+                        title="업체명 보기/편집"
+                      >
+                        {(buf.vendor || '').trim() || '업체명'}
+                      </button>
+                    ))}
                   {canEdit && isEmployee && site?.projectType === 'recurring' && (
                     <button
                       type="button"

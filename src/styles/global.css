@@ -13181,6 +13181,30 @@ table.closing-matrix thead th {
   border-color: var(--border);
   background: #fff;
 }
+/* 표 뷰 업체(공수): 이름 우측 업체명 토글 칩 + 펼침 입력 */
+.mx-vendor-toggle {
+  flex: 0 0 auto;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: 22px;
+  border: 1px dashed var(--border, #e5e8eb);
+  background: var(--canvas, #f2f4f6);
+  color: var(--text-muted, #8b95a1);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.mx-vendor-toggle:hover {
+  border-color: var(--primary, #002050);
+  color: var(--primary, #002050);
+}
+.mx-vendor-inline {
+  flex: 0 0 90px;
+}
 .mx-auto {
   font-size: 9px;
   font-weight: 700;
