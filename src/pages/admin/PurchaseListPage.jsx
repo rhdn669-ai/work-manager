@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
-  closestCenter,
   closestCorners,
   PointerSensor,
   useSensor,
@@ -10,7 +9,7 @@ import {
   useDroppable,
   useDraggable,
 } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   getPurchases,
@@ -20,7 +19,6 @@ import {
   deletePurchase,
   updatePurchase,
   getSuppliers,
-  savePurchasesOrder,
   saveFactories,
   subscribePurchaseConfig,
   addPurchaseNote,
@@ -76,6 +74,13 @@ function fmtDate(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   if (Number.isNaN(d.getTime())) return '-';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// 발주 건의 품목 수 + 개별 수량 합계
+function itemStats(p) {
+  const items = Array.isArray(p.items) ? p.items : [];
+  const qty = items.reduce((s, x) => s + (Number(x.qty) || 0), 0);
+  return { count: items.length, qty };
 }
 
 // 드래그 가능한 발주 카드 (전체 탭에서만 순서변경 활성)
@@ -197,6 +202,9 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
       >
         {p.siteName || '프로젝트 미지정'}
         {p.supplierName ? ` · ${p.supplierName}` : ''}
+      </div>
+      <div className="kb-card__items">
+        품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
       </div>
       <div className="kb-card__amount" style={{ color: 'var(--accent)' }}>
         {Number(p.totalAmount || 0).toLocaleString()}
@@ -529,24 +537,6 @@ export default function PurchaseListPage() {
 
   const dragEnabled = tab === 'all' && !search.trim();
 
-  async function handleReorder(e) {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const ids = filtered.map((p) => p.id);
-    const oldIndex = ids.indexOf(active.id);
-    const newIndex = ids.indexOf(over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    const newOrderIds = arrayMove(ids, oldIndex, newIndex);
-    // 전체 목록 order 재계산 — 화면 순서대로 0..n
-    const orderMap = new Map(newOrderIds.map((id, idx) => [id, idx]));
-    setPurchases((prev) => prev.map((p) => (orderMap.has(p.id) ? { ...p, order: orderMap.get(p.id) } : p)));
-    try {
-      await savePurchasesOrder(newOrderIds);
-    } catch {
-      toast('순서 저장 중 오류가 발생했습니다', 'error');
-    }
-  }
-
   // 칸반: 상태 열로 드래그 → 확인 후 상태 변경 (실수/오배치 방지)
   async function handleBoardDrag(e) {
     const { active, over } = e;
@@ -778,22 +768,79 @@ export default function PurchaseListPage() {
           {purchases.length === 0 ? '등록된 구매 건이 없습니다.' : '해당 조건의 구매 건이 없습니다.'}
         </p>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleReorder}>
-          <SortableContext items={filtered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-            <div className="po-card-list">
-              {filtered.map((p) => (
-                <SortablePurchaseCard
-                  key={p.id}
-                  p={p}
-                  dragEnabled={dragEnabled}
-                  onOpen={(pp) => navigate(`/admin/purchase/${pp.id}`)}
-                  onEdit={openEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+        <div className="table-scroll-x pur-table-wrap">
+          <table className="table pur-table">
+            <thead>
+              <tr>
+                <th className="pur-c-status">상태</th>
+                <th className="pur-c-title">제목</th>
+                <th className="pur-c-sup">구매처</th>
+                <th className="pur-c-proj">프로젝트</th>
+                <th className="pur-c-items">품목/수량</th>
+                <th className="pur-c-amt">금액</th>
+                <th className="pur-c-vat">부가세 포함</th>
+                <th className="pur-c-date">작성일</th>
+                <th className="pur-c-date">납기</th>
+                <th className="pur-c-act col-action">작업</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const st = STATUS[p.status] || { label: p.status, cls: 'ordered' };
+                const amt = Number(p.totalAmount || 0);
+                return (
+                  <tr key={p.id} className="pur-row" onClick={() => navigate(`/admin/purchase/${p.id}`)}>
+                    <td data-label="상태">
+                      <span className={`purchase-badge purchase-badge-${st.cls}`}>{st.label}</span>
+                    </td>
+                    <td data-label="제목" className="pur-c-title">
+                      <div className="pur-title u-ellipsis-1" title={p.title || ''}>
+                        {p.title || '-'}
+                      </div>
+                      {p.subtitle && (
+                        <div className="pur-sub u-ellipsis-1" title={p.subtitle}>
+                          {p.subtitle}
+                        </div>
+                      )}
+                    </td>
+                    <td data-label="구매처" className="pur-c-sup u-ellipsis-1" title={p.supplierName || ''}>
+                      {p.supplierName || '-'}
+                    </td>
+                    <td data-label="프로젝트" className="pur-c-proj u-ellipsis-1" title={p.siteName || ''}>
+                      {p.siteName || '프로젝트 미지정'}
+                    </td>
+                    <td data-label="품목/수량" className="pur-c-items pur-items">
+                      품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
+                    </td>
+                    <td data-label="금액" className="pur-c-amt pur-amt">
+                      {amt.toLocaleString()}원
+                    </td>
+                    <td data-label="부가세 포함" className="pur-c-vat pur-vat">
+                      {Math.round(amt * 1.1).toLocaleString()}원
+                    </td>
+                    <td data-label="작성일" className="pur-c-date">
+                      {fmtDate(p.createdAt || p.orderedAt)}
+                    </td>
+                    <td data-label="납기" className="pur-c-date">
+                      {p.deliveryDue || '-'}
+                    </td>
+                    <td data-label="작업" className="pur-c-act col-action" onClick={(e) => e.stopPropagation()}>
+                      <div className="row-actions">
+                        <button type="button" className="btn btn-sm btn-outline" onClick={(e) => openEdit(e, p)}>
+                          수정
+                        </button>
+                        <button type="button" className="btn btn-sm btn-danger" onClick={(e) => handleDelete(e, p)}>
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       {dragEnabled && filtered.length > 1 && (
         <p className="field-hint no-print" style={{ marginTop: 8, fontSize: '12px' }}>
