@@ -1193,7 +1193,6 @@
   height: 100%;
   background: var(--primary, #002050);
   border-radius: 999px;
-  transition: width 0.3s ease;
 }
 .mx-prog-fill.is-done {
   background: #15803d;
