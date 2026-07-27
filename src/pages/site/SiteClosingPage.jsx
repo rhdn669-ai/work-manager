@@ -2173,6 +2173,9 @@ export default function SiteClosingPage() {
           const isVendor = cardType === 'vendor';
           // 업체(공수)도 이름 칸엔 개인 이름(detail) — 업체명은 우측 토글로
           const nameField = 'detail';
+          // 모달에서 선택해 저장된 값은 수정 불가 — 카드 뷰와 동일 잠금
+          const detailLocked = isEmployee || (isVendor && !!(buf.detail || '').trim());
+          const vendorLocked = isVendor && !!(buf.vendor || '').trim();
           return (
             <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
               <td className="mx-name">
@@ -2185,7 +2188,7 @@ export default function SiteClosingPage() {
                     onChange={(e) => updateField(it.id, nameField, e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit}
-                    readOnly={isEmployee}
+                    readOnly={detailLocked}
                     title={buf[nameField] || ''}
                   />
                   {isVendor &&
@@ -2197,6 +2200,8 @@ export default function SiteClosingPage() {
                         onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
                         onBlur={() => flushRow(it.id)}
                         disabled={!canEdit}
+                        readOnly={vendorLocked}
+                        title={vendorLocked ? '모달에서 선택된 업체 — 수정 불가 (삭제 후 재추가)' : buf.vendor || ''}
                         autoFocus
                       />
                     ) : (
