@@ -23,7 +23,8 @@ import {
   savePurchasesOrder,
   saveFactories,
   subscribePurchaseConfig,
-  savePurchaseCommonNote,
+  addPurchaseNote,
+  removePurchaseNote,
 } from '../../services/purchaseService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
@@ -270,33 +271,52 @@ export default function PurchaseListPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
-  // 전체 공통 특이사항 (전 관리자 공유 · 단일 메모)
-  const [commonNote, setCommonNote] = useState(null); // { text, updatedByName, updatedAt }
+  // 참고 사항 — 한 건씩 개별 등록/삭제 (전 관리자 공유, notes 배열)
+  const [notes, setNotes] = useState([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
 
   useEffect(() => {
     loadData();
-    const unsub = subscribePurchaseConfig((cfg) => setCommonNote(cfg.commonNote || null));
+    const unsub = subscribePurchaseConfig((cfg) => {
+      // 배열(notes) 우선, 과거 단일 메모(commonNote)는 1건으로 하위호환 표시
+      if (Array.isArray(cfg.notes)) setNotes(cfg.notes);
+      else if (cfg.commonNote?.text)
+        setNotes([
+          {
+            id: 'legacy',
+            text: cfg.commonNote.text,
+            byName: cfg.commonNote.updatedByName,
+            at: cfg.commonNote.updatedAt,
+          },
+        ]);
+      else setNotes([]);
+    });
     return () => unsub();
   }, []);
 
-  function openNoteEdit() {
-    setNoteDraft(commonNote?.text || '');
-    setNoteModalOpen(true);
-  }
-  async function saveNote() {
-    if (noteSaving) return;
+  async function addNote() {
+    if (noteSaving || !noteDraft.trim()) return;
     setNoteSaving(true);
     try {
-      await savePurchaseCommonNote(noteDraft, userProfile?.name || '');
+      await addPurchaseNote(noteDraft, userProfile?.name || '');
+      setNoteDraft('');
       setNoteModalOpen(false);
-      toast('공통 특이사항을 저장했습니다.', 'success', 0);
+      toast('참고 사항을 추가했습니다.', 'success', 0);
     } catch {
-      toast('저장 중 오류가 발생했습니다.', 'error', 0);
+      toast('추가 중 오류가 발생했습니다.', 'error', 0);
     } finally {
       setNoteSaving(false);
+    }
+  }
+  async function deleteNote(id) {
+    if (!(await confirm('이 참고 사항을 삭제할까요?'))) return;
+    try {
+      await removePurchaseNote(id);
+      toast('삭제했습니다.');
+    } catch {
+      toast('삭제 중 오류가 발생했습니다.', 'error', 0);
     }
   }
 
@@ -620,30 +640,53 @@ export default function PurchaseListPage() {
         </div>
       )}
 
-      {/* 전체 공통 특이사항 — 전 관리자 공유 단일 메모 (상단 고정) */}
+      {/* 참고 사항 — 한 건씩 개별 등록/삭제 (상단 고정, 전 관리자 공유) */}
       <div className="pur-note-card no-print">
         <div className="pur-note-head">
           <span className="pur-note-title">
             <Icon name="alert" className="btn-ic" />
             참고 사항
           </span>
-          <button type="button" className="btn btn-sm btn-outline" onClick={openNoteEdit}>
-            <Icon name="edit" className="btn-ic" />
-            수정
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => {
+              setNoteDraft('');
+              setNoteModalOpen(true);
+            }}
+          >
+            <Icon name="plus" className="btn-ic" />
+            추가
           </button>
         </div>
-        {commonNote?.text?.trim() ? (
-          <>
-            <p className="pur-note-body">{commonNote.text}</p>
-            {commonNote.updatedByName && (
-              <p className="pur-note-meta">
-                최종 수정: {commonNote.updatedByName}
-                {commonNote.updatedAt ? ` · ${fmtDate(commonNote.updatedAt)}` : ''}
-              </p>
-            )}
-          </>
+        {notes.length > 0 ? (
+          <ul className="pur-note-list">
+            {notes.map((n) => (
+              <li key={n.id} className="pur-note-item">
+                <span className="pur-note-dot" aria-hidden="true" />
+                <div className="pur-note-item-body">
+                  <p className="pur-note-text">{n.text}</p>
+                  {n.byName && (
+                    <p className="pur-note-meta">
+                      {n.byName}
+                      {n.at ? ` · ${fmtDate(n.at)}` : ''}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="pur-note-del"
+                  onClick={() => deleteNote(n.id)}
+                  aria-label="삭제"
+                  title="삭제"
+                >
+                  <Icon name="trash" />
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="pur-note-empty">등록된 참고 사항이 없습니다. "수정"으로 추가하세요.</p>
+          <p className="pur-note-empty">등록된 참고 사항이 없습니다. "추가"로 한 건씩 등록하세요.</p>
         )}
       </div>
 
@@ -954,15 +997,18 @@ export default function PurchaseListPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={noteModalOpen} onClose={() => setNoteModalOpen(false)} title="참고 사항">
+      <Modal isOpen={noteModalOpen} onClose={() => setNoteModalOpen(false)} title="참고 사항 추가">
         <div className="form-group">
-          <label>내용 (이 페이지를 보는 관리자에게 공유됩니다 · 줄바꿈으로 여러 건 추가)</label>
+          <label>내용 (한 건씩 등록 · 이 페이지를 보는 관리자에게 공유)</label>
           <textarea
             className="pur-note-textarea"
-            rows={8}
+            rows={4}
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
-            placeholder="예: 8월 자재 단가 인상 반영 요망 / 납기 지연 건은 비고에 사유 기재 / 부가세 별도 표기 확인"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && noteDraft.trim()) addNote();
+            }}
+            placeholder="예: 8월 발주건에 메티스부스바 WSG-00-405 2개 추가 구매"
             autoFocus
           />
         </div>
@@ -970,8 +1016,13 @@ export default function PurchaseListPage() {
           <button type="button" className="btn btn-outline" onClick={() => setNoteModalOpen(false)}>
             취소
           </button>
-          <button type="button" className="btn btn-primary" onClick={saveNote} disabled={noteSaving}>
-            {noteSaving ? '저장 중…' : '저장'}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={addNote}
+            disabled={noteSaving || !noteDraft.trim()}
+          >
+            {noteSaving ? '추가 중…' : '추가'}
           </button>
         </div>
       </Modal>

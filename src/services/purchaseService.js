@@ -65,19 +65,26 @@ export function subscribePurchaseConfig(cb) {
   );
 }
 
-// 발주 현황 전체 공통 특이사항 저장 (전 관리자 공유 · 단일 메모)
-export async function savePurchaseCommonNote(text, byName) {
-  await setDoc(
-    configDoc,
-    {
-      commonNote: {
-        text: text || '',
-        updatedByName: byName || '',
-        updatedAt: new Date(),
-      },
-    },
-    { merge: true },
-  );
+// 발주 현황 참고 사항 — 한 건씩 개별 등록/삭제 (전 관리자 공유, notes 배열)
+// 배열 원소에는 Firestore Timestamp 대신 ISO 문자열을 넣는다(배열 안 serverTimestamp 불가).
+export async function addPurchaseNote(text, byName) {
+  const t = (text || '').trim();
+  if (!t) return;
+  const snap = await getDoc(configDoc);
+  const cur = snap.exists() && Array.isArray(snap.data().notes) ? snap.data().notes : [];
+  const note = {
+    id: `n${Date.now()}_${Math.floor(Math.random() * 1e4)}`,
+    text: t,
+    byName: byName || '',
+    at: new Date().toISOString(),
+  };
+  await setDoc(configDoc, { notes: [...cur, note] }, { merge: true });
+}
+
+export async function removePurchaseNote(id) {
+  const snap = await getDoc(configDoc);
+  const cur = snap.exists() && Array.isArray(snap.data().notes) ? snap.data().notes : [];
+  await setDoc(configDoc, { notes: cur.filter((n) => n.id !== id) }, { merge: true });
 }
 
 export async function setHqSite(siteId, siteName) {
