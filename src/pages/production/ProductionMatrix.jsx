@@ -384,14 +384,16 @@ function BoxGroup({ mat, matDate, defect, defectDone, defectDate, doneDate, st, 
         style={{
           cursor: 'pointer',
           color: defectDone ? 'var(--status-done-fg)' : 'var(--status-cancel-fg)',
-          background: defect
-            ? 'var(--status-cancel-bg)'
-            : defectDone
-              ? 'var(--status-done-bg)'
-              : undefined,
+          background: defect ? 'var(--status-cancel-bg)' : defectDone ? 'var(--status-done-bg)' : undefined,
         }}
         onClick={onDefect}
-        title={defect ? '미해결 불량 (클릭: 상세)' : defectDone ? '불량 처리완료 (클릭: 상세)' : '불량 기록/사진 (클릭: 상세)'}
+        title={
+          defect
+            ? '미해결 불량 (클릭: 상세)'
+            : defectDone
+              ? '불량 처리완료 (클릭: 상세)'
+              : '불량 기록/사진 (클릭: 상세)'
+        }
       >
         {defect ? mmdd(defectDate) || <Icon name="close" /> : defectDone ? <Icon name="check" /> : ''}
       </td>
