@@ -1058,11 +1058,12 @@
   font-size: 13px;
   white-space: nowrap;
 }
-/* 스티치 톤: 촘촘한 전체 격자 제거 → 가로 구분선만, 세로선은 그룹 경계에만 */
+/* 스티치 톤: 굵은 격자 → 얇고 연한 구분선(가로+세로), 그룹 경계만 진하게 */
 .mx-table th,
 .mx-table td {
   border: none;
   border-bottom: 1px solid #eef1f4;
+  border-right: 1px solid #eef1f4;
   padding: 8px 6px;
   text-align: center;
   height: 42px;
