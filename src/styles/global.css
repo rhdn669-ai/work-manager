@@ -11363,9 +11363,14 @@ tr.is-newly-added > td {
 }
 .vendor-case-row {
   display: grid;
-  grid-template-columns: 150px 1fr 64px 32px;
+  grid-template-columns: 150px 1fr 64px auto;
   align-items: center;
   gap: 8px;
+}
+/* 삭제 버튼(아이콘+글자)이 열 밖으로 튀어나오지 않게 — 줄바꿈 금지·자기 폭 유지 */
+.vendor-case-row > .btn-danger {
+  white-space: nowrap;
+  justify-self: end;
 }
 .vendor-case-row-head {
   font-size: 11px;
@@ -11410,7 +11415,7 @@ tr.is-newly-added > td {
 }
 @media (max-width: 640px) {
   .vendor-case-row {
-    grid-template-columns: 1fr 64px 32px;
+    grid-template-columns: 1fr 64px auto;
     grid-template-areas: 'date count del' 'units units units';
   }
   .vendor-case-row > input[type='date'] {
