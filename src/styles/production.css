@@ -1048,18 +1048,27 @@
 .mx-wrap {
   overflow-x: auto;
   padding: 0;
+  background: #fff;
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: var(--radius-lg, 15px);
+  box-shadow: 0 1px 3px rgba(0, 23, 51, 0.04);
 }
 .mx-table {
   border-collapse: collapse;
   font-size: 13px;
   white-space: nowrap;
 }
+/* 스티치 톤: 촘촘한 전체 격자 제거 → 가로 구분선만, 세로선은 그룹 경계에만 */
 .mx-table th,
 .mx-table td {
-  border: 1px solid var(--border, #e5e8eb);
-  padding: 7px 6px;
+  border: none;
+  border-bottom: 1px solid #eef1f4;
+  padding: 8px 6px;
   text-align: center;
-  height: 40px;
+  height: 42px;
+}
+.mx-table .mx-grp-start {
+  border-left: 1px solid var(--border, #e5e8eb);
 }
 .mx-group-row th {
   background: var(--primary, #002050);
@@ -1069,16 +1078,20 @@
   position: sticky;
   top: 0;
   z-index: 3;
+  border-bottom: none;
+}
+.mx-group-row th.mx-grp-start {
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
 }
 .mx-sub-row th {
-  background: var(--grey-100, #f2f4f6);
+  background: #f7f9fb;
   color: var(--text-light, #4e5968);
   font-weight: 700;
   font-size: 12px;
   position: sticky;
   top: 40px;
   z-index: 3;
-  border-bottom: 1.5px solid var(--border-strong, #d1d6db);
+  border-bottom: 1px solid var(--border, #e5e8eb);
 }
 .mx-rot {
   white-space: nowrap;
