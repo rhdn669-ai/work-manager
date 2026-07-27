@@ -1171,6 +1171,46 @@
 .mx-urg td:not(.mx-sticky) {
   background: #fffaf0;
 }
+/* 진행률 바 (스티치 시안 반영 — 텍스트% → 바+%) */
+.mx-prog {
+  min-width: 92px;
+}
+.mx-prog-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+.mx-prog-track {
+  flex: 1;
+  height: 6px;
+  min-width: 40px;
+  background: #eceef0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.mx-prog-fill {
+  height: 100%;
+  background: var(--primary, #002050);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.mx-prog-fill.is-done {
+  background: #15803d;
+}
+.mx-prog-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4e5968;
+  min-width: 30px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* 상태·부품 셀을 살짝 부드럽게(칩 느낌) — 색은 기존 유지 */
+.mx-boxstate,
+.mx-boxmat {
+  border-radius: 6px;
+}
 /* 일정 입고일 상태색 — 미도달(파랑)·도달(노랑)·초과(빨강) */
 .mx-table tbody td.ipgo-before {
   background: #eaf1fb;

@@ -293,7 +293,17 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 ))}
                 <DateCell p={p} field="납기" />
                 <DateCell p={p} field="턴온" />
-                <td className="mx-cell mx-prog">{p.progress}%</td>
+                <td className="mx-cell mx-prog">
+                  <div className="mx-prog-wrap">
+                    <div className="mx-prog-track">
+                      <div
+                        className={`mx-prog-fill${p.progress >= 100 ? ' is-done' : ''}`}
+                        style={{ width: `${Math.min(100, Number(p.progress) || 0)}%` }}
+                      />
+                    </div>
+                    <span className="mx-prog-num">{p.progress}%</span>
+                  </div>
+                </td>
                 <td className="mx-cell">
                   <span className="badge badge-sm" style={{ background: oc.bg, color: oc.fg }}>
                     {p.overallStatus}
