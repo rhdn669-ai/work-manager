@@ -14,6 +14,7 @@ import {
   createFolder,
   renameFolder,
   renameFile,
+  unlockFolder,
   moveFile,
   moveFolder,
   setFolderOrder,
@@ -286,6 +287,30 @@ export default function FileLibraryPage() {
       }
       return next;
     });
+  }
+
+  // 자동생성(잠금) 폴더를 영구히 일반 폴더로 전환 — 관리자 전용
+  async function convertToNormal(folder, e) {
+    e?.stopPropagation();
+    if (!isAdmin || !folder?.protected) return;
+    if (
+      !(await confirm({
+        title: '일반 폴더로 전환',
+        message: `"${folder.name}"을(를) 일반 폴더로 바꿀까요?\n앞으로 이름 변경·삭제·이동이 자유로워지고 자동생성 표시가 사라집니다.`,
+      }))
+    )
+      return;
+    try {
+      await unlockFolder(folder.id);
+      setUnlocked((prev) => {
+        const next = new Set(prev);
+        next.delete(folder.id);
+        return next;
+      });
+      toast(`"${folder.name}"을(를) 일반 폴더로 전환했습니다.`);
+    } catch {
+      toast('전환 중 오류가 발생했습니다.', 'error', 0);
+    }
   }
 
   useEffect(() => {
@@ -940,6 +965,12 @@ export default function FileLibraryPage() {
                               <Icon name="folder" />
                             </span>
                             <span className="lib-row-name">{folder.name}</span>
+                            {folder.protected && (
+                              <span className="lib-auto-badge" title="시스템이 자동 생성한 폴더">
+                                <Icon name="lock" />
+                                자동생성
+                              </span>
+                            )}
                           </td>
                           <td className="lib-col-type" data-label="종류">
                             폴더
@@ -964,6 +995,16 @@ export default function FileLibraryPage() {
                                   >
                                     <Icon name="lock" className="btn-ic" />
                                     잠금
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    title="자동생성 잠금을 영구 해제하고 일반 폴더로 전환"
+                                    aria-label="일반 폴더로 전환"
+                                    onClick={(e) => convertToNormal(folder, e)}
+                                  >
+                                    <Icon name="unlock" className="btn-ic" />
+                                    일반 전환
                                   </button>
                                 </div>
                               ) : (

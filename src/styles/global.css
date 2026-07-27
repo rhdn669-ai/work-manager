@@ -5007,6 +5007,25 @@ table.cards-sm td {
   color: var(--text-secondary, #9ca3af);
   white-space: nowrap;
 }
+/* 자동생성 폴더 표시 배지 (이름 옆) */
+.lib-auto-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm, 11px);
+  background: var(--accent-soft, #feefe7);
+  color: var(--orange-press, #a83409);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.lib-auto-badge svg {
+  width: 11px;
+  height: 11px;
+}
 /* 관리자 전용 — 잠긴 폴더의 자물쇠 버튼(클릭 시 일시 해제) */
 .lib-lock-btn {
   color: var(--text-secondary, #9ca3af);

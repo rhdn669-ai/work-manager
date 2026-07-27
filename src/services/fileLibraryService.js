@@ -185,6 +185,12 @@ export async function organizeOrderHistory(user) {
   return moved;
 }
 
+// 자동생성 보호(protected) 폴더를 영구히 일반 폴더로 전환 — 관리자 전용.
+// 이후 이름변경·삭제·이동이 자유로워지고 '자동생성' 표시도 사라진다.
+export async function unlockFolder(folderId) {
+  await updateDoc(doc(db, 'libraryFolders', folderId), { protected: false });
+}
+
 // 폴더 이름 변경
 export async function renameFolder(folderId, newName) {
   const trimmed = (newName || '').trim();
