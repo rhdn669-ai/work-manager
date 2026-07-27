@@ -53,6 +53,33 @@ export async function getPurchaseConfig() {
   return snap.exists() ? snap.data() : {};
 }
 
+// 구매 설정 실시간 구독 — 발주 현황 상단 "전체 공통 특이사항" 등 전역 값 공유용
+export function subscribePurchaseConfig(cb) {
+  return onSnapshot(
+    configDoc,
+    (snap) => cb(snap.exists() ? snap.data() : {}),
+    (err) => {
+      console.error('[구매] 설정 구독 오류:', err);
+      cb({});
+    },
+  );
+}
+
+// 발주 현황 전체 공통 특이사항 저장 (전 관리자 공유 · 단일 메모)
+export async function savePurchaseCommonNote(text, byName) {
+  await setDoc(
+    configDoc,
+    {
+      commonNote: {
+        text: text || '',
+        updatedByName: byName || '',
+        updatedAt: new Date(),
+      },
+    },
+    { merge: true },
+  );
+}
+
 export async function setHqSite(siteId, siteName) {
   await setDoc(
     configDoc,

@@ -22,6 +22,8 @@ import {
   getSuppliers,
   savePurchasesOrder,
   saveFactories,
+  subscribePurchaseConfig,
+  savePurchaseCommonNote,
 } from '../../services/purchaseService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getAllSites } from '../../services/siteService';
@@ -268,9 +270,35 @@ export default function PurchaseListPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
+  // 전체 공통 특이사항 (전 관리자 공유 · 단일 메모)
+  const [commonNote, setCommonNote] = useState(null); // { text, updatedByName, updatedAt }
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+
   useEffect(() => {
     loadData();
+    const unsub = subscribePurchaseConfig((cfg) => setCommonNote(cfg.commonNote || null));
+    return () => unsub();
   }, []);
+
+  function openNoteEdit() {
+    setNoteDraft(commonNote?.text || '');
+    setNoteModalOpen(true);
+  }
+  async function saveNote() {
+    if (noteSaving) return;
+    setNoteSaving(true);
+    try {
+      await savePurchaseCommonNote(noteDraft, userProfile?.name || '');
+      setNoteModalOpen(false);
+      toast('공통 특이사항을 저장했습니다.', 'success', 0);
+    } catch {
+      toast('저장 중 오류가 발생했습니다.', 'error', 0);
+    } finally {
+      setNoteSaving(false);
+    }
+  }
 
   async function loadData() {
     try {
@@ -592,6 +620,33 @@ export default function PurchaseListPage() {
         </div>
       )}
 
+      {/* 전체 공통 특이사항 — 전 관리자 공유 단일 메모 (상단 고정) */}
+      <div className="pur-note-card no-print">
+        <div className="pur-note-head">
+          <span className="pur-note-title">
+            <Icon name="alert" className="btn-ic" />
+            전체 공통 특이사항
+          </span>
+          <button type="button" className="btn btn-sm btn-outline" onClick={openNoteEdit}>
+            <Icon name="edit" className="btn-ic" />
+            수정
+          </button>
+        </div>
+        {commonNote?.text?.trim() ? (
+          <>
+            <p className="pur-note-body">{commonNote.text}</p>
+            {commonNote.updatedByName && (
+              <p className="pur-note-meta">
+                최종 수정: {commonNote.updatedByName}
+                {commonNote.updatedAt ? ` · ${fmtDate(commonNote.updatedAt)}` : ''}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="pur-note-empty">등록된 공통 특이사항이 없습니다. "수정"으로 추가하세요.</p>
+        )}
+      </div>
+
       <div className="purchase-filters no-print">
         <input
           type="text"
@@ -895,6 +950,28 @@ export default function PurchaseListPage() {
           </button>
           <button type="button" className="btn btn-primary" onClick={handleSaveFactories}>
             저장
+          </button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={noteModalOpen} onClose={() => setNoteModalOpen(false)} title="전체 공통 특이사항">
+        <div className="form-group">
+          <label>내용 (이 페이지를 보는 관리자에게 공유됩니다)</label>
+          <textarea
+            className="pur-note-textarea"
+            rows={6}
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            placeholder="예: 8월 자재 단가 인상 반영 요망 / 납기 지연 건은 비고에 사유 기재 / 부가세 별도 표기 확인"
+            autoFocus
+          />
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setNoteModalOpen(false)}>
+            취소
+          </button>
+          <button type="button" className="btn btn-primary" onClick={saveNote} disabled={noteSaving}>
+            {noteSaving ? '저장 중…' : '저장'}
           </button>
         </div>
       </Modal>

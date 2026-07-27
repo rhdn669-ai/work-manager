@@ -2312,7 +2312,8 @@ export default function SiteClosingPage() {
                 // ── 접힘 요약(미니 스트립 + 예외칩) 계산 ──
                 // 직원=차감식(풀출근 자동, 예외 강조) / 프리랜서·일용직·업체=적산식(일한 날만) / 업체PJ=건당
                 const hasName = !!(buf.detail || '').trim() || !!(buf.vendor || '').trim();
-                const rowExpanded = allExpanded || expandedRows.has(it.id);
+                // 업체(프로젝트) 카드는 납기/호기 상세를 항상 펼침 고정 — 접기 없음 (대표님 지시)
+                const rowExpanded = allExpanded || expandedRows.has(it.id) || isVendorCase;
                 const nameKey = buf.detail;
                 const dq = buf.dailyQuantities || {};
                 const stripDays = daysInMonth(y, m);
@@ -2407,7 +2408,7 @@ export default function SiteClosingPage() {
                           {buf.autofillDisabled ? '자동 OFF' : '자동 ON'}
                         </button>
                       )}
-                      {hasName && (
+                      {hasName && !isVendorCase && (
                         <button
                           type="button"
                           className={`closing-collapse-toggle ${rowExpanded ? 'is-open' : ''}`}

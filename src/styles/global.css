@@ -6984,6 +6984,65 @@ tr.is-newly-added > td {
   }
 }
 
+/* 전체 공통 특이사항 카드 (발주 현황 상단 고정) */
+.pur-note-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e8eb);
+  border-left: 3px solid var(--primary, #002050);
+  border-radius: var(--radius-lg, 15px);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 23, 51, 0.04));
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.pur-note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pur-note-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: var(--primary, #002050);
+  font-size: var(--font-sm, 14px);
+}
+.pur-note-title .btn-ic {
+  color: var(--safety-orange, #f05819);
+}
+.pur-note-body {
+  margin: 8px 0 4px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: var(--text, #19222f);
+  font-size: var(--font-sm, 14px);
+}
+.pur-note-meta {
+  margin: 0;
+  color: var(--text-muted, #8b95a1);
+  font-size: 12px;
+}
+.pur-note-empty {
+  margin: 8px 0 0;
+  color: var(--text-muted, #8b95a1);
+  font-size: var(--font-sm, 14px);
+}
+.pur-note-textarea {
+  width: 100%;
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: var(--radius-md, 13px);
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+.pur-note-textarea:focus {
+  outline: none;
+  border-color: var(--primary, #002050);
+  box-shadow: 0 0 0 3px rgba(0, 32, 80, 0.15);
+}
+
 .purchase-filters {
   display: flex;
   flex-wrap: wrap;
