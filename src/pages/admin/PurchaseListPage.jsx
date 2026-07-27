@@ -625,7 +625,7 @@ export default function PurchaseListPage() {
         <div className="pur-note-head">
           <span className="pur-note-title">
             <Icon name="alert" className="btn-ic" />
-            전체 공통 특이사항
+            참고 사항
           </span>
           <button type="button" className="btn btn-sm btn-outline" onClick={openNoteEdit}>
             <Icon name="edit" className="btn-ic" />
@@ -643,7 +643,7 @@ export default function PurchaseListPage() {
             )}
           </>
         ) : (
-          <p className="pur-note-empty">등록된 공통 특이사항이 없습니다. "수정"으로 추가하세요.</p>
+          <p className="pur-note-empty">등록된 참고 사항이 없습니다. "수정"으로 추가하세요.</p>
         )}
       </div>
 
@@ -954,12 +954,12 @@ export default function PurchaseListPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={noteModalOpen} onClose={() => setNoteModalOpen(false)} title="전체 공통 특이사항">
+      <Modal isOpen={noteModalOpen} onClose={() => setNoteModalOpen(false)} title="참고 사항">
         <div className="form-group">
-          <label>내용 (이 페이지를 보는 관리자에게 공유됩니다)</label>
+          <label>내용 (이 페이지를 보는 관리자에게 공유됩니다 · 줄바꿈으로 여러 건 추가)</label>
           <textarea
             className="pur-note-textarea"
-            rows={6}
+            rows={8}
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             placeholder="예: 8월 자재 단가 인상 반영 요망 / 납기 지연 건은 비고에 사유 기재 / 부가세 별도 표기 확인"

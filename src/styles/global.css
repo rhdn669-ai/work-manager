@@ -7006,27 +7006,31 @@ tr.is-newly-added > td {
   gap: 6px;
   font-weight: 700;
   color: var(--primary, #002050);
-  font-size: var(--font-sm, 14px);
+  font-size: 17px;
 }
 .pur-note-title .btn-ic {
   color: var(--safety-orange, #f05819);
 }
 .pur-note-body {
-  margin: 8px 0 4px;
+  margin: 10px 0 6px;
   white-space: pre-wrap;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--text, #19222f);
-  font-size: var(--font-sm, 14px);
+  font-size: 16px;
 }
 .pur-note-meta {
   margin: 0;
   color: var(--text-muted, #8b95a1);
-  font-size: 12px;
+  font-size: 13px;
 }
 .pur-note-empty {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   color: var(--text-muted, #8b95a1);
-  font-size: var(--font-sm, 14px);
+  font-size: 16px;
+}
+.pur-note-textarea {
+  font-size: 16px;
+  min-height: 160px;
 }
 .pur-note-textarea {
   width: 100%;
@@ -13663,6 +13667,31 @@ td.mx-dc {
   color: var(--text);
   padding: 5px 8px;
   border-radius: 6px;
+}
+
+/* 업체(공수) 카드: 이름 우측 업체명 토글 칩 + 펼침 입력 */
+.closing-vendor-toggle {
+  flex: 0 0 auto;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px dashed var(--border, #e5e8eb);
+  background: var(--canvas, #f2f4f6);
+  color: var(--text-muted, #8b95a1);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.closing-vendor-toggle:hover {
+  border-color: var(--primary, #002050);
+  color: var(--primary, #002050);
+}
+.closing-vendor-inline {
+  flex: 0 0 160px;
+  min-width: 120px;
 }
 
 /* 모달로 선택된 업체/이름 — 수정 불가 표시 */
