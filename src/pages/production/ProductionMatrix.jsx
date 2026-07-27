@@ -6,6 +6,7 @@ import {
   BUPMOK,
   JAIP,
   JAIP_GROUPS,
+  IPGO_ITEMS,
   GIGU_MAKERS,
   MP_SUBS,
   UI_TASK_STATES,
@@ -87,6 +88,25 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     </td>
   );
 
+  // 일정 항목별 입고일 셀 — p.자재입고일[itemKey] 에 개별 저장
+  const IpgoDateCell = ({ p, itemKey }) => {
+    const cur = (p.자재입고일 || {})[itemKey] || '';
+    return (
+      <td className="mx-cell mx-date">
+        {canEdit ? (
+          <input
+            type="date"
+            className="mx-date-input"
+            defaultValue={cur}
+            onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
+          />
+        ) : (
+          mmdd(cur)
+        )}
+      </td>
+    );
+  };
+
   return (
     <div className="mx-wrap card">
       <table className="mx-table">
@@ -101,7 +121,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 {b}
               </th>
             ))}
-            <th colSpan={3}>일정</th>
+            <th colSpan={IPGO_ITEMS.length + 2}>일정</th>
             <th colSpan={canEdit ? 3 : 2}>판정</th>
           </tr>
           {/* 2행: 자재 그룹(판금·하네스·자재) + 불량·상태 — 하위 없는 칸은 rowSpan 2 */}
@@ -149,7 +169,11 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 </Fragment>
               ),
             )}
-            <th rowSpan={2}>자재입고</th>
+            {IPGO_ITEMS.map((it) => (
+              <th key={it.key} className="mx-sub-th" rowSpan={2}>
+                {it.label}
+              </th>
+            ))}
             <th rowSpan={2}>납기</th>
             <th rowSpan={2}>턴온</th>
             <th rowSpan={2}>진행</th>
@@ -246,7 +270,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                     />
                   );
                 })}
-                <DateCell p={p} field="자재입고" />
+                {IPGO_ITEMS.map((it) => (
+                  <IpgoDateCell key={it.key} p={p} itemKey={it.key} />
+                ))}
                 <DateCell p={p} field="납기" />
                 <DateCell p={p} field="턴온" />
                 <td className="mx-cell mx-prog">{p.progress}%</td>

@@ -26,6 +26,17 @@ export const JAIP_GROUPS = [
 ];
 // 자재입고 leaf 키 목록 (완료·일자·롤업 등 파생은 전부 이 목록 기반)
 export const JAIP = JAIP_GROUPS.flatMap((g) => g.leaves.map((l) => l.key));
+
+// 일정 그룹의 "자재입고" 항목별 입고일 컬럼 (판금·하네스{사급·도급·제작}·자재{사급·도급})
+// BOX별 체크(JAIP)와 별개로, 일정에 항목별 입고 날짜를 개별 관리한다. (2026-07-27 대표님)
+export const IPGO_ITEMS = [
+  { key: '판금', label: '판금' },
+  { key: '하네스_사급', label: '하네스 사급' },
+  { key: '하네스_도급', label: '하네스 도급' },
+  { key: '하네스_제작', label: '하네스 제작' },
+  { key: '자재_사급', label: '자재 사급' },
+  { key: '자재_도급', label: '자재 도급' },
+];
 // MP 판넬 하위 10종
 export const MP_SUBS = ['PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타']; // MAIN → 부품 'MP'로 승격 (2026-07-20)
 // 진행률에서 MP가 차지하는 고정 비중(12.5%). 하위 9종으로 다시 분할, 나머지 부품은 87.5% 균등.
@@ -195,6 +206,7 @@ export function emptyPanel(overrides = {}) {
     납기: '',
     턴온: '',
     자재입고: '',
+    자재입고일: {}, // 일정 항목별 입고일 { 판금:'YYYY-MM-DD', 하네스_사급:'', ... }
     비고: '',
     현장메모: '',
     자재입고상태: Object.fromEntries(JAIP.map((k) => [k, false])),
