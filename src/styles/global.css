@@ -13181,29 +13181,16 @@ table.closing-matrix thead th {
   border-color: var(--border);
   background: #fff;
 }
-/* 표 뷰 업체(공수): 이름 우측 업체명 토글 칩 + 펼침 입력 */
-.mx-vendor-toggle {
+/* 표 뷰 업체(공수): 업체명은 모달 선택값 — 읽기전용 텍스트 */
+.mx-vendor-label {
   flex: 0 0 auto;
-  max-width: 96px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  height: 22px;
-  border: 1px dashed var(--border, #e5e8eb);
-  background: var(--canvas, #f2f4f6);
   color: var(--text-muted, #8b95a1);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 0 8px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.mx-vendor-toggle:hover {
-  border-color: var(--primary, #002050);
-  color: var(--primary, #002050);
-}
-.mx-vendor-inline {
-  flex: 0 0 90px;
 }
 .mx-auto {
   font-size: 9px;
@@ -13698,29 +13685,17 @@ td.mx-dc {
   border-radius: 6px;
 }
 
-/* 업체(공수) 카드: 이름 우측 업체명 토글 칩 + 펼침 입력 */
-.closing-vendor-toggle {
+/* 업체(공수) 카드: 업체명은 모달 선택값 — 읽기전용 텍스트 */
+.closing-vendor-label {
   flex: 0 0 auto;
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px dashed var(--border, #e5e8eb);
-  background: var(--canvas, #f2f4f6);
   color: var(--text-muted, #8b95a1);
   font-size: 13px;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.closing-vendor-toggle:hover {
-  border-color: var(--primary, #002050);
-  color: var(--primary, #002050);
-}
-.closing-vendor-inline {
-  flex: 0 0 160px;
-  min-width: 120px;
+  padding: 4px 8px;
 }
 
 /* 모달로 선택된 업체/이름 — 수정 불가 표시 */

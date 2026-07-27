@@ -201,8 +201,6 @@ export default function SiteClosingPage() {
   // 공수표 행 펼침/접힘 — 기본 접힘(요약 1줄만), 탭하면 해당 행만 캘린더로 펼쳐 편집.
   // 이름 미입력(신규) 행은 자동 펼침. allExpanded는 헤더의 "전체 펼치기" 토글.
   const [expandedRows, setExpandedRows] = useState(() => new Set());
-  // 업체(공수) 카드: 이름을 앞 칸에, 업체명은 우측 토글로 — 펼친 카드 id 집합
-  const [vendorOpen, setVendorOpen] = useState(() => new Set());
   // 모바일은 원래 공수표처럼 인원별 달력이 펼쳐진 상태로 시작(접힌 요약막대 X)
   const [allExpanded, setAllExpanded] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
@@ -2173,9 +2171,8 @@ export default function SiteClosingPage() {
           const isVendor = cardType === 'vendor';
           // 업체(공수)도 이름 칸엔 개인 이름(detail) — 업체명은 우측 토글로
           const nameField = 'detail';
-          // 모달에서 선택해 저장된 값은 수정 불가 — 카드 뷰와 동일 잠금
+          // 모달에서 선택해 저장된 이름은 수정 불가 — 카드 뷰와 동일 잠금 (업체명은 읽기전용 텍스트)
           const detailLocked = isEmployee || (isVendor && !!(buf.detail || '').trim());
-          const vendorLocked = isVendor && !!(buf.vendor || '').trim();
           return (
             <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
               <td className="mx-name">
@@ -2191,36 +2188,11 @@ export default function SiteClosingPage() {
                     readOnly={detailLocked}
                     title={buf[nameField] || ''}
                   />
-                  {isVendor &&
-                    (vendorOpen.has(it.id) ? (
-                      <input
-                        className="mx-name-input mx-vendor-inline"
-                        value={buf.vendor || ''}
-                        placeholder="업체명"
-                        onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
-                        onBlur={() => flushRow(it.id)}
-                        disabled={!canEdit}
-                        readOnly={vendorLocked}
-                        title={vendorLocked ? '모달에서 선택된 업체 — 수정 불가 (삭제 후 재추가)' : buf.vendor || ''}
-                        autoFocus
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className="mx-vendor-toggle"
-                        onClick={() =>
-                          setVendorOpen((s) => {
-                            const n = new Set(s);
-                            if (n.has(it.id)) n.delete(it.id);
-                            else n.add(it.id);
-                            return n;
-                          })
-                        }
-                        title="업체명 보기/편집"
-                      >
-                        {(buf.vendor || '').trim() || '업체명'}
-                      </button>
-                    ))}
+                  {isVendor && (buf.vendor || '').trim() && (
+                    <span className="mx-vendor-label" title={buf.vendor}>
+                      {buf.vendor}
+                    </span>
+                  )}
                   {canEdit && isEmployee && site?.projectType === 'recurring' && (
                     <button
                       type="button"
@@ -2437,37 +2409,12 @@ export default function SiteClosingPage() {
                             : buf.detail || undefined
                         }
                       />
-                      {/* 업체(공수): 이름 우측에 업체명 토글 — 접힘=칩(업체명), 펼침=입력 */}
-                      {isVendor &&
-                        (vendorOpen.has(it.id) ? (
-                          <input
-                            className="closing-vendor closing-vendor-inline"
-                            value={buf.vendor || ''}
-                            placeholder="업체명"
-                            list={!vendorLocked ? 'closing-vendor-list' : undefined}
-                            onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
-                            onBlur={() => flushRow(it.id)}
-                            disabled={!canEdit}
-                            readOnly={vendorLocked}
-                            autoFocus
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            className="closing-vendor-toggle"
-                            onClick={() =>
-                              setVendorOpen((s) => {
-                                const n = new Set(s);
-                                if (n.has(it.id)) n.delete(it.id);
-                                else n.add(it.id);
-                                return n;
-                              })
-                            }
-                            title="업체명 보기/편집"
-                          >
-                            {(buf.vendor || '').trim() || '업체명'}
-                          </button>
-                        ))}
+                      {/* 업체(공수): 업체명은 모달 선택값 — 읽기전용 텍스트로 표시 */}
+                      {isVendor && (buf.vendor || '').trim() && (
+                        <span className="closing-vendor-label" title={buf.vendor}>
+                          {buf.vendor}
+                        </span>
+                      )}
                       {canEdit && isEmployee && site?.projectType === 'recurring' && (
                         <button
                           type="button"
