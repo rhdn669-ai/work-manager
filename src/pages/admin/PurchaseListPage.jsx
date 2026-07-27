@@ -752,10 +752,10 @@ export default function PurchaseListPage() {
             .purchase-list-page .kb-card:hover { box-shadow: 0 8px 20px rgba(0,23,51,0.10); transform: translateY(-1px); }
             .purchase-list-page .kb-card__title { color: var(--primary, #002050); }
             .purchase-list-page .kb-card { display: flex; flex-direction: column; gap: 4px; }
-            .purchase-list-page .kb-card__title { font-size: 14.5px; line-height: 1.3; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-            .purchase-list-page .kb-card__meta { font-size: 11.5px; color: var(--muted, #8b95a1); }
-            .purchase-list-page .kb-card__items { align-self: flex-start; font-size: 11px; color: var(--slate, #4e5968); background: var(--canvas, #f2f4f6); border-radius: var(--radius-sm, 11px); padding: 2px 7px; margin: 1px 0; }
-            .purchase-list-page .kb-card__amount { font-size: 17px; font-weight: 800; color: var(--safety-orange, #f05819); line-height: 1.1; }
+            .purchase-list-page .kb-card__title { font-size: 14px; line-height: 1.3; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+            .purchase-list-page .kb-card__meta { font-size: 12px; color: var(--muted, #8b95a1); }
+            .purchase-list-page .kb-card__items { align-self: flex-start; font-size: 11px; color: var(--slate, #4e5968); background: var(--canvas, #f2f4f6); border-radius: var(--radius-sm); padding: 2px 7px; margin: 1px 0; }
+            .purchase-list-page .kb-card__amount { font-size: 16px; font-weight: 800; color: var(--safety-orange, #f05819); line-height: 1.1; }
             .purchase-list-page .kb-card__amount em { font-weight: 700; font-size: 12px; margin-left: 2px; font-style: normal; }
             .purchase-list-page .kb-card__amount-vat { font-size: 11px; color: var(--muted, #8b95a1); }
             .purchase-list-page .kb-card__dates { display: flex; flex-direction: column; gap: 1px; font-size: 11px; color: var(--muted, #8b95a1); }
