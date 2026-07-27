@@ -269,7 +269,7 @@ export default function PurchaseListPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('board'); // 'board'(칸반) | 'list'(목록)
+  const [viewMode, setViewMode] = useState('list'); // 기본: 목록(표). 'board'(칸반)는 토글로 선택
   const [factories, setFactories] = useState([]);
   const [factoryModalOpen, setFactoryModalOpen] = useState(false);
   const [factoryForm, setFactoryForm] = useState([]);
