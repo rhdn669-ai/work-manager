@@ -7,6 +7,7 @@ import {
   JAIP,
   JAIP_GROUPS,
   IPGO_ITEMS,
+  IPGO_GROUPS,
   GIGU_MAKERS,
   MP_SUBS,
   UI_TASK_STATES,
@@ -88,11 +89,14 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     </td>
   );
 
-  // 일정 항목별 입고일 셀 — p.자재입고일[itemKey] 에 개별 저장
+  // 일정 항목별 입고일 셀 — p.자재입고일[itemKey] 에 개별 저장.
+  // 날짜 기준 D-day로 색상: 미도달(미래)·도달(당일)·초과(지남)
   const IpgoDateCell = ({ p, itemKey }) => {
     const cur = (p.자재입고일 || {})[itemKey] || '';
+    const dd = cur ? getDday(cur) : null;
+    const statusCls = dd === null ? '' : dd < 0 ? ' ipgo-over' : dd === 0 ? ' ipgo-due' : ' ipgo-before';
     return (
-      <td className="mx-cell mx-date">
+      <td className={`mx-cell mx-date${statusCls}`}>
         {canEdit ? (
           <input
             type="date"
@@ -169,11 +173,17 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 </Fragment>
               ),
             )}
-            {IPGO_ITEMS.map((it) => (
-              <th key={it.key} className="mx-sub-th" rowSpan={2}>
-                {it.label}
-              </th>
-            ))}
+            {IPGO_GROUPS.map((g) =>
+              g.leaves.length === 1 ? (
+                <th key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
+                  {g.label}
+                </th>
+              ) : (
+                <th key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
+                  {g.label}
+                </th>
+              ),
+            )}
             <th rowSpan={2}>납기</th>
             <th rowSpan={2}>턴온</th>
             <th rowSpan={2}>진행</th>
@@ -195,6 +205,14 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                     )}
               </Fragment>
             ))}
+            {/* 일정 입고일 — 하네스·자재 묶음 하위(사급·도급·제작 / 사급·도급) */}
+            {IPGO_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
+              g.leaves.map((l) => (
+                <th key={`ipgo-${l.key}`} className="mx-sub-th">
+                  {l.label}
+                </th>
+              )),
+            )}
           </tr>
         </thead>
         <tbody>

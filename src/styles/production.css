@@ -1171,6 +1171,24 @@
 .mx-urg td:not(.mx-sticky) {
   background: #fffaf0;
 }
+/* 일정 입고일 상태색 — 미도달(파랑)·도달(노랑)·초과(빨강) */
+.mx-table tbody td.ipgo-before {
+  background: #eaf1fb;
+}
+.mx-table tbody td.ipgo-due {
+  background: #fff2d6;
+  color: #b45309;
+}
+.mx-table tbody td.ipgo-over {
+  background: #fde2e2;
+  color: #c53030;
+}
+.mx-table tbody td.ipgo-over .mx-date-input {
+  color: #c53030;
+}
+.mx-table tbody td.ipgo-due .mx-date-input {
+  color: #b45309;
+}
 .mx-table tbody tr:hover td:not(.mx-sticky) {
   background: var(--primary-softer, #f0f3f8);
 }

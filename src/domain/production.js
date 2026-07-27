@@ -27,16 +27,30 @@ export const JAIP_GROUPS = [
 // 자재입고 leaf 키 목록 (완료·일자·롤업 등 파생은 전부 이 목록 기반)
 export const JAIP = JAIP_GROUPS.flatMap((g) => g.leaves.map((l) => l.key));
 
-// 일정 그룹의 "자재입고" 항목별 입고일 컬럼 (판금·하네스{사급·도급·제작}·자재{사급·도급})
-// BOX별 체크(JAIP)와 별개로, 일정에 항목별 입고 날짜를 개별 관리한다. (2026-07-27 대표님)
-export const IPGO_ITEMS = [
-  { key: '판금', label: '판금' },
-  { key: '하네스_사급', label: '하네스 사급' },
-  { key: '하네스_도급', label: '하네스 도급' },
-  { key: '하네스_제작', label: '하네스 제작' },
-  { key: '자재_사급', label: '자재 사급' },
-  { key: '자재_도급', label: '자재 도급' },
+// 일정 그룹의 "자재입고" 항목별 입고일 — 2단 구조: 판금(단일)·하네스{사급·도급·제작}·자재{사급·도급}
+// 상단에 하네스/자재를 묶음 헤더로 표시. BOX별 체크(JAIP)와 별개. (2026-07-27 대표님)
+export const IPGO_GROUPS = [
+  { key: '판금', label: '판금', leaves: [{ key: '판금', label: '판금' }] },
+  {
+    key: '하네스',
+    label: '하네스',
+    leaves: [
+      { key: '하네스_사급', label: '사급' },
+      { key: '하네스_도급', label: '도급' },
+      { key: '하네스_제작', label: '제작' },
+    ],
+  },
+  {
+    key: '자재',
+    label: '자재',
+    leaves: [
+      { key: '자재_사급', label: '사급' },
+      { key: '자재_도급', label: '도급' },
+    ],
+  },
 ];
+// 입고일 leaf 키 목록 (본문 셀 렌더 순서 = 헤더 컬럼 순서)
+export const IPGO_ITEMS = IPGO_GROUPS.flatMap((g) => g.leaves.map((l) => ({ key: l.key, label: l.label })));
 // MP 판넬 하위 10종
 export const MP_SUBS = ['PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타']; // MAIN → 부품 'MP'로 승격 (2026-07-20)
 // 진행률에서 MP가 차지하는 고정 비중(12.5%). 하위 9종으로 다시 분할, 나머지 부품은 87.5% 균등.
