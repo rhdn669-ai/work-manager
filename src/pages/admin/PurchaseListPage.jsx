@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -785,57 +785,75 @@ export default function PurchaseListPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => {
-                const st = STATUS[p.status] || { label: p.status, cls: 'ordered' };
-                const amt = Number(p.totalAmount || 0);
+              {BOARD_COLS.map((col) => {
+                const rows = filtered.filter((p) => (p.status || 'ordered') === col.key);
+                if (rows.length === 0) return null;
                 return (
-                  <tr key={p.id} className="pur-row" onClick={() => navigate(`/admin/purchase/${p.id}`)}>
-                    <td data-label="상태">
-                      <span className={`purchase-badge purchase-badge-${st.cls}`}>{st.label}</span>
-                    </td>
-                    <td data-label="제목" className="pur-c-title">
-                      <div className="pur-title u-ellipsis-1" title={p.title || ''}>
-                        {p.title || '-'}
-                      </div>
-                      {p.subtitle && (
-                        <div className="pur-sub u-ellipsis-1" title={p.subtitle}>
-                          {p.subtitle}
-                        </div>
-                      )}
-                    </td>
-                    <td data-label="구매처" className="pur-c-sup u-ellipsis-1" title={p.supplierName || ''}>
-                      {p.supplierName || '-'}
-                    </td>
-                    <td data-label="프로젝트" className="pur-c-proj u-ellipsis-1" title={p.siteName || ''}>
-                      {p.siteName || '프로젝트 미지정'}
-                    </td>
-                    <td data-label="품목/수량" className="pur-c-items pur-items">
-                      품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
-                    </td>
-                    <td data-label="금액" className="pur-c-amt pur-amt">
-                      {amt.toLocaleString()}원
-                    </td>
-                    <td data-label="부가세 포함" className="pur-c-vat pur-vat">
-                      {Math.round(amt * 1.1).toLocaleString()}원
-                    </td>
-                    <td data-label="작성일" className="pur-c-date">
-                      {fmtDate(p.createdAt || p.orderedAt)}
-                    </td>
-                    <td data-label="납기" className="pur-c-date">
-                      {p.deliveryDue || '-'}
-                    </td>
-                    <td data-label="작업" className="pur-c-act col-action" onClick={(e) => e.stopPropagation()}>
-                      <div className="row-actions">
-                        <button type="button" className="btn btn-sm btn-outline" onClick={(e) => openEdit(e, p)}>
-                          수정
-                        </button>
-                        <button type="button" className="btn btn-sm btn-danger" onClick={(e) => handleDelete(e, p)}>
-                          <Icon name="trash" className="btn-ic" />
-                          삭제
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <Fragment key={col.key}>
+                    <tr className="pur-group-row">
+                      <td className="pur-group-cell" colSpan={10}>
+                        {col.label}
+                        <span className="pur-group-count">{rows.length}</span>
+                      </td>
+                    </tr>
+                    {rows.map((p) => {
+                      const st = STATUS[p.status] || { label: p.status, cls: 'ordered' };
+                      const amt = Number(p.totalAmount || 0);
+                      return (
+                        <tr key={p.id} className="pur-row" onClick={() => navigate(`/admin/purchase/${p.id}`)}>
+                          <td data-label="상태">
+                            <span className={`purchase-badge purchase-badge-${st.cls}`}>{st.label}</span>
+                          </td>
+                          <td data-label="제목" className="pur-c-title">
+                            <div className="pur-title u-ellipsis-1" title={p.title || ''}>
+                              {p.title || '-'}
+                            </div>
+                            {p.subtitle && (
+                              <div className="pur-sub u-ellipsis-1" title={p.subtitle}>
+                                {p.subtitle}
+                              </div>
+                            )}
+                          </td>
+                          <td data-label="구매처" className="pur-c-sup u-ellipsis-1" title={p.supplierName || ''}>
+                            {p.supplierName || '-'}
+                          </td>
+                          <td data-label="프로젝트" className="pur-c-proj u-ellipsis-1" title={p.siteName || ''}>
+                            {p.siteName || '프로젝트 미지정'}
+                          </td>
+                          <td data-label="품목/수량" className="pur-c-items pur-items">
+                            품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
+                          </td>
+                          <td data-label="금액" className="pur-c-amt pur-amt">
+                            {amt.toLocaleString()}원
+                          </td>
+                          <td data-label="부가세 포함" className="pur-c-vat pur-vat">
+                            {Math.round(amt * 1.1).toLocaleString()}원
+                          </td>
+                          <td data-label="작성일" className="pur-c-date">
+                            {fmtDate(p.createdAt || p.orderedAt)}
+                          </td>
+                          <td data-label="납기" className="pur-c-date">
+                            {p.deliveryDue || '-'}
+                          </td>
+                          <td data-label="작업" className="pur-c-act col-action" onClick={(e) => e.stopPropagation()}>
+                            <div className="row-actions">
+                              <button type="button" className="btn btn-sm btn-outline" onClick={(e) => openEdit(e, p)}>
+                                수정
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-danger"
+                                onClick={(e) => handleDelete(e, p)}
+                              >
+                                <Icon name="trash" className="btn-ic" />
+                                삭제
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
                 );
               })}
             </tbody>

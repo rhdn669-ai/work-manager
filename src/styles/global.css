@@ -7191,6 +7191,29 @@ tr.is-newly-added > td {
   justify-content: flex-end;
   white-space: nowrap;
 }
+/* 금액·부가세·작업 헤더도 값과 같은 우측 정렬 (헤더-값 정렬 일치) */
+.pur-table thead th.pur-c-amt,
+.pur-table thead th.pur-c-vat {
+  text-align: right;
+}
+.pur-table thead th.pur-c-act {
+  text-align: right;
+}
+/* 상태 구분 헤더 행 (칸반처럼 발주대기/발주완료…) */
+.pur-group-row td.pur-group-cell {
+  background: var(--primary, #002050);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 8px 14px;
+  position: sticky;
+  left: 0;
+}
+.pur-group-count {
+  margin-left: 8px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
 /* 보드 카드 품목/수량 라인 */
 .kb-card__items {
   font-size: 12px;
