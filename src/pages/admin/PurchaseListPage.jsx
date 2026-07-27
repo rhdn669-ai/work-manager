@@ -745,10 +745,10 @@ export default function PurchaseListPage() {
             .kb-card__meta { font-size: 12px; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .kb-card__actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; }
             .kb-card__actions .btn { min-height: 32px; white-space: nowrap; }
-            .kb-col__head { background: var(--navy, #002050); color: var(--text-sidebar, #fff); border-radius: 10px 10px 0 0; }
+            .kb-col__head { background: var(--navy, #002050); color: var(--text-sidebar, #fff); border-radius: 11px 11px 0 0; }
             /* ── 발주 보드 카드 소폭 개선 (발주 화면 한정) ── */
-            .purchase-list-page .kb-col { background: var(--canvas, #f2f4f6); border-radius: 0 0 10px 10px; }
-            .purchase-list-page .kb-card { background: #fff; border: 1px solid var(--border, #e5e8eb); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,23,51,0.04); transition: box-shadow .15s ease, transform .15s ease; }
+            .purchase-list-page .kb-col { background: var(--canvas, #f2f4f6); border-radius: 0 0 11px 11px; }
+            .purchase-list-page .kb-card { background: #fff; border: 1px solid var(--border, #e5e8eb); border-radius: 13px; box-shadow: 0 1px 3px rgba(0,23,51,0.04); transition: box-shadow .15s ease, transform .15s ease; }
             .purchase-list-page .kb-card:hover { box-shadow: 0 8px 20px rgba(0,23,51,0.10); transform: translateY(-1px); }
             .purchase-list-page .kb-card__title { color: var(--primary, #002050); }
             .purchase-list-page .kb-card__amount { font-size: 16px; font-weight: 800; color: var(--safety-orange, #f05819); }
