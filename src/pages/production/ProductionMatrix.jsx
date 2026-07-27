@@ -19,6 +19,7 @@ import {
   boxDoneDate,
   boxDefectDate,
   boxHasDefect,
+  boxDefectResolved,
   deriveBoxStatus,
   deriveMpState,
   normState,
@@ -270,6 +271,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                   const mat = boxMat(p, b);
                   const matDate = boxMatDate(p, b);
                   const defect = boxHasDefect(p.검수, b);
+                  const defectDone = !defect && boxDefectResolved(p.검수, b);
                   const st = deriveBoxStatus(p, b);
                   const sc = TASK_CFG[st] || TASK_CFG['대기'];
                   return (
@@ -278,6 +280,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                       mat={mat}
                       matDate={matDate}
                       defect={defect}
+                      defectDone={defectDone}
                       defectDate={boxDefectDate(p.검수, b)}
                       doneDate={boxDoneDate(p, b)}
                       st={st}
@@ -359,7 +362,7 @@ function MpGroup({ p, st, sc, canEdit, onToggle }) {
 const GRP_START = new Set(JAIP_GROUPS.map((g) => g.leaves[0].key));
 
 // BOX 하위: 판금 · 하네스{사급·제작} · 자재{사급·도급} · 불량 · 상태 — 체크 시 일자(MM-DD)
-function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit, onMat, onDefect }) {
+function BoxGroup({ mat, matDate, defect, defectDone, defectDate, doneDate, st, sc, canEdit, onMat, onDefect }) {
   return (
     <>
       {JAIP.map((k) => {
@@ -380,13 +383,17 @@ function BoxGroup({ mat, matDate, defect, defectDate, doneDate, st, sc, canEdit,
         className="mx-cell mx-boxdefect mx-dcell mx-grp-start"
         style={{
           cursor: 'pointer',
-          color: 'var(--status-cancel-fg)',
-          background: defect ? 'var(--status-cancel-bg)' : undefined,
+          color: defectDone ? 'var(--status-done-fg)' : 'var(--status-cancel-fg)',
+          background: defect
+            ? 'var(--status-cancel-bg)'
+            : defectDone
+              ? 'var(--status-done-bg)'
+              : undefined,
         }}
         onClick={onDefect}
-        title="불량 기록/사진 (클릭: 상세)"
+        title={defect ? '미해결 불량 (클릭: 상세)' : defectDone ? '불량 처리완료 (클릭: 상세)' : '불량 기록/사진 (클릭: 상세)'}
       >
-        {defect ? mmdd(defectDate) || <Icon name="close" /> : ''}
+        {defect ? mmdd(defectDate) || <Icon name="close" /> : defectDone ? <Icon name="check" /> : ''}
       </td>
       <td className="mx-cell mx-boxstate mx-dcell" style={{ background: sc.bg, color: sc.fg }} title={st}>
         {st === '완료'

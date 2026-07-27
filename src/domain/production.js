@@ -104,7 +104,7 @@ export function projColorOf(allGroups, g) {
 export function unresolvedDefectParts(p, round) {
   const sec = p.검수?.[`차${round}`]?.공정비고;
   if (!sec) return [];
-  return BUPMOK.filter((b) => (sec[b]?.항목 || []).some((it) => it.내용 && !it.완료));
+  return BUPMOK.filter((b) => (sec[b]?.항목 || []).some((it) => (it.내용 || it.사진) && !it.완료));
 }
 
 /* ── BOX별 하위(자재입고·불량) → 상태 자동 산출 (2026-07-20) ── */
@@ -119,7 +119,10 @@ export function jaipRollup(p) {
 }
 // 해당 박스에 미해결 불량이 있나 (검수 1·2차 공정비고 항목 중 내용 있고 미완료)
 export function boxHasDefect(insp, box) {
-  return [1, 2].some((r) => (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).some((it) => it.내용 && !it.완료));
+  // 사진만 등록(내용 빈값)한 불량도 인정 — 내용 또는 사진이 있고 미완료면 불량
+  return [1, 2].some((r) =>
+    (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).some((it) => (it.내용 || it.사진) && !it.완료),
+  );
 }
 // BOX별 자재입고 체크 일자: p.박스입고일자 = { box: { 판금:'YYYY-MM-DD', ... } }
 export function boxMatDate(p, box) {
@@ -136,11 +139,20 @@ export function boxDefectDate(insp, box) {
   let earliest = '';
   [1, 2].forEach((r) => {
     (insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []).forEach((it) => {
-      if (it.내용 && !it.완료 && it.일자 && (!earliest || it.일자 < earliest)) earliest = it.일자;
+      if ((it.내용 || it.사진) && !it.완료 && it.일자 && (!earliest || it.일자 < earliest)) earliest = it.일자;
     });
   });
   return earliest;
 }
+// 해당 박스의 불량이 모두 처리완료됐나 (과거 불량 있었고, 미해결 없음)
+export function boxDefectResolved(insp, box) {
+  const items = [1, 2].flatMap((r) => insp?.[`차${r}`]?.공정비고?.[box]?.항목 || []);
+  const has = (it) => it.내용 || it.사진;
+  const resolved = items.some((it) => has(it) && it.완료);
+  const unresolved = items.some((it) => has(it) && !it.완료);
+  return resolved && !unresolved;
+}
+
 // 박스 종합상태: 미해결 불량→문제 / 입고4개 완료→완료 / 그 외 대기
 export function deriveBoxStatus(p, box, inspOverride, matOverride) {
   const insp = inspOverride || p.검수;

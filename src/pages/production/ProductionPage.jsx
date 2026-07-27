@@ -98,13 +98,13 @@ function collectWorkerStats(panels) {
       [1, 2].forEach((n) => {
         const sec = insp[`차${n}`]?.공정비고?.[b] || { 항목: [] };
         (sec.항목 || []).forEach((item) => {
-          if (!item.내용) return;
+          if (!item.내용 && !item.사진) return; // 사진만 있는 불량도 집계
           stats[worker].불량건.push({
             proj: p.프로젝트,
             호기: p.호기,
             공정: b,
             차수: `${n}차`,
-            내용: item.내용,
+            내용: item.내용 || '(사진 불량)',
             완료: !!item.완료,
           });
         });
