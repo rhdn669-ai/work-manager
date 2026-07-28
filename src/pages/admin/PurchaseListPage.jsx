@@ -348,7 +348,12 @@ export default function PurchaseListPage() {
           x.status = 'ordered';
         });
       }
-      setPurchases(p);
+      // siteId는 있는데 siteName이 비어 "프로젝트 미지정"으로 보이던 발주 — siteId로 프로젝트명 보정
+      const siteById = Object.fromEntries(st.map((s) => [s.id, s.name]));
+      const patched = p.map((x) =>
+        !x.siteName && x.siteId && siteById[x.siteId] ? { ...x, siteName: siteById[x.siteId] } : x,
+      );
+      setPurchases(patched);
       setSites(st);
       setRecentSiteId(cfg.hqSiteId || '');
     } catch (err) {
