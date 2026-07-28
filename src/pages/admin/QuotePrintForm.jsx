@@ -8,7 +8,7 @@ export const DEFAULT_NOTE = '• 견적서 유효기간 : 15일\n• 물품 납�
 // 발주서·BOM과 동일한 페이지 분할 규칙 (3종 세로 길이 통일)
 const OTHER_PAGE_ROWS = 33; // 일반 페이지(A4를 거의 채우는 행수)
 const INFO_ROWS = 11; // 1페이지 상단 로고밴드+정보표가 차지하는 행수
-const TOTALS_ROWS = 5; // 마지막 페이지 특이사항+합계+인감이 차지하는 행수
+const TOTALS_ROWS = 10; // 마지막 페이지 특이사항+합계+인감이 차지하는 행수
 const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
 
 function quoteNumber(quote) {

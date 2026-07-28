@@ -109,7 +109,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   // 행 개수 기반 페이지 분할 — 페이지를 거의 채우고 하단엔 합계·특이사항 크기(TOTALS_ROWS)만큼만 공백을 남김.
   const OTHER_PAGE_ROWS = 33; // 일반 페이지(페이지를 거의 채우는 행수)
   const INFO_ROWS = 11; // 1페이지 상단 제목+정보표가 차지하는 행수
-  const TOTALS_ROWS = 5; // 마지막 페이지 합계+특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
+  const TOTALS_ROWS = 10; // 마지막 페이지 합계+특이사항+인감이 차지하는 행수(= 모든 페이지 하단 공백 크기)
   const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
 
   // 품번(_globalNo)은 전체 발주 기준 번호 — 업체별 출력에서만 의미 있음 (전체 출력은 NO와 중복이라 숨김)

@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
-import IopnDocSeal from '../../components/admin/IopnDocSeal';
 import { SELF_INFO } from '../../utils/purchaseOrder';
 import {
   DndContext,
@@ -788,8 +787,6 @@ export default function BomDetailPage() {
                       </tbody>
                     </table>
                   )}
-
-                  {isSectionLast && <IopnDocSeal date={todayKo} />}
 
                   <div className="bom-print-footer">
                     <span>(주)아이오피엔 · BOM 리스트 · {docNo}</span>
