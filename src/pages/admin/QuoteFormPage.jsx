@@ -266,9 +266,6 @@ export default function QuoteFormPage() {
         /* 빈 행 — 클릭하면 품목 행 추가 */
         .quote-empty-row { cursor: pointer; }
         .quote-empty-row:hover td { background: var(--bg-hover, rgba(0, 32, 80, 0.03)); }
-        .quote-preview-wrap { overflow-x: auto; }
-        .quote-preview-wrap .print-form-iopn { min-width: 600px; }
-        @media (max-width: 600px) { .quote-preview-wrap .print-form-iopn { min-width: unset; } }
       `}</style>
 
       {/* 화면용 헤더 */}
@@ -558,10 +555,12 @@ export default function QuoteFormPage() {
         </form>
       )}
 
-      {/* 화면용 미리보기 (보기 모드) */}
+      {/* 화면용 미리보기 (보기 모드) — 작성 화면과 동일한 A4 용지 위에 표시 */}
       {!isEditing && quote && (
-        <div className="quote-preview-wrap screen-only">
-          <QuotePrintForm quote={quote} />
+        <div className="quote-a4-sheet-wrap screen-only">
+          <div className="quote-a4-sheet">
+            <QuotePrintForm quote={quote} />
+          </div>
         </div>
       )}
 
