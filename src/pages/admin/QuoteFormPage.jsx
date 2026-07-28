@@ -10,6 +10,7 @@ import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
+import IopnDocSeal from '../../components/admin/IopnDocSeal';
 import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import QuotePrintForm, { DEFAULT_NOTE } from './QuotePrintForm';
 
@@ -78,6 +79,24 @@ export default function QuoteFormPage() {
   const totalQty = useMemo(() => form.items.reduce((s, ln) => s + (Number(ln.qty) || 0), 0), [form.items]);
   const vatAmount = Math.round(supplyAmount * 0.1);
   const grandTotal = supplyAmount + vatAmount;
+
+  // 발행일 — 저장 전이면 오늘, 저장본이면 작성일 (QuotePrintForm과 동일 표기)
+  function quoteDateKo() {
+    const d = quote?.createdAt?.toDate
+      ? quote.createdAt.toDate()
+      : quote?.createdAt
+        ? new Date(quote.createdAt)
+        : new Date();
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  }
+
+  // 편집 표도 출력물처럼 A4 한 장을 채운다 (QuotePrintForm의 1페이지 행수와 동일)
+  const EDIT_ROWS = 22;
+  const editRows = useMemo(() => {
+    const rows = [...form.items];
+    while (rows.length < EDIT_ROWS) rows.push(null);
+    return rows;
+  }, [form.items]);
 
   // 견적서 양식에 표시할 발행번호 미리보기 — 실제 채번은 저장 후 QuotePrintForm과 동일 규칙으로 확정됨
   function previewQuoteNumber() {
@@ -235,9 +254,18 @@ export default function QuoteFormPage() {
         .quote-edit-table input::placeholder { color: var(--text-muted); }
         .quote-edit-table input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--bg-card); }
         .quote-edit-table td.c-qty input, .quote-edit-table td.c-price input { text-align: right; }
-        .quote-edit-table th.c-del, .quote-edit-table td.c-del { width: 34px; padding: 0; text-align: center; }
-        .quote-cell-del { border: none; background: transparent; color: var(--danger); cursor: pointer; padding: 5px; display: inline-flex; align-items: center; justify-content: center; }
-        .quote-cell-del:hover { opacity: 0.7; }
+        /* 삭제 버튼은 별도 열 없이 NO 칸에 겹쳐 표시 — 출력물과 컬럼 폭을 동일하게 유지 */
+        .quote-edit-table td.c-no { position: relative; }
+        .quote-row-del {
+          position: absolute; left: 1px; top: 50%; transform: translateY(-50%);
+          border: none; background: var(--bg-card); color: var(--danger); cursor: pointer;
+          padding: 2px; line-height: 0; border-radius: 50%; opacity: 0; transition: opacity 0.12s;
+        }
+        .quote-edit-row:hover .quote-row-del { opacity: 1; }
+        .quote-row-del:focus-visible { opacity: 1; }
+        /* 빈 행 — 클릭하면 품목 행 추가 */
+        .quote-empty-row { cursor: pointer; }
+        .quote-empty-row:hover td { background: var(--bg-hover, rgba(0, 32, 80, 0.03)); }
         .quote-preview-wrap { overflow-x: auto; }
         .quote-preview-wrap .print-form-iopn { min-width: 600px; }
         @media (max-width: 600px) { .quote-preview-wrap .print-form-iopn { min-width: unset; } }
@@ -401,93 +429,96 @@ export default function QuoteFormPage() {
                         <th className="c-price">단가</th>
                         <th className="c-amount">금액</th>
                         <th className="c-note">비고</th>
-                        <th className="c-del" aria-label="삭제"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {form.items.map((ln, idx) => (
-                        <tr key={idx}>
-                          <td className="c-no">{idx + 1}</td>
-                          <td className="c-name">
-                            <input
-                              type="text"
-                              placeholder="품명"
-                              value={ln.name}
-                              title={ln.name || ''}
-                              onChange={(e) => updateLine(idx, { name: e.target.value })}
-                            />
-                          </td>
-                          <td className="c-spec">
-                            <input
-                              type="text"
-                              placeholder="규격"
-                              value={ln.spec}
-                              title={ln.spec || ''}
-                              onChange={(e) => updateLine(idx, { spec: e.target.value })}
-                            />
-                          </td>
-                          <td className="c-unit">
-                            <input
-                              type="text"
-                              placeholder="단위"
-                              value={ln.unit}
-                              onChange={(e) => updateLine(idx, { unit: e.target.value })}
-                            />
-                          </td>
-                          <td className="c-qty">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              value={ln.qty || ''}
-                              onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                            />
-                          </td>
-                          <td className="c-price">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              value={ln.unitPrice || ''}
-                              onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                            />
-                          </td>
-                          <td className="c-amount">
-                            {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
-                          </td>
-                          <td className="c-note">
-                            <input
-                              type="text"
-                              placeholder="비고"
-                              value={ln.note}
-                              title={ln.note || ''}
-                              onChange={(e) => updateLine(idx, { note: e.target.value })}
-                            />
-                          </td>
-                          <td className="c-del">
-                            <button
-                              type="button"
-                              className="quote-cell-del"
-                              onClick={() => removeLine(idx)}
-                              aria-label="행 삭제"
-                              title="행 삭제"
-                            >
-                              <Icon name="close" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {editRows.map((ln, idx) =>
+                        ln ? (
+                          <tr key={idx} className="quote-edit-row">
+                            <td className="c-no">
+                              {idx + 1}
+                              <button
+                                type="button"
+                                className="quote-row-del"
+                                onClick={() => removeLine(idx)}
+                                aria-label="행 삭제"
+                                title="행 삭제"
+                              >
+                                <Icon name="close" />
+                              </button>
+                            </td>
+                            <td className="c-name">
+                              <input
+                                type="text"
+                                placeholder="품명"
+                                value={ln.name}
+                                title={ln.name || ''}
+                                onChange={(e) => updateLine(idx, { name: e.target.value })}
+                              />
+                            </td>
+                            <td className="c-spec">
+                              <input
+                                type="text"
+                                placeholder="규격"
+                                value={ln.spec}
+                                title={ln.spec || ''}
+                                onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                              />
+                            </td>
+                            <td className="c-unit">
+                              <input
+                                type="text"
+                                value={ln.unit}
+                                onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                              />
+                            </td>
+                            <td className="c-qty">
+                              <input
+                                type="number"
+                                min="0"
+                                value={ln.qty || ''}
+                                onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                              />
+                            </td>
+                            <td className="c-price">
+                              <input
+                                type="number"
+                                min="0"
+                                value={ln.unitPrice || ''}
+                                onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                              />
+                            </td>
+                            <td className="c-amount">
+                              {(Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)
+                                ? ((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()
+                                : ''}
+                            </td>
+                            <td className="c-note">
+                              <input
+                                type="text"
+                                value={ln.note}
+                                title={ln.note || ''}
+                                onChange={(e) => updateLine(idx, { note: e.target.value })}
+                              />
+                            </td>
+                          </tr>
+                        ) : (
+                          // 빈 행 — 출력물과 동일하게 A4 한 장을 채운다. 클릭하면 그 자리부터 입력 가능
+                          <tr key={idx} className="quote-edit-row quote-empty-row" onClick={addLine}>
+                            <td className="c-no">{idx + 1}</td>
+                            <td className="c-name"></td>
+                            <td className="c-spec"></td>
+                            <td className="c-unit"></td>
+                            <td className="c-qty"></td>
+                            <td className="c-price"></td>
+                            <td className="c-amount"></td>
+                            <td className="c-note"></td>
+                          </tr>
+                        ),
+                      )}
                     </tbody>
                   </table>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline purchase-add-line quote-add-line-btn screen-only"
-                  onClick={addLine}
-                >
-                  <Icon name="plus" className="btn-ic" />
-                  품목 추가
-                </button>
 
                 <table className="iopn-notes-table">
                   <tbody>
@@ -519,6 +550,8 @@ export default function QuoteFormPage() {
                     </tr>
                   </tbody>
                 </table>
+
+                <IopnDocSeal statement="위와 같이 견적합니다." date={quoteDateKo()} />
               </div>
             </div>
           </div>
