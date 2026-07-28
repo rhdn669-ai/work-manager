@@ -1,5 +1,7 @@
 import { forwardRef } from 'react';
 import { specFontClass } from '../../utils/printText';
+import IopnDocBrand from './IopnDocBrand';
+import IopnDocSeal from './IopnDocSeal';
 import {
   SELF_INFO,
   PO_DEFAULTS,
@@ -144,7 +146,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
       while (padded.length < targetRows) padded.push(null);
       return (
         <div className="bom-print-page po-doc-page" key={`${docKey}-${pageIdx}`}>
-          {isFirst && <div className="print-form-title po-form-title">구매발주서</div>}
+          {isFirst && <IopnDocBrand title="구매발주서" titleClass="po-form-title" />}
 
           {isFirst && (
             <table className="iopn-info-table">
@@ -303,6 +305,8 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                   </tr>
                 </tbody>
               </table>
+
+              <IopnDocSeal statement="위와 같이 발주합니다." date={src.orderDateKo} />
             </>
           )}
 

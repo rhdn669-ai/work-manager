@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import IopnDocBrand from '../../components/admin/IopnDocBrand';
+import IopnDocSeal from '../../components/admin/IopnDocSeal';
+import { SELF_INFO } from '../../utils/purchaseOrder';
 import {
   DndContext,
   closestCenter,
@@ -687,7 +690,7 @@ export default function BomDetailPage() {
                 <div className="bom-print-page" key={pageIdx}>
                   {isFirst ? (
                     <>
-                      <div className="print-form-title bom-list-title">BOM 리스트</div>
+                      <IopnDocBrand title="BOM 리스트" titleClass="bom-list-title" />
 
                       <table className="iopn-info-table">
                         <tbody>
@@ -695,37 +698,37 @@ export default function BomDetailPage() {
                             <th className="lbl">프로젝트명</th>
                             <td className="val">{project.name || ''}</td>
                             <th className="lbl">사업자등록번호</th>
-                            <td className="val">222-81-36621</td>
+                            <td className="val">{SELF_INFO.businessNumber}</td>
                           </tr>
                           <tr>
                             <th className="lbl">문서번호</th>
                             <td className="val">{docNo}</td>
                             <th className="lbl">회사명/대표</th>
-                            <td className="val">(주)아이오피엔 / 이종현</td>
+                            <td className="val">{SELF_INFO.companyAndCeo}</td>
                           </tr>
                           <tr>
                             <th className="lbl">작 성 일</th>
                             <td className="val">{todayKo}</td>
                             <th className="lbl">주 소</th>
-                            <td className="val">충남 천안시 서북구 성환읍 율금1길 8-15</td>
+                            <td className="val">{SELF_INFO.address}</td>
                           </tr>
                           <tr>
                             <th className="lbl">항목 수</th>
                             <td className="val">{bomItems.length}건</td>
                             <th className="lbl">TEL/FAX</th>
-                            <td className="val">041-415-0766 / 041-415-0767</td>
+                            <td className="val">{SELF_INFO.telFax}</td>
                           </tr>
                           <tr>
                             <th className="lbl">문서 종류</th>
                             <td className="val">BOM 리스트</td>
                             <th className="lbl">E-Mail</th>
-                            <td className="val">iopn2024@naver.com</td>
+                            <td className="val">{SELF_INFO.email}</td>
                           </tr>
                           <tr>
                             <th className="lbl">용 도</th>
                             <td className="val">자재 산출 / 견적</td>
                             <th className="lbl">담당/연락처</th>
-                            <td className="val">손성욱 / 010-7704-0331</td>
+                            <td className="val">{SELF_INFO.contact}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -785,6 +788,8 @@ export default function BomDetailPage() {
                       </tbody>
                     </table>
                   )}
+
+                  {isSectionLast && <IopnDocSeal date={todayKo} />}
 
                   <div className="bom-print-footer">
                     <span>(주)아이오피엔 · BOM 리스트 · {docNo}</span>

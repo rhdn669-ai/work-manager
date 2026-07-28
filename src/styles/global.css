@@ -16141,6 +16141,44 @@ td.mx-dc {
 .print-form-iopn .print-form-title.po-form-title {
   letter-spacing: 0.18em;
 }
+/* 3종 공용 상단 브랜드 밴드 (로고 + 회사명 + 문서제목) */
+.iopn-brand-band {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 8px;
+  margin: 0 0 10px;
+  border-bottom: 2.2px solid #002050;
+}
+.iopn-brand-l {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.iopn-brand-logo {
+  height: 48px;
+  width: auto;
+  flex: none;
+}
+.iopn-brand-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.5em;
+  text-align: center;
+  padding-left: 0.5em;
+  color: #000;
+  white-space: nowrap;
+}
+.iopn-brand-title.po-form-title {
+  letter-spacing: 0.18em;
+  padding-left: 0.18em;
+}
+.iopn-brand-title.bom-list-title {
+  letter-spacing: 0.08em;
+  padding-left: 0.08em;
+}
 .print-form-iopn table {
   width: 100%;
   border-collapse: collapse;
@@ -16490,6 +16528,59 @@ td.mx-dc {
   padding-top: 4px;
   font-size: 11px;
   color: #000;
+}
+/* 3종 공용 하단 발행처 인감란 (발행문구 + 대표이사 + 빨간 직인) */
+.iopn-seal-block {
+  margin-top: 12px;
+  text-align: right;
+}
+.iopn-seal-stmt {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #000;
+}
+.iopn-seal-date {
+  font-size: 11.5px;
+  color: #222;
+  margin-top: 6px;
+}
+.iopn-seal-issuer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 26px;
+  padding-right: 4px;
+}
+.iopn-seal-company {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #000;
+}
+.iopn-seal-ceo {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #000;
+}
+.iopn-seal-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: #000;
+  padding-right: 66px;
+}
+.iopn-seal-img {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 54px;
+  height: auto;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 /* 페이지별 테두리 — 전체 폼 테두리 대신 각 페이지가 완결된 박스 (페이지 경계서 안 잘림) */
 .print-form-iopn.print-form-paged {
