@@ -1,15 +1,9 @@
 import { forwardRef } from 'react';
 import { specFontClass } from '../../utils/printText';
+import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import IopnDocBrand from './IopnDocBrand';
 import IopnDocSeal from './IopnDocSeal';
-import {
-  SELF_INFO,
-  PO_DEFAULTS,
-  poDateStr,
-  deriveSupplier,
-  mapPrintItems,
-  computeSupplierList,
-} from '../../utils/purchaseOrder';
+import { PO_DEFAULTS, poDateStr, deriveSupplier, mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
 
 // 인쇄 전용 IOPN 구매발주서 양식 (PDF 캡처 대상).
 // PurchaseDetailPage(실시간 출력·메일)와 저장본 일괄 재생성 도구가 공유한다.
@@ -35,6 +29,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   },
   ref,
 ) {
+  const { info: SELF_INFO } = useCompanyInfo();
   if (!purchase || !form) return <div ref={ref} className="print-form-iopn print-form-paged print-only" />;
 
   const supplier = suppliers.find((s) => s.id === purchase.supplierId);

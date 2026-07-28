@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
-import { SELF_INFO } from '../../utils/purchaseOrder';
+import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import {
   DndContext,
   closestCenter,
@@ -95,6 +95,7 @@ export default function BomDetailPage() {
   const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const { userProfile } = useAuth();
+  const { info: SELF_INFO } = useCompanyInfo();
 
   const [project, setProject] = useState(null);
   const [bomItems, setBomItems] = useState([]);

@@ -2,11 +2,23 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getQuotes } from '../../services/quoteService';
 import { trashGeneric } from '../../services/trashService';
+import { saveCompanyInfo } from '../../services/companyInfoService';
 import { useAuth } from '../../contexts/useAuth';
+import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import TrashModal from '../../components/common/TrashModal';
+import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+
+const INFO_FIELDS = [
+  { key: 'companyAndCeo', label: '회사명/대표' },
+  { key: 'businessNumber', label: '사업자등록번호' },
+  { key: 'address', label: '주소' },
+  { key: 'telFax', label: 'TEL/FAX' },
+  { key: 'email', label: 'E-Mail' },
+  { key: 'contact', label: '담당/연락처' },
+];
 
 function fmtDateKo(ts) {
   const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : new Date();
@@ -18,10 +30,34 @@ export default function QuotePage() {
   const navigate = useNavigate();
   const { confirm, toast } = useDialog();
   const { userProfile } = useAuth();
+  const { info: companyInfo, refresh: refreshCompanyInfo } = useCompanyInfo();
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsForm, setSettingsForm] = useState(companyInfo);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  function openSettings() {
+    setSettingsForm(companyInfo);
+    setSettingsOpen(true);
+  }
+
+  async function handleSaveSettings(e) {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      await saveCompanyInfo(settingsForm);
+      refreshCompanyInfo();
+      setSettingsOpen(false);
+      toast('견적서·발주서·BOM 양식에 공통 반영되었습니다.');
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  }
 
   useEffect(() => {
     loadAll();
@@ -79,6 +115,10 @@ export default function QuotePage() {
       <div className="page-header">
         <h2>견적서 관리</h2>
         <div className="page-actions">
+          <button type="button" className="btn btn-sm btn-outline" onClick={openSettings}>
+            <Icon name="edit" className="btn-ic" />
+            양식 설정
+          </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
             휴지통
@@ -101,6 +141,34 @@ export default function QuotePage() {
         title="견적 휴지통"
         onChange={loadAll}
       />
+
+      <Modal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} title="견적서·발주서·BOM 양식 설정">
+        <p className="field-hint">
+          여기서 수정하면 견적서·발주서·BOM 리스트 3종 출력물의 발행처 정보에 공통으로 반영됩니다.
+        </p>
+        <form onSubmit={handleSaveSettings}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12 }}>
+            {INFO_FIELDS.map((f) => (
+              <div className="form-group" key={f.key} style={{ margin: 0 }}>
+                <label>{f.label}</label>
+                <input
+                  type="text"
+                  value={settingsForm[f.key] || ''}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, [f.key]: e.target.value })}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="form-actions" style={{ display: 'flex', gap: 8 }}>
+            <button type="submit" className="btn btn-primary" disabled={savingSettings}>
+              {savingSettings ? '저장 중...' : '저장'}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setSettingsOpen(false)}>
+              취소
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <div className="purchase-filters">
         <input

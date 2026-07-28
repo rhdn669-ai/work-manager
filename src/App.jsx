@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { DialogProvider } from './components/common/DialogProvider';
 import { UndoProvider } from './contexts/UndoContext';
 import { UploadProvider } from './contexts/UploadContext';
+import { CompanyInfoProvider } from './contexts/CompanyInfoContext';
 import UploadDock from './components/common/UploadDock';
 import router from './router';
 
@@ -12,8 +13,10 @@ export default function App() {
       <DialogProvider>
         <UndoProvider>
           <UploadProvider>
-            <RouterProvider router={router} />
-            <UploadDock />
+            <CompanyInfoProvider>
+              <RouterProvider router={router} />
+              <UploadDock />
+            </CompanyInfoProvider>
           </UploadProvider>
         </UndoProvider>
       </DialogProvider>

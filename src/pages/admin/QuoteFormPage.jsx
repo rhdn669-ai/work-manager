@@ -10,7 +10,7 @@ import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
-import { SELF_INFO } from '../../utils/purchaseOrder';
+import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import QuotePrintForm, { DEFAULT_NOTE } from './QuotePrintForm';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
@@ -32,6 +32,7 @@ export default function QuoteFormPage() {
   const isNew = !quoteId;
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
+  const { info: SELF_INFO } = useCompanyInfo();
 
   const [loading, setLoading] = useState(!isNew);
   const [quote, setQuote] = useState(null);

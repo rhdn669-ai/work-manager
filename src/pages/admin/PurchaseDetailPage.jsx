@@ -35,7 +35,6 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import {
-  SELF_INFO,
   PO_DEFAULTS,
   poDateStr,
   poNumber,

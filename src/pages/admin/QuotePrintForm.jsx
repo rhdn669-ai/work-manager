@@ -1,5 +1,5 @@
 import { specFontClass } from '../../utils/printText';
-import { SELF_INFO } from '../../utils/purchaseOrder';
+import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import IopnDocSeal from '../../components/admin/IopnDocSeal';
 
@@ -34,6 +34,7 @@ function quoteDateKo(quote) {
 }
 
 export default function QuotePrintForm({ quote, hostClass }) {
+  const { info: SELF_INFO } = useCompanyInfo();
   const items = (quote.items || []).filter((it) => (it.name || '').trim() || Number(it.qty) || Number(it.unitPrice));
   const supplyAmount =
     Number(quote.totalAmount) || items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
