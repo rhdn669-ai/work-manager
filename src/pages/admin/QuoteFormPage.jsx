@@ -198,6 +198,14 @@ export default function QuoteFormPage() {
         .quote-form-body { width: 100%; }
         .quote-form-body .form-group { margin-bottom: 14px; }
         .field-hint-inline { font-weight: 400; color: var(--text-secondary); font-size: 0.85em; }
+        /* 실제 PDF(A4, 여백 12/10/10/5mm — worker/index.js page.pdf 설정과 동일)와 같은 크기·모양의 "용지" */
+        .quote-a4-sheet-wrap { overflow-x: auto; padding: 4px 0 8px; }
+        .quote-a4-sheet {
+          width: 210mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box;
+          background: #fff; box-shadow: 0 3px 18px rgba(20, 26, 40, 0.16);
+          padding: 12mm 10mm 5mm;
+        }
+        @media (max-width: 700px) { .quote-a4-sheet { width: 210mm; } }
         /* 견적서 양식을 그대로 편집 화면으로 사용 — 정보표·특이사항 셀 안의 입력요소를 텍스트처럼 보이게 */
         .quote-edit-surface { overflow-x: auto; }
         .quote-edit-surface .iopn-info-table .val,
@@ -280,235 +288,239 @@ export default function QuoteFormPage() {
             />
           </div>
 
-          <div className="print-form-iopn quote-form quote-edit-surface">
-            <IopnDocBrand title="견 적 서" />
+          <div className="quote-a4-sheet-wrap">
+            <div className="quote-a4-sheet">
+              <div className="print-form-iopn quote-form quote-edit-surface">
+                <IopnDocBrand title="견 적 서" />
 
-            <table className="iopn-info-table">
-              <tbody>
-                <tr>
-                  <th className="lbl">수 신</th>
-                  <td className="val">
-                    <Select
-                      className="quote-inline-select"
-                      value={form.supplierId}
-                      onChange={(v) => {
-                        const s = suppliers.find((x) => x.id === v);
-                        setForm({ ...form, supplierId: v, supplierName: s?.name || form.supplierName });
-                      }}
-                      options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
-                      ariaLabel="거래처 선택"
-                      placeholder="거래처 선택"
-                    />
-                    {!form.supplierId && (
-                      <input
-                        type="text"
-                        className="quote-inline-input quote-supplier-manual"
-                        value={form.supplierName}
-                        onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
-                        placeholder="목록에 없으면 직접 입력"
-                      />
-                    )}
-                  </td>
-                  <th className="lbl">사업자등록번호</th>
-                  <td className="val">{SELF_INFO.businessNumber}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">프로젝트</th>
-                  <td className="val">
-                    <input
-                      type="text"
-                      className="quote-inline-input"
-                      value={form.siteName}
-                      onChange={(e) => setForm({ ...form, siteName: e.target.value })}
-                      placeholder="예) SEMES 프로버설비"
-                    />
-                  </td>
-                  <th className="lbl">회사명/대표</th>
-                  <td className="val">{SELF_INFO.companyAndCeo}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">발행번호</th>
-                  <td className="val">{previewQuoteNumber()}</td>
-                  <th className="lbl">주 소</th>
-                  <td className="val">{SELF_INFO.address}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">유효기간</th>
-                  <td className="val">
-                    <input
-                      type="text"
-                      className="quote-inline-input"
-                      value={form.validity}
-                      onChange={(e) => setForm({ ...form, validity: e.target.value })}
-                    />
-                  </td>
-                  <th className="lbl">TEL/FAX</th>
-                  <td className="val">{SELF_INFO.telFax}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">납품기일</th>
-                  <td className="val">
-                    <input
-                      type="text"
-                      className="quote-inline-input"
-                      value={form.delivery}
-                      onChange={(e) => setForm({ ...form, delivery: e.target.value })}
-                    />
-                  </td>
-                  <th className="lbl">E-Mail</th>
-                  <td className="val">{SELF_INFO.email}</td>
-                </tr>
-                <tr>
-                  <th className="lbl">지불조건</th>
-                  <td className="val">
-                    <input
-                      type="text"
-                      className="quote-inline-input"
-                      value={form.payment}
-                      onChange={(e) => setForm({ ...form, payment: e.target.value })}
-                    />
-                  </td>
-                  <th className="lbl">담당/연락처</th>
-                  <td className="val">{SELF_INFO.contact}</td>
-                </tr>
-                <tr>
-                  <td colSpan={4} className="iopn-amount-row">
-                    금 액 : ₩ {supplyAmount.toLocaleString()}원 / VAT 별도
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div className="quote-edit-wrap">
-              <table className="iopn-items-table quote-cols quote-edit-table">
-                <thead>
-                  <tr>
-                    <th className="c-no">NO</th>
-                    <th className="c-name">품목명</th>
-                    <th className="c-spec">규격</th>
-                    <th className="c-unit">단위</th>
-                    <th className="c-qty">수량</th>
-                    <th className="c-price">단가</th>
-                    <th className="c-amount">금액</th>
-                    <th className="c-note">비고</th>
-                    <th className="c-del" aria-label="삭제"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {form.items.map((ln, idx) => (
-                    <tr key={idx}>
-                      <td className="c-no">{idx + 1}</td>
-                      <td className="c-name">
+                <table className="iopn-info-table">
+                  <tbody>
+                    <tr>
+                      <th className="lbl">수 신</th>
+                      <td className="val">
+                        <Select
+                          className="quote-inline-select"
+                          value={form.supplierId}
+                          onChange={(v) => {
+                            const s = suppliers.find((x) => x.id === v);
+                            setForm({ ...form, supplierId: v, supplierName: s?.name || form.supplierName });
+                          }}
+                          options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                          ariaLabel="거래처 선택"
+                          placeholder="거래처 선택"
+                        />
+                        {!form.supplierId && (
+                          <input
+                            type="text"
+                            className="quote-inline-input quote-supplier-manual"
+                            value={form.supplierName}
+                            onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
+                            placeholder="목록에 없으면 직접 입력"
+                          />
+                        )}
+                      </td>
+                      <th className="lbl">사업자등록번호</th>
+                      <td className="val">{SELF_INFO.businessNumber}</td>
+                    </tr>
+                    <tr>
+                      <th className="lbl">프로젝트</th>
+                      <td className="val">
                         <input
                           type="text"
-                          placeholder="품명"
-                          value={ln.name}
-                          title={ln.name || ''}
-                          onChange={(e) => updateLine(idx, { name: e.target.value })}
+                          className="quote-inline-input"
+                          value={form.siteName}
+                          onChange={(e) => setForm({ ...form, siteName: e.target.value })}
+                          placeholder="예) SEMES 프로버설비"
                         />
                       </td>
-                      <td className="c-spec">
+                      <th className="lbl">회사명/대표</th>
+                      <td className="val">{SELF_INFO.companyAndCeo}</td>
+                    </tr>
+                    <tr>
+                      <th className="lbl">발행번호</th>
+                      <td className="val">{previewQuoteNumber()}</td>
+                      <th className="lbl">주 소</th>
+                      <td className="val">{SELF_INFO.address}</td>
+                    </tr>
+                    <tr>
+                      <th className="lbl">유효기간</th>
+                      <td className="val">
                         <input
                           type="text"
-                          placeholder="규격"
-                          value={ln.spec}
-                          title={ln.spec || ''}
-                          onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                          className="quote-inline-input"
+                          value={form.validity}
+                          onChange={(e) => setForm({ ...form, validity: e.target.value })}
                         />
                       </td>
-                      <td className="c-unit">
+                      <th className="lbl">TEL/FAX</th>
+                      <td className="val">{SELF_INFO.telFax}</td>
+                    </tr>
+                    <tr>
+                      <th className="lbl">납품기일</th>
+                      <td className="val">
                         <input
                           type="text"
-                          placeholder="단위"
-                          value={ln.unit}
-                          onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                          className="quote-inline-input"
+                          value={form.delivery}
+                          onChange={(e) => setForm({ ...form, delivery: e.target.value })}
                         />
                       </td>
-                      <td className="c-qty">
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={ln.qty || ''}
-                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                        />
-                      </td>
-                      <td className="c-price">
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={ln.unitPrice || ''}
-                          onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                        />
-                      </td>
-                      <td className="c-amount">
-                        {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
-                      </td>
-                      <td className="c-note">
+                      <th className="lbl">E-Mail</th>
+                      <td className="val">{SELF_INFO.email}</td>
+                    </tr>
+                    <tr>
+                      <th className="lbl">지불조건</th>
+                      <td className="val">
                         <input
                           type="text"
-                          placeholder="비고"
-                          value={ln.note}
-                          title={ln.note || ''}
-                          onChange={(e) => updateLine(idx, { note: e.target.value })}
+                          className="quote-inline-input"
+                          value={form.payment}
+                          onChange={(e) => setForm({ ...form, payment: e.target.value })}
                         />
                       </td>
-                      <td className="c-del">
-                        <button
-                          type="button"
-                          className="quote-cell-del"
-                          onClick={() => removeLine(idx)}
-                          aria-label="행 삭제"
-                          title="행 삭제"
-                        >
-                          <Icon name="close" />
-                        </button>
+                      <th className="lbl">담당/연락처</th>
+                      <td className="val">{SELF_INFO.contact}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="iopn-amount-row">
+                        금 액 : ₩ {supplyAmount.toLocaleString()}원 / VAT 별도
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+
+                <div className="quote-edit-wrap">
+                  <table className="iopn-items-table quote-cols quote-edit-table">
+                    <thead>
+                      <tr>
+                        <th className="c-no">NO</th>
+                        <th className="c-name">품목명</th>
+                        <th className="c-spec">규격</th>
+                        <th className="c-unit">단위</th>
+                        <th className="c-qty">수량</th>
+                        <th className="c-price">단가</th>
+                        <th className="c-amount">금액</th>
+                        <th className="c-note">비고</th>
+                        <th className="c-del" aria-label="삭제"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.items.map((ln, idx) => (
+                        <tr key={idx}>
+                          <td className="c-no">{idx + 1}</td>
+                          <td className="c-name">
+                            <input
+                              type="text"
+                              placeholder="품명"
+                              value={ln.name}
+                              title={ln.name || ''}
+                              onChange={(e) => updateLine(idx, { name: e.target.value })}
+                            />
+                          </td>
+                          <td className="c-spec">
+                            <input
+                              type="text"
+                              placeholder="규격"
+                              value={ln.spec}
+                              title={ln.spec || ''}
+                              onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                            />
+                          </td>
+                          <td className="c-unit">
+                            <input
+                              type="text"
+                              placeholder="단위"
+                              value={ln.unit}
+                              onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                            />
+                          </td>
+                          <td className="c-qty">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={ln.qty || ''}
+                              onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                            />
+                          </td>
+                          <td className="c-price">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={ln.unitPrice || ''}
+                              onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                            />
+                          </td>
+                          <td className="c-amount">
+                            {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
+                          </td>
+                          <td className="c-note">
+                            <input
+                              type="text"
+                              placeholder="비고"
+                              value={ln.note}
+                              title={ln.note || ''}
+                              onChange={(e) => updateLine(idx, { note: e.target.value })}
+                            />
+                          </td>
+                          <td className="c-del">
+                            <button
+                              type="button"
+                              className="quote-cell-del"
+                              onClick={() => removeLine(idx)}
+                              aria-label="행 삭제"
+                              title="행 삭제"
+                            >
+                              <Icon name="close" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline purchase-add-line quote-add-line-btn screen-only"
+                  onClick={addLine}
+                >
+                  <Icon name="plus" className="btn-ic" />
+                  품목 추가
+                </button>
+
+                <table className="iopn-notes-table">
+                  <tbody>
+                    <tr>
+                      <th className="lbl">특이사항</th>
+                      <td className="val">
+                        <textarea
+                          className="quote-inline-textarea"
+                          value={form.note}
+                          onChange={(e) => setForm({ ...form, note: e.target.value })}
+                          rows={3}
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table className="iopn-total-table">
+                  <tbody>
+                    <tr>
+                      <th className="lbl">수 량</th>
+                      <td className="num">{totalQty.toLocaleString()}</td>
+                      <th className="lbl">공급가액</th>
+                      <td className="num">{supplyAmount.toLocaleString()}</td>
+                      <th className="lbl">VAT</th>
+                      <td className="num">{vatAmount.toLocaleString()}</td>
+                      <th className="lbl">합 계</th>
+                      <td className="num grand">{grandTotal.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline purchase-add-line quote-add-line-btn screen-only"
-              onClick={addLine}
-            >
-              <Icon name="plus" className="btn-ic" />
-              품목 추가
-            </button>
-
-            <table className="iopn-notes-table">
-              <tbody>
-                <tr>
-                  <th className="lbl">특이사항</th>
-                  <td className="val">
-                    <textarea
-                      className="quote-inline-textarea"
-                      value={form.note}
-                      onChange={(e) => setForm({ ...form, note: e.target.value })}
-                      rows={3}
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table className="iopn-total-table">
-              <tbody>
-                <tr>
-                  <th className="lbl">수 량</th>
-                  <td className="num">{totalQty.toLocaleString()}</td>
-                  <th className="lbl">공급가액</th>
-                  <td className="num">{supplyAmount.toLocaleString()}</td>
-                  <th className="lbl">VAT</th>
-                  <td className="num">{vatAmount.toLocaleString()}</td>
-                  <th className="lbl">합 계</th>
-                  <td className="num grand">{grandTotal.toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
 
           <div className="form-actions" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
