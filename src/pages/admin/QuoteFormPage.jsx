@@ -201,7 +201,7 @@ export default function QuoteFormPage() {
         /* 실제 PDF(A4, 여백 12/10/10/5mm — worker/index.js page.pdf 설정과 동일)와 같은 크기·모양의 "용지" */
         .quote-a4-sheet-wrap { overflow-x: auto; padding: 4px 0 8px; }
         .quote-a4-sheet {
-          width: 210mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box;
+          width: 210mm; max-width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box;
           background: #fff; box-shadow: 0 3px 18px rgba(20, 26, 40, 0.16);
           padding: 12mm 10mm 5mm;
         }
