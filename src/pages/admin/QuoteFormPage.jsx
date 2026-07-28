@@ -522,15 +522,6 @@ export default function QuoteFormPage() {
               </div>
             </div>
           </div>
-
-          <div className="form-actions" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? '저장 중...' : isNew ? '저장' : '수정 완료'}
-            </button>
-            <button type="button" className="btn btn-outline" onClick={handleCancel}>
-              취소
-            </button>
-          </div>
         </form>
       )}
 
