@@ -178,23 +178,19 @@ export default function QuoteFormPage() {
         .quote-detail-page .page-header h2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .quote-form-body { width: 100%; }
         .quote-form-body .form-group { margin-bottom: 14px; }
-        .quote-line { display: grid; grid-template-columns: 2fr 2fr 0.6fr 0.7fr 1fr auto 1fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
-        .quote-line input, .quote-line .quote-line-amount, .quote-line .purchase-line-del { min-height: 36px; box-sizing: border-box; }
-        .quote-line .purchase-line-del { display: inline-flex; align-items: center; justify-content: center; }
-        .quote-line-amount { text-align: right; display: inline-flex; align-items: center; justify-content: flex-end; min-width: 0; padding: 0 4px; font-variant-numeric: tabular-nums; font-size: 0.875rem; }
-        @media (max-width: 768px) {
-          .quote-line { grid-template-columns: 1fr 1fr 0.6fr 0.7fr 1fr auto; }
-          .quote-line input[placeholder="비고"] { grid-column: 1 / -2; }
-          .quote-line .purchase-line-del { grid-column: -1; }
-          .quote-line-amount { grid-column: 1 / -1; text-align: right; justify-content: flex-end; }
-        }
-        @media (max-width: 480px) {
-          .quote-line { grid-template-columns: 1fr 1fr; }
-          .quote-line input[placeholder="품명"], .quote-line input[placeholder="규격"] { grid-column: 1 / -1; }
-          .quote-line input[placeholder="비고"] { grid-column: 1 / -1; }
-          .quote-line .purchase-line-del { grid-column: 1 / -1; }
-          .quote-line-amount { grid-column: 1 / -1; }
-        }
+        /* 견적서 양식 표에서 셀 직접 편집(엑셀식) */
+        .quote-edit-wrap { overflow-x: auto; margin-top: 6px; }
+        .quote-edit-table { min-width: 660px; }
+        .quote-edit-table td { padding: 0; vertical-align: middle; }
+        .quote-edit-table td.c-no { padding: 4px 6px; text-align: center; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+        .quote-edit-table td.c-amount { padding: 6px 8px; text-align: right; font-variant-numeric: tabular-nums; }
+        .quote-edit-table input { width: 100%; border: none; background: transparent; padding: 8px; font: inherit; font-size: 11.5px; box-sizing: border-box; color: inherit; }
+        .quote-edit-table input::placeholder { color: var(--text-muted); }
+        .quote-edit-table input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--bg-card); }
+        .quote-edit-table td.c-qty input, .quote-edit-table td.c-price input { text-align: right; }
+        .quote-edit-table th.c-del, .quote-edit-table td.c-del { width: 34px; padding: 0; text-align: center; }
+        .quote-cell-del { border: none; background: transparent; color: var(--danger); cursor: pointer; padding: 5px; display: inline-flex; align-items: center; justify-content: center; }
+        .quote-cell-del:hover { opacity: 0.7; }
         .quote-preview-wrap { overflow-x: auto; }
         .quote-preview-wrap .print-form-iopn { min-width: 600px; }
         @media (max-width: 600px) { .quote-preview-wrap .print-form-iopn { min-width: unset; } }
@@ -297,67 +293,98 @@ export default function QuoteFormPage() {
 
           <div className="form-group">
             <label>품목</label>
-            <p className="field-hint">품명·규격·단위·수량·단가를 입력하세요. 합계는 자동 계산됩니다.</p>
-            {form.items.map((ln, idx) => (
-              <div className="quote-line" key={idx}>
-                <input
-                  type="text"
-                  placeholder="품명"
-                  value={ln.name}
-                  title={ln.name || ''}
-                  onChange={(e) => updateLine(idx, { name: e.target.value })}
-                />
-                <input
-                  type="text"
-                  placeholder="규격"
-                  value={ln.spec}
-                  title={ln.spec || ''}
-                  onChange={(e) => updateLine(idx, { spec: e.target.value })}
-                />
-                <input
-                  type="text"
-                  placeholder="단위"
-                  value={ln.unit}
-                  title={ln.unit || ''}
-                  onChange={(e) => updateLine(idx, { unit: e.target.value })}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="수량"
-                  value={ln.qty || ''}
-                  style={{ textAlign: 'right' }}
-                  onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="단가"
-                  value={ln.unitPrice || ''}
-                  style={{ textAlign: 'right' }}
-                  onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                />
-                <span className="quote-line-amount">
-                  {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
-                </span>
-                <input
-                  type="text"
-                  placeholder="비고"
-                  value={ln.note}
-                  title={ln.note || ''}
-                  onChange={(e) => updateLine(idx, { note: e.target.value })}
-                />
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline purchase-line-del"
-                  onClick={() => removeLine(idx)}
-                  aria-label="행 삭제"
-                  title="행 삭제"
-                >
-                  <Icon name="close" />
-                </button>
-              </div>
-            ))}
+            <p className="field-hint">견적서 표에서 셀을 클릭해 바로 입력하세요. 금액·합계는 자동 계산됩니다.</p>
+            <div className="quote-edit-wrap">
+              <table className="iopn-items-table quote-cols quote-edit-table">
+                <thead>
+                  <tr>
+                    <th className="c-no">NO</th>
+                    <th className="c-name">품목명</th>
+                    <th className="c-spec">규격</th>
+                    <th className="c-unit">단위</th>
+                    <th className="c-qty">수량</th>
+                    <th className="c-price">단가</th>
+                    <th className="c-amount">금액</th>
+                    <th className="c-note">비고</th>
+                    <th className="c-del" aria-label="삭제"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {form.items.map((ln, idx) => (
+                    <tr key={idx}>
+                      <td className="c-no">{idx + 1}</td>
+                      <td className="c-name">
+                        <input
+                          type="text"
+                          placeholder="품명"
+                          value={ln.name}
+                          title={ln.name || ''}
+                          onChange={(e) => updateLine(idx, { name: e.target.value })}
+                        />
+                      </td>
+                      <td className="c-spec">
+                        <input
+                          type="text"
+                          placeholder="규격"
+                          value={ln.spec}
+                          title={ln.spec || ''}
+                          onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                        />
+                      </td>
+                      <td className="c-unit">
+                        <input
+                          type="text"
+                          placeholder="단위"
+                          value={ln.unit}
+                          onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                        />
+                      </td>
+                      <td className="c-qty">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={ln.qty || ''}
+                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                        />
+                      </td>
+                      <td className="c-price">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={ln.unitPrice || ''}
+                          onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                        />
+                      </td>
+                      <td className="c-amount">
+                        {((Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0)).toLocaleString()}
+                      </td>
+                      <td className="c-note">
+                        <input
+                          type="text"
+                          placeholder="비고"
+                          value={ln.note}
+                          title={ln.note || ''}
+                          onChange={(e) => updateLine(idx, { note: e.target.value })}
+                        />
+                      </td>
+                      <td className="c-del">
+                        <button
+                          type="button"
+                          className="quote-cell-del"
+                          onClick={() => removeLine(idx)}
+                          aria-label="행 삭제"
+                          title="행 삭제"
+                        >
+                          <Icon name="close" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
               <Icon name="plus" className="btn-ic" />
               품목 추가
