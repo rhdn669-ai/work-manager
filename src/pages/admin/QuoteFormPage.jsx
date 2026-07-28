@@ -9,6 +9,8 @@ import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
+import IopnDocBrand from '../../components/admin/IopnDocBrand';
+import { SELF_INFO } from '../../utils/purchaseOrder';
 import QuotePrintForm, { DEFAULT_NOTE } from './QuotePrintForm';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
@@ -72,8 +74,24 @@ export default function QuoteFormPage() {
     () => form.items.reduce((s, ln) => s + (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0), 0),
     [form.items],
   );
+  const totalQty = useMemo(() => form.items.reduce((s, ln) => s + (Number(ln.qty) || 0), 0), [form.items]);
   const vatAmount = Math.round(supplyAmount * 0.1);
   const grandTotal = supplyAmount + vatAmount;
+
+  // 견적서 양식에 표시할 발행번호 미리보기 — 실제 채번은 저장 후 QuotePrintForm과 동일 규칙으로 확정됨
+  function previewQuoteNumber() {
+    if (isNew) return '(저장 시 자동 발급)';
+    const d = quote?.createdAt?.toDate
+      ? quote.createdAt.toDate()
+      : quote?.createdAt
+        ? new Date(quote.createdAt)
+        : new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const idTail = (quoteId || '').slice(0, 4).toUpperCase();
+    return `IOPN-Q${yyyy}${mm}${dd}-${idTail}`;
+  }
 
   function updateLine(idx, patch) {
     setForm((f) => ({ ...f, items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)) }));
@@ -178,7 +196,27 @@ export default function QuoteFormPage() {
         .quote-detail-page .page-header h2 { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .quote-form-body { width: 100%; }
         .quote-form-body .form-group { margin-bottom: 14px; }
-        /* 견적서 양식 표에서 셀 직접 편집(엑셀식) */
+        .field-hint-inline { font-weight: 400; color: var(--text-secondary); font-size: 0.85em; }
+        /* 견적서 양식을 그대로 편집 화면으로 사용 — 정보표·특이사항 셀 안의 입력요소를 텍스트처럼 보이게 */
+        .quote-edit-surface { overflow-x: auto; }
+        .quote-edit-surface .iopn-info-table .val,
+        .quote-edit-surface .iopn-notes-table .val { padding: 0; }
+        .quote-edit-surface .iopn-info-table .val .quote-inline-input,
+        .quote-edit-surface .iopn-info-table .val .ds-select__trigger,
+        .quote-edit-surface .iopn-notes-table .val .quote-inline-textarea {
+          width: 100%; border: none; background: transparent; padding: 5px 10px;
+          font: inherit; font-size: 11.5px; box-sizing: border-box; color: inherit; text-align: left;
+        }
+        .quote-edit-surface .iopn-notes-table .val .quote-inline-textarea { resize: vertical; display: block; }
+        .quote-edit-surface .iopn-info-table .val .quote-inline-input:focus,
+        .quote-edit-surface .iopn-notes-table .val .quote-inline-textarea:focus,
+        .quote-edit-surface .iopn-info-table .val .ds-select.is-open .ds-select__trigger {
+          outline: 2px solid var(--primary); outline-offset: -2px; background: var(--bg-card);
+        }
+        .quote-edit-surface .iopn-info-table .val .ds-select { width: 100%; }
+        .quote-edit-surface .quote-supplier-manual { margin-top: 2px; }
+        .quote-add-line-btn { margin-top: 8px; }
+        /* 견적서 양식 표에서 셀 직접 편집(엑셀식) — 품목표 */
         .quote-edit-wrap { overflow-x: auto; margin-top: 6px; }
         .quote-edit-table { min-width: 660px; }
         .quote-edit-table td { padding: 0; vertical-align: middle; }
@@ -224,11 +262,13 @@ export default function QuoteFormPage() {
         </div>
       </div>
 
-      {/* 편집 폼 */}
+      {/* 편집 폼 — 견적서 양식 그대로에서 셀을 직접 편집 */}
       {isEditing && (
-        <form className="quote-form-body" onSubmit={handleSubmit}>
+        <form className="quote-form-body screen-only" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>제목 *</label>
+            <label>
+              제목 * <span className="field-hint-inline">(목록 표시용 내부 제목 — 견적서에는 인쇄되지 않습니다)</span>
+            </label>
             <input
               type="text"
               value={form.title}
@@ -238,62 +278,106 @@ export default function QuoteFormPage() {
               autoFocus={isNew}
             />
           </div>
-          <div className="form-group">
-            <label>거래처</label>
-            <Select
-              value={form.supplierId}
-              onChange={(v) => setForm({ ...form, supplierId: v })}
-              options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
-              ariaLabel="거래처 선택"
-              placeholder="선택 (또는 아래에 직접 입력)"
-            />
-          </div>
-          {!form.supplierId && (
-            <div className="form-group">
-              <label>거래처명 (직접 입력)</label>
-              <input
-                type="text"
-                value={form.supplierName}
-                onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
-                placeholder="등록 안된 거래처는 직접 입력"
-              />
-            </div>
-          )}
-          <div className="form-group">
-            <label>현장명</label>
-            <input
-              type="text"
-              value={form.siteName}
-              onChange={(e) => setForm({ ...form, siteName: e.target.value })}
-              placeholder="예) SEMES 프로버설비"
-            />
-          </div>
-          <div className="form-group form-row-3">
-            <div>
-              <label>유효기간</label>
-              <input
-                type="text"
-                value={form.validity}
-                onChange={(e) => setForm({ ...form, validity: e.target.value })}
-              />
-            </div>
-            <div>
-              <label>납품기일</label>
-              <input
-                type="text"
-                value={form.delivery}
-                onChange={(e) => setForm({ ...form, delivery: e.target.value })}
-              />
-            </div>
-            <div>
-              <label>지불조건</label>
-              <input type="text" value={form.payment} onChange={(e) => setForm({ ...form, payment: e.target.value })} />
-            </div>
-          </div>
 
-          <div className="form-group">
-            <label>품목</label>
-            <p className="field-hint">견적서 표에서 셀을 클릭해 바로 입력하세요. 금액·합계는 자동 계산됩니다.</p>
+          <div className="print-form-iopn quote-form quote-edit-surface">
+            <IopnDocBrand title="견 적 서" />
+
+            <table className="iopn-info-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">수 신</th>
+                  <td className="val">
+                    <Select
+                      className="quote-inline-select"
+                      value={form.supplierId}
+                      onChange={(v) => {
+                        const s = suppliers.find((x) => x.id === v);
+                        setForm({ ...form, supplierId: v, supplierName: s?.name || form.supplierName });
+                      }}
+                      options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                      ariaLabel="거래처 선택"
+                      placeholder="거래처 선택"
+                    />
+                    {!form.supplierId && (
+                      <input
+                        type="text"
+                        className="quote-inline-input quote-supplier-manual"
+                        value={form.supplierName}
+                        onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
+                        placeholder="목록에 없으면 직접 입력"
+                      />
+                    )}
+                  </td>
+                  <th className="lbl">사업자등록번호</th>
+                  <td className="val">{SELF_INFO.businessNumber}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">프로젝트</th>
+                  <td className="val">
+                    <input
+                      type="text"
+                      className="quote-inline-input"
+                      value={form.siteName}
+                      onChange={(e) => setForm({ ...form, siteName: e.target.value })}
+                      placeholder="예) SEMES 프로버설비"
+                    />
+                  </td>
+                  <th className="lbl">회사명/대표</th>
+                  <td className="val">{SELF_INFO.companyAndCeo}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">발행번호</th>
+                  <td className="val">{previewQuoteNumber()}</td>
+                  <th className="lbl">주 소</th>
+                  <td className="val">{SELF_INFO.address}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">유효기간</th>
+                  <td className="val">
+                    <input
+                      type="text"
+                      className="quote-inline-input"
+                      value={form.validity}
+                      onChange={(e) => setForm({ ...form, validity: e.target.value })}
+                    />
+                  </td>
+                  <th className="lbl">TEL/FAX</th>
+                  <td className="val">{SELF_INFO.telFax}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">납품기일</th>
+                  <td className="val">
+                    <input
+                      type="text"
+                      className="quote-inline-input"
+                      value={form.delivery}
+                      onChange={(e) => setForm({ ...form, delivery: e.target.value })}
+                    />
+                  </td>
+                  <th className="lbl">E-Mail</th>
+                  <td className="val">{SELF_INFO.email}</td>
+                </tr>
+                <tr>
+                  <th className="lbl">지불조건</th>
+                  <td className="val">
+                    <input
+                      type="text"
+                      className="quote-inline-input"
+                      value={form.payment}
+                      onChange={(e) => setForm({ ...form, payment: e.target.value })}
+                    />
+                  </td>
+                  <th className="lbl">담당/연락처</th>
+                  <td className="val">{SELF_INFO.contact}</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="iopn-amount-row">
+                    금 액 : ₩ {supplyAmount.toLocaleString()}원 / VAT 별도
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
             <div className="quote-edit-wrap">
               <table className="iopn-items-table quote-cols quote-edit-table">
                 <thead>
@@ -385,22 +469,45 @@ export default function QuoteFormPage() {
                 </tbody>
               </table>
             </div>
-            <button type="button" className="btn btn-sm btn-outline purchase-add-line" onClick={addLine}>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline purchase-add-line quote-add-line-btn screen-only"
+              onClick={addLine}
+            >
               <Icon name="plus" className="btn-ic" />
               품목 추가
             </button>
-          </div>
 
-          <div className="purchase-total-row">
-            <span>공급가액 / VAT (10%) / 합계</span>
-            <strong>
-              {supplyAmount.toLocaleString()} / {vatAmount.toLocaleString()} / {grandTotal.toLocaleString()}원
-            </strong>
-          </div>
+            <table className="iopn-notes-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">특이사항</th>
+                  <td className="val">
+                    <textarea
+                      className="quote-inline-textarea"
+                      value={form.note}
+                      onChange={(e) => setForm({ ...form, note: e.target.value })}
+                      rows={3}
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-          <div className="form-group">
-            <label>특이사항</label>
-            <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={3} />
+            <table className="iopn-total-table">
+              <tbody>
+                <tr>
+                  <th className="lbl">수 량</th>
+                  <td className="num">{totalQty.toLocaleString()}</td>
+                  <th className="lbl">공급가액</th>
+                  <td className="num">{supplyAmount.toLocaleString()}</td>
+                  <th className="lbl">VAT</th>
+                  <td className="num">{vatAmount.toLocaleString()}</td>
+                  <th className="lbl">합 계</th>
+                  <td className="num grand">{grandTotal.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <div className="form-actions" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
