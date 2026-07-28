@@ -3,8 +3,6 @@ import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import IopnDocSeal from '../../components/admin/IopnDocSeal';
 
-export const DEFAULT_NOTE = '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.';
-
 // 발주서·BOM과 동일한 페이지 분할 규칙 (3종 세로 길이 통일)
 const OTHER_PAGE_ROWS = 33; // 일반 페이지(A4를 거의 채우는 행수)
 const INFO_ROWS = 11; // 1페이지 상단 로고밴드+정보표가 차지하는 행수
@@ -178,7 +176,7 @@ export default function QuotePrintForm({ quote, hostClass }) {
                   <tbody>
                     <tr>
                       <th className="lbl">특이사항</th>
-                      <td className="val">{quote.note || DEFAULT_NOTE}</td>
+                      <td className="val">{quote.note || SELF_INFO.quoteNote || ''}</td>
                     </tr>
                   </tbody>
                 </table>

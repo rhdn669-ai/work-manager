@@ -158,6 +158,17 @@ export default function QuotePage() {
                 />
               </div>
             ))}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>견적서 기본 특이사항</label>
+              <p className="field-hint" style={{ margin: '2px 0 6px' }}>
+                새 견적서를 만들면 이 문구가 자동으로 들어갑니다. 견적서별로 수정할 수 있습니다.
+              </p>
+              <textarea
+                rows={4}
+                value={settingsForm.quoteNote || ''}
+                onChange={(e) => setSettingsForm({ ...settingsForm, quoteNote: e.target.value })}
+              />
+            </div>
           </div>
           <div className="form-actions" style={{ display: 'flex', gap: 8 }}>
             <button type="submit" className="btn btn-primary" disabled={savingSettings}>

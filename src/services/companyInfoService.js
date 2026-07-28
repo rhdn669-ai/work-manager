@@ -11,6 +11,8 @@ export const DEFAULT_COMPANY_INFO = {
   telFax: '041-415-0766 / 041-415-0767',
   email: 'iopn2024@naver.com',
   contact: '손성욱 / 010-7704-0331',
+  // 견적서 기본 특이사항 — 새 견적서 작성 시 자동 입력되고, 건별로 수정 가능
+  quoteNote: '• 견적서 유효기간 : 15일\n• 물품 납품기간 : 일정에 준함\n• 견적서 외 사항은 별도임.',
 };
 
 const infoDoc = doc(db, 'appConfig', 'companyInfo');

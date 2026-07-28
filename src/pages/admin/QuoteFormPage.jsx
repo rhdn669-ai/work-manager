@@ -12,7 +12,7 @@ import PdfFabGroup from '../../components/common/PdfFabGroup';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import IopnDocSeal from '../../components/admin/IopnDocSeal';
 import { useCompanyInfo } from '../../contexts/useCompanyInfo';
-import QuotePrintForm, { DEFAULT_NOTE } from './QuotePrintForm';
+import QuotePrintForm from './QuotePrintForm';
 
 const EMPTY_LINE = { name: '', spec: '', unit: '', qty: 0, unitPrice: 0, note: '' };
 const EMPTY_FORM = {
@@ -24,7 +24,7 @@ const EMPTY_FORM = {
   validity: '15일',
   delivery: '일정에 준함',
   payment: '협의',
-  note: DEFAULT_NOTE,
+  note: '',
 };
 
 export default function QuoteFormPage() {
@@ -46,6 +46,12 @@ export default function QuoteFormPage() {
     getSuppliers().then(setSuppliers).catch(console.error);
   }, []);
 
+  // 새 견적서 — 양식 설정의 기본 특이사항을 초기값으로 채운다 (설정 로드가 끝난 뒤 1회)
+  useEffect(() => {
+    if (!isNew || !SELF_INFO.quoteNote) return;
+    setForm((f) => (f.note ? f : { ...f, note: SELF_INFO.quoteNote }));
+  }, [isNew, SELF_INFO.quoteNote]);
+
   useEffect(() => {
     if (isNew) return;
     setLoading(true);
@@ -65,7 +71,7 @@ export default function QuoteFormPage() {
           validity: q.validity || '15일',
           delivery: q.delivery || '일정에 준함',
           payment: q.payment || '협의',
-          note: q.note || DEFAULT_NOTE,
+          note: q.note || '',
         });
       })
       .catch(() => navigate('/admin/purchase/quotes', { replace: true }))
@@ -154,7 +160,7 @@ export default function QuoteFormPage() {
       validity: form.validity || '15일',
       delivery: form.delivery || '일정에 준함',
       payment: form.payment || '협의',
-      note: form.note || DEFAULT_NOTE,
+      note: form.note || SELF_INFO.quoteNote || '',
     };
     try {
       setSaving(true);
