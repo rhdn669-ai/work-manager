@@ -24,6 +24,9 @@ colors:
   btn-navy-fg: "#1e3f86"
   btn-danger-bg: "#fde7e7"
   btn-danger-fg: "#c53030"
+  chart-1: "#3b82f6"
+  chart-2: "#8b5cf6"
+  chart-3: "#06b6d4"
 typography:
   display:
     fontFamily: "Pretendard Variable, Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
@@ -130,6 +133,12 @@ components:
 - **Success Green** (#15803d): '완료' 상태 배지 전용.
 - **Warning Amber** (#d97706): 경고·주의.
 - **Danger Red** (#dc2626): 음수·초과·삭제·오류 전용.
+
+### Chart (계열 구분 전용 — 2026-07-31 추가)
+품질 모듈의 도넛·다계열 그래프에서 **범주를 구분하기 위해서만** 쓴다. 의미색(초록·빨강·주황)은 판정을 뜻하므로 계열 구분에 쓰면 안 되고, 그래서 별도 계열색이 필요하다.
+- **Chart Blue** (#3b82f6) / **Chart Violet** (#8b5cf6) / **Chart Teal** (#06b6d4)
+- 단일 계열 추이 그래프의 주선은 계열색이 아니라 오렌지(accent)를 쓴다.
+- UI 요소(버튼·배지·텍스트)에는 절대 쓰지 않는다. 차트 내부 전용.
 
 ### Neutral
 - **Ink** (#19222f): 기본 본문 — 네이비 기운 도는 진회색(로고와 조화).

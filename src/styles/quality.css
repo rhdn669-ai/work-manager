@@ -1,0 +1,348 @@
+/* 품질 모듈 — MES 모드 /quality
+   화면별 톤 분리: 보는 화면(차트 중심) / 다루는 화면(표·정밀)
+   색·간격·버튼 토큰은 design-system.css 를 그대로 따른다. */
+
+/* ── 히어로 KPI (대표 지표 1장만 네이비 그라데이션) ── */
+.q-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-press) 100%);
+  border-color: transparent;
+}
+.q-hero .admin-stat-label {
+  color: rgba(255, 255, 255, 0.72);
+}
+.q-hero .admin-stat-value {
+  color: #fff;
+}
+.q-hero .admin-stat-value span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.q-stat-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 26px;
+}
+.q-delta {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.q-delta-good {
+  color: var(--success);
+}
+.q-delta-bad {
+  color: var(--danger);
+}
+/* 네이비 히어로 위에서는 --success(#15803d)가 대비 미달 → 흰색으로 두고
+   증감 방향은 ▼/▲ 기호가 전달한다. */
+.q-hero .q-delta-good,
+.q-hero .q-delta-bad {
+  color: #fff;
+}
+.q-spark {
+  width: 96px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+/* ── 섹션 ── */
+.q-section {
+  margin-bottom: var(--space-5);
+}
+.q-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.q-section-head h3 {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--text);
+}
+.q-doc-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+/* ── 2단 그리드 (차트 65 / 35) ── */
+.q-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+@media (min-width: 900px) {
+  .q-grid-2 {
+    grid-template-columns: 1.85fr 1fr;
+  }
+}
+
+/* ── 차트 공통 ── */
+.q-chart-card {
+  padding: var(--space-4);
+}
+.q-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+.q-chart-legend i {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+/* viewBox 가 4:1 이라 폭을 꽉 채우면 높이가 자연스럽게 잡힌다.
+   max-height 를 걸면 좌우에 letterbox 여백이 생기므로 걸지 않는다. */
+.q-area {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.q-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.q-axis {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 모바일 — 폭이 좁으면 차트가 납작해져 축 글씨가 뭉갠다.
+   앱의 넓은 표와 같은 방식(가로 스크롤)으로 최소 크기를 지킨다. */
+@media (max-width: 700px) {
+  .q-chart-card {
+    overflow-x: auto;
+  }
+  .q-area {
+    min-width: 560px;
+  }
+}
+.q-tip {
+  fill: var(--accent);
+}
+.q-tip-text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── 도넛 ── */
+.q-donut-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+.q-donut {
+  width: 140px;
+  height: 140px;
+  flex: 0 0 auto;
+}
+.q-donut circle {
+  fill: none;
+  stroke-width: 16;
+}
+.q-donut-track {
+  stroke: var(--bg-subtle);
+}
+.q-donut-num {
+  fill: var(--text);
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.q-donut-cap {
+  fill: var(--text-muted);
+  font-size: 10px;
+}
+.q-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+.q-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-light, var(--border));
+}
+.q-legend li:last-child {
+  border-bottom: 0;
+}
+.q-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+.q-legend-name {
+  flex: 1 1 auto;
+  color: var(--text);
+}
+.q-legend b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.q-legend em {
+  width: 38px;
+  text-align: right;
+  font-style: normal;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 최근 등록 목록 ── */
+.q-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.q-recent li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.q-recent li:last-child {
+  border-bottom: 0;
+}
+.q-kind {
+  flex: 0 0 auto;
+  min-width: 44px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+.q-recent-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.q-recent-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-recent-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 경고 목록 (교정 임박 / 미종결) ── */
+.q-alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.q-alert-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.q-alert-list li:last-child {
+  border-bottom: 0;
+}
+.q-alert-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.q-alert-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.q-alert-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 판정·상태 배지 — 앱 전체 공통 3값에 '보류' 추가 */
+.badge-hold {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+/* ── 소탭 (알약형) ── */
+.q-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-4);
+}
+.q-subtab {
+  padding: 6px 14px;
+  min-height: var(--btn-h-sm);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.q-subtab:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.q-subtab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ── 준비중 안내 ── */
+.q-todo {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.q-todo b {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--text);
+  font-size: var(--font-md);
+}
+.q-todo p {
+  margin: 0 auto;
+  max-width: 460px;
+  font-size: var(--font-sm);
+  line-height: 1.6;
+}

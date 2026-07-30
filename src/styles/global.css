@@ -106,6 +106,11 @@
   --navy-soft: #e7ebf2;
   --navy-tint: #dce3ef;
 
+  /* ===== 차트 계열색 — 범주 구분 전용(차트 내부에서만). 의미색과 역할이 다르다 ===== */
+  --chart-1: #3b82f6;
+  --chart-2: #8b5cf6;
+  --chart-3: #06b6d4;
+
   --secondary: #6b7684;
   --success: #15803d;
   --warning: #d97706;
