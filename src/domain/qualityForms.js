@@ -15,6 +15,9 @@ export const QUALITY_TABS = [
       { key: 'gauge', label: '계측기', docNo: 'QP-703A' },
       { key: 'jig', label: '지그', docNo: 'QP-706A' },
       { key: 'tool', label: '치공구', docNo: 'QP-705A' },
+      // 원본 QP-705A 는 「치공구,TOOL 관리대장」으로 둘을 한 서식에 담았지만
+      // 현장에서는 치공구함·툴함을 따로 두므로 대장도 분리한다.
+      { key: 'handtool', label: '툴', docNo: 'QP-705A' },
     ],
   },
   {

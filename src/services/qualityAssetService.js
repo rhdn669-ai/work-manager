@@ -40,9 +40,9 @@ export async function trashAsset(asset, deletedByName = '') {
   );
 }
 
-// 다음 관리번호 채번 — CAL/JIG/TOL-001 형식. 관리자는 화면에서 수정 가능.
+// 다음 관리번호 채번 — 계측기 CAL / 지그 JIG / 치공구 TOL / 툴 TUL. 관리자는 화면에서 수정 가능.
 export function nextAssetNo(assets, assetType) {
-  const prefix = { gauge: 'CAL', jig: 'JIG', tool: 'TOL' }[assetType] || 'AST';
+  const prefix = { gauge: 'CAL', jig: 'JIG', tool: 'TOL', handtool: 'TUL' }[assetType] || 'AST';
   const used = assets
     .filter((a) => a.assetType === assetType)
     .map((a) => Number(String(a.assetNo || '').split('-')[1]))
