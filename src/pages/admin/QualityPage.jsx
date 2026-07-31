@@ -288,7 +288,8 @@ function TabBody({ tab }) {
 
 export default function QualityPage() {
   const { userProfile } = useAuth();
-  const [tabKey, setTabKey] = useState('overview');
+  // 보던 탭을 기억한다 — 양식 페이지에 다녀와도 그 탭으로 돌아오게
+  const [tabKey, setTabKey] = useState(() => sessionStorage.getItem('qualityTab') || 'overview');
   const [assets, setAssets] = useState([]);
   const [records, setRecords] = useState([]);
   // 경과일 기준 시각 — 마운트 시 1회 고정(렌더마다 바뀌지 않게)
@@ -397,7 +398,10 @@ export default function QualityPage() {
             key={t.key}
             type="button"
             className={`tab-nav-item ${t.key === tabKey ? 'active' : ''}`}
-            onClick={() => setTabKey(t.key)}
+            onClick={() => {
+              setTabKey(t.key);
+              sessionStorage.setItem('qualityTab', t.key);
+            }}
           >
             {t.label}
             {tabCounts[t.key] > 0 && <span className="tab-nav-count">{tabCounts[t.key]}</span>}

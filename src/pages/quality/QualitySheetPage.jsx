@@ -31,7 +31,9 @@ export default function QualitySheetPage() {
   const def = FORM_FIELDS[formKey];
   if (!def) return <Navigate to="/quality" replace />;
 
-  const back = () => navigate('/quality', { state: { tab: String(formKey).split('.')[0] } });
+  // 히스토리 뒤로가기 — 새 기록을 쌓지 않아야 브라우저 뒤로가기가 양식으로 되돌아오지 않는다.
+  // 새 탭에서 URL 로 바로 들어온 경우엔 돌아갈 기록이 없으므로 목록으로 보낸다.
+  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/quality', { replace: true }));
 
   if (rows === null) return <div className="q-todo">불러오는 중…</div>;
 
