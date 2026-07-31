@@ -11,6 +11,8 @@ import QualityAssetLedger from '../../components/quality/QualityAssetLedger';
 import QualityRecordLedger from '../../components/quality/QualityRecordLedger';
 import { subscribeAssets } from '../../services/qualityAssetService';
 import { backfillNcrFromPanels, subscribeAllRecords } from '../../services/qualityRecordService';
+import { seedDemo, clearDemo, countDemo } from '../../services/demoService';
+import { useDialog } from '../../components/common/useDialog';
 import { assetStatusOf, ASSET_STATUS } from '../../domain/qualityForms';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
 import '../../styles/quality.css';
@@ -471,6 +473,44 @@ export default function QualityPage() {
     return c;
   }, [records, assets]);
 
+  // 구조 확인용 가상 데이터 — demo:true 문서만 넣고 지운다(진짜 데이터는 안 건드림)
+  const { confirm, toast } = useDialog();
+  const [demoCount, setDemoCount] = useState(0);
+  const [demoBusy, setDemoBusy] = useState(false);
+  useEffect(() => {
+    if (isAdmin)
+      countDemo()
+        .then(setDemoCount)
+        .catch(() => setDemoCount(0));
+  }, [isAdmin, records, assets]);
+
+  const toggleDemo = async () => {
+    if (demoBusy) return;
+    const has = demoCount > 0;
+    const ok = await confirm(
+      has
+        ? `샘플 데이터 ${demoCount}건을 전부 지울까요?\n샘플로 넣은 것만 지워지고 실제 기록은 그대로 남습니다.`
+        : '생산현황·품질보증을 가상 데이터로 채울까요?\n전부 지어낸 값이며, 같은 버튼으로 언제든 한 번에 지울 수 있습니다.',
+    );
+    if (!ok) return;
+    setDemoBusy(true);
+    try {
+      if (has) {
+        const n = await clearDemo();
+        toast(`샘플 데이터 ${n}건을 지웠습니다.`, 'success', 0);
+      } else {
+        const c = await seedDemo();
+        toast(`샘플을 넣었습니다 — 판넬 ${c.판넬} · 자산 ${c.자산} · 기록 ${c.기록}건`, 'success', 0);
+      }
+      setDemoCount(await countDemo());
+    } catch (err) {
+      console.error('[demo] 실패:', err);
+      toast('샘플 처리 중 오류가 발생했습니다', 'error', 0);
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
   // 소탭 건수 — 기록은 formKey 그대로, 자산은 assets.<종류> 로 키를 맞춘다
   const subCounts = useMemo(() => {
     const c = {};
@@ -492,6 +532,15 @@ export default function QualityPage() {
     <div>
       <div className="page-header">
         <h2>품질보증</h2>
+        {isAdmin && (
+          <div className="page-actions no-print">
+            {/* 구조 확인용 가상 데이터 — 넣은 것만 골라 한 번에 지운다 */}
+            <button type="button" className="btn btn-sm btn-outline" onClick={toggleDemo} disabled={demoBusy}>
+              <Icon name="doc" className="btn-ic" />
+              {demoBusy ? '처리 중…' : demoCount > 0 ? `샘플 데이터 지우기 (${demoCount})` : '샘플 데이터 넣기'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="admin-stats">
