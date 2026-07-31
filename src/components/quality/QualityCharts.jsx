@@ -41,7 +41,12 @@ export function Sparkline({ values, color = 'var(--accent)', width = 96, height 
 export function AreaChart({ labels, series, unit = '', height = 240 }) {
   const W = 960;
   const H = height;
-  const padL = 34;
+  const all0 = series.flatMap((s) => s.values);
+  const max0 = Math.max(...all0, 0);
+  // 눈금 자릿수 — 값이 클수록 소수점을 줄여야 축 라벨이 왼쪽으로 잘리지 않는다.
+  // (250.00 이 34px 축 여백을 넘어 '50.00' 으로 보이던 문제)
+  const digits = max0 >= 100 ? 0 : max0 >= 10 ? 1 : 2;
+  const padL = max0 >= 100 ? 42 : 34;
   const padR = 14;
   const padT = 14;
   const padB = 26;
@@ -61,7 +66,7 @@ export function AreaChart({ labels, series, unit = '', height = 240 }) {
           <g key={g}>
             <line x1={padL} y1={gy} x2={W - padR} y2={gy} className="q-grid" />
             <text x={padL - 8} y={gy + 4} className="q-axis" textAnchor="end">
-              {(max - span * g).toFixed(2)}
+              {(max - span * g).toFixed(digits)}
             </text>
           </g>
         );

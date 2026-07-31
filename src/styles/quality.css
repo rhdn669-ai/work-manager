@@ -747,6 +747,9 @@
   font-size: 2.9mm;
   font-weight: 600;
   color: var(--text-light);
+  /* '조치 후 영향도' 처럼 긴 라벨이 32mm 안에서 어색하게 끊겨 행 높이가 들쭉날쭉해지던 것 */
+  word-break: keep-all;
+  line-height: 1.25;
 }
 
 /* 입력칸 — 종이 위에서 튀지 않게 투명, 포커스에만 강조 */
@@ -980,4 +983,22 @@ textarea.q-cell {
 /* ③ 종합판정 — 위에 얇은 구분선을 두어 본문과 분리 */
 .q-paper-verdict {
   margin-top: 6mm;
+}
+
+/* 생산현황이 원본인 기록 — 여기서 지워도 되살아나므로 삭제 버튼 대신 안내를 둔다 */
+.q-locked {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* 불량률 추이 보기 전환 — 전체 · 발주사별 · 두 곳 비교 */
+.q-trend-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-3);
 }

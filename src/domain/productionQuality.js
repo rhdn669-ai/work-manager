@@ -38,6 +38,13 @@ function describe(defects) {
     .join('\n');
 }
 
+// 검사 단위 수 — 작업자가 배정된 부품 개수(없으면 부품 전체 수를 쓴다)
+function inspectedUnits(panel) {
+  const workers = panel?.검수?.공정작업자 || {};
+  const n = BUPMOK.filter((b) => workers[b]).length;
+  return n || BUPMOK.length;
+}
+
 // 유형 칸은 0으로 시작해야 이전 집계가 남지 않는다(유형을 바꿨을 때 옛 값이 그대로 붙는 것 방지)
 const zeroTypes = () => Object.fromEntries(DEFECT_TYPES.map((t) => [t.key, 0]));
 
@@ -52,7 +59,9 @@ export function panelToNcrFacts(panel) {
     projectNo: panel.프로젝트 || '',
     equipmentName: panel.자재 || '',
     processType: '공정검사',
-    inspectedQty: 1, // 판넬 1대 단위
+    // 검사수 = 그 판넬에서 작업자가 배정된 부품 수. 1(판넬 1대)로 두면
+    // 불량 3건짜리 판넬이 불량률 300% 로 잡혀 추이가 망가진다.
+    inspectedQty: inspectedUnits(panel),
     defectQty: defects.length,
     openQty: open,
     defectDetail: describe(defects),

@@ -961,6 +961,42 @@
   font-size: var(--font-sm, 12px);
   background: #fff;
 }
+/* 작업자별 불량 유형 분포 — 같은 사람이 반복하는 불량을 한눈에 */
+.worker-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.worker-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--grey-100);
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.worker-type b {
+  font-weight: 800;
+  color: var(--primary);
+}
+.worker-type.sm {
+  padding: 2px 7px;
+  font-size: 11px;
+}
+/* 유형을 안 고른 불량 — 필수값이 빈 상태임을 눈에 띄게 */
+.worker-type.is-none {
+  background: var(--status-cancel-bg);
+  color: var(--status-cancel-fg);
+}
+.worker-type.is-none b {
+  color: var(--status-cancel-fg);
+}
+
 /* 불량 유형 — 품질보증 부적합 실적의 유형별 집계로 그대로 넘어간다 */
 .defect-card-top .defect-type {
   flex: 0 0 108px;
@@ -972,6 +1008,13 @@
   background: #fff;
   color: var(--text);
 }
+/* 유형은 필수 — 안 고르면 빨간 테두리로 남아 있어 등록자가 바로 알아챈다 */
+.defect-card-top .defect-type.is-empty {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--status-cancel-bg);
+}
+
 /* 좁은 화면에선 유형·내용을 아래위로 — 태블릿 세로에서 내용칸이 찌그러지지 않게 */
 @media (max-width: 480px) {
   .defect-card-top {

@@ -194,15 +194,20 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
             </div>
           ))}
 
-          {/* 서술형 */}
-          {narratives
-            .filter((f) => !f.group)
-            .map((f) => (
-              <div key={f.key} className="q-paper-block">
-                <div className="q-block-title">{f.label}</div>
-                <Cell f={f} value={draft[f.key]} onChange={set} readOnly={ro} />
-              </div>
-            ))}
+          {/* 서술형 — 위 표와 같은 격자 안에 넣어야 좌우 테두리가 어긋나지 않는다.
+              별도 블록으로 두면 표(테두리 있음)와 블록(없음)의 시작점이 달라 틀어져 보였다. */}
+          {narratives.filter((f) => !f.group).length > 0 && (
+            <div className="q-sheet-grid">
+              {narratives
+                .filter((f) => !f.group)
+                .map((f) => (
+                  <div key={f.key} className="q-sheet-row is-wide">
+                    <span className="q-sheet-k">{f.label}</span>
+                    <Cell f={f} value={draft[f.key]} onChange={set} readOnly={ro} />
+                  </div>
+                ))}
+            </div>
+          )}
 
           {/* 종합판정 */}
           {verdictField && (

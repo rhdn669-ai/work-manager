@@ -143,13 +143,13 @@ export default function ProductionPanelModal({
                   }
                 />
                 <select
-                  className="defect-type"
+                  className={`defect-type ${it.유형 ? '' : 'is-empty'}`}
                   value={it.유형 || ''}
                   disabled={!canEdit}
                   aria-label="불량 유형"
                   onChange={(e) => mutSec((s) => (s.항목[i].유형 = e.target.value))}
                 >
-                  <option value="">유형</option>
+                  <option value="">유형 선택 *</option>
                   {DEFECT_TYPE_LABELS.map((t) => (
                     <option key={t} value={t}>
                       {t}

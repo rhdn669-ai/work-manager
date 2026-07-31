@@ -4,6 +4,7 @@ import Icon from '../../components/common/Icon';
 import { useAuth } from '../../contexts/useAuth';
 import { canProduction } from '../../utils/workspace';
 import { QUALITY_TABS, VERDICT } from '../../domain/qualityForms';
+import { COMPANIES } from '../../domain/production';
 import { AreaChart, Donut, Sparkline } from '../../components/quality/QualityCharts';
 import QualityAssetLedger from '../../components/quality/QualityAssetLedger';
 import QualityRecordLedger from '../../components/quality/QualityRecordLedger';
@@ -78,16 +79,42 @@ function EmptyBox({ text }) {
 function Overview({ assets, records, now }) {
   // ── 월별 불량률 추이 — 출하검사·부적합 실적의 (불량수/검사수)
   const months = useMemo(() => recentMonths(6), []);
-  const trend = useMemo(() => {
+  // 전체 · 메티스 · 디에이치 — 발주사별로 불량률이 어떻게 다른지 나눠 본다
+  const [trendView, setTrendView] = useState('all');
+  const rateOf = (rows) => {
+    const insp = rows.reduce((a, r) => a + (Number(r.inspectedQty) || 0), 0);
+    const def = rows.reduce((a, r) => a + (Number(r.defectQty) || 0), 0);
+    return insp ? Math.round((def / insp) * 10000) / 100 : 0;
+  };
+  const trendByCompany = useMemo(() => {
     const src = records.filter((r) => tabOf(r.formKey) === 'oqc');
-    return months.map((m) => {
-      const rows = src.filter((r) => ym(dateOf(r)) === m);
-      const insp = rows.reduce((a, r) => a + (Number(r.inspectedQty) || 0), 0);
-      const def = rows.reduce((a, r) => a + (Number(r.defectQty) || 0), 0);
-      return insp ? Math.round((def / insp) * 10000) / 100 : 0;
-    });
+    const of = (filter) => months.map((m) => rateOf(src.filter((r) => ym(dateOf(r)) === m && filter(r))));
+    return {
+      all: of(() => true),
+      ...Object.fromEntries(COMPANIES.map((c) => [c, of((r) => r.customerName === c)])),
+    };
   }, [records, months]);
-  const hasTrend = trend.some((v) => v > 0);
+  const trendSeries = useMemo(() => {
+    if (trendView !== 'compare')
+      return [
+        {
+          key: trendView,
+          name: trendView === 'all' ? '전체' : trendView,
+          color: 'var(--accent)',
+          fill: true,
+          values: trendByCompany[trendView] || [],
+        },
+      ];
+    // 비교 보기 — 두 발주사를 한 그래프에 겹쳐 본다(면은 채우지 않아 겹침이 읽힌다)
+    return COMPANIES.map((c, i) => ({
+      key: c,
+      name: c,
+      color: i === 0 ? 'var(--chart-1)' : 'var(--chart-2)',
+      fill: false,
+      values: trendByCompany[c] || [],
+    }));
+  }, [trendView, trendByCompany]);
+  const hasTrend = Object.values(trendByCompany).some((arr) => arr.some((v) => v > 0));
 
   // ── 불량 유형 분포
   const slices = useMemo(
@@ -152,19 +179,35 @@ function Overview({ assets, records, now }) {
             <h3>월별 불량률 추이</h3>
             {hasTrend && (
               <div className="q-chart-legend">
-                <span>
-                  <i style={{ background: 'var(--accent)' }} />
-                  실적
-                </span>
+                {trendSeries.map((s2) => (
+                  <span key={s2.key}>
+                    <i style={{ background: s2.color }} />
+                    {s2.name}
+                  </span>
+                ))}
               </div>
             )}
           </div>
+          {hasTrend && (
+            <div className="q-trend-switch">
+              {[
+                { k: 'all', label: '전체' },
+                ...COMPANIES.map((c) => ({ k: c, label: c })),
+                { k: 'compare', label: '두 곳 비교' },
+              ].map((o) => (
+                <button
+                  key={o.k}
+                  type="button"
+                  className={`q-subtab ${trendView === o.k ? 'active' : ''}`}
+                  onClick={() => setTrendView(o.k)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
           {hasTrend ? (
-            <AreaChart
-              labels={months.map((m) => `${Number(m.slice(5))}월`)}
-              series={[{ key: 'actual', name: '실적', color: 'var(--accent)', fill: true, values: trend }]}
-              unit="%"
-            />
+            <AreaChart labels={months.map((m) => `${Number(m.slice(5))}월`)} series={trendSeries} unit="%" />
           ) : (
             <EmptyBox text="출하검사·부적합 실적이 쌓이면 월별 추이가 표시됩니다." />
           )}
@@ -259,7 +302,7 @@ function Overview({ assets, records, now }) {
   );
 }
 
-function TabBody({ tab }) {
+function TabBody({ tab, subCounts }) {
   const [sub, setSub] = useState(tab.subTabs[0].key);
   const active = tab.subTabs.find((s) => s.key === sub) ?? tab.subTabs[0];
   return (
@@ -273,6 +316,9 @@ function TabBody({ tab }) {
             onClick={() => setSub(s.key)}
           >
             {s.label}
+            {subCounts[`${tab.key}.${s.key}`] > 0 && (
+              <span className="tab-nav-count">{subCounts[`${tab.key}.${s.key}`]}</span>
+            )}
           </button>
         ))}
       </div>
@@ -383,6 +429,19 @@ export default function QualityPage() {
     return c;
   }, [records, assets]);
 
+  // 소탭 건수 — 기록은 formKey 그대로, 자산은 assets.<종류> 로 키를 맞춘다
+  const subCounts = useMemo(() => {
+    const c = {};
+    records.forEach((r) => {
+      if (r.formKey) c[r.formKey] = (c[r.formKey] || 0) + 1;
+    });
+    assets.forEach((a) => {
+      const k = `assets.${a.assetType}`;
+      c[k] = (c[k] || 0) + 1;
+    });
+    return c;
+  }, [records, assets]);
+
   if (userProfile && !canProduction(userProfile)) return <Navigate to="/dashboard" replace />;
 
   const tab = QUALITY_TABS.find((t) => t.key === tabKey) ?? QUALITY_TABS[0];
@@ -419,7 +478,7 @@ export default function QualityPage() {
       {tab.key === 'overview' ? (
         <Overview assets={assets} records={records} now={now} />
       ) : (
-        <TabBody key={tab.key} tab={tab} />
+        <TabBody key={tab.key} tab={tab} subCounts={subCounts} />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { ASSET_STATUS, assetStatusOf, nextCalibrationDate } from '../../domain/qualityForms';
 import { subscribeAssets, addAsset, updateAsset, trashAsset } from '../../services/qualityAssetService';
+import { subscribeTrashByType } from '../../services/trashService';
 
 // 자산 대장 (계측기·지그·치공구) — 15종 서식이 공유할 대장 골격의 첫 구현.
 // assetType 만 바꿔 세 소탭이 같은 컴포넌트를 쓴다.
@@ -29,10 +30,12 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   const [all, setAll] = useState([]);
   const [editing, setEditing] = useState(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [trashCount, setTrashCount] = useState(0); // 휴지통 버튼 옆 건수
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => subscribeAssets(setAll), []);
+  useEffect(() => subscribeTrashByType('qualityAssets', (t) => setTrashCount(t.length)), []);
 
   const rows = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -110,7 +113,7 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
         <div className="q-ledger-actions">
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
-            휴지통
+            휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={openNew}>
             <Icon name="plus" className="btn-ic" />

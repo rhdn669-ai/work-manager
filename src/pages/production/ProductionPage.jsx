@@ -105,6 +105,7 @@ function collectWorkerStats(panels) {
             호기: p.호기,
             공정: b,
             차수: `${n}차`,
+            유형: item.유형 || '',
             내용: item.내용 || '(사진 불량)',
             완료: !!item.완료,
           });
@@ -216,7 +217,15 @@ export default function ProductionPage() {
         const total = v.불량건.length;
         const open = v.불량건.filter((d) => !d.완료).length;
         const rate = v.담당 > 0 ? Math.round((total / v.담당) * 100) : 0;
-        return { name, 담당: v.담당, total, open, rate, items: v.불량건 };
+        // 유형별 건수 — 많은 순. 같은 작업자가 어떤 불량을 반복하는지 한눈에 본다.
+        const byType = Object.entries(
+          v.불량건.reduce((acc, d) => {
+            const k = d.유형 || '유형 미지정';
+            acc[k] = (acc[k] || 0) + 1;
+            return acc;
+          }, {}),
+        ).sort((a, b) => b[1] - a[1]);
+        return { name, 담당: v.담당, total, open, rate, items: v.불량건, byType };
       })
       .sort((a, b) => b.rate - a.rate || b.open - a.open);
   }, [panels, company]);
@@ -413,6 +422,16 @@ export default function ProductionPage() {
                       )}
                       <span style={{ marginLeft: 'auto', fontWeight: 700, color: rateColor }}>불량률 {s.rate}%</span>
                     </div>
+                    {s.byType.length > 0 && (
+                      <div className="worker-types">
+                        {s.byType.map(([t, n]) => (
+                          <span key={t} className={`worker-type ${t === '유형 미지정' ? 'is-none' : ''}`}>
+                            {t}
+                            <b>{n}</b>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="prog-track" style={{ height: 8 }}>
                       <div
                         style={{
@@ -437,6 +456,7 @@ export default function ProductionPage() {
                           >
                             {d.완료 ? '조치' : '미조치'}
                           </span>
+                          <span className={`worker-type sm ${d.유형 ? '' : 'is-none'}`}>{d.유형 || '유형 미지정'}</span>
                           <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>
                             {d.proj} · {d.호기} · {d.공정} · {d.차수}
                           </span>

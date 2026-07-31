@@ -8,6 +8,7 @@ import { VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
 import { subscribeRecords, trashRecord } from '../../services/qualityRecordService';
+import { subscribeTrashByType } from '../../services/trashService';
 import QualityDocPrint from './QualityDocPrint';
 
 // 양식 엔진 — 서식 정의(FORM_FIELDS)만 바꿔 10종 대장이 이 컴포넌트 하나를 공유한다.
@@ -27,6 +28,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const { userProfile } = useAuth();
   const [rows, setRows] = useState([]);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [trashCount, setTrashCount] = useState(0); // 휴지통 버튼 옆 건수
   const [printing, setPrinting] = useState(null);
   const [checked, setChecked] = useState(() => new Set());
   const navigate = useNavigate();
@@ -35,6 +37,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const [companyFilter, setCompanyFilter] = useState('all'); // 메티스 · 디에이치
 
   useEffect(() => subscribeRecords(formKey, setRows), [formKey]);
+  useEffect(() => subscribeTrashByType('qualityRecords', (t) => setTrashCount(t.length)), []);
 
   // 판정 필드는 맨 뒤 배지 컬럼으로 따로 렌더하므로 일반 컬럼에서는 뺀다(중복 방지)
   const cols = useMemo(() => def.fields.filter((f) => f.col && !VERDICT_KEYS.includes(f.key)), [def]);
@@ -105,7 +108,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
           </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
-            휴지통
+            휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => openSheet('new')}>
             <Icon name="plus" className="btn-ic" />
@@ -206,10 +209,19 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                     ))}
                     {hasVerdict && <td>{v ? <span className={`badge ${v.cls}`}>{v.label}</span> : '—'}</td>}
                     <td className="col-action" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(r)}>
-                        <Icon name="trash" className="btn-ic" />
-                        삭제
-                      </button>
+                      {r.sourceType === 'production' ? (
+                        <span
+                          className="q-locked"
+                          title="생산현황에서 자동으로 만들어진 기록입니다. 생산현황에서 불량을 지우면 여기서도 정리됩니다."
+                        >
+                          생산현황에서 삭제
+                        </span>
+                      ) : (
+                        <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(r)}>
+                          <Icon name="trash" className="btn-ic" />
+                          삭제
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
