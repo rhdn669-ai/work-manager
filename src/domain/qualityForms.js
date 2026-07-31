@@ -12,48 +12,48 @@ export const QUALITY_TABS = [
     key: 'assets',
     label: '자산관리',
     subTabs: [
-      { key: 'gauge', label: '계측기', docNo: 'QP-703A', rev: 2 },
-      { key: 'jig', label: '지그', docNo: 'QP-706A', rev: 1 },
-      { key: 'tool', label: '치공구', docNo: 'QP-705A', rev: 1 },
+      { key: 'gauge', label: '계측기', docNo: 'QP-703A' },
+      { key: 'jig', label: '지그', docNo: 'QP-706A' },
+      { key: 'tool', label: '치공구', docNo: 'QP-705A' },
     ],
   },
   {
     key: 'iqc',
     label: '수입검사',
     subTabs: [
-      { key: 'report', label: '성적서', docNo: 'QP-104A', rev: 2 },
-      { key: 'ledger', label: '관리대장', docNo: 'QP-104B', rev: 1 },
+      { key: 'report', label: '성적서', docNo: 'QP-104A' },
+      { key: 'ledger', label: '관리대장', docNo: 'QP-104B' },
     ],
   },
   {
     key: 'oqc',
     label: '출하·부적합',
     subTabs: [
-      { key: 'shipment', label: '출하검사 실적', docNo: 'QP-105B', rev: 1 },
-      { key: 'ncr', label: '부적합 실적', docNo: 'QP-809B', rev: 1 },
-      { key: 'material', label: '불량자재 이력', docNo: 'QP-704C', rev: 1 },
+      { key: 'shipment', label: '출하검사 실적', docNo: 'QP-105B' },
+      { key: 'ncr', label: '부적합 실적', docNo: 'QP-809B' },
+      { key: 'material', label: '불량자재 이력', docNo: 'QP-704C' },
     ],
   },
   {
     key: 'change',
     label: '변경관리',
     subTabs: [
-      { key: 'request', label: '변경 신청서', docNo: 'IP-404B', rev: 1 },
-      { key: 'risk', label: '리스크 관리대장', docNo: 'QP-404A', rev: 1 },
+      { key: 'request', label: '변경 신청서', docNo: 'IP-404B' },
+      { key: 'risk', label: '리스크 관리대장', docNo: 'QP-404A' },
     ],
   },
   {
     key: 'training',
     label: '교육·자격',
     subTabs: [
-      { key: 'log', label: '교육일지', docNo: 'IP-603D', rev: 1 },
-      { key: 'grade', label: '자격등급 재평가', docNo: 'IP-603E', rev: 1 },
+      { key: 'log', label: '교육일지', docNo: 'IP-603D' },
+      { key: 'grade', label: '자격등급 재평가', docNo: 'IP-603E' },
     ],
   },
   {
     key: 'vendor',
     label: '협력사평가',
-    subTabs: [{ key: 'eval', label: '평가시트', docNo: 'QP-107A', rev: 1 }],
+    subTabs: [{ key: 'eval', label: '평가시트', docNo: 'QP-107A' }],
   },
 ];
 

@@ -23,7 +23,7 @@ const EMPTY = {
   note: '',
 };
 
-export default function QualityAssetLedger({ assetType, docNo, rev, label }) {
+export default function QualityAssetLedger({ assetType, docNo, label }) {
   const { confirm, toast } = useDialog();
   const { userProfile, isAdmin } = useAuth();
   const [all, setAll] = useState([]);
@@ -100,9 +100,7 @@ export default function QualityAssetLedger({ assetType, docNo, rev, label }) {
       <div className="q-ledger-head">
         <h3>
           {label}
-          <span className="q-doc-badge">
-            {docNo} 개정{rev}
-          </span>
+          <span className="q-doc-badge">{docNo}</span>
         </h3>
         <div className="q-ledger-actions">
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>

@@ -515,3 +515,28 @@
   margin-top: 2px;
   color: var(--text-muted);
 }
+
+/* 보류 칩 — 판정 3값 중 회색 */
+.q-chip-hold i {
+  background: var(--text-muted);
+}
+
+/* 자동계산 필드 — 입력 불가임을 시각적으로 구분 */
+.q-calc-input {
+  background: var(--bg-subtle);
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 서식 모달의 필드 묶음 (검증 이력·리스크 평가 등) */
+.q-form-group + .q-form-group {
+  margin-top: var(--space-3);
+}
+.q-form-group-title {
+  margin-bottom: var(--space-2);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--primary);
+}

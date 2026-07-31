@@ -6,6 +6,7 @@ import { canProduction } from '../../utils/workspace';
 import { QUALITY_TABS, VERDICT } from '../../domain/qualityForms';
 import { AreaChart, Donut, Sparkline } from '../../components/quality/QualityCharts';
 import QualityAssetLedger from '../../components/quality/QualityAssetLedger';
+import QualityRecordLedger from '../../components/quality/QualityRecordLedger';
 import '../../styles/quality.css';
 
 // 품질 (MES 모드) — /quality
@@ -221,29 +222,9 @@ function TabBody({ tab }) {
       </div>
 
       {tab.key === 'assets' ? (
-        <QualityAssetLedger
-          key={active.key}
-          assetType={active.key}
-          docNo={active.docNo}
-          rev={active.rev}
-          label={active.label}
-        />
+        <QualityAssetLedger key={active.key} assetType={active.key} docNo={active.docNo} label={active.label} />
       ) : (
-        <div className="card">
-          <div className="card-header">
-            <h3>
-              {active.label}
-              <span className="q-doc-badge">
-                {active.docNo} 개정{active.rev}
-              </span>
-            </h3>
-          </div>
-          <div className="q-todo">
-            <Icon name="doc" style={{ width: 34, height: 34 }} />
-            <b>데이터 연계 준비 중</b>
-            <p>서식 정의와 화면 골격은 확정됐습니다. 이 대장의 입력·목록·PDF 출력은 다음 단계에서 연결됩니다.</p>
-          </div>
-        </div>
+        <QualityRecordLedger key={active.key} formKey={`${tab.key}.${active.key}`} docNo={active.docNo} />
       )}
     </>
   );
