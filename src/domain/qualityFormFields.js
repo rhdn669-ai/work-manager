@@ -108,8 +108,10 @@ export const FORM_FIELDS = {
       },
       { key: 'receivedQty', label: '입고수', type: 'num' },
       { key: 'inspectedQty', label: '검사수', type: 'num' },
-      { key: 'defectQty', label: '불량수', type: 'num' },
+      { key: 'defectQty', label: '불량수', type: 'num', col: true },
       { key: 'defectRate', label: '불량지수', type: 'num', calc: 'defectRate' },
+      // 생산현황에서 자동으로 채워지는 불량 내역 (판넬 저장 시 갱신)
+      { key: 'defectDetail', label: '불량 내역', type: 'textarea' },
       { key: 'actionContent', label: '조치내용', type: 'textarea' },
       { key: 'countermeasureContent', label: '대책 내용', type: 'textarea' },
       { key: 'verify1Date', label: '1차 검증일', type: 'date', group: '검증 이력' },

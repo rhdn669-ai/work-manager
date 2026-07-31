@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
+import { syncPanelNcr } from '../../services/qualityRecordService';
 import ProductionPanelModal from './ProductionPanelModal';
 import ProductionImportModal from './ProductionImportModal';
 import ProductionMatrix from './ProductionMatrix';
@@ -133,14 +134,21 @@ export default function ProductionPage() {
   const [trashOpen, setTrashOpen] = useState(false);
 
   const allowed = canProduction(userProfile);
+  const backfilled = useRef(false);
   useEffect(() => {
     if (!allowed) return undefined;
     const unsub = subscribePanels((rows) => {
       setPanels(rows);
       setLoading(false);
+      // 연동을 붙이기 전부터 쌓여 있던 불량도 품질보증 부적합 실적에 올린다(최초 1회).
+      // 값이 같으면 쓰지 않으므로 두 번째부터는 읽기만 하고 끝난다. 동시 등록 충돌을 피해 관리자에서만.
+      if (isAdmin && !backfilled.current) {
+        backfilled.current = true;
+        rows.forEach((p) => syncPanelNcr(p));
+      }
     });
     return unsub;
-  }, [allowed]);
+  }, [allowed, isAdmin]);
 
   const allNapgi = useMemo(() => [...new Set(panels.map((p) => p.납기).filter(Boolean))], [panels]);
 

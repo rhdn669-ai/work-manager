@@ -1,8 +1,9 @@
-import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
 import { recompute } from '../domain/production';
+import { syncPanelNcr } from './qualityRecordService';
 
 // 판넬 생산현황 — Firestore 실시간 (전 직원 조회 · 관리자 편집).
 // NAS(Supabase) 이전 시 이 파일만 어댑터 교체하면 화면 무수정.
@@ -28,8 +29,15 @@ export async function addPanel(data) {
   return { id: ref.id, ...rest };
 }
 
+// 부적합 실적에 반영돼야 하는 변경 — 이 키가 섞였을 때만 연동을 돌려 불필요한 읽기·쓰기를 막는다
+const NCR_SYNC_KEYS = ['검수', '회사', '프로젝트', '호기', '자재'];
+
 export async function updatePanel(id, patch) {
   await updateDoc(doc(db, 'productionPanels', id), { ...patch, updatedAt: serverTimestamp() });
+  if (!Object.keys(patch).some((k) => NCR_SYNC_KEYS.includes(k))) return;
+  // 저장 경로가 여기 하나뿐이라, 판넬 전문을 다시 읽어 품질보증 부적합 실적과 맞춘다
+  const snap = await getDoc(doc(db, 'productionPanels', id));
+  if (snap.exists()) await syncPanelNcr({ id, ...snap.data() });
 }
 
 // 불량 사진 업로드 → 다운로드 URL 반환 (Firestore엔 URL만 저장 — 문서 1MB 제한 보호)

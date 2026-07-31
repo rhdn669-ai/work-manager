@@ -6,6 +6,7 @@ import TrashModal from '../common/TrashModal';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { VERDICT } from '../../domain/qualityForms';
+import { COMPANIES } from '../../domain/production';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
 import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
 import QualityDocPrint from './QualityDocPrint';
@@ -137,6 +138,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [verdictFilter, setVerdictFilter] = useState('all');
+  const [companyFilter, setCompanyFilter] = useState('all'); // 메티스 · 디에이치
 
   useEffect(() => subscribeRecords(formKey, setRows), [formKey]);
 
@@ -156,12 +158,13 @@ export default function QualityRecordLedger({ formKey, docNo }) {
     const kw = keyword.trim().toLowerCase();
     return rows
       .filter((r) => verdictFilter === 'all' || verdictOf(r)?.label === verdictFilter)
+      .filter((r) => companyFilter === 'all' || r.customerName === companyFilter)
       .filter(
         (r) =>
           !kw ||
           [r.recordNo, ...cols.map((c) => r[c.key])].filter(Boolean).some((v) => String(v).toLowerCase().includes(kw)),
       );
-  }, [rows, cols, keyword, verdictFilter]);
+  }, [rows, cols, keyword, verdictFilter, companyFilter]);
 
   const counts = useMemo(() => {
     const c = { 합격: 0, 부적합: 0, 보류: 0 };
@@ -173,6 +176,15 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   }, [rows]);
 
   const hasVerdict = def.fields.some((f) => VERDICT_KEYS.includes(f.key));
+  // 발주사(메티스·디에이치)로 나눠 보는 건 고객사 칸이 있는 서식에서만 뜻이 있다
+  const hasCompany = def.fields.some((f) => f.key === 'customerName');
+  const companyCounts = useMemo(() => {
+    const base = Object.fromEntries(COMPANIES.map((c) => [c, 0]));
+    rows.forEach((r) => {
+      if (base[r.customerName] != null) base[r.customerName] += 1;
+    });
+    return base;
+  }, [rows]);
 
   // 문서번호는 사내에 정해진 규칙이 있으므로 임의 채번하지 않고 입력받는다
   const openNew = () => setEditing({ recordNo: '' });
@@ -276,6 +288,19 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               <b>{counts[v.label]}</b>
             </button>
           ))}
+        {hasCompany &&
+          COMPANIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`q-summary-chip q-chip-company ${companyFilter === c ? 'active' : ''}`}
+              onClick={() => setCompanyFilter(companyFilter === c ? 'all' : c)}
+            >
+              <i />
+              {c}
+              <b>{companyCounts[c]}</b>
+            </button>
+          ))}
         <input
           className="q-search"
           placeholder="번호 · 내용 검색"
@@ -328,7 +353,10 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                         }}
                       />
                     </td>
-                    <td className="q-num">{r.recordNo}</td>
+                    <td className="q-num">
+                      {r.recordNo ||
+                        (r.sourceType === 'production' ? <span className="q-auto-badge">생산 자동</span> : '—')}
+                    </td>
                     {cols.map((c) => (
                       <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>
                         {r[c.key] || '—'}

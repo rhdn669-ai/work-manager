@@ -521,6 +521,23 @@
   background: var(--text-muted);
 }
 
+/* 발주사(메티스·디에이치) 칩 — 판정 칩과 구분되게 점은 브랜드색 */
+.q-chip-company i {
+  background: var(--primary);
+}
+
+/* 생산현황에서 자동 생성된 기록 — 문서번호를 품질팀이 채우기 전까지의 표식 */
+.q-auto-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-light, #eaf2ff);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* 자동계산 필드 — 입력 불가임을 시각적으로 구분 */
 .q-calc-input {
   background: var(--bg-subtle);
