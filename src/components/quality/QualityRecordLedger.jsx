@@ -13,6 +13,7 @@ import {
   trashRecord,
   nextRecordNo,
 } from '../../services/qualityRecordService';
+import QualityDocPrint from './QualityDocPrint';
 
 // 양식 엔진 — 서식 정의(FORM_FIELDS)만 바꿔 10종 대장이 이 컴포넌트 하나를 공유한다.
 // 화면 골격은 스티치 「대장 목록 공통 골격」을 따른다:
@@ -53,6 +54,81 @@ function Field({ f, value, onChange }) {
   );
 }
 
+// 라인아이템 표 (성적서 검사항목 · 평가시트 배점) — 행마다 수식이 즉시 돈다
+function LineItems({ cfg, lines, onChange }) {
+  const rows = lines || [];
+  const patch = (i, k, v) => {
+    const next = rows.map((r, idx) => (idx === i ? { ...r, [k]: v } : r));
+    onChange(cfg.rowCalc ? next.map(cfg.rowCalc) : next);
+  };
+  return (
+    <div className="form-full q-form-group">
+      <div className="q-form-group-title">{cfg.title}</div>
+      <div className="table-scroll-x">
+        <table className="table q-line-table">
+          <thead>
+            <tr>
+              {cfg.columns.map((c) => (
+                <th key={c.key} style={{ width: c.w }}>
+                  {c.label}
+                </th>
+              ))}
+              <th className="col-action">작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              // 행 순서가 곧 정체성이라 index 를 키로 쓴다(원본 서식의 NO 열과 동일)
+              <tr key={i}>
+                {cfg.columns.map((c) =>
+                  c.calc ? (
+                    <td key={c.key}>
+                      <input className="q-calc-input" value={r[c.key] ?? ''} readOnly />
+                    </td>
+                  ) : (
+                    <td key={c.key}>
+                      {c.type === 'select' ? (
+                        <select value={r[c.key] ?? ''} onChange={(e) => patch(i, c.key, e.target.value)}>
+                          <option value="">선택</option>
+                          {c.options.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={c.type === 'num' ? 'number' : 'text'}
+                          value={r[c.key] ?? ''}
+                          onChange={(e) => patch(i, c.key, e.target.value)}
+                        />
+                      )}
+                    </td>
+                  ),
+                )}
+                <td className="col-action">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
+                  >
+                    <Icon name="trash" className="btn-ic" />
+                    삭제
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button type="button" className="btn btn-sm btn-outline" onClick={() => onChange([...rows, {}])}>
+        <Icon name="plus" className="btn-ic" />
+        {cfg.addLabel}
+      </button>
+    </div>
+  );
+}
+
 export default function QualityRecordLedger({ formKey, docNo }) {
   const def = FORM_FIELDS[formKey];
   const { confirm, toast } = useDialog();
@@ -60,6 +136,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const [rows, setRows] = useState([]);
   const [editing, setEditing] = useState(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [printing, setPrinting] = useState(null);
   const [keyword, setKeyword] = useState('');
   const [verdictFilter, setVerdictFilter] = useState('all');
 
@@ -200,6 +277,9 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                     ))}
                     {hasVerdict && <td>{v ? <span className={`badge ${v.cls}`}>{v.label}</span> : '—'}</td>}
                     <td className="col-action">
+                      <button type="button" className="btn btn-sm btn-outline" onClick={() => setPrinting(r)}>
+                        출력
+                      </button>
                       <button type="button" className="btn btn-sm btn-outline" onClick={() => setEditing(r)}>
                         수정
                       </button>
@@ -248,6 +328,13 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                 disabled={!isAdmin && !!editing.id}
               />
             </div>
+            {def.lines && (
+              <LineItems
+                cfg={def.lines}
+                lines={editing.lines}
+                onChange={(v) => setEditing((e) => computeCalcFields(formKey, { ...e, lines: v }))}
+              />
+            )}
             {groups.map(([groupName, fields]) => (
               <div key={groupName} className="form-full q-form-group">
                 {groupName !== '기본정보' && <div className="q-form-group-title">{groupName}</div>}
@@ -269,6 +356,10 @@ export default function QualityRecordLedger({ formKey, docNo }) {
           </button>
         </div>
       </Modal>
+
+      {printing && (
+        <QualityDocPrint formKey={formKey} docNo={docNo} record={printing} onClose={() => setPrinting(null)} />
+      )}
 
       <TrashModal
         isOpen={trashOpen}

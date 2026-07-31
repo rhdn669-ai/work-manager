@@ -24,6 +24,17 @@ export const FORM_FIELDS = {
       { key: 'passFailResult', label: '합불 판정', type: 'select', options: 판정, required: true, col: true },
       { key: 'remarks', label: '비고', type: 'textarea' },
     ],
+    lines: {
+      title: '검사 항목',
+      addLabel: '항목 추가',
+      columns: [
+        { key: 'inspectionItem', label: '검사항목', type: 'text', w: '20%' },
+        { key: 'specification', label: '규격', type: 'text', w: '24%' },
+        { key: 'inspectionMethod', label: '검사방법', type: 'text', w: '16%' },
+        { key: 'measured', label: '측정치', type: 'text', w: '14%' },
+        { key: 'result', label: '판정', type: 'select', options: 판정, w: '14%' },
+      ],
+    },
   },
   'iqc.ledger': {
     title: '수입검사 관리대장',
@@ -341,10 +352,58 @@ export const FORM_FIELDS = {
       { key: 'address', label: '소재지', type: 'text' },
       { key: 'tel', label: '연락처', type: 'text' },
       { key: 'evaluator', label: '평가자', type: 'text', col: true },
-      { key: 'totalScore', label: '총점', type: 'num', col: true },
-      { key: 'grade', label: '등급', type: 'select', options: ['A', 'B', 'C', 'D'], col: true },
-      { key: 'overallResult', label: '전체판정', type: 'select', options: ['승인', '조건부승인', '부적격'] },
+      { key: 'totalScore', label: '총점', type: 'num', calc: 'evalTotal', col: true },
+      { key: 'grade', label: '등급', type: 'text', calc: 'evalGrade', col: true },
+      { key: 'overallResult', label: '전체판정', type: 'text', calc: 'evalOverall' },
       { key: 'remarks', label: '비고', type: 'textarea' },
+    ],
+    lines: {
+      title: '평가 항목',
+      addLabel: '항목 추가',
+      // 계(A×B) 는 행마다 자동계산 — 원본 F07 수식 그대로
+      columns: [
+        { key: 'evalCategory', label: '평가항목', type: 'text', w: '22%' },
+        { key: 'evalDetail', label: '평가내용', type: 'text', w: '30%' },
+        { key: 'weight', label: '중요도(A)', type: 'num', w: '12%' },
+        { key: 'score', label: '점수(B)', type: 'num', w: '12%' },
+        { key: 'weightedScore', label: '계(A×B)', type: 'num', w: '12%', calc: true },
+      ],
+      rowCalc: (r) => ({ ...r, weightedScore: (Number(r.weight) || 0) * (Number(r.score) || 0) }),
+    },
+  },
+  // ── 기준정보 (품질목표 · 인원명부) ─────────────────────────
+  'master.goal': {
+    title: '품질목표 관리',
+    numberPrefix: 'GOL',
+    fields: [
+      { key: 'managementYear', label: '관리연도', type: 'num', required: true, col: true },
+      { key: 'goalName', label: '품질목표', type: 'text', required: true, col: true },
+      { key: 'goalDirection', label: '방향', type: 'select', options: ['이하', '이상'], required: true },
+      { key: 'goalTarget', label: '목표값', type: 'num', required: true, col: true },
+      { key: 'goalFormula', label: '산정기준', type: 'text' },
+      { key: 'goalActualYear', label: '연간실적', type: 'num', col: true },
+      { key: 'goalAchieveRate', label: '달성률(%)', type: 'num', calc: 'achieveRate', col: true },
+      { key: 'goalStatus', label: '진행상태', type: 'text', calc: 'goalStatus', col: true },
+      { key: 'goalDept', label: '담당부서', type: 'text' },
+      { key: 'remarks', label: '비고', type: 'textarea' },
+    ],
+  },
+  'master.roster': {
+    title: '인원 명부·인증기준',
+    numberPrefix: 'PSN',
+    fields: [
+      { key: 'name', label: '성명', type: 'text', required: true, col: true },
+      { key: 'dept', label: '부서', type: 'text', required: true, col: true },
+      { key: 'position', label: '직급', type: 'text' },
+      { key: 'career', label: '경력', type: 'text' },
+      { key: 'hireDate', label: '입사일', type: 'date' },
+      { key: 'level1GrantedDate', label: 'LEVEL 1 부여일', type: 'date', group: '자격 부여 이력' },
+      { key: 'level2GrantedDate', label: 'LEVEL 2 부여일', type: 'date', group: '자격 부여 이력' },
+      { key: 'level3GrantedDate', label: 'LEVEL 3 부여일', type: 'date', group: '자격 부여 이력' },
+      { key: 'level4GrantedDate', label: 'LEVEL 4 부여일', type: 'date', group: '자격 부여 이력' },
+      { key: 'currentLevel', label: '현재 LEVEL', type: 'text', calc: 'currentLevel', col: true },
+      { key: 'lastGrantedDate', label: '최종 부여일', type: 'date', calc: 'lastGranted', col: true },
+      { key: 'currentLevelElapsed', label: '현 LEVEL 경과', type: 'text', calc: 'levelElapsed', col: true },
     ],
   },
 };
@@ -353,10 +412,14 @@ export const FORM_FIELDS = {
 const RISK_GRADE = (score) =>
   score >= 20 ? 'A(즉시조치)' : score >= 12 ? 'B(계획조치)' : score >= 6 ? 'C(관찰)' : 'D(수용)';
 
+// 협력사 평가 등급 — 총점 기준
+const EVAL_GRADE = (t) => (t >= 90 ? 'A' : t >= 80 ? 'B' : t >= 70 ? 'C' : 'D');
+
 export function computeCalcFields(formKey, v) {
   const def = FORM_FIELDS[formKey];
   if (!def) return v;
   const out = { ...v };
+  const lines = Array.isArray(out.lines) ? out.lines : [];
   for (const f of def.fields) {
     if (!f.calc) continue;
     const n = (k) => Number(out[k]) || 0;
@@ -371,6 +434,38 @@ export function computeCalcFields(formKey, v) {
       out.residualScore = n('postImpactScore') * n('postProbabilityScore');
     } else if (f.calc === 'residualGrade') {
       out.residualGrade = out.residualScore ? RISK_GRADE(out.residualScore) : '';
+    } else if (f.calc === 'evalTotal') {
+      out.totalScore = lines.reduce((s2, r) => s2 + (Number(r.weightedScore) || 0), 0);
+    } else if (f.calc === 'evalGrade') {
+      out.grade = lines.length ? EVAL_GRADE(out.totalScore) : '';
+    } else if (f.calc === 'achieveRate') {
+      const t = n('goalTarget');
+      out.goalAchieveRate = t ? Math.round((n('goalActualYear') / t) * 1000) / 10 : 0;
+    } else if (f.calc === 'goalStatus') {
+      const t = n('goalTarget');
+      const a = n('goalActualYear');
+      out.goalStatus = !t || !a ? '' : (out.goalDirection === '이하' ? a <= t : a >= t) ? '달성' : '미달';
+    } else if (f.calc === 'currentLevel') {
+      const lv = [4, 3, 2, 1].find((L) => out[`level${L}GrantedDate`]);
+      out.currentLevel = lv ? `LEVEL ${lv}` : '';
+    } else if (f.calc === 'lastGranted') {
+      const ds = [1, 2, 3, 4]
+        .map((L) => out[`level${L}GrantedDate`])
+        .filter(Boolean)
+        .sort();
+      out.lastGrantedDate = ds.length ? ds[ds.length - 1] : '';
+    } else if (f.calc === 'levelElapsed') {
+      out.currentLevelElapsed = out.lastGrantedDate
+        ? `${Math.floor((Date.now() - new Date(out.lastGrantedDate)) / 86400000)}일`
+        : '';
+    } else if (f.calc === 'evalOverall') {
+      out.overallResult = !lines.length
+        ? ''
+        : out.totalScore >= 80
+          ? '승인'
+          : out.totalScore >= 70
+            ? '조건부승인'
+            : '부적격';
     }
   }
   return out;

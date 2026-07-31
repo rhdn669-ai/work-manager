@@ -540,3 +540,229 @@
   font-weight: 700;
   color: var(--primary);
 }
+
+/* 라인아이템 표 — 모달 안에서 행 추가·삭제 */
+.q-line-table th,
+.q-line-table td {
+  padding: 6px 8px;
+}
+.q-line-table input,
+.q-line-table select {
+  width: 100%;
+  min-height: var(--btn-h-sm);
+}
+
+/* ════════ A4 출력 서식 (3틀 공통 규격) ════════
+   원본 엑셀 복제가 아니라 스티치로 통일한 규격.
+   좌상단 IOPN · 우상단 문서번호 · 가운데 네이비 제목+밑줄 · 우하단 결재 2단 */
+.q-paper {
+  width: 210mm;
+  min-height: 240mm;
+  margin: 0 auto;
+  padding: 16mm 15mm 14mm;
+  background: #fff;
+  color: var(--text);
+  box-sizing: border-box;
+  position: relative;
+}
+.q-print-area {
+  overflow-x: auto;
+  background: var(--grey-100);
+  padding: var(--space-3);
+}
+.q-paper-top {
+  text-align: right;
+  font-size: 3mm;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.q-paper-brand b {
+  display: block;
+  font-size: 6mm;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 0.5mm;
+}
+.q-paper-brand small {
+  display: block;
+  font-size: 2.6mm;
+  color: var(--text-muted);
+}
+.q-paper-title {
+  margin: 8mm 0 2mm;
+  text-align: center;
+  font-size: 8mm;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 2mm;
+}
+.q-paper-rule {
+  height: 0;
+  border-bottom: 0.6mm solid var(--primary);
+  margin-bottom: 7mm;
+}
+
+/* 라벨-값 2열 — 테두리 없음 */
+.q-paper-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2mm 10mm;
+  margin-bottom: 7mm;
+}
+.q-info-row {
+  display: flex;
+  gap: 4mm;
+  padding-bottom: 1.2mm;
+  border-bottom: 0.2mm solid var(--border);
+}
+.q-info-k {
+  flex: 0 0 30mm;
+  font-size: 3mm;
+  color: var(--text-muted);
+  letter-spacing: 0.3mm;
+}
+.q-info-v {
+  flex: 1 1 auto;
+  font-size: 3.4mm;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* 본문 표 — 세로선 없이 가로 구분선만 */
+.q-paper-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6mm;
+}
+.q-paper-table th {
+  background: var(--grey-100);
+  font-size: 2.9mm;
+  font-weight: 700;
+  color: var(--text);
+  padding: 2mm;
+  text-align: left;
+  border-bottom: 0.4mm solid var(--border);
+}
+.q-paper-table td {
+  font-size: 3mm;
+  padding: 2mm;
+  border-bottom: 0.2mm solid var(--border);
+}
+
+.q-paper-block {
+  margin-bottom: 5mm;
+}
+.q-block-title {
+  font-size: 2.9mm;
+  font-weight: 700;
+  color: var(--primary);
+  border-bottom: 0.2mm solid var(--border);
+  padding-bottom: 1mm;
+  margin-bottom: 1.5mm;
+}
+.q-block-body {
+  font-size: 3mm;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.q-paper-verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4mm;
+  padding: 3mm 4mm;
+  border: 0.3mm solid var(--border);
+  border-radius: 1.5mm;
+  font-size: 3.4mm;
+  font-weight: 700;
+}
+.q-p-total {
+  margin-right: 4mm;
+  font-size: 3mm;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+.q-p-badge {
+  display: inline-block;
+  padding: 1mm 3mm;
+  border-radius: 999px;
+  font-size: 2.8mm;
+  font-weight: 700;
+}
+.q-p-badge.lg {
+  font-size: 3.6mm;
+  padding: 1.5mm 5mm;
+}
+.q-p-pass {
+  background: #e8f5ec;
+  color: var(--success);
+}
+.q-p-fail {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+.q-p-hold {
+  background: var(--grey-100);
+  color: var(--text-muted);
+}
+
+/* 결재란 2단 — 우하단 고정 */
+.q-paper-sign {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3mm;
+  margin-top: 10mm;
+}
+.q-sign-box {
+  width: 42mm;
+  border: 0.3mm solid var(--border);
+  border-radius: 1.5mm;
+  overflow: hidden;
+}
+.q-sign-label {
+  padding: 1.5mm;
+  background: var(--grey-100);
+  text-align: center;
+  font-size: 2.8mm;
+  font-weight: 700;
+  color: var(--text-light);
+}
+.q-sign-space {
+  height: 16mm;
+}
+.q-sign-foot {
+  display: flex;
+  justify-content: space-between;
+  padding: 1.2mm 2mm;
+  border-top: 0.2mm solid var(--border);
+  font-size: 2.4mm;
+  color: var(--text-muted);
+}
+
+/* 인쇄 — 종이만 남기고 화면 UI 는 전부 숨긴다 */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .q-print-area,
+  .q-print-area * {
+    visibility: visible;
+  }
+  .q-print-area {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    background: #fff;
+    overflow: visible;
+  }
+  .q-paper {
+    width: auto;
+    min-height: auto;
+    padding: 0;
+  }
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}

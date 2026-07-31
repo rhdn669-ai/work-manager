@@ -55,6 +55,14 @@ export const QUALITY_TABS = [
     label: '협력사평가',
     subTabs: [{ key: 'eval', label: '평가시트', docNo: 'QP-107A' }],
   },
+  {
+    key: 'master',
+    label: '기준정보',
+    subTabs: [
+      { key: 'goal', label: '품질목표', docNo: 'QP-105B' },
+      { key: 'roster', label: '인원 명부', docNo: '' },
+    ],
+  },
 ];
 
 // 판정값 — 전 서식 공통 3값 (합불·적합/부적합·OK/NG 혼재를 여기로 통일)
