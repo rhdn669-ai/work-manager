@@ -110,10 +110,17 @@ export function AreaChart({ labels, series, unit = '', height = 240 }) {
         if (!main) return null;
         const i = labels.length - 1;
         const v = main.values[i];
+        const TW = 42;
+        const TH = 20;
+        // 말풍선이 viewBox 밖으로 잘리지 않게 가둔다.
+        // 점이 최고점이면 위쪽 공간이 없으므로 점 아래로 내린다.
+        const above = y(v) - TH - 10;
+        const ty = above < 2 ? Math.min(H - padB - TH - 2, y(v) + 10) : above;
+        const tx = Math.max(2, Math.min(W - padR - TW, x(i) - TW - 4));
         return (
-          <g transform={`translate(${x(i) - 46},${y(v) - 30})`}>
-            <rect className="q-tip" width="42" height="20" rx="6" />
-            <text x="21" y="14" className="q-tip-text" textAnchor="middle">
+          <g transform={`translate(${tx},${ty})`}>
+            <rect className="q-tip" width={TW} height={TH} rx="6" />
+            <text x={TW / 2} y="14" className="q-tip-text" textAnchor="middle">
               {v}
               {unit}
             </text>
