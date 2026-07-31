@@ -574,17 +574,18 @@
   padding: var(--space-3);
 }
 .q-paper-title {
-  margin: 6mm 0 2mm;
+  margin: 0 0 3mm;
   text-align: center;
   font-size: 8mm;
   font-weight: 800;
   color: var(--primary);
   letter-spacing: 2mm;
 }
-/* 제목 아래 굵은 밑줄 — 브랜드 밴드가 갖고 있던 구분선을 대신한다 */
+/* 제목 아래 이중선 — 국내 공문서 서식의 격식을 따른다(굵은선 + 얇은선) */
 .q-paper-rule {
-  height: 0;
-  border-bottom: 0.6mm solid var(--primary);
+  height: 0.9mm;
+  border-top: 0.6mm solid var(--primary);
+  border-bottom: 0.2mm solid var(--primary);
   margin-bottom: 6mm;
 }
 /* 라벨-값 2열 — 테두리 없음 */
@@ -823,31 +824,26 @@ textarea.q-cell {
   align-items: flex-start;
   justify-content: space-between;
   gap: 6mm;
-  margin-bottom: 3mm;
+  margin-bottom: 6mm;
 }
 /* 좌상단 — 로고 위, 문서번호 아래 (2026-07-31 대표님: 로고를 좌측 상단으로) */
 .q-paper-brand-l {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1.5mm;
+  gap: 2.4mm;
 }
 .q-paper-logo {
-  height: 9mm;
+  height: 13mm;
   width: auto;
   display: block;
 }
-/* 문서번호 — 서식을 식별하는 값이라 옅은 회색으로 흘리지 않고 또렷하게 둔다 */
+/* 문서번호 — 박스 없이 글자만. 자간을 넓혀 관리번호답게 보이게 한다 */
 .q-paper-docno {
-  display: inline-block;
-  padding: 0.8mm 2.2mm;
-  border: 0.25mm solid var(--border);
-  border-radius: 1mm;
-  background: var(--grey-50);
-  font-size: 3.4mm;
+  font-size: 3.2mm;
   font-weight: 700;
-  letter-spacing: 0.15mm;
-  color: var(--primary);
+  letter-spacing: 0.5mm;
+  color: var(--text-light);
   font-variant-numeric: tabular-nums;
 }
 
