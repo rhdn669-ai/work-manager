@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 const CHECK_INTERVAL_MS = 60 * 1000;
-const IDLE_THRESHOLD_MS = 30 * 1000; // 30초 무동작 시 자동 reload 허용
+// 무동작 10초면 자동 reload. 30초였을 땐 계속 작업 중인 사람이 구버전에 오래 머물러,
+// 새로 배포한 기능(예: 생산 불량 → 품질보증 연동)이 "안 된다"로 보이는 일이 있었다.
+// 입력 포커스 중에는 어차피 보류하므로 타이핑 도중 날아갈 위험은 없다.
+const IDLE_THRESHOLD_MS = 10 * 1000;
 const RELOAD_COOLDOWN_MS = 5 * 60 * 1000; // 5분 내 재reload 차단 (무한 루프 방지)
 const RELOAD_KEY = 'wm_last_auto_reload_ts';
 

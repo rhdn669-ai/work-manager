@@ -961,6 +961,27 @@
   font-size: var(--font-sm, 12px);
   background: #fff;
 }
+/* 불량 유형 — 품질보증 부적합 실적의 유형별 집계로 그대로 넘어간다 */
+.defect-card-top .defect-type {
+  flex: 0 0 108px;
+  height: 34px;
+  padding: 0 6px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: var(--font-sm, 12px);
+  background: #fff;
+  color: var(--text);
+}
+/* 좁은 화면에선 유형·내용을 아래위로 — 태블릿 세로에서 내용칸이 찌그러지지 않게 */
+@media (max-width: 480px) {
+  .defect-card-top {
+    flex-wrap: wrap;
+  }
+  .defect-card-top .defect-type {
+    flex: 1 1 100%;
+    order: 3;
+  }
+}
 .defect-ba {
   display: grid;
   grid-template-columns: 1fr 1fr;

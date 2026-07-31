@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
-import { syncPanelNcr } from '../../services/qualityRecordService';
+import { backfillNcrFromPanels } from '../../services/qualityRecordService';
 import ProductionPanelModal from './ProductionPanelModal';
 import ProductionImportModal from './ProductionImportModal';
 import ProductionMatrix from './ProductionMatrix';
@@ -144,7 +144,7 @@ export default function ProductionPage() {
       // 값이 같으면 쓰지 않으므로 두 번째부터는 읽기만 하고 끝난다. 동시 등록 충돌을 피해 관리자에서만.
       if (isAdmin && !backfilled.current) {
         backfilled.current = true;
-        rows.forEach((p) => syncPanelNcr(p));
+        backfillNcrFromPanels().catch((e) => console.error('[quality] 소급 연동 실패:', e));
       }
     });
     return unsub;

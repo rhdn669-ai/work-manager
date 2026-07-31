@@ -70,37 +70,48 @@ async function findByPanel(panelId) {
   return hit ? { id: hit.id, ...hit.data() } : null;
 }
 
+// 반환: 'created' | 'updated' | 'removed' | 'noop'. 실패는 던진다 — 조용히 삼키면
+// "왜 품질보증에 안 뜨지" 를 알 방법이 없다. 호출부에서 사용자에게 알린다.
 export async function syncPanelNcr(panel) {
-  if (!panel?.id) return;
-  try {
-    const facts = panelToNcrFacts(panel);
-    const existing = await findByPanel(panel.id);
+  if (!panel?.id) return 'noop';
+  const facts = panelToNcrFacts(panel);
+  const existing = await findByPanel(panel.id);
 
-    if (!facts) {
-      // 불량이 모두 지워진 판넬 — 자동 레코드도 휴지통으로 (영구삭제 금지 규칙)
-      if (existing)
-        await trashGeneric(
-          'qualityRecords',
-          existing.id,
-          { title: existing.itemName || '부적합 실적', summary: '생산현황 불량 해제로 자동 정리' },
-          '자동',
-        );
-      return;
-    }
-    // 값이 그대로면 쓰지 않는다 — 소급 동기화가 판넬 수만큼 쓰기를 만들지 않게
-    if (existing) {
-      const same = Object.keys(facts).every((k) => (existing[k] ?? '') === (facts[k] ?? ''));
-      if (!same) await updateRecord(existing.id, facts);
-    } else
-      await addRecord(NCR_FORM_KEY, {
-        ...facts,
-        recordNo: '', // 사내 문서번호 규칙대로 품질팀이 채운다 (임의 채번하지 않음)
-        inspectionDate: todayStr(), // 최초 생성일만 기록 — 이후 동기화는 건드리지 않는다
-        sourcePanelId: panel.id,
-        sourceType: 'production',
-      });
-  } catch (err) {
-    // 연동 실패가 생산현황 저장을 막으면 안 된다
-    console.error('[qualityRecords] 생산 불량 연동 실패:', err);
+  if (!facts) {
+    // 불량이 모두 지워진 판넬 — 자동 레코드도 휴지통으로 (영구삭제 금지 규칙)
+    if (!existing) return 'noop';
+    await trashGeneric(
+      'qualityRecords',
+      existing.id,
+      { title: existing.itemName || '부적합 실적', summary: '생산현황 불량 해제로 자동 정리' },
+      '자동',
+    );
+    return 'removed';
   }
+  // 값이 그대로면 쓰지 않는다 — 소급 동기화가 판넬 수만큼 쓰기를 만들지 않게
+  if (existing) {
+    const same = Object.keys(facts).every((k) => (existing[k] ?? '') === (facts[k] ?? ''));
+    if (same) return 'noop';
+    await updateRecord(existing.id, facts);
+    return 'updated';
+  }
+  await addRecord(NCR_FORM_KEY, {
+    ...facts,
+    recordNo: '', // 사내 문서번호 규칙대로 품질팀이 채운다 (임의 채번하지 않음)
+    inspectionDate: todayStr(), // 최초 생성일만 기록 — 이후 동기화는 건드리지 않는다
+    sourcePanelId: panel.id,
+    sourceType: 'production',
+  });
+  return 'created';
+}
+
+// 연동 붙이기 전부터 쌓여 있던 불량을 한 번에 올린다.
+// 생산현황·품질보증 어느 쪽으로 들어오든 최신 상태가 되도록 두 화면 모두 진입 시 호출한다.
+// 값이 같으면 쓰지 않으므로 두 번째부터는 읽기만 하고 끝난다.
+export async function backfillNcrFromPanels() {
+  const snap = await getDocs(collection(db, 'productionPanels'));
+  const results = await Promise.all(
+    snap.docs.map((d) => syncPanelNcr({ id: d.id, ...d.data() }).catch(() => 'failed')),
+  );
+  return results.filter((r) => r === 'created' || r === 'updated').length;
 }

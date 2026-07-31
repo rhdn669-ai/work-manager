@@ -6,6 +6,8 @@
 // type: text | num | date | select | textarea
 // col: true 면 목록 표의 컬럼으로도 보여준다 (표가 넓어지지 않게 6개 이내로).
 
+import { defectTypeFields } from './defectTypes';
+
 const 판정 = ['합격', '부적합', '보류'];
 
 export const FORM_FIELDS = {
@@ -75,17 +77,8 @@ export const FORM_FIELDS = {
       { key: 'defectQty', label: '불량수', type: 'num', col: true },
       { key: 'defectRate', label: '불량지수', type: 'num', calc: 'defectRate', col: true },
       { key: 'actionContent', label: '조치내용', type: 'textarea' },
-      // 불량 유형별 건수 — 원본 F03 의 유형 컬럼 그대로
-      { key: 'defectCable', label: '케이블', type: 'num', group: '불량 유형' },
-      { key: 'defectWiring', label: '배선정리', type: 'num', group: '불량 유형' },
-      { key: 'defectAssembly', label: '조립불량', type: 'num', group: '불량 유형' },
-      { key: 'defectCleaning', label: '크리닝', type: 'num', group: '불량 유형' },
-      { key: 'defectStickerHole', label: '스티커·잔공누락', type: 'num', group: '불량 유형' },
-      { key: 'defectLabeling', label: '식별표시', type: 'num', group: '불량 유형' },
-      { key: 'defectCableTie', label: '케이블타이·후크밴드', type: 'num', group: '불량 유형' },
-      { key: 'defectDuct', label: 'DUCT 미준수', type: 'num', group: '불량 유형' },
-      { key: 'defectTorque', label: 'Torque 체결미흡', type: 'num', group: '불량 유형' },
-      { key: 'defectEtc', label: '기타', type: 'num', group: '불량 유형' },
+      // 불량 유형별 건수 — 생산현장에서 체크한 유형과 같은 목록을 쓴다(domain/defectTypes)
+      ...defectTypeFields(),
     ],
   },
   'oqc.ncr': {
@@ -112,6 +105,8 @@ export const FORM_FIELDS = {
       { key: 'defectRate', label: '불량지수', type: 'num', calc: 'defectRate' },
       // 생산현황에서 자동으로 채워지는 불량 내역 (판넬 저장 시 갱신)
       { key: 'defectDetail', label: '불량 내역', type: 'textarea' },
+      // 유형별 건수도 생산 불량에서 자동 집계된다
+      ...defectTypeFields(),
       { key: 'actionContent', label: '조치내용', type: 'textarea' },
       { key: 'countermeasureContent', label: '대책 내용', type: 'textarea' },
       { key: 'verify1Date', label: '1차 검증일', type: 'date', group: '검증 이력' },

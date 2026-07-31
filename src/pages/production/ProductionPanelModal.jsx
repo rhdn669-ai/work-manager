@@ -4,6 +4,7 @@ import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
 import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
+import { DEFECT_TYPE_LABELS } from '../../domain/defectTypes';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
@@ -29,7 +30,21 @@ export default function ProductionPanelModal({
   const [uploading, setUploading] = useState(false);
 
   const save = (patch) => {
-    if (canEdit) updatePanel(p.id, patch).catch(() => toast('저장 중 오류가 발생했습니다', 'error'));
+    if (!canEdit) return;
+    updatePanel(p.id, patch)
+      .then((sync) => {
+        // 부적합 실적에 새 줄이 생겼을 때만 알린다(갱신은 조용히 — 셀 편집마다 토스트가 뜨면 시끄럽다)
+        if (sync === 'created') toast('품질보증 「부적합 실적」에 등록되었습니다.', 'success', 0);
+      })
+      .catch((err) =>
+        toast(
+          err?.ncrSync
+            ? '저장은 됐지만 품질보증 연동에 실패했습니다. 품질보증 화면을 열면 다시 시도합니다.'
+            : '저장 중 오류가 발생했습니다',
+          'error',
+          0,
+        ),
+      );
   };
   const saveInsp = (mut) => {
     if (!canEdit) return;
@@ -69,7 +84,8 @@ export default function ProductionPanelModal({
         if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
         const sec = n[`차${round}`].공정비고[part];
-        if (index == null) sec.항목.push({ 내용: '', 완료: false, 사진: url, 검수자: checkerName, 일자: today() });
+        if (index == null)
+          sec.항목.push({ 내용: '', 유형: '', 완료: false, 사진: url, 검수자: checkerName, 일자: today() });
         else sec.항목[index][kind] = url;
       });
     } finally {
@@ -126,6 +142,20 @@ export default function ProductionPanelModal({
                     })
                   }
                 />
+                <select
+                  className="defect-type"
+                  value={it.유형 || ''}
+                  disabled={!canEdit}
+                  aria-label="불량 유형"
+                  onChange={(e) => mutSec((s) => (s.항목[i].유형 = e.target.value))}
+                >
+                  <option value="">유형</option>
+                  {DEFECT_TYPE_LABELS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   defaultValue={it.내용 || ''}
@@ -196,7 +226,7 @@ export default function ProductionPanelModal({
                 className="defect-add-plain"
                 disabled={!canAdd}
                 onClick={() =>
-                  mutSec((s) => s.항목.push({ 내용: '', 완료: false, 검수자: checkerName, 일자: today() }))
+                  mutSec((s) => s.항목.push({ 내용: '', 유형: '', 완료: false, 검수자: checkerName, 일자: today() }))
                 }
               >
                 사진 없이

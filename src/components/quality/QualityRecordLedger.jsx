@@ -355,7 +355,11 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                     </td>
                     <td className="q-num">
                       {r.recordNo ||
-                        (r.sourceType === 'production' ? <span className="q-auto-badge">생산 자동</span> : '—')}
+                        (r.sourceType === 'production' ? (
+                          <span className="purchase-badge purchase-badge-replied">생산 자동</span>
+                        ) : (
+                          '—'
+                        ))}
                     </td>
                     {cols.map((c) => (
                       <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>

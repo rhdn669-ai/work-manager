@@ -1,4 +1,5 @@
 import { BUPMOK } from './production';
+import { DEFECT_TYPES, countByType } from './defectTypes';
 
 // 생산현황 판넬 → 품질보증 「출하·부적합 > 부적합 실적」 연동 규칙 (2026-07-31 대표님 확정)
 //  · 판넬(호기) 1대 = 부적합 1건        · 처리 전(미완료)·후(완료) 불량 모두 대상
@@ -17,7 +18,13 @@ export function collectPanelDefects(panel) {
       const items = insp[`차${n}`]?.공정비고?.[box]?.항목 || [];
       items.forEach((it) => {
         if (!it.내용 && !it.사진) return; // 사진만 있는 불량도 집계 (불량현황과 같은 규칙)
-        out.push({ 차수: `${n}차`, 부품: box, 내용: it.내용 || '(사진 불량)', 완료: !!it.완료 });
+        out.push({
+          차수: `${n}차`,
+          부품: box,
+          내용: it.내용 || '(사진 불량)',
+          유형: it.유형 || '',
+          완료: !!it.완료,
+        });
       });
     });
   });
@@ -26,8 +33,13 @@ export function collectPanelDefects(panel) {
 
 // 불량 목록 → 대장·양식에서 그대로 읽히는 한 덩어리 텍스트
 function describe(defects) {
-  return defects.map((d) => `[${d.차수} ${d.부품}] ${d.내용}${d.완료 ? ' (조치완료)' : ''}`).join('\n');
+  return defects
+    .map((d) => `[${d.차수} ${d.부품}${d.유형 ? ` · ${d.유형}` : ''}] ${d.내용}${d.완료 ? ' (조치완료)' : ''}`)
+    .join('\n');
 }
+
+// 유형 칸은 0으로 시작해야 이전 집계가 남지 않는다(유형을 바꿨을 때 옛 값이 그대로 붙는 것 방지)
+const zeroTypes = () => Object.fromEntries(DEFECT_TYPES.map((t) => [t.key, 0]));
 
 // 판넬 → 부적합 실적의 "생산 유래 필드"만. 불량이 없으면 null.
 export function panelToNcrFacts(panel) {
@@ -44,5 +56,8 @@ export function panelToNcrFacts(panel) {
     defectQty: defects.length,
     openQty: open,
     defectDetail: describe(defects),
+    // 현장에서 고른 불량 유형을 그대로 유형별 건수로 집계
+    ...zeroTypes(),
+    ...countByType(defects),
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import { useAuth } from '../../contexts/useAuth';
@@ -8,7 +8,7 @@ import { AreaChart, Donut, Sparkline } from '../../components/quality/QualityCha
 import QualityAssetLedger from '../../components/quality/QualityAssetLedger';
 import QualityRecordLedger from '../../components/quality/QualityRecordLedger';
 import { subscribeAssets } from '../../services/qualityAssetService';
-import { subscribeAllRecords } from '../../services/qualityRecordService';
+import { backfillNcrFromPanels, subscribeAllRecords } from '../../services/qualityRecordService';
 import { assetStatusOf, ASSET_STATUS } from '../../domain/qualityForms';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
 import '../../styles/quality.css';
@@ -287,7 +287,7 @@ function TabBody({ tab }) {
 }
 
 export default function QualityPage() {
-  const { userProfile } = useAuth();
+  const { userProfile, isAdmin } = useAuth();
   // 보던 탭을 기억한다 — 양식 페이지에 다녀와도 그 탭으로 돌아오게
   const [tabKey, setTabKey] = useState(() => sessionStorage.getItem('qualityTab') || 'overview');
   const [assets, setAssets] = useState([]);
@@ -297,6 +297,13 @@ export default function QualityPage() {
 
   useEffect(() => subscribeAssets(setAssets), []);
   useEffect(() => subscribeAllRecords(setRecords), []);
+  // 생산현황을 거치지 않고 품질보증만 열어도 최신 불량이 부적합 실적에 올라오도록 (관리자 1회)
+  const backfilled = useRef(false);
+  useEffect(() => {
+    if (!isAdmin || backfilled.current) return;
+    backfilled.current = true;
+    backfillNcrFromPanels().catch((e) => console.error('[quality] 소급 연동 실패:', e));
+  }, [isAdmin]);
 
   // ── KPI — 전부 실데이터. 기록이 없으면 0 이 나온다.
   const kpi = useMemo(() => {

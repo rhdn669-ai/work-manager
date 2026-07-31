@@ -34,10 +34,16 @@ const NCR_SYNC_KEYS = ['검수', '회사', '프로젝트', '호기', '자재'];
 
 export async function updatePanel(id, patch) {
   await updateDoc(doc(db, 'productionPanels', id), { ...patch, updatedAt: serverTimestamp() });
-  if (!Object.keys(patch).some((k) => NCR_SYNC_KEYS.includes(k))) return;
+  if (!Object.keys(patch).some((k) => NCR_SYNC_KEYS.includes(k))) return 'noop';
   // 저장 경로가 여기 하나뿐이라, 판넬 전문을 다시 읽어 품질보증 부적합 실적과 맞춘다
-  const snap = await getDoc(doc(db, 'productionPanels', id));
-  if (snap.exists()) await syncPanelNcr({ id, ...snap.data() });
+  try {
+    const snap = await getDoc(doc(db, 'productionPanels', id));
+    return snap.exists() ? await syncPanelNcr({ id, ...snap.data() }) : 'noop';
+  } catch (err) {
+    // 판넬 저장은 이미 끝났다. 연동만 실패했음을 호출부가 구분할 수 있게 표시해 던진다.
+    err.ncrSync = true;
+    throw err;
+  }
 }
 
 // 불량 사진 업로드 → 다운로드 URL 반환 (Firestore엔 URL만 저장 — 문서 1MB 제한 보호)
