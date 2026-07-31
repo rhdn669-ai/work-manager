@@ -238,6 +238,8 @@ export default function QualityRecordLedger({ formKey, docNo }) {
             type="button"
             className="btn btn-sm btn-outline"
             disabled={checked.size === 0}
+            // 무엇을 출력할지 정해져야 하므로 선택 전에는 막되, 이유를 알 수 있게 안내한다
+            title={checked.size === 0 ? '출력할 행을 왼쪽 체크박스로 선택하세요' : `${checked.size}건 출력`}
             onClick={() => setPrinting(view.filter((r) => checked.has(r.id)))}
           >
             <Icon name="doc" className="btn-ic" />
@@ -291,6 +293,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                   <input
                     type="checkbox"
                     aria-label="전체 선택"
+                    title="전체 선택 — 출력하려면 먼저 선택하세요"
                     checked={view.length > 0 && checked.size === view.length}
                     onChange={(e) => setChecked(e.target.checked ? new Set(view.map((r) => r.id)) : new Set())}
                   />
