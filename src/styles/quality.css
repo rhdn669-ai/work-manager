@@ -586,7 +586,7 @@
   height: 0.9mm;
   border-top: 0.6mm solid var(--primary);
   border-bottom: 0.2mm solid var(--primary);
-  margin-bottom: 6mm;
+  margin: 3mm 0 6mm;
 }
 /* 라벨-값 2열 — 테두리 없음 */
 .q-paper-info {
@@ -826,20 +826,16 @@ textarea.q-cell {
   gap: 6mm;
   margin-bottom: 6mm;
 }
-/* 좌상단 — 로고 위, 문서번호 아래 (2026-07-31 대표님: 로고를 좌측 상단으로) */
-.q-paper-brand-l {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2.4mm;
-}
+/* 좌상단은 로고만 — 문서번호는 제목 아래 중앙으로 내렸다 (2026-07-31 대표님) */
 .q-paper-logo {
   height: 13mm;
   width: auto;
   display: block;
 }
-/* 문서번호 — 박스 없이 글자만. 자간을 넓혀 관리번호답게 보이게 한다 */
+/* 문서번호 — 제목 바로 아래 중앙. 제목과 한 덩어리로 읽히게 붙여 둔다 */
 .q-paper-docno {
+  margin-top: 1.5mm;
+  text-align: center;
   font-size: 3.2mm;
   font-weight: 700;
   letter-spacing: 0.5mm;

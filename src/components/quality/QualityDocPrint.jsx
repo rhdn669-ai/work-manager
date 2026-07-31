@@ -13,10 +13,7 @@ function DocShell({ docNo, title, children }) {
     <div className="q-paper">
       {/* 상단 — 좌: 로고+문서번호 / 우: 결재란. 제목은 그 아래 중앙 (2026-07-31 대표님) */}
       <div className="q-paper-head">
-        <div className="q-paper-brand-l">
-          <img className="q-paper-logo" src="/iopn-logo-doc.png" alt="IOPN" />
-          <span className="q-paper-docno">{docNo}</span>
-        </div>
+        <img className="q-paper-logo" src="/iopn-logo-doc.png" alt="IOPN" />
         <div className="q-approve">
           <div className="q-approve-side">결재</div>
           {['작성', '검토', '승인'].map((r) => (
@@ -28,6 +25,7 @@ function DocShell({ docNo, title, children }) {
         </div>
       </div>
       <h1 className="q-paper-title">{title}</h1>
+      <div className="q-paper-docno">{docNo}</div>
       <div className="q-paper-rule" />
       {children}
     </div>
