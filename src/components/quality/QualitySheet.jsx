@@ -2,7 +2,6 @@ import { useState } from 'react';
 import Modal from '../common/Modal';
 import Icon from '../common/Icon';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
-import IopnDocBrand from '../admin/IopnDocBrand';
 import { factorsOf } from '../../domain/changeFactors';
 
 // 양식 낱장 — 문서형 서식(성적서·신청서·교육일지)을 A4 종이 그대로 보여주고
@@ -70,11 +69,13 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
     <>
       <div className="q-print-area">
         <div className={`q-paper ${editing ? 'is-editing' : ''}`}>
-          {/* 상단 — 원본 엑셀과 같은 배치: 좌 로고 / 중앙 제목 / 우 결재란 */}
+          {/* 상단 — 좌: 로고+문서번호 / 우: 결재란. 제목은 그 아래 중앙 (2026-07-31 대표님) */}
           <div className="q-paper-head">
-            <span className="q-paper-docno">{docNo}</span>
+            <div className="q-paper-brand-l">
+              <img className="q-paper-logo" src="/iopn-logo-doc.png" alt="IOPN" />
+              <span className="q-paper-docno">{docNo}</span>
+            </div>
             <div className="q-approve">
-              {/* 좌측 '결재' 세로 라벨 — 국내 서식 표준 배치 */}
               <div className="q-approve-side">결재</div>
               {['작성', '검토', '승인'].map((r) => (
                 <div key={r} className="q-approve-col">
@@ -84,7 +85,8 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
               ))}
             </div>
           </div>
-          <IopnDocBrand title={def.title} titleClass="q-paper-title" />
+          <h1 className="q-paper-title">{def.title}</h1>
+          <div className="q-paper-rule" />
 
           {/* 기본정보 — 라벨과 칸이 붙어 있는 2열. 칸이 곧 입력칸 */}
           <div className="q-sheet-grid">

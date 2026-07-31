@@ -574,12 +574,18 @@
   padding: var(--space-3);
 }
 .q-paper-title {
-  margin: 8mm 0 2mm;
+  margin: 6mm 0 2mm;
   text-align: center;
   font-size: 8mm;
   font-weight: 800;
   color: var(--primary);
   letter-spacing: 2mm;
+}
+/* 제목 아래 굵은 밑줄 — 브랜드 밴드가 갖고 있던 구분선을 대신한다 */
+.q-paper-rule {
+  height: 0;
+  border-bottom: 0.6mm solid var(--primary);
+  margin-bottom: 6mm;
 }
 /* 라벨-값 2열 — 테두리 없음 */
 .q-paper-info {
@@ -819,11 +825,22 @@ textarea.q-cell {
   gap: 6mm;
   margin-bottom: 3mm;
 }
+/* 좌상단 — 로고 위, 문서번호 아래 (2026-07-31 대표님: 로고를 좌측 상단으로) */
+.q-paper-brand-l {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.5mm;
+}
+.q-paper-logo {
+  height: 9mm;
+  width: auto;
+  display: block;
+}
 .q-paper-docno {
   font-size: 2.8mm;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  padding-top: 1mm;
 }
 
 /* 상단 우측 결재란 — 원본 엑셀의 작성/검토/승인 3칸 */
@@ -851,10 +868,7 @@ textarea.q-cell {
   height: 14mm;
 }
 
-/* 공용 브랜드 밴드를 양식 제목 크기로 */
-.q-paper .iopn-brand-band {
-  margin-bottom: 5mm;
-}
+/* 양식 제목 — 좌상단 로고 아래 중앙 */
 .q-paper .q-paper-title {
   font-size: 8mm;
   font-weight: 800;

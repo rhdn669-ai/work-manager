@@ -1,5 +1,4 @@
 import Modal from '../common/Modal';
-import IopnDocBrand from '../admin/IopnDocBrand';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
 
 // A4 서식 출력 — 원본 엑셀을 복제하지 않고, 스티치로 통일한 3틀로 찍는다.
@@ -12,8 +11,12 @@ const VERDICT_CLS = { 합격: 'q-p-pass', 부적합: 'q-p-fail', 보류: 'q-p-ho
 function DocShell({ docNo, title, children }) {
   return (
     <div className="q-paper">
+      {/* 상단 — 좌: 로고+문서번호 / 우: 결재란. 제목은 그 아래 중앙 (2026-07-31 대표님) */}
       <div className="q-paper-head">
-        <span className="q-paper-docno">{docNo}</span>
+        <div className="q-paper-brand-l">
+          <img className="q-paper-logo" src="/iopn-logo-doc.png" alt="IOPN" />
+          <span className="q-paper-docno">{docNo}</span>
+        </div>
         <div className="q-approve">
           <div className="q-approve-side">결재</div>
           {['작성', '검토', '승인'].map((r) => (
@@ -24,7 +27,8 @@ function DocShell({ docNo, title, children }) {
           ))}
         </div>
       </div>
-      <IopnDocBrand title={title} titleClass="q-paper-title" />
+      <h1 className="q-paper-title">{title}</h1>
+      <div className="q-paper-rule" />
       {children}
     </div>
   );
