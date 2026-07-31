@@ -837,9 +837,17 @@ textarea.q-cell {
   width: auto;
   display: block;
 }
+/* 문서번호 — 서식을 식별하는 값이라 옅은 회색으로 흘리지 않고 또렷하게 둔다 */
 .q-paper-docno {
-  font-size: 2.8mm;
-  color: var(--text-muted);
+  display: inline-block;
+  padding: 0.8mm 2.2mm;
+  border: 0.25mm solid var(--border);
+  border-radius: 1mm;
+  background: var(--grey-50);
+  font-size: 3.4mm;
+  font-weight: 700;
+  letter-spacing: 0.15mm;
+  color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
 
