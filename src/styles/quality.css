@@ -985,3 +985,50 @@ textarea.q-cell {
   width: 36px;
   text-align: center;
 }
+
+/* 서술 블록(비고 등) — 제목칸과 입력칸이 한 덩어리로 이어지게.
+   textarea 가 inline 요소라 baseline 여백(약 5px)이 생겨 테두리가 끊겨 보였다. */
+.q-paper-block > .q-cell,
+.q-paper-block .q-block-body {
+  display: block;
+  vertical-align: top;
+  margin: 0;
+  border-top: 0; /* 제목칸 아래 선과 겹치지 않게 */
+}
+.q-paper-block .q-block-title {
+  margin-bottom: 0;
+}
+/* 블록 사이 간격은 블록 단위로만 */
+.q-paper-block + .q-paper-block {
+  margin-top: 5mm;
+}
+
+/* 스티치 재검토 반영 ①  결재란 좌측 '결재' 라벨 (국내 서식 표준) */
+.q-approve-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 9mm;
+  background: var(--grey-100);
+  border-right: 0.3mm solid var(--text);
+  font-size: 2.7mm;
+  font-weight: 700;
+  color: var(--text);
+  writing-mode: vertical-rl;
+  letter-spacing: 1mm;
+}
+
+/* ② 빈 표 — 한 줄로 납작하지 않게 넉넉한 영역에 중앙 정렬 */
+.q-paper-table td.q-empty,
+.q-sheet-table td[colspan] {
+  height: 26mm;
+  vertical-align: middle;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 2.9mm;
+}
+
+/* ③ 종합판정 — 위에 얇은 구분선을 두어 본문과 분리 */
+.q-paper-verdict {
+  margin-top: 6mm;
+}

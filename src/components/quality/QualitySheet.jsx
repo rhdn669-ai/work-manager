@@ -71,6 +71,8 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
           <div className="q-paper-head">
             <span className="q-paper-docno">{docNo}</span>
             <div className="q-approve">
+              {/* 좌측 '결재' 세로 라벨 — 국내 서식 표준 배치 */}
+              <div className="q-approve-side">결재</div>
               {['작성', '검토', '승인'].map((r) => (
                 <div key={r} className="q-approve-col">
                   <div className="q-approve-label">{r}</div>
