@@ -111,26 +111,34 @@ export function AreaChart({ labels, series, unit = '', height = 240 }) {
           ))}
       </defs>
       {(() => {
-        const main = series.find((s) => !s.dashed);
-        if (!main) return null;
+        // 마지막 값 말풍선 — 선마다 하나씩(비교 보기에서 두 발주사 값을 함께 읽어야 한다).
+        // 색은 그 선의 색을 그대로 쓰고, 두 개가 겹치면 세로로 밀어 둘 다 보이게 한다.
         const i = labels.length - 1;
-        const v = main.values[i];
-        const TW = 42;
         const TH = 20;
-        // 말풍선이 viewBox 밖으로 잘리지 않게 가둔다.
-        // 점이 최고점이면 위쪽 공간이 없으므로 점 아래로 내린다.
-        const above = y(v) - TH - 10;
-        const ty = above < 2 ? Math.min(H - padB - TH - 2, y(v) + 10) : above;
-        const tx = Math.max(2, Math.min(W - padR - TW, x(i) - TW - 4));
-        return (
-          <g transform={`translate(${tx},${ty})`}>
-            <rect className="q-tip" width={TW} height={TH} rx="6" />
-            <text x={TW / 2} y="14" className="q-tip-text" textAnchor="middle">
-              {v}
-              {unit}
-            </text>
-          </g>
-        );
+        const placed = [];
+        return series
+          .filter((s2) => !s2.dashed && s2.values[i] != null)
+          .map((s2) => {
+            const v = s2.values[i];
+            const text = `${v}${unit}`;
+            const TW = Math.max(38, text.length * 8 + 12);
+            // 점 위가 기본, 위쪽 공간이 없으면 아래로
+            const above = y(v) - TH - 10;
+            let ty = above < 2 ? Math.min(H - padB - TH - 2, y(v) + 10) : above;
+            // 이미 놓인 말풍선과 겹치면 비켜준다
+            while (placed.some((p2) => Math.abs(p2 - ty) < TH + 4)) ty += TH + 4;
+            if (ty > H - TH - 2) ty = H - TH - 2;
+            placed.push(ty);
+            const tx = Math.max(2, Math.min(W - padR - TW, x(i) - TW - 4));
+            return (
+              <g key={s2.key} transform={`translate(${tx},${ty})`}>
+                <rect width={TW} height={TH} rx="6" fill={s2.color} />
+                <text x={TW / 2} y="14" className="q-tip-text" textAnchor="middle">
+                  {text}
+                </text>
+              </g>
+            );
+          });
       })()}
     </svg>
   );

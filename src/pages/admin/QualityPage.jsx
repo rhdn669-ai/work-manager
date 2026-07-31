@@ -105,14 +105,18 @@ function Overview({ assets, records, now }) {
           values: trendByCompany[trendView] || [],
         },
       ];
-    // 비교 보기 — 두 발주사를 한 그래프에 겹쳐 본다(면은 채우지 않아 겹침이 읽힌다)
-    return COMPANIES.map((c, i) => ({
-      key: c,
-      name: c,
-      color: i === 0 ? 'var(--chart-1)' : 'var(--chart-2)',
-      fill: false,
-      values: trendByCompany[c] || [],
-    }));
+    // 비교 보기 — 전체와 각 발주사를 한 그래프에 겹쳐 본다.
+    // 전체선이 있어야 "이 업체가 전사 평균보다 높은가"를 바로 읽는다. 면은 채우지 않는다.
+    return [
+      { key: 'all', name: '전체', color: 'var(--accent)', fill: false, values: trendByCompany.all || [] },
+      ...COMPANIES.map((c, i) => ({
+        key: c,
+        name: c,
+        color: i === 0 ? 'var(--chart-1)' : 'var(--chart-2)',
+        fill: false,
+        values: trendByCompany[c] || [],
+      })),
+    ];
   }, [trendView, trendByCompany]);
   const hasTrend = Object.values(trendByCompany).some((arr) => arr.some((v) => v > 0));
 
@@ -193,7 +197,7 @@ function Overview({ assets, records, now }) {
               {[
                 { k: 'all', label: '전체' },
                 ...COMPANIES.map((c) => ({ k: c, label: c })),
-                { k: 'compare', label: '두 곳 비교' },
+                { k: 'compare', label: '전체·업체 비교' },
               ].map((o) => (
                 <button
                   key={o.k}

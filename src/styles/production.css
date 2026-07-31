@@ -1012,7 +1012,8 @@
 .defect-card-top .defect-type.is-empty {
   border-color: var(--danger);
   color: var(--danger);
-  background: var(--status-cancel-bg);
+  /* 배경은 흰색 유지 — 붉은 배경까지 깔면 입력칸 줄이 과하게 튄다 */
+  background: #fff;
 }
 
 /* 좁은 화면에선 유형·내용을 아래위로 — 태블릿 세로에서 내용칸이 찌그러지지 않게 */
