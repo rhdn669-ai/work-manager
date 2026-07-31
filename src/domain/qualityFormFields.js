@@ -8,9 +8,79 @@
 
 import { defectTypeFields } from './defectTypes';
 
+import { nextCalibrationDate } from './qualityForms';
+
 const 판정 = ['합격', '부적합', '보류'];
 
 export const FORM_FIELDS = {
+  // ── 자산관리 (계측기 QP-703A · 지그 QP-706A · 치공구/툴 QP-705A) ──────
+  // 원본 엑셀 3종의 컬럼을 그대로 옮겼다. 종류마다 컬럼이 달라 공통 + 종류별로 나눈다.
+  //  · 계측기: 교정(성적서·교정기관까지 관리)   · 지그: 등록만(교정주기 없음)
+  //  · 치공구·툴: 점검(신뢰성 점검, '교정'이 아니라 '점검'이 원본 용어)
+  ...(() => {
+    const 구분 = ['계측기', '게이지', '측정공구', '검사장비', '소모성', '기타'];
+    const 대상 = ['대상', '비대상'];
+    const common = (targetLabel) => [
+      { key: 'category', label: '구분', type: 'select', options: 구분, col: true },
+      { key: 'name', label: '명칭', type: 'text', required: true, col: true },
+      { key: 'target', label: targetLabel, type: 'select', options: 대상 },
+      { key: 'registerDate', label: '등록일', type: 'date' },
+      { key: 'location', label: '보관위치', type: 'text' },
+      { key: 'dept', label: '사용부서', type: 'text' },
+      { key: 'owner', label: '관리담당자', type: 'text' },
+      { key: 'note', label: '비고', type: 'textarea' },
+    ];
+    // 주기 관리(교정·점검) — 최근일 + 주기(개월) → 차기일 자동계산
+    const cycle = (cycleLabel, lastLabel, nextLabel) => [
+      { key: 'cycleMonths', label: cycleLabel, type: 'num' },
+      { key: 'lastDate', label: lastLabel, type: 'date', col: true },
+      { key: 'nextDate', label: nextLabel, type: 'date', calc: 'nextDate', col: true },
+    ];
+    const maker = [
+      { key: 'maker', label: '제조사', type: 'text', col: true },
+      { key: 'model', label: '모델·규격', type: 'text' },
+    ];
+    return {
+      'assets.gauge': {
+        title: '계측기 관리대장',
+        asset: true,
+        fields: [
+          ...common('교정대상'),
+          ...maker,
+          { key: 'certNo', label: '성적서 번호', type: 'text' },
+          ...cycle('교정주기(개월)', '최근 교정일', '차기 교정일'),
+          { key: 'agency', label: '교정기관', type: 'text' },
+        ],
+      },
+      'assets.jig': {
+        title: 'JIG 관리대장',
+        asset: true,
+        // 원본 706A 에는 주기·차기일 컬럼이 없다 — 없는 칸을 지어내지 않는다.
+        fields: common('교정대상'),
+      },
+      'assets.tool': {
+        title: '치공구 관리대장',
+        asset: true,
+        fields: [
+          ...common('점검대상'),
+          ...maker,
+          ...cycle('점검주기(개월)', '신뢰성 점검 확인일', '차기 점검 확인일'),
+          { key: 'inspectEquip', label: '점검 장비', type: 'text' },
+        ],
+      },
+      'assets.handtool': {
+        title: '툴 관리대장',
+        asset: true,
+        fields: [
+          ...common('점검대상'),
+          ...maker,
+          ...cycle('점검주기(개월)', '신뢰성 점검 확인일', '차기 점검 확인일'),
+          { key: 'inspectEquip', label: '점검 장비', type: 'text' },
+        ],
+      },
+    };
+  })(),
+
   // ── 수입검사 ───────────────────────────────────────────────
   'iqc.report': {
     paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
@@ -424,7 +494,9 @@ export function computeCalcFields(formKey, v) {
   for (const f of def.fields) {
     if (!f.calc) continue;
     const n = (k) => Number(out[k]) || 0;
-    if (f.calc === 'defectRate') {
+    if (f.calc === 'nextDate') {
+      out.nextDate = nextCalibrationDate(out.lastDate, out.cycleMonths);
+    } else if (f.calc === 'defectRate') {
       const insp = n('inspectedQty');
       out.defectRate = insp ? Number((n('defectQty') / insp).toFixed(4)) : 0;
     } else if (f.calc === 'riskScore') {

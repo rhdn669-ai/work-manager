@@ -86,11 +86,21 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
           {/* 기본정보 — 라벨과 칸이 붙어 있는 2열. 칸이 곧 입력칸 */}
           <div className="q-sheet-grid">
             <div className="q-sheet-row">
-              <span className="q-sheet-k">문서번호 *</span>
-              {/* 자동채번을 없앴으므로 사내 규칙대로 직접 입력받는다 */}
+              {/* 자동채번을 없앴으므로 사내 규칙대로 직접 입력받는다.
+                  자산은 '관리번호', 기록은 '문서번호' — 이름만 다르고 자리는 같다. */}
+              <span className="q-sheet-k">{def.asset ? '관리번호 *' : '문서번호 *'}</span>
               <Cell
-                f={{ key: 'recordNo', type: 'text', label: '문서번호', placeholder: '사내 문서번호 규칙에 따라 입력' }}
-                value={draft.recordNo}
+                f={
+                  def.asset
+                    ? { key: 'assetNo', type: 'text', label: '관리번호', placeholder: '사내 관리번호 규칙에 따라 입력' }
+                    : {
+                        key: 'recordNo',
+                        type: 'text',
+                        label: '문서번호',
+                        placeholder: '사내 문서번호 규칙에 따라 입력',
+                      }
+                }
+                value={def.asset ? draft.assetNo : draft.recordNo}
                 onChange={set}
                 readOnly={ro}
               />

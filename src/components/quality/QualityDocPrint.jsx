@@ -55,7 +55,13 @@ function OneDoc({ def, docNo, record }) {
 
   return (
     <DocShell docNo={docNo} title={def.title}>
-      <InfoGrid pairs={[['문서번호', record.recordNo], ...infoKeys.map((k) => [label(k), record[k]])]} />
+      {/* 번호 칸 이름이 서식 성격에 따라 다르다 — 자산은 관리번호, 기록은 문서번호 */}
+      <InfoGrid
+        pairs={[
+          def.asset ? ['관리번호', record.assetNo] : ['문서번호', record.recordNo],
+          ...infoKeys.map((k) => [label(k), record[k]]),
+        ]}
+      />
 
       {def.lines && (
         <table className="q-paper-table">
