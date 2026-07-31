@@ -1,4 +1,5 @@
 import Modal from '../common/Modal';
+import IopnDocBrand from '../admin/IopnDocBrand';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
 
 // A4 서식 출력 — 원본 엑셀을 복제하지 않고, 스티치로 통일한 3틀로 찍는다.
@@ -7,29 +8,24 @@ import { FORM_FIELDS } from '../../domain/qualityFormFields';
 
 const VERDICT_CLS = { 합격: 'q-p-pass', 부적합: 'q-p-fail', 보류: 'q-p-hold' };
 
+// 출력물 상단은 화면 양식(QualitySheet)과 같은 구성 — 문서번호·결재란·회사 로고 밴드
 function DocShell({ docNo, title, children }) {
   return (
     <div className="q-paper">
-      <div className="q-paper-top">{docNo}</div>
-      <div className="q-paper-brand">
-        <b>IOPN</b>
-        <small>주식회사 아이오피엔</small>
-      </div>
-      <h1 className="q-paper-title">{title}</h1>
-      <div className="q-paper-rule" />
-      {children}
-      <div className="q-paper-sign">
-        {['작성자', '품질팀장'].map((r) => (
-          <div key={r} className="q-sign-box">
-            <div className="q-sign-label">{r}</div>
-            <div className="q-sign-space" />
-            <div className="q-sign-foot">
-              <span>성명</span>
-              <span>일자</span>
+      <div className="q-paper-head">
+        <span className="q-paper-docno">{docNo}</span>
+        <div className="q-approve">
+          <div className="q-approve-side">결재</div>
+          {['작성', '검토', '승인'].map((r) => (
+            <div key={r} className="q-approve-col">
+              <div className="q-approve-label">{r}</div>
+              <div className="q-approve-space" />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+      <IopnDocBrand title={title} titleClass="q-paper-title" />
+      {children}
     </div>
   );
 }

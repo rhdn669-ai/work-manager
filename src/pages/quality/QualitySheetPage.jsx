@@ -47,6 +47,12 @@ export default function QualitySheetPage() {
       toast('문서번호를 입력하세요 (사내 문서번호 규칙에 따라)', 'error');
       return;
     }
+    // 모달 편집기를 없애면서 필수 항목 검사도 이 한 곳으로 모았다
+    const missing = def.fields.filter((f) => f.required && !String(draft[f.key] ?? '').trim());
+    if (missing.length) {
+      toast(`${missing[0].label}을(를) 입력하세요`, 'error');
+      return;
+    }
     const { id: rid, ...rest } = computeCalcFields(formKey, draft);
     try {
       if (rid) await updateRecord(rid, rest);
