@@ -22,6 +22,7 @@ import {
   saveFactories,
   subscribePurchaseConfig,
   addPurchaseNote,
+  updatePurchaseNote,
   removePurchaseNote,
 } from '../../services/purchaseService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
@@ -284,6 +285,7 @@ export default function PurchaseListPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
+  const [noteEditId, setNoteEditId] = useState(null); // null 이면 새로 추가, 아니면 그 건 수정
 
   useEffect(() => {
     loadData();
@@ -304,20 +306,28 @@ export default function PurchaseListPage() {
     return () => unsub();
   }, []);
 
-  async function addNote() {
+  async function saveNote() {
     if (noteSaving || !noteDraft.trim()) return;
     setNoteSaving(true);
+    const editing = noteEditId;
     try {
-      await addPurchaseNote(noteDraft, userProfile?.name || '');
+      if (editing) await updatePurchaseNote(editing, noteDraft, userProfile?.name || '');
+      else await addPurchaseNote(noteDraft, userProfile?.name || '');
       setNoteDraft('');
+      setNoteEditId(null);
       setNoteModalOpen(false);
-      toast('참고 사항을 추가했습니다.', 'success', 0);
+      toast(editing ? '참고 사항을 수정했습니다.' : '참고 사항을 추가했습니다.', 'success', 0);
     } catch {
-      toast('추가 중 오류가 발생했습니다.', 'error', 0);
+      toast(editing ? '수정 중 오류가 발생했습니다.' : '추가 중 오류가 발생했습니다.', 'error', 0);
     } finally {
       setNoteSaving(false);
     }
   }
+  const openNoteModal = (note = null) => {
+    setNoteEditId(note?.id || null);
+    setNoteDraft(note?.text || '');
+    setNoteModalOpen(true);
+  };
   async function deleteNote(id) {
     if (!(await confirm('이 참고 사항을 삭제할까요?'))) return;
     try {
@@ -642,14 +652,7 @@ export default function PurchaseListPage() {
             <Icon name="alert" className="btn-ic" />
             참고 사항
           </span>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            onClick={() => {
-              setNoteDraft('');
-              setNoteModalOpen(true);
-            }}
-          >
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => openNoteModal()}>
             <Icon name="plus" className="btn-ic" />
             추가
           </button>
@@ -668,6 +671,17 @@ export default function PurchaseListPage() {
                     </p>
                   )}
                 </div>
+                {n.id !== 'legacy' && (
+                  <button
+                    type="button"
+                    className="pur-note-edit"
+                    onClick={() => openNoteModal(n)}
+                    aria-label="수정"
+                    title="수정"
+                  >
+                    <Icon name="edit" />
+                  </button>
+                )}
                 <button
                   type="button"
                   className="pur-note-del"
@@ -1081,7 +1095,11 @@ export default function PurchaseListPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={noteModalOpen} onClose={() => setNoteModalOpen(false)} title="참고 사항 추가">
+      <Modal
+        isOpen={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        title={noteEditId ? '참고 사항 수정' : '참고 사항 추가'}
+      >
         <div className="form-group">
           <label>내용 (한 건씩 등록 · 이 페이지를 보는 관리자에게 공유)</label>
           <textarea
@@ -1090,7 +1108,7 @@ export default function PurchaseListPage() {
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && noteDraft.trim()) addNote();
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && noteDraft.trim()) saveNote();
             }}
             placeholder="예: 8월 발주건에 메티스부스바 WSG-00-405 2개 추가 구매"
             autoFocus
@@ -1103,10 +1121,10 @@ export default function PurchaseListPage() {
           <button
             type="button"
             className="btn btn-primary"
-            onClick={addNote}
+            onClick={saveNote}
             disabled={noteSaving || !noteDraft.trim()}
           >
-            {noteSaving ? '추가 중…' : '추가'}
+            {noteSaving ? '저장 중…' : noteEditId ? '수정' : '추가'}
           </button>
         </div>
       </Modal>

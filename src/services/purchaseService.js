@@ -81,6 +81,18 @@ export async function addPurchaseNote(text, byName) {
   await setDoc(configDoc, { notes: [...cur, note] }, { merge: true });
 }
 
+// 내용만 고친다 — 누가 언제 고쳤는지 남도록 작성자·시각도 갱신
+export async function updatePurchaseNote(id, text, byName) {
+  const t = (text || '').trim();
+  if (!t) return;
+  const snap = await getDoc(configDoc);
+  const cur = snap.exists() && Array.isArray(snap.data().notes) ? snap.data().notes : [];
+  const next = cur.map((n) =>
+    n.id === id ? { ...n, text: t, byName: byName || n.byName || '', at: new Date().toISOString() } : n,
+  );
+  await setDoc(configDoc, { notes: next }, { merge: true });
+}
+
 export async function removePurchaseNote(id) {
   const snap = await getDoc(configDoc);
   const cur = snap.exists() && Array.isArray(snap.data().notes) ? snap.data().notes : [];

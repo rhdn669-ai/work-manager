@@ -7105,6 +7105,24 @@ tr.is-newly-added > td {
   background: var(--btn-danger-bg, #fde7e7);
   color: var(--btn-danger-fg, #c53030);
 }
+/* 수정 — 삭제 버튼과 같은 규격, 색만 다르게 (작업 버튼은 항목 우측 끝 정렬) */
+.pur-note-edit {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  color: var(--text-muted, #8b95a1);
+  border-radius: var(--radius-md, 13px);
+  cursor: pointer;
+}
+.pur-note-edit:hover {
+  background: var(--bg-hover, #f2f4f6);
+  color: var(--primary);
+}
 .pur-note-del svg {
   width: 16px;
   height: 16px;
