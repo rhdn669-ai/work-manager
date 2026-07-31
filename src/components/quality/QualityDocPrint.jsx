@@ -48,13 +48,8 @@ function InfoGrid({ pairs }) {
   );
 }
 
-export default function QualityDocPrint({ formKey, docNo, record, onClose }) {
-  const def = FORM_FIELDS[formKey];
-  if (!def || !record) return null;
-
+function OneDoc({ def, docNo, record }) {
   const label = (k) => def.fields.find((f) => f.key === k)?.label || k;
-  const val = (k) => record[k];
-  // 본문 라벨-값에 넣을 필드 — 판정·계산·긴 서술은 따로 다룬다
   const infoKeys = def.fields
     .filter((f) => f.type !== 'textarea' && !f.calc && !['passFailResult', 'overallResult'].includes(f.key))
     .slice(0, 8)
@@ -62,69 +57,84 @@ export default function QualityDocPrint({ formKey, docNo, record, onClose }) {
   const narratives = def.fields.filter((f) => f.type === 'textarea' && record[f.key]);
   const verdict = record.passFailResult || record.overallResult || record.finalResult || record.finalJudgement;
 
+  return (
+    <DocShell docNo={docNo} title={def.title}>
+      <InfoGrid pairs={[['문서번호', record.recordNo], ...infoKeys.map((k) => [label(k), record[k]])]} />
+
+      {def.lines && (
+        <table className="q-paper-table">
+          <thead>
+            <tr>
+              <th>번호</th>
+              {def.lines.columns.map((c) => (
+                <th key={c.key}>{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(record.lines || []).map((r, i) => (
+              <tr key={i}>
+                <td>{i + 1}</td>
+                {def.lines.columns.map((c) => (
+                  <td key={c.key}>
+                    {c.key === 'result' && r[c.key] ? (
+                      <span className={`q-p-badge ${VERDICT_CLS[r[c.key]] || ''}`}>{r[c.key]}</span>
+                    ) : (
+                      r[c.key] || '—'
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {!(record.lines || []).length && (
+              <tr>
+                <td colSpan={def.lines.columns.length + 1}>등록된 항목 없음</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {narratives.map((f) => (
+        <div key={f.key} className="q-paper-block">
+          <div className="q-block-title">{f.label}</div>
+          <div className="q-block-body">{record[f.key]}</div>
+        </div>
+      ))}
+
+      {(verdict || record.totalScore != null) && (
+        <div className="q-paper-verdict">
+          <span>종합판정</span>
+          <div>
+            {record.totalScore != null && record.grade && (
+              <span className="q-p-total">
+                총점 {record.totalScore} · 등급 {record.grade}
+              </span>
+            )}
+            {verdict && <span className={`q-p-badge lg ${VERDICT_CLS[verdict] || ''}`}>{verdict}</span>}
+          </div>
+        </div>
+      )}
+    </DocShell>
+  );
+}
+
+// record: 배열(체크 선택분) 또는 단건 — 여러 건이면 종이를 이어 붙여 한 번에 인쇄한다.
+export default function QualityDocPrint({ formKey, docNo, record, onClose }) {
+  const def = FORM_FIELDS[formKey];
+  const list = Array.isArray(record) ? record : record ? [record] : [];
+  if (!def || !list.length) return null;
+
   const print = () => window.print();
 
   return (
-    <Modal isOpen onClose={onClose} title={`${def.title} 출력`} size="lg">
+    <Modal isOpen onClose={onClose} title={`${def.title} 출력 (${list.length}건)`} size="lg">
       <div className="q-print-area">
-        <DocShell docNo={docNo} title={def.title}>
-          <InfoGrid pairs={[['문서번호', record.recordNo], ...infoKeys.map((k) => [label(k), val(k)])]} />
-
-          {def.lines && (
-            <table className="q-paper-table">
-              <thead>
-                <tr>
-                  <th>번호</th>
-                  {def.lines.columns.map((c) => (
-                    <th key={c.key}>{c.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(record.lines || []).map((r, i) => (
-                  <tr key={i}>
-                    <td>{i + 1}</td>
-                    {def.lines.columns.map((c) => (
-                      <td key={c.key}>
-                        {c.key === 'result' && r[c.key] ? (
-                          <span className={`q-p-badge ${VERDICT_CLS[r[c.key]] || ''}`}>{r[c.key]}</span>
-                        ) : (
-                          r[c.key] || '—'
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                {!(record.lines || []).length && (
-                  <tr>
-                    <td colSpan={def.lines.columns.length + 1}>등록된 항목 없음</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-
-          {narratives.map((f) => (
-            <div key={f.key} className="q-paper-block">
-              <div className="q-block-title">{f.label}</div>
-              <div className="q-block-body">{record[f.key]}</div>
-            </div>
-          ))}
-
-          {(verdict || record.totalScore != null) && (
-            <div className="q-paper-verdict">
-              <span>종합판정</span>
-              <div>
-                {record.totalScore != null && record.grade && (
-                  <span className="q-p-total">
-                    총점 {record.totalScore} · 등급 {record.grade}
-                  </span>
-                )}
-                {verdict && <span className={`q-p-badge lg ${VERDICT_CLS[verdict] || ''}`}>{verdict}</span>}
-              </div>
-            </div>
-          )}
-        </DocShell>
+        {list.map((r) => (
+          <div key={r.id} className="q-print-page">
+            <OneDoc def={def} docNo={docNo} record={r} />
+          </div>
+        ))}
       </div>
 
       <div className="modal-actions">

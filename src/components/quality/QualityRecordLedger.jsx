@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../common/Icon';
 import Modal from '../common/Modal';
 import TrashModal from '../common/TrashModal';
@@ -6,13 +7,7 @@ import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { VERDICT } from '../../domain/qualityForms';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
-import {
-  subscribeRecords,
-  addRecord,
-  updateRecord,
-  trashRecord,
-  nextRecordNo,
-} from '../../services/qualityRecordService';
+import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
 import QualityDocPrint from './QualityDocPrint';
 import QualitySheet from './QualitySheet';
 
@@ -138,6 +133,8 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const [editing, setEditing] = useState(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [printing, setPrinting] = useState(null);
+  const [checked, setChecked] = useState(() => new Set());
+  const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [verdictFilter, setVerdictFilter] = useState('all');
 
@@ -177,7 +174,8 @@ export default function QualityRecordLedger({ formKey, docNo }) {
 
   const hasVerdict = def.fields.some((f) => VERDICT_KEYS.includes(f.key));
 
-  const openNew = () => setEditing({ recordNo: nextRecordNo(rows, def.numberPrefix) });
+  // 문서번호는 사내에 정해진 규칙이 있으므로 임의 채번하지 않고 입력받는다
+  const openNew = () => setEditing({ recordNo: '' });
 
   // 문서형(원본이 한 장짜리 서식)은 양식 낱장에서 저장한다
   const saveSheet = async (draft) => {
@@ -197,6 +195,10 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const setVal = (k, v) => setEditing((e) => computeCalcFields(formKey, { ...e, [k]: v }));
 
   const save = async () => {
+    if (!String(editing.recordNo ?? '').trim()) {
+      toast('문서번호를 입력하세요 (사내 문서번호 규칙에 따라)', 'error');
+      return;
+    }
     const missing = def.fields.filter((f) => f.required && !String(editing[f.key] ?? '').trim());
     if (missing.length) {
       toast(`${missing[0].label}을(를) 입력하세요`, 'error');
@@ -232,11 +234,24 @@ export default function QualityRecordLedger({ formKey, docNo }) {
           <span className="q-doc-badge">{docNo}</span>
         </h3>
         <div className="q-ledger-actions">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            disabled={checked.size === 0}
+            onClick={() => setPrinting(view.filter((r) => checked.has(r.id)))}
+          >
+            <Icon name="doc" className="btn-ic" />
+            출력{checked.size > 0 ? ` (${checked.size})` : ''}
+          </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={openNew}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => (def.paper ? navigate(`/quality/sheet/${formKey}/new`) : openNew())}
+          >
             <Icon name="plus" className="btn-ic" />
             신규
           </button>
@@ -272,6 +287,14 @@ export default function QualityRecordLedger({ formKey, docNo }) {
           <table className="table cards-sm">
             <thead>
               <tr>
+                <th className="q-check-col">
+                  <input
+                    type="checkbox"
+                    aria-label="전체 선택"
+                    checked={view.length > 0 && checked.size === view.length}
+                    onChange={(e) => setChecked(e.target.checked ? new Set(view.map((r) => r.id)) : new Set())}
+                  />
+                </th>
                 <th>번호</th>
                 {cols.map((c) => (
                   <th key={c.key}>{c.label}</th>
@@ -284,7 +307,24 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               {view.map((r) => {
                 const v = verdictOf(r);
                 return (
-                  <tr key={r.id}>
+                  <tr
+                    key={r.id}
+                    className={def.paper ? 'table-clickable-row' : ''}
+                    onClick={def.paper ? () => navigate(`/quality/sheet/${formKey}/${r.id}`) : undefined}
+                  >
+                    <td className="q-check-col" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label={`${r.recordNo} 선택`}
+                        checked={checked.has(r.id)}
+                        onChange={(e) => {
+                          const next = new Set(checked);
+                          if (e.target.checked) next.add(r.id);
+                          else next.delete(r.id);
+                          setChecked(next);
+                        }}
+                      />
+                    </td>
                     <td className="q-num">{r.recordNo}</td>
                     {cols.map((c) => (
                       <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>
@@ -292,10 +332,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                       </td>
                     ))}
                     {hasVerdict && <td>{v ? <span className={`badge ${v.cls}`}>{v.label}</span> : '—'}</td>}
-                    <td className="col-action">
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => setPrinting(r)}>
-                        {def.paper ? '양식' : '출력'}
-                      </button>
+                    <td className="col-action" onClick={(e) => e.stopPropagation()}>
                       {!def.paper && (
                         <button type="button" className="btn btn-sm btn-outline" onClick={() => setEditing(r)}>
                           수정
@@ -311,7 +348,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               })}
               {view.length === 0 && (
                 <tr>
-                  <td colSpan={cols.length + (hasVerdict ? 3 : 2)}>
+                  <td colSpan={cols.length + (hasVerdict ? 4 : 3)}>
                     <div className="q-todo">
                       <Icon name="doc" style={{ width: 34, height: 34 }} />
                       <b>등록된 항목이 없습니다</b>
@@ -339,10 +376,11 @@ export default function QualityRecordLedger({ formKey, docNo }) {
         {editing && (
           <div className="form-body">
             <div className="form-group">
-              <label>번호</label>
+              <label>문서번호 *</label>
               <input
                 value={editing.recordNo || ''}
                 onChange={(e) => setVal('recordNo', e.target.value)}
+                placeholder="사내 문서번호 규칙에 따라 입력"
                 disabled={!isAdmin && !!editing.id}
               />
             </div>

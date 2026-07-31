@@ -33,6 +33,7 @@ const TRASH_TYPE_LABEL = {
   personalEvents: { label: '개인일정', cls: 'received' },
   productionPanels: { label: '생산판넬', cls: 'ordered' },
   qualityAssets: { label: '품질자산', cls: 'received' },
+  qualityRecords: { label: '품질기록', cls: 'replied' },
 };
 
 function trashTypeInfo(t) {

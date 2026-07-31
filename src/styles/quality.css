@@ -859,3 +859,129 @@ textarea.q-cell {
     appearance: none;
   }
 }
+
+/* ════════ 양식 낱장 — 엑셀 원본 느낌으로 다듬기 ════════
+   원본 서식은 셀 격자가 또렷한 표다. 선을 뚜렷하게 하고,
+   상단은 [문서번호 | 결재란] → [로고 | 제목] 순으로 원본 배치를 따른다. */
+.q-paper-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6mm;
+  margin-bottom: 3mm;
+}
+.q-paper-docno {
+  font-size: 2.8mm;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1mm;
+}
+
+/* 상단 우측 결재란 — 원본 엑셀의 작성/검토/승인 3칸 */
+.q-approve {
+  display: flex;
+  border: 0.4mm solid var(--text);
+}
+.q-approve-col {
+  width: 20mm;
+  border-right: 0.3mm solid var(--text);
+}
+.q-approve-col:last-child {
+  border-right: 0;
+}
+.q-approve-label {
+  padding: 1mm;
+  text-align: center;
+  font-size: 2.7mm;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--grey-100);
+  border-bottom: 0.3mm solid var(--text);
+}
+.q-approve-space {
+  height: 14mm;
+}
+
+/* 공용 브랜드 밴드를 양식 제목 크기로 */
+.q-paper .iopn-brand-band {
+  margin-bottom: 5mm;
+}
+.q-paper .q-paper-title {
+  font-size: 8mm;
+  font-weight: 800;
+  letter-spacing: 2mm;
+  color: var(--primary);
+}
+
+/* 격자 — 엑셀처럼 선을 또렷하게 */
+.q-sheet-grid {
+  border-top: 0.35mm solid var(--text);
+  border-left: 0.35mm solid var(--text);
+}
+.q-sheet-row {
+  border-right: 0.35mm solid var(--text);
+  border-bottom: 0.35mm solid var(--text);
+}
+.q-sheet-k {
+  background: var(--grey-100);
+  border-right: 0.35mm solid var(--text);
+  color: var(--text);
+  font-weight: 700;
+}
+.q-paper-table {
+  border: 0.35mm solid var(--text);
+}
+.q-paper-table th {
+  background: var(--grey-100);
+  border: 0.3mm solid var(--text);
+  text-align: center;
+}
+.q-paper-table td {
+  border: 0.3mm solid var(--border);
+  text-align: center;
+}
+.q-paper-block .q-block-title {
+  padding: 1.5mm 2.5mm;
+  background: var(--grey-100);
+  border: 0.35mm solid var(--text);
+  border-bottom: 0;
+  color: var(--text);
+}
+.q-paper-block > .q-cell,
+.q-paper-block .q-sheet-grid {
+  border: 0.35mm solid var(--text);
+}
+.q-paper-block > .q-cell {
+  display: block;
+  min-height: 12mm;
+}
+.q-paper-verdict {
+  border: 0.4mm solid var(--text);
+}
+
+/* 페이지 모드 액션 바 */
+.q-sheet-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* 여러 건 한 번에 인쇄 — 종이마다 페이지 나눔 */
+.q-print-page + .q-print-page {
+  margin-top: var(--space-4);
+}
+@media print {
+  .q-print-page {
+    page-break-after: always;
+  }
+  .q-print-page:last-child {
+    page-break-after: auto;
+  }
+}
+/* 표 선택 체크박스 열 */
+.q-check-col {
+  width: 36px;
+  text-align: center;
+}

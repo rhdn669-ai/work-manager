@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Modal from '../common/Modal';
 import Icon from '../common/Icon';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
+import IopnDocBrand from '../admin/IopnDocBrand';
 
 // 양식 낱장 — 문서형 서식(성적서·신청서·교육일지)을 A4 종이 그대로 보여주고
 // 칸에 바로 입력한다. 조회·편집·인쇄가 한 화면. 인쇄하면 입력칸 테두리가 사라져
@@ -40,7 +41,7 @@ function Cell({ f, value, onChange, readOnly }) {
   );
 }
 
-export default function QualitySheet({ formKey, docNo, record, onSave, onClose, canEdit = true }) {
+export default function QualitySheet({ formKey, docNo, record, onSave, onClose, canEdit = true, page = false }) {
   const def = FORM_FIELDS[formKey];
   const [draft, setDraft] = useState(record);
   const [editing, setEditing] = useState(!record?.id); // 신규는 바로 편집 상태
@@ -62,17 +63,23 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
 
   const groups = [...new Set(grouped.map((f) => f.group))];
 
-  return (
-    <Modal isOpen onClose={onClose} title={`${def.title}`} size="lg">
+  const body = (
+    <>
       <div className="q-print-area">
         <div className={`q-paper ${editing ? 'is-editing' : ''}`}>
-          <div className="q-paper-top">{docNo}</div>
-          <div className="q-paper-brand">
-            <b>IOPN</b>
-            <small>주식회사 아이오피엔</small>
+          {/* 상단 — 원본 엑셀과 같은 배치: 좌 로고 / 중앙 제목 / 우 결재란 */}
+          <div className="q-paper-head">
+            <span className="q-paper-docno">{docNo}</span>
+            <div className="q-approve">
+              {['작성', '검토', '승인'].map((r) => (
+                <div key={r} className="q-approve-col">
+                  <div className="q-approve-label">{r}</div>
+                  <div className="q-approve-space" />
+                </div>
+              ))}
+            </div>
           </div>
-          <h1 className="q-paper-title">{def.title}</h1>
-          <div className="q-paper-rule" />
+          <IopnDocBrand title={def.title} titleClass="q-paper-title" />
 
           {/* 기본정보 — 라벨과 칸이 붙어 있는 2열. 칸이 곧 입력칸 */}
           <div className="q-sheet-grid">
@@ -207,25 +214,12 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
               </div>
             </div>
           )}
-
-          <div className="q-paper-sign">
-            {['작성자', '품질팀장'].map((r) => (
-              <div key={r} className="q-sign-box">
-                <div className="q-sign-label">{r}</div>
-                <div className="q-sign-space" />
-                <div className="q-sign-foot">
-                  <span>성명</span>
-                  <span>일자</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
-      <div className="modal-actions">
+      <div className={page ? 'q-sheet-actions' : 'modal-actions'}>
         <button type="button" className="btn btn-outline" onClick={onClose}>
-          닫기
+          {page ? '목록으로' : '닫기'}
         </button>
         <button type="button" className="btn btn-outline" onClick={() => window.print()}>
           인쇄 · PDF
@@ -241,6 +235,13 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
             </button>
           ))}
       </div>
+    </>
+  );
+
+  if (page) return body;
+  return (
+    <Modal isOpen onClose={onClose} title={def.title} size="lg">
+      {body}
     </Modal>
   );
 }

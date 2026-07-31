@@ -17,7 +17,7 @@ const TRASH_TABS = [
   { key: 'attendance', label: '근태·연차', types: ['overtimeRecords', 'leaves'] },
   { key: 'library', label: '자료실', types: ['libraryFiles', 'libraryFolders'] },
   { key: 'production', label: '생산현황', types: ['productionPanels'] },
-  { key: 'quality', label: '품질보증', types: ['qualityAssets'] },
+  { key: 'quality', label: '품질보증', types: ['qualityAssets', 'qualityRecords'] },
   { key: 'org', label: '직원·부서', types: ['users', 'departments'] },
   { key: 'outsource', label: '외주', types: ['vendors', 'freelancers'] },
   { key: 'schedule', label: '업무·일정', types: ['tasks', 'personalEvents'] },

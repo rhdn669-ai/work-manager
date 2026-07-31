@@ -39,14 +39,3 @@ export async function trashAsset(asset, deletedByName = '') {
     deletedByName,
   );
 }
-
-// 다음 관리번호 채번 — 계측기 CAL / 지그 JIG / 치공구 TOL / 툴 TUL. 관리자는 화면에서 수정 가능.
-export function nextAssetNo(assets, assetType) {
-  const prefix = { gauge: 'CAL', jig: 'JIG', tool: 'TOL', handtool: 'TUL' }[assetType] || 'AST';
-  const used = assets
-    .filter((a) => a.assetType === assetType)
-    .map((a) => Number(String(a.assetNo || '').split('-')[1]))
-    .filter((n) => Number.isFinite(n));
-  const next = used.length ? Math.max(...used) + 1 : 1;
-  return `${prefix}-${String(next).padStart(3, '0')}`;
-}

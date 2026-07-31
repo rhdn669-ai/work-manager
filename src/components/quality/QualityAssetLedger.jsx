@@ -5,7 +5,7 @@ import TrashModal from '../common/TrashModal';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { ASSET_STATUS, assetStatusOf, nextCalibrationDate } from '../../domain/qualityForms';
-import { subscribeAssets, addAsset, updateAsset, trashAsset, nextAssetNo } from '../../services/qualityAssetService';
+import { subscribeAssets, addAsset, updateAsset, trashAsset } from '../../services/qualityAssetService';
 
 // 자산 대장 (계측기·지그·치공구) — 15종 서식이 공유할 대장 골격의 첫 구현.
 // assetType 만 바꿔 세 소탭이 같은 컴포넌트를 쓴다.
@@ -61,9 +61,14 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
 
   const total = counts.normal + counts.due + counts.over;
 
-  const openNew = () => setEditing({ ...EMPTY, assetNo: nextAssetNo(all, assetType) });
+  // 관리번호는 사내에 정해진 규칙이 있으므로 임의 채번하지 않고 입력받는다
+  const openNew = () => setEditing({ ...EMPTY });
 
   const save = async () => {
+    if (!String(editing.assetNo ?? '').trim()) {
+      toast('관리번호를 입력하세요 (사내 관리번호 규칙에 따라)', 'error');
+      return;
+    }
     if (!editing.name.trim()) {
       toast('명칭을 입력하세요', 'error');
       return;
@@ -221,8 +226,9 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
         {editing && (
           <div className="form-body">
             <div className="form-group">
-              <label>관리번호</label>
+              <label>관리번호 *</label>
               <input
+                placeholder="사내 관리번호 규칙에 따라 입력"
                 value={editing.assetNo}
                 onChange={(e) => setEditing({ ...editing, assetNo: e.target.value })}
                 disabled={!isAdmin && !!editing.id}

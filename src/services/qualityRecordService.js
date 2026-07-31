@@ -37,18 +37,6 @@ export async function trashRecord(record, title, deletedByName = '') {
   return trashGeneric('qualityRecords', record.id, { title, summary: record.recordNo || '' }, deletedByName);
 }
 
-// 채번 — PREFIX-연도-4자리. 관리자는 화면에서 수정 가능.
-export function nextRecordNo(rows, prefix, year = new Date().getFullYear()) {
-  const head = `${prefix}-${year}-`;
-  const used = rows
-    .map((r) => String(r.recordNo || ''))
-    .filter((s) => s.startsWith(head))
-    .map((s) => Number(s.slice(head.length)))
-    .filter((n) => Number.isFinite(n));
-  const next = used.length ? Math.max(...used) + 1 : 1;
-  return `${head}${String(next).padStart(4, '0')}`;
-}
-
 // 전 서식 기록 구독 — 개요 대시보드 집계용
 export function subscribeAllRecords(cb) {
   return onSnapshot(
