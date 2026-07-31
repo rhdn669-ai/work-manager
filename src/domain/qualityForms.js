@@ -56,7 +56,12 @@ export const QUALITY_TABS = [
   {
     key: 'vendor',
     label: '협력사평가',
-    subTabs: [{ key: 'eval', label: '평가시트', docNo: 'QP-107A' }],
+    subTabs: [
+      // 원본 107A(등록대장) · 107B(평가계획) · 107C/D(평가시트) 문서번호 그대로
+      { key: 'registry', label: '등록대장', docNo: 'QP-107A' },
+      { key: 'plan', label: '평가계획', docNo: 'QP-107B' },
+      { key: 'eval', label: '평가시트', docNo: 'QP-107C' },
+    ],
   },
   {
     key: 'master',

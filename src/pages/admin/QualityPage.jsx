@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { canProduction } from '../../utils/workspace';
 import { QUALITY_TABS, VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
+import { defectRateTargetOf } from '../../domain/qualityGoalSeed';
 import { AreaChart, Donut, Sparkline } from '../../components/quality/QualityCharts';
 import QualityAssetLedger from '../../components/quality/QualityAssetLedger';
 import QualityRecordLedger from '../../components/quality/QualityRecordLedger';
@@ -119,18 +120,35 @@ function Overview({ assets, records, now }) {
     ];
   }, [trendView, trendByCompany]);
   const hasTrend = Object.values(trendByCompany).some((arr) => arr.some((v) => v > 0));
+  // 목표선 — 기준정보>품질목표에 등록된 '출하검사 불량률' 목표를 쓰고, 없으면 원본 시트 값(7%)
+  const target = useMemo(() => defectRateTargetOf(records), [records]);
+  const seriesWithTarget = useMemo(
+    () => [
+      ...trendSeries,
+      {
+        key: 'target',
+        name: `목표 ${target.value}%${target.fromGoal ? '' : ' (임시)'}`,
+        color: 'var(--text-muted)',
+        dashed: true,
+        values: months.map(() => target.value),
+      },
+    ],
+    [trendSeries, target, months],
+  );
 
   // ── 불량 유형 분포
-  const slices = useMemo(
-    () =>
-      DEFECT_TYPES.map((t) => ({
-        label: t.label,
-        color: t.color,
-        value: records.reduce((a, r) => a + (Number(r[t.key]) || 0), 0),
-      })).filter((x) => x.value > 0),
-    [records],
-  );
+  const [sliceView, setSliceView] = useState('all');
+  const slices = useMemo(() => {
+    const src = sliceView === 'all' ? records : records.filter((r) => r.customerName === sliceView);
+    return DEFECT_TYPES.map((t) => ({
+      label: t.label,
+      color: t.color,
+      value: src.reduce((a, r) => a + (Number(r[t.key]) || 0), 0),
+    })).filter((x) => x.value > 0);
+  }, [records, sliceView]);
   const sliceTotal = slices.reduce((a, x) => a + x.value, 0);
+  // 발주사별로 유형 분포가 다른지 보려면 전환이 필요하다(추이 차트와 같은 방식)
+  const hasAnySlice = useMemo(() => DEFECT_TYPES.some((t) => records.some((r) => Number(r[t.key]) > 0)), [records]);
 
   // ── 최근 등록 (전 서식 통합, 최신 8건)
   const recent = useMemo(
@@ -183,7 +201,7 @@ function Overview({ assets, records, now }) {
             <h3>월별 불량률 추이</h3>
             {hasTrend && (
               <div className="q-chart-legend">
-                {trendSeries.map((s2) => (
+                {seriesWithTarget.map((s2) => (
                   <span key={s2.key}>
                     <i style={{ background: s2.color }} />
                     {s2.name}
@@ -211,7 +229,7 @@ function Overview({ assets, records, now }) {
             </div>
           )}
           {hasTrend ? (
-            <AreaChart labels={months.map((m) => `${Number(m.slice(5))}월`)} series={trendSeries} unit="%" />
+            <AreaChart labels={months.map((m) => `${Number(m.slice(5))}월`)} series={seriesWithTarget} unit="%" />
           ) : (
             <EmptyBox text="출하검사·부적합 실적이 쌓이면 월별 추이가 표시됩니다." />
           )}
@@ -221,10 +239,30 @@ function Overview({ assets, records, now }) {
           <div className="q-section-head">
             <h3>불량 유형 분포</h3>
           </div>
+          {hasAnySlice && (
+            <div className="q-trend-switch">
+              {[{ k: 'all', label: '전체' }, ...COMPANIES.map((c) => ({ k: c, label: c }))].map((o) => (
+                <button
+                  key={o.k}
+                  type="button"
+                  className={`q-subtab ${sliceView === o.k ? 'active' : ''}`}
+                  onClick={() => setSliceView(o.k)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
           {sliceTotal > 0 ? (
             <Donut slices={slices} total={sliceTotal} />
           ) : (
-            <EmptyBox text="출하검사 실적에 불량 유형을 입력하면 분포가 표시됩니다." />
+            <EmptyBox
+              text={
+                hasAnySlice
+                  ? '이 발주사에는 유형이 집계된 불량이 없습니다.'
+                  : '생산현황에서 불량 유형을 고르면 분포가 표시됩니다.'
+              }
+            />
           )}
         </div>
       </div>

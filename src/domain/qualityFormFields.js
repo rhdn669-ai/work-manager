@@ -9,8 +9,10 @@
 import { defectTypeFields } from './defectTypes';
 
 import { nextCalibrationDate } from './qualityForms';
+import { FACTOR_CATEGORIES, suggestImpact } from './changeFactors';
 
 const 판정 = ['합격', '부적합', '보류'];
+const MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
 
 export const FORM_FIELDS = {
   // ── 자산관리 (계측기 QP-703A · 지그 QP-706A · 치공구/툴 QP-705A) ──────
@@ -271,21 +273,16 @@ export const FORM_FIELDS = {
       { key: 'changeDate', label: '변경일자', type: 'date', required: true, col: true },
       { key: 'projectEquipment', label: '프로젝트·설비', type: 'text', col: true },
       { key: 'customerName', label: '고객사', type: 'text' },
+      // 구분값을 원본 「5M1E 변경요인」 마스터와 일치시켰다 — 골라야 기본 영향도가 제안된다
       {
         key: 'changeCategory',
         label: '5M1E 구분',
         type: 'select',
-        options: [
-          'Man(사람)',
-          'Machine(설비)',
-          'Material(자재)',
-          'Method(방법)',
-          'Measurement(측정)',
-          'Environment(환경)',
-        ],
+        options: FACTOR_CATEGORIES,
         required: true,
         col: true,
       },
+      { key: 'changeFactor', label: '세부 변경요인', type: 'select', optionsOf: 'factor', col: true },
       { key: 'changeItem', label: '변경항목', type: 'text', required: true, col: true },
       { key: 'beforeContent', label: '변경 전', type: 'textarea' },
       { key: 'afterContent', label: '변경 후', type: 'textarea' },
@@ -352,6 +349,17 @@ export const FORM_FIELDS = {
       { key: 'trainingResult', label: '교육결과', type: 'textarea' },
       { key: 'notes', label: '특이사항', type: 'textarea' },
     ],
+    // 원본 IP-603D 의 참석자 서명표(7행 × 6열, 2인씩 3열)를 세로 목록으로 옮겼다.
+    // 종이 서명 대신 '확인' 체크로 남긴다 — 전자문서라 자필 서명을 받을 수 없다.
+    lines: {
+      title: '참석자',
+      addLabel: '참석자 추가',
+      columns: [
+        { key: 'dept', label: '소속', type: 'text', w: '32%' },
+        { key: 'name', label: '성명', type: 'text', w: '32%' },
+        { key: 'signed', label: '확인', type: 'select', options: ['확인', '미확인'], w: '28%' },
+      ],
+    },
   },
   'training.grade': {
     paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
@@ -405,6 +413,50 @@ export const FORM_FIELDS = {
   },
 
   // ── 협력사평가 ─────────────────────────────────────────────
+  // 원본 107A — 협력사 마스터. 평가시트가 참조할 업체 목록이 된다.
+  'vendor.registry': {
+    title: '협력사 등록대장',
+    numberPrefix: 'VEN',
+    fields: [
+      { key: 'vendorType', label: '업체구분', type: 'select', options: ['신규', '정기', '재평가', '기타'], col: true },
+      { key: 'supplierName', label: '공급자명', type: 'text', required: true, col: true },
+      { key: 'contactName', label: '대표·담당자', type: 'text' },
+      { key: 'phone', label: '연락처', type: 'text' },
+      { key: 'items', label: '거래품목', type: 'text', col: true },
+      { key: 'bizNo', label: '사업자등록번호', type: 'text' },
+      { key: 'address', label: '소재지', type: 'text' },
+      { key: 'registerDate', label: '등록일', type: 'date' },
+      { key: 'evalType', label: '평가구분', type: 'select', options: ['신규', '정기', '재평가', '기타'] },
+      { key: 'evalDate', label: '평가일', type: 'date', col: true },
+      { key: 'evalScore', label: '평가점수', type: 'num' },
+      { key: 'evalGrade', label: '등급', type: 'text' },
+      {
+        key: 'approveStatus',
+        label: '승인여부',
+        type: 'select',
+        options: ['등록', '보류', '승인', '부적합', '거래중지'],
+        col: true,
+      },
+      { key: 'remarks', label: '비고', type: 'textarea' },
+    ],
+  },
+  // 원본 107B — 연간 심사 일정. 월별 계획/실적을 ○ 로 표시하던 12칸을 그대로 옮겼다.
+  'vendor.plan': {
+    title: '협력사 평가계획',
+    numberPrefix: 'VPL',
+    fields: [
+      { key: 'planYear', label: '평가연도', type: 'num', required: true, col: true },
+      { key: 'supplierName', label: '업체명', type: 'text', required: true, col: true },
+      { key: 'items', label: '주거래 품목', type: 'text', col: true },
+      { key: 'auditType', label: '심사구분', type: 'select', options: ['신규', '정기', '재평가', '기타'], col: true },
+      { key: 'auditor', label: '심사원', type: 'text' },
+      { key: 'auditCycle', label: '심사주기', type: 'select', options: ['1회/년', '2회/년', '4회/년', '수시'] },
+      { key: 'planMonth', label: '계획 월', type: 'select', options: MONTHS, required: true, col: true },
+      { key: 'doneMonth', label: '실적 월', type: 'select', options: MONTHS, col: true },
+      { key: 'planStatus', label: '진행상태', type: 'select', options: ['계획', '완료', '지연', '취소'], col: true },
+      { key: 'remarks', label: '비고', type: 'textarea' },
+    ],
+  },
   'vendor.eval': {
     title: '협력사 평가시트',
     numberPrefix: 'VND',
@@ -491,6 +543,12 @@ export function computeCalcFields(formKey, v) {
   if (!def) return v;
   const out = { ...v };
   const lines = Array.isArray(out.lines) ? out.lines : [];
+  // 5M1E 세부 변경요인을 고르면 원본 마스터의 기본 영향도를 제안한다.
+  // 이미 값이 있으면 건드리지 않는다 — 사람이 판단해 고친 값을 덮어쓰지 않기 위해서다.
+  if (formKey === 'change.risk' && out.changeFactor && !out.impactScore) {
+    const s2 = suggestImpact(out.changeCategory, out.changeFactor);
+    if (s2) out.impactScore = String(s2);
+  }
   for (const f of def.fields) {
     if (!f.calc) continue;
     const n = (k) => Number(out[k]) || 0;

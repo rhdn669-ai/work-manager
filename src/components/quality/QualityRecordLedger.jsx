@@ -7,7 +7,8 @@ import { useAuth } from '../../contexts/useAuth';
 import { VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
-import { subscribeRecords, trashRecord } from '../../services/qualityRecordService';
+import { subscribeRecords, addRecord, trashRecord } from '../../services/qualityRecordService';
+import { QUALITY_GOAL_SEED } from '../../domain/qualityGoalSeed';
 import { subscribeTrashByType } from '../../services/trashService';
 import QualityDocPrint from './QualityDocPrint';
 
@@ -77,6 +78,33 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   // 등록·수정은 전부 양식 낱장 페이지에서 한다(모달 편집 폐지 — 출력물과 같은 서식에 바로 입력)
   const openSheet = (id) => navigate(`/quality/sheet/${formKey}/${id}`);
 
+  // 품질목표는 매년 같은 항목을 다시 세운다 — 빈 대장일 때 기본안을 한 번에 넣어 시작점을 준다.
+  // 임의로 잡은 값이 섞여 있으므로(qualityGoalSeed 주석 참고) 확인 후 고쳐 쓰도록 안내한다.
+  const seedGoals = async () => {
+    const year = new Date().getFullYear();
+    if (
+      !(await confirm(
+        `${year}년 품질목표 기본안 ${QUALITY_GOAL_SEED.length}건을 넣을까요?
+` + '출하검사 불량률만 원본 값이고 나머지 4건은 임의로 잡은 값입니다 — 넣은 뒤 사내 기준에 맞게 고쳐 주세요.',
+      ))
+    )
+      return;
+    try {
+      for (const g of QUALITY_GOAL_SEED) {
+        const { source, ...rest } = g;
+        await addRecord('master.goal', {
+          ...rest,
+          recordNo: '',
+          managementYear: year,
+          remarks: `[${source}] ${rest.remarks}`,
+        });
+      }
+      toast(`기본안 ${QUALITY_GOAL_SEED.length}건을 넣었습니다. 목표값을 확인해 주세요.`, 'success', 0);
+    } catch {
+      toast('기본안 등록 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
+
   const remove = async (r) => {
     if (!(await confirm(`${r.recordNo}을(를) 휴지통으로 옮길까요?`))) return;
     try {
@@ -110,6 +138,12 @@ export default function QualityRecordLedger({ formKey, docNo }) {
             <Icon name="trash" className="btn-ic" />
             휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
           </button>
+          {formKey === 'master.goal' && rows.length === 0 && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={seedGoals}>
+              <Icon name="doc" className="btn-ic" />
+              기본안 넣기
+            </button>
+          )}
           <button type="button" className="btn btn-primary btn-sm" onClick={() => openSheet('new')}>
             <Icon name="plus" className="btn-ic" />
             신규

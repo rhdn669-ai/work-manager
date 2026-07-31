@@ -3,6 +3,7 @@ import Modal from '../common/Modal';
 import Icon from '../common/Icon';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
 import IopnDocBrand from '../admin/IopnDocBrand';
+import { factorsOf } from '../../domain/changeFactors';
 
 // 양식 낱장 — 문서형 서식(성적서·신청서·교육일지)을 A4 종이 그대로 보여주고
 // 칸에 바로 입력한다. 조회·편집·인쇄가 한 화면. 인쇄하면 입력칸 테두리가 사라져
@@ -13,14 +14,16 @@ import IopnDocBrand from '../admin/IopnDocBrand';
 const VERDICT_CLS = { 합격: 'q-p-pass', 부적합: 'q-p-fail', 보류: 'q-p-hold' };
 const VERDICT_KEYS = ['passFailResult', 'overallResult', 'finalResult', 'finalJudgement'];
 
-function Cell({ f, value, onChange, readOnly }) {
+function Cell({ f, value, onChange, readOnly, options }) {
   const cls = `q-cell ${f.calc ? 'is-calc' : ''}`;
   if (readOnly || f.calc) return <span className={`${cls} is-static`}>{value || '—'}</span>;
   if (f.type === 'select') {
+    // optionsOf 가 붙은 칸은 다른 칸의 값에 따라 목록이 달라진다(5M1E 구분 → 세부 변경요인)
+    const opts = options || f.options || [];
     return (
       <select className={cls} value={value ?? ''} onChange={(e) => onChange(f.key, e.target.value)}>
         <option value="">선택</option>
-        {f.options.map((o) => (
+        {opts.map((o) => (
           <option key={o} value={o}>
             {o}
           </option>
@@ -108,7 +111,13 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
             {gridFields.map((f) => (
               <div key={f.key} className="q-sheet-row">
                 <span className="q-sheet-k">{f.label}</span>
-                <Cell f={f} value={draft[f.key]} onChange={set} readOnly={ro} />
+                <Cell
+                  f={f}
+                  value={draft[f.key]}
+                  onChange={set}
+                  readOnly={ro}
+                  options={f.optionsOf === 'factor' ? factorsOf(draft.changeCategory) : undefined}
+                />
               </div>
             ))}
           </div>
