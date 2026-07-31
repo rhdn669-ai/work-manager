@@ -86,8 +86,14 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
           {/* 기본정보 — 라벨과 칸이 붙어 있는 2열. 칸이 곧 입력칸 */}
           <div className="q-sheet-grid">
             <div className="q-sheet-row">
-              <span className="q-sheet-k">문서번호</span>
-              <span className="q-cell is-static">{draft.recordNo}</span>
+              <span className="q-sheet-k">문서번호 *</span>
+              {/* 자동채번을 없앴으므로 사내 규칙대로 직접 입력받는다 */}
+              <Cell
+                f={{ key: 'recordNo', type: 'text', label: '문서번호', placeholder: '사내 문서번호 규칙에 따라 입력' }}
+                value={draft.recordNo}
+                onChange={set}
+                readOnly={ro}
+              />
             </div>
             {gridFields.map((f) => (
               <div key={f.key} className="q-sheet-row">
