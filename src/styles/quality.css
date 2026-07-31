@@ -766,3 +766,96 @@
     margin: 12mm;
   }
 }
+
+/* ════════ 양식 낱장 — 칸이 곧 입력칸 ════════
+   문서형 4종(성적서·교육일지·자격재평가·5M1E신청서) 전용.
+   화면에선 옅은 입력칸, 인쇄하면 테두리가 사라져 그냥 서류가 된다. */
+.q-sheet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 6mm;
+  border-top: 0.3mm solid var(--border);
+  border-left: 0.3mm solid var(--border);
+}
+.q-sheet-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 9mm;
+  border-right: 0.3mm solid var(--border);
+  border-bottom: 0.3mm solid var(--border);
+}
+.q-sheet-row.is-wide {
+  grid-column: 1 / -1;
+}
+.q-sheet-k {
+  flex: 0 0 32mm;
+  display: flex;
+  align-items: center;
+  padding: 1.5mm 2.5mm;
+  background: var(--grey-50);
+  border-right: 0.3mm solid var(--border);
+  font-size: 2.9mm;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+/* 입력칸 — 종이 위에서 튀지 않게 투명, 포커스에만 강조 */
+.q-cell {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 1.5mm 2.5mm;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 3.1mm;
+  font-weight: 600;
+  color: var(--primary);
+  box-sizing: border-box;
+}
+.q-cell.is-static {
+  display: flex;
+  align-items: center;
+}
+.q-cell.is-calc {
+  color: var(--text-light);
+  background: var(--grey-50);
+  font-variant-numeric: tabular-nums;
+}
+textarea.q-cell {
+  resize: vertical;
+  line-height: 1.5;
+}
+.q-paper.is-editing .q-cell:not(.is-static) {
+  background: var(--primary-softer);
+  border-radius: 1mm;
+}
+.q-cell:focus {
+  outline: 0.5mm solid var(--accent);
+  outline-offset: -0.5mm;
+  background: #fff;
+}
+
+/* 라인 표 안의 칸도 동일 규격 */
+.q-sheet-table td {
+  padding: 0;
+}
+.q-sheet-table .q-cell {
+  font-size: 2.9mm;
+}
+
+@media print {
+  /* 인쇄물에는 입력칸 흔적을 남기지 않는다 */
+  .q-paper.is-editing .q-cell:not(.is-static),
+  .q-cell {
+    background: transparent !important;
+    outline: 0 !important;
+  }
+  .q-noprint {
+    display: none !important;
+  }
+  select.q-cell {
+    appearance: none;
+  }
+}

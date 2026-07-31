@@ -11,6 +11,7 @@ const 판정 = ['합격', '부적합', '보류'];
 export const FORM_FIELDS = {
   // ── 수입검사 ───────────────────────────────────────────────
   'iqc.report': {
+    paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
     title: '수입검사 성적서',
     numberPrefix: 'IQC',
     fields: [
@@ -145,6 +146,7 @@ export const FORM_FIELDS = {
 
   // ── 변경관리 ───────────────────────────────────────────────
   'change.request': {
+    paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
     title: '5M1E 변경 신청서',
     numberPrefix: 'CHG',
     fields: [
@@ -268,6 +270,7 @@ export const FORM_FIELDS = {
 
   // ── 교육·자격 ──────────────────────────────────────────────
   'training.log': {
+    paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
     title: '교육일지',
     numberPrefix: 'EDU',
     fields: [
@@ -284,6 +287,7 @@ export const FORM_FIELDS = {
     ],
   },
   'training.grade': {
+    paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
     title: '자격등급 재평가 신청서',
     numberPrefix: 'QLF',
     fields: [

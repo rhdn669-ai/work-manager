@@ -14,6 +14,7 @@ import {
   nextRecordNo,
 } from '../../services/qualityRecordService';
 import QualityDocPrint from './QualityDocPrint';
+import QualitySheet from './QualitySheet';
 
 // 양식 엔진 — 서식 정의(FORM_FIELDS)만 바꿔 10종 대장이 이 컴포넌트 하나를 공유한다.
 // 화면 골격은 스티치 「대장 목록 공통 골격」을 따른다:
@@ -178,6 +179,21 @@ export default function QualityRecordLedger({ formKey, docNo }) {
 
   const openNew = () => setEditing({ recordNo: nextRecordNo(rows, def.numberPrefix) });
 
+  // 문서형(원본이 한 장짜리 서식)은 양식 낱장에서 저장한다
+  const saveSheet = async (draft) => {
+    const { id, ...rest } = computeCalcFields(formKey, draft);
+    setEditing(null);
+    setPrinting(null);
+    try {
+      if (id) await updateRecord(id, rest);
+      else await addRecord(formKey, rest);
+      toast(id ? '수정했습니다.' : '등록했습니다.', 'success', 0);
+    } catch (err) {
+      console.error('[qualityRecords] 저장 실패:', err);
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
+
   const setVal = (k, v) => setEditing((e) => computeCalcFields(formKey, { ...e, [k]: v }));
 
   const save = async () => {
@@ -278,11 +294,13 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                     {hasVerdict && <td>{v ? <span className={`badge ${v.cls}`}>{v.label}</span> : '—'}</td>}
                     <td className="col-action">
                       <button type="button" className="btn btn-sm btn-outline" onClick={() => setPrinting(r)}>
-                        출력
+                        {def.paper ? '양식' : '출력'}
                       </button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => setEditing(r)}>
-                        수정
-                      </button>
+                      {!def.paper && (
+                        <button type="button" className="btn btn-sm btn-outline" onClick={() => setEditing(r)}>
+                          수정
+                        </button>
+                      )}
                       <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(r)}>
                         <Icon name="trash" className="btn-ic" />
                         삭제
@@ -313,7 +331,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
       </div>
 
       <Modal
-        isOpen={!!editing}
+        isOpen={!def.paper && !!editing}
         onClose={() => setEditing(null)}
         title={editing?.id ? `${def.title} 수정` : `${def.title} 등록`}
         size="lg"
@@ -357,8 +375,29 @@ export default function QualityRecordLedger({ formKey, docNo }) {
         </div>
       </Modal>
 
-      {printing && (
-        <QualityDocPrint formKey={formKey} docNo={docNo} record={printing} onClose={() => setPrinting(null)} />
+      {/* 문서형은 양식 낱장(조회·편집·인쇄 한 화면), 대장형은 읽기 전용 출력 */}
+      {printing &&
+        (def.paper ? (
+          <QualitySheet
+            formKey={formKey}
+            docNo={docNo}
+            record={printing}
+            onSave={saveSheet}
+            onClose={() => setPrinting(null)}
+          />
+        ) : (
+          <QualityDocPrint formKey={formKey} docNo={docNo} record={printing} onClose={() => setPrinting(null)} />
+        ))}
+
+      {/* 문서형 신규·수정은 일반 모달 대신 양식 낱장으로 */}
+      {def.paper && editing && (
+        <QualitySheet
+          formKey={formKey}
+          docNo={docNo}
+          record={editing}
+          onSave={saveSheet}
+          onClose={() => setEditing(null)}
+        />
       )}
 
       <TrashModal
