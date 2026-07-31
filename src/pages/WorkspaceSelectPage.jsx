@@ -39,7 +39,7 @@ export default function WorkspaceSelectPage() {
               <Icon name="grid" />
             </span>
             <b>생산 · 품질</b>
-            <small>생산현황 · 품질 이력</small>
+            <small>생산현황 · 품질보증</small>
           </button>
         </div>
       </div>

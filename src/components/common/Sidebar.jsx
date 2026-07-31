@@ -76,7 +76,7 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive
 function buildProductionItems() {
   return [
     { key: 'production', to: '/production', label: '생산현황', icon: 'grid', show: true, end: false },
-    { key: 'quality', to: '/quality', label: '품질', icon: 'doc', show: true, end: false },
+    { key: 'quality', to: '/quality', label: '품질보증', icon: 'doc', show: true, end: false },
   ];
 }
 

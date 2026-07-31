@@ -346,3 +346,172 @@
   font-size: var(--font-sm);
   line-height: 1.6;
 }
+
+/* ── 대장 헤더 (서식명 + 문서번호 배지 + 우측 액션) ── */
+.q-ledger-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--space-3);
+}
+.q-ledger-head h3 {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--text);
+}
+.q-ledger-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+}
+
+/* ── 요약 스트립 (정상·임박·초과 + 비율 바 + 검색) ── */
+.q-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.q-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--btn-h-sm);
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-light);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.q-summary-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.q-summary-chip b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.q-summary-chip.active {
+  border-color: var(--primary);
+  background: var(--navy-soft);
+  color: var(--primary);
+}
+.q-chip-normal i {
+  background: var(--success);
+}
+.q-chip-due i {
+  background: var(--warning);
+}
+.q-chip-over i {
+  background: var(--danger);
+}
+
+.q-summary-bar {
+  display: flex;
+  flex: 0 1 180px; /* 남는 공간을 다 먹지 않도록 상한을 둔다 */
+  height: 8px;
+  min-width: 100px;
+  margin-right: auto; /* 검색창은 우측 끝으로 밀어낸다 */
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+.q-bar-normal {
+  background: var(--success);
+}
+.q-bar-due {
+  background: var(--warning);
+}
+.q-bar-over {
+  background: var(--danger);
+}
+
+.q-search {
+  flex: 0 1 240px;
+  min-height: var(--btn-h-sm);
+}
+
+/* ── 표 ── */
+.q-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.q-dim {
+  color: var(--text-light);
+}
+.q-row-due td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+.q-row-over td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+/* 잔여일 게이지 */
+.q-remain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.q-gauge {
+  display: block;
+  width: 54px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.q-gauge i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+.q-gauge-normal i {
+  background: var(--success);
+}
+.q-gauge-due i {
+  background: var(--warning);
+}
+.q-gauge-over i {
+  background: var(--danger);
+}
+.q-remain b {
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.q-table-foot {
+  padding: 10px var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--font-sm);
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 차기 교정일 자동계산 미리보기 */
+.q-next-preview {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--navy-soft);
+  font-size: var(--font-sm);
+  color: var(--primary);
+}
+.q-next-preview b {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.q-next-preview small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+}

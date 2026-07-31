@@ -71,7 +71,16 @@ export const ASSET_STATUS = {
   over: { label: '초과', cls: 'badge-danger' },
 };
 
-// 차기교정일 = 최근교정일 + 교정주기(월). 잔여일 기준 상태 판정(임박 30일)
+// 차기교정일 = 최근교정일 + 교정주기(월)
+export function nextCalibrationDate(lastDate, cycleMonths) {
+  if (!lastDate || !cycleMonths) return '';
+  const d = new Date(lastDate);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setMonth(d.getMonth() + Number(cycleMonths));
+  return d.toISOString().slice(0, 10);
+}
+
+// 잔여일 기준 상태 판정 (임박 30일)
 export function assetStatusOf(nextDate, today = new Date()) {
   if (!nextDate) return { key: 'normal', days: null };
   const next = new Date(nextDate);
