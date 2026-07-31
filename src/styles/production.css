@@ -44,17 +44,9 @@
 }
 .search-box input {
   width: 100%;
-  height: var(--btn-h-md);
-  padding: 0 12px 0 36px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  color: var(--text);
-}
-.search-box input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--ring-accent);
+  /* 외형(높이·테두리·라운드·포커스)은 design-system.css 검색 표준에 위임.
+     여기서는 좌측 아이콘 자리만 확보한다. */
+  padding-left: 36px;
 }
 .pr-chip {
   height: var(--btn-h-md);

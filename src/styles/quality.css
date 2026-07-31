@@ -434,9 +434,9 @@
   background: var(--danger);
 }
 
+/* 외형은 design-system.css 검색 표준을 따르고, 여기선 레이아웃만 정한다 */
 .q-search {
   flex: 0 1 240px;
-  min-height: var(--btn-h-sm);
 }
 
 /* ── 표 ── */

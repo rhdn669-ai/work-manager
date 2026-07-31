@@ -1694,7 +1694,9 @@ body {
    design-system.css는 마지막 로드라 기존 개별 스타일을 덮어쓴다. */
 .purchase-filter-search,
 .vehicle-log-search,
-.lib-search-inline input {
+.lib-search-inline input,
+.search-box input,
+.q-search {
   height: var(--btn-h-md);
   padding: 0 14px;
   border: 1px solid var(--border);
@@ -1709,7 +1711,9 @@ body {
 }
 .purchase-filter-search:focus,
 .vehicle-log-search:focus,
-.lib-search-inline input:focus {
+.lib-search-inline input:focus,
+.search-box input:focus,
+.q-search:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: var(--ring-primary);

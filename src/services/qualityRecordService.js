@@ -48,3 +48,12 @@ export function nextRecordNo(rows, prefix, year = new Date().getFullYear()) {
   const next = used.length ? Math.max(...used) + 1 : 1;
   return `${head}${String(next).padStart(4, '0')}`;
 }
+
+// 전 서식 기록 구독 — 개요 대시보드 집계용
+export function subscribeAllRecords(cb) {
+  return onSnapshot(
+    recordsRef,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => console.error('[qualityRecords] 전체 구독 실패:', err),
+  );
+}
