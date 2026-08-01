@@ -562,7 +562,8 @@
   width: 210mm;
   min-height: 240mm;
   margin: 0 auto;
-  padding: 16mm 15mm 14mm;
+  /* 원본 엑셀 인쇄여백 실측값(상15 좌11 우9 하16mm) — 웹처럼 넉넉히 두지 않는다 */
+  padding: 15mm 9mm 16mm 11mm;
   background: #fff;
   color: var(--text);
   box-sizing: border-box;
@@ -573,20 +574,19 @@
   background: var(--grey-100);
   padding: var(--space-3);
 }
+/* 제목 — 원본은 검정 굵은 글씨(20pt)에 글자 사이를 벌려 쓴다. 색은 쓰지 않는다 */
 .q-paper-title {
-  margin: 0 0 3mm;
+  margin: 0 0 2mm;
   text-align: center;
-  font-size: 8mm;
-  font-weight: 800;
-  color: var(--primary);
-  letter-spacing: 2mm;
+  font-size: 7mm;
+  font-weight: 700;
+  color: #000;
+  letter-spacing: 1.6mm;
 }
-/* 제목 아래 이중선 — 국내 공문서 서식의 격식을 따른다(굵은선 + 얇은선) */
+/* 제목 아래 선 — 원본에 없다. 밑줄 대신 여백으로만 끊는다 */
 .q-paper-rule {
-  height: 0.9mm;
-  border-top: 0.6mm solid var(--primary);
-  border-bottom: 0.2mm solid var(--primary);
-  margin: 3mm 0 6mm;
+  height: 0;
+  margin-bottom: 5mm;
 }
 /* 라벨-값 2열 — 테두리 없음 */
 .q-paper-info {
@@ -618,33 +618,29 @@
 .q-paper-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 6mm;
+  margin-bottom: 5mm;
 }
 .q-paper-table th {
-  background: var(--grey-100);
-  font-size: 2.9mm;
+  font-size: 2.7mm;
   font-weight: 700;
-  color: var(--text);
-  padding: 2mm;
-  text-align: left;
-  border-bottom: 0.4mm solid var(--border);
+  padding: 1.2mm 2mm;
 }
 .q-paper-table td {
-  font-size: 3mm;
-  padding: 2mm;
-  border-bottom: 0.2mm solid var(--border);
+  font-size: 2.7mm;
+  padding: 1.2mm 2mm;
 }
 
 .q-paper-block {
   margin-bottom: 5mm;
 }
+/* 섹션 머리 — 엑셀에서 구간을 나누는 병합셀처럼 테두리 안에 넣는다 */
 .q-block-title {
-  font-size: 2.9mm;
+  padding: 1.2mm 2mm;
+  border: 0.35mm solid #000;
+  border-bottom: 0;
+  font-size: 2.7mm;
   font-weight: 700;
-  color: var(--primary);
-  border-bottom: 0.2mm solid var(--border);
-  padding-bottom: 1mm;
-  margin-bottom: 1.5mm;
+  color: #000;
 }
 .q-block-body {
   font-size: 3mm;
@@ -657,10 +653,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 4mm;
-  padding: 3mm 4mm;
-  border: 0.3mm solid var(--border);
-  border-radius: 1.5mm;
-  font-size: 3.4mm;
+  padding: 2.5mm 3mm;
+  border: 0.35mm solid #000;
+  border-radius: 0;
+  font-size: 3mm;
   font-weight: 700;
 }
 .q-p-total {
@@ -669,28 +665,35 @@
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
 }
+/* 판정 — 웹의 알약 배지 대신 각진 테두리. 엑셀 셀에 판정을 쓴 모양 */
 .q-p-badge {
   display: inline-block;
-  padding: 1mm 3mm;
-  border-radius: 999px;
-  font-size: 2.8mm;
+  min-width: 14mm;
+  padding: 0.8mm 2mm;
+  border: 0.3mm solid #000;
+  border-radius: 0;
+  font-size: 2.7mm;
   font-weight: 700;
+  text-align: center;
 }
 .q-p-badge.lg {
   font-size: 3.6mm;
   padding: 1.5mm 5mm;
 }
+/* 판정 — 색 배경(웹 배지)을 쓰지 않는다. 엑셀 조건부서식처럼 글자색만 구분하고,
+   부적합만 빨간 글씨로 눈에 띄게 한다(실무 엑셀에서 흔한 방식). */
 .q-p-pass {
-  background: #e8f5ec;
-  color: var(--success);
+  background: transparent;
+  color: #000;
 }
 .q-p-fail {
-  background: var(--danger-tint);
-  color: var(--danger);
+  background: transparent;
+  color: #c00000; /* 엑셀 표준 빨강 */
+  border-color: #c00000;
 }
 .q-p-hold {
-  background: var(--grey-100);
-  color: var(--text-muted);
+  background: transparent;
+  color: #000;
 }
 
 /* 인쇄 — 종이만 남기고 화면 UI 는 전부 숨긴다 */
@@ -723,35 +726,37 @@
 /* ════════ 양식 낱장 — 칸이 곧 입력칸 ════════
    문서형 4종(성적서·교육일지·자격재평가·5M1E신청서) 전용.
    화면에선 옅은 입력칸, 인쇄하면 테두리가 사라져 그냥 서류가 된다. */
+/* 격자 — 엑셀 표 그대로. 회색 실선이 아니라 검정 실선으로 사방을 두른다 */
 .q-sheet-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  margin-bottom: 6mm;
-  border-top: 0.3mm solid var(--border);
-  border-left: 0.3mm solid var(--border);
+  margin-bottom: 5mm;
+  border-top: 0.35mm solid #000;
+  border-left: 0.35mm solid #000;
 }
 .q-sheet-row {
   display: flex;
   align-items: stretch;
-  min-height: 9mm;
-  border-right: 0.3mm solid var(--border);
-  border-bottom: 0.3mm solid var(--border);
+  min-height: 8mm;
+  border-right: 0.35mm solid #000;
+  border-bottom: 0.35mm solid #000;
 }
 .q-sheet-row.is-wide {
   grid-column: 1 / -1;
 }
+/* 라벨 칸 — 원본은 배경색을 쓰지 않고 전부 가운데 정렬이다(실측: 배경 0회) */
 .q-sheet-k {
-  flex: 0 0 32mm;
+  flex: 0 0 30mm;
   display: flex;
   align-items: center;
-  padding: 1.5mm 2.5mm;
-  background: var(--grey-50);
-  border-right: 0.3mm solid var(--border);
-  font-size: 2.9mm;
-  font-weight: 600;
-  color: var(--text-light);
-  /* '조치 후 영향도' 처럼 긴 라벨이 32mm 안에서 어색하게 끊겨 행 높이가 들쭉날쭉해지던 것 */
+  justify-content: center;
+  text-align: center;
+  padding: 1.2mm 2mm;
+  border-right: 0.35mm solid #000;
+  font-size: 2.7mm;
+  font-weight: 700;
+  color: #000;
   word-break: keep-all;
   line-height: 1.25;
 }
@@ -761,35 +766,40 @@
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  padding: 1.5mm 2.5mm;
+  padding: 1.2mm 2mm;
   border: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 3.1mm;
-  font-weight: 600;
-  color: var(--primary);
+  font-size: 2.7mm;
+  font-weight: 400;
+  color: #000;
+  text-align: center;
   box-sizing: border-box;
 }
 .q-cell.is-static {
   display: flex;
   align-items: center;
+  justify-content: center;
 }
+/* 자동계산 칸 — 엑셀에서 수식 칸을 옅게 두는 관습만 남긴다 */
 .q-cell.is-calc {
-  color: var(--text-light);
-  background: var(--grey-50);
+  color: #000;
   font-variant-numeric: tabular-nums;
 }
 textarea.q-cell {
   resize: vertical;
   line-height: 1.5;
+  text-align: left;
 }
+/* 입력 가능 표시 — 웹의 파란 칩이 아니라, 엑셀에서 입력 셀을 옅게 깔아두는 방식 */
 .q-paper.is-editing .q-cell:not(.is-static) {
-  background: var(--primary-softer);
-  border-radius: 1mm;
+  background: #fdfdf9;
+  border-radius: 0;
 }
+/* 선택한 셀 — 엑셀 선택 테두리처럼 얇은 검정 사각 */
 .q-cell:focus {
-  outline: 0.5mm solid var(--accent);
-  outline-offset: -0.5mm;
+  outline: 0.4mm solid #000;
+  outline-offset: -0.4mm;
   background: #fff;
 }
 
@@ -827,30 +837,31 @@ textarea.q-cell {
   margin-bottom: 6mm;
 }
 /* 좌상단은 로고만 — 문서번호는 제목 아래 중앙으로 내렸다 (2026-07-31 대표님) */
+/* 로고 — 원본 엑셀엔 이미지가 없지만 브랜드는 남긴다. 서류 머리답게 과하지 않은 크기로 */
 .q-paper-logo {
-  height: 13mm;
+  height: 10mm;
   width: auto;
   display: block;
 }
 /* 문서번호 — 제목 바로 아래 중앙. 제목과 한 덩어리로 읽히게 붙여 둔다 */
 .q-paper-docno {
-  margin-top: 1.5mm;
+  margin-top: 1mm;
   text-align: center;
-  font-size: 3.2mm;
+  font-size: 2.9mm;
   font-weight: 700;
-  letter-spacing: 0.5mm;
-  color: var(--text-light);
+  letter-spacing: 0.4mm;
+  color: #000;
   font-variant-numeric: tabular-nums;
 }
 
 /* 상단 우측 결재란 — 원본 엑셀의 작성/검토/승인 3칸 */
 .q-approve {
   display: flex;
-  border: 0.4mm solid var(--text);
+  border: 0.35mm solid #000;
 }
 .q-approve-col {
   width: 20mm;
-  border-right: 0.3mm solid var(--text);
+  border-right: 0.35mm solid #000;
 }
 .q-approve-col:last-child {
   border-right: 0;
@@ -860,9 +871,9 @@ textarea.q-cell {
   text-align: center;
   font-size: 2.7mm;
   font-weight: 700;
-  color: var(--text);
-  background: var(--grey-100);
-  border-bottom: 0.3mm solid var(--text);
+  color: #000;
+  background: #f2f2f2;
+  border-bottom: 0.35mm solid #000;
 }
 .q-approve-space {
   height: 14mm;
@@ -870,10 +881,10 @@ textarea.q-cell {
 
 /* 양식 제목 — 좌상단 로고 아래 중앙 */
 .q-paper .q-paper-title {
-  font-size: 8mm;
-  font-weight: 800;
-  letter-spacing: 2mm;
-  color: var(--primary);
+  font-size: 7mm;
+  font-weight: 700;
+  letter-spacing: 1.6mm;
+  color: #000;
 }
 
 /* 격자 — 엑셀처럼 선을 또렷하게 */
@@ -895,13 +906,15 @@ textarea.q-cell {
   border: 0.35mm solid var(--text);
 }
 .q-paper-table th {
-  background: var(--grey-100);
-  border: 0.3mm solid var(--text);
+  background: #f2f2f2; /* 엑셀 머리행 음영 — 원본 표도 머리행만 옅게 깐다 */
+  border: 0.35mm solid #000;
   text-align: center;
+  color: #000;
 }
 .q-paper-table td {
-  border: 0.3mm solid var(--border);
+  border: 0.35mm solid #000;
   text-align: center;
+  color: #000;
 }
 .q-paper-block .q-block-title {
   padding: 1.5mm 2.5mm;
