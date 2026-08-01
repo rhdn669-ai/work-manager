@@ -558,9 +558,13 @@
 /* ════════ A4 출력 서식 (3틀 공통 규격) ════════
    원본 엑셀 복제가 아니라 스티치로 통일한 규격.
    좌상단 IOPN · 우상단 문서번호 · 가운데 네이비 제목+밑줄 · 우하단 결재 2단 */
+/* 종이 — 세로 flex 로 만들어 본문이 남은 높이를 먹고, 푸터가 바닥에 붙는다.
+   내용이 짧아도 A4 한 장이 꽉 찬 서류로 보이게 하기 위함(2026-08-02 대표님). */
 .q-paper {
   width: 210mm;
-  min-height: 240mm;
+  min-height: 283mm; /* A4 297mm - 상하 인쇄여백(15+16) 을 뺀 실제 인쇄영역 */
+  display: flex;
+  flex-direction: column;
   margin: 0 auto;
   /* 원본 엑셀 인쇄여백 실측값(상15 좌11 우9 하16mm) — 웹처럼 넉넉히 두지 않는다 */
   padding: 15mm 9mm 16mm 11mm;
@@ -1025,4 +1029,40 @@ textarea.q-cell {
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: var(--space-3);
+}
+
+/* 본문 — 남은 높이를 흡수한다. 마지막 격자가 늘어나 바닥 여백을 없앤다 */
+.q-paper-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.q-paper-body > .q-sheet-grid:last-child,
+.q-paper-body > .q-paper-block:last-child {
+  flex: 1 1 auto;
+}
+.q-paper-body > .q-sheet-grid:last-child .q-sheet-row.is-wide:last-child {
+  flex: 1 1 auto;
+}
+.q-paper-body > .q-sheet-grid:last-child .q-sheet-row.is-wide:last-child .q-cell {
+  height: 100%;
+}
+
+/* 빈 행 — 값은 없어도 테두리는 그린다(엑셀 서식) */
+.q-blank-row td {
+  height: 7mm;
+}
+
+/* 하단 마감 — 서류의 끝을 알리는 줄 */
+.q-paper-foot {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4mm;
+  padding-top: 1.5mm;
+  border-top: 0.35mm solid #000;
+  font-size: 2.5mm;
+  font-weight: 600;
+  color: #000;
 }

@@ -6,6 +6,7 @@ import { FORM_FIELDS } from '../../domain/qualityFormFields';
 // 본문만 서식 성격에 따라 갈린다: 성적서형(라인 표) / 대장형(목록) / 신청서형(섹션 대비)
 
 const VERDICT_CLS = { 합격: 'q-p-pass', 부적합: 'q-p-fail', 보류: 'q-p-hold' };
+const MIN_LINE_ROWS = 8; // 원본 엑셀처럼 빈 행까지 테두리를 그려 A4를 채운다
 
 // 출력물 상단은 화면 양식(QualitySheet)과 같은 구성 — 문서번호·결재란·회사 로고 밴드
 function DocShell({ docNo, title, children }) {
@@ -27,7 +28,12 @@ function DocShell({ docNo, title, children }) {
       <h1 className="q-paper-title">{title}</h1>
       <div className="q-paper-docno">{docNo}</div>
       <div className="q-paper-rule" />
-      {children}
+      {/* 본문 — 남은 높이를 흡수해 A4 바닥까지 채운다 */}
+      <div className="q-paper-body">{children}</div>
+      <div className="q-paper-foot">
+        <span>주식회사 아이오피엔</span>
+        <span>{docNo}</span>
+      </div>
     </div>
   );
 }
@@ -90,11 +96,15 @@ function OneDoc({ def, docNo, record }) {
                 ))}
               </tr>
             ))}
-            {!(record.lines || []).length && (
-              <tr>
-                <td colSpan={def.lines.columns.length + 1}>등록된 항목 없음</td>
+            {/* 빈 행에도 테두리를 그려 표를 끝까지 채운다(엑셀 서식 방식) */}
+            {Array.from({ length: Math.max(0, MIN_LINE_ROWS - (record.lines || []).length) }).map((_, i) => (
+              <tr key={`blank-${i}`} className="q-blank-row">
+                <td>{(record.lines || []).length + i + 1}</td>
+                {def.lines.columns.map((c) => (
+                  <td key={c.key} />
+                ))}
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
       )}
