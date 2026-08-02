@@ -1066,3 +1066,50 @@ textarea.q-cell {
   font-weight: 600;
   color: #000;
 }
+
+/* ── 대장 셀 편집 — 엑셀처럼 칸을 직접 고친다 ── */
+.q-lcell {
+  width: 100%;
+  min-width: 72px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  color: var(--text);
+  box-sizing: border-box;
+}
+.q-lcell:hover {
+  border-color: var(--border);
+}
+.q-lcell:focus {
+  outline: 0;
+  border-color: var(--primary);
+  background: #fff;
+}
+.q-lcell.is-read {
+  display: inline-block;
+  color: var(--text-muted);
+}
+
+/* ── 대장 출력 — 컬럼이 많아 가로로 뽑는다(원본 엑셀 대장도 가로 인쇄) ── */
+.q-print-land .q-paper {
+  width: 297mm;
+  min-height: 190mm;
+}
+.q-ledger-print th,
+.q-ledger-print td {
+  font-size: 2.2mm;
+  padding: 0.8mm 1mm;
+  white-space: nowrap;
+}
+@media print {
+  /* 대장은 가로 용지 */
+  .q-print-area:has(.q-print-land) {
+    page: landscape;
+  }
+}
+@page landscape {
+  size: A4 landscape;
+}

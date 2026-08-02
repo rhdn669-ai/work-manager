@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Icon from '../common/Icon';
 import TrashModal from '../common/TrashModal';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { ASSET_STATUS, assetStatusOf } from '../../domain/qualityForms';
-import { FORM_FIELDS } from '../../domain/qualityFormFields';
-import { subscribeAssets, trashAsset } from '../../services/qualityAssetService';
+import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
+import { subscribeAssets, addAsset, updateAsset, trashAsset } from '../../services/qualityAssetService';
 import { subscribeTrashByType } from '../../services/trashService';
 import QualityDocPrint from './QualityDocPrint';
+import LedgerCell from './LedgerCell';
 
 // 자산 대장 (계측기·지그·치공구·툴)
 // 화면 골격·조작 방식은 기록 대장(QualityRecordLedger)과 완전히 같다 —
@@ -19,19 +19,37 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   const def = FORM_FIELDS[formKey];
   const { confirm, toast } = useDialog();
   const { userProfile } = useAuth();
-  const navigate = useNavigate();
   const [all, setAll] = useState([]);
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
   const [printing, setPrinting] = useState(null);
-  const [checked, setChecked] = useState(() => new Set());
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => subscribeAssets(setAll), []);
   useEffect(() => subscribeTrashByType('qualityAssets', (t) => setTrashCount(t.length)), []);
 
-  const cols = useMemo(() => def.fields.filter((f) => f.col), [def]);
+  // 자산은 전부 대장형이다 — 모든 칸을 표에 펴고 여기서 바로 고친다
+  const cols = useMemo(() => def.fields, [def]);
+
+  const editCell = async (row, key, value) => {
+    if (String(row[key] ?? '') === String(value ?? '')) return;
+    try {
+      const { id, st: _st, ...rest } = computeCalcFields(formKey, { ...row, [key]: value });
+      await updateAsset(id, { ...rest, cycleMonths: Number(rest.cycleMonths) || 0 });
+    } catch (err) {
+      console.error('[qualityAssets] 셀 저장 실패:', err);
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
+
+  const addBlankRow = async () => {
+    try {
+      await addAsset({ assetType, assetNo: '' });
+    } catch {
+      toast('행 추가 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
   // JIG(706A)는 원본에 교정주기·차기일 칸이 없다 — 상태/잔여 칸을 띄우지 않는다
   const hasCycle = useMemo(() => def.fields.some((f) => f.key === 'nextDate'), [def]);
 
@@ -59,9 +77,6 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   }, [all, assetType]);
   const total = counts.normal + counts.due + counts.over;
 
-  // 등록·수정은 기록 대장과 같이 양식 낱장 페이지에서 한다
-  const openSheet = (id) => navigate(`/quality/sheet/${formKey}/${id}`);
-
   const remove = async (a) => {
     if (!(await confirm(`${a.assetNo} ${a.name}을(를) 휴지통으로 옮길까요?`))) return;
     try {
@@ -83,20 +98,19 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
           <button
             type="button"
             className="btn btn-sm btn-outline"
-            disabled={checked.size === 0}
-            title={checked.size === 0 ? '출력할 행을 왼쪽 체크박스로 선택하세요' : `${checked.size}건 출력`}
-            onClick={() => setPrinting(view.filter((r) => checked.has(r.id)))}
+            disabled={view.length === 0}
+            title={view.length === 0 ? '출력할 내용이 없습니다' : `${view.length}건이 담긴 대장을 출력합니다`}
+            onClick={() => setPrinting(view)}
           >
             <Icon name="doc" className="btn-ic" />
-            출력{checked.size > 0 ? ` (${checked.size})` : ''}
+            대장 출력{view.length > 0 ? ` (${view.length})` : ''}
           </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
             휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => openSheet('new')}>
-            <Icon name="plus" className="btn-ic" />
-            신규
+          <button type="button" className="btn btn-primary btn-sm" onClick={addBlankRow}>
+            <Icon name="plus" className="btn-ic" />행 추가
           </button>
         </div>
       </div>
@@ -135,15 +149,6 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
           <table className="table cards-sm">
             <thead>
               <tr>
-                <th className="q-check-col">
-                  <input
-                    type="checkbox"
-                    aria-label="전체 선택"
-                    title="전체 선택 — 출력하려면 먼저 선택하세요"
-                    checked={view.length > 0 && checked.size === view.length}
-                    onChange={(e) => setChecked(e.target.checked ? new Set(view.map((r) => r.id)) : new Set())}
-                  />
-                </th>
                 <th>관리번호</th>
                 {cols.map((c) => (
                   <th key={c.key}>{c.label}</th>
@@ -155,24 +160,13 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
             </thead>
             <tbody>
               {view.map((a) => (
-                <tr key={a.id} className="table-clickable-row" onClick={() => openSheet(a.id)}>
-                  <td className="q-check-col" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      aria-label={`${a.assetNo} 선택`}
-                      checked={checked.has(a.id)}
-                      onChange={(e) => {
-                        const next = new Set(checked);
-                        if (e.target.checked) next.add(a.id);
-                        else next.delete(a.id);
-                        setChecked(next);
-                      }}
-                    />
+                <tr key={a.id}>
+                  <td className="q-num">
+                    <LedgerCell f={{ key: 'assetNo', type: 'text' }} row={a} onCommit={editCell} />
                   </td>
-                  <td className="q-num">{a.assetNo}</td>
                   {cols.map((c) => (
                     <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>
-                      {a[c.key] || '—'}
+                      <LedgerCell f={c} row={a} onCommit={editCell} readOnly={!!c.calc} />
                     </td>
                   ))}
                   {hasCycle && (
@@ -194,7 +188,7 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
                       <span className={`badge ${ASSET_STATUS[a.st.key].cls}`}>{ASSET_STATUS[a.st.key].label}</span>
                     </td>
                   )}
-                  <td className="col-action" onClick={(e) => e.stopPropagation()}>
+                  <td className="col-action">
                     <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(a)}>
                       <Icon name="trash" className="btn-ic" />
                       삭제
@@ -204,11 +198,11 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
               ))}
               {view.length === 0 && (
                 <tr>
-                  <td colSpan={cols.length + (hasCycle ? 5 : 3)}>
+                  <td colSpan={cols.length + (hasCycle ? 4 : 2)}>
                     <div className="q-todo">
                       <Icon name="doc" style={{ width: 34, height: 34 }} />
                       <b>등록된 항목이 없습니다</b>
-                      <p>우측 상단 「신규」로 첫 항목을 등록하세요.</p>
+                      <p>우측 상단 「행 추가」로 첫 항목을 등록하세요.</p>
                     </div>
                   </td>
                 </tr>

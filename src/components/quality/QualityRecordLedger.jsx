@@ -6,11 +6,12 @@ import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
-import { FORM_FIELDS } from '../../domain/qualityFormFields';
-import { subscribeRecords, addRecord, trashRecord } from '../../services/qualityRecordService';
+import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
+import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
 import { QUALITY_GOAL_SEED } from '../../domain/qualityGoalSeed';
 import { subscribeTrashByType } from '../../services/trashService';
 import QualityDocPrint from './QualityDocPrint';
+import LedgerCell from './LedgerCell';
 
 // 양식 엔진 — 서식 정의(FORM_FIELDS)만 바꿔 10종 대장이 이 컴포넌트 하나를 공유한다.
 // 화면 골격은 스티치 「대장 목록 공통 골격」을 따른다:
@@ -40,8 +41,27 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   useEffect(() => subscribeRecords(formKey, setRows), [formKey]);
   useEffect(() => subscribeTrashByType('qualityRecords', (t) => setTrashCount(t.length)), []);
 
-  // 판정 필드는 맨 뒤 배지 컬럼으로 따로 렌더하므로 일반 컬럼에서는 뺀다(중복 방지)
-  const cols = useMemo(() => def.fields.filter((f) => f.col && !VERDICT_KEYS.includes(f.key)), [def]);
+  // 대장형 vs 문서형 — 원본의 성격 그대로 (2026-08-02 대표님)
+  //  · 대장형: 표 자체가 문서다. 낱장 출력·페이지 이동 없이 목록에서 모든 칸을 보고 고친다.
+  //  · 문서형: 병합 많은 한 장짜리 서식(성적서·신청서·교육일지·평가시트). 양식 페이지로 간다.
+  const isLedger = !def.paper && !def.lines;
+  // 대장형은 모든 필드를 컬럼으로 편다(원본 엑셀 대장이 그렇다). 문서형은 요약 컬럼만.
+  const cols = useMemo(
+    () => def.fields.filter((f) => (isLedger ? !VERDICT_KEYS.includes(f.key) : f.col && !VERDICT_KEYS.includes(f.key))),
+    [def, isLedger],
+  );
+
+  // 셀 편집 — 값이 바뀐 칸만 즉시 저장한다(엑셀처럼 칸을 고치면 바로 반영)
+  const editCell = async (row, key, value) => {
+    if (String(row[key] ?? '') === String(value ?? '')) return;
+    try {
+      const { id, formKey: _fk, ...rest } = computeCalcFields(formKey, { ...row, [key]: value });
+      await updateRecord(id, rest);
+    } catch (err) {
+      console.error('[qualityRecords] 셀 저장 실패:', err);
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
 
   const view = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -105,6 +125,15 @@ export default function QualityRecordLedger({ formKey, docNo }) {
     }
   };
 
+  // 대장은 빈 행을 먼저 만들고 칸을 채워 넣는다(엑셀 대장에 줄을 추가하는 방식)
+  const addBlankRow = async () => {
+    try {
+      await addRecord(formKey, { recordNo: '' });
+    } catch {
+      toast('행 추가 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
+
   const remove = async (r) => {
     if (!(await confirm(`${r.recordNo}을(를) 휴지통으로 옮길까요?`))) return;
     try {
@@ -123,17 +152,30 @@ export default function QualityRecordLedger({ formKey, docNo }) {
           <span className="q-doc-badge">{docNo}</span>
         </h3>
         <div className="q-ledger-actions">
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            disabled={checked.size === 0}
-            // 무엇을 출력할지 정해져야 하므로 선택 전에는 막되, 이유를 알 수 있게 안내한다
-            title={checked.size === 0 ? '출력할 행을 왼쪽 체크박스로 선택하세요' : `${checked.size}건 출력`}
-            onClick={() => setPrinting(view.filter((r) => checked.has(r.id)))}
-          >
-            <Icon name="doc" className="btn-ic" />
-            출력{checked.size > 0 ? ` (${checked.size})` : ''}
-          </button>
+          {isLedger ? (
+            /* 대장은 낱장이 아니라 대장 자체가 문서다 — 지금 보이는 목록을 표 그대로 출력한다 */
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              disabled={view.length === 0}
+              title={view.length === 0 ? '출력할 내용이 없습니다' : `${view.length}건이 담긴 대장을 출력합니다`}
+              onClick={() => setPrinting(view)}
+            >
+              <Icon name="doc" className="btn-ic" />
+              대장 출력{view.length > 0 ? ` (${view.length})` : ''}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              disabled={checked.size === 0}
+              title={checked.size === 0 ? '출력할 행을 왼쪽 체크박스로 선택하세요' : `${checked.size}건 출력`}
+              onClick={() => setPrinting(view.filter((r) => checked.has(r.id)))}
+            >
+              <Icon name="doc" className="btn-ic" />
+              출력{checked.size > 0 ? ` (${checked.size})` : ''}
+            </button>
+          )}
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
             <Icon name="trash" className="btn-ic" />
             휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
@@ -144,9 +186,13 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               기본안 넣기
             </button>
           )}
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => openSheet('new')}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={isLedger ? addBlankRow : () => openSheet('new')}
+          >
             <Icon name="plus" className="btn-ic" />
-            신규
+            {isLedger ? '행 추가' : '신규'}
           </button>
         </div>
       </div>
@@ -193,15 +239,17 @@ export default function QualityRecordLedger({ formKey, docNo }) {
           <table className="table cards-sm">
             <thead>
               <tr>
-                <th className="q-check-col">
-                  <input
-                    type="checkbox"
-                    aria-label="전체 선택"
-                    title="전체 선택 — 출력하려면 먼저 선택하세요"
-                    checked={view.length > 0 && checked.size === view.length}
-                    onChange={(e) => setChecked(e.target.checked ? new Set(view.map((r) => r.id)) : new Set())}
-                  />
-                </th>
+                {!isLedger && (
+                  <th className="q-check-col">
+                    <input
+                      type="checkbox"
+                      aria-label="전체 선택"
+                      title="전체 선택 — 출력하려면 먼저 선택하세요"
+                      checked={view.length > 0 && checked.size === view.length}
+                      onChange={(e) => setChecked(e.target.checked ? new Set(view.map((r) => r.id)) : new Set())}
+                    />
+                  </th>
+                )}
                 <th>번호</th>
                 {cols.map((c) => (
                   <th key={c.key}>{c.label}</th>
@@ -214,34 +262,70 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               {view.map((r) => {
                 const v = verdictOf(r);
                 return (
-                  <tr key={r.id} className="table-clickable-row" onClick={() => openSheet(r.id)}>
-                    <td className="q-check-col" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        aria-label={`${r.recordNo} 선택`}
-                        checked={checked.has(r.id)}
-                        onChange={(e) => {
-                          const next = new Set(checked);
-                          if (e.target.checked) next.add(r.id);
-                          else next.delete(r.id);
-                          setChecked(next);
-                        }}
-                      />
-                    </td>
+                  <tr
+                    key={r.id}
+                    className={isLedger ? '' : 'table-clickable-row'}
+                    onClick={isLedger ? undefined : () => openSheet(r.id)}
+                  >
+                    {!isLedger && (
+                      <td className="q-check-col" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`${r.recordNo} 선택`}
+                          checked={checked.has(r.id)}
+                          onChange={(e) => {
+                            const next = new Set(checked);
+                            if (e.target.checked) next.add(r.id);
+                            else next.delete(r.id);
+                            setChecked(next);
+                          }}
+                        />
+                      </td>
+                    )}
                     <td className="q-num">
-                      {r.recordNo ||
+                      {isLedger ? (
+                        <LedgerCell
+                          f={{ key: 'recordNo', type: 'text' }}
+                          row={r}
+                          onCommit={editCell}
+                          readOnly={r.sourceType === 'production'}
+                        />
+                      ) : (
+                        r.recordNo ||
                         (r.sourceType === 'production' ? (
                           <span className="purchase-badge purchase-badge-replied">생산 자동</span>
                         ) : (
                           '—'
-                        ))}
+                        ))
+                      )}
                     </td>
                     {cols.map((c) => (
                       <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>
-                        {r[c.key] || '—'}
+                        {isLedger ? (
+                          <LedgerCell
+                            f={c}
+                            row={r}
+                            onCommit={editCell}
+                            readOnly={c.calc || r.sourceType === 'production'}
+                          />
+                        ) : (
+                          r[c.key] || '—'
+                        )}
                       </td>
                     ))}
-                    {hasVerdict && <td>{v ? <span className={`badge ${v.cls}`}>{v.label}</span> : '—'}</td>}
+                    {hasVerdict &&
+                      (isLedger ? (
+                        <td>
+                          <LedgerCell
+                            f={def.fields.find((f) => VERDICT_KEYS.includes(f.key))}
+                            row={r}
+                            onCommit={editCell}
+                            readOnly={r.sourceType === 'production'}
+                          />
+                        </td>
+                      ) : (
+                        <td>{v ? <span className={`badge ${v.cls}`}>{v.label}</span> : '—'}</td>
+                      ))}
                     <td className="col-action" onClick={(e) => e.stopPropagation()}>
                       {r.sourceType === 'production' ? (
                         <span
@@ -262,11 +346,11 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               })}
               {view.length === 0 && (
                 <tr>
-                  <td colSpan={cols.length + (hasVerdict ? 4 : 3)}>
+                  <td colSpan={cols.length + (hasVerdict ? 3 : 2) + (isLedger ? 0 : 1)}>
                     <div className="q-todo">
                       <Icon name="doc" style={{ width: 34, height: 34 }} />
                       <b>등록된 항목이 없습니다</b>
-                      <p>우측 상단 「신규」로 첫 항목을 등록하세요.</p>
+                      <p>우측 상단 「{isLedger ? '행 추가' : '신규'}」로 첫 항목을 등록하세요.</p>
                     </div>
                   </td>
                 </tr>

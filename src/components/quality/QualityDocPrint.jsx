@@ -7,6 +7,7 @@ import { FORM_FIELDS } from '../../domain/qualityFormFields';
 
 const VERDICT_CLS = { 합격: 'q-p-pass', 부적합: 'q-p-fail', 보류: 'q-p-hold' };
 const MIN_LINE_ROWS = 8; // 원본 엑셀처럼 빈 행까지 테두리를 그려 A4를 채운다
+const VERDICT_KEYS = ['passFailResult', 'overallResult', 'finalResult', 'finalJudgement'];
 
 // 출력물 상단은 화면 양식(QualitySheet)과 같은 구성 — 문서번호·결재란·회사 로고 밴드
 function DocShell({ docNo, title, children }) {
@@ -133,22 +134,77 @@ function OneDoc({ def, docNo, record }) {
   );
 }
 
-// record: 배열(체크 선택분) 또는 단건 — 여러 건이면 종이를 이어 붙여 한 번에 인쇄한다.
+// 대장형 출력 — 낱장을 반복하지 않고, 대장 그대로 한 장의 표로 뽑는다.
+// 원본 엑셀 대장(계측기 203행·부적합 303행)이 그런 모양이다.
+function LedgerDoc({ def, docNo, rows }) {
+  const cols = def.fields.filter((f) => !VERDICT_KEYS.includes(f.key));
+  const verdict = def.fields.find((f) => VERDICT_KEYS.includes(f.key));
+  return (
+    <DocShell docNo={docNo} title={def.title}>
+      <table className="q-paper-table q-ledger-print">
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>{def.asset ? '관리번호' : '문서번호'}</th>
+            {cols.map((c) => (
+              <th key={c.key}>{c.label}</th>
+            ))}
+            {verdict && <th>{verdict.label}</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.id}>
+              <td>{i + 1}</td>
+              <td>{(def.asset ? r.assetNo : r.recordNo) || '—'}</td>
+              {cols.map((c) => (
+                <td key={c.key}>{r[c.key] || '—'}</td>
+              ))}
+              {verdict && (
+                <td>
+                  {r[verdict.key] ? (
+                    <span className={`q-p-badge ${VERDICT_CLS[r[verdict.key]] || ''}`}>{r[verdict.key]}</span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DocShell>
+  );
+}
+
+// record: 배열(대장 전체 또는 선택분) 또는 단건.
 export default function QualityDocPrint({ formKey, docNo, record, onClose }) {
   const def = FORM_FIELDS[formKey];
   const list = Array.isArray(record) ? record : record ? [record] : [];
   if (!def || !list.length) return null;
 
+  const isLedger = !def.paper && !def.lines;
   const print = () => window.print();
 
   return (
-    <Modal isOpen onClose={onClose} title={`${def.title} 출력 (${list.length}건)`} size="lg">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={isLedger ? `${def.title} 출력 (${list.length}건)` : `${def.title} 출력 (${list.length}건)`}
+      size="lg"
+    >
       <div className="q-print-area">
-        {list.map((r) => (
-          <div key={r.id} className="q-print-page">
-            <OneDoc def={def} docNo={docNo} record={r} />
+        {isLedger ? (
+          <div className="q-print-page q-print-land">
+            <LedgerDoc def={def} docNo={docNo} rows={list} />
           </div>
-        ))}
+        ) : (
+          list.map((r) => (
+            <div key={r.id} className="q-print-page">
+              <OneDoc def={def} docNo={docNo} record={r} />
+            </div>
+          ))
+        )}
       </div>
 
       <div className="modal-actions">
