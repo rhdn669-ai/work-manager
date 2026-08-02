@@ -16,68 +16,89 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
 
 export const FORM_FIELDS = {
   // ── 자산관리 (계측기 QP-703A · 지그 QP-706A · 치공구/툴 QP-705A) ──────
-  // 원본 엑셀 3종의 컬럼을 그대로 옮겼다. 종류마다 컬럼이 달라 공통 + 종류별로 나눈다.
-  //  · 계측기: 교정(성적서·교정기관까지 관리)   · 지그: 등록만(교정주기 없음)
-  //  · 치공구·툴: 점검(신뢰성 점검, '교정'이 아니라 '점검'이 원본 용어)
+  // 컬럼 순서까지 원본 엑셀 그대로 맞췄다. 쓰던 감각이 달라지면 안 되기 때문이다.
+  //  · 계측기: 교정(성적서·교정기관까지)  · 지그: 등록만(원본에 주기 칸 없음)
+  //  · 치공구·툴: 점검(신뢰성 점검) — '교정'이 아니라 '점검'이 원본 용어
+  // '상태'는 차기일로 앱이 자동 판정하므로 컬럼에 두지 않는다.
   ...(() => {
     const 구분 = ['계측기', '게이지', '측정공구', '검사장비', '소모성', '기타'];
     const 대상 = ['대상', '비대상'];
-    const common = (targetLabel) => [
-      { key: 'category', label: '구분', type: 'select', options: 구분, col: true },
-      { key: 'name', label: '명칭', type: 'text', required: true, col: true },
-      { key: 'target', label: targetLabel, type: 'select', options: 대상 },
-      { key: 'registerDate', label: '등록일', type: 'date' },
+    const category = { key: 'category', label: '구분', type: 'select', options: 구분, col: true };
+    const name = { key: 'name', label: '명칭', type: 'text', required: true, col: true };
+    const maker = { key: 'maker', label: '제조사', type: 'text', col: true };
+    const model = { key: 'model', label: '모델·규격', type: 'text' };
+    const target = (label) => ({ key: 'target', label, type: 'select', options: 대상 });
+    const registerDate = { key: 'registerDate', label: '등록일', type: 'date' };
+    const place = [
       { key: 'location', label: '보관위치', type: 'text' },
       { key: 'dept', label: '사용부서', type: 'text' },
       { key: 'owner', label: '관리담당자', type: 'text' },
-      { key: 'note', label: '비고', type: 'textarea' },
     ];
-    // 주기 관리(교정·점검) — 최근일 + 주기(개월) → 차기일 자동계산
+    // 주기 관리 — 최근일 + 주기(개월) → 차기일 자동계산
     const cycle = (cycleLabel, lastLabel, nextLabel) => [
       { key: 'cycleMonths', label: cycleLabel, type: 'num' },
       { key: 'lastDate', label: lastLabel, type: 'date', col: true },
       { key: 'nextDate', label: nextLabel, type: 'date', calc: 'nextDate', col: true },
     ];
-    const maker = [
-      { key: 'maker', label: '제조사', type: 'text', col: true },
-      { key: 'model', label: '모델·규격', type: 'text' },
-    ];
+    const note = { key: 'note', label: '비고', type: 'textarea' }; // 어느 서식이든 맨 뒤
     return {
+      // 원본 703A: 구분·계측기명·제조사·모델/규격·성적서번호·교정대상·교정주기·등록일·
+      //            최근교정일·차기교정일·보관위치·사용부서·관리담당자·교정기관·비고
       'assets.gauge': {
         title: '계측기 관리대장',
         asset: true,
         fields: [
-          ...common('교정대상'),
-          ...maker,
+          category,
+          name,
+          maker,
+          model,
           { key: 'certNo', label: '성적서 번호', type: 'text' },
+          target('교정대상'),
           ...cycle('교정주기(개월)', '최근 교정일', '차기 교정일'),
+          registerDate,
+          ...place,
           { key: 'agency', label: '교정기관', type: 'text' },
+          note,
         ],
       },
+      // 원본 706A: 구분·JIG명·교정대상·등록일·보관위치·사용부서·관리담당자·비고
       'assets.jig': {
         title: 'JIG 관리대장',
         asset: true,
-        // 원본 706A 에는 주기·차기일 컬럼이 없다 — 없는 칸을 지어내지 않는다.
-        fields: common('교정대상'),
+        fields: [category, name, target('교정대상'), registerDate, ...place, note],
       },
+      // 원본 705A: 구분·치공구명·제조사·점검대상·점검주기·등록일·
+      //            신뢰성 점검 확인일·차기 점검 확인일·보관위치·사용부서·관리담당자·점검장비·비고
       'assets.tool': {
         title: '치공구 관리대장',
         asset: true,
         fields: [
-          ...common('점검대상'),
-          ...maker,
+          category,
+          name,
+          maker,
+          model,
+          target('점검대상'),
           ...cycle('점검주기(개월)', '신뢰성 점검 확인일', '차기 점검 확인일'),
+          registerDate,
+          ...place,
           { key: 'inspectEquip', label: '점검 장비', type: 'text' },
+          note,
         ],
       },
       'assets.handtool': {
         title: '툴 관리대장',
         asset: true,
         fields: [
-          ...common('점검대상'),
-          ...maker,
+          category,
+          name,
+          maker,
+          model,
+          target('점검대상'),
           ...cycle('점검주기(개월)', '신뢰성 점검 확인일', '차기 점검 확인일'),
+          registerDate,
+          ...place,
           { key: 'inspectEquip', label: '점검 장비', type: 'text' },
+          note,
         ],
       },
     };

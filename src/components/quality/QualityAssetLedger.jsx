@@ -146,7 +146,7 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
 
       <div className="card">
         <div className="table-scroll-x">
-          <table className="table cards-sm">
+          <table className="table cards-sm inline-edit-table">
             <thead>
               <tr>
                 <th>관리번호</th>

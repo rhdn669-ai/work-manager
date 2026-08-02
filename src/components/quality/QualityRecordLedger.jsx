@@ -236,7 +236,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
 
       <div className="card">
         <div className="table-scroll-x">
-          <table className="table cards-sm">
+          <table className={`table cards-sm ${isLedger ? 'inline-edit-table' : ''}`}>
             <thead>
               <tr>
                 {!isLedger && (
