@@ -4,7 +4,7 @@ import TrashModal from '../common/TrashModal';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { ASSET_STATUS, assetStatusOf } from '../../domain/qualityForms';
-import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
+import { FORM_FIELDS, computeCalcFields, colWidthOf, colAlignOf } from '../../domain/qualityFormFields';
 import { subscribeAssets, addAsset, updateAsset, trashAsset } from '../../services/qualityAssetService';
 import { subscribeTrashByType } from '../../services/trashService';
 import QualityDocPrint from './QualityDocPrint';
@@ -146,7 +146,16 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
 
       <div className="card">
         <div className="table-scroll-x">
-          <table className="table cards-sm inline-edit-table">
+          <table className="table cards-sm q-grid-table">
+            <colgroup>
+              <col className="w-no" />
+              {cols.map((c) => (
+                <col key={c.key} className={colWidthOf(c)} />
+              ))}
+              {hasCycle && <col className="w-text" />}
+              {hasCycle && <col className="w-select" />}
+              <col className="w-act" />
+            </colgroup>
             <thead>
               <tr>
                 <th>관리번호</th>
@@ -165,7 +174,7 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
                     <LedgerCell f={{ key: 'assetNo', type: 'text' }} row={a} onCommit={editCell} />
                   </td>
                   {cols.map((c) => (
-                    <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>
+                    <td key={c.key} className={colAlignOf(c)}>
                       <LedgerCell f={c} row={a} onCommit={editCell} readOnly={!!c.calc} />
                     </td>
                   ))}

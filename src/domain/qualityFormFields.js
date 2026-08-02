@@ -622,3 +622,19 @@ export function computeCalcFields(formKey, v) {
   }
   return out;
 }
+
+// 대장 표 컬럼 폭·정렬 — 필드 타입으로 정한다.
+// 대장이 달라도 '날짜 칸은 늘 같은 폭'이 되도록 여기 한 곳에서 관리한다.
+export function colWidthOf(f) {
+  if (f.type === 'date') return 'w-date';
+  if (f.type === 'num') return 'w-num';
+  if (f.type === 'select') return 'w-select';
+  if (f.type === 'textarea') return 'w-long';
+  return 'w-text';
+}
+export function colAlignOf(f) {
+  if (f.type === 'num') return 't-num';
+  if (f.type === 'date') return 't-date';
+  if (f.type === 'select') return 't-select';
+  return '';
+}

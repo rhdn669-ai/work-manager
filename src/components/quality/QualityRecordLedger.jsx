@@ -6,7 +6,7 @@ import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
-import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
+import { FORM_FIELDS, computeCalcFields, colWidthOf, colAlignOf } from '../../domain/qualityFormFields';
 import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
 import { QUALITY_GOAL_SEED } from '../../domain/qualityGoalSeed';
 import { subscribeTrashByType } from '../../services/trashService';
@@ -236,7 +236,17 @@ export default function QualityRecordLedger({ formKey, docNo }) {
 
       <div className="card">
         <div className="table-scroll-x">
-          <table className={`table cards-sm ${isLedger ? 'inline-edit-table' : ''}`}>
+          <table className={`table cards-sm ${isLedger ? 'q-grid-table' : ''}`}>
+            {isLedger && (
+              <colgroup>
+                <col className="w-no" />
+                {cols.map((c) => (
+                  <col key={c.key} className={colWidthOf(c)} />
+                ))}
+                {hasVerdict && <col className="w-select" />}
+                <col className="w-act" />
+              </colgroup>
+            )}
             <thead>
               <tr>
                 {!isLedger && (
@@ -300,7 +310,10 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                       )}
                     </td>
                     {cols.map((c) => (
-                      <td key={c.key} className={c.type === 'num' || c.type === 'date' ? 'q-num' : ''}>
+                      <td
+                        key={c.key}
+                        className={isLedger ? colAlignOf(c) : c.type === 'num' || c.type === 'date' ? 'q-num' : ''}
+                      >
                         {isLedger ? (
                           <LedgerCell
                             f={c}

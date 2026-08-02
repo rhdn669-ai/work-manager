@@ -1087,3 +1087,104 @@ textarea.q-cell {
 @page landscape {
   size: A4 landscape;
 }
+
+/* ══ 대장 표 — 엑셀 격자 (2026-08-02 대표님: 엑셀 기반 모양으로) ══════════
+   품질보증은 원본이 엑셀 서식이고 현장이 그 감각으로 쓰던 영역이라,
+   화면 대장도 종이와 같은 격자로 둔다. 구매·BOM(ERP)은 앱 표준을 그대로 쓴다. */
+.q-grid-table {
+  table-layout: fixed; /* 내용 길이에 따라 폭이 널뛰지 않게 고정 배분 */
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+.q-grid-table th,
+.q-grid-table td {
+  border: 1px solid var(--border);
+  padding: 0;
+  vertical-align: middle;
+}
+.q-grid-table thead th {
+  padding: 7px 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  border-color: var(--primary-press, var(--primary));
+}
+/* 셀 안의 입력칸 — 칸을 꽉 채우고 테두리는 격자에 맡긴다 */
+.q-grid-table input,
+.q-grid-table select,
+.q-grid-table .cell-text {
+  width: 100%;
+  height: 30px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 7px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text);
+  box-sizing: border-box;
+  outline: 0;
+}
+.q-grid-table .cell-text {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.q-grid-table input:hover,
+.q-grid-table select:hover {
+  background: var(--bg-subtle);
+}
+/* 선택한 셀 — 엑셀처럼 안쪽에 진한 테두리 */
+.q-grid-table input:focus,
+.q-grid-table select:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+/* 타입별 폭 — 같은 도메인 표는 같은 폭을 쓴다(대장이 달라도 날짜 칸은 늘 같은 폭) */
+.q-grid-table col.w-no {
+  width: 118px;
+}
+.q-grid-table col.w-date {
+  width: 118px;
+}
+.q-grid-table col.w-num {
+  width: 84px;
+}
+.q-grid-table col.w-select {
+  width: 108px;
+}
+.q-grid-table col.w-text {
+  width: 140px;
+}
+.q-grid-table col.w-long {
+  width: 200px;
+}
+.q-grid-table col.w-act {
+  width: 88px;
+}
+/* 정렬 — 글자는 왼쪽, 숫자는 오른쪽, 날짜·선택은 가운데 */
+.q-grid-table td.t-num input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.q-grid-table td.t-date input,
+.q-grid-table td.t-date .cell-text,
+.q-grid-table td.t-select select {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.q-grid-table td.t-date .cell-text {
+  justify-content: center;
+}
+.q-grid-table td.col-action {
+  padding: 4px 6px;
+  text-align: center;
+}
