@@ -19455,3 +19455,37 @@ a.lib-row-name:hover {
     text-overflow: ellipsis;
   }
 }
+
+/* 업체별 발주 현황 — 결제 대상·미입고 금액 (금액 위, 부연 아래) */
+.purchase-sup-amt {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.purchase-sup-amt strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.purchase-sup-amt em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.purchase-sup-amt.is-pending strong {
+  color: var(--danger);
+}
+
+/* 결제 합계 줄 — 총액 옆에 완료·미결제·미입고를 나란히 */
+.payment-sum-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+}
+.payment-sum-part {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.payment-sum-part.is-pending strong {
+  color: var(--danger);
+}

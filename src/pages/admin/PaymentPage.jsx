@@ -106,9 +106,21 @@ export default function PaymentPage() {
         if (!req) continue; // 결제 요청된 업체만
         const paid = p.supplierPaid?.[key];
         const supInfo = supByName.get(sup.name) || {};
-        const supply = lines
-          .filter((l) => (l._supplier || '(구매처 미지정)') === sup.name)
-          .reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
+        // 결제로 넘어오는 돈은 실제로 들어온 만큼이다. 아직 안 들어온 품목은 빠진다.
+        // (입고 전에는 발주 수량으로 잡아 금액이 0 원으로 보이지 않게 한다)
+        const mine = lines.filter((l) => (l._supplier || '(구매처 미지정)') === sup.name);
+        const anyReceived = mine.some((l) => Number(l.receivedQty) > 0);
+        const supply = mine.reduce((s, l) => {
+          const qty = Number(l.qty) || 0;
+          const got = Math.min(Number(l.receivedQty) || 0, qty); // 초과 입고는 발주 수량까지만
+          return s + (anyReceived ? got : qty) * (Number(l.unitPrice) || 0);
+        }, 0);
+        const ordered = mine.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
+        const pendingAmount = ordered - supply; // 아직 안 들어온 몫
+        const pendingCount = anyReceived
+          ? mine.filter((l) => (Number(l.qty) || 0) - Math.min(Number(l.receivedQty) || 0, Number(l.qty) || 0) > 0)
+              .length
+          : 0;
         const vat = Math.round(supply * 0.1);
         out.push({
           purchaseId: p.id,
@@ -126,6 +138,8 @@ export default function PaymentPage() {
           taxInvoice: p.taxInvoice?.[key] || null,
           supply,
           total: supply + vat,
+          pendingAmount,
+          pendingCount,
           requestedAt: req.requestedAt,
           dueDate: req.dueDate || '',
           paid: !!paid,
@@ -172,6 +186,11 @@ export default function PaymentPage() {
   }, [allRows, filterMode, monthFilter, search]);
 
   const sumTotal = filtered.reduce((s, r) => s + r.total, 0);
+  // 끝난 돈·남은 돈·아직 안 들어온 몫을 한 줄에서 본다
+  const paidRows = filtered.filter((r) => r.paid);
+  const sumPaid = paidRows.reduce((s, r) => s + r.total, 0);
+  const sumPending = filtered.reduce((s, r) => s + (r.pendingAmount || 0), 0);
+  const pendingItemCount = filtered.reduce((s, r) => s + (r.pendingCount || 0), 0);
 
   // 발주서 단위 폴더로 그룹핑 (자료실 폴더 느낌)
   const folders = useMemo(() => {
@@ -492,6 +511,7 @@ export default function PaymentPage() {
                             <th style={{ width: 110 }}>분류</th>
                             <th style={{ width: 150 }}>비고</th>
                             <th style={{ width: 120 }}>결제금액(VAT포함)</th>
+                            <th style={{ width: 120 }}>미입고</th>
                             <th style={{ width: 96 }}>결제요청일</th>
                             <th style={{ width: 104 }}>결제마감일</th>
                             <th style={{ width: 150 }}>세금계산서</th>
@@ -545,6 +565,16 @@ export default function PaymentPage() {
                                   title={`공급가 ${r.supply.toLocaleString()}`}
                                 >
                                   {r.total.toLocaleString()}원
+                                </td>
+                                <td data-label="미입고" className="payment-amount-cell">
+                                  {r.pendingCount > 0 ? (
+                                    <span className="purchase-sup-amt is-pending">
+                                      <strong>{r.pendingAmount.toLocaleString()}원</strong>
+                                      <em>{r.pendingCount}품목 미입고</em>
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted">-</span>
+                                  )}
                                 </td>
                                 <td data-label="결제요청일">{fmtDate(r.requestedAt)}</td>
                                 <td data-label="결제마감일">
@@ -622,7 +652,20 @@ export default function PaymentPage() {
             })}
           </div>
           <div className="payment-sum-bar">
-            합계 ({filtered.length}건) · <strong>{sumTotal.toLocaleString()}원</strong>
+            <span>
+              합계 ({filtered.length}건) · <strong>{sumTotal.toLocaleString()}원</strong>
+            </span>
+            <span className="payment-sum-part">
+              결제 완료 {paidRows.length}건 · <strong>{sumPaid.toLocaleString()}원</strong>
+            </span>
+            <span className="payment-sum-part">
+              미결제 {filtered.length - paidRows.length}건 · <strong>{(sumTotal - sumPaid).toLocaleString()}원</strong>
+            </span>
+            {pendingItemCount > 0 && (
+              <span className="payment-sum-part is-pending">
+                미입고 {pendingItemCount}품목 · <strong>{sumPending.toLocaleString()}원</strong>
+              </span>
+            )}
           </div>
         </>
       )}

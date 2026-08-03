@@ -1071,7 +1071,10 @@ export default function PurchaseDetailPage() {
   }
 
   // 업체별 입고 집계 — 상단 품목 입고 처리(receivedQty)를 업체 단위로 모아 자동 판정
-  // { [업체명]: { total, full, latest } }  full===total 이면 전량 입고
+  // { [업체명]: { total, full, latest, recvAmount, pendingCount, pendingAmount } }
+  //   recvAmount    입고된 수량 × 단가 — 이 금액만 결제로 넘어간다
+  //   pendingCount  아직 안 들어온 품목 수 (부분 입고도 남은 수량이 있으면 센다)
+  //   pendingAmount 그 남은 수량의 금액
   function computeSupplierReceiveStatus() {
     const items = form.items || [];
     const cur = purchaseRef.current || purchase;
@@ -1086,9 +1089,18 @@ export default function PurchaseDetailPage() {
       const savedQty = Number(ln.qty) || 0;
       const receivedQty = Number(ln.receivedQty) || 0;
       const full = savedQty > 0 && receivedQty >= savedQty;
-      if (!map[supName]) map[supName] = { total: 0, full: 0, latest: null };
+      if (!map[supName])
+        map[supName] = { total: 0, full: 0, latest: null, recvAmount: 0, pendingCount: 0, pendingAmount: 0 };
       map[supName].total += 1;
       if (full) map[supName].full += 1;
+      const price = Number(ln.unitPrice) || 0;
+      const got = Math.min(receivedQty, savedQty); // 초과 입고는 발주 수량까지만 센다
+      map[supName].recvAmount += got * price;
+      const left = savedQty - got;
+      if (left > 0) {
+        map[supName].pendingCount += 1;
+        map[supName].pendingAmount += left * price;
+      }
       if (ln.receivedAt) {
         const d = ln.receivedAt.toDate ? ln.receivedAt.toDate() : new Date(ln.receivedAt);
         if (!Number.isNaN(d.getTime()) && (!map[supName].latest || d > map[supName].latest)) map[supName].latest = d;
@@ -2130,6 +2142,8 @@ export default function PurchaseDetailPage() {
                     <th style={{ minWidth: 170, width: 170 }}>발주 상태</th>
                     <th style={{ minWidth: 170, width: 170 }}>회신</th>
                     <th style={{ minWidth: 140, width: 150 }}>입고</th>
+                    <th style={{ minWidth: 130, width: 150 }}>결제 대상</th>
+                    <th style={{ minWidth: 130, width: 150 }}>미입고</th>
                     <th style={{ minWidth: 110, width: 130 }}>납기</th>
                     <th style={{ minWidth: 200, width: '100%' }}>특이사항</th>
                     <th className="col-action" aria-label="작업"></th>
@@ -2140,7 +2154,14 @@ export default function PurchaseDetailPage() {
                     const sentKey = sup.name.replace(/\./g, '_');
                     const sent = purchase.supplierSent?.[sentKey];
                     const replied = purchase.supplierReplied?.[sentKey];
-                    const recv = recvStatus[sup.name] || { total: 0, full: 0, latest: null };
+                    const recv = recvStatus[sup.name] || {
+                      total: 0,
+                      full: 0,
+                      latest: null,
+                      recvAmount: 0,
+                      pendingCount: 0,
+                      pendingAmount: 0,
+                    };
                     const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
                     const payReq = purchase.paymentRequested?.[sentKey];
                     const paid = purchase.supplierPaid?.[sentKey];
@@ -2204,6 +2225,28 @@ export default function PurchaseDetailPage() {
                               <span className="purchase-badge purchase-badge-draft">미입고</span>
                             )}
                           </span>
+                        </td>
+                        <td data-label="결제 대상">
+                          {recv.recvAmount > 0 ? (
+                            <span className="purchase-sup-amt">
+                              <strong>{recv.recvAmount.toLocaleString()}원</strong>
+                              <em>
+                                입고 {recv.full}/{recv.total}
+                              </em>
+                            </span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td data-label="미입고">
+                          {recv.pendingCount > 0 ? (
+                            <span className="purchase-sup-amt is-pending">
+                              <strong>{recv.pendingAmount.toLocaleString()}원</strong>
+                              <em>{recv.pendingCount}품목</em>
+                            </span>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
                         </td>
                         <td data-label="납기">
                           {replied?.deliveryDue ? (
