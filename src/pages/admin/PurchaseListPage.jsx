@@ -1022,10 +1022,12 @@ export default function PurchaseListPage() {
                 const u = users.find((x) => x.id === v);
                 if (u) setForm({ ...form, contactName: u.name || '', contactPhone: u.phone || '' });
               }}
-              options={users.map((u) => ({
-                value: u.id,
-                label: `${u.name}${u.position ? ` · ${u.position}` : ''}${u.phone ? ` · ${u.phone}` : ''}`,
-              }))}
+              options={users
+                .filter((u) => u.isActive !== false)
+                .map((u) => ({
+                  value: u.id,
+                  label: `${u.name}${u.position ? ` · ${u.position}` : ''}${u.phone ? ` · ${u.phone}` : ''}`,
+                }))}
               placeholder="직원 선택 (담당자·연락처 자동 입력)"
               ariaLabel="직원 선택"
             />

@@ -761,6 +761,7 @@ export default function ManageTeamPage() {
               options={users
                 .filter((u) => {
                   if (u.role === 'admin') return false;
+                  if (u.isActive === false) return false; // 퇴사자는 새로 배정하지 않는다
                   if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
                   return true;
                 })
@@ -777,6 +778,7 @@ export default function ManageTeamPage() {
               options={users
                 .filter((u) => {
                   if (u.role === 'admin') return false;
+                  if (u.isActive === false) return false; // 퇴사자는 새로 배정하지 않는다
                   if (u.uid === form.managerId) return false;
                   if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;
                   return true;
@@ -799,6 +801,8 @@ export default function ManageTeamPage() {
                 {users
                   .filter((u) => {
                     if (u.role === 'admin') return false;
+                    if (u.isActive === false) return false; // 퇴사자는 새로 배정하지 않는다
+                    if (u.isActive === false) return false; // 퇴사자는 새로 배정하지 않는다
                     if (u.uid === form.managerId) return false;
                     if (u.uid === form.subManagerId) return false;
                     if (u.departmentId && u.departmentId !== (editTeam?.id || '')) return false;

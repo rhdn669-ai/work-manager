@@ -196,7 +196,7 @@ export default function DepartmentManagementPage() {
               value={form.managerId}
               onChange={(v) => setForm({ ...form, managerId: v })}
               options={users
-                .filter((u) => u.role === 'manager' || u.role === 'admin')
+                .filter((u) => (u.role === 'manager' || u.role === 'admin') && u.isActive !== false)
                 .map((u) => ({ value: u.uid, label: u.name }))}
               ariaLabel="부서장 선택"
               placeholder="선택"

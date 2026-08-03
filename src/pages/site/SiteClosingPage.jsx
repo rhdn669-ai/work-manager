@@ -1667,10 +1667,10 @@ export default function SiteClosingPage() {
                         <button
                           className="btn btn-sm btn-danger"
                           onClick={() => handleDeleteFinance(f.id)}
-                          aria-label="삭제"
+                          aria-label="항목 삭제"
                         >
                           <Icon name="trash" className="btn-ic" />
-                          삭제
+                          항목 삭제
                         </button>
                       )}
                     </div>
@@ -1702,12 +1702,12 @@ export default function SiteClosingPage() {
                           {canEdit && (
                             <button
                               type="button"
-                              className="btn btn-sm btn-danger"
+                              className="icon-btn icon-btn--sm icon-btn--danger"
                               onClick={() => removeClosingRow(f.id, idx)}
-                              aria-label="행 삭제"
+                              aria-label="이 마감 줄 삭제"
+                              title="이 마감 줄 삭제"
                             >
-                              <Icon name="trash" className="btn-ic" />
-                              삭제
+                              <Icon name="trash" />
                             </button>
                           )}
                         </div>
@@ -1835,10 +1835,10 @@ export default function SiteClosingPage() {
                         type="button"
                         className="btn btn-sm btn-danger"
                         onClick={() => handleDeleteFinance(f.id, false)}
-                        aria-label="삭제"
+                        aria-label="항목 삭제"
                       >
                         <Icon name="trash" className="btn-ic" />
-                        삭제
+                        항목 삭제
                       </button>
                     )}
                   </div>
@@ -2521,12 +2521,12 @@ export default function SiteClosingPage() {
                                     {canEdit && (
                                       <button
                                         type="button"
-                                        className="btn btn-sm btn-danger"
+                                        className="icon-btn icon-btn--sm icon-btn--danger"
                                         onClick={() => removeRowClosing(it.id, idx)}
-                                        aria-label="행 삭제"
+                                        aria-label="이 호기 줄 삭제"
+                                        title="이 호기 줄 삭제"
                                       >
-                                        <Icon name="trash" className="btn-ic" />
-                                        삭제
+                                        <Icon name="trash" />
                                       </button>
                                     )}
                                   </div>
@@ -3227,7 +3227,8 @@ export default function SiteClosingPage() {
         canEdit &&
         (() => {
           const currentNames = new Set(items.filter((it) => it.itemType === 'employee').map((it) => it.detail));
-          const allWithCost = Object.values(userMap).filter((u) => u.fixedCost);
+          // 퇴사자는 앞으로 인건비를 얹을 대상이 아니다 (이미 얹힌 항목은 그대로 남는다)
+          const allWithCost = Object.values(userMap).filter((u) => u.fixedCost && u.isActive !== false);
           const unassigned = allWithCost.filter((u) => !assignedNames.has(u.name) && !currentNames.has(u.name));
           const assignedElsewhere = allWithCost.filter((u) => assignedNames.has(u.name) && !currentNames.has(u.name));
           const alreadyHere = allWithCost.filter((u) => currentNames.has(u.name));

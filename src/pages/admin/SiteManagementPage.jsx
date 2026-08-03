@@ -103,7 +103,8 @@ export default function SiteManagementPage() {
 
   const userMap = Object.fromEntries(users.map((u) => [u.uid, u]));
   // 관리자는 항상 모든 프로젝트 접근 가능하므로 후보에서 제외
-  const candidates = users.filter((u) => u.role !== 'admin');
+  // 퇴사자는 앞으로 고르는 자리에 나오지 않는다 (과거 기록의 이름은 그대로 남는다)
+  const candidates = users.filter((u) => u.role !== 'admin' && u.isActive !== false);
 
   return (
     <div className="site-management-page">

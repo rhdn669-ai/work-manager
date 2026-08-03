@@ -420,7 +420,8 @@ export default function SiteListPage() {
     }));
   }
 
-  const candidates = users.filter((u) => u.role !== 'admin');
+  // 퇴사자는 앞으로 고르는 자리에 나오지 않는다 (과거 기록의 이름은 그대로 남는다)
+  const candidates = users.filter((u) => u.role !== 'admin' && u.isActive !== false);
 
   if (loading) return <Skeleton.Rows count={6} />;
 

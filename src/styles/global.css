@@ -11413,6 +11413,13 @@ tr.is-newly-added > td {
   .revenue-list {
     grid-template-columns: 1fr;
   }
+  .revenue-card {
+    padding-right: 16px;
+  }
+  .revenue-card-head > .btn-danger {
+    position: static;
+    align-self: flex-end;
+  }
   .revenue-card-head {
     flex-direction: column;
     gap: 8px;
@@ -11429,7 +11436,7 @@ tr.is-newly-added > td {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px 16px;
-  padding-right: 44px; /* 우상단 ✕ 영역 확보 */
+  padding-right: 108px; /* 우상단 「항목 삭제」 버튼이 금액을 가리지 않도록 */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -11573,8 +11580,9 @@ tr.is-newly-added > td {
   .revenue-row > input[type='text'] {
     grid-area: units;
   }
-  .revenue-row > .btn-danger {
+  .revenue-row > .icon-btn {
     grid-area: del;
+    justify-self: center;
   }
   .revenue-row-head {
     display: none;
@@ -11594,14 +11602,9 @@ tr.is-newly-added > td {
 }
 .vendor-case-row {
   display: grid;
-  grid-template-columns: 150px 1fr 64px auto;
+  grid-template-columns: 150px 1fr 64px 32px;
   align-items: center;
   gap: 8px;
-}
-/* 삭제 버튼(아이콘+글자)이 열 밖으로 튀어나오지 않게 — 줄바꿈 금지·자기 폭 유지 */
-.vendor-case-row > .btn-danger {
-  white-space: nowrap;
-  justify-self: end;
 }
 .vendor-case-row-head {
   font-size: 11px;

@@ -39,6 +39,17 @@ export async function updateUser(uid, data) {
   });
 }
 
+// 퇴사 처리 — 직원 문서를 지우지 않고 재직 여부만 내린다.
+// 근태·연차·잔업·발주 기록은 uid 로 매여 있어, 지우면 과거 기록의 이름이 사라진다.
+export async function setUserResigned(uid, resigned, byName = '') {
+  await updateDoc(doc(db, 'users', uid), {
+    isActive: !resigned,
+    resignedAt: resigned ? new Date() : null,
+    resignedBy: resigned ? byName : null,
+    updatedAt: new Date(),
+  });
+}
+
 export async function createUser(uid, data) {
   await setDoc(doc(db, 'users', uid), {
     uid,

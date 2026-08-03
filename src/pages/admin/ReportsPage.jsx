@@ -102,12 +102,19 @@ export default function ReportsPage() {
         leaveByUser[l.userId] += l.days || 0;
       }
 
+      // 퇴사자라도 그 달에 잔업·연차가 있었으면 집계에 남긴다.
+      // 빼버리면 퇴사한 달의 정산이 어긋난다.
+      const hadRecord = new Set([
+        ...records.filter((r) => r.status === 'approved').map((r) => r.userId),
+        ...Object.keys(leaveByUser),
+      ]);
       const byUser = {};
       users
-        .filter((u) => u.isActive !== false && u.role !== 'admin')
+        .filter((u) => (u.isActive !== false || hadRecord.has(u.uid)) && u.role !== 'admin')
         .forEach((u) => {
           byUser[u.uid] = {
             name: u.name,
+            resigned: u.isActive === false,
             departmentId: u.departmentId,
             overtimeMinutes: 0,
             overtimeCount: 0,
@@ -329,6 +336,11 @@ export default function ReportsPage() {
                     <td data-label="#">{i + 1}</td>
                     <td data-label="이름">
                       <strong>{r.name}</strong>
+                      {r.resigned && (
+                        <span className="purchase-badge purchase-badge-closed" style={{ marginLeft: 6 }}>
+                          퇴사
+                        </span>
+                      )}
                     </td>
                     <td data-label="부서">{deptMap[r.departmentId] || '-'}</td>
                     <td data-label="잔업">

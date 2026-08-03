@@ -4,6 +4,7 @@ import { getUsers, updateUser, createUser, seedSiteCreatorsIfNeeded } from '../.
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
 import { trashGeneric } from '../../services/trashService';
+import { setUserResigned } from '../../services/userService';
 import { POSITIONS } from '../../utils/constants';
 import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
@@ -24,6 +25,14 @@ function useViewportWidth() {
   return vw;
 }
 
+function fmtDate(ts) {
+  if (!ts) return '-';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '-';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 export default function UserManagementPage() {
   const { confirm, alert, toast } = useDialog();
   const { impersonate, userProfile } = useAuth();
@@ -36,6 +45,7 @@ export default function UserManagementPage() {
   const [balances, setBalances] = useState({});
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [view, setView] = useState('active'); // 'active' | 'resigned'
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({
@@ -209,8 +219,47 @@ export default function UserManagementPage() {
     }
   }
 
+  // 퇴사 처리 — 지우지 않는다. 근태·연차·잔업 기록이 uid 로 매여 있어
+  // 직원을 지우면 과거 기록에서 이름이 사라진다.
+  async function handleResign(user) {
+    const ok = await confirm({
+      title: '퇴사 처리',
+      message:
+        `"${user.name}"을(를) 퇴사 처리합니다. ` +
+        '지금까지의 근태·연차·잔업 기록은 그대로 남고, ' +
+        '앞으로 담당자·팀원을 고르는 자리에는 나타나지 않습니다.',
+    });
+    if (!ok) return;
+    try {
+      await setUserResigned(user.uid, true, userProfile?.name || '');
+      toast(`${user.name} 퇴사 처리했습니다`, 'success');
+      setShowModal(false);
+      await loadData();
+    } catch {
+      toast('퇴사 처리 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  async function handleRejoin(user) {
+    const ok = await confirm({ title: '복직 처리', message: `"${user.name}"을(를) 재직 상태로 되돌립니다.` });
+    if (!ok) return;
+    try {
+      await setUserResigned(user.uid, false);
+      toast(`${user.name} 복직 처리했습니다`, 'success');
+      setShowModal(false);
+      await loadData();
+    } catch {
+      toast('복직 처리 중 오류가 발생했습니다', 'error');
+    }
+  }
+
   async function handleDelete(user) {
-    if (!(await confirm(`"${user.name}" 직원을 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
+    if (
+      !(await confirm(
+        `"${user.name}" 직원을 삭제하시겠습니까?\n퇴사한 직원이라면 삭제 대신 「퇴사 처리」를 쓰세요 — 기록이 그대로 남습니다.`,
+      ))
+    )
+      return;
     try {
       await trashGeneric(
         'users',
@@ -279,6 +328,11 @@ export default function UserManagementPage() {
     if (u.canViewSalary) return '권한 부여';
     return null;
   }
+  // 재직·퇴사를 나눠 본다. 퇴사자는 지운 것이 아니라 접어둔 것이다.
+  const activeUsers = users.filter((u) => u.isActive !== false);
+  const resignedUsers = users.filter((u) => u.isActive === false);
+  const shownUsers = view === 'resigned' ? resignedUsers : activeUsers;
+
   const salaryViewers = users.map((u) => ({ user: u, reason: getSalaryPermissionReason(u) })).filter((x) => x.reason);
 
   function getCreateSiteReason(u) {
@@ -517,6 +571,22 @@ export default function UserManagementPage() {
         </div>
       </div>
 
+      <div className="purchase-filters no-print" style={{ marginBottom: 12 }}>
+        {[
+          { k: 'active', label: '재직', n: activeUsers.length },
+          { k: 'resigned', label: '퇴사', n: resignedUsers.length },
+        ].map((o) => (
+          <button
+            key={o.k}
+            type="button"
+            className={`btn btn-sm ${view === o.k ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setView(o.k)}
+          >
+            {o.label} {o.n}
+          </button>
+        ))}
+      </div>
+
       <div className="table-scroll-x">
         <table className="table user-management-table table-clickable cards-sm">
           <thead>
@@ -528,13 +598,13 @@ export default function UserManagementPage() {
               <th>부서</th>
               <th>고정비용</th>
               <th style={isSmall ? { display: 'none' } : undefined}>시급</th>
-              <th style={isSmall ? { display: 'none' } : undefined}>입사일</th>
+              <th style={isSmall ? { display: 'none' } : undefined}>{view === 'resigned' ? '퇴사일' : '입사일'}</th>
               <th>연차 (누적/사용/잔여)</th>
               <th style={{ width: 44 }} aria-label="로그인 전환"></th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {shownUsers.map((u) => {
               const bal = balances[u.uid];
               const isSelf = u.uid === userProfile?.uid;
               return (
@@ -545,6 +615,11 @@ export default function UserManagementPage() {
                     style={{ wordBreak: 'break-word', overflowWrap: 'break-word', minHeight: 36 }}
                   >
                     {u.name}
+                    {u.isActive === false && (
+                      <span className="purchase-badge purchase-badge-closed" style={{ marginLeft: 6 }}>
+                        퇴사
+                      </span>
+                    )}
                   </td>
                   <td data-label="코드" title={u.code || ''} style={{ minHeight: 36 }}>
                     <code>{u.code}</code>
@@ -588,10 +663,10 @@ export default function UserManagementPage() {
                     {u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}
                   </td>
                   <td
-                    data-label="입사일"
+                    data-label={view === 'resigned' ? '퇴사일' : '입사일'}
                     style={{ fontSize: 12, minHeight: 36, ...(isSmall ? { display: 'none' } : {}) }}
                   >
-                    {u.joinDate || '-'}
+                    {view === 'resigned' ? fmtDate(u.resignedAt) : u.joinDate || '-'}
                   </td>
                   <td data-label="연차 (누적/사용/잔여)">
                     {bal ? (
@@ -949,10 +1024,21 @@ export default function UserManagementPage() {
           )}
           <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
             {editUser ? (
-              <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(editUser)}>
-                <Icon name="trash" className="btn-ic" />
-                삭제
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {editUser.isActive === false ? (
+                  <button type="button" className="btn btn-sm btn-primary" onClick={() => handleRejoin(editUser)}>
+                    복직 처리
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => handleResign(editUser)}>
+                    퇴사 처리
+                  </button>
+                )}
+                <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(editUser)}>
+                  <Icon name="trash" className="btn-ic" />
+                  삭제
+                </button>
+              </div>
             ) : (
               <span />
             )}

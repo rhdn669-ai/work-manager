@@ -100,11 +100,14 @@ export default function TeamReportsPage() {
     leaveByUser[l.userId] += l.days || 0;
   });
 
+  // 퇴사자라도 그 달에 잔업·연차가 있었으면 남긴다 (기록은 사라지지 않는다)
+  const hadRecord = new Set([...Object.keys(overtimeByUser), ...Object.keys(leaveByUser)]);
   const rows = teamMembers
-    .filter((u) => u.isActive !== false && u.role !== 'admin')
+    .filter((u) => (u.isActive !== false || hadRecord.has(u.uid)) && u.role !== 'admin')
     .map((u) => ({
       uid: u.uid,
       name: u.name,
+      resigned: u.isActive === false,
       position: u.position || '',
       isLeader: myTeam && u.uid === myTeam.managerId,
       isSubLeader: myTeam && u.uid === myTeam.subManagerId,
@@ -269,6 +272,7 @@ export default function TeamReportsPage() {
                       >
                         {r.name}
                       </strong>
+                      {r.resigned && <span className="purchase-badge purchase-badge-closed">퇴사</span>}
                       {r.isLeader && (
                         <span
                           className="badge badge-role-manager"
