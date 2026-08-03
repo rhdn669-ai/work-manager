@@ -392,6 +392,34 @@ export function deriveStatus(items, currentStatus) {
   return anyReceived ? 'partial' : 'ordered';
 }
 
+// 프로젝트의 그 달 자재비 — 그 달에 입고된 금액만 센다.
+// 발주는 했지만 아직 안 들어온 몫은 원가로 잡지 않는다(들어온 달에 잡힌다).
+// 반환: { total, count, rows: [{ purchaseId, title, supplierName, amount }] }
+export async function getPurchaseCostBySite(siteId, year, month) {
+  if (!siteId) return { total: 0, count: 0, rows: [] };
+  const snap = await getDocs(query(purchasesRef, where('siteId', '==', siteId)));
+  const rows = [];
+  let total = 0;
+  snap.forEach((d) => {
+    const p = d.data();
+    let amount = 0;
+    for (const ln of p.items || []) {
+      const got = Math.min(Number(ln.receivedQty) || 0, Number(ln.qty) || 0);
+      if (got <= 0 || !ln.receivedAt) continue;
+      const dt = ln.receivedAt.toDate ? ln.receivedAt.toDate() : new Date(ln.receivedAt);
+      if (Number.isNaN(dt.getTime())) continue;
+      if (dt.getFullYear() !== year || dt.getMonth() + 1 !== month) continue;
+      amount += got * (Number(ln.unitPrice) || 0);
+    }
+    if (amount > 0) {
+      rows.push({ purchaseId: d.id, title: p.title || '(제목 없음)', supplierName: p.supplierName || '', amount });
+      total += amount;
+    }
+  });
+  rows.sort((a, b) => b.amount - a.amount);
+  return { total, count: rows.length, rows };
+}
+
 export async function getPurchases() {
   const q = query(purchasesRef, orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);

@@ -19,6 +19,7 @@ import { getUsers } from '../../services/userService';
 import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getAllOvertimeRecords } from '../../services/attendanceService';
 import { getEvents } from '../../services/eventService';
+import { getPurchaseCostBySite } from '../../services/purchaseService';
 import { getKoreanHolidayDates } from '../../utils/koreanHolidays';
 import { getFreelancers, getVendors, getRateForDate, addFreelancer } from '../../services/outsourceService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
@@ -164,6 +165,7 @@ export default function SiteClosingPage() {
   const [financeBuf, setFinanceBuf] = useState({});
   const [mirroredFinances, setMirroredFinances] = useState([]); // 합산 대상 프로젝트의 지출 (읽기 전용)
   const [mirroredLabor, setMirroredLabor] = useState(0); // 합산 대상 프로젝트의 공수비 총액
+  const [purchaseCost, setPurchaseCost] = useState({ total: 0, count: 0, rows: [] }); // 발주 자재비(그 달 입고분)
   const [leaveDays, setLeaveDays] = useState({}); // { userId: Set of day numbers }
   const [showEmployeeSelect, setShowEmployeeSelect] = useState(false);
   const [assignedNames, setAssignedNames] = useState(new Set());
@@ -398,6 +400,11 @@ export default function SiteClosingPage() {
       setSite(s);
       setAssignedNames(assigned);
       setFinances(fins);
+
+      // 이 프로젝트로 잡힌 발주 중 그 달에 입고된 금액 — 지출에 읽기 전용으로 얹는다
+      getPurchaseCostBySite(siteId, y, m)
+        .then(setPurchaseCost)
+        .catch(() => setPurchaseCost({ total: 0, count: 0, rows: [] }));
 
       // 합산 대상 프로젝트들의 지출/공수를 읽기 전용으로 가져오기
       const mirrorIds = s?.mirrorFromSiteIds || [];
@@ -1270,6 +1277,18 @@ export default function SiteClosingPage() {
       return { ...b, [id]: cur };
     });
   }
+  // 단발 프로젝트 매출 — 금액을 그대로 저장한다 (단가·댓수 계산을 거치지 않는다)
+  function updateFinanceAmount(id, value) {
+    setFinanceBuf((b) => {
+      const cur = { ...b[id] };
+      cur.amount = Number(String(value).replace(/[,\s]/g, '')) || 0;
+      cur.unitPrice = cur.amount; // 단가 칸에도 같은 값을 둬 두 곳이 어긋나지 않게
+      cur.quantity = 1;
+      scheduleFinanceSave(id, cur);
+      return { ...b, [id]: cur };
+    });
+  }
+
   // 매출 마감행 추가/삭제/수정
   function addClosingRow(id) {
     setFinanceBuf((b) => {
@@ -1427,8 +1446,11 @@ export default function SiteClosingPage() {
     .filter((f) => canViewSalary || !isOvertimeDesc(f.description))
     .reduce((s, f) => s + (Number(f.amount) || 0), 0);
   const mirroredLaborSum = canViewSalary ? mirroredLabor : 0;
-  const totalExpense = ownExpense + mirroredExpenseSum + mirroredLaborSum;
+  const totalExpense = ownExpense + mirroredExpenseSum + mirroredLaborSum + purchaseCost.total;
   const hideRevenue = !!site?.hideRevenue;
+  // 단발 프로젝트(projectType: 'once')는 호기·댓수 개념이 없어 「1대당 × 댓수」가 맞지 않는다.
+  // 금액을 직접 적게 하고 호기 줄은 감춘다. 프로젝트 만들 때 이미 고른 값을 그대로 쓴다.
+  const isOnceProject = site?.projectType === 'once';
   const effectiveRevenue = hideRevenue ? 0 : totalRevenue;
   const netTotal = effectiveRevenue - totalExpense - freelancerTotal - (canViewSalary ? employeeTotal : 0);
 
@@ -1639,7 +1661,7 @@ export default function SiteClosingPage() {
                 // 호기 문자열을 콤마/공백으로 split → 비어있지 않은 항목 수 = 댓수
                 const countUnits = (units) => (units || '').split(/[,\s/]+/).filter((x) => x.trim()).length;
                 const totalQty = closings.reduce((s, c) => s + countUnits(c.units), 0);
-                const totalAmount = (Number(buf.unitPrice) || 0) * totalQty;
+                const totalAmount = isOnceProject ? Number(buf.amount) || 0 : (Number(buf.unitPrice) || 0) * totalQty;
                 return (
                   <div className="revenue-card" key={f.id}>
                     <div className="revenue-card-head revenue-card-head-responsive">
@@ -1653,11 +1675,15 @@ export default function SiteClosingPage() {
                         disabled={!canEdit}
                       />
                       <div className="revenue-unitprice">
-                        <span className="label">1대당</span>
+                        <span className="label">{isOnceProject ? '금액' : '1대당'}</span>
                         <MoneyInput
                           className="revenue-unitprice-input"
-                          value={buf.unitPrice || 0}
-                          onChange={(e) => updateFinanceUnitPrice(f.id, e.target.value)}
+                          value={(isOnceProject ? buf.amount : buf.unitPrice) || 0}
+                          onChange={(e) =>
+                            isOnceProject
+                              ? updateFinanceAmount(f.id, e.target.value)
+                              : updateFinanceUnitPrice(f.id, e.target.value)
+                          }
                           onBlur={() => flushFinance(f.id)}
                           disabled={!canEdit}
                         />
@@ -1675,59 +1701,63 @@ export default function SiteClosingPage() {
                       )}
                     </div>
 
-                    <div className="revenue-rows">
-                      <div className="revenue-row revenue-row-head">
-                        <span>마감일자</span>
-                        <span>호기</span>
-                        <span></span>
-                      </div>
-                      {closings.length === 0 && <div className="revenue-row-empty">마감 일자를 추가해주세요.</div>}
-                      {closings.map((c, idx) => (
-                        <div className="revenue-row" key={c.id || idx}>
-                          <input
-                            type="date"
-                            value={c.date || ''}
-                            onChange={(e) => updateClosingRow(f.id, idx, 'date', e.target.value)}
-                            onBlur={() => flushFinance(f.id)}
-                            disabled={!canEdit}
-                          />
-                          <input
-                            type="text"
-                            value={c.units || ''}
-                            onChange={(e) => updateClosingRow(f.id, idx, 'units', e.target.value)}
-                            onBlur={() => flushFinance(f.id)}
-                            disabled={!canEdit}
-                            placeholder="예: 1호기, 2호기 (콤마로 구분 → 자동 카운트)"
-                          />
-                          {canEdit && (
-                            <button
-                              type="button"
-                              className="icon-btn icon-btn--sm icon-btn--danger"
-                              onClick={() => removeClosingRow(f.id, idx)}
-                              aria-label="이 마감 줄 삭제"
-                              title="이 마감 줄 삭제"
-                            >
-                              <Icon name="trash" />
-                            </button>
-                          )}
+                    {!isOnceProject && (
+                      <div className="revenue-rows">
+                        <div className="revenue-row revenue-row-head">
+                          <span>마감일자</span>
+                          <span>호기</span>
+                          <span></span>
                         </div>
-                      ))}
-                      {canEdit && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline revenue-add-row"
-                          onClick={() => addClosingRow(f.id)}
-                        >
-                          + 마감 추가
-                        </button>
-                      )}
-                    </div>
+                        {closings.length === 0 && <div className="revenue-row-empty">마감 일자를 추가해주세요.</div>}
+                        {closings.map((c, idx) => (
+                          <div className="revenue-row" key={c.id || idx}>
+                            <input
+                              type="date"
+                              value={c.date || ''}
+                              onChange={(e) => updateClosingRow(f.id, idx, 'date', e.target.value)}
+                              onBlur={() => flushFinance(f.id)}
+                              disabled={!canEdit}
+                            />
+                            <input
+                              type="text"
+                              value={c.units || ''}
+                              onChange={(e) => updateClosingRow(f.id, idx, 'units', e.target.value)}
+                              onBlur={() => flushFinance(f.id)}
+                              disabled={!canEdit}
+                              placeholder="예: 1호기, 2호기 (콤마로 구분 → 자동 카운트)"
+                            />
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="icon-btn icon-btn--sm icon-btn--danger"
+                                onClick={() => removeClosingRow(f.id, idx)}
+                                aria-label="이 마감 줄 삭제"
+                                title="이 마감 줄 삭제"
+                              >
+                                <Icon name="trash" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline revenue-add-row"
+                            onClick={() => addClosingRow(f.id)}
+                          >
+                            + 마감 추가
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     <div className="revenue-card-foot">
-                      <div className="foot-field">
-                        <span className="label">총 댓수</span>
-                        <strong>{totalQty}대</strong>
-                      </div>
+                      {!isOnceProject && (
+                        <div className="foot-field">
+                          <span className="label">총 댓수</span>
+                          <strong>{totalQty}대</strong>
+                        </div>
+                      )}
                       <div className="foot-field">
                         <span className="label">매출</span>
                         <strong style={{ color: 'var(--success)' }}>{totalAmount.toLocaleString()}원</strong>
@@ -1778,7 +1808,10 @@ export default function SiteClosingPage() {
             </div>
           )}
         </div>
-        {expenseItems.length === 0 && mirroredFinances.length === 0 && mirroredLaborSum === 0 ? (
+        {expenseItems.length === 0 &&
+        mirroredFinances.length === 0 &&
+        mirroredLaborSum === 0 &&
+        purchaseCost.total === 0 ? (
           <p className="text-muted text-sm" style={{ padding: '8px 0' }}>
             등록된 지출 항목이 없습니다.
           </p>
@@ -1874,6 +1907,26 @@ export default function SiteClosingPage() {
                   </div>
                 );
               })()}
+            {/* 발주 자재비 — 이 프로젝트로 잡힌 발주 중 그 달 입고분 (읽기 전용) */}
+            {purchaseCost.total > 0 && (
+              <div className="expense-card expense-card-readonly" key="purchase-cost">
+                <span className="expense-tag expense-chip-material">자재비</span>
+                <span className="expense-input-desc expense-readonly-text">
+                  발주 입고 ({purchaseCost.count}건) — {purchaseCost.rows.map((r) => r.title).join(', ')}
+                </span>
+                <MoneyInput className="expense-input-amount" value={purchaseCost.total} onChange={() => {}} disabled />
+                <span className="expense-won">원</span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => navigate('/admin/purchase')}
+                  title="구매·발주 현황으로 이동"
+                >
+                  발주 보기
+                </button>
+              </div>
+            )}
+
             {/* 합산 대상 프로젝트의 비잔업 지출 (카테고리별 합산, 읽기 전용) */}
             {(() => {
               const nonOvertimeItems = mirroredFinances.filter((f) => !isOvertimeDesc(f.description));
