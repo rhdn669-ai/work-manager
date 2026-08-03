@@ -1749,25 +1749,32 @@ export default function PurchaseDetailPage() {
             <DndContext sensors={itemDndSensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
               <SortableContext items={form.items.map((_, i) => String(i))} strategy={verticalListSortingStrategy}>
                 <div className="table-scroll-x">
-                  <table className="table inline-edit-table cards-sm bom-flat-table" onMouseDown={handleColumnDragCopy}>
+                  <table
+                    className="table inline-edit-table cards-sm bom-flat-table po-item-table"
+                    onMouseDown={handleColumnDragCopy}
+                  >
+                    {/* 칸 폭 배분(%) — 대표님 지정 1~4번, 나머지는 내용 길이에 맞춰 나눔 */}
+                    <colgroup>
+                      {[2, 5, 3, 10, 7, 18, 5, 3, 3, 7, 7, 6, 7, 9, 8].map((pct, i) => (
+                        <col key={i} style={{ width: `${pct}%` }} />
+                      ))}
+                    </colgroup>
                     <thead>
                       <tr>
                         <th className="bom-no-col">No</th>
-                        <th style={{ width: 113 }}>코드</th>
-                        <th style={{ width: 44 }}>BOX</th>
-                        <th style={{ minWidth: 120 }}>품명</th>
-                        <th style={{ width: 144 }}>메이커</th>
-                        <th style={{ minWidth: 250 }}>규격</th>
-                        <th style={{ width: 97 }}>분류</th>
-                        <th style={{ width: 76 }}>moq/단위</th>
-                        <th style={{ width: 64 }}>수량</th>
-                        <th style={{ width: 88 }}>단가</th>
-                        <th style={{ width: 96 }}>합계</th>
-                        <th style={{ width: 136 }}>기본 구매처</th>
-                        <th style={{ minWidth: 120 }}>비고</th>
-                        <th style={{ minWidth: 130 }} className="no-print">
-                          입고
-                        </th>
+                        <th>코드</th>
+                        <th>BOX</th>
+                        <th>품명</th>
+                        <th>메이커</th>
+                        <th>규격</th>
+                        <th>분류</th>
+                        <th>moq/단위</th>
+                        <th>수량</th>
+                        <th>단가</th>
+                        <th>합계</th>
+                        <th>기본 구매처</th>
+                        <th>비고</th>
+                        <th className="no-print">입고</th>
                         <th className="bom-action-col no-print" aria-hidden="true"></th>
                       </tr>
                     </thead>

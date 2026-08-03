@@ -19440,3 +19440,18 @@ a.lib-row-name:hover {
 .trash-modal-bar .btn {
   flex-shrink: 0;
 }
+
+/* ===== 발주 품목 표 — 칸 폭을 colgroup 의 % 로만 정한다 =====
+   fixed 가 아니면 브라우저가 내용 길이대로 폭을 다시 나눠 비율이 무너진다.
+   좁은 화면에서는 표가 카드로 접히므로 원래대로 돌려놓는다. */
+@media (min-width: 769px) {
+  .po-item-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .po-item-table th,
+  .po-item-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
