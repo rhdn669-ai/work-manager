@@ -2,6 +2,23 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   getPurchaseById,
   updatePurchase,
   settlePurchase,
@@ -93,6 +110,46 @@ function fmtDateTime(ts) {
   if (Number.isNaN(d.getTime())) return '-';
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// 드래그로 순서를 바꾸는 품목 행 — BOM 상세와 같은 모양(핸들을 No 칸 안에 둔다).
+// 검색·업체 필터로 일부만 보일 때는 끌어봐야 어디에 놓이는지 알 수 없어 핸들을 숨긴다.
+function SortableItemRow({ id, canDrag, no, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !canDrag,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    background: isDragging ? 'var(--bg-card)' : undefined,
+    boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.15)' : undefined,
+    zIndex: isDragging ? 2 : undefined,
+    position: isDragging ? 'relative' : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style}>
+      <td className="bom-no-col" data-label="No">
+        <span className="bom-no-wrap">
+          {canDrag && (
+            <button
+              type="button"
+              className="drag-handle-btn"
+              aria-label="드래그하여 순서 변경"
+              title="드래그하여 순서 변경"
+              {...attributes}
+              {...listeners}
+            >
+              <Icon name="move" />
+            </button>
+          )}
+          {no}
+        </span>
+      </td>
+      {children}
+    </tr>
+  );
 }
 
 export default function PurchaseDetailPage() {
@@ -332,6 +389,21 @@ export default function PurchaseDetailPage() {
     };
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
+  }
+
+  const itemDndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  function handleItemDragEnd(event) {
+    const { active, over } = event;
+    if (!canDragItems || !over || active.id === over.id) return;
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+    if (Number.isNaN(oldIndex) || Number.isNaN(newIndex)) return;
+    setForm((f) => ({ ...f, items: arrayMove(f.items, oldIndex, newIndex) }));
+    scheduleAutoSave();
   }
 
   function updateLine(idx, patch) {
@@ -598,6 +670,8 @@ export default function PurchaseDetailPage() {
   }, [form.items, itemMaster, suppliers]);
 
   const isReadOnly = purchase?.status === 'settled' || purchase?.status === 'closed';
+  // 검색·업체 필터가 걸리면 일부만 보여 순서를 옮길 수 없다
+  const canDragItems = !isReadOnly && !itemSearch.trim() && itemSupplierFilter === 'all';
 
   // 발주 종결 — 보드에서 내려 종결 목록으로 옮긴다. 삭제가 아니라 이동이다.
   async function handleClosePurchase() {
@@ -1672,273 +1746,278 @@ export default function PurchaseDetailPage() {
         )}
         <div className="item-group is-expanded bom-flat-group">
           <div className="item-group-detail">
-            <div className="table-scroll-x">
-              <table className="table inline-edit-table cards-sm bom-flat-table" onMouseDown={handleColumnDragCopy}>
-                <thead>
-                  <tr>
-                    <th className="bom-no-col">No</th>
-                    <th style={{ minWidth: 90 }}>코드</th>
-                    <th style={{ minWidth: 90 }}>BOX</th>
-                    <th style={{ minWidth: 120 }}>품명</th>
-                    <th>메이커</th>
-                    <th>규격</th>
-                    <th>분류</th>
-                    <th>moq/단위</th>
-                    <th>수량</th>
-                    <th>단가</th>
-                    <th>합계</th>
-                    <th>기본 구매처</th>
-                    <th style={{ minWidth: 120 }}>비고</th>
-                    <th style={{ minWidth: 130 }} className="no-print">
-                      입고
-                    </th>
-                    <th className="bom-action-col no-print" aria-hidden="true"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {form.items.length === 0 && (
-                    <tr>
-                      <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
-                        품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
-                      </td>
-                    </tr>
-                  )}
-                  {form.items.length > 0 &&
-                    (itemSearch.trim() || itemSupplierFilter !== 'all') &&
-                    !form.items.some(lineMatchesSearch) && (
+            <DndContext sensors={itemDndSensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+              <SortableContext items={form.items.map((_, i) => String(i))} strategy={verticalListSortingStrategy}>
+                <div className="table-scroll-x">
+                  <table className="table inline-edit-table cards-sm bom-flat-table" onMouseDown={handleColumnDragCopy}>
+                    <thead>
                       <tr>
-                        <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
-                          {itemSupplierFilter !== 'all' && !itemSearch.trim()
-                            ? `"${itemSupplierFilter}" 업체 품목이 없습니다.`
-                            : `"${itemSearch}" 검색 결과가 없습니다.`}
-                        </td>
+                        <th className="bom-no-col">No</th>
+                        <th style={{ minWidth: 90 }}>코드</th>
+                        <th style={{ minWidth: 90 }}>BOX</th>
+                        <th style={{ minWidth: 120 }}>품명</th>
+                        <th>메이커</th>
+                        <th style={{ minWidth: 190 }}>규격</th>
+                        <th style={{ width: 64 }}>분류</th>
+                        <th style={{ width: 76 }}>moq/단위</th>
+                        <th style={{ width: 64 }}>수량</th>
+                        <th style={{ width: 88 }}>단가</th>
+                        <th style={{ width: 96 }}>합계</th>
+                        <th>기본 구매처</th>
+                        <th style={{ minWidth: 120 }}>비고</th>
+                        <th style={{ minWidth: 130 }} className="no-print">
+                          입고
+                        </th>
+                        <th className="bom-action-col no-print" aria-hidden="true"></th>
                       </tr>
-                    )}
-                  {form.items.map((ln, idx) => {
-                    if (!lineMatchesSearch(ln)) return null;
-                    const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
-                    const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
-                    const lineSupplierName = master?.defaultSupplierId
-                      ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
-                      : '';
-                    // 입고 상태는 라인 자체 데이터로 — 삭제·인덱스 변동에 영향받지 않음 (입고 클릭 시 자동저장 flush)
-                    const savedQty = Number(ln.qty) || 0;
-                    const receivedQty = Number(ln.receivedQty) || 0;
-                    const isLineSaved = (ln.name || '').trim().length > 0;
-                    const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
-                    return (
-                      <tr key={idx}>
-                        <td className="bom-no-col" data-label="No">
-                          {idx + 1}
-                        </td>
-                        <td data-label="코드">
-                          <input
-                            type="text"
-                            className="bom-readonly-input bom-code-input"
-                            value={master?.code || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="BOX" title={ln.box || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={ln.box || ''}
-                            title={ln.box || ''}
-                            placeholder="-"
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td
-                          data-label="품명"
-                          title={ln.itemId && master ? master.name : ln.name || ''}
-                          style={{ minWidth: 90, maxWidth: 200 }}
-                        >
-                          <div className="purchase-line-item-wrap">
-                            <input
-                              className="purchase-line-item bom-readonly-input"
-                              type="text"
-                              placeholder="‘변경’ 버튼으로 품목 선택"
-                              value={ln.itemId && master ? master.name : ln.name}
+                    </thead>
+                    <tbody>
+                      {form.items.length === 0 && (
+                        <tr>
+                          <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                            품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
+                          </td>
+                        </tr>
+                      )}
+                      {form.items.length > 0 &&
+                        (itemSearch.trim() || itemSupplierFilter !== 'all') &&
+                        !form.items.some(lineMatchesSearch) && (
+                          <tr>
+                            <td
+                              colSpan={15}
+                              className="text-muted text-sm"
+                              style={{ textAlign: 'center', padding: 16 }}
+                            >
+                              {itemSupplierFilter !== 'all' && !itemSearch.trim()
+                                ? `"${itemSupplierFilter}" 업체 품목이 없습니다.`
+                                : `"${itemSearch}" 검색 결과가 없습니다.`}
+                            </td>
+                          </tr>
+                        )}
+                      {form.items.map((ln, idx) => {
+                        if (!lineMatchesSearch(ln)) return null;
+                        const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+                        const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+                        const lineSupplierName = master?.defaultSupplierId
+                          ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
+                          : '';
+                        // 입고 상태는 라인 자체 데이터로 — 삭제·인덱스 변동에 영향받지 않음 (입고 클릭 시 자동저장 flush)
+                        const savedQty = Number(ln.qty) || 0;
+                        const receivedQty = Number(ln.receivedQty) || 0;
+                        const isLineSaved = (ln.name || '').trim().length > 0;
+                        const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
+                        return (
+                          <SortableItemRow key={idx} id={String(idx)} canDrag={canDragItems} no={idx + 1}>
+                            <td data-label="코드">
+                              <input
+                                type="text"
+                                className="bom-readonly-input bom-code-input"
+                                value={master?.code || ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="BOX" title={ln.box || ''}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={ln.box || ''}
+                                title={ln.box || ''}
+                                placeholder="-"
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td
+                              data-label="품명"
                               title={ln.itemId && master ? master.name : ln.name || ''}
-                              readOnly
-                              tabIndex={-1}
-                              autoComplete="off"
-                            />
-                          </div>
-                        </td>
-                        <td data-label="메이커" title={master?.maker || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={master?.maker || ''}
-                            title={master?.maker || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="규격" title={master?.spec || ln.spec || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={master?.spec || ln.spec || ''}
-                            title={master?.spec || ln.spec || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="분류" title={master?.category || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={master?.category || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="moq/단위" title={master?.unit || ln.unit || ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={master?.unit || ln.unit || ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="수량">
-                          <input
-                            className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}`}
-                            type="text"
-                            value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
-                            readOnly
-                            tabIndex={-1}
-                            onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
-                            title={isReadOnly ? '' : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'}
-                          />
-                        </td>
-                        <td data-label="단가">
-                          <input
-                            className="num-input bom-readonly-input"
-                            type="text"
-                            value={Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="합계" title={amount ? amount.toLocaleString() : ''}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input bom-amount-input"
-                            value={amount ? amount.toLocaleString() : ''}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="기본 구매처" title={lineSupplierName}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={lineSupplierName}
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="비고" title={ln.note || ''} style={{ minWidth: 90 }}>
-                          <input
-                            type="text"
-                            className="bom-readonly-input"
-                            value={ln.note || ''}
-                            title={ln.note || ''}
-                            placeholder="-"
-                            readOnly
-                            tabIndex={-1}
-                          />
-                        </td>
-                        <td data-label="입고" className="no-print">
-                          <div
-                            className="purchase-line-recv"
-                            style={{ minHeight: 36, display: 'flex', alignItems: 'center' }}
-                          >
-                            {!isLineSaved ? (
-                              <span
-                                className="purchase-line-recv-hint"
-                                style={{ display: 'inline-flex', alignItems: 'center', height: 32 }}
+                              style={{ minWidth: 90, maxWidth: 200 }}
+                            >
+                              <div className="purchase-line-item-wrap">
+                                <input
+                                  className="purchase-line-item bom-readonly-input"
+                                  type="text"
+                                  placeholder="‘변경’ 버튼으로 품목 선택"
+                                  value={ln.itemId && master ? master.name : ln.name}
+                                  title={ln.itemId && master ? master.name : ln.name || ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                  autoComplete="off"
+                                />
+                              </div>
+                            </td>
+                            <td data-label="메이커" title={master?.maker || ''}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={master?.maker || ''}
+                                title={master?.maker || ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="규격" title={master?.spec || ln.spec || ''}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={master?.spec || ln.spec || ''}
+                                title={master?.spec || ln.spec || ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="분류" title={master?.category || ''}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={master?.category || ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="moq/단위" title={master?.unit || ln.unit || ''}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={master?.unit || ln.unit || ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="수량">
+                              <input
+                                className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}`}
+                                type="text"
+                                value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
+                                readOnly
+                                tabIndex={-1}
+                                onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
+                                title={isReadOnly ? '' : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'}
+                              />
+                            </td>
+                            <td data-label="단가">
+                              <input
+                                className="num-input bom-readonly-input"
+                                type="text"
+                                value={Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="합계" title={amount ? amount.toLocaleString() : ''}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input bom-amount-input"
+                                value={amount ? amount.toLocaleString() : ''}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="기본 구매처" title={lineSupplierName}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={lineSupplierName}
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="비고" title={ln.note || ''} style={{ minWidth: 90 }}>
+                              <input
+                                type="text"
+                                className="bom-readonly-input"
+                                value={ln.note || ''}
+                                title={ln.note || ''}
+                                placeholder="-"
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </td>
+                            <td data-label="입고" className="no-print">
+                              <div
+                                className="purchase-line-recv"
+                                style={{ minHeight: 36, display: 'flex', alignItems: 'center' }}
                               >
-                                저장 후 입고
-                              </span>
-                            ) : receivedQty > 0 ? (
-                              isReadOnly ? (
-                                // 정산완료 등 읽기전용 — 상태만 표시
-                                <span
-                                  className={`purchase-recv-chip is-readonly ${isFullyReceived ? 'is-full' : 'is-partial'}`}
-                                >
-                                  <span className="purchase-recv-chip-qty">
-                                    {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty}
+                                {!isLineSaved ? (
+                                  <span
+                                    className="purchase-line-recv-hint"
+                                    style={{ display: 'inline-flex', alignItems: 'center', height: 32 }}
+                                  >
+                                    저장 후 입고
                                   </span>
-                                  <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
-                                </span>
-                              ) : (
-                                // 입고됨 — 누르면 바로 입고 취소 (별도 되돌리기 버튼 없음)
+                                ) : receivedQty > 0 ? (
+                                  isReadOnly ? (
+                                    // 정산완료 등 읽기전용 — 상태만 표시
+                                    <span
+                                      className={`purchase-recv-chip is-readonly ${isFullyReceived ? 'is-full' : 'is-partial'}`}
+                                    >
+                                      <span className="purchase-recv-chip-qty">
+                                        {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty}
+                                      </span>
+                                      <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
+                                    </span>
+                                  ) : (
+                                    // 입고됨 — 누르면 바로 입고 취소 (별도 되돌리기 버튼 없음)
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-danger purchase-recv-cancel"
+                                      onClick={() => clearLineReceive(idx)}
+                                      title="클릭하면 입고 기록을 취소합니다"
+                                    >
+                                      <span className="purchase-recv-cancel-status">
+                                        {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty} ·{' '}
+                                        {fmtDate(ln.receivedAt)}
+                                      </span>
+                                      <span className="purchase-recv-cancel-act">입고 취소</span>
+                                    </button>
+                                  )
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline purchase-recv-btn"
+                                    onClick={() => openReceive(idx)}
+                                    disabled={isReadOnly || savedQty <= 0}
+                                    title={savedQty <= 0 ? '수량을 먼저 입력하세요' : ''}
+                                  >
+                                    입고
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="bom-action-col no-print">
+                              <div className="row-actions">
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-danger purchase-recv-cancel"
-                                  onClick={() => clearLineReceive(idx)}
-                                  title="클릭하면 입고 기록을 취소합니다"
+                                  className="btn btn-sm btn-outline"
+                                  onClick={() => openItemPickerReplace(idx)}
+                                  aria-label="품목 변경"
+                                  disabled={isReadOnly}
+                                  title="이 행의 품목을 다른 품목으로 변경"
                                 >
-                                  <span className="purchase-recv-cancel-status">
-                                    {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty} ·{' '}
-                                    {fmtDate(ln.receivedAt)}
-                                  </span>
-                                  <span className="purchase-recv-cancel-act">입고 취소</span>
+                                  <Icon name="edit" className="btn-ic" />
+                                  변경
                                 </button>
-                              )
-                            ) : (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline purchase-recv-btn"
-                                onClick={() => openReceive(idx)}
-                                disabled={isReadOnly || savedQty <= 0}
-                                title={savedQty <= 0 ? '수량을 먼저 입력하세요' : ''}
-                              >
-                                입고
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="bom-action-col no-print">
-                          <div className="row-actions">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={() => openItemPickerReplace(idx)}
-                              aria-label="품목 변경"
-                              disabled={isReadOnly}
-                              title="이 행의 품목을 다른 품목으로 변경"
-                            >
-                              <Icon name="edit" className="btn-ic" />
-                              변경
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-danger"
-                              onClick={() => removeLine(idx)}
-                              aria-label="행 삭제"
-                              disabled={isReadOnly}
-                              title="삭제"
-                            >
-                              <Icon name="trash" className="btn-ic" />
-                              삭제
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => removeLine(idx)}
+                                  aria-label="행 삭제"
+                                  disabled={isReadOnly}
+                                  title="삭제"
+                                >
+                                  <Icon name="trash" className="btn-ic" />
+                                  삭제
+                                </button>
+                              </div>
+                            </td>
+                          </SortableItemRow>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
       </div>
