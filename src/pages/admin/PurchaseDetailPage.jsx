@@ -1755,7 +1755,7 @@ export default function PurchaseDetailPage() {
                   >
                     {/* 칸 폭 배분(%) — 대표님 지정 1~4번, 나머지는 내용 길이에 맞춰 나눔 */}
                     <colgroup>
-                      {[2, 5, 3, 10, 7, 18, 5, 3, 3, 7, 7, 6, 7, 9, 8].map((pct, i) => (
+                      {[2, 5, 6, 10, 7, 18, 5, 3, 3, 7, 7, 6, 7, 6, 8].map((pct, i) => (
                         <col key={i} style={{ width: `${pct}%` }} />
                       ))}
                     </colgroup>
