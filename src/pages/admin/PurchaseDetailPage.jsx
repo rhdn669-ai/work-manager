@@ -618,7 +618,7 @@ export default function PurchaseDetailPage() {
     const ok = await confirm({ title: '종결 해제', message: '종결을 풀고 정산완료 상태로 되돌립니다.' });
     if (!ok) return;
     try {
-      await setPurchaseStatus(id, 'settled');
+      await setPurchaseStatus(id, 'settled', { closedAt: null });
       setPurchase((prev) => ({ ...prev, status: 'settled' }));
       toast('보드로 되돌렸습니다', 'success');
     } catch {

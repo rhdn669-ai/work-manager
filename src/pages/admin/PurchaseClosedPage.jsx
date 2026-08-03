@@ -67,7 +67,7 @@ export default function PurchaseClosedPage() {
     if (!ok) return;
     setBusyId(p.id);
     try {
-      await setPurchaseStatus(p.id, 'settled');
+      await setPurchaseStatus(p.id, 'settled', { closedAt: null });
       setRows((prev) => prev.filter((x) => x.id !== p.id));
       toast('보드로 되돌렸습니다', 'success');
     } catch {

@@ -356,8 +356,9 @@ export default function PurchaseListPage() {
       setUsers(us);
       setSuppliers(sup);
       setFactories(cfg.factories || []);
-      const validStatus = ['draft', 'ordered', 'replied', 'partial', 'received', 'settled'];
-      const legacy = p.filter((x) => !validStatus.includes(x.status));
+      // 아는 상태는 STATUS 정의가 유일한 기준이다. 여기에 목록을 또 적어두면
+      // 상태를 새로 만들 때마다 그 건들이 '모르는 값'으로 몰려 ordered 로 되돌아간다.
+      const legacy = p.filter((x) => !STATUS[x.status]);
       if (legacy.length > 0) {
         await Promise.all(legacy.map((x) => setPurchaseStatus(x.id, 'ordered')));
         legacy.forEach((x) => {
