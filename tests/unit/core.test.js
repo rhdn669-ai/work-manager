@@ -10,6 +10,7 @@ import {
 import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
 import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
+import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -106,5 +107,38 @@ describe('날짜 유틸', () => {
   it('getMonthEnd — 2월 말일 문자열 (윤년)', () => {
     expect(getMonthEnd(2024, 2)).toBe('2024-02-29');
     expect(getMonthEnd(2026, 2)).toBe('2026-02-28');
+  });
+});
+
+describe('구매처 결제 조건 → 결제 마감일', () => {
+  it('입고일 + N일 — 달을 넘어간다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'afterDays', paymentTermDay: 30 }, '2026-08-03')).toBe('2026-09-02');
+  });
+  it('익월 N일', () => {
+    expect(calcPaymentDue({ paymentTermType: 'nextMonth', paymentTermDay: 10 }, '2026-08-03')).toBe('2026-09-10');
+  });
+  it('익월 말일 — 윤년 2월도 맞는다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, '2026-08-03')).toBe('2026-09-30');
+    expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, '2024-01-15')).toBe('2024-02-29');
+    expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, '2026-01-15')).toBe('2026-02-28');
+  });
+  it('12월 입고 → 이듬해 1월로 넘어간다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'nextMonth', paymentTermDay: 10 }, '2026-12-20')).toBe('2027-01-10');
+  });
+  it('익월에 없는 날짜(31일)는 그 달 말일로 당긴다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'nextMonth', paymentTermDay: 31 }, '2026-01-05')).toBe('2026-02-28');
+  });
+  it('선결제 — 미루지 않고 기준일 당일', () => {
+    expect(calcPaymentDue({ paymentTermType: 'prepaid' }, '2026-08-03')).toBe('2026-08-03');
+  });
+  it('조건이 없거나 기준일이 없으면 빈 문자열', () => {
+    expect(calcPaymentDue({}, '2026-08-03')).toBe('');
+    expect(calcPaymentDue({ paymentTermType: 'nextMonth', paymentTermDay: 10 }, '')).toBe('');
+    expect(calcPaymentDue({ paymentTermType: 'afterDays', paymentTermDay: 0 }, '2026-08-03')).toBe('');
+  });
+  it('조건 문구 — N 자리에 숫자가 박힌다', () => {
+    expect(paymentTermLabel({ paymentTermType: 'nextMonth', paymentTermDay: 10 })).toBe('익월 10일');
+    expect(paymentTermLabel({ paymentTermType: 'nextMonthEnd' })).toBe('익월 말일');
+    expect(paymentTermLabel({})).toBe('');
   });
 });

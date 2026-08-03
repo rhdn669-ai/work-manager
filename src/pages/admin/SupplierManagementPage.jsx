@@ -10,6 +10,8 @@ import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 
+import { PAYMENT_TERM_TYPES, paymentTermLabel } from '../../utils/paymentTerms';
+
 const EMPTY_FORM = {
   name: '',
   representative: '',
@@ -19,6 +21,8 @@ const EMPTY_FORM = {
   bankName: '',
   bankAccount: '',
   category: '',
+  paymentTermType: '', // 결제 조건 — 발주 결제 요청 시 마감일을 이 조건으로 계산한다
+  paymentTermDay: '',
   note: '',
 };
 
@@ -82,6 +86,8 @@ export default function SupplierManagementPage() {
       bankName: s.bankName || '',
       bankAccount: s.bankAccount || '',
       category: s.category || '',
+      paymentTermType: s.paymentTermType || '',
+      paymentTermDay: s.paymentTermDay ?? '',
       note: s.note || '',
     });
     setPdfFiles([]);
@@ -263,6 +269,7 @@ export default function SupplierManagementPage() {
                 <th>사업자번호</th>
                 <th>은행</th>
                 <th>계좌번호</th>
+                <th className="hide-mobile">결제 조건</th>
                 <th className="hide-mobile">분류</th>
                 <th className="hide-mobile">비고</th>
                 <th className="bom-project-action-col">작업</th>
@@ -291,6 +298,9 @@ export default function SupplierManagementPage() {
                   </td>
                   <td data-label="계좌번호" className="u-wrap" title={s.bankAccount || ''}>
                     {s.bankAccount || '-'}
+                  </td>
+                  <td data-label="결제 조건" className="u-ellipsis hide-mobile">
+                    {paymentTermLabel(s) || '-'}
                   </td>
                   <td data-label="분류" className="u-ellipsis hide-mobile" title={s.category || ''}>
                     {s.category || '-'}
@@ -434,6 +444,45 @@ export default function SupplierManagementPage() {
               value={form.bankAccount}
               onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
             />
+          </div>
+          <div className="form-group">
+            <label>결제 조건</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <select
+                value={form.paymentTermType}
+                onChange={(e) => setForm({ ...form, paymentTermType: e.target.value })}
+                style={{ flex: '1 1 auto', minWidth: 0 }}
+                aria-label="결제 조건 종류"
+              >
+                {PAYMENT_TERM_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              {PAYMENT_TERM_TYPES.find((t) => t.value === form.paymentTermType)?.needsDay && (
+                <>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={form.paymentTermDay}
+                    onChange={(e) => setForm({ ...form, paymentTermDay: e.target.value })}
+                    placeholder="숫자"
+                    style={{ width: 90, flexShrink: 0 }}
+                    aria-label="결제 조건 일수"
+                  />
+                  <span className="text-muted" style={{ flexShrink: 0 }}>
+                    {PAYMENT_TERM_TYPES.find((t) => t.value === form.paymentTermType)?.unit}
+                  </span>
+                </>
+              )}
+            </div>
+            <small className="text-muted">
+              {paymentTermLabel(form)
+                ? `발주 결제 요청 시 마감일이 「${paymentTermLabel(form)}」로 자동 계산됩니다.`
+                : '지정하면 발주 결제 요청 시 마감일이 자동으로 채워집니다.'}
+            </small>
           </div>
           <div className="form-group">
             <label>메모</label>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
 import {
   getPurchaseById,
   updatePurchase,
@@ -1122,11 +1123,21 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다
-  function handleRequestPayment(supplierName) {
+  // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다.
+  // 구매처에 결제 조건이 있으면 마감일을 미리 계산해 채워 둔다. 사람은 확인만 하면 된다.
+  function handleRequestPayment(supplierName, receivedAt) {
     const key = supplierName.replace(/\./g, '_');
     const prevDue = purchase.paymentRequested?.[key]?.dueDate || '';
-    setPayReqModal({ supplierName, due: prevDue });
+    const sup = suppliers.find((x) => x.name === supplierName);
+    const base = receivedAt || new Date(); // 입고 완료일이 기준, 없으면 오늘
+    const autoDue = prevDue ? '' : calcPaymentDue(sup, base);
+    setPayReqModal({
+      supplierName,
+      due: prevDue || autoDue,
+      termLabel: paymentTermLabel(sup),
+      autoFilled: !!autoDue,
+      baseDate: base,
+    });
   }
 
   // 마감일 입력 후 결제 요청 확정 → 결제 페이지에 결제 대기로 노출
@@ -2214,7 +2225,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-primary purchase-sup-toggle"
-                                onClick={() => handleRequestPayment(sup.name)}
+                                onClick={() => handleRequestPayment(sup.name, recv.latest)}
                                 title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
                               >
                                 결제 요청
@@ -2934,6 +2945,14 @@ export default function PurchaseDetailPage() {
               <strong>{payReqModal.supplierName}</strong> 업체 건의 결제를 요청합니다. 결제 마감일을 입력하면 결제
               페이지에 함께 전달됩니다.
             </p>
+            {payReqModal.termLabel && (
+              <p className="field-hint">
+                이 구매처의 결제 조건은 <strong>{payReqModal.termLabel}</strong>입니다
+                {payReqModal.autoFilled
+                  ? ` — ${fmtDate(payReqModal.baseDate)} 기준으로 마감일을 미리 채웠습니다. 그대로 두거나 고치세요.`
+                  : '.'}
+              </p>
+            )}
             <div className="form-group">
               <label>결제 마감일</label>
               <input
