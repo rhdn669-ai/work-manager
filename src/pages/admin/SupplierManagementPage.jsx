@@ -262,16 +262,22 @@ export default function SupplierManagementPage() {
           <table className="table cards-sm supplier-table">
             <thead>
               <tr>
-                <th>상호</th>
-                <th>대표</th>
-                <th>연락처</th>
-                <th>이메일</th>
-                <th>사업자번호</th>
-                <th>은행</th>
-                <th>계좌번호</th>
-                <th className="hide-mobile">결제 조건</th>
-                <th className="hide-mobile">분류</th>
-                <th className="hide-mobile">비고</th>
+                <th style={{ width: 172 }}>상호</th>
+                <th style={{ width: 76 }}>대표</th>
+                <th style={{ width: 130 }}>연락처</th>
+                <th style={{ width: 202 }}>이메일</th>
+                <th style={{ width: 122 }}>사업자번호</th>
+                <th style={{ width: 94 }}>은행</th>
+                <th style={{ width: 158 }}>계좌번호</th>
+                <th className="hide-mobile" style={{ width: 92 }}>
+                  결제 조건
+                </th>
+                <th className="hide-mobile" style={{ width: 144 }}>
+                  분류
+                </th>
+                <th className="hide-mobile" style={{ minWidth: 260 }}>
+                  비고
+                </th>
                 <th className="bom-project-action-col">작업</th>
               </tr>
             </thead>
