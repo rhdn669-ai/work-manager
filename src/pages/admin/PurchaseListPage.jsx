@@ -619,16 +619,6 @@ export default function PurchaseListPage() {
         </div>
       </div>
 
-      <button
-        type="button"
-        className="pdf-print-fab no-print"
-        onClick={() => window.print()}
-        title="PDF로 저장하려면 인쇄 다이얼로그에서 'PDF로 저장'을 선택하세요"
-      >
-        <Icon name="doc" />
-        PDF 출력
-      </button>
-
       {viewMode === 'list' && (
         <div className="tab-nav closing-tab-nav no-print">
           {TABS.map((t) => (
