@@ -8,6 +8,7 @@ const TABS = [
   { key: 'items', label: '품목', path: '/admin/purchase/items' },
   { key: 'suppliers', label: '구매처', path: '/admin/purchase/suppliers' },
   { key: 'quotes', label: '견적', path: '/admin/purchase/quotes' },
+  { key: 'closed', label: '종결', path: '/admin/purchase/closed' },
 ];
 
 function getActiveTab(pathname) {
@@ -15,6 +16,7 @@ function getActiveTab(pathname) {
   if (pathname.startsWith('/admin/purchase/items')) return 'items';
   if (pathname.startsWith('/admin/purchase/suppliers')) return 'suppliers';
   if (pathname.startsWith('/admin/purchase/quotes')) return 'quotes';
+  if (pathname.startsWith('/admin/purchase/closed')) return 'closed';
   return 'orders';
 }
 

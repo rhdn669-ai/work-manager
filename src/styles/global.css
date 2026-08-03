@@ -4512,6 +4512,10 @@ table.cards-sm td {
   background: #dcfce7;
   color: #15803d;
 }
+.purchase-badge-closed {
+  background: var(--grey-100, #e8ebee);
+  color: var(--slate, #4e5968);
+}
 .purchase-badge-draft {
   background: #f3f4f6;
   color: #6b7280;

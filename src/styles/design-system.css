@@ -1309,6 +1309,14 @@ body {
   border: 1px dashed var(--border);
   border-radius: 10px;
 }
+/* 종결 목록 합계 줄 — 표 아래 오른쪽 */
+.pur-closed-sum {
+  margin-top: 12px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
 .kb-card {
   background: var(--bg-card);
   border: 1px solid var(--border);

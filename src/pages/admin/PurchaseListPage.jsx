@@ -46,6 +46,7 @@ const STATUS = {
   partial: { label: '부분입고', cls: 'partial' },
   received: { label: '입고완료', cls: 'received' },
   settled: { label: '정산완료', cls: 'settled' },
+  closed: { label: '종결', cls: 'closed' },
 };
 
 const TABS = [
@@ -174,7 +175,7 @@ const BOARD_COLS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-function KanbanCard({ p, onOpen, onEdit, onDelete }) {
+function KanbanCard({ p, onOpen, onEdit, onDelete, onClose }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: p.id });
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -221,6 +222,11 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
           <span>납기: {p.deliveryDue || '-'}</span>
         </div>
         <div className="kb-card__actions" onClick={(e) => e.stopPropagation()}>
+          {p.status === 'settled' && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onClose(e, p)}>
+              종결
+            </button>
+          )}
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정
           </button>
@@ -234,7 +240,7 @@ function KanbanCard({ p, onOpen, onEdit, onDelete }) {
   );
 }
 
-function KanbanColumn({ col, cards, onOpen, onEdit, onDelete }) {
+function KanbanColumn({ col, cards, onOpen, onEdit, onDelete, onClose }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
     <div ref={setNodeRef} className={`kb-col ${isOver ? 'is-over' : ''}`}>
@@ -244,7 +250,7 @@ function KanbanColumn({ col, cards, onOpen, onEdit, onDelete }) {
       </div>
       <div className="kb-col__body">
         {cards.map((p) => (
-          <KanbanCard key={p.id} p={p} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
+          <KanbanCard key={p.id} p={p} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} onClose={onClose} />
         ))}
         {cards.length === 0 && <div className="kb-col__empty">여기로 카드를 끌어다 놓으세요</div>}
       </div>
@@ -373,16 +379,19 @@ export default function PurchaseListPage() {
     }
   }
 
+  // 종결 건은 진행 화면에서 빠진다. 세는 것도 보는 것도 이 목록이 기준.
+  const openPurchases = useMemo(() => purchases.filter((p) => p.status !== 'closed'), [purchases]);
+
   const counts = useMemo(() => {
-    const c = { all: purchases.length };
-    for (const p of purchases) c[p.status] = (c[p.status] || 0) + 1;
-    c.printed = purchases.filter((p) => Number(p.printCount) > 0).length;
+    const c = { all: openPurchases.length };
+    for (const p of openPurchases) c[p.status] = (c[p.status] || 0) + 1;
+    c.printed = openPurchases.filter((p) => Number(p.printCount) > 0).length;
     return c;
-  }, [purchases]);
+  }, [openPurchases]);
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    const list = purchases.filter((p) => {
+    const list = openPurchases.filter((p) => {
       if (tab === 'printed') {
         if (!(Number(p.printCount) > 0)) return false;
       } else if (tab !== 'all' && p.status !== tab) {
@@ -412,7 +421,7 @@ export default function PurchaseListPage() {
       });
     }
     return list;
-  }, [purchases, tab, search]);
+  }, [openPurchases, tab, search]);
 
   function openCreate() {
     setEditingId(null);
@@ -578,8 +587,27 @@ export default function PurchaseListPage() {
       setPurchases((prev) => prev.map((p) => (p.id === cardId ? { ...p, status: card.status } : p)));
     }
   }
+  async function handleClose(e, p) {
+    e.stopPropagation();
+    const ok = await confirm({
+      title: '발주 종결',
+      message: `"${p.title}"
+
+종결하면 보드에서 빠지고 종결 목록으로 옮겨집니다.
+삭제가 아니므로 종결 목록에서 언제든 되돌릴 수 있습니다.`,
+    });
+    if (!ok) return;
+    setPurchases((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: 'closed' } : x)));
+    try {
+      await setPurchaseStatus(p.id, 'closed', { closedAt: new Date() });
+    } catch {
+      toast('종결 처리 중 오류가 발생했습니다', 'error');
+      setPurchases((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: p.status } : x)));
+    }
+  }
+
   // 보드용: 검색만 적용 후 상태별 그룹
-  const boardSource = purchases.filter((p) => {
+  const boardSource = openPurchases.filter((p) => {
     const kw = search.trim().toLowerCase();
     if (!kw) return true;
     return [p.title, p.supplierName, p.siteName, p.requesterName].some((v) => (v || '').toLowerCase().includes(kw));
@@ -781,6 +809,7 @@ export default function PurchaseListPage() {
                   onOpen={(pp) => navigate(`/admin/purchase/${pp.id}`)}
                   onEdit={openEdit}
                   onDelete={handleDelete}
+                  onClose={handleClose}
                 />
               ))}
             </div>
@@ -788,7 +817,7 @@ export default function PurchaseListPage() {
         </DndContext>
       ) : filtered.length === 0 ? (
         <p className="purchase-empty">
-          {purchases.length === 0 ? '등록된 구매 건이 없습니다.' : '해당 조건의 구매 건이 없습니다.'}
+          {openPurchases.length === 0 ? '등록된 구매 건이 없습니다.' : '해당 조건의 구매 건이 없습니다.'}
         </p>
       ) : (
         <div className="table-scroll-x pur-table-wrap">
@@ -860,6 +889,15 @@ export default function PurchaseListPage() {
                           </td>
                           <td data-label="작업" className="pur-c-act col-action" onClick={(e) => e.stopPropagation()}>
                             <div className="row-actions">
+                              {p.status === 'settled' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline"
+                                  onClick={(e) => handleClose(e, p)}
+                                >
+                                  종결
+                                </button>
+                              )}
                               <button type="button" className="btn btn-sm btn-outline" onClick={(e) => openEdit(e, p)}>
                                 수정
                               </button>

@@ -28,6 +28,7 @@ export const BomPage = lazy(() => import('./pages/admin/BomPage'));
 export const BomDetailPage = lazy(() => import('./pages/admin/BomDetailPage'));
 export const PurchaseTrashPage = lazy(() => import('./pages/admin/PurchaseTrashPage'));
 export const PurchaseListPage = lazy(() => import('./pages/admin/PurchaseListPage'));
+export const PurchaseClosedPage = lazy(() => import('./pages/admin/PurchaseClosedPage'));
 export const StaffHubPage = lazy(() => import('./pages/admin/StaffHubPage'));
 export const TrashPage = lazy(() => import('./pages/admin/TrashPage'));
 export const QualityPage = lazy(() => import('./pages/admin/QualityPage'));

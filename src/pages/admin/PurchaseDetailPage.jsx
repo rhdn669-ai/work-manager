@@ -7,6 +7,7 @@ import {
   cancelSettlePurchase,
   receivePurchaseLine,
   bulkReceivePurchase,
+  setPurchaseStatus,
   getSuppliers,
   subscribePurchaseItems,
   confirmPurchase,
@@ -49,6 +50,7 @@ const STATUS = {
   partial: { label: '부분입고', cls: 'partial' },
   received: { label: '입고완료', cls: 'received' },
   settled: { label: '정산완료', cls: 'settled' },
+  closed: { label: '종결', cls: 'closed' },
 };
 
 const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0, box: '' };
@@ -594,7 +596,35 @@ export default function PurchaseDetailPage() {
     ];
   }, [form.items, itemMaster, suppliers]);
 
-  const isReadOnly = purchase?.status === 'settled';
+  const isReadOnly = purchase?.status === 'settled' || purchase?.status === 'closed';
+
+  // 발주 종결 — 보드에서 내려 종결 목록으로 옮긴다. 삭제가 아니라 이동이다.
+  async function handleClosePurchase() {
+    const ok = await confirm({
+      title: '발주 종결',
+      message: '종결하면 보드에서 빠지고 종결 목록으로 옮겨집니다. 삭제가 아니므로 언제든 되돌릴 수 있습니다.',
+    });
+    if (!ok) return;
+    try {
+      await setPurchaseStatus(id, 'closed', { closedAt: new Date() });
+      setPurchase((prev) => ({ ...prev, status: 'closed' }));
+      toast('종결 목록으로 옮겼습니다', 'success');
+    } catch {
+      toast('종결 처리 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  async function handleReopenPurchase() {
+    const ok = await confirm({ title: '종결 해제', message: '종결을 풀고 정산완료 상태로 되돌립니다.' });
+    if (!ok) return;
+    try {
+      await setPurchaseStatus(id, 'settled');
+      setPurchase((prev) => ({ ...prev, status: 'settled' }));
+      toast('보드로 되돌렸습니다', 'success');
+    } catch {
+      toast('되돌리는 중 오류가 발생했습니다', 'error');
+    }
+  }
 
   // ---- 실시간 자동 저장 (저장 버튼 없음) ----
   const formRef = useRef(form);
@@ -654,7 +684,7 @@ export default function PurchaseDetailPage() {
   async function persistPO() {
     const f = formRef.current;
     if (!f || !f.title?.trim() || !f.siteId) return;
-    if (purchase?.status === 'settled') return; // 정산완료는 잠금
+    if (purchase?.status === 'settled' || purchase?.status === 'closed') return; // 정산완료·종결은 잠금
     const lines = f.items.filter((ln) => (ln.name || '').trim());
     const items = lines.map((ln) => ({
       ...ln, // itemId·입고수량(receivedQty)·입고일 등 기존 필드 보존
@@ -864,7 +894,7 @@ export default function PurchaseDetailPage() {
     }
     const msg =
       mode === 'close-as-is'
-        ? '현재 입고된 수량으로 발주 수량을 정정하고 입고를 종결합니다.\n미입고 라인은 수량 0으로 처리됩니다. 계속할까요?'
+        ? '현재 입고된 수량으로 발주 수량을 정정하고 입고를 마감합니다.\n미입고 라인은 수량 0으로 처리됩니다. 계속할까요?'
         : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
     if (!(await confirm(msg))) return;
     try {
@@ -1476,7 +1506,7 @@ export default function PurchaseDetailPage() {
                       onClick={() => openBulk('close-as-is')}
                       title="현재 입고된 수량으로 발주 수량을 정정하고 종결"
                     >
-                      잔여 무시하고 종결
+                      잔여 무시하고 입고 마감
                     </button>
                   )}
                 </>
@@ -1495,6 +1525,16 @@ export default function PurchaseDetailPage() {
           {status === 'settled' && (
             <button type="button" className="btn btn-sm btn-outline" onClick={handleCancelSettle}>
               정산 취소
+            </button>
+          )}
+          {status === 'settled' && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={handleClosePurchase}>
+              종결
+            </button>
+          )}
+          {status === 'closed' && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={handleReopenPurchase}>
+              종결 해제
             </button>
           )}
           <button type="button" className="btn btn-sm btn-danger" onClick={handleTrashPurchase}>
@@ -2202,7 +2242,7 @@ export default function PurchaseDetailPage() {
       {(status === 'ordered' || status === 'partial') && (
         <p className="purchase-status-hint screen-only">
           {status === 'partial'
-            ? '부분 입고 진행 중 — 상단의 “일괄 입고” 또는 “잔여 무시하고 종결” 버튼을 사용하세요'
+            ? '부분 입고 진행 중 — 상단의 “일괄 입고” 또는 “잔여 무시하고 입고 마감” 버튼을 사용하세요'
             : '품목별로 입고 처리하거나 상단 “일괄 입고”로 전체 완료 처리하세요'}
         </p>
       )}
@@ -2215,7 +2255,7 @@ export default function PurchaseDetailPage() {
       <Modal
         isOpen={!!bulkModal}
         onClose={() => setBulkModal(null)}
-        title={bulkModal?.mode === 'close-as-is' ? '잔여 무시하고 입고 종결' : '일괄 입고 처리'}
+        title={bulkModal?.mode === 'close-as-is' ? '잔여 무시하고 입고 마감' : '일괄 입고 처리'}
       >
         {bulkModal &&
           (() => {
@@ -2232,7 +2272,7 @@ export default function PurchaseDetailPage() {
               <form onSubmit={submitBulk}>
                 <div className="purchase-recv-modal-summary">
                   <strong className="purchase-recv-modal-name">
-                    {isClose ? '현재 입고된 수량으로 종결' : `잔여 ${affected.length}개 라인 일괄 입고`}
+                    {isClose ? '현재 입고된 수량으로 입고 마감' : `잔여 ${affected.length}개 라인 일괄 입고`}
                   </strong>
                   <span className="purchase-recv-modal-meta">
                     {isClose
