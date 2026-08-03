@@ -4716,6 +4716,12 @@ table.cards-sm td {
   gap: 10px;
   margin-bottom: 12px;
 }
+/* 묶는 기준 전환 — 프로젝트별 / 업체별 (버튼 두 개를 한 덩어리로) */
+.payment-groupby {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
 .payment-month-select {
   height: var(--btn-h-md);
   padding: 0 34px 0 12px;

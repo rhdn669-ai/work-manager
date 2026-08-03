@@ -46,7 +46,9 @@ export default function PaymentPage() {
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
   const [monthFilter, setMonthFilter] = useState(() => monthKey(new Date())); // 기본: 현재 월 (결제요청일 기준)
-  const [expanded, setExpanded] = useState(() => new Set()); // 펼친 발주서 폴더 id
+  const [expanded, setExpanded] = useState(() => new Set()); // 펼친 폴더 키
+  // 묶는 기준 — 발주서(프로젝트)별 / 업체별 (2026-08-03 대표님)
+  const [groupBy, setGroupBy] = useState('project');
   const [busy, setBusy] = useState('');
   // 사업자등록증 모달 { supplier, loading, files }
   const [bizDoc, setBizDoc] = useState(null);
@@ -173,12 +175,17 @@ export default function PaymentPage() {
 
   // 발주서 단위 폴더로 그룹핑 (자료실 폴더 느낌)
   const folders = useMemo(() => {
+    const byProject = groupBy === 'project';
     const map = new Map();
     for (const r of filtered) {
-      let f = map.get(r.purchaseId);
+      // 발주서별로 볼 땐 발주 제목이 폴더, 업체별로 볼 땐 업체명이 폴더가 된다
+      const key = byProject ? r.purchaseId : r.supplier || '(구매처 미지정)';
+      let f = map.get(key);
       if (!f) {
-        f = { purchaseId: r.purchaseId, title: r.title, siteName: r.siteName, rows: [], latest: 0 };
-        map.set(r.purchaseId, f);
+        f = byProject
+          ? { key, purchaseId: r.purchaseId, title: r.title, siteName: r.siteName, rows: [], latest: 0 }
+          : { key, title: r.supplier || '(구매처 미지정)', siteName: '', rows: [], latest: 0 };
+        map.set(key, f);
       }
       f.rows.push(r);
       f.latest = Math.max(f.latest, ms(r.requestedAt));
@@ -198,7 +205,7 @@ export default function PaymentPage() {
     }
     arr.sort((a, b) => b.latest - a.latest);
     return arr;
-  }, [filtered]);
+  }, [filtered, groupBy]);
 
   // 오늘(YYYY-MM-DD) — 결제 마감일 초과 강조용
   const todayStr = useMemo(() => {
@@ -206,11 +213,11 @@ export default function PaymentPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
-  function toggleFolder(pid) {
+  function toggleFolder(key) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(pid)) next.delete(pid);
-      else next.add(pid);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -352,6 +359,25 @@ export default function PaymentPage() {
 
       {/* 년월 드롭다운 + 검색 */}
       <div className="payment-filterbar no-print">
+        {/* 묶는 기준 — 프로젝트(발주서)별 / 업체별 */}
+        <div className="payment-groupby">
+          {[
+            { k: 'project', label: '프로젝트별' },
+            { k: 'supplier', label: '업체별' },
+          ].map((o) => (
+            <button
+              key={o.k}
+              type="button"
+              className={`btn btn-sm ${groupBy === o.k ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => {
+                setGroupBy(o.k);
+                setExpanded(new Set()); // 기준이 바뀌면 폴더 키가 달라지므로 접어 둔다
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
         <select
           className="payment-month-select"
           value={monthFilter}
@@ -390,20 +416,22 @@ export default function PaymentPage() {
         <>
           <div className="payment-folders">
             {folders.map((f) => {
-              const open = expanded.has(f.purchaseId);
+              const open = expanded.has(f.key);
               const allPaid = f.pending === 0 && f.paidCount > 0;
               return (
-                <div
-                  key={f.purchaseId}
-                  className={`payment-folder ${open ? 'is-open' : ''} ${allPaid ? 'is-paid' : ''}`}
-                >
-                  <button type="button" className="payment-folder-head" onClick={() => toggleFolder(f.purchaseId)}>
+                <div key={f.key} className={`payment-folder ${open ? 'is-open' : ''} ${allPaid ? 'is-paid' : ''}`}>
+                  <button type="button" className="payment-folder-head" onClick={() => toggleFolder(f.key)}>
                     <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
-                    <Icon name="folder" className="payment-folder-ic" />
+                    <Icon name={groupBy === 'project' ? 'folder' : 'building'} className="payment-folder-ic" />
                     <span className="payment-folder-title" title={f.title}>
                       {f.title}
                     </span>
-                    {f.siteName && <span className="payment-folder-site">{f.siteName}</span>}
+                    {groupBy === 'project'
+                      ? f.siteName && <span className="payment-folder-site">{f.siteName}</span>
+                      : (() => {
+                          const n = new Set(f.rows.map((r) => r.purchaseId)).size;
+                          return <span className="payment-folder-site">발주 {n}건</span>;
+                        })()}
                     <span className="payment-folder-spacer" />
                     {f.nearestDue && (
                       <span className={`payment-folder-due${f.nearestDue < todayStr ? ' is-overdue' : ''}`}>
