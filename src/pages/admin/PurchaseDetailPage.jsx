@@ -1753,17 +1753,17 @@ export default function PurchaseDetailPage() {
                     <thead>
                       <tr>
                         <th className="bom-no-col">No</th>
-                        <th style={{ minWidth: 90 }}>코드</th>
-                        <th style={{ minWidth: 90 }}>BOX</th>
+                        <th style={{ width: 113 }}>코드</th>
+                        <th style={{ width: 44 }}>BOX</th>
                         <th style={{ minWidth: 120 }}>품명</th>
-                        <th>메이커</th>
-                        <th style={{ minWidth: 190 }}>규격</th>
-                        <th style={{ width: 64 }}>분류</th>
+                        <th style={{ width: 144 }}>메이커</th>
+                        <th style={{ minWidth: 250 }}>규격</th>
+                        <th style={{ width: 97 }}>분류</th>
                         <th style={{ width: 76 }}>moq/단위</th>
                         <th style={{ width: 64 }}>수량</th>
                         <th style={{ width: 88 }}>단가</th>
                         <th style={{ width: 96 }}>합계</th>
-                        <th>기본 구매처</th>
+                        <th style={{ width: 136 }}>기본 구매처</th>
                         <th style={{ minWidth: 120 }}>비고</th>
                         <th style={{ minWidth: 130 }} className="no-print">
                           입고
