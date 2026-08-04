@@ -19489,3 +19489,51 @@ a.lib-row-name:hover {
 .payment-sum-part.is-pending strong {
   color: var(--danger);
 }
+
+/* ===== 공수표 그리드 — 스티치 시안(Industrial Precision) 반영 =====
+   ① 주말·공휴일 칸에 옅은 바탕 ② 오늘 열을 오렌지 세로 띠로 ③ 표 아래 합계 행 */
+
+/* ① 주말·공휴일 — 열 전체가 한 덩어리로 보이게 */
+.closing-matrix td.mx-dc.sat,
+.closing-matrix td.mx-dc.sun,
+.closing-matrix td.mx-dc.hol {
+  background-color: rgba(107, 118, 132, 0.06);
+}
+.mx-dh.sat,
+.mx-dh.sun,
+.mx-dh.hol {
+  background-color: rgba(107, 118, 132, 0.06);
+}
+
+/* ② 오늘 — 위아래로 이어지는 오렌지 띠. 배경만으로는 열이 안 읽힌다 */
+.closing-matrix td.mx-dc.today,
+.closing-matrix .mx-dh.today {
+  box-shadow:
+    inset 2px 0 0 rgba(240, 88, 25, 0.35),
+    inset -2px 0 0 rgba(240, 88, 25, 0.35);
+}
+.mx-dh.today {
+  background: #fff1ea;
+}
+.mx-dh.today .mx-dn {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+/* ③ 합계 행 — 고정 열은 그대로 왼쪽에 붙어 있어야 한다 */
+.closing-matrix tfoot .mx-foot td {
+  background: #eef2f8;
+  border-top: 2px solid var(--primary);
+  height: 38px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+.closing-matrix tfoot .mx-foot .mx-name {
+  text-align: center;
+}
+.closing-matrix tfoot .mx-foot .mx-qty,
+.closing-matrix tfoot .mx-foot .mx-amt {
+  text-align: right;
+  padding-right: 10px;
+}

@@ -2350,6 +2350,23 @@ export default function SiteClosingPage() {
                     </tr>
                   </thead>
                   <tbody>{dayItems.map((it) => renderMxRow(it))}</tbody>
+                  {dayItems.length > 0 && (
+                    <tfoot>
+                      <tr className="mx-foot">
+                        <td className="mx-name">합계</td>
+                        <td className="mx-qty">
+                          {dayItems.reduce((s2, it) => s2 + (Number(it.quantity) || 0), 0).toLocaleString()}
+                        </td>
+                        {canViewSalary && <td className="mx-price" />}
+                        {canViewSalary && (
+                          <td className="mx-amt">
+                            {dayItems.reduce((s2, it) => s2 + (Number(it.amount) || 0), 0).toLocaleString()}
+                          </td>
+                        )}
+                        <td className="mx-foot-rest" colSpan={mxDays.length} />
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             )}
