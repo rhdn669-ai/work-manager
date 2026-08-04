@@ -1188,10 +1188,12 @@ textarea.q-cell {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.q-grid-table td.t-date .cell-text {
-  justify-content: center;
-}
-.q-grid-table td.col-action {
+.table.q-grid-table td.col-action,
+.table.q-grid-table th.col-action {
   padding: 4px 6px;
   text-align: center;
+}
+/* 잔여 게이지 — 칸 안에서 가운데로 모은다 */
+.q-grid-table .q-remain {
+  justify-content: center;
 }
