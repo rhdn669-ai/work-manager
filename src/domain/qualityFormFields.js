@@ -632,9 +632,3 @@ export function colWidthOf(f) {
   if (f.type === 'textarea') return 'w-long';
   return 'w-text';
 }
-export function colAlignOf(f) {
-  if (f.type === 'num') return 't-num';
-  if (f.type === 'date') return 't-date';
-  if (f.type === 'select') return 't-select';
-  return '';
-}

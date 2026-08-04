@@ -1128,10 +1128,17 @@ textarea.q-cell {
   color: var(--text);
   box-sizing: border-box;
   outline: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* 브라우저 기본이 select 를 왼쪽에 붙이므로 따로 지정한다 */
+.q-grid-table select {
+  text-align-last: center;
 }
 .q-grid-table .cell-text {
   display: flex;
   align-items: center;
+  justify-content: center;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;

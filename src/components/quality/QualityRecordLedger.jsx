@@ -6,7 +6,7 @@ import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
-import { FORM_FIELDS, computeCalcFields, colWidthOf, colAlignOf } from '../../domain/qualityFormFields';
+import { FORM_FIELDS, computeCalcFields, colWidthOf } from '../../domain/qualityFormFields';
 import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
 import { QUALITY_GOAL_SEED } from '../../domain/qualityGoalSeed';
 import { subscribeTrashByType } from '../../services/trashService';
@@ -310,10 +310,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                       )}
                     </td>
                     {cols.map((c) => (
-                      <td
-                        key={c.key}
-                        className={isLedger ? colAlignOf(c) : c.type === 'num' || c.type === 'date' ? 'q-num' : ''}
-                      >
+                      <td key={c.key} className={!isLedger && (c.type === 'num' || c.type === 'date') ? 'q-num' : ''}>
                         {isLedger ? (
                           <LedgerCell
                             f={c}
