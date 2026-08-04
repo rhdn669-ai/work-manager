@@ -1287,6 +1287,16 @@ export default function SiteClosingPage() {
       return { ...b, [id]: cur };
     });
   }
+  // 지출 묶음 펼치기 — 바깥(항목명)·안쪽(항목명|비고) 둘 다 이 하나로 여닫는다
+  function toggleExpenseGroup(key) {
+    setOpenExpenseGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   // 지출 한 줄 — 묶인 것과 안 묶인 것이 같은 모양이어야 해서 한 곳에서 그린다
   function renderExpenseCard(f) {
     const buf = financeBuf[f.id] || f;
@@ -1886,71 +1896,86 @@ export default function SiteClosingPage() {
           </p>
         ) : (
           <div className="finance-list">
-            {/* 비잔업 지출 — 같은 이름(항목명|비고)끼리 묶어 접는다. 한 건뿐이면 묶지 않는다. */}
+            {/* 비잔업 지출 — 2단으로 접는다.
+                바깥은 항목명(자재비·식대…), 안쪽은 비고가 같은 것끼리.
+                비고가 제각각인 줄은 안쪽에서 낱개로 그대로 놓인다. */}
             {(() => {
               const rows = expenseItems.filter((f) => !isOvertimeFinance(f));
-              const groups = new Map();
+              const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
+              const byDesc = new Map();
               for (const f of rows) {
                 const b = financeBuf[f.id] || f;
-                const key = `${(b.description || '').trim()}|${(b.note || '').trim()}`;
-                if (!groups.has(key)) groups.set(key, []);
-                groups.get(key).push(f);
+                const desc = (b.description || '').trim() || '지출';
+                if (!byDesc.has(desc)) byDesc.set(desc, []);
+                byDesc.get(desc).push(f);
               }
-              return [...groups.entries()]
-                .filter(([, arr]) => arr.length > 1)
-                .map(([key, arr]) => {
-                  const b0 = financeBuf[arr[0].id] || arr[0];
-                  const label = (b0.note || '').trim() || (b0.description || '').trim() || '(이름 없음)';
-                  const sum = arr.reduce((s2, f) => s2 + (Number((financeBuf[f.id] || f).amount) || 0), 0);
-                  const open = openExpenseGroups.has(key);
-                  const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
-                  const chipKey = chipMap[(b0.description || '').trim()];
-                  return (
-                    <div className={`expense-group ${open ? 'is-open' : ''}`} key={key}>
-                      <button
-                        type="button"
-                        className="expense-group-head"
-                        onClick={() =>
-                          setOpenExpenseGroups((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(key)) next.delete(key);
-                            else next.add(key);
-                            return next;
-                          })
-                        }
-                        aria-expanded={open}
-                      >
-                        <span className="expense-group-chev">
-                          <Icon name={open ? 'chevronUp' : 'chevronDown'} />
-                        </span>
-                        <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
-                          {(b0.description || '').trim() || '지출'}
-                        </span>
-                        <strong className="expense-group-name">{label}</strong>
-                        <span className="expense-group-count">{arr.length}건</span>
-                        <span className="expense-group-sum">{sum.toLocaleString()}원</span>
-                      </button>
-                      {open && <div className="expense-group-body">{arr.map((f) => renderExpenseCard(f))}</div>}
-                    </div>
-                  );
-                });
-            })()}
-            {/* 한 건뿐인 지출은 묶지 않고 그대로 */}
-            {expenseItems
-              .filter((f) => !isOvertimeFinance(f))
-              .filter((f) => {
-                const b = financeBuf[f.id] || f;
-                const key = `${(b.description || '').trim()}|${(b.note || '').trim()}`;
+              const amountOf = (f) => Number((financeBuf[f.id] || f).amount) || 0;
+
+              return [...byDesc.entries()].map(([desc, list]) => {
+                const outerOpen = openExpenseGroups.has(desc);
+                const outerSum = list.reduce((s2, f) => s2 + amountOf(f), 0);
+                const chipKey = chipMap[desc];
+
+                // 안쪽 — 비고가 같은 것끼리 묶고, 한 건뿐이면 낱개로 둔다
+                const byNote = new Map();
+                for (const f of list) {
+                  const note = ((financeBuf[f.id] || f).note || '').trim();
+                  const k = note || `__single__${f.id}`;
+                  if (!byNote.has(k)) byNote.set(k, []);
+                  byNote.get(k).push(f);
+                }
+
                 return (
-                  expenseItems.filter((x) => {
-                    const bx = financeBuf[x.id] || x;
-                    return (
-                      !isOvertimeFinance(x) && `${(bx.description || '').trim()}|${(bx.note || '').trim()}` === key
-                    );
-                  }).length === 1
+                  <div className={`expense-group ${outerOpen ? 'is-open' : ''}`} key={desc}>
+                    <button
+                      type="button"
+                      className="expense-group-head"
+                      onClick={() => toggleExpenseGroup(desc)}
+                      aria-expanded={outerOpen}
+                    >
+                      <span className="expense-group-chev">
+                        <Icon name={outerOpen ? 'chevronUp' : 'chevronDown'} />
+                      </span>
+                      <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+                        {desc}
+                      </span>
+                      <span className="expense-group-count">{list.length}건</span>
+                      <span className="expense-group-sum">{outerSum.toLocaleString()}원</span>
+                    </button>
+                    {outerOpen && (
+                      <div className="expense-group-body">
+                        {[...byNote.entries()].map(([noteKey, arr]) => {
+                          if (arr.length === 1) return renderExpenseCard(arr[0]);
+                          const innerKey = `${desc}|${noteKey}`;
+                          const innerOpen = openExpenseGroups.has(innerKey);
+                          const innerSum = arr.reduce((s2, f) => s2 + amountOf(f), 0);
+                          return (
+                            <div className="expense-group expense-group-inner" key={innerKey}>
+                              <button
+                                type="button"
+                                className="expense-group-head"
+                                onClick={() => toggleExpenseGroup(innerKey)}
+                                aria-expanded={innerOpen}
+                              >
+                                <span className="expense-group-chev">
+                                  <Icon name={innerOpen ? 'chevronUp' : 'chevronDown'} />
+                                </span>
+                                <strong className="expense-group-name">{noteKey}</strong>
+                                <span className="expense-group-count">{arr.length}건</span>
+                                <span className="expense-group-sum">{innerSum.toLocaleString()}원</span>
+                              </button>
+                              {innerOpen && (
+                                <div className="expense-group-body">{arr.map((f) => renderExpenseCard(f))}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
-              })
-              .map((f) => renderExpenseCard(f))}
+              });
+            })()}
             {/* 잔업 항목은 한 줄로 합산 + 상세 모달 */}
             {canViewSalary &&
               (() => {

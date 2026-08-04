@@ -19594,6 +19594,18 @@ a.lib-row-name:hover {
   color: var(--danger);
   flex-shrink: 0;
 }
+/* 안쪽 묶음(비고별) — 바깥보다 한 단 들어가고 옅게 */
+.expense-group-inner {
+  border-color: var(--border);
+  background: var(--bg-subtle);
+}
+.expense-group-inner > .expense-group-head {
+  padding: 8px 10px;
+}
+.expense-group-inner .expense-group-body {
+  background: var(--bg-card);
+}
+
 /* 펼친 안쪽 — 묶음 테두리 안에 줄들이 들어간다 */
 .expense-group-body {
   display: flex;
