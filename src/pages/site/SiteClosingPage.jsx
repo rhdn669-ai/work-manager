@@ -20,7 +20,7 @@ import { getApprovedLeavesByMonth } from '../../services/leaveService';
 import { getAllOvertimeRecords } from '../../services/attendanceService';
 import { getEvents } from '../../services/eventService';
 import { getPurchaseCostBySite } from '../../services/purchaseService';
-import { getKoreanHolidayDates } from '../../utils/koreanHolidays';
+import { getKoreanHolidayDates, getKoreanHolidaysMap } from '../../utils/koreanHolidays';
 import { getFreelancers, getVendors, getRateForDate, addFreelancer } from '../../services/outsourceService';
 import { QUARTER_LEAVE_TYPES } from '../../utils/constants';
 import MoneyInput from '../../components/common/MoneyInput';
@@ -166,6 +166,8 @@ export default function SiteClosingPage() {
   const [mirroredFinances, setMirroredFinances] = useState([]); // 합산 대상 프로젝트의 지출 (읽기 전용)
   const [mirroredLabor, setMirroredLabor] = useState(0); // 합산 대상 프로젝트의 공수비 총액
   const [purchaseCost, setPurchaseCost] = useState({ total: 0, count: 0, rows: [] }); // 발주 자재비(그 달 입고분)
+  // 같은 이름끼리 묶인 지출 중 펼쳐 놓은 묶음 (키: 항목명|비고)
+  const [openExpenseGroups, setOpenExpenseGroups] = useState(() => new Set());
   const [leaveDays, setLeaveDays] = useState({}); // { userId: Set of day numbers }
   const [showEmployeeSelect, setShowEmployeeSelect] = useState(false);
   const [assignedNames, setAssignedNames] = useState(new Set());
@@ -179,6 +181,7 @@ export default function SiteClosingPage() {
   const [dupAddModal, setDupAddModal] = useState(null);
   // 휴무일(주말 + 회사 공휴일 + 한국 공휴일) 집합 — 'YYYY-MM-DD'
   const [holidaySet, setHolidaySet] = useState(new Set());
+  const [holidayNameMap, setHolidayNameMap] = useState({}); // 날짜 → 공휴일 이름 (툴팁)
   // 이 사이트 같은 월의 직원 잔업일 집합 — { 이름: Set<day> } (휴무일에 잔업 신청 → 출근으로 표시)
   const [siteOvertimeDays, setSiteOvertimeDays] = useState({});
   // 1일 초과 경고 모달 데이터
@@ -318,10 +321,15 @@ export default function SiteClosingPage() {
 
       // 휴무일 집합 — 한국 공휴일 + Firestore 등록 휴일 (해당 월만)
       const hSet = new Set();
+      const hNames = {};
       try {
         const koreanHolidays = getKoreanHolidayDates(y) || [];
         koreanHolidays.forEach((iso) => {
           if (iso.startsWith(`${y}-${String(m).padStart(2, '0')}`)) hSet.add(iso);
+        });
+        const nameMap = getKoreanHolidaysMap(y) || {};
+        Object.entries(nameMap).forEach(([iso, name]) => {
+          if (iso.startsWith(`${y}-${String(m).padStart(2, '0')}`)) hNames[iso] = name;
         });
       } catch {
         /* 무시 */
@@ -336,11 +344,13 @@ export default function SiteClosingPage() {
             if (cur.getFullYear() === y && cur.getMonth() + 1 === m) {
               const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
               hSet.add(iso);
+              if (e.title) hNames[iso] = e.title;
             }
             cur.setDate(cur.getDate() + 1);
           }
         });
       setHolidaySet(hSet);
+      setHolidayNameMap(hNames);
 
       // 이 사이트의 승인된 잔업 — 직원 이름별 잔업일 집합 (휴무일 출근 표시용)
       const otMap = {};
@@ -1277,6 +1287,65 @@ export default function SiteClosingPage() {
       return { ...b, [id]: cur };
     });
   }
+  // 지출 한 줄 — 묶인 것과 안 묶인 것이 같은 모양이어야 해서 한 곳에서 그린다
+  function renderExpenseCard(f) {
+    const buf = financeBuf[f.id] || f;
+    const desc = (buf.description || '').trim();
+    const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
+    const chipKey = chipMap[desc];
+    return (
+      <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
+        <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+          {chipKey ? desc : '지출'}
+        </span>
+        <input
+          type="date"
+          className="expense-input-date"
+          value={buf.date || ''}
+          onChange={(e) => updateFinanceField(f.id, 'date', e.target.value)}
+          onBlur={() => flushFinance(f.id)}
+          disabled={!canEdit}
+          aria-label="발생일"
+        />
+        <input
+          className="expense-input-desc"
+          value={buf.description || ''}
+          placeholder="항목명"
+          onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
+          onBlur={() => flushFinance(f.id)}
+          disabled={!canEdit || !!chipKey}
+        />
+        <input
+          className="expense-input-note"
+          value={buf.note || ''}
+          placeholder="비고"
+          onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)}
+          onBlur={() => flushFinance(f.id)}
+          disabled={!canEdit}
+        />
+        <MoneyInput
+          className={`expense-input-amount ${!dirtyFinances.has(f.id) && lastSavedAt && (buf.amount || 0) > 0 ? 'is-saved' : ''}`}
+          value={buf.amount || 0}
+          onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)}
+          onBlur={() => flushFinance(f.id)}
+          disabled={!canEdit}
+        />
+        <span className="expense-won">원</span>
+        {canEdit && (
+          <button
+            type="button"
+            className="btn btn-sm btn-danger"
+            onClick={() => handleDeleteFinance(f.id, false)}
+            aria-label="항목 삭제"
+          >
+            <Icon name="trash" className="btn-ic" />
+            항목 삭제
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // 단발 프로젝트 매출 — 금액을 그대로 저장한다 (단가·댓수 계산을 거치지 않는다)
   function updateFinanceAmount(id, value) {
     setFinanceBuf((b) => {
@@ -1817,66 +1886,71 @@ export default function SiteClosingPage() {
           </p>
         ) : (
           <div className="finance-list">
-            {/* 비잔업 지출 항목은 개별 렌더 */}
-            {expenseItems
-              .filter((f) => !isOvertimeFinance(f))
-              .map((f) => {
-                const buf = financeBuf[f.id] || f;
-                const desc = (buf.description || '').trim();
-                const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
-                const chipKey = chipMap[desc];
-                return (
-                  <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
-                    <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
-                      {chipKey ? desc : '지출'}
-                    </span>
-                    <input
-                      type="date"
-                      className="expense-input-date"
-                      value={buf.date || ''}
-                      onChange={(e) => updateFinanceField(f.id, 'date', e.target.value)}
-                      onBlur={() => flushFinance(f.id)}
-                      disabled={!canEdit}
-                      aria-label="발생일"
-                    />
-                    <input
-                      className="expense-input-desc"
-                      value={buf.description || ''}
-                      placeholder="항목명"
-                      onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
-                      onBlur={() => flushFinance(f.id)}
-                      disabled={!canEdit || !!chipKey}
-                    />
-                    <input
-                      className="expense-input-note"
-                      value={buf.note || ''}
-                      placeholder="비고"
-                      onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)}
-                      onBlur={() => flushFinance(f.id)}
-                      disabled={!canEdit}
-                    />
-                    <MoneyInput
-                      className={`expense-input-amount ${!dirtyFinances.has(f.id) && lastSavedAt && (buf.amount || 0) > 0 ? 'is-saved' : ''}`}
-                      value={buf.amount || 0}
-                      onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)}
-                      onBlur={() => flushFinance(f.id)}
-                      disabled={!canEdit}
-                    />
-                    <span className="expense-won">원</span>
-                    {canEdit && (
+            {/* 비잔업 지출 — 같은 이름(항목명|비고)끼리 묶어 접는다. 한 건뿐이면 묶지 않는다. */}
+            {(() => {
+              const rows = expenseItems.filter((f) => !isOvertimeFinance(f));
+              const groups = new Map();
+              for (const f of rows) {
+                const b = financeBuf[f.id] || f;
+                const key = `${(b.description || '').trim()}|${(b.note || '').trim()}`;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(f);
+              }
+              return [...groups.entries()]
+                .filter(([, arr]) => arr.length > 1)
+                .map(([key, arr]) => {
+                  const b0 = financeBuf[arr[0].id] || arr[0];
+                  const label = (b0.note || '').trim() || (b0.description || '').trim() || '(이름 없음)';
+                  const sum = arr.reduce((s2, f) => s2 + (Number((financeBuf[f.id] || f).amount) || 0), 0);
+                  const open = openExpenseGroups.has(key);
+                  const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
+                  const chipKey = chipMap[(b0.description || '').trim()];
+                  return (
+                    <div className={`expense-group ${open ? 'is-open' : ''}`} key={key}>
                       <button
                         type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDeleteFinance(f.id, false)}
-                        aria-label="항목 삭제"
+                        className="expense-group-head"
+                        onClick={() =>
+                          setOpenExpenseGroups((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key)) next.delete(key);
+                            else next.add(key);
+                            return next;
+                          })
+                        }
+                        aria-expanded={open}
                       >
-                        <Icon name="trash" className="btn-ic" />
-                        항목 삭제
+                        <span className="expense-group-chev">
+                          <Icon name={open ? 'chevronUp' : 'chevronDown'} />
+                        </span>
+                        <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
+                          {(b0.description || '').trim() || '지출'}
+                        </span>
+                        <strong className="expense-group-name">{label}</strong>
+                        <span className="expense-group-count">{arr.length}건</span>
+                        <span className="expense-group-sum">{sum.toLocaleString()}원</span>
                       </button>
-                    )}
-                  </div>
+                      {open && <div className="expense-group-body">{arr.map((f) => renderExpenseCard(f))}</div>}
+                    </div>
+                  );
+                });
+            })()}
+            {/* 한 건뿐인 지출은 묶지 않고 그대로 */}
+            {expenseItems
+              .filter((f) => !isOvertimeFinance(f))
+              .filter((f) => {
+                const b = financeBuf[f.id] || f;
+                const key = `${(b.description || '').trim()}|${(b.note || '').trim()}`;
+                return (
+                  expenseItems.filter((x) => {
+                    const bx = financeBuf[x.id] || x;
+                    return (
+                      !isOvertimeFinance(x) && `${(bx.description || '').trim()}|${(bx.note || '').trim()}` === key
+                    );
+                  }).length === 1
                 );
-              })}
+              })
+              .map((f) => renderExpenseCard(f))}
             {/* 잔업 항목은 한 줄로 합산 + 상세 모달 */}
             {canViewSalary &&
               (() => {
@@ -2341,6 +2415,7 @@ export default function SiteClosingPage() {
                           <th
                             key={d}
                             className={`mx-dh ${dow === 6 ? 'sat' : ''} ${dow === 0 ? 'sun' : ''} ${holidaySet.has(dayIso) ? 'hol' : ''} ${isToday ? 'today' : ''}`}
+                            title={holidayNameMap[dayIso] || undefined}
                           >
                             <span className="mx-dn">{d}</span>
                             <span className="mx-dw">{DOW[dow]}</span>

@@ -13491,7 +13491,8 @@ table.closing-matrix thead th {
 }
 .mx-dh.sun .mx-dn,
 .mx-dh.sun .mx-dw,
-.mx-dh.hol .mx-dn {
+.mx-dh.hol .mx-dn,
+.mx-dh.hol .mx-dw {
   color: var(--danger);
 }
 .mx-dh.sun,
@@ -19536,4 +19537,68 @@ a.lib-row-name:hover {
 .closing-matrix tfoot .mx-foot .mx-amt {
   text-align: right;
   padding-right: 10px;
+}
+
+/* ===== 지출 — 같은 이름끼리 묶어 접기 ===== */
+.expense-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+.expense-group-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.expense-group-head:hover {
+  background: var(--bg-hover, rgba(0, 32, 80, 0.03));
+}
+.expense-group-chev {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.expense-group-head .expense-tag {
+  width: auto;
+  flex: 0 0 auto;
+}
+.expense-group-name {
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expense-group-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.expense-group-sum {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+/* 펼친 안쪽 — 묶음 테두리 안에 줄들이 들어간다 */
+.expense-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 8px 8px;
+  border-top: 1px solid var(--border);
 }
