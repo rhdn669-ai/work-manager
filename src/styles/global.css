@@ -17072,7 +17072,7 @@ td.mx-dc {
 @media print {
   /* A4 세로 + 여백 — IOPN_v4 양식 기준 */
   @page {
-    size: A4 portrait;
+    size: 210mm 297mm; /* A4 세로 — 키워드 대신 치수로 못 박아 인쇄 대화상자에서 가로로 새지 않게 */
     margin: 12mm 10mm 5mm;
   }
 
