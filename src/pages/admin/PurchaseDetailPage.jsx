@@ -800,6 +800,50 @@ export default function PurchaseDetailPage() {
   }, [form.items, itemMaster, suppliers]);
 
   const isReadOnly = purchase?.status === 'settled' || purchase?.status === 'closed';
+
+  // 발주대기 건은 창고 재고와 함께 움직인다.
+  // 아직 발주가 나가지 않았으므로, 창고에 자재가 들어오면 그만큼 덜 사는 게 맞다.
+  // 발주가 나간 뒤(발주완료 이후)에는 이미 업체에 넘긴 수량이라 건드리지 않는다.
+  useEffect(() => {
+    if (purchase?.status !== 'draft') return;
+    const f = formRef.current;
+    if (!f?.items?.length) return;
+
+    const patches = [];
+    for (let i = 0; i < f.items.length; i++) {
+      const ln = f.items[i];
+      if (!ln.itemId) continue;
+      const need = Number(ln.stockNeed) || Number(ln.qty) || 0;
+      const used = Number(ln.stockUsed) || 0;
+      if (need <= 0 || used >= need) continue; // 이미 재고로 다 채운 줄
+      const master = itemMaster.find((m) => m.id === ln.itemId);
+      const have = Number(master?.stockQty) || 0;
+      if (have <= 0) continue;
+      const more = Math.min(have, need - used); // 새로 들어온 만큼만 더 가져다 쓴다
+      if (more <= 0) continue;
+      patches.push({ idx: i, itemId: ln.itemId, more, used: used + more, need });
+    }
+    if (patches.length === 0) return;
+
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((ln, i) => {
+        const p = patches.find((x) => x.idx === i);
+        return p ? { ...ln, qty: p.need - p.used, stockUsed: p.used, stockNeed: p.need } : ln;
+      }),
+    }));
+    Promise.all(
+      patches.map((p) =>
+        consumeItemStock(p.itemId, p.more, {
+          byName: userProfile?.name || '',
+          note: `발주대기 자동 반영 · ${f.title || ''}`,
+        }),
+      ),
+    ).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
+    scheduleAutoSave();
+    toast(`창고에 들어온 자재를 반영해 발주 수량을 줄였습니다 (${patches.length}개 품목)`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemMaster, purchase?.status]);
   // 검색·업체 필터가 걸리면 일부만 보여 순서를 옮길 수 없다
   const canDragItems = !isReadOnly && !itemSearch.trim() && itemSupplierFilter === 'all';
 
