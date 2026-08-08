@@ -76,6 +76,33 @@ const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice
 // 창고에 있는 만큼은 사지 않는다 — 품목 재고(재고 탭에서 손으로 적는 값)를 발주 수량에서 뺀다.
 // 뺀 사실은 stockUsed 로 줄에 남겨, 재고 숫자가 틀렸을 때 배지를 눌러 되돌릴 수 있게 한다.
 // 한 번에 여러 줄을 넣을 때 같은 품목이 두 번 나오면 재고를 두 번 쓰지 않도록 left 로 남은 양을 추적한다.
+// 이미 발주서에 있는 품목을 또 담으면 줄을 새로 만들지 않고 수량만 올린다.
+// 같은 자재가 여러 줄로 흩어지면 몇 개를 사는지 한눈에 안 보이고, 입고 처리도 나뉜다.
+// 품목과 BOX가 모두 같을 때만 한 줄로 본다 — BOX가 다르면 현장에서 쓰이는 자리가 다르다.
+const lineKeyOf = (ln) => `${ln.itemId || `name:${(ln.name || '').trim()}|${(ln.spec || '').trim()}`}@@${ln.box || ''}`;
+
+function mergeLines(existing, incoming) {
+  const kept = existing.filter((ln) => (ln.name || '').trim() || ln.itemId);
+  const byKey = new Map(kept.map((ln, i) => [lineKeyOf(ln), i]));
+  const merged = [...kept];
+  let addedCount = 0;
+  let mergedCount = 0;
+  for (const line of incoming) {
+    const at = byKey.get(lineKeyOf(line));
+    if (at === undefined) {
+      byKey.set(lineKeyOf(line), merged.length);
+      merged.push(line);
+      addedCount += 1;
+      continue;
+    }
+    // 이미 있는 줄 — 수량만 더한다. 단가·비고·입고 등 기존 값은 그대로 둔다.
+    const cur = merged[at];
+    merged[at] = { ...cur, qty: (Number(cur.qty) || 0) + (Number(line.qty) || 0) };
+    mergedCount += 1;
+  }
+  return { merged, addedCount, mergedCount };
+}
+
 function deductStock(need, master, left) {
   const want = Number(need) || 0;
   if (!master || want <= 0) return { qty: want };
@@ -540,14 +567,22 @@ export default function PurchaseDetailPage() {
       setItemPickerOpen(false);
       return;
     }
+    let report = null;
     setForm((f) => {
-      const first = f.items[0];
-      const onlyEmpty = f.items.length === 1 && !first?.name && !first?.itemId;
-      return { ...f, items: onlyEmpty ? newLines : [...f.items, ...newLines] };
+      const r = mergeLines(f.items, newLines);
+      report = r;
+      return { ...f, items: r.merged.length > 0 ? r.merged : [{ ...EMPTY_LINE }] };
     });
     scheduleAutoSave();
     setItemPicked(new Map());
     setItemPickerOpen(false);
+    if (report?.mergedCount > 0) {
+      toast(
+        report.addedCount > 0
+          ? `${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다`
+          : `이미 있던 품목 ${report.mergedCount}개의 수량을 더했습니다`,
+      );
+    }
   }
 
   // 품목 검색·업체 매칭 (코드·품명·메이커·규격·분류·구매처·비고 + 기본 구매처 필터)
@@ -657,14 +692,20 @@ export default function PurchaseDetailPage() {
             note: b.note || '',
           };
         });
+      let report = null;
       setForm((f) => {
-        const existing = f.items.filter((ln) => (ln.name || '').trim()); // 빈 라인 제거 후 합치기
-        return { ...f, items: [...existing, ...newLines], setCount };
+        const r = mergeLines(f.items, newLines);
+        report = r;
+        return { ...f, items: r.merged, setCount };
       });
       scheduleAutoSave();
       setBomModalOpen(false);
       const vLabel = variantKey ? (bp.variants || []).find((v) => v.key === variantKey)?.label : '';
-      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
+      const tail =
+        report?.mergedCount > 0
+          ? `품목 ${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다.`
+          : `품목 ${newLines.length}개를 가져왔습니다.`;
+      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 ${tail}`);
     } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
@@ -1793,7 +1834,7 @@ export default function PurchaseDetailPage() {
                   >
                     {/* 칸 폭 배분(%) — 대표님 지정 1~4번, 나머지는 내용 길이에 맞춰 나눔 */}
                     <colgroup>
-                      {[2, 5, 6, 10, 7, 18, 5, 3, 3, 7, 7, 6, 7, 6, 8].map((pct, i) => (
+                      {[2, 5, 6, 10, 7, 15, 5, 3, 3, 4, 7, 7, 6, 6, 6, 8].map((pct, i) => (
                         <col key={i} style={{ width: `${pct}%` }} />
                       ))}
                     </colgroup>
@@ -1808,6 +1849,7 @@ export default function PurchaseDetailPage() {
                         <th>분류</th>
                         <th>moq/단위</th>
                         <th>수량</th>
+                        <th className="no-print">재고</th>
                         <th>단가</th>
                         <th>합계</th>
                         <th>기본 구매처</th>
@@ -1819,7 +1861,7 @@ export default function PurchaseDetailPage() {
                     <tbody>
                       {form.items.length === 0 && (
                         <tr>
-                          <td colSpan={15} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                          <td colSpan={16} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                             품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
                           </td>
                         </tr>
@@ -1939,6 +1981,9 @@ export default function PurchaseDetailPage() {
                                 onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
                                 title={isReadOnly ? '' : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'}
                               />
+                            </td>
+                            {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
+                            <td data-label="재고" className="no-print">
                               {Number(ln.stockUsed) > 0 && (
                                 <button
                                   type="button"
@@ -1951,7 +1996,9 @@ export default function PurchaseDetailPage() {
                                       : `창고 재고 ${ln.stockUsed}개를 뺐습니다. 눌러서 ${Number(ln.stockNeed).toLocaleString()}개로 되돌리기`
                                   }
                                 >
-                                  재고 {Number(ln.stockUsed).toLocaleString()} 사용
+                                  <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
+                                  <span className="stock-need-sep">/</span>
+                                  <span className="stock-need-n">{Number(ln.stockNeed).toLocaleString()}</span>
                                 </button>
                               )}
                             </td>

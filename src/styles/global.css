@@ -19729,14 +19729,14 @@ a.lib-row-name:hover {
 .stock-used-badge {
   display: block;
   width: 100%;
-  margin-top: 3px;
-  padding: 2px 6px;
+  padding: 3px 6px;
   border: 1px solid #bfdbfe;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
   color: #1d4ed8;
   background: #eff6ff;
   cursor: pointer;
@@ -19860,4 +19860,73 @@ a.lib-row-name:hover {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+/* 재고 「항목 추가」 — 이미 등록된 품목 고르기 */
+.stock-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+}
+.stock-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  text-align: left;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.stock-pick:hover {
+  border-color: var(--accent);
+  background: rgba(240, 88, 25, 0.06);
+}
+.stock-pick-code {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.stock-pick-name {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+.stock-pick-spec {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.stock-pick-chosen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+/* 「재고로 뺀 수량 / 원래 필요했던 수량」 — 두 숫자를 색으로 구분한다 */
+.stock-used-n {
+  color: #1d4ed8;
+}
+.stock-need-sep {
+  margin: 0 2px;
+  color: #9ca3af;
+  font-weight: 400;
+}
+.stock-need-n {
+  color: #6b7280;
 }

@@ -1,5 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { subscribePurchaseItems, setItemStock, addPurchaseItem, nextMainCode } from '../../services/purchaseService';
+import {
+  subscribePurchaseItems,
+  setItemStock,
+  addPurchaseItem,
+  clearItemStock,
+  nextMainCode,
+} from '../../services/purchaseService';
 import { useDialog } from '../../components/common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
@@ -26,7 +32,7 @@ function fmtWhen(ts) {
 }
 
 export default function StockPage() {
-  const { toast } = useDialog();
+  const { toast, confirm } = useDialog();
   const { userProfile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +43,7 @@ export default function StockPage() {
   const [historyItem, setHistoryItem] = useState(null);
   // 새 항목 직접 추가 — 품목 탭에 없는 자재도 여기서 바로 만든다
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ code: '', name: '', spec: '', unit: '', stockQty: '' });
+  const [addForm, setAddForm] = useState({ code: '', name: '', spec: '', unit: '', stockQty: '', existingId: '' });
   const [adding, setAdding] = useState(false);
 
   useEffect(
@@ -49,24 +55,28 @@ export default function StockPage() {
     [],
   );
 
+  // 재고를 챙길 자재만 여기 올린다 — 품목 전체를 늘어놓으면 정작 볼 것이 묻힌다.
+  // 「항목 추가」로 올린 것(stockQty 필드가 생긴 것)만 목록에 나온다.
+  const tracked = useMemo(() => items.filter((it) => it.stockQty !== undefined && it.stockQty !== null), [items]);
+
   const shown = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    return items.filter((it) => {
+    return tracked.filter((it) => {
       const stock = Number(it.stockQty) || 0;
       if (filter === 'has' && stock <= 0) return false;
       if (filter === 'none' && stock > 0) return false;
       if (!kw) return true;
       return [it.code, it.name, it.spec, it.maker, it.category].some((v) => (v || '').toLowerCase().includes(kw));
     });
-  }, [items, search, filter]);
+  }, [tracked, search, filter]);
 
   const summary = useMemo(() => {
-    const withStock = items.filter((it) => (Number(it.stockQty) || 0) > 0);
+    const withStock = tracked.filter((it) => (Number(it.stockQty) || 0) > 0);
     return {
       kinds: withStock.length,
       total: withStock.reduce((s, it) => s + (Number(it.stockQty) || 0), 0),
     };
-  }, [items]);
+  }, [tracked]);
 
   async function commit(it) {
     const raw = edit[it.id];
@@ -92,20 +102,53 @@ export default function StockPage() {
   // 재고 화면에서 만든 항목도 품목 목록에 함께 들어간다.
   // 따로 관리하면 같은 자재가 두 군데 생겨 발주 차감이 어긋난다.
   function openAdd() {
-    setAddForm({ code: nextMainCode(items), name: '', spec: '', unit: '', stockQty: '' });
+    setAddForm({ code: nextMainCode(items), name: '', spec: '', unit: '', stockQty: '', existingId: '' });
     setAddOpen(true);
+  }
+
+  // 품명을 치면 이미 등록된 품목을 먼저 보여준다 — 골라 쓰면 같은 자재가 두 개로 갈라지지 않는다.
+  // 이미 재고 목록에 올라 있는 것은 뺀다.
+  const addCandidates = useMemo(() => {
+    const kw = addForm.name.trim().toLowerCase();
+    if (!kw || addForm.existingId) return [];
+    return items
+      .filter((it) => it.stockQty === undefined || it.stockQty === null)
+      .filter((it) => [it.code, it.name, it.spec].some((v) => (v || '').toLowerCase().includes(kw)))
+      .slice(0, 6);
+  }, [items, addForm.name, addForm.existingId]);
+
+  function pickExisting(it) {
+    setAddForm((f) => ({
+      ...f,
+      existingId: it.id,
+      code: it.code || '',
+      name: it.name || '',
+      spec: it.spec || '',
+      unit: it.unit || '',
+    }));
   }
 
   async function submitAdd() {
     const name = addForm.name.trim();
     if (!name) return;
-    const dup = items.find((it) => (it.name || '').trim() === name && (it.spec || '').trim() === addForm.spec.trim());
-    if (dup) {
-      toast('같은 품명·규격의 품목이 이미 있습니다', 'error');
-      return;
-    }
     setAdding(true);
     try {
+      if (addForm.existingId) {
+        // 이미 있는 품목 — 재고 수량만 붙여 목록에 올린다
+        await setItemStock(addForm.existingId, {
+          from: 0,
+          to: Math.max(0, Number(addForm.stockQty) || 0),
+          byName: userProfile?.name || '',
+        });
+        setAddOpen(false);
+        toast(`"${name}"을(를) 재고 목록에 올렸습니다`, 'success');
+        return;
+      }
+      const dup = items.find((it) => (it.name || '').trim() === name && (it.spec || '').trim() === addForm.spec.trim());
+      if (dup) {
+        toast('같은 품명·규격의 품목이 이미 있습니다 — 아래 목록에서 고르세요', 'error');
+        return;
+      }
       await addPurchaseItem({
         code: addForm.code.trim(),
         name,
@@ -114,11 +157,25 @@ export default function StockPage() {
         stockQty: Math.max(0, Number(addForm.stockQty) || 0),
       });
       setAddOpen(false);
-      toast(`"${name}"을(를) 품목에 추가했습니다`, 'success');
+      toast(`"${name}"을(를) 품목과 재고 목록에 추가했습니다`, 'success');
     } catch {
       toast('항목 추가 중 오류가 발생했습니다', 'error');
     } finally {
       setAdding(false);
+    }
+  }
+
+  // 재고 목록에서만 내린다 — 품목 자체는 그대로 남는다
+  async function removeFromList(it) {
+    const ok = await confirm({
+      title: '재고 목록에서 빼기',
+      message: `"${it.name}"을(를) 재고 목록에서 뺍니다.\n\n품목 자체는 지워지지 않고, 발주할 때 재고가 빠지지 않게 됩니다.`,
+    });
+    if (!ok) return;
+    try {
+      await clearItemStock(it.id);
+    } catch {
+      toast('목록에서 빼는 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -163,8 +220,20 @@ export default function StockPage() {
 
       {shown.length === 0 ? (
         <EmptyState
-          title={items.length === 0 ? '등록된 품목이 없습니다' : '해당 조건의 품목이 없습니다'}
-          desc={items.length === 0 ? '품목 탭에서 품목을 먼저 등록하세요.' : '검색어나 필터를 바꿔 보세요.'}
+          title={tracked.length === 0 ? '재고를 챙길 자재가 아직 없습니다' : '해당 조건의 항목이 없습니다'}
+          desc={
+            tracked.length === 0
+              ? '우측 상단 「항목 추가」로 창고에 두고 쓰는 자재를 올리세요. 여기 올린 것만 발주할 때 수량에서 빠집니다.'
+              : '검색어나 필터를 바꿔 보세요.'
+          }
+          action={
+            tracked.length === 0 ? (
+              <button type="button" className="btn btn-primary" onClick={openAdd}>
+                <Icon name="plus" className="btn-ic" />
+                항목 추가
+              </button>
+            ) : null
+          }
         />
       ) : (
         <div className="table-scroll-x">
@@ -232,6 +301,14 @@ export default function StockPage() {
                             </button>
                           </>
                         )}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => removeFromList(it)}
+                          title="재고 목록에서만 뺍니다 (품목은 그대로)"
+                        >
+                          빼기
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -274,11 +351,35 @@ export default function StockPage() {
           <input
             type="text"
             value={addForm.name}
-            onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+            onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value, existingId: '' }))}
             placeholder="예) CP"
             autoFocus
             maxLength={60}
           />
+          {addCandidates.length > 0 && (
+            <div className="stock-pick-list">
+              <p className="field-hint">이미 등록된 품목입니다 — 골라 쓰면 같은 자재가 두 개로 갈라지지 않습니다.</p>
+              {addCandidates.map((it) => (
+                <button key={it.id} type="button" className="stock-pick" onClick={() => pickExisting(it)}>
+                  <span className="stock-pick-code">{it.code || '-'}</span>
+                  <span className="stock-pick-name">{it.name}</span>
+                  <span className="stock-pick-spec">{it.spec || ''}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {addForm.existingId && (
+            <p className="field-hint stock-pick-chosen">
+              등록된 품목을 골랐습니다 — 재고 수량만 채우면 목록에 올라갑니다.{' '}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setAddForm((f) => ({ ...f, existingId: '', code: nextMainCode(items) }))}
+              >
+                해제
+              </button>
+            </p>
+          )}
         </div>
         <div className="form-group">
           <label>규격</label>

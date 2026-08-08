@@ -252,6 +252,18 @@ export async function setItemStock(id, { from, to, reason, byName }) {
   });
 }
 
+// 재고 목록에서 내리기 — 품목은 그대로 두고 재고 관련 값만 지운다.
+// stockQty 필드가 없어지면 재고 화면 목록에서 빠지고, 발주 때 재고 차감도 하지 않는다.
+export async function clearItemStock(id) {
+  await updateDoc(doc(db, 'purchaseItems', id), {
+    stockQty: deleteField(),
+    stockUpdatedAt: deleteField(),
+    stockUpdatedBy: deleteField(),
+    stockHistory: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
 export async function recordPriceChange(id, { from, to, reason, supplierName }) {
   const f = Number(from) || 0;
   const t = Number(to) || 0;
