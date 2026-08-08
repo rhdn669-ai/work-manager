@@ -1813,6 +1813,19 @@ export default function PurchaseDetailPage() {
               <button type="button" className="btn btn-sm btn-outline" onClick={openBomModal}>
                 BOM 가져오기
               </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setPanelPickOpen(true)}
+                title="이 발주가 어느 생산 호기 것인지 고르기"
+              >
+                생산 호기{' '}
+                {(form.panels || []).length > 0 && (
+                  <strong className={panelStatus.some((st) => !st.done) ? 'po-panel-short' : undefined}>
+                    {(form.panels || []).length}
+                  </strong>
+                )}
+              </button>
             </>
           )}
           {!isReadOnly && saveState === 'error' && (
@@ -1931,22 +1944,11 @@ export default function PurchaseDetailPage() {
             <em>프로젝트</em>
             {purchase.siteName || '-'}
           </span>
-          {/* 다른 메타 항목과 같은 모양으로 둔다 — 값 자체를 눌러 고른다(버튼이 끼면 줄이 뚱뚱해진다) */}
-          <span
-            className="po-panel-meta"
-            role="button"
-            tabIndex={0}
-            onClick={() => setPanelPickOpen(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') setPanelPickOpen(true);
-            }}
-            title="눌러서 이 발주가 어느 호기 것인지 고르기"
-          >
-            <em>생산 호기</em>
-            {(form.panels || []).length === 0 ? (
-              <span className="po-panel-none">지정</span>
-            ) : (
-              (form.panels || []).map((p, i) => {
+          {/* 걸린 호기는 정보 줄에 글자로만 — 고르는 것은 우측 「생산 호기」 버튼 */}
+          {(form.panels || []).length > 0 && (
+            <span>
+              <em>생산 호기</em>
+              {(form.panels || []).map((p, i) => {
                 const st = panelStatus[i];
                 return (
                   <span key={p.id} className={st && !st.done ? 'po-panel-short' : undefined}>
@@ -1954,9 +1956,9 @@ export default function PurchaseDetailPage() {
                     {p.호기 || p.프로젝트 || '호기'}
                   </span>
                 );
-              })
-            )}
-          </span>
+              })}
+            </span>
+          )}
           <span title={purchase.requesterName || ''}>
             <em>등록자</em>
             {purchase.requesterName || '-'}

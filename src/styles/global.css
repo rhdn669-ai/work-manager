@@ -20019,17 +20019,6 @@ a.lib-row-name:hover {
 /* ===== 발주서에 걸린 생산 호기 =====
    입고는 한 번에 되므로 발주서 단위로 여러 대를 건다.
    자재가 모자라면 생산이 뒤인 호기가 미입고로 남는다. */
-/* 다른 메타 항목과 같은 담백한 글자. 값을 누르면 호기를 고른다. */
-.po-panel-meta {
-  cursor: pointer;
-}
-.po-panel-meta:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.po-panel-none {
-  color: var(--text-muted);
-}
 /* 자재가 모자란 호기 — 뒤에 생산하는 쪽부터 이렇게 남는다 */
 .po-panel-short {
   color: #b91c1c;
