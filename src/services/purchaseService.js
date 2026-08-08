@@ -13,6 +13,7 @@ import {
   where,
   arrayUnion,
   arrayRemove,
+  increment,
   writeBatch,
   onSnapshot,
 } from 'firebase/firestore';
@@ -170,7 +171,7 @@ export async function addPurchaseItem(data) {
     priceHistory: data.priceHistory || [], // [{ price, date: 'YYYY-MM-DD' }]
     certification: data.certification || '', // 인증 (CE/KS/UL 등 자유 텍스트)
     defaultSupplierId: data.defaultSupplierId || '',
-    stockQty: Math.max(0, Number(data.stockQty) || 0), // 창고 보유 수량 — 재고 화면에서 손으로 관리
+    stockQty: Number(data.stockQty) || 0, // 창고 보유 수량 — 재고 화면에서 손으로 관리(모자라면 음수)
     siteIds: data.siteIds || [], // 사용 프로젝트 (다중)
     note: data.note || '',
     groupKey: data.groupKey || null, // 대분류 그룹 식별자 — 베어 메인의 doc id (베어 메인은 null)
@@ -236,7 +237,7 @@ export async function updatePurchaseItem(id, data) {
 // 고친 내력은 누가 언제 몇에서 몇으로 바꿨는지 함께 남긴다.
 export async function setItemStock(id, { from, to, reason, byName }) {
   const f = Number(from) || 0;
-  const t = Math.max(0, Number(to) || 0);
+  const t = Number(to) || 0; // 음수 허용 — 창고에 없는데 먼저 쓴 만큼을 '-3' 처럼 적어 둘 수 있다
   await updateDoc(doc(db, 'purchaseItems', id), {
     stockQty: t,
     stockUpdatedAt: new Date(),
@@ -246,6 +247,25 @@ export async function setItemStock(id, { from, to, reason, byName }) {
       to: t,
       date: getToday(),
       reason: reason || '',
+      byName: byName || '',
+    }),
+    updatedAt: new Date(),
+  });
+}
+
+// 발주서가 재고를 가져다 쓴 만큼 줄인다 (되돌릴 땐 used 를 음수로 주면 그만큼 되돌아온다).
+// 두 사람이 동시에 담아도 어긋나지 않도록 '얼마를 더하고 뺀다'로 처리한다 — 읽은 값으로 덮어쓰면 한쪽이 묻힌다.
+export async function consumeItemStock(id, used, { byName, note } = {}) {
+  const n = Number(used) || 0;
+  if (n === 0) return;
+  await updateDoc(doc(db, 'purchaseItems', id), {
+    stockQty: increment(-n),
+    stockUpdatedAt: new Date(),
+    stockUpdatedBy: byName || '',
+    stockHistory: arrayUnion({
+      delta: -n,
+      date: getToday(),
+      reason: note || (n > 0 ? '발주 사용' : '발주 취소로 되돌림'),
       byName: byName || '',
     }),
     updatedAt: new Date(),

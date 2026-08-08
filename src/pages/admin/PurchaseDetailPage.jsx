@@ -37,6 +37,7 @@ import {
   unmarkPaymentRequested,
   setPurchaseReplied,
   getPurchaseConfig,
+  consumeItemStock,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
@@ -76,10 +77,10 @@ const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice
 // 창고에 있는 만큼은 사지 않는다 — 품목 재고(재고 탭에서 손으로 적는 값)를 발주 수량에서 뺀다.
 // 뺀 사실은 stockUsed 로 줄에 남겨, 재고 숫자가 틀렸을 때 배지를 눌러 되돌릴 수 있게 한다.
 // 한 번에 여러 줄을 넣을 때 같은 품목이 두 번 나오면 재고를 두 번 쓰지 않도록 left 로 남은 양을 추적한다.
-// 「품목 불러오기」로 낱개를 더 담을 때만 쓴다 — 이미 있는 품목이면 줄을 새로 만들지 않고 수량만 올린다.
+// 「BOM 가져오기」에서 쓴다 — 이미 발주서에 있는 품목이면 줄을 새로 만들지 않고 수량만 올린다.
 // 같은 자재가 여러 줄로 흩어지면 몇 개를 사는지 한눈에 안 보이고, 입고 처리도 나뉜다.
 // 품목과 BOX가 모두 같을 때만 한 줄로 본다 — BOX가 다르면 현장에서 쓰이는 자리가 다르다.
-// ※ BOM 가져오기는 한 벌의 구성이라 합치지 않고 통째로 새 줄에 담는다.
+// ※ 「품목 불러오기」로 낱개를 담을 때는 합치지 않고 새 줄로 넣는다.
 const lineKeyOf = (ln) => `${ln.itemId || `name:${(ln.name || '').trim()}|${(ln.spec || '').trim()}`}@@${ln.box || ''}`;
 
 function mergeLines(existing, incoming) {
@@ -98,7 +99,13 @@ function mergeLines(existing, incoming) {
     }
     // 이미 있는 줄 — 수량만 더한다. 단가·비고·입고 등 기존 값은 그대로 둔다.
     const cur = merged[at];
-    merged[at] = { ...cur, qty: (Number(cur.qty) || 0) + (Number(line.qty) || 0) };
+    merged[at] = {
+      ...cur,
+      qty: (Number(cur.qty) || 0) + (Number(line.qty) || 0),
+      // 재고로 뺀 몫과 원래 필요했던 몫도 함께 더해야 「2 / 5」 표기가 맞는다
+      stockUsed: (Number(cur.stockUsed) || 0) + (Number(line.stockUsed) || 0),
+      stockNeed: (Number(cur.stockNeed) || Number(cur.qty) || 0) + (Number(line.stockNeed) || Number(line.qty) || 0),
+    };
     mergedCount += 1;
   }
   return { merged, addedCount, mergedCount };
@@ -455,12 +462,52 @@ export default function PurchaseDetailPage() {
     scheduleAutoSave();
   }
 
-  // 재고분 차감 되돌리기 — 재고 숫자가 실제와 다를 때 원래 필요 수량으로 되돌린다.
-  // 입고가 시작된 줄은 수량을 늘려도 정합성에 문제가 없으므로 그대로 허용한다.
-  function restoreStockLine(idx) {
+  // 발주서가 가져다 쓴 만큼 창고 재고를 실제로 줄인다(되돌릴 땐 음수로 주면 되돌아온다).
+  // 이걸 안 하면 같은 재고를 여러 발주서가 각각 빼 써서 없는 자재를 있다고 계산하게 된다.
+  async function applyStockUse(lines, sign, note) {
+    const byItem = new Map();
+    for (const ln of lines) {
+      const used = Number(ln.stockUsed) || 0;
+      if (!ln.itemId || used <= 0) continue;
+      byItem.set(ln.itemId, (byItem.get(ln.itemId) || 0) + used * sign);
+    }
+    if (byItem.size === 0) return;
+    try {
+      await Promise.all(
+        [...byItem].map(([itemId, delta]) =>
+          consumeItemStock(itemId, delta, { byName: userProfile?.name || '', note }),
+        ),
+      );
+    } catch {
+      toast('재고 반영 중 오류가 발생했습니다 — 재고 화면에서 수량을 확인해 주세요', 'error', 0);
+    }
+  }
+
+  // 재고를 쓸지 말지 한 버튼으로 오간다.
+  //   쓰는 중 → 누르면 창고로 되돌리고 원래 필요 수량으로 발주
+  //   안 쓰는 중 → 누르면 지금 창고에 남은 만큼 다시 가져다 쓴다
+  function toggleStockLine(idx) {
     const ln = formRef.current.items[idx];
-    if (!ln || !(Number(ln.stockUsed) > 0)) return;
-    updateLine(idx, { qty: Number(ln.stockNeed) || Number(ln.qty) || 0, stockUsed: 0 });
+    if (!ln) return;
+    const used = Number(ln.stockUsed) || 0;
+    const need = Number(ln.stockNeed) || Number(ln.qty) || 0;
+    if (need <= 0) return;
+
+    if (used > 0) {
+      applyStockUse([ln], -1, `발주 되돌림 · ${formRef.current.title || ''}`);
+      updateLine(idx, { qty: need, stockUsed: 0, stockNeed: need });
+      return;
+    }
+    // 다시 쓰기 — 처음 담을 때가 아니라 '지금' 남은 재고를 기준으로 한다
+    const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+    const have = Number(master?.stockQty) || 0;
+    if (have <= 0) {
+      toast('창고에 남은 재고가 없습니다', 'error');
+      return;
+    }
+    const use = Math.min(have, need);
+    applyStockUse([{ ...ln, stockUsed: use }], 1, `발주 사용 · ${formRef.current.title || ''}`);
+    updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need });
   }
 
   // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
@@ -568,22 +615,15 @@ export default function PurchaseDetailPage() {
       setItemPickerOpen(false);
       return;
     }
-    let report = null;
+    // 낱개로 담는 것이라 이미 같은 품목이 있어도 합치지 않고 새 줄로 넣는다
     setForm((f) => {
-      const r = mergeLines(f.items, newLines);
-      report = r;
-      return { ...f, items: r.merged.length > 0 ? r.merged : [{ ...EMPTY_LINE }] };
+      const existing = f.items.filter((ln) => (ln.name || '').trim() || ln.itemId);
+      return { ...f, items: [...existing, ...newLines] };
     });
+    applyStockUse(newLines, 1, `발주 사용 · ${formRef.current?.title || ''}`);
     scheduleAutoSave();
     setItemPicked(new Map());
     setItemPickerOpen(false);
-    if (report?.mergedCount > 0) {
-      toast(
-        report.addedCount > 0
-          ? `${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다`
-          : `이미 있던 품목 ${report.mergedCount}개의 수량을 더했습니다`,
-      );
-    }
   }
 
   // 품목 검색·업체 매칭 (코드·품명·메이커·규격·분류·구매처·비고 + 기본 구매처 필터)
@@ -604,6 +644,8 @@ export default function PurchaseDetailPage() {
 
   async function removeLine(idx) {
     if (!(await confirm('이 품목 행을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.'))) return;
+    const gone = formRef.current.items[idx];
+    if (gone) applyStockUse([gone], -1, '발주 품목 삭제로 되돌림'); // 안 사게 됐으니 창고로 반환
     setForm((f) => {
       const removed = f.items[idx];
       const hasContent = (removed?.name || '').trim() || removed?.itemId;
@@ -619,6 +661,8 @@ export default function PurchaseDetailPage() {
 
   // 발주 품목 휴지통 — 복원 / 영구삭제
   function restoreDeletedItem(i) {
+    const back = (formRef.current.deletedItems || [])[i];
+    if (back) applyStockUse([back], 1, '발주 품목 복원'); // 되살렸으니 재고를 다시 쓴다
     setForm((f) => {
       const dl = (f.deletedItems || [])[i];
       if (!dl) return f;
@@ -643,6 +687,7 @@ export default function PurchaseDetailPage() {
     const count = form.items.filter((ln) => (ln.name || '').trim()).length;
     if (count === 0) return;
     if (!(await confirm(`품목 ${count}개를 모두 삭제하시겠습니까?\n저장하면 반영됩니다.`))) return;
+    applyStockUse(formRef.current.items, -1, '발주 품목 전체 삭제로 되돌림');
     setForm((f) => ({ ...f, items: [{ ...EMPTY_LINE }], setCount: 0 }));
     scheduleAutoSave();
   }
@@ -693,16 +738,22 @@ export default function PurchaseDetailPage() {
             note: b.note || '',
           };
         });
-      // BOM 은 한 벌의 구성이므로 통째로 새 줄에 담는다.
-      // 이미 같은 품목이 있어도 합치지 않는다 — 합치면 어느 BOM 몫인지 구분이 사라진다.
+      // 이미 발주서에 있는 품목은 새 줄을 만들지 않고 수량을 올린다
+      let report = null;
       setForm((f) => {
-        const existing = f.items.filter((ln) => (ln.name || '').trim());
-        return { ...f, items: [...existing, ...newLines], setCount };
+        const r = mergeLines(f.items, newLines);
+        report = r;
+        return { ...f, items: r.merged, setCount };
       });
+      applyStockUse(newLines, 1, `발주 사용 · ${bp.name}`);
       scheduleAutoSave();
       setBomModalOpen(false);
       const vLabel = variantKey ? (bp.variants || []).find((v) => v.key === variantKey)?.label : '';
-      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
+      const tail =
+        report?.mergedCount > 0
+          ? `품목 ${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다.`
+          : `품목 ${newLines.length}개를 가져왔습니다.`;
+      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 ${tail}`);
     } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
@@ -1969,28 +2020,46 @@ export default function PurchaseDetailPage() {
                               />
                             </td>
                             <td data-label="수량">
+                              {/* 재고를 쓰는 중이면 원래 필요했던 수량에 줄을 그어 보여준다.
+                                  실제로 사는 수량은 옆 「재고」 칸의 「쓴 재고 / 필요」로 읽는다. */}
                               <input
-                                className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}`}
+                                className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}${
+                                  Number(ln.stockUsed) > 0 ? ' qty-struck' : ''
+                                }`}
                                 type="text"
-                                value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
+                                value={
+                                  Number(ln.stockUsed) > 0
+                                    ? Number(ln.stockNeed || ln.qty).toLocaleString()
+                                    : Number(ln.qty)
+                                      ? Number(ln.qty).toLocaleString()
+                                      : ''
+                                }
                                 readOnly
                                 tabIndex={-1}
                                 onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
-                                title={isReadOnly ? '' : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'}
+                                title={
+                                  Number(ln.stockUsed) > 0
+                                    ? `원래 ${Number(ln.stockNeed).toLocaleString()}개 필요 · 재고 ${ln.stockUsed}개를 써서 ${Number(ln.qty).toLocaleString()}개만 발주합니다`
+                                    : isReadOnly
+                                      ? ''
+                                      : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'
+                                }
                               />
                             </td>
                             {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
                             <td data-label="재고" className="no-print">
-                              {Number(ln.stockUsed) > 0 && (
+                              {Number(ln.stockNeed) > 0 && (
                                 <button
                                   type="button"
-                                  className="stock-used-badge"
+                                  className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
                                   disabled={isReadOnly}
-                                  onClick={isReadOnly ? undefined : () => restoreStockLine(idx)}
+                                  onClick={isReadOnly ? undefined : () => toggleStockLine(idx)}
                                   title={
                                     isReadOnly
-                                      ? `창고 재고 ${ln.stockUsed}개를 빼고 발주한 수량입니다`
-                                      : `창고 재고 ${ln.stockUsed}개를 뺐습니다. 눌러서 ${Number(ln.stockNeed).toLocaleString()}개로 되돌리기`
+                                      ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다`
+                                      : Number(ln.stockUsed) > 0
+                                        ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${Number(ln.stockNeed).toLocaleString()}개 전부 발주로 되돌리기`
+                                        : '재고를 쓰지 않는 중 — 눌러서 창고에 남은 만큼 다시 쓰기'
                                   }
                                 >
                                   <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>

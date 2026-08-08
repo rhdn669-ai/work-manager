@@ -87,7 +87,7 @@ export default function StockPage() {
       return n;
     });
     const from = Number(it.stockQty) || 0;
-    const to = Math.max(0, Number(raw) || 0);
+    const to = Number(raw) || 0; // 모자란 수량은 음수로 적어 둘 수 있다
     if (to === from) return;
     setSaving(it.id);
     try {
@@ -137,7 +137,7 @@ export default function StockPage() {
         // 이미 있는 품목 — 재고 수량만 붙여 목록에 올린다
         await setItemStock(addForm.existingId, {
           from: 0,
-          to: Math.max(0, Number(addForm.stockQty) || 0),
+          to: Number(addForm.stockQty) || 0,
           byName: userProfile?.name || '',
         });
         setAddOpen(false);
@@ -154,7 +154,7 @@ export default function StockPage() {
         name,
         spec: addForm.spec.trim(),
         unit: addForm.unit.trim(),
-        stockQty: Math.max(0, Number(addForm.stockQty) || 0),
+        stockQty: Number(addForm.stockQty) || 0,
       });
       setAddOpen(false);
       toast(`"${name}"을(를) 품목과 재고 목록에 추가했습니다`, 'success');
@@ -278,8 +278,7 @@ export default function StockPage() {
                     <td data-label="재고" className="col-num">
                       <input
                         type="number"
-                        min="0"
-                        className="num-input stock-input"
+                        className={`num-input stock-input${stock < 0 ? ' is-minus' : ''}`}
                         value={value}
                         disabled={saving === it.id}
                         onChange={(e) => setEdit((p) => ({ ...p, [it.id]: e.target.value }))}
@@ -395,7 +394,6 @@ export default function StockPage() {
           <label>재고 수량</label>
           <input
             type="number"
-            min="0"
             className="num-input"
             value={addForm.stockQty}
             onChange={(e) => setAddForm((f) => ({ ...f, stockQty: e.target.value }))}
@@ -430,6 +428,7 @@ export default function StockPage() {
             <tr>
               <th>날짜</th>
               <th className="col-num">변경</th>
+              <th>사유</th>
               <th>바꾼 사람</th>
             </tr>
           </thead>
@@ -438,8 +437,18 @@ export default function StockPage() {
               <tr key={`${h.date}-${i}`}>
                 <td data-label="날짜">{h.date}</td>
                 <td data-label="변경" className="col-num">
-                  {h.from} → <strong>{h.to}</strong>
+                  {/* 손으로 고친 기록은 '몇→몇', 발주가 오간 기록은 '+N/−N' 으로 남는다 */}
+                  {h.delta !== undefined ? (
+                    <strong className={h.delta < 0 ? 'stock-delta-out' : 'stock-delta-in'}>
+                      {h.delta > 0 ? `+${h.delta}` : h.delta}
+                    </strong>
+                  ) : (
+                    <>
+                      {h.from} → <strong>{h.to}</strong>
+                    </>
+                  )}
                 </td>
+                <td data-label="사유">{h.reason || '직접 수정'}</td>
                 <td data-label="바꾼 사람">{h.byName || '-'}</td>
               </tr>
             ))}

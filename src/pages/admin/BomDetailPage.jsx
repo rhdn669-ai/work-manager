@@ -504,18 +504,21 @@ export default function BomDetailPage() {
     });
   }
 
+  // 이미 BOM에 있는 품목도 목록에 남긴다 — 같은 자재를 BOX 별로 여러 줄 두는 일이 흔하다.
+  // 대신 「이미 있음」 표시를 달아 실수로 또 담는 것과 구분한다.
+  const inBomIds = useMemo(() => new Set(bomItems.map((b) => b.itemId).filter(Boolean)), [bomItems]);
+
   const filteredMaster = useMemo(() => {
     const kw = pickerSearch.trim().toLowerCase();
-    const inBomIds = new Set(bomItems.map((b) => b.itemId).filter(Boolean));
     // 대분류(베어 메인) 제외: 코드 형식 + 하위 품목의 groupKey가 가리키는 id 양쪽으로
     const mainIds = new Set(itemMaster.map((m) => m.groupKey).filter(Boolean));
-    let list = itemMaster.filter((m) => !inBomIds.has(m.id) && !/^IOPN-\d+$/.test(m.code || '') && !mainIds.has(m.id));
+    let list = itemMaster.filter((m) => !/^IOPN-\d+$/.test(m.code || '') && !mainIds.has(m.id));
     if (kw) {
       list = list.filter((m) => [m.code, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw)));
     }
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     return list.sort((a, b) => collator.compare(a.code || '', b.code || ''));
-  }, [itemMaster, bomItems, pickerSearch]);
+  }, [itemMaster, pickerSearch]);
 
   async function addPickedToBom() {
     if (picked.size === 0) {
@@ -1217,7 +1220,7 @@ export default function BomDetailPage() {
           <p className="field-hint">
             {pickerTargetId
               ? '교체할 품목을 클릭하면 해당 행이 그 품목으로 바뀝니다. (수량·비고 유지, 단가는 표준단가 적용)'
-              : '구매 품목 관리에 등록된 품목 중에서 선택해 BOM에 추가합니다. 이미 BOM에 있는 품목은 목록에서 제외됩니다.'}
+              : '구매 품목 관리에 등록된 품목 중에서 선택해 BOM에 추가합니다. 이미 담긴 품목도 다시 담을 수 있습니다(BOX가 다르면 따로 관리).'}
           </p>
 
           {/* 코드 여러 개 붙여넣기 → 자동 선택 */}
@@ -1305,6 +1308,7 @@ export default function BomDetailPage() {
                     <span className="bom-picker-name">
                       <strong>{m.name}</strong>
                       {m.spec && <span className="bom-picker-spec"> ({m.spec})</span>}
+                      {inBomIds.has(m.id) && <span className="bom-picker-already">이미 있음</span>}
                     </span>
                     {m.standardPrice > 0 && (
                       <span className="bom-picker-price">{Number(m.standardPrice).toLocaleString()}원</span>

@@ -19712,6 +19712,15 @@ a.lib-row-name:hover {
   color: var(--text);
   background: var(--bg-card);
 }
+/* 머리글 글자는 셀 끝에 붙지만 숫자는 입력칸 안쪽 여백만큼 들어간다.
+   머리글을 그만큼 밀어야 오른쪽 끝이 서로 맞는다. */
+.stock-table th.col-num {
+  padding-right: 18px;
+}
+/* 모자란 수량(음수)은 빨갛게 — 창고에 없는데 쓴 것이 눈에 띄어야 한다 */
+.stock-input.is-minus {
+  color: #dc2626;
+}
 .stock-input:focus {
   outline: none;
   border-color: var(--accent);
@@ -19929,4 +19938,41 @@ a.lib-row-name:hover {
 }
 .stock-need-n {
   color: #6b7280;
+}
+
+/* 재고 이력 — 나간 수량은 빨강, 들어온 수량은 초록 (상태배지 연한톤 규칙) */
+.stock-delta-out {
+  color: #dc2626;
+}
+.stock-delta-in {
+  color: #15803d;
+}
+
+/* 재고를 쓰는 중인 줄 — 원래 필요했던 수량에 줄을 긋는다 */
+.qty-struck {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+/* 재고를 안 쓰는 중 — 눌러서 다시 쓸 수 있다는 뜻으로 흐리게 */
+.stock-used-badge.is-off {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+.stock-used-badge.is-off:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+}
+
+/* BOM 품목 고르기 — 이미 담긴 품목임을 알리되 고를 수는 있게 (BOX가 다르면 따로 담는다) */
+.bom-picker-already {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  vertical-align: middle;
 }
