@@ -58,6 +58,18 @@
   - 수치값: 정렬 `text-align:right` / `justify-content:flex-end`, 셀 우측 패딩 **16px(PC) · 12px(≤768) · 10px(≤480)**, 버튼 간격 `gap:8px`.
   - 정의 위치: `global.css` "표 작업(액션) 컬럼 — 전 앱 단일 표준" 블록. `.table td .btn-group`도 flex-end로 표준화.
   - 제외: `.bom-project-action-col`(구매처·외주·BOM·견적 9% 그리드), `.bom-action-col`(발주 품목표) — 고유 폭 시스템 유지(이미 우측 정렬).
+- **표 열 정렬 표준 — 머리글과 값은 반드시 같은 쪽 (전 앱 통일, 2026-08-08)** ※ 훅(check-forbidden)이 강제
+  - 새 표를 만들거나 열을 추가할 때, `<th>`와 `<td>` 중 **한쪽에만** 정렬을 주면 머리글은 왼쪽인데 값은 가운데처럼 **어긋나 보인다.** 반드시 짝으로 지정한다.
+  - 공용 클래스로만 지정한다 (`global.css` "표 열 정렬 표준" 블록):
+    | 열 성격 | 클래스 | 정렬 |
+    |---|---|---|
+    | 수량·단가·금액·재고 등 숫자 | `col-num` | 오른쪽 + `tabular-nums` |
+    | 단위·구분 등 짧은 라벨 | `col-unit` | 가운데 |
+    | 작업(버튼) | `col-action` | 오른쪽 |
+    | 그 밖의 글자 | (없음) | 왼쪽 = 기본값 |
+  - `col-num` 안의 `input`/`.num-input`, `col-unit` 안의 `input`/`select`는 클래스가 알아서 맞춘다. **셀마다 `text-align`을 따로 쓰지 말 것.**
+  - 페이지 전용 CSS로 머리글만 다시 덮지 말 것 (구매처·외주 작업 칸이 이 때문에 어긋나 있었음).
+  - 자가 점검: 브라우저 콘솔에서 `<th>`와 첫 행 `<td>`의 computed `textAlign`을 비교해 다르면 버그.
 - **자료실(lib-detail-table) 컬럼 분배**: name=100%, type/date/size/action=각 116px(type·date·size), action=140px. 모바일(≤720px): type 숨김, date/size=78px, action=88px.
 
 ## 6. 모서리 · 그림자

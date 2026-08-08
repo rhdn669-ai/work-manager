@@ -170,6 +170,7 @@ export async function addPurchaseItem(data) {
     priceHistory: data.priceHistory || [], // [{ price, date: 'YYYY-MM-DD' }]
     certification: data.certification || '', // 인증 (CE/KS/UL 등 자유 텍스트)
     defaultSupplierId: data.defaultSupplierId || '',
+    stockQty: Math.max(0, Number(data.stockQty) || 0), // 창고 보유 수량 — 재고 화면에서 손으로 관리
     siteIds: data.siteIds || [], // 사용 프로젝트 (다중)
     note: data.note || '',
     groupKey: data.groupKey || null, // 대분류 그룹 식별자 — 베어 메인의 doc id (베어 메인은 null)
