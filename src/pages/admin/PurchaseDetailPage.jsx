@@ -495,7 +495,9 @@ export default function PurchaseDetailPage() {
 
     if (used > 0) {
       applyStockUse([ln], -1, `발주 되돌림 · ${formRef.current.title || ''}`);
-      updateLine(idx, { qty: need, stockUsed: 0, stockNeed: need });
+      // stockOptOut: 사람이 일부러 뺀 줄이라는 표시.
+      // 이게 없으면 발주대기 자동 반영이 곧바로 다시 가져가 되돌린 티가 안 난다.
+      updateLine(idx, { qty: need, stockUsed: 0, stockNeed: need, stockOptOut: true });
       return;
     }
     // 다시 쓰기 — 처음 담을 때가 아니라 '지금' 남은 재고를 기준으로 한다
@@ -507,7 +509,7 @@ export default function PurchaseDetailPage() {
     }
     const use = Math.min(have, need);
     applyStockUse([{ ...ln, stockUsed: use }], 1, `발주 사용 · ${formRef.current.title || ''}`);
-    updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need });
+    updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need, stockOptOut: false });
   }
 
   // 창고가 모자란 만큼(재고 음수) 발주 수량에 얹는다.
@@ -812,7 +814,7 @@ export default function PurchaseDetailPage() {
     const patches = [];
     for (let i = 0; i < f.items.length; i++) {
       const ln = f.items[i];
-      if (!ln.itemId) continue;
+      if (!ln.itemId || ln.stockOptOut) continue; // 사람이 일부러 뺀 줄은 그대로 둔다
       const need = Number(ln.stockNeed) || Number(ln.qty) || 0;
       const used = Number(ln.stockUsed) || 0;
       if (need <= 0 || used >= need) continue; // 이미 재고로 다 채운 줄
