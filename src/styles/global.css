@@ -19998,3 +19998,20 @@ a.lib-row-name:hover {
   border-color: #86efac;
   background: #dcfce7;
 }
+
+/* 재고 항목 추가 — 고른 품목 확인 줄 */
+.stock-chosen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  background: rgba(240, 88, 25, 0.06);
+}
+.stock-chosen .btn {
+  margin-left: auto;
+}

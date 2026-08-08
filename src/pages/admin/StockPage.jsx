@@ -45,6 +45,8 @@ export default function StockPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ code: '', name: '', spec: '', unit: '', stockQty: '', existingId: '' });
   const [adding, setAdding] = useState(false);
+  const [addSearch, setAddSearch] = useState('');
+  const [newMode, setNewMode] = useState(false); // 검색으로 못 찾아 새로 만드는 중
 
   useEffect(
     () =>
@@ -101,31 +103,39 @@ export default function StockPage() {
 
   // 재고 화면에서 만든 항목도 품목 목록에 함께 들어간다.
   // 따로 관리하면 같은 자재가 두 군데 생겨 발주 차감이 어긋난다.
+  // 찾아서 고르는 것이 기본, 없을 때만 새로 만든다.
+  // 코드 자동 채번은 새로 만들 때만 — 고르는 자리에 미리 채워 두면 헷갈린다.
   function openAdd() {
-    setAddForm({ code: nextMainCode(items), name: '', spec: '', unit: '', stockQty: '', existingId: '' });
+    setAddSearch('');
+    setNewMode(false);
+    setAddForm({ code: '', name: '', spec: '', unit: '', stockQty: '', existingId: '' });
     setAddOpen(true);
   }
 
-  // 품명을 치면 이미 등록된 품목을 먼저 보여준다 — 골라 쓰면 같은 자재가 두 개로 갈라지지 않는다.
-  // 이미 재고 목록에 올라 있는 것은 뺀다.
+  // 코드·품명·규격을 가리지 않고 친 대로 찾는다. 이미 재고 목록에 올라 있는 것은 뺀다.
   const addCandidates = useMemo(() => {
-    const kw = addForm.name.trim().toLowerCase();
-    if (!kw || addForm.existingId) return [];
+    const kw = addSearch.trim().toLowerCase();
+    if (!kw) return [];
     return items
       .filter((it) => it.stockQty === undefined || it.stockQty === null)
-      .filter((it) => [it.code, it.name, it.spec].some((v) => (v || '').toLowerCase().includes(kw)))
-      .slice(0, 6);
-  }, [items, addForm.name, addForm.existingId]);
+      .filter((it) => [it.code, it.name, it.spec, it.maker].some((v) => (v || '').toLowerCase().includes(kw)))
+      .slice(0, 12);
+  }, [items, addSearch]);
 
   function pickExisting(it) {
-    setAddForm((f) => ({
-      ...f,
+    setAddForm({
       existingId: it.id,
       code: it.code || '',
       name: it.name || '',
       spec: it.spec || '',
       unit: it.unit || '',
-    }));
+      stockQty: '',
+    });
+  }
+
+  function startNew() {
+    setNewMode(true);
+    setAddForm({ code: nextMainCode(items), name: addSearch.trim(), spec: '', unit: '', stockQty: '', existingId: '' });
   }
 
   async function submitAdd() {
@@ -319,104 +329,146 @@ export default function StockPage() {
       )}
 
       <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="항목 추가">
-        <p className="field-hint" style={{ marginBottom: 12 }}>
-          품목 탭에 없는 자재를 여기서 바로 만듭니다. 만든 항목은 <strong>품목 목록에도 함께 등록</strong>되어, 발주서를
-          쓸 때 재고만큼 자동으로 빠집니다.
-        </p>
-        <div className="form-row">
-          <div className="form-group">
-            <label>코드</label>
+        {!addForm.existingId && !newMode ? (
+          <>
+            <p className="field-hint" style={{ marginBottom: 12 }}>
+              창고에 두고 쓰는 자재를 찾아 올립니다. 코드·품명·규격 무엇으로 찾아도 됩니다.
+            </p>
             <input
               type="text"
-              value={addForm.code}
-              onChange={(e) => setAddForm((f) => ({ ...f, code: e.target.value }))}
-              placeholder="IOPN-000"
-              maxLength={30}
+              className="stock-search"
+              style={{ width: '100%' }}
+              placeholder="코드 · 품명 · 규격 · 메이커 검색"
+              value={addSearch}
+              onChange={(e) => setAddSearch(e.target.value)}
+              autoFocus
             />
-          </div>
-          <div className="form-group">
-            <label>단위</label>
-            <input
-              type="text"
-              value={addForm.unit}
-              onChange={(e) => setAddForm((f) => ({ ...f, unit: e.target.value }))}
-              placeholder="개 · m · roll/610m"
-              maxLength={30}
-            />
-          </div>
-        </div>
-        <div className="form-group">
-          <label>품명</label>
-          <input
-            type="text"
-            value={addForm.name}
-            onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value, existingId: '' }))}
-            placeholder="예) CP"
-            autoFocus
-            maxLength={60}
-          />
-          {addCandidates.length > 0 && (
-            <div className="stock-pick-list">
-              <p className="field-hint">이미 등록된 품목입니다 — 골라 쓰면 같은 자재가 두 개로 갈라지지 않습니다.</p>
-              {addCandidates.map((it) => (
-                <button key={it.id} type="button" className="stock-pick" onClick={() => pickExisting(it)}>
-                  <span className="stock-pick-code">{it.code || '-'}</span>
-                  <span className="stock-pick-name">{it.name}</span>
-                  <span className="stock-pick-spec">{it.spec || ''}</span>
-                </button>
-              ))}
+            <div className="stock-pick-list" style={{ marginTop: 10 }}>
+              {addSearch.trim() === '' ? (
+                <p className="field-hint">찾을 말을 입력하세요.</p>
+              ) : addCandidates.length === 0 ? (
+                <p className="field-hint">일치하는 품목이 없습니다. 아래에서 새로 만들 수 있습니다.</p>
+              ) : (
+                addCandidates.map((it) => (
+                  <button key={it.id} type="button" className="stock-pick" onClick={() => pickExisting(it)}>
+                    <span className="stock-pick-code">{it.code || '-'}</span>
+                    <span className="stock-pick-name">{it.name}</span>
+                    <span className="stock-pick-spec">{it.spec || ''}</span>
+                  </button>
+                ))
+              )}
             </div>
-          )}
-          {addForm.existingId && (
-            <p className="field-hint stock-pick-chosen">
-              등록된 품목을 골랐습니다 — 재고 수량만 채우면 목록에 올라갑니다.{' '}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setAddOpen(false)}>
+                취소
+              </button>
+              <button type="button" className="btn btn-outline" onClick={startNew}>
+                <Icon name="plus" className="btn-ic" />새 품목 만들기
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {addForm.existingId ? (
+              <div className="stock-chosen">
+                <span className="stock-pick-code">{addForm.code || '-'}</span>
+                <span className="stock-pick-name">{addForm.name}</span>
+                <span className="stock-pick-spec">{addForm.spec || ''}</span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => setAddForm((f) => ({ ...f, existingId: '' }))}
+                >
+                  다시 고르기
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="field-hint" style={{ marginBottom: 12 }}>
+                  품목 탭에 없는 자재를 새로 만듭니다. 만든 항목은 <strong>품목 목록에도 함께 등록</strong>됩니다.
+                </p>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>코드</label>
+                    <input
+                      type="text"
+                      value={addForm.code}
+                      onChange={(e) => setAddForm((f) => ({ ...f, code: e.target.value }))}
+                      placeholder="IOPN-000"
+                      maxLength={30}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>단위</label>
+                    <input
+                      type="text"
+                      value={addForm.unit}
+                      onChange={(e) => setAddForm((f) => ({ ...f, unit: e.target.value }))}
+                      placeholder="개 · m · roll/610m"
+                      maxLength={30}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>품명</label>
+                  <input
+                    type="text"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="예) CP"
+                    autoFocus
+                    maxLength={60}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>규격</label>
+                  <input
+                    type="text"
+                    value={addForm.spec}
+                    onChange={(e) => setAddForm((f) => ({ ...f, spec: e.target.value }))}
+                    placeholder="예) GCP-32ANM 5A 2P"
+                    maxLength={120}
+                  />
+                </div>
+              </>
+            )}
+            <div className="form-group">
+              <label>재고 수량</label>
+              <input
+                type="number"
+                className="num-input"
+                value={addForm.stockQty}
+                onChange={(e) => setAddForm((f) => ({ ...f, stockQty: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && addForm.name.trim()) submitAdd();
+                }}
+                placeholder="0"
+                style={{ maxWidth: 160 }}
+                autoFocus={!!addForm.existingId}
+              />
+            </div>
+            <div className="modal-actions">
               <button
                 type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => setAddForm((f) => ({ ...f, existingId: '', code: nextMainCode(items) }))}
+                className="btn btn-outline"
+                onClick={() => {
+                  setNewMode(false);
+                  setAddForm((f) => ({ ...f, existingId: '' }));
+                }}
               >
-                해제
+                뒤로
               </button>
-            </p>
-          )}
-        </div>
-        <div className="form-group">
-          <label>규격</label>
-          <input
-            type="text"
-            value={addForm.spec}
-            onChange={(e) => setAddForm((f) => ({ ...f, spec: e.target.value }))}
-            placeholder="예) GCP-32ANM 5A 2P"
-            maxLength={120}
-          />
-        </div>
-        <div className="form-group">
-          <label>재고 수량</label>
-          <input
-            type="number"
-            className="num-input"
-            value={addForm.stockQty}
-            onChange={(e) => setAddForm((f) => ({ ...f, stockQty: e.target.value }))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && addForm.name.trim()) submitAdd();
-            }}
-            placeholder="0"
-            style={{ maxWidth: 160 }}
-          />
-        </div>
-        <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setAddOpen(false)}>
-            취소
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={!addForm.name.trim() || adding}
-            onClick={submitAdd}
-          >
-            {adding ? '추가하는 중...' : '추가'}
-          </button>
-        </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!addForm.name.trim() || adding}
+                onClick={submitAdd}
+              >
+                {adding ? '추가하는 중...' : '추가'}
+              </button>
+            </div>
+          </>
+        )}
       </Modal>
 
       <Modal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} title="재고 조정 이력">
