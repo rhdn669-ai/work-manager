@@ -116,8 +116,12 @@ export default function StockPage() {
   const addCandidates = useMemo(() => {
     const kw = addSearch.trim().toLowerCase();
     if (!kw) return [];
+    // 대분류(IOPN-000 처럼 소분류 번호가 없는 그룹 머리)는 실제 자재가 아니라 제외한다.
+    // 코드 모양과, 다른 품목의 groupKey가 가리키는 id 양쪽으로 걸러낸다(BOM 품목 고르기와 같은 규칙).
+    const mainIds = new Set(items.map((m) => m.groupKey).filter(Boolean));
     return items
       .filter((it) => it.stockQty === undefined || it.stockQty === null)
+      .filter((it) => !/^IOPN-\d+$/.test(it.code || '') && !mainIds.has(it.id))
       .filter((it) => [it.code, it.name, it.spec, it.maker].some((v) => (v || '').toLowerCase().includes(kw)))
       .slice(0, 12);
   }, [items, addSearch]);
