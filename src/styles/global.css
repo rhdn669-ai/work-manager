@@ -3850,6 +3850,16 @@ body {
     width: 88px;
   }
 }
+/* 모바일 카드(cards-sm) 모드에서는 셀이 한 줄을 통째로 쓴다.
+   표 모드용 고정 폭(140px·88px)이 그대로 남으면 작업 버튼이 셀 밖으로 밀려 잘린다. */
+@media (max-width: 768px) {
+  table.cards-sm td.col-action,
+  table.cards-sm td.item-actions-cell,
+  table.cards-sm td:has(> .btn-group):not(.bom-project-action-col):not(.bom-action-col),
+  table.cards-sm td:has(> .row-actions):not(.bom-project-action-col):not(.bom-action-col) {
+    width: 100%;
+  }
+}
 
 /* ===== 폼 ===== */
 .form-group {
@@ -19613,4 +19623,121 @@ a.lib-row-name:hover {
   gap: 6px;
   padding: 0 8px 8px;
   border-top: 1px solid var(--border);
+}
+
+/* ===== 재고 (구매 → 재고 탭) =====
+   창고에 남은 수량을 손으로 적어 두는 화면. 숫자를 고치면 곧바로 저장된다. */
+.stock-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stock-search {
+  flex: 1 1 200px;
+  min-width: 0;
+  height: var(--btn-h-md);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-card);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.stock-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(240, 88, 25, 0.12);
+}
+.stock-filter-select {
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+.stock-summary {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.stock-summary strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* 재고가 있는 줄은 살짝 도드라지게 — 훑어볼 때 눈에 먼저 들어온다 */
+.stock-table .stock-row-has td {
+  background: var(--bg-subtle);
+}
+.stock-table .stock-unit {
+  text-align: center;
+}
+.stock-input {
+  width: 100%;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--bg-card);
+}
+.stock-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(240, 88, 25, 0.12);
+}
+.stock-last {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 발주서 수량 칸의 「재고 N 사용」 — 무엇이 빠졌는지 보이게 하고, 눌러 되돌린다.
+   주황은 주행동 전용이므로 정보 표시에는 파랑 연한 톤을 쓴다. */
+.stock-used-badge {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  padding: 2px 6px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: #1d4ed8;
+  background: #eff6ff;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.stock-used-badge:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+.stock-used-badge:disabled {
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .stock-summary {
+    margin-left: 0;
+    width: 100%;
+  }
+  /* 손가락으로 누르는 칸은 44px 이상, 글자는 16px 이상.
+     16px 미만이면 iOS 사파리가 칸을 누를 때 화면을 확대해 버린다. */
+  .stock-input,
+  .stock-search {
+    height: 44px;
+    font-size: 16px;
+  }
 }

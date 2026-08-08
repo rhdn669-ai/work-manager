@@ -1088,6 +1088,7 @@ export default function PurchaseItemPage() {
                                     <th style={{ width: 240 }}>규격</th>
                                     <th style={{ width: 170 }}>분류</th>
                                     <th style={{ width: 100 }}>수량/단위</th>
+                                    <th style={{ width: 70 }}>재고</th>
                                     <th style={{ width: 100 }}>개별단가</th>
                                     <th style={{ width: 100 }}>단가</th>
                                     <th style={{ width: 150 }}>기본 구매처</th>
@@ -1124,7 +1125,7 @@ export default function PurchaseItemPage() {
                                   {subItems.length === 0 && (
                                     <tr>
                                       <td
-                                        colSpan={12}
+                                        colSpan={13}
                                         className="text-muted text-sm"
                                         style={{ textAlign: 'center', padding: 16 }}
                                       >
@@ -1274,6 +1275,21 @@ export default function PurchaseItemPage() {
                                               className="cell-fill"
                                               title="드래그하여 아래로 채우기"
                                               onMouseDown={(e) => startFill(e, 'unit', it.unit || '', subIds, rowIdx)}
+                                            />
+                                          </td>
+                                          {/* 재고는 여기서 보기만 한다 — 고치는 곳은 「재고」 탭 한 곳으로 모은다 */}
+                                          <td data-label="재고" className="item-cell-stock">
+                                            <input
+                                              type="text"
+                                              className="num-input bom-readonly-input"
+                                              value={Number(it.stockQty) ? Number(it.stockQty).toLocaleString() : ''}
+                                              readOnly
+                                              tabIndex={-1}
+                                              title={
+                                                Number(it.stockQty)
+                                                  ? `창고 재고 ${Number(it.stockQty).toLocaleString()}개 — 재고 탭에서 수정`
+                                                  : ''
+                                              }
                                             />
                                           </td>
                                           {(() => {
@@ -1487,7 +1503,7 @@ export default function PurchaseItemPage() {
                                         {expanded &&
                                           (it.priceHistory?.length > 0 || it.priceChangeHistory?.length > 0) && (
                                             <tr className="item-detail-row">
-                                              <td colSpan={12}>
+                                              <td colSpan={13}>
                                                 <div className="item-detail-body">
                                                   {it.priceChangeHistory?.length > 0 && (
                                                     <div className="item-detail-section">

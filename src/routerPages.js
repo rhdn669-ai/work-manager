@@ -24,6 +24,7 @@ export const SupplierManagementPage = lazy(() => import('./pages/admin/SupplierM
 export const QuotePage = lazy(() => import('./pages/admin/QuotePage'));
 export const QuoteFormPage = lazy(() => import('./pages/admin/QuoteFormPage'));
 export const PurchaseItemPage = lazy(() => import('./pages/admin/PurchaseItemPage'));
+export const StockPage = lazy(() => import('./pages/admin/StockPage'));
 export const BomPage = lazy(() => import('./pages/admin/BomPage'));
 export const BomDetailPage = lazy(() => import('./pages/admin/BomDetailPage'));
 export const PurchaseTrashPage = lazy(() => import('./pages/admin/PurchaseTrashPage'));

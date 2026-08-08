@@ -73,6 +73,19 @@ const STATUS = {
 
 const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice: 0, box: '' };
 
+// 창고에 있는 만큼은 사지 않는다 — 품목 재고(재고 탭에서 손으로 적는 값)를 발주 수량에서 뺀다.
+// 뺀 사실은 stockUsed 로 줄에 남겨, 재고 숫자가 틀렸을 때 배지를 눌러 되돌릴 수 있게 한다.
+// 한 번에 여러 줄을 넣을 때 같은 품목이 두 번 나오면 재고를 두 번 쓰지 않도록 left 로 남은 양을 추적한다.
+function deductStock(need, master, left) {
+  const want = Number(need) || 0;
+  if (!master || want <= 0) return { qty: want };
+  const have = left.has(master.id) ? left.get(master.id) : Number(master.stockQty) || 0;
+  if (have <= 0) return { qty: want };
+  const used = Math.min(have, want);
+  left.set(master.id, have - used);
+  return { qty: want - used, stockUsed: used, stockNeed: want };
+}
+
 // SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
 // 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
 const BUSINESS_CARD_NAMES = ['이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱'];
@@ -414,6 +427,14 @@ export default function PurchaseDetailPage() {
     scheduleAutoSave();
   }
 
+  // 재고분 차감 되돌리기 — 재고 숫자가 실제와 다를 때 원래 필요 수량으로 되돌린다.
+  // 입고가 시작된 줄은 수량을 늘려도 정합성에 문제가 없으므로 그대로 허용한다.
+  function restoreStockLine(idx) {
+    const ln = formRef.current.items[idx];
+    if (!ln || !(Number(ln.stockUsed) > 0)) return;
+    updateLine(idx, { qty: Number(ln.stockNeed) || Number(ln.qty) || 0, stockUsed: 0 });
+  }
+
   // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
   function openQtyModal(idx) {
     const ln = formRef.current.items[idx];
@@ -502,6 +523,7 @@ export default function PurchaseDetailPage() {
       return;
     }
     const newLines = [];
+    const stockLeft = new Map();
     for (const [itemId, qtyInput] of itemPicked) {
       const m = itemMaster.find((x) => x.id === itemId);
       if (!m) continue;
@@ -510,8 +532,8 @@ export default function PurchaseDetailPage() {
         name: m.name || '',
         spec: m.spec || '',
         unit: m.unit || '',
-        qty: Number(qtyInput) || 0,
         unitPrice: Number(m.standardPrice) || 0,
+        ...deductStock(qtyInput, m, stockLeft),
       });
     }
     if (newLines.length === 0) {
@@ -616,6 +638,7 @@ export default function PurchaseDetailPage() {
         alert('해당 BOM에 품목이 없습니다.');
         return;
       }
+      const stockLeft = new Map();
       const newLines = [...items]
         .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
         .map((b) => {
@@ -626,7 +649,7 @@ export default function PurchaseDetailPage() {
             name: m?.name || b.name || '',
             spec: m?.spec || b.spec || '',
             unit: m?.unit || b.unit || '',
-            qty: (Number(b.qty) || 1) * setCount, // 세트 수량(배수) 반영
+            ...deductStock((Number(b.qty) || 1) * setCount, m, stockLeft), // 세트 수량(배수) 반영 후 재고분 차감
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             box: b.box || '', // 품목별 소속 BOX (BOM에서 그대로 복사, PDF 품목표에 출력)
             note: b.note || '',
@@ -1913,6 +1936,21 @@ export default function PurchaseDetailPage() {
                                 onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
                                 title={isReadOnly ? '' : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'}
                               />
+                              {Number(ln.stockUsed) > 0 && (
+                                <button
+                                  type="button"
+                                  className="stock-used-badge"
+                                  disabled={isReadOnly}
+                                  onClick={isReadOnly ? undefined : () => restoreStockLine(idx)}
+                                  title={
+                                    isReadOnly
+                                      ? `창고 재고 ${ln.stockUsed}개를 빼고 발주한 수량입니다`
+                                      : `창고 재고 ${ln.stockUsed}개를 뺐습니다. 눌러서 ${Number(ln.stockNeed).toLocaleString()}개로 되돌리기`
+                                  }
+                                >
+                                  재고 {Number(ln.stockUsed).toLocaleString()} 사용
+                                </button>
+                              )}
                             </td>
                             <td data-label="단가">
                               <input

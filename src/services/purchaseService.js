@@ -230,6 +230,27 @@ export async function updatePurchaseItem(id, data) {
 
 // 품목 단가(standardPrice) 직접 수정 이력 — 실거래(priceHistory)와 분리된 "관리자 단가 변경" 기록.
 // { from 이전가, to 변경가, rate 변동률%, date, reason 사유, supplierName 구매처 }
+// 품목 재고 수량 — 손으로 직접 적는 값이다. 발주해도 자동으로 줄지 않으므로
+// 자재를 꺼내 쓴 뒤에는 재고 화면에서 사람이 고쳐야 한다.
+// 고친 내력은 누가 언제 몇에서 몇으로 바꿨는지 함께 남긴다.
+export async function setItemStock(id, { from, to, reason, byName }) {
+  const f = Number(from) || 0;
+  const t = Math.max(0, Number(to) || 0);
+  await updateDoc(doc(db, 'purchaseItems', id), {
+    stockQty: t,
+    stockUpdatedAt: new Date(),
+    stockUpdatedBy: byName || '',
+    stockHistory: arrayUnion({
+      from: f,
+      to: t,
+      date: getToday(),
+      reason: reason || '',
+      byName: byName || '',
+    }),
+    updatedAt: new Date(),
+  });
+}
+
 export async function recordPriceChange(id, { from, to, reason, supplierName }) {
   const f = Number(from) || 0;
   const t = Number(to) || 0;
