@@ -1931,35 +1931,30 @@ export default function PurchaseDetailPage() {
             <em>프로젝트</em>
             {purchase.siteName || '-'}
           </span>
-          <span className="po-panel-meta">
+          {/* 다른 메타 항목과 같은 모양으로 둔다 — 값 자체를 눌러 고른다(버튼이 끼면 줄이 뚱뚱해진다) */}
+          <span
+            className="po-panel-meta"
+            role="button"
+            tabIndex={0}
+            onClick={() => setPanelPickOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') setPanelPickOpen(true);
+            }}
+            title="눌러서 이 발주가 어느 호기 것인지 고르기"
+          >
             <em>생산 호기</em>
             {(form.panels || []).length === 0 ? (
-              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPanelPickOpen(true)}>
-                <Icon name="plus" className="btn-ic" />
-                걸기
-              </button>
+              <span className="po-panel-none">지정</span>
             ) : (
-              <span className="po-panel-chips">
-                {(form.panels || []).map((p, i) => {
-                  const st = panelStatus[i];
-                  return (
-                    <span
-                      key={p.id}
-                      className={`po-panel-chip${st && !st.done ? ' is-short' : ''}`}
-                      title={
-                        st && !st.done
-                          ? `자재가 모자랍니다 — ${st.shortLines.map((l) => l.name).join(', ')}`
-                          : '자재를 다 받았습니다'
-                      }
-                    >
-                      {p.호기 || p.프로젝트 || '호기'}
-                    </span>
-                  );
-                })}
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => setPanelPickOpen(true)}>
-                  수정
-                </button>
-              </span>
+              (form.panels || []).map((p, i) => {
+                const st = panelStatus[i];
+                return (
+                  <span key={p.id} className={st && !st.done ? 'po-panel-short' : undefined}>
+                    {i > 0 && <span className="po-panel-sep">·</span>}
+                    {p.호기 || p.프로젝트 || '호기'}
+                  </span>
+                );
+              })
             )}
           </span>
           <span title={purchase.requesterName || ''}>
