@@ -105,6 +105,21 @@ export async function syncPanelNcr(panel) {
   return 'created';
 }
 
+// 판넬이 통째로 사라질 때 딸린 자동 기록도 함께 정리한다.
+// syncPanelNcr 은 '불량이 지워진 판넬'만 다루므로, 판넬 자체가 없어지는 경우는 여기서 맡는다.
+export async function removePanelNcr(panelId, deletedByName = '자동') {
+  if (!panelId) return 'noop';
+  const existing = await findByPanel(panelId);
+  if (!existing) return 'noop';
+  await trashGeneric(
+    'qualityRecords',
+    existing.id,
+    { title: existing.itemName || '부적합 실적', summary: '생산현황 판넬 삭제로 자동 정리' },
+    deletedByName,
+  );
+  return 'removed';
+}
+
 // 연동 붙이기 전부터 쌓여 있던 불량을 한 번에 올린다.
 // 생산현황·품질보증 어느 쪽으로 들어오든 최신 상태가 되도록 두 화면 모두 진입 시 호출한다.
 // 값이 같으면 쓰지 않으므로 두 번째부터는 읽기만 하고 끝난다.
@@ -113,5 +128,27 @@ export async function backfillNcrFromPanels() {
   const results = await Promise.all(
     snap.docs.map((d) => syncPanelNcr({ id: d.id, ...d.data() }).catch(() => 'failed')),
   );
+
+  // 판넬이 이미 사라진 자동 기록 정리 — 연동을 붙이기 전에 지운 판넬의 불량이
+  // 대장·통계·최근 등록에 계속 남아 있던 것을 여기서 걷어낸다.
+  try {
+    const live = new Set(snap.docs.map((d) => d.id));
+    const auto = await getDocs(query(recordsRef, where('sourceType', '==', 'production')));
+    const orphans = auto.docs.filter((d) => {
+      const r = d.data();
+      return !r.deleted && !live.has(r.sourcePanelId);
+    });
+    for (const d of orphans) {
+      await trashGeneric(
+        'qualityRecords',
+        d.id,
+        { title: d.data().itemName || '부적합 실적', summary: '생산현황에 없는 판넬 — 자동 정리' },
+        '자동',
+      );
+    }
+  } catch (err) {
+    console.error('[품질] 사라진 판넬 기록 정리 실패:', err);
+  }
+
   return results.filter((r) => r === 'created' || r === 'updated').length;
 }

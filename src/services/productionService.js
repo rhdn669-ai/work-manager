@@ -3,7 +3,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
 import { recompute } from '../domain/production';
-import { syncPanelNcr } from './qualityRecordService';
+import { syncPanelNcr, removePanelNcr } from './qualityRecordService';
 
 // 판넬 생산현황 — Firestore 실시간 (전 직원 조회 · 관리자 편집).
 // NAS(Supabase) 이전 시 이 파일만 어댑터 교체하면 화면 무수정.
@@ -64,4 +64,12 @@ export async function trashPanel(panel, deletedByName = '') {
     },
     deletedByName,
   );
+  // 이 판넬에서 자동으로 만들어진 부적합 실적도 같이 내린다.
+  // 안 하면 품질 대장·통계·최근 등록에 지운 판넬의 불량이 계속 남는다.
+  try {
+    await removePanelNcr(panel.id, deletedByName || '자동');
+  } catch (err) {
+    err.ncrSync = true;
+    throw err;
+  }
 }
