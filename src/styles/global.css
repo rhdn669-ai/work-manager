@@ -19976,3 +19976,14 @@ a.lib-row-name:hover {
   background: #fef3c7;
   vertical-align: middle;
 }
+
+/* 창고가 모자란 품목 — 눌러서 발주 수량에 얹을 수 있다 */
+.stock-used-badge.is-short {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+.stock-used-badge.is-short:hover:not(:disabled) {
+  border-color: #fca5a5;
+  background: #fee2e2;
+}

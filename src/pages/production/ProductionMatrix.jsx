@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel } from '../../services/productionService';
@@ -40,6 +40,46 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     });
   };
 
+  // ---- 엑셀식 날짜 채우기 (모서리 점을 잡고 아래로 끌면 같은 날짜가 채워진다) ----
+  // 같은 날 잡힌 일정을 호기마다 하나씩 고르는 일이 잦아, 구매 품목표와 같은 방식으로 맞춘다.
+  const [fill, setFill] = useState(null); // { field, value, start, end }
+
+  function startFill(e, field, value, startIndex) {
+    e.preventDefault();
+    e.stopPropagation();
+    setFill({ field, value, start: startIndex, end: startIndex });
+  }
+  function fillEnter(idx) {
+    setFill((f) => (f ? { ...f, end: idx } : f));
+  }
+  // 끌고 지나간 칸에만 색을 준다 — 행 전체가 아니라 그 열만
+  function fillCls(field, row) {
+    if (!fill || fill.field !== field) return '';
+    const lo = Math.min(fill.start, fill.end);
+    const hi = Math.max(fill.start, fill.end);
+    return row >= lo && row <= hi ? ' cell-fill-on' : '';
+  }
+
+  useEffect(() => {
+    if (!fill) return undefined;
+    const done = () => {
+      const lo = Math.min(fill.start, fill.end);
+      const hi = Math.max(fill.start, fill.end);
+      setFill(null);
+      if (hi === lo) return; // 끌지 않고 클릭만 한 경우
+      const [base, key] = fill.field.split(':');
+      for (let i = lo; i <= hi; i++) {
+        const p = panels[i];
+        if (!p) continue;
+        if (key) setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [key]: fill.value } });
+        else setField(p, { [base]: fill.value });
+      }
+    };
+    window.addEventListener('mouseup', done);
+    return () => window.removeEventListener('mouseup', done);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fill, panels]);
+
   // 정/역 인라인 토글 (빈값 → 정 → 역 → 빈값)
   const DIR_CYCLE = ['', '정', '역'];
   const cycleDir = (p) => setField(p, { 정역: DIR_CYCLE[(DIR_CYCLE.indexOf(p.정역 || '') + 1) % DIR_CYCLE.length] });
@@ -75,20 +115,30 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     setField(p, { mp하위상태: { ...(p.mp하위상태 || {}), [k]: next } });
   };
 
-  const DateCell = ({ p, field }) => (
-    <td className="mx-cell mx-date">
-      {canEdit ? (
-        <input
-          type="date"
-          className="mx-date-input"
-          defaultValue={p[field] || ''}
-          onChange={(e) => setField(p, { [field]: e.target.value })}
-        />
-      ) : (
-        mmdd(p[field])
-      )}
-    </td>
-  );
+  const DateCell = ({ p, field }) => {
+    const row = panels.findIndex((x) => x.id === p.id);
+    return (
+      <td className={`mx-cell mx-date${fillCls(field, row)}`} onMouseEnter={() => fillEnter(row)}>
+        {canEdit ? (
+          <>
+            <input
+              type="date"
+              className="mx-date-input"
+              value={p[field] || ''}
+              onChange={(e) => setField(p, { [field]: e.target.value })}
+            />
+            <span
+              className="cell-fill"
+              title="드래그하여 아래로 채우기"
+              onMouseDown={(e) => startFill(e, field, p[field] || '', row)}
+            />
+          </>
+        ) : (
+          mmdd(p[field])
+        )}
+      </td>
+    );
+  };
 
   // 일정 항목별 입고일 셀 — p.자재입고일[itemKey] 에 개별 저장.
   // 날짜 기준 D-day로 색상: 미도달(미래)·도달(당일)·초과(지남)
@@ -96,15 +146,24 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     const cur = (p.자재입고일 || {})[itemKey] || '';
     const dd = cur ? getDday(cur) : null;
     const statusCls = dd === null ? '' : dd < 0 ? ' ipgo-over' : dd === 0 ? ' ipgo-due' : ' ipgo-before';
+    const field = `자재입고일:${itemKey}`;
+    const row = panels.findIndex((x) => x.id === p.id);
     return (
-      <td className={`mx-cell mx-date${statusCls}`}>
+      <td className={`mx-cell mx-date${statusCls}${fillCls(field, row)}`} onMouseEnter={() => fillEnter(row)}>
         {canEdit ? (
-          <input
-            type="date"
-            className="mx-date-input"
-            defaultValue={cur}
-            onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
-          />
+          <>
+            <input
+              type="date"
+              className="mx-date-input"
+              value={cur}
+              onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
+            />
+            <span
+              className="cell-fill"
+              title="드래그하여 아래로 채우기"
+              onMouseDown={(e) => startFill(e, field, cur, row)}
+            />
+          </>
         ) : (
           mmdd(cur)
         )}

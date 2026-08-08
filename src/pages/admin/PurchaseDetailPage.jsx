@@ -510,6 +510,21 @@ export default function PurchaseDetailPage() {
     updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need });
   }
 
+  // 창고가 모자란 만큼(재고 음수) 발주 수량에 얹는다.
+  // 메우고 나면 부족분이 사라지므로 재고는 0으로 올라간다.
+  function fillShortage(idx, short) {
+    const ln = formRef.current.items[idx];
+    if (!ln || short <= 0) return;
+    updateLine(idx, { qty: (Number(ln.qty) || 0) + short });
+    if (ln.itemId) {
+      consumeItemStock(ln.itemId, -short, {
+        byName: userProfile?.name || '',
+        note: `부족분 발주로 채움 · ${formRef.current.title || ''}`,
+      }).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
+    }
+    toast(`모자란 ${short}개를 발주 수량에 더했습니다`);
+  }
+
   // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
   function openQtyModal(idx) {
     const ln = formRef.current.items[idx];
@@ -2048,24 +2063,41 @@ export default function PurchaseDetailPage() {
                             </td>
                             {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
                             <td data-label="재고" className="no-print">
-                              {Number(ln.stockNeed) > 0 && (
+                              {/* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다 */}
+                              {Math.max(0, -(Number(master?.stockQty) || 0)) > 0 ? (
                                 <button
                                   type="button"
-                                  className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
+                                  className="stock-used-badge is-short"
                                   disabled={isReadOnly}
-                                  onClick={isReadOnly ? undefined : () => toggleStockLine(idx)}
-                                  title={
+                                  onClick={
                                     isReadOnly
-                                      ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다`
-                                      : Number(ln.stockUsed) > 0
-                                        ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${Number(ln.stockNeed).toLocaleString()}개 전부 발주로 되돌리기`
-                                        : '재고를 쓰지 않는 중 — 눌러서 창고에 남은 만큼 다시 쓰기'
+                                      ? undefined
+                                      : () => fillShortage(idx, Math.max(0, -(Number(master?.stockQty) || 0)))
                                   }
+                                  title={`창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`}
                                 >
-                                  <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
-                                  <span className="stock-need-sep">/</span>
-                                  <span className="stock-need-n">{Number(ln.stockNeed).toLocaleString()}</span>
+                                  −{Math.max(0, -(Number(master?.stockQty) || 0)).toLocaleString()}
                                 </button>
+                              ) : (
+                                Number(ln.stockNeed) > 0 && (
+                                  <button
+                                    type="button"
+                                    className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
+                                    disabled={isReadOnly}
+                                    onClick={isReadOnly ? undefined : () => toggleStockLine(idx)}
+                                    title={
+                                      isReadOnly
+                                        ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다`
+                                        : Number(ln.stockUsed) > 0
+                                          ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${Number(ln.stockNeed).toLocaleString()}개 전부 발주로 되돌리기`
+                                          : '재고를 쓰지 않는 중 — 눌러서 창고에 남은 만큼 다시 쓰기'
+                                    }
+                                  >
+                                    <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
+                                    <span className="stock-need-sep">/</span>
+                                    <span className="stock-need-n">{Number(ln.stockNeed).toLocaleString()}</span>
+                                  </button>
+                                )
                               )}
                             </td>
                             <td data-label="단가">

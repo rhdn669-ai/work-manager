@@ -1357,3 +1357,35 @@
   border-top: 3px solid #0a1a3a;
   border-bottom: 3px solid #0a1a3a;
 }
+
+/* ===== 일정 날짜 드래그 채우기 (구매 품목표와 같은 방식) =====
+   칸 오른쪽 아래 점을 잡고 아래로 끌면 같은 날짜가 채워진다. */
+.mx-table td.mx-date {
+  position: relative;
+}
+.mx-table td.mx-date .cell-fill {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: var(--primary, #002050);
+  cursor: crosshair;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 3;
+}
+.mx-table td.mx-date:hover .cell-fill {
+  opacity: 1;
+}
+/* 끌고 지나간 칸 — 어디까지 채워지는지 보이게 */
+.mx-table td.mx-date.cell-fill-on {
+  background: rgba(240, 88, 24, 0.1);
+}
+.mx-table td.mx-date.cell-fill-on .mx-date-input {
+  background: rgba(240, 88, 24, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px rgba(240, 88, 24, 0.28);
+}
