@@ -19987,3 +19987,14 @@ a.lib-row-name:hover {
   border-color: #fca5a5;
   background: #fee2e2;
 }
+
+/* 모자란 몫을 이미 발주에 더해 둔 상태 — 눌러서 도로 뺄 수 있다 */
+.stock-used-badge.is-short.is-filled {
+  border-color: #bbf7d0;
+  color: #15803d;
+  background: #f0fdf4;
+}
+.stock-used-badge.is-short.is-filled:hover:not(:disabled) {
+  border-color: #86efac;
+  background: #dcfce7;
+}

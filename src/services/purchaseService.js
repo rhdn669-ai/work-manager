@@ -272,6 +272,22 @@ export async function consumeItemStock(id, used, { byName, note } = {}) {
   });
 }
 
+// 발주서가 쥐고 있던 재고를 한꺼번에 창고로 되돌린다 — 발주서를 통째로 지울 때.
+// 줄 하나를 지울 때는 반환하면서 정작 발주서를 지우면 재고가 사라져 버리던 문제를 막는다.
+//   stockUsed  창고에서 가져다 쓴 양      → 창고로 돌려준다
+//   stockShort 모자라서 발주로 메운 양    → 다시 모자란 상태로 되돌린다
+// back=false 로 주면 반대로(휴지통에서 되살릴 때) 다시 가져다 쓴다.
+export async function releasePurchaseStock(items, { byName, note, back = true } = {}) {
+  const byItem = new Map();
+  for (const ln of items || []) {
+    if (!ln?.itemId) continue;
+    const d = (-(Number(ln.stockUsed) || 0) + (Number(ln.stockShort) || 0)) * (back ? 1 : -1);
+    if (d) byItem.set(ln.itemId, (byItem.get(ln.itemId) || 0) + d);
+  }
+  if (byItem.size === 0) return;
+  await Promise.all([...byItem].map(([id, d]) => consumeItemStock(id, d, { byName, note })));
+}
+
 // 재고 목록에서 내리기 — 품목은 그대로 두고 재고 관련 값만 지운다.
 // stockQty 필드가 없어지면 재고 화면 목록에서 빠지고, 발주 때 재고 차감도 하지 않는다.
 export async function clearItemStock(id) {

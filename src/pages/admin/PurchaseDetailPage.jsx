@@ -38,6 +38,7 @@ import {
   setPurchaseReplied,
   getPurchaseConfig,
   consumeItemStock,
+  releasePurchaseStock,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
@@ -467,9 +468,11 @@ export default function PurchaseDetailPage() {
   async function applyStockUse(lines, sign, note) {
     const byItem = new Map();
     for (const ln of lines) {
-      const used = Number(ln.stockUsed) || 0;
-      if (!ln.itemId || used <= 0) continue;
-      byItem.set(ln.itemId, (byItem.get(ln.itemId) || 0) + used * sign);
+      if (!ln.itemId) continue;
+      // 가져다 쓴 몫(stockUsed)과 모자라서 메운 몫(stockShort)은 방향이 반대다
+      const d = (Number(ln.stockUsed) || 0) - (Number(ln.stockShort) || 0);
+      if (d === 0) continue;
+      byItem.set(ln.itemId, (byItem.get(ln.itemId) || 0) + d * sign);
     }
     if (byItem.size === 0) return;
     try {
@@ -517,7 +520,9 @@ export default function PurchaseDetailPage() {
   function fillShortage(idx, short) {
     const ln = formRef.current.items[idx];
     if (!ln || short <= 0) return;
-    updateLine(idx, { qty: (Number(ln.qty) || 0) + short });
+    // stockShort 에 얼마를 메웠는지 남긴다 — 이게 없으면 창고가 0이 되는 순간
+    // 빨간 배지가 사라져 되돌릴 방법이 없어진다.
+    updateLine(idx, { qty: (Number(ln.qty) || 0) + short, stockShort: (Number(ln.stockShort) || 0) + short });
     if (ln.itemId) {
       consumeItemStock(ln.itemId, -short, {
         byName: userProfile?.name || '',
@@ -525,6 +530,21 @@ export default function PurchaseDetailPage() {
       }).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
     }
     toast(`모자란 ${short}개를 발주 수량에 더했습니다`);
+  }
+
+  // 메웠던 부족분을 도로 뺀다 — 다시 모자란 상태로 돌아간다
+  function undoShortage(idx) {
+    const ln = formRef.current.items[idx];
+    const filled = Number(ln?.stockShort) || 0;
+    if (filled <= 0) return;
+    updateLine(idx, { qty: Math.max(0, (Number(ln.qty) || 0) - filled), stockShort: 0 });
+    if (ln.itemId) {
+      consumeItemStock(ln.itemId, filled, {
+        byName: userProfile?.name || '',
+        note: `부족분 메움 취소 · ${formRef.current.title || ''}`,
+      }).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
+    }
+    toast(`더했던 ${filled}개를 도로 뺐습니다`);
   }
 
   // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
@@ -1216,13 +1236,25 @@ export default function PurchaseDetailPage() {
     if (!(await confirm(`"${purchase.title}" 발주 건을 휴지통으로 이동하시겠습니까?`))) return;
     try {
       await flushAutoSave();
+      // 발주서가 쥐고 있던 재고를 창고로 돌려준다 — 안 그러면 지운 만큼 재고가 사라진다
+      const goneItems = formRef.current?.items || [];
       const tid = await trashPurchase(id, userProfile?.name || '');
+      await releasePurchaseStock(goneItems, {
+        byName: userProfile?.name || '',
+        note: `발주 삭제로 되돌림 · ${purchase.title || ''}`,
+      });
       const title = purchase.title;
       const purchaseId = id;
       navigate('/admin/purchase');
       if (tid)
         pushGlobalUndo(`발주 "${title}" 삭제`, async () => {
           await restoreTrashItem(tid);
+          // 되살렸으니 재고도 다시 가져다 쓴다
+          await releasePurchaseStock(goneItems, {
+            byName: userProfile?.name || '',
+            note: `발주 복원 · ${title}`,
+            back: false,
+          });
           navigate(`/admin/purchase/${purchaseId}`);
         });
     } catch {
@@ -2109,20 +2141,29 @@ export default function PurchaseDetailPage() {
                             </td>
                             {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
                             <td data-label="재고" className="no-print">
-                              {/* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다 */}
-                              {Math.max(0, -(Number(master?.stockQty) || 0)) > 0 ? (
+                              {/* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다.
+                                  이미 메운 줄은 되돌릴 수 있도록 배지를 남긴다. */}
+                              {Math.max(0, -(Number(master?.stockQty) || 0)) > 0 || Number(ln.stockShort) > 0 ? (
                                 <button
                                   type="button"
-                                  className="stock-used-badge is-short"
+                                  className={`stock-used-badge is-short${Number(ln.stockShort) > 0 ? ' is-filled' : ''}`}
                                   disabled={isReadOnly}
                                   onClick={
                                     isReadOnly
                                       ? undefined
-                                      : () => fillShortage(idx, Math.max(0, -(Number(master?.stockQty) || 0)))
+                                      : Number(ln.stockShort) > 0
+                                        ? () => undoShortage(idx)
+                                        : () => fillShortage(idx, Math.max(0, -(Number(master?.stockQty) || 0)))
                                   }
-                                  title={`창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`}
+                                  title={
+                                    Number(ln.stockShort) > 0
+                                      ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
+                                      : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
+                                  }
                                 >
-                                  −{Math.max(0, -(Number(master?.stockQty) || 0)).toLocaleString()}
+                                  {Number(ln.stockShort) > 0
+                                    ? `+${Number(ln.stockShort).toLocaleString()}`
+                                    : `−${Math.max(0, -(Number(master?.stockQty) || 0)).toLocaleString()}`}
                                 </button>
                               ) : (
                                 Number(ln.stockNeed) > 0 && (

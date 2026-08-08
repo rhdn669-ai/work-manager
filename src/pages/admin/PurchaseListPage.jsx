@@ -17,6 +17,7 @@ import {
   setPurchaseStatus,
   getPurchaseConfig,
   deletePurchase,
+  releasePurchaseStock,
   updatePurchase,
   getSuppliers,
   saveFactories,
@@ -548,10 +549,20 @@ export default function PurchaseListPage() {
     try {
       const tid = await trashPurchase(p.id, userProfile?.name || '');
       await deletePurchase(p.id);
+      // 발주서가 쥐고 있던 재고를 창고로 돌려준다
+      await releasePurchaseStock(p.items || [], {
+        byName: userProfile?.name || '',
+        note: `발주 삭제로 되돌림 · ${p.title || ''}`,
+      });
       setPurchases((prev) => prev.filter((x) => x.id !== p.id));
       if (tid)
         pushUndo(`구매 "${p.title}" 삭제`, async () => {
           await restoreTrashItem(tid);
+          await releasePurchaseStock(p.items || [], {
+            byName: userProfile?.name || '',
+            note: `발주 복원 · ${p.title || ''}`,
+            back: false,
+          });
           const ps = await getPurchases();
           setPurchases(ps);
         });
