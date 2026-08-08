@@ -76,9 +76,10 @@ const EMPTY_LINE = { itemId: '', name: '', spec: '', unit: '', qty: 1, unitPrice
 // 창고에 있는 만큼은 사지 않는다 — 품목 재고(재고 탭에서 손으로 적는 값)를 발주 수량에서 뺀다.
 // 뺀 사실은 stockUsed 로 줄에 남겨, 재고 숫자가 틀렸을 때 배지를 눌러 되돌릴 수 있게 한다.
 // 한 번에 여러 줄을 넣을 때 같은 품목이 두 번 나오면 재고를 두 번 쓰지 않도록 left 로 남은 양을 추적한다.
-// 이미 발주서에 있는 품목을 또 담으면 줄을 새로 만들지 않고 수량만 올린다.
+// 「품목 불러오기」로 낱개를 더 담을 때만 쓴다 — 이미 있는 품목이면 줄을 새로 만들지 않고 수량만 올린다.
 // 같은 자재가 여러 줄로 흩어지면 몇 개를 사는지 한눈에 안 보이고, 입고 처리도 나뉜다.
 // 품목과 BOX가 모두 같을 때만 한 줄로 본다 — BOX가 다르면 현장에서 쓰이는 자리가 다르다.
+// ※ BOM 가져오기는 한 벌의 구성이라 합치지 않고 통째로 새 줄에 담는다.
 const lineKeyOf = (ln) => `${ln.itemId || `name:${(ln.name || '').trim()}|${(ln.spec || '').trim()}`}@@${ln.box || ''}`;
 
 function mergeLines(existing, incoming) {
@@ -692,20 +693,16 @@ export default function PurchaseDetailPage() {
             note: b.note || '',
           };
         });
-      let report = null;
+      // BOM 은 한 벌의 구성이므로 통째로 새 줄에 담는다.
+      // 이미 같은 품목이 있어도 합치지 않는다 — 합치면 어느 BOM 몫인지 구분이 사라진다.
       setForm((f) => {
-        const r = mergeLines(f.items, newLines);
-        report = r;
-        return { ...f, items: r.merged, setCount };
+        const existing = f.items.filter((ln) => (ln.name || '').trim());
+        return { ...f, items: [...existing, ...newLines], setCount };
       });
       scheduleAutoSave();
       setBomModalOpen(false);
       const vLabel = variantKey ? (bp.variants || []).find((v) => v.key === variantKey)?.label : '';
-      const tail =
-        report?.mergedCount > 0
-          ? `품목 ${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다.`
-          : `품목 ${newLines.length}개를 가져왔습니다.`;
-      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 ${tail}`);
+      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
     } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
