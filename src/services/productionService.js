@@ -12,12 +12,16 @@ const panelsRef = collection(db, 'productionPanels');
 // 실시간 구독 — recompute(진행률·종합상태) 적용해 콜백
 export function subscribePanels(cb) {
   return onSnapshot(panelsRef, (snap) => {
+    // 납기 → 호기 순. 둘 다 비어 있으면(갓 추가한 판넬) 만든 순서대로 아래에 쌓이게 한다.
+    // 이 기준이 없으면 새로 추가한 행이 목록 가운데로 끼어든다.
+    const ms = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : 0);
     const rows = snap.docs
       .map((d) => recompute({ id: d.id, ...d.data() }))
       .sort(
         (a, b) =>
           (a.납기 || '9999').localeCompare(b.납기 || '9999') ||
-          (a.호기 || '').localeCompare(b.호기 || '', undefined, { numeric: true }),
+          (a.호기 || '').localeCompare(b.호기 || '', undefined, { numeric: true }) ||
+          ms(a.createdAt) - ms(b.createdAt),
       );
     cb(rows);
   });

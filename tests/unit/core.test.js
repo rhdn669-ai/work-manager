@@ -10,6 +10,7 @@ import {
 import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
 import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
+import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 
 const suppliers = [
@@ -140,5 +141,48 @@ describe('구매처 결제 조건 → 결제 마감일', () => {
     expect(paymentTermLabel({ paymentTermType: 'nextMonth', paymentTermDay: 10 })).toBe('익월 10일');
     expect(paymentTermLabel({ paymentTermType: 'nextMonthEnd' })).toBe('익월 말일');
     expect(paymentTermLabel({})).toBe('');
+  });
+});
+
+// ── 발주 입고분을 호기에 나누기 (2026-08-08) ──
+// 생산이 빠른 호기부터 채우고, 모자라면 뒤 호기가 미입고로 남는다.
+describe('호기별 자재 배정', () => {
+  it('나눠떨어지지 않으면 앞 호기가 하나씩 더 가져간다', () => {
+    expect(splitNeed(10, 3)).toEqual([4, 3, 3]);
+    expect(splitNeed(9, 3)).toEqual([3, 3, 3]);
+    expect(splitNeed(2, 3)).toEqual([1, 1, 0]);
+  });
+
+  it('호기가 없거나 수량이 0이면 빈 배정', () => {
+    expect(splitNeed(10, 0)).toEqual([]);
+    expect(splitNeed(0, 3)).toEqual([0, 0, 0]);
+  });
+
+  it('입고분은 앞 호기부터 채우고 뒤가 모자란다', () => {
+    // 10개 필요(4·3·3) 인데 7개만 들어옴 → 1·2호기는 채우고 3호기가 0
+    expect(allocateReceived(10, 7, 3)).toEqual([
+      { need: 4, got: 4, short: 0 },
+      { need: 3, got: 3, short: 0 },
+      { need: 3, got: 0, short: 3 },
+    ]);
+  });
+
+  it('다 들어오면 모두 채워진다', () => {
+    expect(allocateReceived(10, 10, 3).every((a) => a.short === 0)).toBe(true);
+  });
+
+  it('발주서 전체로 보면 뒤 호기만 미입고로 남는다', () => {
+    const items = [
+      { name: 'CP', qty: 10, receivedQty: 7 },
+      { name: 'FAN', qty: 3, receivedQty: 3 },
+    ];
+    const panels = [{ id: 'p1', 호기: '1호기' }, { id: 'p2', 호기: '2호기' }, { id: 'p3', 호기: '3호기' }];
+    const st = panelReceiveStatus(items, panels);
+    expect(st.map((s) => s.done)).toEqual([true, true, false]);
+    expect(st[2].shortLines[0].name).toBe('CP');
+  });
+
+  it('걸린 호기가 없으면 빈 결과', () => {
+    expect(panelReceiveStatus([{ name: 'CP', qty: 5, receivedQty: 0 }], [])).toEqual([]);
   });
 });

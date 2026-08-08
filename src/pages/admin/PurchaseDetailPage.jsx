@@ -43,6 +43,8 @@ import {
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { subscribePanels } from '../../services/productionService';
+import { panelReceiveStatus } from '../../utils/panelAllocation';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
@@ -256,6 +258,10 @@ export default function PurchaseDetailPage() {
   const [itemPicked, setItemPicked] = useState(new Map()); // itemId -> 수량
   const [itemPickerTargetIdx, setItemPickerTargetIdx] = useState(null); // null=추가 모드, 숫자=그 행 품목 교체 모드
   const [bomProjects, setBomProjects] = useState([]);
+  // 이 발주가 어느 생산 호기 것인지 — 여러 대에 걸칠 수 있다(입고는 한 번에 되므로 발주서 단위로 건다)
+  const [allPanels, setAllPanels] = useState([]);
+  const [panelPickOpen, setPanelPickOpen] = useState(false);
+  const [panelPickProject, setPanelPickProject] = useState('');
   const [bomLoading, setBomLoading] = useState(false);
   const [bomImporting, setBomImporting] = useState(false);
 
@@ -294,6 +300,7 @@ export default function PurchaseDetailPage() {
   useEffect(() => {
     loadData();
     const unsub = subscribePurchaseItems(setItemMaster);
+    const unsubPanels = subscribePanels(setAllPanels);
     const unsubFolders = subscribeFolders((list) => {
       // 중첩 폴더를 "상위 / 하위" 경로 라벨로 평탄화
       const byId = new Map(list.map((f) => [f.id, f]));
@@ -312,6 +319,7 @@ export default function PurchaseDetailPage() {
     });
     return () => {
       unsub();
+      unsubPanels();
       unsubFolders();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,6 +376,7 @@ export default function PurchaseDetailPage() {
       setForm({
         title: p.title || '',
         siteId: p.siteId || '',
+        panels: Array.isArray(p.panels) ? p.panels : [],
         factoryKey: p.factoryKey || '',
         deliveryPlace: p.deliveryPlace || '',
         items: p.items && p.items.length > 0 ? p.items.map((it) => ({ ...EMPTY_LINE, ...it })) : [{ ...EMPTY_LINE }],
@@ -546,6 +555,32 @@ export default function PurchaseDetailPage() {
     }
     toast(`더했던 ${filled}개를 도로 뺐습니다`);
   }
+
+  // ---- 생산 호기 걸기 ----
+  // 입고는 한 번에 되므로 발주서 단위로 여러 대를 건다.
+  // 목록 순서(납기 → 호기)가 곧 생산 순서라, 자재가 모자라면 뒤 호기가 미입고로 남는다.
+  const panelProjects = useMemo(() => {
+    const names = new Set(allPanels.map((p) => (p.프로젝트 || '').trim()).filter(Boolean));
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [allPanels]);
+
+  function togglePanel(p) {
+    setForm((f) => {
+      const cur = Array.isArray(f.panels) ? f.panels : [];
+      const has = cur.some((x) => x.id === p.id);
+      const next = has
+        ? cur.filter((x) => x.id !== p.id)
+        : [...cur, { id: p.id, 프로젝트: p.프로젝트 || '', 호기: p.호기 || '' }];
+      // 생산 순서(구독 정렬)를 그대로 따르게 다시 줄 세운다
+      const order = new Map(allPanels.map((x, i) => [x.id, i]));
+      next.sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
+      return { ...f, panels: next };
+    });
+    scheduleAutoSave();
+  }
+
+  // 걸린 호기별로 자재를 다 받았는지 — 앞 호기부터 채우고 모자라면 뒤가 미입고
+  const panelStatus = useMemo(() => panelReceiveStatus(form.items, form.panels || []), [form.items, form.panels]);
 
   // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
   function openQtyModal(idx) {
@@ -975,6 +1010,7 @@ export default function PurchaseDetailPage() {
         title: f.title.trim(),
         siteId: f.siteId,
         siteName: site?.name || '',
+        panels: f.panels || [], // 이 발주가 어느 생산 호기 것인지 (여러 대 가능)
         factoryKey: f.factoryKey || '',
         deliveryPlace: f.deliveryPlace || '',
         items,
@@ -1894,6 +1930,37 @@ export default function PurchaseDetailPage() {
           <span title={purchase.siteName || ''}>
             <em>프로젝트</em>
             {purchase.siteName || '-'}
+          </span>
+          <span className="po-panel-meta">
+            <em>생산 호기</em>
+            {(form.panels || []).length === 0 ? (
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPanelPickOpen(true)}>
+                <Icon name="plus" className="btn-ic" />
+                걸기
+              </button>
+            ) : (
+              <span className="po-panel-chips">
+                {(form.panels || []).map((p, i) => {
+                  const st = panelStatus[i];
+                  return (
+                    <span
+                      key={p.id}
+                      className={`po-panel-chip${st && !st.done ? ' is-short' : ''}`}
+                      title={
+                        st && !st.done
+                          ? `자재가 모자랍니다 — ${st.shortLines.map((l) => l.name).join(', ')}`
+                          : '자재를 다 받았습니다'
+                      }
+                    >
+                      {p.호기 || p.프로젝트 || '호기'}
+                    </span>
+                  );
+                })}
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setPanelPickOpen(true)}>
+                  수정
+                </button>
+              </span>
+            )}
           </span>
           <span title={purchase.requesterName || ''}>
             <em>등록자</em>
@@ -2842,6 +2909,46 @@ export default function PurchaseDetailPage() {
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal isOpen={panelPickOpen} onClose={() => setPanelPickOpen(false)} title="생산 호기 걸기" size="lg">
+        <p className="field-hint" style={{ marginBottom: 12 }}>
+          이 발주가 어느 호기 자재인지 고릅니다. 여러 대를 걸 수 있고, 자재가 모자라면{' '}
+          <strong>생산이 뒤인 호기가 미입고</strong>로 남습니다.
+        </p>
+        <div className="stock-filters no-print">
+          <Select
+            value={panelPickProject}
+            onChange={setPanelPickProject}
+            options={[{ value: '', label: '전체 프로젝트' }, ...panelProjects.map((n) => ({ value: n, label: n }))]}
+            className="stock-filter-select"
+            ariaLabel="프로젝트 고르기"
+          />
+          <span className="stock-summary">
+            걸린 호기 <strong>{(form.panels || []).length}</strong>대
+          </span>
+        </div>
+        <div className="po-panel-list">
+          {allPanels
+            .filter((p) => !panelPickProject || (p.프로젝트 || '') === panelPickProject)
+            .map((p) => {
+              const on = (form.panels || []).some((x) => x.id === p.id);
+              return (
+                <label key={p.id} className={`po-panel-row${on ? ' is-on' : ''}`}>
+                  <input type="checkbox" checked={on} onChange={() => togglePanel(p)} />
+                  <span className="po-panel-proj">{p.프로젝트 || '(프로젝트 없음)'}</span>
+                  <span className="po-panel-no">{p.호기 || '(호기 없음)'}</span>
+                  <span className="po-panel-due">{p.납기 ? `납기 ${p.납기}` : ''}</span>
+                </label>
+              );
+            })}
+          {allPanels.length === 0 && <p className="purchase-empty">생산현황에 등록된 판넬이 없습니다.</p>}
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-primary" onClick={() => setPanelPickOpen(false)}>
+            닫기
+          </button>
+        </div>
       </Modal>
 
       <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM에서 품목 가져오기">
