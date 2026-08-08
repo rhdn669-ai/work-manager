@@ -63,6 +63,45 @@ export async function updateBomProject(projectId, name) {
   });
 }
 
+// ---- 타입(형번) ----
+// 같은 제품인데 형번마다 자재가 조금씩 다를 때, BOM을 여러 벌 만들지 않고 한 벌로 관리한다.
+// 두 벌로 나눠 두면 자재가 바뀔 때마다 양쪽을 다 고쳐야 해서 한쪽을 빠뜨리기 쉽다.
+//
+// 프로젝트: variants [{ key, label }]  — key 는 라벨을 바꿔도 그대로인 식별자
+// 품목:     variantKeys []             — 비어 있으면 '공통'(모든 타입에 들어감),
+//                                        값이 있으면 그 타입에서만 쓰인다
+export async function setBomVariants(projectId, variants) {
+  await updateDoc(doc(db, 'bomProjects', projectId), {
+    variants: (variants || []).map((v) => ({ key: v.key, label: String(v.label || '').trim() })),
+    updatedAt: new Date(),
+  });
+}
+
+// 타입을 지우면 그 타입에만 속하던 품목이 어디에도 안 잡히게 된다.
+// 남은 타입이 없으면 공통으로 되돌려 품목이 사라지지 않게 한다.
+export async function removeBomVariant(projectId, key) {
+  const proj = await getBomProjectById(projectId);
+  const next = (proj?.variants || []).filter((v) => v.key !== key);
+  const items = await getBomBySite(projectId);
+  const batch = writeBatch(db);
+  for (const b of items) {
+    const ks = Array.isArray(b.variantKeys) ? b.variantKeys : [];
+    if (!ks.includes(key)) continue;
+    batch.update(doc(db, 'bom', b.id), { variantKeys: ks.filter((k) => k !== key), updatedAt: new Date() });
+  }
+  batch.update(doc(db, 'bomProjects', projectId), { variants: next, updatedAt: new Date() });
+  await batch.commit();
+}
+
+// 한 타입으로 발주할 때 실제로 들어가는 품목 — 공통 + 그 타입 전용
+export function bomItemsForVariant(items, variantKey) {
+  if (!variantKey) return items;
+  return (items || []).filter((b) => {
+    const ks = Array.isArray(b.variantKeys) ? b.variantKeys : [];
+    return ks.length === 0 || ks.includes(variantKey);
+  });
+}
+
 // BOM 프로젝트 복사 — 프로젝트 문서 + 품목 전체(BOX·순서 포함)를 새 프로젝트로 복제
 export async function duplicateBomProject(projectId, newName) {
   const src = await getBomProjectById(projectId);
@@ -123,6 +162,7 @@ export async function addBomItem(siteId, data) {
     unitPrice: Number(data.unitPrice) || 0,
     box: data.box || '',
     note: data.note || '',
+    variantKeys: data.variantKeys || [], // 비어 있으면 공통
     order: Number(data.order) || 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -159,6 +199,7 @@ export async function restoreBomItem(id, siteId, data) {
     unitPrice: Number(data.unitPrice) || 0,
     box: data.box || '',
     note: data.note || '',
+    variantKeys: data.variantKeys || [],
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),
     updatedAt: new Date(),

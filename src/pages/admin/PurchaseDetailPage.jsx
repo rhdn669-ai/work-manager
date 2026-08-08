@@ -40,7 +40,7 @@ import {
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
-import { getBomProjects, getBomBySite } from '../../services/bomService';
+import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
@@ -629,11 +629,13 @@ export default function PurchaseDetailPage() {
   }
 
   // 선택한 BOM의 품목을 발주 라인으로 불러오기 (수량·단가는 그대로, 이후 수정 가능)
-  async function importBom(bp) {
+  // variantKey 를 주면 그 타입(형번)에 들어가는 품목만 — 공통 + 그 타입 전용 — 가져온다.
+  async function importBom(bp, variantKey = '') {
     const setCount = Math.max(1, Number(bomSetCount) || 1);
     setBomImporting(true);
     try {
-      const items = await getBomBySite(bp.id);
+      const all = await getBomBySite(bp.id);
+      const items = bomItemsForVariant(all, variantKey);
       if (!items || items.length === 0) {
         alert('해당 BOM에 품목이 없습니다.');
         return;
@@ -661,7 +663,8 @@ export default function PurchaseDetailPage() {
       });
       scheduleAutoSave();
       setBomModalOpen(false);
-      toast(`"${bp.name}" BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
+      const vLabel = variantKey ? (bp.variants || []).find((v) => v.key === variantKey)?.label : '';
+      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 품목 ${newLines.length}개를 가져왔습니다.`);
     } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {
@@ -2633,26 +2636,60 @@ export default function PurchaseDetailPage() {
           <p className="purchase-empty">등록된 BOM 프로젝트가 없습니다. (프로젝트별 BOM에서 먼저 만드세요)</p>
         ) : (
           <div className="bom-import-list">
-            {bomProjects.map((bp) => (
-              <button
-                type="button"
-                key={bp.id}
-                className="bom-import-row"
-                onClick={() => importBom(bp)}
-                disabled={bomImporting}
-              >
-                <span className="bom-import-name">{bp.name}</span>
-                <span className="bom-import-go">
-                  {bomImporting ? (
-                    '가져오는 중...'
-                  ) : (
-                    <>
-                      가져오기 <Icon name="chevronRight" className="btn-ic" />
-                    </>
-                  )}
-                </span>
-              </button>
-            ))}
+            {bomProjects.map((bp) => {
+              const vs = Array.isArray(bp.variants) ? bp.variants : [];
+              // 타입이 있는 BOM은 어느 형번으로 발주할지 먼저 고른다
+              if (vs.length > 0) {
+                return (
+                  <div key={bp.id} className="bom-import-group">
+                    <div className="bom-import-name">{bp.name}</div>
+                    <p className="field-hint">타입을 고르면 그 형번에 들어가는 자재만 담깁니다.</p>
+                    <div className="bom-import-variants">
+                      {vs.map((v) => (
+                        <button
+                          type="button"
+                          key={v.key}
+                          className="btn btn-sm btn-primary"
+                          onClick={() => importBom(bp, v.key)}
+                          disabled={bomImporting}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => importBom(bp, '')}
+                        disabled={bomImporting}
+                        title="타입을 가리지 않고 등록된 자재를 전부 가져옵니다"
+                      >
+                        전체
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <button
+                  type="button"
+                  key={bp.id}
+                  className="bom-import-row"
+                  onClick={() => importBom(bp)}
+                  disabled={bomImporting}
+                >
+                  <span className="bom-import-name">{bp.name}</span>
+                  <span className="bom-import-go">
+                    {bomImporting ? (
+                      '가져오는 중...'
+                    ) : (
+                      <>
+                        가져오기 <Icon name="chevronRight" className="btn-ic" />
+                      </>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
         <div className="modal-actions">

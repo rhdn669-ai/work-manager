@@ -19741,3 +19741,99 @@ a.lib-row-name:hover {
     font-size: 16px;
   }
 }
+
+/* ===== BOM 타입(형번) =====
+   같은 제품인데 형번마다 자재가 다를 때, BOM을 여러 벌로 나누지 않고 한 벌로 관리한다. */
+.bom-variant-cell {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  color: #1d4ed8;
+  background: #eff6ff;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.bom-variant-cell:hover {
+  border-color: #93c5fd;
+  background: #dbeafe;
+}
+/* 공통(어느 타입으로 발주해도 들어감)은 눈에 덜 띄게 — 전용만 도드라져야 찾기 쉽다 */
+.bom-variant-cell.is-common {
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+.bom-variant-count {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.bom-variant-add {
+  display: flex;
+  gap: 8px;
+}
+.bom-variant-add input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bom-variant-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.bom-variant-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.bom-variant-pick:hover {
+  border-color: var(--border-strong);
+}
+.bom-variant-pick.is-on {
+  border-color: var(--accent);
+  background: rgba(240, 88, 25, 0.06);
+}
+.bom-variant-pick input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* 발주서 「BOM 가져오기」 — 타입이 있는 BOM은 형번 버튼으로 고른다 */
+.bom-import-group {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+.bom-import-group + .bom-import-group,
+.bom-import-group + .bom-import-row,
+.bom-import-row + .bom-import-group {
+  margin-top: 8px;
+}
+.bom-import-group .bom-import-name {
+  font-weight: 700;
+}
+.bom-import-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}

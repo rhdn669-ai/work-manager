@@ -28,6 +28,8 @@ import {
   getBomProjectById,
   updateBomProject,
   saveBomItemsOrder,
+  setBomVariants,
+  removeBomVariant,
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
@@ -119,6 +121,10 @@ export default function BomDetailPage() {
   // 프로젝트명 수정
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  // 타입(형번) — 같은 제품의 형번별 차이를 BOM 한 벌로 관리한다
+  const [variantModalOpen, setVariantModalOpen] = useState(false);
+  const [variantPick, setVariantPick] = useState(null); // 타입을 고르는 중인 BOM 품목
+  const [newVariant, setNewVariant] = useState('');
 
   // ---- Ctrl+Z 실행취소 ----
   const bomUndoStackRef = useRef([]); // bomItems 스냅샷 스택 (최대 30개)
@@ -227,6 +233,17 @@ export default function BomDetailPage() {
       }),
     [bomItems, masterMap, supplierMap],
   );
+
+  // 타입 목록과, 품목 한 줄이 어느 타입에 들어가는지 읽는 도우미
+  const variants = useMemo(() => (Array.isArray(project?.variants) ? project.variants : []), [project]);
+  const variantKeysOf = (it) => (Array.isArray(it.variantKeys) ? it.variantKeys : []);
+  // 아무 타입도 안 정했으면 공통 — 어느 형번으로 발주해도 함께 들어간다
+  function variantLabelOf(it) {
+    const ks = variantKeysOf(it);
+    if (ks.length === 0) return '공통';
+    const labels = ks.map((k) => variants.find((v) => v.key === k)?.label).filter(Boolean);
+    return labels.length ? labels.join(', ') : '공통';
+  }
 
   // 검색 + 구매처 필터 + 정렬
   const rows = useMemo(() => {
@@ -556,6 +573,80 @@ export default function BomDetailPage() {
     }
   }
 
+  // ---- 타입(형번) ----
+  // 타입을 만들어 두면 품목마다 「어느 형번에 들어가는지」를 정할 수 있고,
+  // 발주서로 가져올 때 형번 하나를 고르면 그 형번 자재만 담긴다.
+  async function addVariant() {
+    const label = newVariant.trim();
+    if (!label) return;
+    if (variants.some((v) => v.label === label)) {
+      toast('같은 이름의 타입이 이미 있습니다', 'error');
+      return;
+    }
+    // key 는 라벨을 바꿔도 품목 연결이 끊기지 않도록 따로 둔다
+    const key = `v${Date.now().toString(36)}`;
+    const next = [...variants, { key, label }];
+    try {
+      await setBomVariants(projectId, next);
+      setProject((p) => ({ ...p, variants: next }));
+      setNewVariant('');
+    } catch {
+      toast('타입 추가 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  async function renameVariant(key, label) {
+    const next = variants.map((v) => (v.key === key ? { ...v, label } : v));
+    setProject((p) => ({ ...p, variants: next }));
+    try {
+      await setBomVariants(projectId, next);
+    } catch {
+      toast('타입 이름 저장 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  async function deleteVariant(v) {
+    const only = bomItems.filter((b) => {
+      const ks = Array.isArray(b.variantKeys) ? b.variantKeys : [];
+      return ks.length === 1 && ks[0] === v.key;
+    });
+    const ok = await confirm({
+      title: '타입 삭제',
+      message:
+        only.length > 0
+          ? `"${v.label}" 타입을 지웁니다.\n\n이 타입에만 들어있던 품목 ${only.length}개는 공통으로 바뀝니다(사라지지 않습니다).`
+          : `"${v.label}" 타입을 지웁니다.`,
+    });
+    if (!ok) return;
+    try {
+      await removeBomVariant(projectId, v.key);
+      setProject((p) => ({ ...p, variants: variants.filter((x) => x.key !== v.key) }));
+      setBomItems((list) =>
+        list.map((b) => {
+          const ks = Array.isArray(b.variantKeys) ? b.variantKeys : [];
+          return ks.includes(v.key) ? { ...b, variantKeys: ks.filter((k) => k !== v.key) } : b;
+        }),
+      );
+    } catch {
+      toast('타입 삭제 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  // 품목이 들어갈 타입 켜고 끄기 — 전부 끄면 공통(모든 타입에 포함)
+  async function toggleItemVariant(itemId, key) {
+    const cur = bomItems.find((b) => b.id === itemId);
+    if (!cur) return;
+    const ks = Array.isArray(cur.variantKeys) ? cur.variantKeys : [];
+    const next = ks.includes(key) ? ks.filter((k) => k !== key) : [...ks, key];
+    setBomItems((list) => list.map((b) => (b.id === itemId ? { ...b, variantKeys: next } : b)));
+    setVariantPick((p) => (p && p.id === itemId ? { ...p, variantKeys: next } : p));
+    try {
+      await updateBomItem(itemId, { variantKeys: next });
+    } catch {
+      toast('타입 저장 중 오류가 발생했습니다', 'error');
+    }
+  }
+
   if (loading || !project) return <Skeleton.Rows count={6} />;
 
   return (
@@ -616,6 +707,14 @@ export default function BomDetailPage() {
           </button>
         </div>
         <div className="page-actions">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => setVariantModalOpen(true)}
+            title="형번마다 자재가 다를 때, BOM 한 벌로 관리하기"
+          >
+            타입 {variants.length > 0 && <strong>{variants.length}</strong>}
+          </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={openPicker}>
             <Icon name="plus" className="btn-ic" />
             품목 불러오기
@@ -872,6 +971,7 @@ export default function BomDetailPage() {
                         <th className="bom-no-col">No</th>
                         <th style={{ minWidth: 90 }}>코드</th>
                         <th style={{ minWidth: 90 }}>BOX</th>
+                        {variants.length > 0 && <th style={{ minWidth: 96 }}>타입</th>}
                         <th style={{ minWidth: 120 }}>품명</th>
                         <th>메이커</th>
                         <th>규격</th>
@@ -939,6 +1039,18 @@ export default function BomDetailPage() {
                                   onBlur={() => flushItem(it.id)}
                                 />
                               </td>
+                              {variants.length > 0 && (
+                                <td data-label="타입">
+                                  <button
+                                    type="button"
+                                    className={`bom-variant-cell${variantKeysOf(it).length ? '' : ' is-common'}`}
+                                    onClick={() => setVariantPick(it)}
+                                    title="눌러서 이 품목이 들어갈 타입 고르기"
+                                  >
+                                    {variantLabelOf(it)}
+                                  </button>
+                                </td>
+                              )}
                               <td data-label="품명" title={it.name || ''}>
                                 <input
                                   type="text"
@@ -1277,6 +1389,108 @@ export default function BomDetailPage() {
           </button>
           <button type="button" className="btn btn-primary" disabled={!nameInput.trim()} onClick={saveName}>
             저장
+          </button>
+        </div>
+      </Modal>
+
+      {/* 타입 관리 — 형번마다 자재가 조금씩 다를 때 BOM을 한 벌로 유지한다 */}
+      <Modal isOpen={variantModalOpen} onClose={() => setVariantModalOpen(false)} title="타입 관리">
+        <p className="field-hint" style={{ marginBottom: 12 }}>
+          같은 제품인데 형번마다 자재가 다를 때 씁니다. BOM을 여러 벌로 나눠 두면 자재가 바뀔 때마다 양쪽을 다 고쳐야
+          해서 한쪽을 빠뜨리기 쉽습니다. 여기에 타입을 만들어 두고, 품목마다 어느 타입에 들어가는지 정해 두면 발주서로
+          가져올 때 타입 하나만 고르면 됩니다.
+        </p>
+
+        {variants.length === 0 ? (
+          <p className="purchase-empty" style={{ padding: '16px 0' }}>
+            아직 타입이 없습니다. 아래에서 추가하세요.
+          </p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>타입 이름</th>
+                <th>품목 수</th>
+                <th className="col-action">작업</th>
+              </tr>
+            </thead>
+            <tbody>
+              {variants.map((v) => {
+                const n = bomItems.filter((b) => {
+                  const ks = variantKeysOf(b);
+                  return ks.length === 0 || ks.includes(v.key);
+                }).length;
+                return (
+                  <tr key={v.key}>
+                    <td data-label="타입 이름">
+                      <input
+                        type="text"
+                        value={v.label}
+                        onChange={(e) => renameVariant(v.key, e.target.value)}
+                        maxLength={40}
+                      />
+                    </td>
+                    <td data-label="품목 수" className="bom-variant-count">
+                      {n}개
+                    </td>
+                    <td data-label="작업" className="col-action">
+                      <div className="row-actions">
+                        <button type="button" className="btn btn-sm btn-danger" onClick={() => deleteVariant(v)}>
+                          삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        <div className="form-group" style={{ marginTop: 12 }}>
+          <label>타입 추가</label>
+          <div className="bom-variant-add">
+            <input
+              type="text"
+              value={newVariant}
+              onChange={(e) => setNewVariant(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newVariant.trim()) addVariant();
+              }}
+              placeholder="예) T5391 / MT8311"
+              maxLength={40}
+            />
+            <button type="button" className="btn btn-primary" disabled={!newVariant.trim()} onClick={addVariant}>
+              <Icon name="plus" className="btn-ic" />
+              추가
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 품목 한 줄이 어느 타입에 들어가는지 고르기 */}
+      <Modal isOpen={!!variantPick} onClose={() => setVariantPick(null)} title="이 품목이 들어갈 타입">
+        <p className="field-hint" style={{ marginBottom: 12 }}>
+          {variantPick?.name}
+          {variantPick?.spec ? ` · ${variantPick.spec}` : ''}
+        </p>
+        <p className="field-hint" style={{ marginBottom: 12 }}>
+          아무것도 고르지 않으면 <strong>공통</strong>입니다 — 어느 타입으로 발주해도 함께 들어갑니다.
+        </p>
+        <div className="bom-variant-picks">
+          {variants.map((v) => {
+            const on = variantPick ? variantKeysOf(variantPick).includes(v.key) : false;
+            return (
+              <label key={v.key} className={`bom-variant-pick${on ? ' is-on' : ''}`}>
+                <input type="checkbox" checked={on} onChange={() => toggleItemVariant(variantPick.id, v.key)} />
+                {v.label}
+              </label>
+            );
+          })}
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn btn-primary" onClick={() => setVariantPick(null)}>
+            닫기
           </button>
         </div>
       </Modal>
