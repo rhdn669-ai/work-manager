@@ -73,6 +73,36 @@ export const QUALITY_TABS = [
   },
 ];
 
+// 개별 낱장(sheet) ↔ 화면 통합 대장(ledger) — 원본 서식의 성격 그대로.
+//
+//   sheet  : 한 건이 곧 한 장의 문서. 병합 많은 A4 서식으로 열어 채우고 낱장으로 출력한다.
+//            문서번호가 건마다 붙는다(QP-104A-0001 …).
+//   ledger : 표 자체가 문서 한 장이다. 행이 계속 쌓이므로 문서번호는 대장에 하나뿐 —
+//            행에는 NO 일련번호만 남는다. 목록에서 모든 칸을 바로 고친다.
+//
+// 여태 이 분류를 서식의 paper·lines 속성 유무로 간접 판정했다. 그러면 어떤 서식에
+// 라인아이템을 하나 붙이는 순간 분류가 조용히 바뀐다 — 그래서 여기 한 곳에 명시한다.
+// 자산 4종(계측기·지그·치공구·툴)은 assets.* 로 별도 컬렉션이라 'asset'.
+export const FORM_KIND = {
+  'iqc.report': 'sheet', // 수입검사 성적서
+  'iqc.ledger': 'ledger', // 수입검사 관리대장
+  'oqc.shipment': 'ledger', // 출하검사 실적
+  'oqc.ncr': 'ledger', // 부적합 실적
+  'oqc.material': 'ledger', // 불량자재 이력
+  'change.request': 'sheet', // 5M1E 변경 신청서
+  'change.risk': 'ledger', // 5M1E 리스크 관리대장
+  'training.log': 'sheet', // 교육일지
+  'training.grade': 'sheet', // 자격등급 재평가 신청서
+  'vendor.registry': 'ledger', // 협력사 등록대장
+  'vendor.plan': 'ledger', // 협력사 평가계획
+  'vendor.eval': 'sheet', // 협력사 평가시트
+  'master.goal': 'ledger', // 품질목표 관리
+  'master.roster': 'ledger', // 인원 명부·인증기준
+};
+
+export const kindOf = (formKey) =>
+  String(formKey).startsWith('assets.') ? 'asset' : FORM_KIND[formKey] || 'ledger';
+
 // 판정값 — 전 서식 공통 3값 (합불·적합/부적합·OK/NG 혼재를 여기로 통일)
 export const VERDICT = {
   pass: { label: '합격', cls: 'badge-safe' },

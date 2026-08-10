@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import QualitySheet from '../../components/quality/QualitySheet';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
-import { QUALITY_TABS } from '../../domain/qualityForms';
+import { QUALITY_TABS, kindOf } from '../../domain/qualityForms';
+import { nextDocNo } from '../../domain/qualityDocNo';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
-import { subscribeRecords, addRecord, updateRecord } from '../../services/qualityRecordService';
+import { subscribeAllRecords, addRecord, updateRecord } from '../../services/qualityRecordService';
 import { subscribeAssets, addAsset, updateAsset } from '../../services/qualityAssetService';
 import '../../styles/quality.css';
 
@@ -24,15 +25,21 @@ export default function QualitySheetPage() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { toast } = useDialog();
-  const [rows, setRows] = useState(null); // null = 로딩 중
+  const [all, setAll] = useState(null); // null = 로딩 중
 
   // 자산(계측기·지그·치공구·툴)은 저장처만 다르고 화면·양식·출력은 기록 12종과 완전히 같다.
   const [tabKey, subKey] = String(formKey).split('.');
   const isAsset = tabKey === 'assets';
+  // 채번은 「양식」이 아니라 「기본 문서번호」 단위라 이 양식 것만 봐서는 모자란다.
+  // (치공구·툴이 둘 다 QP-705A, 출하검사 실적·품질목표가 둘 다 QP-105B)
   useEffect(() => {
-    if (isAsset) return subscribeAssets((all) => setRows(all.filter((a) => a.assetType === subKey)));
-    return subscribeRecords(formKey, setRows);
-  }, [formKey, isAsset, subKey]);
+    if (isAsset) return subscribeAssets(setAll);
+    return subscribeAllRecords(setAll);
+  }, [isAsset]);
+  const rows = useMemo(
+    () => (all === null ? null : all.filter((r) => (isAsset ? r.assetType === subKey : r.formKey === formKey))),
+    [all, isAsset, subKey, formKey],
+  );
 
   if (userProfile && !canProduction(userProfile)) return <Navigate to="/dashboard" replace />;
   const def = FORM_FIELDS[formKey];
@@ -45,14 +52,22 @@ export default function QualitySheetPage() {
   if (rows === null) return <div className="q-todo">불러오는 중…</div>;
 
   const isNew = id === 'new';
-  // 문서번호는 사내 규칙대로 입력받는다 (임의 채번하지 않음)
   // 번호 칸의 키가 서로 다르다 — 기록은 문서번호(recordNo), 자산은 관리번호(assetNo)
-  const record = isNew ? (isAsset ? { assetNo: '' } : { recordNo: '' }) : rows.find((r) => r.id === id);
+  const noKey = isAsset ? 'assetNo' : 'recordNo';
+  // 채번은 개별 낱장 문서와 자산에만 (2026-08-10 대표님).
+  // 통합 대장은 문서번호가 대장 1장에 하나뿐이라 행마다 번호를 매기면 원본 서식과 어긋난다.
+  const prefix = kindOf(formKey) === 'ledger' ? '' : docNoOf(formKey);
+  // 새 장을 열면 다음 번호를 미리 적어 둔다. 사내 규칙이 따로 있으면 그 위에 고쳐 쓰면 된다.
+  const autoNo = nextDocNo(
+    prefix,
+    (all || []).map((r) => r[noKey]),
+  );
+  const record = isNew ? { [noKey]: autoNo } : rows.find((r) => r.id === id);
   if (!isNew && !record) return <Navigate to="/quality" replace />;
 
   const save = async (draft) => {
-    const noKey = isAsset ? 'assetNo' : 'recordNo';
-    if (!String(draft[noKey] ?? '').trim()) {
+    let no = String(draft[noKey] ?? '').trim();
+    if (!no) {
       toast(
         isAsset
           ? '관리번호를 입력하세요 (사내 관리번호 규칙에 따라)'
@@ -61,6 +76,19 @@ export default function QualitySheetPage() {
       );
       return;
     }
+    // 열어 둔 사이에 다른 사람이 같은 번호를 먼저 저장했을 수 있다.
+    // 우리가 매긴 번호면 조용히 다음 번호로 밀고, 손으로 적은 번호면 덮어쓰지 않고 알린다.
+    if (isNew && (all || []).some((r) => String(r[noKey] ?? '').trim() === no)) {
+      if (no !== autoNo) {
+        toast(`${no} 은(는) 이미 있는 번호입니다`, 'error');
+        return;
+      }
+      no = nextDocNo(
+        prefix,
+        (all || []).map((r) => r[noKey]),
+      );
+    }
+    draft = { ...draft, [noKey]: no };
     // 모달 편집기를 없애면서 필수 항목 검사도 이 한 곳으로 모았다
     const missing = def.fields.filter((f) => f.required && !String(draft[f.key] ?? '').trim());
     if (missing.length) {

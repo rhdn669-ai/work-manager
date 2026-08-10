@@ -12,6 +12,7 @@ import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
+import { nextDocNo } from '../../src/domain/qualityDocNo';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -184,5 +185,37 @@ describe('호기별 자재 배정', () => {
 
   it('걸린 호기가 없으면 빈 결과', () => {
     expect(panelReceiveStatus([{ name: 'CP', qty: 5, receivedQty: 0 }], [])).toEqual([]);
+  });
+});
+
+describe('품질 문서번호 채번', () => {
+  it('처음이면 -0001 부터', () => {
+    expect(nextDocNo('QP-104A', [])).toBe('QP-104A-0001');
+  });
+
+  it('가장 큰 번호 다음을 준다', () => {
+    expect(nextDocNo('QP-104A', ['QP-104A-0001', 'QP-104A-0003'])).toBe('QP-104A-0004');
+  });
+
+  it('지운 번호를 다시 쓰지 않는다', () => {
+    // 0002 를 지워 목록에 없어도 0003 다음으로 간다 — 같은 번호의 다른 문서가 생기면 대조가 깨진다
+    expect(nextDocNo('QP-104A', ['QP-104A-0001', 'QP-104A-0003'])).not.toBe('QP-104A-0002');
+  });
+
+  it('다른 서식 번호는 세지 않는다', () => {
+    expect(nextDocNo('QP-104A', ['QP-104B-0009', 'IP-404B-0007'])).toBe('QP-104A-0001');
+  });
+
+  it('같은 기본번호를 쓰는 두 양식은 한 줄로 센다', () => {
+    // 치공구·툴이 둘 다 QP-705A — 양식별로 세면 -0001 이 두 장 나온다
+    expect(nextDocNo('QP-705A', ['QP-705A-0001', 'QP-705A-0002'])).toBe('QP-705A-0003');
+  });
+
+  it('손으로 적은 사내 번호는 무시한다', () => {
+    expect(nextDocNo('QP-104A', ['수입-2026-01', 'QP-104A-0002'])).toBe('QP-104A-0003');
+  });
+
+  it('기본번호가 없는 서식(인원 명부)은 빈 값', () => {
+    expect(nextDocNo('', ['x'])).toBe('');
   });
 });

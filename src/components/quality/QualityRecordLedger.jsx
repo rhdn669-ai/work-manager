@@ -4,7 +4,7 @@ import Icon from '../common/Icon';
 import TrashModal from '../common/TrashModal';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
-import { VERDICT } from '../../domain/qualityForms';
+import { VERDICT, kindOf } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
 import { FORM_FIELDS, computeCalcFields, colWidthOf } from '../../domain/qualityFormFields';
 import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
@@ -41,10 +41,10 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   useEffect(() => subscribeRecords(formKey, setRows), [formKey]);
   useEffect(() => subscribeTrashByType('qualityRecords', (t) => setTrashCount(t.length)), []);
 
-  // 대장형 vs 문서형 — 원본의 성격 그대로 (2026-08-02 대표님)
-  //  · 대장형: 표 자체가 문서다. 낱장 출력·페이지 이동 없이 목록에서 모든 칸을 보고 고친다.
-  //  · 문서형: 병합 많은 한 장짜리 서식(성적서·신청서·교육일지·평가시트). 양식 페이지로 간다.
-  const isLedger = !def.paper && !def.lines;
+  // 대장형 vs 문서형 — 원본의 성격 그대로 (2026-08-02 대표님).
+  // 어느 쪽인지는 FORM_KIND 에 서식마다 적어 둔다 — 예전처럼 paper·lines 유무로
+  // 짐작하면, 서식에 라인아이템을 하나 붙이는 순간 분류가 조용히 바뀐다.
+  const isLedger = kindOf(formKey) === 'ledger';
   // 대장형은 모든 필드를 컬럼으로 편다(원본 엑셀 대장이 그렇다). 문서형은 요약 컬럼만.
   const cols = useMemo(
     () =>
