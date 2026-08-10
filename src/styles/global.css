@@ -3827,7 +3827,7 @@ body {
 
 /* 표 열 정렬 표준 — 머리글과 값은 반드시 같은 쪽으로 맞춘다.
    한쪽만 지정하면 머리글은 왼쪽인데 값은 가운데처럼 어긋나 보인다.
-     .col-num   수량·단가·금액·재고 등 숫자 → 오른쪽
+     .col-num   수량·단가·금액·재고 등 숫자 → 가운데(2026-08-10 대표님)
      .col-unit  단위·구분 등 짧은 라벨 → 가운데
    그 밖의 글자 열은 왼쪽(기본값)을 쓴다. */
 .table th.col-num,
@@ -6259,6 +6259,13 @@ table.cards-sm td {
 .inline-edit-table td {
   padding: 4px 6px;
   vertical-align: middle;
+}
+/* 값이 전부 가운데가 됐으니 머리글도 가운데로 맞춘다.
+   한쪽만 두면 「코드」는 열 왼쪽에, 값은 열 가운데에 놓여 눈에 띄게 어긋난다.
+   작업(액션) 열은 우측 유지 — .table th.col-action 등이 특이도로 이긴다. */
+.inline-edit-table thead th,
+.bom-table thead th {
+  text-align: center;
 }
 
 /* read-only 셀 텍스트를 input과 동일한 안쪽 여백·높이로 — 같은 표 안에서 오와열 정렬 */
