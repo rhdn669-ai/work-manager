@@ -263,7 +263,9 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                     />
                   </th>
                 )}
-                <th>번호</th>
+                {/* 서식 문서번호는 표 위(제목 옆)에 이미 있다 — 행마다 또 두지 않는다 (2026-08-10 대표님).
+                    낱장 서식 목록은 번호를 눌러 들어가는 구조라 그대로 남긴다. */}
+                {!isLedger && <th>번호</th>}
                 {cols.map((c) => (
                   <th key={c.key}>{c.label}</th>
                 ))}
@@ -295,23 +297,16 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                         />
                       </td>
                     )}
-                    <td className="q-num">
-                      {isLedger ? (
-                        <LedgerCell
-                          f={{ key: 'recordNo', type: 'text' }}
-                          row={r}
-                          onCommit={editCell}
-                          readOnly={r.sourceType === 'production'}
-                        />
-                      ) : (
-                        r.recordNo ||
-                        (r.sourceType === 'production' ? (
-                          <span className="purchase-badge purchase-badge-replied">생산 자동</span>
-                        ) : (
-                          '—'
-                        ))
-                      )}
-                    </td>
+                    {!isLedger && (
+                      <td className="q-num">
+                        {r.recordNo ||
+                          (r.sourceType === 'production' ? (
+                            <span className="purchase-badge purchase-badge-replied">생산 자동</span>
+                          ) : (
+                            '—'
+                          ))}
+                      </td>
+                    )}
                     {cols.map((c) => (
                       <td key={c.key} className={!isLedger && (c.type === 'num' || c.type === 'date') ? 'q-num' : ''}>
                         {isLedger ? (
@@ -359,7 +354,8 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               })}
               {view.length === 0 && (
                 <tr>
-                  <td colSpan={cols.length + (hasVerdict ? 3 : 2) + (isLedger ? 0 : 1)}>
+                  {/* 열 수 = 값들 + (판정) + 작업 + (낱장이면 체크·번호 두 칸) */}
+                  <td colSpan={cols.length + (hasVerdict ? 2 : 1) + (isLedger ? 0 : 2)}>
                     <div className="q-todo">
                       <Icon name="doc" style={{ width: 34, height: 34 }} />
                       <b>등록된 항목이 없습니다</b>
