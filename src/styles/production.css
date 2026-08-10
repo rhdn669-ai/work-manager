@@ -1350,7 +1350,7 @@
 .mx-table .mx-box-start,
 .mx-table th.mx-box-start,
 .mx-table td.mx-box-start {
-  border-left: 3px solid var(--primary, #002050);
+  border-left: 2px solid var(--border-strong, #d1d6db);
 }
 /* 3행 leaf 헤더(사급·제작·도급) — 약간 작게 */
 .mx-leaf-row .mx-sub-th {
