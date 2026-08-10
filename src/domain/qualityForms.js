@@ -100,8 +100,7 @@ export const FORM_KIND = {
   'master.roster': 'ledger', // 인원 명부·인증기준
 };
 
-export const kindOf = (formKey) =>
-  String(formKey).startsWith('assets.') ? 'asset' : FORM_KIND[formKey] || 'ledger';
+export const kindOf = (formKey) => (String(formKey).startsWith('assets.') ? 'asset' : FORM_KIND[formKey] || 'ledger');
 
 // 판정값 — 전 서식 공통 3값 (합불·적합/부적합·OK/NG 혼재를 여기로 통일)
 export const VERDICT = {
