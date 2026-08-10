@@ -6268,6 +6268,46 @@ table.cards-sm td {
   text-align: center;
 }
 
+/* 표 안의 통일 드롭다운(ds-select)도 같은 칸으로 보이게 —
+   기본값은 폼용 40px·왼쪽이라 옆 칸(32px·가운데)과 높이가 어긋난다. */
+.inline-edit-table .ds-select,
+.bom-table .ds-select {
+  display: block;
+  width: 100%;
+}
+.inline-edit-table .ds-select__trigger,
+.bom-table .ds-select__trigger {
+  width: 100%;
+  min-height: 32px;
+  height: 32px;
+  gap: 0;
+  padding: 0 8px;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.inline-edit-table .ds-select__trigger:hover,
+.bom-table .ds-select__trigger:hover {
+  background: var(--bg-subtle);
+}
+.inline-edit-table .ds-select.is-open .ds-select__trigger,
+.bom-table .ds-select.is-open .ds-select__trigger {
+  background: var(--bg-card);
+  border-color: var(--primary);
+  box-shadow: none;
+}
+.inline-edit-table .ds-select__value,
+.bom-table .ds-select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  padding-left: 16px; /* 우측 caret 폭만큼 보정해야 글자가 진짜 가운데에 온다 */
+}
+
 /* read-only 셀 텍스트를 input과 동일한 안쪽 여백·높이로 — 같은 표 안에서 오와열 정렬 */
 .inline-edit-table .cell-text {
   display: flex;
