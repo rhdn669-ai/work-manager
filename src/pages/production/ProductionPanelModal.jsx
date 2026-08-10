@@ -2,11 +2,25 @@ import { useRef, useState } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
-import { updatePanel, uploadDefectPhoto } from '../../services/productionService';
+import { updatePanel, uploadDefectPhoto, attachDefectPhoto } from '../../services/productionService';
+import { useUploads } from '../../contexts/useUploads';
 import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
 import { DEFECT_TYPE_LABELS } from '../../domain/defectTypes';
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+// 사진이 들어갈 자리에 그대로 얹히는 진행률. 창을 닫아도 업로드는 계속되니
+// 「기다리세요」가 아니라 「이 자리에 곧 들어옵니다」를 보여준다.
+function PhotoProgress({ pct }) {
+  return (
+    <div className="defect-ba-uploading" role="status" aria-live="polite">
+      <div className="defect-up-bar">
+        <div className="defect-up-fill" style={{ width: `${pct || 0}%` }} />
+      </div>
+      <span className="defect-up-pct">{pct || 0}%</span>
+    </div>
+  );
+}
 const mmddDot = (d) => (d ? String(d).slice(5).replace('-', '.') : '');
 
 function getInsp(p) {
@@ -24,11 +38,14 @@ export default function ProductionPanelModal({
 }) {
   const insp = getInsp(p);
   const { toast } = useDialog();
+  const { runUpload } = useUploads();
   // 불량 사진 촬영/첨부 — 하나의 숨은 input을 공유, 대상(부품·차수·행)을 ref에 보관
   const photoInputRef = useRef(null);
   const photoTargetRef = useRef(null); // { part, round, index|null(null=새 행 추가) }
-  const [uploading, setUploading] = useState(false);
-  const [upPct, setUpPct] = useState(0); // 사진 업로드 진행률 — 멈춘 것처럼 보이지 않게
+  // 사진이 들어갈 자리마다 진행률을 따로 둔다 — 여러 장을 동시에 올려도 각자 보인다.
+  // 모달을 닫아도 업로드는 전역(UploadProvider)에서 계속되고, 끝나면 스스로 저장한다.
+  const [upSlots, setUpSlots] = useState({}); // { '부품|차수|번호|종류': 0~100 }
+  const slotKey = (part, round, index, kind) => `${part}|${round}|${index ?? 'new'}|${kind || '사진'}`;
 
   const save = (patch) => {
     if (!canEdit) return;
@@ -76,24 +93,28 @@ export default function ProductionPanelModal({
     e.target.value = '';
     const target = photoTargetRef.current;
     if (!file || !target) return;
-    setUploading(true);
-    setUpPct(0);
-    try {
-      const url = await uploadDefectPhoto(file, setUpPct);
-      const { part, round, index, kind } = target;
-      saveInspDerive(part, (n) => {
-        if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
-        if (!n[`차${round}`].공정비고) n[`차${round}`].공정비고 = {};
-        if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
-        const sec = n[`차${round}`].공정비고[part];
-        if (index == null)
-          sec.항목.push({ 내용: '', 유형: '', 완료: false, 사진: url, 검수자: checkerName, 일자: today() });
-        else sec.항목[index][kind] = url;
-      });
-    } finally {
-      setUploading(false);
-      setUpPct(0);
-    }
+    const { part, round, index, kind } = target;
+    const key = slotKey(part, round, index, kind);
+    const panelId = p.id;
+    setUpSlots((m) => ({ ...m, [key]: 0 }));
+
+    // 화면(모달)이 닫혀도 이어지도록 전역 업로드에 맡긴다.
+    // 끝난 뒤 저장도 화면 상태가 아니라 저장된 최신 문서를 읽어 붙인다.
+    runUpload(file.name || '불량 사진', (onProgress) =>
+      uploadDefectPhoto(file, (pct) => {
+        onProgress(pct);
+        setUpSlots((m) => (key in m ? { ...m, [key]: pct } : m));
+      }),
+    )
+      .then((url) => attachDefectPhoto(panelId, { part, round, index, kind, url, checkerName, today: today() }))
+      .catch(() => toast('사진 업로드에 실패했습니다. 다시 시도해 주세요.', 'error', 0))
+      .finally(() =>
+        setUpSlots((m) => {
+          const n = { ...m };
+          delete n[key];
+          return n;
+        }),
+      );
   }
 
   const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
@@ -178,7 +199,9 @@ export default function ProductionPanelModal({
               <div className="defect-ba">
                 <div className="defect-ba-col before">
                   <div className="defect-ba-head">발생</div>
-                  {it.사진 ? (
+                  {upSlots[slotKey(part, round, i, '사진')] !== undefined ? (
+                    <PhotoProgress pct={upSlots[slotKey(part, round, i, '사진')]} />
+                  ) : it.사진 ? (
                     <img
                       className="defect-ba-photo"
                       src={it.사진}
@@ -196,7 +219,9 @@ export default function ProductionPanelModal({
                 </div>
                 <div className="defect-ba-col after">
                   <div className="defect-ba-head">조치{it.검수자 ? ` · ${it.검수자}` : ''}</div>
-                  {it.조치사진 ? (
+                  {upSlots[slotKey(part, round, i, '조치사진')] !== undefined ? (
+                    <PhotoProgress pct={upSlots[slotKey(part, round, i, '조치사진')]} />
+                  ) : it.조치사진 ? (
                     <img
                       className="defect-ba-photo"
                       src={it.조치사진}
@@ -217,13 +242,8 @@ export default function ProductionPanelModal({
           ))}
           {canEdit && (
             <div className="defect-add-row">
-              <button
-                className="defect-add"
-                disabled={!canAdd || uploading}
-                onClick={() => openCamera(part, round, null)}
-              >
-                <Icon name="image" className="btn-ic" />{' '}
-                {uploading ? `사진 올리는 중 ${upPct}%` : `${round}차 불량 추가 (사진 촬영)`}
+              <button className="defect-add" disabled={!canAdd} onClick={() => openCamera(part, round, null)}>
+                <Icon name="image" className="btn-ic" /> {`${round}차 불량 추가 (사진 촬영)`}
               </button>
               <button
                 className="defect-add-plain"

@@ -61,7 +61,27 @@ export function UploadProvider({ children }) {
     [settle],
   );
 
+  // 자료실 말고 다른 화면에서도 배경 업로드를 쓰기 위한 범용 입구.
+  // 업로드 함수를 그대로 받아 여기서 돌린다 — 화면(모달)이 닫혀도 계속 올라간다.
+  // 반환값은 Promise 라, 끝난 뒤 URL을 받아 저장하는 일까지 호출부가 이어서 할 수 있다.
+  const runUpload = useCallback((name, task) => {
+    const key = `u${(idRef.current += 1)}`;
+    setUploads((u) => [...u, { key, name: name || '파일', progress: 0, status: 'uploading', folderName: '' }]);
+    return task((p) => setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress: p } : x))))
+      .then((res) => {
+        setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress: 100, status: 'done' } : x)));
+        setTimeout(() => setUploads((u) => u.filter((x) => x.key !== key)), 4000);
+        return res;
+      })
+      .catch((err) => {
+        setUploads((u) => u.map((x) => (x.key === key ? { ...x, status: 'error' } : x)));
+        throw err;
+      });
+  }, []);
+
   const dismiss = useCallback((key) => setUploads((u) => u.filter((x) => x.key !== key)), []);
 
-  return <UploadContext.Provider value={{ uploads, startUploads, dismiss }}>{children}</UploadContext.Provider>;
+  return (
+    <UploadContext.Provider value={{ uploads, startUploads, runUpload, dismiss }}>{children}</UploadContext.Provider>
+  );
 }

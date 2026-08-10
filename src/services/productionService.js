@@ -3,7 +3,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
 import { shrinkImage } from '../utils/imageResize';
-import { recompute } from '../domain/production';
+import { recompute, deriveBoxStatus } from '../domain/production';
 import { syncPanelNcr, removePanelNcr } from './qualityRecordService';
 
 // 판넬 생산현황 — Firestore 실시간 (전 직원 조회 · 관리자 편집).
@@ -66,6 +66,30 @@ export async function uploadDefectPhoto(file, onProgress) {
   }
   await task;
   return getDownloadURL(task.snapshot.ref);
+}
+
+// 올라간 사진을 그 판넬의 불량 항목에 붙인다.
+// 모달이 닫힌 뒤에 끝나도 안전하도록, 화면의 상태가 아니라 저장된 최신 문서를 읽어 고친다.
+//   index == null 이면 불량 항목을 새로 만들고, 값이 있으면 그 항목의 kind 칸(사진/조치사진)에 넣는다.
+export async function attachDefectPhoto(panelId, { part, round, index, kind, url, checkerName, today }) {
+  const snap = await getDoc(doc(db, 'productionPanels', panelId));
+  if (!snap.exists()) return;
+  const panel = { id: panelId, ...snap.data() };
+  const insp = structuredClone(panel.검수 || {});
+  if (!insp[`차${round}`]) insp[`차${round}`] = { 공정비고: {} };
+  if (!insp[`차${round}`].공정비고) insp[`차${round}`].공정비고 = {};
+  if (!insp[`차${round}`].공정비고[part]) insp[`차${round}`].공정비고[part] = { 항목: [] };
+  const sec = insp[`차${round}`].공정비고[part];
+  if (index == null)
+    sec.항목.push({ 내용: '', 유형: '', 완료: false, 사진: url, 검수자: checkerName || '', 일자: today });
+  else if (sec.항목[index]) sec.항목[index][kind] = url;
+
+  const st = deriveBoxStatus(panel, part, insp);
+  await updatePanel(panelId, {
+    검수: insp,
+    부품상태: { ...(panel.부품상태 || {}), [part]: st },
+    부품검수자: { ...(panel.부품검수자 || {}), [part]: st === '대기' ? '' : checkerName || '' },
+  });
 }
 
 // 삭제 = 휴지통 경유 (영구삭제 금지 규칙)
