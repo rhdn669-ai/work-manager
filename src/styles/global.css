@@ -3832,12 +3832,12 @@ body {
    그 밖의 글자 열은 왼쪽(기본값)을 쓴다. */
 .table th.col-num,
 .table td.col-num {
-  text-align: right;
+  text-align: center; /* 2026-08-10 대표님: 표 입력칸은 숫자도 가운데로 통일 */
   font-variant-numeric: tabular-nums;
 }
 .table td.col-num input,
 .table td.col-num .num-input {
-  text-align: right;
+  text-align: center;
 }
 .table th.col-unit,
 .table td.col-unit {
@@ -5843,6 +5843,7 @@ table.cards-sm td {
 
 .bom-table input {
   width: 100%;
+  height: 32px;
   border: 1px solid transparent;
   background: transparent;
   padding: 6px 8px;
@@ -5851,6 +5852,8 @@ table.cards-sm td {
   outline: none;
   font-family: inherit;
   box-sizing: border-box;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 .bom-table input:hover {
   background: var(--bg-subtle);
@@ -6206,6 +6209,17 @@ table.cards-sm td {
 }
 
 /* ===== 인라인 편집 표 공통 (구매 품목·BOM 등) ===== */
+/* ═══════════════════════════════════════════════════════════
+   표 안 입력칸 — 전 앱 단일 표준 (2026-08-10 대표님 확정)
+   구매(품목·BOM·발주)와 품질 대장이 높이·글자·정렬·포커스가 제각각이라
+   같은 앱처럼 보이지 않았다. 아래 한 벌로 맞춘다.
+
+     높이 32px · 글자 13px · 모서리 6px · 안쪽 여백 6/8px
+     평소엔 테두리 없이 비어 보이고, 올리면 옅은 바탕, 누르면 네이비 테두리
+     정렬은 전부 가운데 (숫자도 가운데 — 대표님 지시)
+
+   ※ 여기 값을 고치면 구매·품질 표가 함께 바뀐다. 화면별로 따로 덮지 말 것.
+   ═══════════════════════════════════════════════════════════ */
 .inline-edit-table input:not([type='checkbox']):not([type='radio']),
 .inline-edit-table select,
 .inline-edit-table textarea {
@@ -6221,6 +6235,11 @@ table.cards-sm td {
   font-family: inherit;
   box-sizing: border-box;
   color: var(--text);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.inline-edit-table select {
+  text-align-last: center;
 }
 .inline-edit-table textarea {
   height: auto;
@@ -6246,6 +6265,7 @@ table.cards-sm td {
 .inline-edit-table .cell-text {
   display: flex;
   align-items: center;
+  justify-content: center;
   width: 100%;
   min-width: 0;
   min-height: 32px;

@@ -1100,7 +1100,7 @@ textarea.q-cell {
 .q-grid-table th,
 .q-grid-table td {
   border: 1px solid var(--border);
-  padding: 0;
+  padding: 2px 4px; /* 입력칸이 격자선에 딱 붙지 않게 — 구매 표(4/6)보다는 좁게 */
   vertical-align: middle;
 }
 .q-grid-table thead th {
@@ -1114,16 +1114,19 @@ textarea.q-cell {
   border-color: var(--primary-press, var(--primary));
 }
 /* 셀 안의 입력칸 — 칸을 꽉 채우고 테두리는 격자에 맡긴다 */
+/* 구매 표(inline-edit-table)와 같은 한 벌을 쓴다 — 높이 32 · 글자 13 · 모서리 6 · 가운데
+   (2026-08-10 대표님 확정: 두 화면이 같은 앱처럼 보이도록 통일) */
 .q-grid-table input,
 .q-grid-table select,
 .q-grid-table .cell-text {
   width: 100%;
-  height: 30px;
-  border: 0;
-  border-radius: 0;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: transparent;
-  padding: 4px 7px;
-  font-size: 12.5px;
+  padding: 6px 8px;
+  font-size: 13px;
+  line-height: 1.2;
   font-family: inherit;
   color: var(--text);
   box-sizing: border-box;
@@ -1148,11 +1151,11 @@ textarea.q-cell {
 .q-grid-table select:hover {
   background: var(--bg-subtle);
 }
-/* 선택한 셀 — 엑셀처럼 안쪽에 진한 테두리 */
+/* 누른 칸 — 구매 표와 같은 네이비 테두리 */
 .q-grid-table input:focus,
 .q-grid-table select:focus {
-  background: #fff;
-  box-shadow: inset 0 0 0 2px var(--primary);
+  background: var(--bg-card);
+  border-color: var(--primary);
 }
 
 /* 타입별 폭 — 같은 도메인 표는 같은 폭을 쓴다(대장이 달라도 날짜 칸은 늘 같은 폭) */
