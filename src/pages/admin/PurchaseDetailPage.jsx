@@ -857,6 +857,10 @@ export default function PurchaseDetailPage() {
   }, [form.items, itemMaster, suppliers]);
 
   const isReadOnly = purchase?.status === 'settled' || purchase?.status === 'closed';
+  // 재고를 건드릴 수 있는 건 아직 발주가 나가지 않은 「발주대기」뿐이다.
+  // 발주 뒤에 수량이 바뀌면 업체에 보낸 발주서와 앱 숫자가 어긋나고,
+  // 회신·입고 처리도 그 수량을 기준으로 하므로 정합성이 깨진다.
+  const canUseStock = !isReadOnly && purchase?.status === 'draft';
 
   // 발주대기 건은 창고 재고와 함께 움직인다.
   // 아직 발주가 나가지 않았으므로, 창고에 자재가 들어오면 그만큼 덜 사는 게 맞다.
@@ -2211,18 +2215,20 @@ export default function PurchaseDetailPage() {
                                 <button
                                   type="button"
                                   className={`stock-used-badge is-short${Number(ln.stockShort) > 0 ? ' is-filled' : ''}`}
-                                  disabled={isReadOnly}
+                                  disabled={!canUseStock}
                                   onClick={
-                                    isReadOnly
+                                    !canUseStock
                                       ? undefined
                                       : Number(ln.stockShort) > 0
                                         ? () => undoShortage(idx)
                                         : () => fillShortage(idx, Math.max(0, -(Number(master?.stockQty) || 0)))
                                   }
                                   title={
-                                    Number(ln.stockShort) > 0
-                                      ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
-                                      : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
+                                    !canUseStock
+                                      ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
+                                      : Number(ln.stockShort) > 0
+                                        ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
+                                        : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
                                   }
                                 >
                                   {Number(ln.stockShort) > 0
@@ -2234,11 +2240,11 @@ export default function PurchaseDetailPage() {
                                   <button
                                     type="button"
                                     className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
-                                    disabled={isReadOnly}
-                                    onClick={isReadOnly ? undefined : () => toggleStockLine(idx)}
+                                    disabled={!canUseStock}
+                                    onClick={!canUseStock ? undefined : () => toggleStockLine(idx)}
                                     title={
-                                      isReadOnly
-                                        ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다`
+                                      !canUseStock
+                                        ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
                                         : Number(ln.stockUsed) > 0
                                           ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${Number(ln.stockNeed).toLocaleString()}개 전부 발주로 되돌리기`
                                           : '재고를 쓰지 않는 중 — 눌러서 창고에 남은 만큼 다시 쓰기'

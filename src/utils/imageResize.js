@@ -1,13 +1,15 @@
 // 사진을 올리기 전에 줄인다.
 //
-// 현장에서 폰으로 찍은 사진은 한 장에 3~8MB다. 화면에서 보고 A4로 뽑는 용도라면
-// 긴 변 1600px·JPEG 80%면 충분하고, 그러면 300~500KB로 내려가 10~20배 빨라진다.
+// 현장에서 폰으로 찍은 사진은 한 장에 3~8MB(4800×3600)다. 불량 부위를 확대해 보고
+// A4로 뽑는 용도에는 그만한 화소가 필요 없다 — 인쇄는 200~300dpi면 충분하다.
+// 긴 변 2400px·JPEG 90%면 A4 200dpi가 나오고 용량은 1~1.5MB로 내려가 5배쯤 빨라진다.
+// (2026-08-10 대표님: 원본 화질에 가깝게 두되 업로드는 빠르게)
 //
 // 폰 사진은 세로로 찍어도 가로로 저장되고 회전 정보(EXIF)만 따로 붙는 경우가 있다.
 // createImageBitmap 의 imageOrientation:'from-image' 가 그 회전을 미리 적용해 준다.
 
-const MAX_EDGE = 1600;
-const QUALITY = 0.8;
+const MAX_EDGE = 2400;
+const QUALITY = 0.9;
 
 export async function shrinkImage(file, { maxEdge = MAX_EDGE, quality = QUALITY } = {}) {
   if (!file || !file.type?.startsWith('image/')) return file;

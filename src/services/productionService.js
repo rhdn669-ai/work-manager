@@ -54,7 +54,7 @@ export async function updatePanel(id, patch) {
 // 불량 사진 업로드 → 다운로드 URL 반환 (Firestore엔 URL만 저장 — 문서 1MB 제한 보호)
 export async function uploadDefectPhoto(file, onProgress) {
   // 원본 그대로 올리면 폰 사진 한 장이 3~8MB라 현장 회선에서 10~30초씩 걸린다.
-  // 올리기 전에 긴 변 1600px·JPEG 80%로 줄여 300~500KB로 만든다.
+  // 올리기 전에 긴 변 2400px·JPEG 90%로 줄여 1~1.5MB로 만든다(A4 200dpi — 확대해도 또렷).
   const small = await shrinkImage(file);
   const path = `productionDefects/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
   const task = uploadBytesResumable(ref(storage, path), small, { contentType: small.type || 'image/jpeg' });
