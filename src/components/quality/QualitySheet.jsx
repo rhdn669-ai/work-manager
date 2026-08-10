@@ -60,10 +60,10 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
   const verdictVal = verdictField ? draft[verdictField.key] : '';
   // 종합판정·계산필드·긴 서술은 본문 아래에서 따로 다룬다
   const gridFields = def.fields.filter(
-    (f) => f.type !== 'textarea' && !f.calc && !VERDICT_KEYS.includes(f.key) && !f.group,
+    (f) => !f.hidden && f.type !== 'textarea' && !f.calc && !VERDICT_KEYS.includes(f.key) && !f.group,
   );
-  const grouped = def.fields.filter((f) => f.group);
-  const narratives = def.fields.filter((f) => f.type === 'textarea');
+  const grouped = def.fields.filter((f) => !f.hidden && f.group);
+  const narratives = def.fields.filter((f) => !f.hidden && f.type === 'textarea');
 
   const groups = [...new Set(grouped.map((f) => f.group))];
 

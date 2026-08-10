@@ -39,6 +39,19 @@ function describe(defects) {
     .join('\n');
 }
 
+// 그 판넬에서 불량을 확인한 사람들. 부품마다 다를 수 있어 중복을 빼고 잇는다.
+function inspectorsOf(panel) {
+  const by = panel?.부품검수자 || {};
+  const names = [
+    ...new Set(
+      Object.values(by)
+        .map((v) => String(v || '').trim())
+        .filter(Boolean),
+    ),
+  ];
+  return names.join(', ');
+}
+
 // 검사 단위 수 — 작업자가 배정된 부품 개수(없으면 부품 전체 수를 쓴다)
 function inspectedUnits(panel) {
   const workers = panel?.검수?.공정작업자 || {};
@@ -59,6 +72,7 @@ export function panelToNcrFacts(panel) {
     itemName: [panel.프로젝트, panel.호기].filter(Boolean).join(' · ') || '(호기 미지정)',
     projectNo: panel.프로젝트 || '',
     equipmentName: panel.자재 || '',
+    inspector: inspectorsOf(panel), // 현장에서 불량을 확인한 사람 (2026-08-10 대표님)
     // 판넬 불량은 출하 전 최종 검사에서 잡히는 것이라 발생공정은 「출하검사」다 (2026-08-10 대표님)
     processType: '출하검사',
     // 검사수 = 그 판넬에서 작업자가 배정된 부품 수. 1(판넬 1대)로 두면
@@ -84,8 +98,10 @@ export function panelToShipmentFacts(panel) {
     itemName: [panel.프로젝트, panel.호기].filter(Boolean).join(' · ') || '(호기 미지정)',
     projectNo: panel.프로젝트 || '',
     equipmentName: panel.자재 || '',
-    inspectedQty: inspectedUnits(panel),
+    inspector: inspectorsOf(panel),
+    inspectedQty: inspectedUnits(panel), // 화면에서는 감췄지만 월별 불량률 추이가 쓴다
     defectQty: defects.length,
+    defectDetail: describe(defects), // 현장에서 적은 불량 내용 그대로
     ...zeroTypes(),
     ...countByType(defects),
   };

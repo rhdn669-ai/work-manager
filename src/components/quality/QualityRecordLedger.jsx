@@ -47,7 +47,10 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const isLedger = !def.paper && !def.lines;
   // 대장형은 모든 필드를 컬럼으로 편다(원본 엑셀 대장이 그렇다). 문서형은 요약 컬럼만.
   const cols = useMemo(
-    () => def.fields.filter((f) => (isLedger ? !VERDICT_KEYS.includes(f.key) : f.col && !VERDICT_KEYS.includes(f.key))),
+    () =>
+      def.fields.filter(
+        (f) => !f.hidden && (isLedger ? !VERDICT_KEYS.includes(f.key) : f.col && !VERDICT_KEYS.includes(f.key)),
+      ),
     [def, isLedger],
   );
 

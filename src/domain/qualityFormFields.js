@@ -165,10 +165,12 @@ export const FORM_FIELDS = {
       { key: 'itemName', label: '품명', type: 'text', required: true, col: true },
       { key: 'projectNo', label: '프로젝트번호', type: 'text', col: true },
       { key: 'customerName', label: '고객사', type: 'text', col: true },
-      { key: 'receivedQty', label: '입고수', type: 'num' },
-      { key: 'inspectedQty', label: '검사수', type: 'num' },
+      // 입고수는 생산현황에 없는 값이라 늘 비어 있었다 — 칸을 없앤다 (2026-08-10 대표님).
+      // 검사수도 화면에서는 뺐지만 값은 뒤에서 계속 채운다 — 월별 불량률 추이가 이 값을 쓴다.
+      { key: 'inspectedQty', label: '검사수', type: 'num', hidden: true },
       { key: 'defectQty', label: '불량수', type: 'num', col: true },
-      { key: 'defectRate', label: '불량지수', type: 'num', calc: 'defectRate', col: true },
+      // 생산현황에서 적은 불량 내용이 그대로 올라온다
+      { key: 'defectDetail', label: '불량내용', type: 'textarea' },
       { key: 'actionContent', label: '조치내용', type: 'textarea' },
       // 불량 유형별 건수 — 생산현장에서 체크한 유형과 같은 목록을 쓴다(domain/defectTypes)
       ...defectTypeFields(),
@@ -219,7 +221,6 @@ export const FORM_FIELDS = {
     title: '불량자재 이력',
     numberPrefix: 'DMT',
     fields: [
-      { key: 'occurredDate', label: '발생일자', type: 'date', required: true, col: true },
       { key: 'projectNo', label: '프로젝트', type: 'text', col: true },
       { key: 'serialNo', label: 'S/N', type: 'text' },
       { key: 'itemName', label: '품명', type: 'text', required: true, col: true },
@@ -227,6 +228,8 @@ export const FORM_FIELDS = {
       { key: 'defectSymptom', label: '불량 현상', type: 'textarea', required: true, col: true },
       { key: 'checkedBy', label: '확인자', type: 'text' },
       { key: 'writtenBy', label: '작성자', type: 'text' },
+      // 발생 → 접수 순으로 읽히도록 두 날짜를 나란히 둔다 (2026-08-10 대표님)
+      { key: 'occurredDate', label: '발생일자', type: 'date', required: true, col: true },
       { key: 'defectReceivedDate', label: '불량 접수일자', type: 'date' },
       { key: 'customerConfirm', label: '고객확인', type: 'select', options: ['확인', '미확인', '해당없음'] },
       { key: 'improvedItemReceivedDate', label: '개선품 입고일자', type: 'date', col: true },

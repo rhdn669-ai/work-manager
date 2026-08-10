@@ -59,7 +59,7 @@ function OneDoc({ def, docNo, record }) {
     .filter((f) => f.type !== 'textarea' && !f.calc && !['passFailResult', 'overallResult'].includes(f.key))
     .slice(0, 8)
     .map((f) => f.key);
-  const narratives = def.fields.filter((f) => f.type === 'textarea' && record[f.key]);
+  const narratives = def.fields.filter((f) => !f.hidden && f.type === 'textarea' && record[f.key]);
   const verdict = record.passFailResult || record.overallResult || record.finalResult || record.finalJudgement;
 
   return (
@@ -137,7 +137,7 @@ function OneDoc({ def, docNo, record }) {
 // 대장형 출력 — 낱장을 반복하지 않고, 대장 그대로 한 장의 표로 뽑는다.
 // 원본 엑셀 대장(계측기 203행·부적합 303행)이 그런 모양이다.
 function LedgerDoc({ def, docNo, rows }) {
-  const cols = def.fields.filter((f) => !VERDICT_KEYS.includes(f.key));
+  const cols = def.fields.filter((f) => !f.hidden && !VERDICT_KEYS.includes(f.key));
   const verdict = def.fields.find((f) => VERDICT_KEYS.includes(f.key));
   return (
     <DocShell docNo={docNo} title={def.title}>
