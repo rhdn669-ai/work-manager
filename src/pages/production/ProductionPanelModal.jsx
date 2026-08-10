@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto, attachDefectPhoto } from '../../services/productionService';
 import { useUploads } from '../../contexts/useUploads';
+import ImageLightbox from '../../components/common/ImageLightbox';
 import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
 import { DEFECT_TYPE_LABELS } from '../../domain/defectTypes';
 
@@ -46,6 +47,29 @@ export default function ProductionPanelModal({
   // 모달을 닫아도 업로드는 전역(UploadProvider)에서 계속되고, 끝나면 스스로 저장한다.
   const [upSlots, setUpSlots] = useState({}); // { '부품|차수|번호|종류': 0~100 }
   const slotKey = (part, round, index, kind) => `${part}|${round}|${index ?? 'new'}|${kind || '사진'}`;
+  const [viewerIndex, setViewerIndex] = useState(null);
+
+  // 이 판넬에 달린 불량 사진을 차수·부품 순서대로 한 줄로 모은다.
+  // 자료실과 같은 라이트박스를 쓰므로 { downloadURL, name } 모양으로 맞춘다.
+  const photos = useMemo(() => {
+    const insp = getInsp(p);
+    const out = [];
+    [1, 2].forEach((n) => {
+      const 공정 = insp[`차${n}`]?.공정비고 || {};
+      Object.keys(공정).forEach((box) => {
+        (공정[box]?.항목 || []).forEach((it, i) => {
+          if (it.사진) out.push({ downloadURL: it.사진, name: `${n}차 · ${box} · ${i + 1}번 발생` });
+          if (it.조치사진) out.push({ downloadURL: it.조치사진, name: `${n}차 · ${box} · ${i + 1}번 조치` });
+        });
+      });
+    });
+    return out;
+  }, [p]);
+
+  const openPhoto = (url) => {
+    const i = photos.findIndex((x) => x.downloadURL === url);
+    setViewerIndex(i >= 0 ? i : 0);
+  };
 
   const save = (patch) => {
     if (!canEdit) return;
@@ -202,12 +226,7 @@ export default function ProductionPanelModal({
                   {upSlots[slotKey(part, round, i, '사진')] !== undefined ? (
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '사진')]} />
                   ) : it.사진 ? (
-                    <img
-                      className="defect-ba-photo"
-                      src={it.사진}
-                      alt="발생 사진"
-                      onClick={() => window.open(it.사진, '_blank', 'noopener')}
-                    />
+                    <img className="defect-ba-photo" src={it.사진} alt="발생 사진" onClick={() => openPhoto(it.사진)} />
                   ) : canEdit ? (
                     <button className="defect-ba-add before" onClick={() => openCamera(part, round, i, '사진')}>
                       <Icon name="image" className="btn-ic" />
@@ -226,7 +245,7 @@ export default function ProductionPanelModal({
                       className="defect-ba-photo"
                       src={it.조치사진}
                       alt="조치 사진"
-                      onClick={() => window.open(it.조치사진, '_blank', 'noopener')}
+                      onClick={() => openPhoto(it.조치사진)}
                     />
                   ) : canEdit ? (
                     <button className="defect-ba-add after" onClick={() => openCamera(part, round, i, '조치사진')}>
@@ -419,6 +438,16 @@ export default function ProductionPanelModal({
             </div>
           </div>
         </>
+      )}
+
+      {/* 사진은 새 탭 대신 앱 안에서 — 현장에서 폰으로 볼 때 앱을 벗어나지 않는다 */}
+      {viewerIndex !== null && photos[viewerIndex] && (
+        <ImageLightbox
+          images={photos}
+          index={viewerIndex}
+          onIndex={setViewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
       )}
     </Modal>
   );
