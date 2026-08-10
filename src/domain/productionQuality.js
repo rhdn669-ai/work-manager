@@ -8,6 +8,7 @@ import { DEFECT_TYPES, countByType } from './defectTypes';
 // 동기화가 건드리지 않는다(qualityRecordService.syncPanelNcr 참조).
 
 export const NCR_FORM_KEY = 'oqc.ncr';
+export const SHIPMENT_FORM_KEY = 'oqc.shipment';
 
 // 판넬의 검수 1·2차 공정비고에 쌓인 불량 항목을 부품·차수와 함께 평탄화
 export function collectPanelDefects(panel) {
@@ -58,7 +59,8 @@ export function panelToNcrFacts(panel) {
     itemName: [panel.프로젝트, panel.호기].filter(Boolean).join(' · ') || '(호기 미지정)',
     projectNo: panel.프로젝트 || '',
     equipmentName: panel.자재 || '',
-    processType: '공정검사',
+    // 판넬 불량은 출하 전 최종 검사에서 잡히는 것이라 발생공정은 「출하검사」다 (2026-08-10 대표님)
+    processType: '출하검사',
     // 검사수 = 그 판넬에서 작업자가 배정된 부품 수. 1(판넬 1대)로 두면
     // 불량 3건짜리 판넬이 불량률 300% 로 잡혀 추이가 망가진다.
     inspectedQty: inspectedUnits(panel),
@@ -66,6 +68,24 @@ export function panelToNcrFacts(panel) {
     openQty: open,
     defectDetail: describe(defects),
     // 현장에서 고른 불량 유형을 그대로 유형별 건수로 집계
+    ...zeroTypes(),
+    ...countByType(defects),
+  };
+}
+
+// 판넬 → 출하검사 실적의 "생산 유래 필드"만. 불량이 없으면 null.
+// 발생공정이 출하검사이므로 부적합 실적과 함께 이 대장에도 올라가야 한다.
+// 검사자·조치내용·문서번호는 품질팀 소유라 동기화가 건드리지 않는다.
+export function panelToShipmentFacts(panel) {
+  const defects = collectPanelDefects(panel);
+  if (!defects.length) return null;
+  return {
+    customerName: panel.회사 || '',
+    itemName: [panel.프로젝트, panel.호기].filter(Boolean).join(' · ') || '(호기 미지정)',
+    projectNo: panel.프로젝트 || '',
+    equipmentName: panel.자재 || '',
+    inspectedQty: inspectedUnits(panel),
+    defectQty: defects.length,
     ...zeroTypes(),
     ...countByType(defects),
   };

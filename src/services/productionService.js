@@ -1,7 +1,8 @@
 import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
+import { shrinkImage } from '../utils/imageResize';
 import { recompute } from '../domain/production';
 import { syncPanelNcr, removePanelNcr } from './qualityRecordService';
 
@@ -51,10 +52,20 @@ export async function updatePanel(id, patch) {
 }
 
 // 불량 사진 업로드 → 다운로드 URL 반환 (Firestore엔 URL만 저장 — 문서 1MB 제한 보호)
-export async function uploadDefectPhoto(file) {
+export async function uploadDefectPhoto(file, onProgress) {
+  // 원본 그대로 올리면 폰 사진 한 장이 3~8MB라 현장 회선에서 10~30초씩 걸린다.
+  // 올리기 전에 긴 변 1600px·JPEG 80%로 줄여 300~500KB로 만든다.
+  const small = await shrinkImage(file);
   const path = `productionDefects/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const snap = await uploadBytes(ref(storage, path), file, { contentType: file.type || 'image/jpeg' });
-  return getDownloadURL(snap.ref);
+  const task = uploadBytesResumable(ref(storage, path), small, { contentType: small.type || 'image/jpeg' });
+  if (onProgress) {
+    task.on('state_changed', (snap) => {
+      const pct = snap.totalBytes ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0;
+      onProgress(pct);
+    });
+  }
+  await task;
+  return getDownloadURL(task.snapshot.ref);
 }
 
 // 삭제 = 휴지통 경유 (영구삭제 금지 규칙)

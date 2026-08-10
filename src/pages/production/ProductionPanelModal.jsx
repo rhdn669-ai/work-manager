@@ -28,6 +28,7 @@ export default function ProductionPanelModal({
   const photoInputRef = useRef(null);
   const photoTargetRef = useRef(null); // { part, round, index|null(null=새 행 추가) }
   const [uploading, setUploading] = useState(false);
+  const [upPct, setUpPct] = useState(0); // 사진 업로드 진행률 — 멈춘 것처럼 보이지 않게
 
   const save = (patch) => {
     if (!canEdit) return;
@@ -76,8 +77,9 @@ export default function ProductionPanelModal({
     const target = photoTargetRef.current;
     if (!file || !target) return;
     setUploading(true);
+    setUpPct(0);
     try {
-      const url = await uploadDefectPhoto(file);
+      const url = await uploadDefectPhoto(file, setUpPct);
       const { part, round, index, kind } = target;
       saveInspDerive(part, (n) => {
         if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
@@ -90,6 +92,7 @@ export default function ProductionPanelModal({
       });
     } finally {
       setUploading(false);
+      setUpPct(0);
     }
   }
 
@@ -220,7 +223,7 @@ export default function ProductionPanelModal({
                 onClick={() => openCamera(part, round, null)}
               >
                 <Icon name="image" className="btn-ic" />{' '}
-                {uploading ? '사진 업로드 중…' : `${round}차 불량 추가 (사진 촬영)`}
+                {uploading ? `사진 올리는 중 ${upPct}%` : `${round}차 불량 추가 (사진 촬영)`}
               </button>
               <button
                 className="defect-add-plain"

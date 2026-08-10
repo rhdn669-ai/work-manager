@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { trashGeneric } from './trashService';
-import { NCR_FORM_KEY, panelToNcrFacts } from '../domain/productionQuality';
+import { NCR_FORM_KEY, SHIPMENT_FORM_KEY, panelToNcrFacts, panelToShipmentFacts } from '../domain/productionQuality';
 
 // 품질 기록 — 서식 10종을 한 컬렉션에서 formKey 로 구분한다.
 // 서식마다 테이블을 나누지 않는 이유: 공통 골격(일자·판정·담당)이 70% 이상 겹치고,
@@ -63,27 +63,25 @@ export function subscribeAllRecords(cb) {
    품질팀이 채우는 칸(문서번호·조치·대책·검증이력·판정·종결일)은 절대 덮어쓰지 않는다. */
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-async function findByPanel(panelId) {
+// 대장(formKey)별로 그 판넬의 자동 레코드를 찾는다.
+// 한 판넬이 부적합 실적·출하검사 실적 두 곳에 1건씩 갖는다.
+async function findByPanel(panelId, formKey) {
   // 자동 레코드는 sourcePanelId 로 직접 찾는다(전체 구독과 달리 1회성 조회라 where 가 맞다)
   const snap = await getDocs(query(recordsRef, where('sourcePanelId', '==', panelId)));
-  const hit = snap.docs.find((d) => !d.data().deleted);
+  const hit = snap.docs.find((d) => !d.data().deleted && (!formKey || d.data().formKey === formKey));
   return hit ? { id: hit.id, ...hit.data() } : null;
 }
 
-// 반환: 'created' | 'updated' | 'removed' | 'noop'. 실패는 던진다 — 조용히 삼키면
-// "왜 품질보증에 안 뜨지" 를 알 방법이 없다. 호출부에서 사용자에게 알린다.
-export async function syncPanelNcr(panel) {
-  if (!panel?.id) return 'noop';
-  const facts = panelToNcrFacts(panel);
-  const existing = await findByPanel(panel.id);
-
+// 대장 한 곳을 판넬 사실에 맞춘다 (upsert). 반환: 'created' | 'updated' | 'removed' | 'noop'
+async function syncOne(panel, formKey, facts, title) {
+  const existing = await findByPanel(panel.id, formKey);
   if (!facts) {
     // 불량이 모두 지워진 판넬 — 자동 레코드도 휴지통으로 (영구삭제 금지 규칙)
     if (!existing) return 'noop';
     await trashGeneric(
       'qualityRecords',
       existing.id,
-      { title: existing.itemName || '부적합 실적', summary: '생산현황 불량 해제로 자동 정리' },
+      { title: existing.itemName || title, summary: '생산현황 불량 해제로 자동 정리' },
       '자동',
     );
     return 'removed';
@@ -95,7 +93,7 @@ export async function syncPanelNcr(panel) {
     await updateRecord(existing.id, facts);
     return 'updated';
   }
-  await addRecord(NCR_FORM_KEY, {
+  await addRecord(formKey, {
     ...facts,
     recordNo: '', // 사내 문서번호 규칙대로 품질팀이 채운다 (임의 채번하지 않음)
     inspectionDate: todayStr(), // 최초 생성일만 기록 — 이후 동기화는 건드리지 않는다
@@ -105,19 +103,38 @@ export async function syncPanelNcr(panel) {
   return 'created';
 }
 
+// 반환: 'created' | 'updated' | 'removed' | 'noop'. 실패는 던진다 — 조용히 삼키면
+// "왜 품질보증에 안 뜨지" 를 알 방법이 없다. 호출부에서 사용자에게 알린다.
+//
+// 판넬 불량은 출하 전 최종 검사에서 잡히므로 발생공정이 「출하검사」다.
+// 그래서 부적합 실적과 출하검사 실적 두 대장에 함께 올린다 (2026-08-10 대표님).
+export async function syncPanelNcr(panel) {
+  if (!panel?.id) return 'noop';
+  const r1 = await syncOne(panel, NCR_FORM_KEY, panelToNcrFacts(panel), '부적합 실적');
+  const r2 = await syncOne(panel, SHIPMENT_FORM_KEY, panelToShipmentFacts(panel), '출하검사 실적');
+  // 한 곳이라도 바뀌었으면 바뀐 것으로 알린다
+  for (const r of ['created', 'updated', 'removed']) if (r1 === r || r2 === r) return r;
+  return 'noop';
+}
+
 // 판넬이 통째로 사라질 때 딸린 자동 기록도 함께 정리한다.
 // syncPanelNcr 은 '불량이 지워진 판넬'만 다루므로, 판넬 자체가 없어지는 경우는 여기서 맡는다.
 export async function removePanelNcr(panelId, deletedByName = '자동') {
   if (!panelId) return 'noop';
-  const existing = await findByPanel(panelId);
-  if (!existing) return 'noop';
-  await trashGeneric(
-    'qualityRecords',
-    existing.id,
-    { title: existing.itemName || '부적합 실적', summary: '생산현황 판넬 삭제로 자동 정리' },
-    deletedByName,
-  );
-  return 'removed';
+  let done = 'noop';
+  // 부적합 실적·출하검사 실적 두 곳 모두 내린다
+  for (const key of [NCR_FORM_KEY, SHIPMENT_FORM_KEY]) {
+    const existing = await findByPanel(panelId, key);
+    if (!existing) continue;
+    await trashGeneric(
+      'qualityRecords',
+      existing.id,
+      { title: existing.itemName || '자동 기록', summary: '생산현황 판넬 삭제로 자동 정리' },
+      deletedByName,
+    );
+    done = 'removed';
+  }
+  return done;
 }
 
 // 연동 붙이기 전부터 쌓여 있던 불량을 한 번에 올린다.
