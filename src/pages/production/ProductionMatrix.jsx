@@ -202,8 +202,8 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
             {BUPMOK.map((b) =>
               b === 'MP' ? (
                 <Fragment key={b}>
-                  {MP_SUBS.map((s) => (
-                    <th key={s} className="mx-sub-th" rowSpan={2}>
+                  {MP_SUBS.map((s, si) => (
+                    <th key={s} className={`mx-sub-th${si === 0 ? ' mx-box-start' : ''}`} rowSpan={2}>
                       {s}
                     </th>
                   ))}
@@ -213,13 +213,17 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 </Fragment>
               ) : (
                 <Fragment key={b}>
-                  {JAIP_GROUPS.map((g) =>
+                  {JAIP_GROUPS.map((g, gi) =>
                     g.leaves.length === 1 ? (
-                      <th key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
+                      <th key={g.key} className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`} rowSpan={2}>
                         {g.label}
                       </th>
                     ) : (
-                      <th key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
+                      <th
+                        key={g.key}
+                        className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
+                        colSpan={g.leaves.length}
+                      >
                         {g.label}
                       </th>
                     ),
@@ -256,9 +260,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
               <Fragment key={b}>
                 {b === 'MP'
                   ? null
-                  : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
-                      g.leaves.map((l) => (
-                        <th key={`${b}-${l.key}`} className="mx-sub-th">
+                  : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g, gi) =>
+                      g.leaves.map((l, li) => (
+                        <th key={`${b}-${l.key}`} className={`mx-sub-th${gi === 0 && li === 0 ? ' mx-grp-start' : ''}`}>
                           {l.label}
                         </th>
                       )),
@@ -391,13 +395,13 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
 function MpGroup({ p, st, sc, canEdit, onToggle }) {
   return (
     <>
-      {MP_SUBS.map((k) => {
+      {MP_SUBS.map((k, ki) => {
         const s = normState((p.mp하위상태 || {})[k]);
         const c = TASK_CFG[s] || TASK_CFG['대기'];
         return (
           <td
             key={k}
-            className="mx-cell mx-boxmat"
+            className={`mx-cell mx-boxmat${ki === 0 ? ' mx-box-start' : ''}`}
             style={{
               background: s === '완료' ? 'var(--status-done-bg)' : s === '문제' ? 'var(--status-cancel-bg)' : undefined,
               color: c.dot,
@@ -424,12 +428,13 @@ const GRP_START = new Set(JAIP_GROUPS.map((g) => g.leaves[0].key));
 function BoxGroup({ mat, matDate, defect, defectDone, defectDate, doneDate, st, sc, canEdit, onMat, onDefect }) {
   return (
     <>
-      {JAIP.map((k) => {
+      {JAIP.map((k, ki) => {
         const on = !!mat[k];
         return (
           <td
             key={k}
-            className={`mx-cell mx-boxmat mx-dcell${GRP_START.has(k) ? ' mx-grp-start' : ''}`}
+            // BOX가 바뀌는 첫 칸은 굵게, BOX 안의 자재 그룹 경계는 얇게 — 두 단계로 구분한다
+            className={`mx-cell mx-boxmat mx-dcell${ki === 0 ? ' mx-box-start' : GRP_START.has(k) ? ' mx-grp-start' : ''}`}
             style={{ background: on ? 'var(--status-done-bg)' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onMat(k)}
             title={k}

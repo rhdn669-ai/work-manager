@@ -1340,9 +1340,17 @@
 .mx-boxstate {
   border-left: 2px solid var(--border-strong, #d1d6db);
 }
-/* 자재 그룹(판금·하네스·자재·불량) 경계 좌측선 */
+/* 경계는 두 단계로 나눈다.
+   BOX가 바뀌는 자리(P/W BOX | LODER | S/D …)는 굵고 진하게,
+   BOX 안의 자재 그룹(판금 | 하네스 | 자재 | 불량)은 얇고 연하게.
+   같은 굵기로 두면 어디까지가 한 BOX인지 눈으로 끊기지 않는다. */
 .mx-grp-start {
-  border-left: 2px solid var(--border-strong, #d1d6db);
+  border-left: 1px solid var(--border, #e5e8eb);
+}
+.mx-table .mx-box-start,
+.mx-table th.mx-box-start,
+.mx-table td.mx-box-start {
+  border-left: 3px solid var(--primary, #002050);
 }
 /* 3행 leaf 헤더(사급·제작·도급) — 약간 작게 */
 .mx-leaf-row .mx-sub-th {
