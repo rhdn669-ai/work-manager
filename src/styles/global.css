@@ -8907,12 +8907,59 @@ tr.is-newly-added > td {
   align-items: center;
   gap: 12px;
 }
+/* 확대해도 사진이 틀 밖으로 새지 않도록 감싼다 */
+.lib-lightbox-view {
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow: hidden;
+  border-radius: 8px;
+  touch-action: none; /* 손가락으로 끌 때 화면이 같이 움직이지 않게 */
+}
 .lib-lightbox-stage img {
+  display: block;
   max-width: 92vw;
   max-height: 80vh;
   object-fit: contain;
   border-radius: 8px;
   background: #fff;
+  transform-origin: center center;
+  transition: transform 0.12s ease-out;
+  cursor: zoom-in;
+  user-select: none;
+}
+/* 키운 상태 — 끌어서 옮긴다 */
+.lib-lightbox-stage img.is-zoomed {
+  cursor: grab;
+  transition: none; /* 끄는 동안은 즉시 따라오게 */
+}
+.lib-lightbox-stage img.is-zoomed:active {
+  cursor: grabbing;
+}
+/* 확대 조절 — 캡션 안에 담백하게 */
+.lib-lightbox-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.lib-lightbox-zoom button {
+  min-width: 34px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.lib-lightbox-zoom button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+.lib-lightbox-zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .lib-lightbox-cap {
   display: flex;
