@@ -1197,3 +1197,13 @@ textarea.q-cell {
 .q-grid-table .q-remain {
   justify-content: center;
 }
+
+/* 대장 맨 앞 순번 — 몇 번째 줄인지 짚는 용도라 좁고 흐리게 */
+.q-grid-table th.q-rowno,
+.q-grid-table td.q-rowno {
+  width: 44px;
+  text-align: center;
+  color: var(--text-muted, #8b95a1);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
