@@ -36,7 +36,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import { setLotsLabel } from '../../utils/setLots';
+import { setLotsLabel, setLotsOf } from '../../utils/setLots';
 import Skeleton from '../../components/common/Skeleton';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
 import RegenOrderPdfRunner from '../../components/admin/RegenOrderPdfRunner';
@@ -209,13 +209,19 @@ function KanbanCard({ p, onOpen, onEdit, onDelete, onClose }) {
       </div>
       <div className="kb-card__items">
         품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
-        {/* 세트로 담은 건이면 타입별로 몇 세트인지 함께 — 카드만 보고도 규모를 안다 */}
-        {setLotsLabel(p.setLots)
-          ? ` · ${setLotsLabel(p.setLots)}`
-          : Number(p.setCount) > 0
-            ? ` · ${p.setCount}세트`
-            : ''}
       </div>
+      {/* 세트는 아랫줄에 타입마다 하나씩 — 한 알약에 다 넣으면 가운뎃점이 네 개가 되어 읽히지 않는다.
+          타입명에 「/」가 들어가는 경우(T5391 / MT8311)가 있어 더 그렇다. */}
+      {setLotsOf(p).length > 0 && (
+        <div className="kb-card__sets">
+          {setLotsOf(p).map((l, i) => (
+            <span key={i} className="kb-card__set">
+              {l.name ? `${l.name} ` : ''}
+              {l.count}세트
+            </span>
+          ))}
+        </div>
+      )}
       <div className="kb-card__amount" style={{ color: 'var(--accent)' }}>
         {Number(p.totalAmount || 0).toLocaleString()}
         <em>원</em>
@@ -811,6 +817,9 @@ export default function PurchaseListPage() {
             .purchase-list-page .kb-card__title { font-size: 14px; line-height: 1.3; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
             .purchase-list-page .kb-card__meta { font-size: 12px; color: var(--muted, #8b95a1); }
             .purchase-list-page .kb-card__items { align-self: flex-start; font-size: 11px; color: var(--slate, #4e5968); background: var(--canvas, #f2f4f6); border-radius: var(--radius-sm); padding: 2px 7px; margin: 1px 0; }
+            /* 세트는 타입마다 배지 하나 — 칸이 모자라면 다음 줄로 흐른다 */
+            .purchase-list-page .kb-card__sets { display: flex; flex-wrap: wrap; gap: 4px; margin: 1px 0; }
+            .purchase-list-page .kb-card__set { font-size: 11px; font-weight: 700; color: var(--primary, #002050); background: var(--primary-soft, #e8edf5); border-radius: var(--radius-sm); padding: 2px 7px; white-space: nowrap; }
             .purchase-list-page .kb-card__amount { font-size: 16px; font-weight: 800; color: var(--safety-orange, #f05819); line-height: 1.1; }
             .purchase-list-page .kb-card__amount em { font-weight: 700; font-size: 12px; margin-left: 2px; font-style: normal; }
             .purchase-list-page .kb-card__amount-vat { font-size: 11px; color: var(--muted, #8b95a1); }

@@ -32,3 +32,13 @@ export function setLotsLabel(lots) {
 export function totalSetCount(lots) {
   return (Array.isArray(lots) ? lots : []).reduce((s, l) => s + (Number(l?.count) || 0), 0);
 }
+
+// 화면에 뿌릴 세트 목록 — 옛 발주서는 타입 구분 없이 숫자만 있으므로 이름 없는 한 줄로 준다
+export function setLotsOf(purchase) {
+  const list = (purchase?.setLots || [])
+    .filter((l) => l && String(l.name ?? '').trim() && Number(l.count) > 0)
+    .map((l) => ({ name: String(l.name).trim(), count: Number(l.count) }));
+  if (list.length) return list;
+  const n = Number(purchase?.setCount) || 0;
+  return n > 0 ? [{ name: '', count: n }] : [];
+}
