@@ -57,6 +57,7 @@ import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../serv
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
+import { isStockTracked } from '../../domain/stock';
 import {
   PO_DEFAULTS,
   poDateStr,
@@ -116,9 +117,10 @@ function mergeLines(existing, incoming) {
 
 function deductStock(need, master, left) {
   const want = Number(need) || 0;
-  if (!master || want <= 0) return { qty: want };
+  if (!isStockTracked(master) || want <= 0) return { qty: want };
   const have = left.has(master.id) ? left.get(master.id) : Number(master.stockQty) || 0;
-  if (have <= 0) return { qty: want };
+  // 남은 게 없어도 필요 수량은 적어 둔다 — 재고 탭에 올린 품목은 「0 / 11」이라도 늘 보여야 한다
+  if (have <= 0) return { qty: want, stockUsed: 0, stockNeed: want };
   const used = Math.min(have, want);
   left.set(master.id, have - used);
   return { qty: want - used, stockUsed: used, stockNeed: want };
@@ -2093,6 +2095,13 @@ export default function PurchaseDetailPage() {
                       {form.items.map((ln, idx) => {
                         if (!lineMatchesSearch(ln)) return null;
                         const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
+                        // 재고 칸은 「재고」 탭에 올린 품목에만 (2026-08-11 대표님).
+                        // 재고를 세지 않는 품목까지 버튼이 뜨면 어느 줄이 관리 대상인지 알 수 없다.
+                        // 이미 가져다 쓴 줄은 재고 항목을 나중에 지웠더라도 되돌릴 수 있게 남긴다.
+                        const showStock =
+                          isStockTracked(master) || Number(ln.stockUsed) > 0 || Number(ln.stockShort) > 0;
+                        // 재고 기능을 넣기 전에 담은 줄엔 stockNeed 가 없다 — 그 줄은 발주 수량을 필요 수량으로 본다
+                        const stockNeed = Number(ln.stockNeed) || Number(ln.qty) || 0;
                         const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
                         const lineSupplierName = master?.defaultSupplierId
                           ? suppliers.find((s) => s.id === master.defaultSupplierId)?.name || ''
@@ -2209,9 +2218,11 @@ export default function PurchaseDetailPage() {
                             </td>
                             {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
                             <td data-label="재고" className="no-print">
-                              {/* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다.
-                                  이미 메운 줄은 되돌릴 수 있도록 배지를 남긴다. */}
-                              {Math.max(0, -(Number(master?.stockQty) || 0)) > 0 || Number(ln.stockShort) > 0 ? (
+                              {!showStock ? null /* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다.
+                                  이미 메운 줄은 되돌릴 수 있도록 배지를 남긴다. */ : Math.max(
+                                  0,
+                                  -(Number(master?.stockQty) || 0),
+                                ) > 0 || Number(ln.stockShort) > 0 ? (
                                 <button
                                   type="button"
                                   className={`stock-used-badge is-short${Number(ln.stockShort) > 0 ? ' is-filled' : ''}`}
@@ -2236,7 +2247,7 @@ export default function PurchaseDetailPage() {
                                     : `−${Math.max(0, -(Number(master?.stockQty) || 0)).toLocaleString()}`}
                                 </button>
                               ) : (
-                                Number(ln.stockNeed) > 0 && (
+                                stockNeed > 0 && (
                                   <button
                                     type="button"
                                     className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
@@ -2246,13 +2257,13 @@ export default function PurchaseDetailPage() {
                                       !canUseStock
                                         ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
                                         : Number(ln.stockUsed) > 0
-                                          ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${Number(ln.stockNeed).toLocaleString()}개 전부 발주로 되돌리기`
+                                          ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
                                           : '재고를 쓰지 않는 중 — 눌러서 창고에 남은 만큼 다시 쓰기'
                                     }
                                   >
                                     <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
                                     <span className="stock-need-sep">/</span>
-                                    <span className="stock-need-n">{Number(ln.stockNeed).toLocaleString()}</span>
+                                    <span className="stock-need-n">{stockNeed.toLocaleString()}</span>
                                   </button>
                                 )
                               )}

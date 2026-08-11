@@ -13,6 +13,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import { isStockTracked } from '../../domain/stock';
 
 // 재고 — 품목별로 창고에 몇 개 남았는지 손으로 적어 두는 곳.
 // 발주해도 자동으로 줄지 않는다. 자재를 꺼내 쓴 뒤에는 여기서 직접 고쳐야 한다.
@@ -59,7 +60,7 @@ export default function StockPage() {
 
   // 재고를 챙길 자재만 여기 올린다 — 품목 전체를 늘어놓으면 정작 볼 것이 묻힌다.
   // 「항목 추가」로 올린 것(stockQty 필드가 생긴 것)만 목록에 나온다.
-  const tracked = useMemo(() => items.filter((it) => it.stockQty !== undefined && it.stockQty !== null), [items]);
+  const tracked = useMemo(() => items.filter(isStockTracked), [items]);
 
   const shown = useMemo(() => {
     const kw = search.trim().toLowerCase();
@@ -120,7 +121,7 @@ export default function StockPage() {
     // 코드 모양과, 다른 품목의 groupKey가 가리키는 id 양쪽으로 걸러낸다(BOM 품목 고르기와 같은 규칙).
     const mainIds = new Set(items.map((m) => m.groupKey).filter(Boolean));
     return items
-      .filter((it) => it.stockQty === undefined || it.stockQty === null)
+      .filter((it) => !isStockTracked(it))
       .filter((it) => !/^IOPN-\d+$/.test(it.code || '') && !mainIds.has(it.id))
       .filter((it) => [it.code, it.name, it.spec, it.maker].some((v) => (v || '').toLowerCase().includes(kw)))
       .slice(0, 12);

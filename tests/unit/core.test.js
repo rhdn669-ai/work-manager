@@ -13,6 +13,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
+import { isStockTracked } from '../../src/domain/stock';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -217,5 +218,25 @@ describe('품질 문서번호 채번', () => {
 
   it('기본번호가 없는 서식(인원 명부)은 빈 값', () => {
     expect(nextDocNo('', ['x'])).toBe('');
+  });
+});
+
+describe('재고 관리 대상 판정', () => {
+  it('재고 탭에 올린 품목만 대상 — 수량 0 도 대상이다', () => {
+    // 0 은 「창고가 비었다」, 값이 없는 건 「애초에 세지 않는 품목」 — 둘은 다르다
+    expect(isStockTracked({ stockQty: 0 })).toBe(true);
+    expect(isStockTracked({ stockQty: 11 })).toBe(true);
+    expect(isStockTracked({ stockQty: -3 })).toBe(true); // 모자란 상태도 관리 대상
+  });
+
+  it('재고 탭에 없는 품목은 대상이 아니다', () => {
+    expect(isStockTracked({})).toBe(false);
+    expect(isStockTracked({ stockQty: undefined })).toBe(false);
+    expect(isStockTracked({ stockQty: null })).toBe(false);
+  });
+
+  it('품목을 못 찾은 줄도 대상이 아니다', () => {
+    expect(isStockTracked(null)).toBe(false);
+    expect(isStockTracked(undefined)).toBe(false);
   });
 });
