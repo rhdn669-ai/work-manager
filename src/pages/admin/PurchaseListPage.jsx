@@ -36,6 +36,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import { setLotsLabel } from '../../utils/setLots';
 import Skeleton from '../../components/common/Skeleton';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
 import RegenOrderPdfRunner from '../../components/admin/RegenOrderPdfRunner';
@@ -208,6 +209,12 @@ function KanbanCard({ p, onOpen, onEdit, onDelete, onClose }) {
       </div>
       <div className="kb-card__items">
         품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
+        {/* 세트로 담은 건이면 타입별로 몇 세트인지 함께 — 카드만 보고도 규모를 안다 */}
+        {setLotsLabel(p.setLots)
+          ? ` · ${setLotsLabel(p.setLots)}`
+          : Number(p.setCount) > 0
+            ? ` · ${p.setCount}세트`
+            : ''}
       </div>
       <div className="kb-card__amount" style={{ color: 'var(--accent)' }}>
         {Number(p.totalAmount || 0).toLocaleString()}
@@ -886,6 +893,11 @@ export default function PurchaseListPage() {
                           </td>
                           <td data-label="품목/수량" className="pur-c-items pur-items">
                             품목 {itemStats(p).count} · 수량 {itemStats(p).qty}
+                            {setLotsLabel(p.setLots)
+                              ? ` · ${setLotsLabel(p.setLots)}`
+                              : Number(p.setCount) > 0
+                                ? ` · ${p.setCount}세트`
+                                : ''}
                           </td>
                           <td data-label="금액" className="pur-c-amt pur-amt">
                             {amt.toLocaleString()}원

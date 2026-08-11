@@ -4505,7 +4505,7 @@ table.cards-sm td {
   justify-content: center;
   padding: 3px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: 0.02em;
@@ -4531,7 +4531,7 @@ table.cards-sm td {
 }
 .purchase-badge-replied {
   background: #fef9c3;
-  color: #a16207;
+  color: #854d0e;
 }
 .purchase-badge-partial {
   background: var(--accent-soft);
@@ -4539,16 +4539,16 @@ table.cards-sm td {
 }
 .purchase-badge-received {
   background: #cffafe;
-  color: #0e7490;
+  color: #155e75;
 }
 /* 입고 완료 — 발주완료(청록)와 구분되는 초록 토글 */
 .purchase-badge-instock {
   background: #dcfce7;
-  color: #15803d;
+  color: #166534;
 }
 .purchase-badge-settled {
   background: #dcfce7;
-  color: #15803d;
+  color: #166534;
 }
 .purchase-badge-closed {
   background: var(--grey-100, #e8ebee);
@@ -4556,7 +4556,7 @@ table.cards-sm td {
 }
 .purchase-badge-draft {
   background: #f3f4f6;
-  color: #6b7280;
+  color: #4b5563;
 }
 
 /* 구매처별 발주 요약 테이블 — 충분한 셀 패딩 */
@@ -4881,7 +4881,7 @@ table.cards-sm td {
 }
 .payment-folder-badge.is-done {
   background: #dcfce7;
-  color: #15803d;
+  color: #166534;
 }
 .payment-folder-amount {
   flex: 0 0 auto;
@@ -6538,7 +6538,7 @@ table.cards-sm td {
 }
 .purchase-recv-chip.is-full {
   background: #dcfce7;
-  color: #15803d;
+  color: #166534;
 }
 .purchase-recv-chip.is-partial {
   background: var(--accent-soft);
