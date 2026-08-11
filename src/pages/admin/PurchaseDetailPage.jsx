@@ -263,6 +263,8 @@ export default function PurchaseDetailPage() {
   const [allPanels, setAllPanels] = useState([]);
   const [panelPickOpen, setPanelPickOpen] = useState(false);
   const [panelPickProject, setPanelPickProject] = useState('');
+  // 세트 내역 고치기 — BOM으로 담을 땐 저절로 쌓이지만, 옛 발주서나 잘못 담은 건 손으로 맞춘다
+  const [setLotsDraft, setSetLotsDraft] = useState(null); // null = 닫힘
   const [bomLoading, setBomLoading] = useState(false);
   const [bomImporting, setBomImporting] = useState(false);
 
@@ -577,6 +579,26 @@ export default function PurchaseDetailPage() {
       return { ...f, panels: next };
     });
     scheduleAutoSave();
+  }
+
+  // 세트 내역 고치기 — 옛 발주서엔 타입명 없이 세트 수만 남아 있어 이름을 채워 넣어야 한다
+  function openSetLots() {
+    const cur = (form.setLots || []).filter((l) => l && (String(l.name ?? '').trim() || Number(l.count) > 0));
+    if (cur.length)
+      return setSetLotsDraft(cur.map((l) => ({ name: String(l.name || ''), count: Number(l.count) || 0 })));
+    // 내역이 없으면 지금 숫자를 한 줄로 옮겨 준다 — 이름만 적으면 끝나게
+    const n = Number(form.setCount) || 0;
+    setSetLotsDraft([{ name: '', count: n > 0 ? n : 1 }]);
+  }
+
+  function saveSetLots() {
+    const clean = (setLotsDraft || [])
+      .map((l) => ({ name: String(l.name || '').trim(), count: Number(l.count) || 0 }))
+      .filter((l) => l.name && l.count > 0);
+    setForm((f) => ({ ...f, setLots: clean, setCount: totalSetCount(clean) }));
+    scheduleAutoSave();
+    setSetLotsDraft(null);
+    toast(clean.length ? `세트 내역을 ${clean.length}줄로 저장했습니다.` : '세트 내역을 비웠습니다.');
   }
 
   // 걸린 호기별로 자재를 다 받았는지 — 앞 호기부터 채우고 모자라면 뒤가 미입고
@@ -1743,23 +1765,32 @@ export default function PurchaseDetailPage() {
             </span>
             {/* 담은 타입마다 「T5391 5세트」처럼 따로 보여 준다.
                 옛 발주서는 세트 내역 없이 숫자만 있으므로 그때는 「6세트」로 그대로 둔다. */}
-            {setLotsLabel(form.setLots) ? (
-              (form.setLots || [])
-                .filter((l) => l && String(l.name ?? '').trim() && Number(l.count) > 0)
-                .map((l) => (
-                  <span
-                    key={l.name}
-                    className="purchase-badge"
-                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
+            {setLotsLabel(form.setLots)
+              ? (form.setLots || [])
+                  .filter((l) => l && String(l.name ?? '').trim() && Number(l.count) > 0)
+                  .map((l) => (
+                    <button
+                      key={l.name}
+                      type="button"
+                      className="purchase-badge po-set-badge"
+                      onClick={isReadOnly ? undefined : openSetLots}
+                      disabled={isReadOnly}
+                      title={isReadOnly ? '' : '눌러서 세트 내역 고치기'}
+                    >
+                      {l.name} {Number(l.count)}세트
+                    </button>
+                  ))
+              : Number(form.setCount) > 0 && (
+                  <button
+                    type="button"
+                    className="purchase-badge po-set-badge"
+                    onClick={isReadOnly ? undefined : openSetLots}
+                    disabled={isReadOnly}
+                    title={isReadOnly ? '' : '눌러서 타입별 세트 내역 적기'}
                   >
-                    {l.name} {Number(l.count)}세트
-                  </span>
-                ))
-            ) : Number(form.setCount) > 0 ? (
-              <span className="purchase-badge" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
-                {form.setCount}세트
-              </span>
-            ) : null}
+                    {form.setCount}세트
+                  </button>
+                )}
           </div>
           {purchase.subtitle && (
             <div
@@ -2892,6 +2923,61 @@ export default function PurchaseDetailPage() {
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal isOpen={!!setLotsDraft} onClose={() => setSetLotsDraft(null)} title="세트 내역">
+        <p className="field-hint" style={{ marginBottom: 12 }}>
+          BOM에서 가져올 때는 저절로 쌓이지만, 예전에 만든 발주서는 타입 구분 없이 세트 수만 남아 있습니다. 타입명을
+          적어 주세요.
+        </p>
+        <div className="po-setlot-list">
+          {(setLotsDraft || []).map((l, i) => (
+            <div key={i} className="po-setlot-row">
+              <input
+                type="text"
+                value={l.name}
+                placeholder="타입명 (예: T5391)"
+                onChange={(e) =>
+                  setSetLotsDraft((d) => d.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                }
+              />
+              <input
+                type="number"
+                min="0"
+                value={l.count}
+                aria-label="세트 수"
+                onChange={(e) =>
+                  setSetLotsDraft((d) => d.map((x, j) => (j === i ? { ...x, count: e.target.value } : x)))
+                }
+              />
+              <span className="po-setlot-unit">세트</span>
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                onClick={() => setSetLotsDraft((d) => d.filter((_, j) => j !== i))}
+              >
+                <Icon name="trash" className="btn-ic" />
+                삭제
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => setSetLotsDraft((d) => [...(d || []), { name: '', count: 1 }])}
+        >
+          <Icon name="plus" className="btn-ic" />
+          타입 추가
+        </button>
+        <div className="modal-actions">
+          <button type="button" className="btn" onClick={() => setSetLotsDraft(null)}>
+            취소
+          </button>
+          <button type="button" className="btn btn-primary" onClick={saveSetLots}>
+            저장
+          </button>
+        </div>
       </Modal>
 
       <Modal isOpen={panelPickOpen} onClose={() => setPanelPickOpen(false)} title="생산 호기 걸기" size="lg">
