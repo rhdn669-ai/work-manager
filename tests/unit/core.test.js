@@ -1,12 +1,7 @@
 // ⑨ 기능 회귀 유닛테스트 — 과거 지적 다발 지점의 순수 로직 고정
 // 대상: 발주 구매처 도출·그룹핑·발행번호 / 연차 계산 / 출력 글자축소 / 날짜 유틸
 import { describe, it, expect } from 'vitest';
-import {
-  poNumber,
-  deriveSupplier,
-  mapPrintItems,
-  computeSupplierList,
-} from '../../src/utils/purchaseOrder';
+import { poNumber, deriveSupplier, mapPrintItems, computeSupplierList } from '../../src/utils/purchaseOrder';
 import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
 import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
@@ -14,6 +9,7 @@ import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { isStockTracked } from '../../src/domain/stock';
+import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -67,11 +63,7 @@ describe('발주 — 발행번호·출력 매핑', () => {
     expect(poNumber({ orderedAt: '2026-07-07T09:00:00' })).toBe('IOPN20260707');
   });
   it('mapPrintItems — 순번(No)이 1부터 순서대로 (④ 정렬 회귀)', () => {
-    const r = mapPrintItems(
-      [{ itemId: 'I1' }, { itemId: 'I2' }, { name: '수기' }],
-      itemMaster,
-      suppliers,
-    );
+    const r = mapPrintItems([{ itemId: 'I1' }, { itemId: 'I2' }, { name: '수기' }], itemMaster, suppliers);
     expect(r.map((x) => x._globalNo)).toEqual([1, 2, 3]);
     expect(r[0]._name).toBe('SLIDE PACK');
     expect(r[2]._name).toBe('수기');
@@ -178,7 +170,11 @@ describe('호기별 자재 배정', () => {
       { name: 'CP', qty: 10, receivedQty: 7 },
       { name: 'FAN', qty: 3, receivedQty: 3 },
     ];
-    const panels = [{ id: 'p1', 호기: '1호기' }, { id: 'p2', 호기: '2호기' }, { id: 'p3', 호기: '3호기' }];
+    const panels = [
+      { id: 'p1', 호기: '1호기' },
+      { id: 'p2', 호기: '2호기' },
+      { id: 'p3', 호기: '3호기' },
+    ];
     const st = panelReceiveStatus(items, panels);
     expect(st.map((s) => s.done)).toEqual([true, true, false]);
     expect(st[2].shortLines[0].name).toBe('CP');
@@ -238,5 +234,34 @@ describe('재고 관리 대상 판정', () => {
   it('품목을 못 찾은 줄도 대상이 아니다', () => {
     expect(isStockTracked(null)).toBe(false);
     expect(isStockTracked(undefined)).toBe(false);
+  });
+});
+
+describe('발주서 세트 내역', () => {
+  it('타입마다 따로 쌓인다 — 나중 것이 앞의 것을 덮지 않는다', () => {
+    let lots = mergeSetLots([], 'T5391', 5);
+    lots = mergeSetLots(lots, 'M7H', 6);
+    expect(lots).toEqual([
+      { name: 'T5391', count: 5 },
+      { name: 'M7H', count: 6 },
+    ]);
+    expect(setLotsLabel(lots)).toBe('T5391 5세트 · M7H 6세트');
+    expect(totalSetCount(lots)).toBe(11);
+  });
+
+  it('같은 타입을 또 담으면 줄을 늘리지 않고 세트 수만 더한다', () => {
+    const lots = mergeSetLots(mergeSetLots([], 'T5391', 5), 'T5391', 3);
+    expect(lots).toEqual([{ name: 'T5391', count: 8 }]);
+  });
+
+  it('이름이 없거나 0세트면 담지 않는다', () => {
+    expect(mergeSetLots([], '', 5)).toEqual([]);
+    expect(mergeSetLots([], 'T5391', 0)).toEqual([]);
+  });
+
+  it('세트 내역이 없으면 빈 문구 — 옛 발주서는 숫자 배지로 돌아간다', () => {
+    expect(setLotsLabel([])).toBe('');
+    expect(setLotsLabel(undefined)).toBe('');
+    expect(totalSetCount(undefined)).toBe(0);
   });
 });

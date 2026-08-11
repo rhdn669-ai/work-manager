@@ -58,6 +58,7 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
+import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
 import {
   PO_DEFAULTS,
   poDateStr,
@@ -115,15 +116,12 @@ function mergeLines(existing, incoming) {
   return { merged, addedCount, mergedCount };
 }
 
-function deductStock(need, master, left) {
+function deductStock(need, master) {
   const want = Number(need) || 0;
   if (!isStockTracked(master) || want <= 0) return { qty: want };
-  const have = left.has(master.id) ? left.get(master.id) : Number(master.stockQty) || 0;
-  // 남은 게 없어도 필요 수량은 적어 둔다 — 재고 탭에 올린 품목은 「0 / 11」이라도 늘 보여야 한다
-  if (have <= 0) return { qty: want, stockUsed: 0, stockNeed: want };
-  const used = Math.min(have, want);
-  left.set(master.id, have - used);
-  return { qty: want - used, stockUsed: used, stockNeed: want };
+  // 담는 순간 자동으로 빼지 않는다 (2026-08-11 대표님).
+  // 재고 칸에 「0 / 11」 버튼만 띄워 두고, 쓸지 말지는 사람이 눌러서 정한다.
+  return { qty: want, stockUsed: 0, stockNeed: want };
 }
 
 // SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
@@ -229,6 +227,7 @@ export default function PurchaseDetailPage() {
     note: '',
     supplierNotes: {},
     setCount: 0,
+    setLots: [], // 담은 세트 내역 — [{ name: 타입명, count: 세트수 }]
     mailBody: '',
     deletedItems: [], // 삭제된 품목 행 휴지통
   });
@@ -386,6 +385,7 @@ export default function PurchaseDetailPage() {
         note: p.note || '',
         supplierNotes: p.supplierNotes || {},
         setCount: Number(p.setCount) || 0,
+        setLots: Array.isArray(p.setLots) ? p.setLots : [],
         // 비어 있으면 기본 공통 문구를 '실제 값'으로 채워 바로 편집 가능하게 (placeholder만 보여 수정 불가처럼 보이던 문제)
         mailBody:
           p.mailBody && String(p.mailBody).trim() ? p.mailBody : buildDefaultMailBody(p.contactName || p.requesterName),
@@ -509,9 +509,7 @@ export default function PurchaseDetailPage() {
 
     if (used > 0) {
       applyStockUse([ln], -1, `발주 되돌림 · ${formRef.current.title || ''}`);
-      // stockOptOut: 사람이 일부러 뺀 줄이라는 표시.
-      // 이게 없으면 발주대기 자동 반영이 곧바로 다시 가져가 되돌린 티가 안 난다.
-      updateLine(idx, { qty: need, stockUsed: 0, stockNeed: need, stockOptOut: true });
+      updateLine(idx, { qty: need, stockUsed: 0, stockNeed: need });
       return;
     }
     // 다시 쓰기 — 처음 담을 때가 아니라 '지금' 남은 재고를 기준으로 한다
@@ -523,7 +521,7 @@ export default function PurchaseDetailPage() {
     }
     const use = Math.min(have, need);
     applyStockUse([{ ...ln, stockUsed: use }], 1, `발주 사용 · ${formRef.current.title || ''}`);
-    updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need, stockOptOut: false });
+    updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need });
   }
 
   // 창고가 모자란 만큼(재고 음수) 발주 수량에 얹는다.
@@ -672,7 +670,6 @@ export default function PurchaseDetailPage() {
       return;
     }
     const newLines = [];
-    const stockLeft = new Map();
     for (const [itemId, qtyInput] of itemPicked) {
       const m = itemMaster.find((x) => x.id === itemId);
       if (!m) continue;
@@ -682,7 +679,7 @@ export default function PurchaseDetailPage() {
         spec: m.spec || '',
         unit: m.unit || '',
         unitPrice: Number(m.standardPrice) || 0,
-        ...deductStock(qtyInput, m, stockLeft),
+        ...deductStock(qtyInput, m),
       });
     }
     if (newLines.length === 0) {
@@ -694,7 +691,6 @@ export default function PurchaseDetailPage() {
       const existing = f.items.filter((ln) => (ln.name || '').trim() || ln.itemId);
       return { ...f, items: [...existing, ...newLines] };
     });
-    applyStockUse(newLines, 1, `발주 사용 · ${formRef.current?.title || ''}`);
     scheduleAutoSave();
     setItemPicked(new Map());
     setItemPickerOpen(false);
@@ -762,7 +758,7 @@ export default function PurchaseDetailPage() {
     if (count === 0) return;
     if (!(await confirm(`품목 ${count}개를 모두 삭제하시겠습니까?\n저장하면 반영됩니다.`))) return;
     applyStockUse(formRef.current.items, -1, '발주 품목 전체 삭제로 되돌림');
-    setForm((f) => ({ ...f, items: [{ ...EMPTY_LINE }], setCount: 0 }));
+    setForm((f) => ({ ...f, items: [{ ...EMPTY_LINE }], setCount: 0, setLots: [] }));
     scheduleAutoSave();
   }
 
@@ -795,7 +791,6 @@ export default function PurchaseDetailPage() {
         alert('해당 BOM에 품목이 없습니다.');
         return;
       }
-      const stockLeft = new Map();
       const newLines = [...items]
         .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
         .map((b) => {
@@ -806,23 +801,24 @@ export default function PurchaseDetailPage() {
             name: m?.name || b.name || '',
             spec: m?.spec || b.spec || '',
             unit: m?.unit || b.unit || '',
-            ...deductStock((Number(b.qty) || 1) * setCount, m, stockLeft), // 세트 수량(배수) 반영 후 재고분 차감
+            ...deductStock((Number(b.qty) || 1) * setCount, m), // 세트 수량(배수) 반영
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             box: b.box || '', // 품목별 소속 BOX (BOM에서 그대로 복사, PDF 품목표에 출력)
             note: b.note || '',
           };
         });
       // 이미 발주서에 있는 품목은 새 줄을 만들지 않고 수량을 올린다
+      const vLabel = variantKey ? (bp.variants || []).find((v) => v.key === variantKey)?.label : '';
       let report = null;
       setForm((f) => {
         const r = mergeLines(f.items, newLines);
         report = r;
-        return { ...f, items: r.merged, setCount };
+        // 타입마다 몇 세트인지 따로 남긴다 — 숫자 하나로 두면 나중에 담은 타입이 앞의 것을 덮어쓴다
+        const setLots = mergeSetLots(f.setLots, vLabel || bp.name, setCount);
+        return { ...f, items: r.merged, setLots, setCount: totalSetCount(setLots) };
       });
-      applyStockUse(newLines, 1, `발주 사용 · ${bp.name}`);
       scheduleAutoSave();
       setBomModalOpen(false);
-      const vLabel = variantKey ? (bp.variants || []).find((v) => v.key === variantKey)?.label : '';
       const tail =
         report?.mergedCount > 0
           ? `품목 ${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다.`
@@ -864,49 +860,6 @@ export default function PurchaseDetailPage() {
   // 회신·입고 처리도 그 수량을 기준으로 하므로 정합성이 깨진다.
   const canUseStock = !isReadOnly && purchase?.status === 'draft';
 
-  // 발주대기 건은 창고 재고와 함께 움직인다.
-  // 아직 발주가 나가지 않았으므로, 창고에 자재가 들어오면 그만큼 덜 사는 게 맞다.
-  // 발주가 나간 뒤(발주완료 이후)에는 이미 업체에 넘긴 수량이라 건드리지 않는다.
-  useEffect(() => {
-    if (purchase?.status !== 'draft') return;
-    const f = formRef.current;
-    if (!f?.items?.length) return;
-
-    const patches = [];
-    for (let i = 0; i < f.items.length; i++) {
-      const ln = f.items[i];
-      if (!ln.itemId || ln.stockOptOut) continue; // 사람이 일부러 뺀 줄은 그대로 둔다
-      const need = Number(ln.stockNeed) || Number(ln.qty) || 0;
-      const used = Number(ln.stockUsed) || 0;
-      if (need <= 0 || used >= need) continue; // 이미 재고로 다 채운 줄
-      const master = itemMaster.find((m) => m.id === ln.itemId);
-      const have = Number(master?.stockQty) || 0;
-      if (have <= 0) continue;
-      const more = Math.min(have, need - used); // 새로 들어온 만큼만 더 가져다 쓴다
-      if (more <= 0) continue;
-      patches.push({ idx: i, itemId: ln.itemId, more, used: used + more, need });
-    }
-    if (patches.length === 0) return;
-
-    setForm((prev) => ({
-      ...prev,
-      items: prev.items.map((ln, i) => {
-        const p = patches.find((x) => x.idx === i);
-        return p ? { ...ln, qty: p.need - p.used, stockUsed: p.used, stockNeed: p.need } : ln;
-      }),
-    }));
-    Promise.all(
-      patches.map((p) =>
-        consumeItemStock(p.itemId, p.more, {
-          byName: userProfile?.name || '',
-          note: `발주대기 자동 반영 · ${f.title || ''}`,
-        }),
-      ),
-    ).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
-    scheduleAutoSave();
-    toast(`창고에 들어온 자재를 반영해 발주 수량을 줄였습니다 (${patches.length}개 품목)`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemMaster, purchase?.status]);
   // 검색·업체 필터가 걸리면 일부만 보여 순서를 옮길 수 없다
   const canDragItems = !isReadOnly && !itemSearch.trim() && itemSupplierFilter === 'all';
 
@@ -1026,6 +979,7 @@ export default function PurchaseDetailPage() {
         note: f.note,
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
+        setLots: f.setLots || [],
         mailBody: f.mailBody || '',
         deletedItems: f.deletedItems || [],
       });
@@ -1038,6 +992,7 @@ export default function PurchaseDetailPage() {
         note: f.note,
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
+        setLots: f.setLots || [],
         mailBody: f.mailBody || '',
         deletedItems: f.deletedItems || [],
         title: f.title.trim(),
@@ -1786,11 +1741,25 @@ export default function PurchaseDetailPage() {
             <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
               {STATUS[status]?.label || status}
             </span>
-            {Number(form.setCount) > 0 && (
+            {/* 담은 타입마다 「T5391 5세트」처럼 따로 보여 준다.
+                옛 발주서는 세트 내역 없이 숫자만 있으므로 그때는 「6세트」로 그대로 둔다. */}
+            {setLotsLabel(form.setLots) ? (
+              (form.setLots || [])
+                .filter((l) => l && String(l.name ?? '').trim() && Number(l.count) > 0)
+                .map((l) => (
+                  <span
+                    key={l.name}
+                    className="purchase-badge"
+                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
+                  >
+                    {l.name} {Number(l.count)}세트
+                  </span>
+                ))
+            ) : Number(form.setCount) > 0 ? (
               <span className="purchase-badge" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
                 {form.setCount}세트
               </span>
-            )}
+            ) : null}
           </div>
           {purchase.subtitle && (
             <div
@@ -2258,7 +2227,7 @@ export default function PurchaseDetailPage() {
                                         ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
                                         : Number(ln.stockUsed) > 0
                                           ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
-                                          : '재고를 쓰지 않는 중 — 눌러서 창고에 남은 만큼 다시 쓰기'
+                                          : '창고 재고를 쓰지 않고 전부 발주하는 중 — 눌러서 남은 재고만큼 빼기'
                                     }
                                   >
                                     <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
