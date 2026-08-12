@@ -70,6 +70,7 @@ export default function PasswordChangeModal({ isOpen, onClose }) {
         <div className="form-group">
           <label>현재 비밀번호</label>
           <input
+            aria-label="현재 비밀번호"
             type="password"
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
@@ -83,6 +84,7 @@ export default function PasswordChangeModal({ isOpen, onClose }) {
         <div className="form-group">
           <label>새 비밀번호</label>
           <input
+            aria-label="새 비밀번호"
             type="password"
             value={next}
             onChange={(e) => setNext(e.target.value)}
@@ -96,6 +98,7 @@ export default function PasswordChangeModal({ isOpen, onClose }) {
         <div className="form-group">
           <label>새 비밀번호 확인</label>
           <input
+            aria-label="새 비밀번호 확인"
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}

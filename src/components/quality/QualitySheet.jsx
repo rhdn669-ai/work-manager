@@ -136,13 +136,15 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
               <table className="q-paper-table q-sheet-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '8%' }}>번호</th>
+                    <th scope="col" style={{ width: '8%' }}>
+                      번호
+                    </th>
                     {def.lines.columns.map((c) => (
-                      <th key={c.key} style={{ width: c.w }}>
+                      <th scope="col" key={c.key} style={{ width: c.w }}>
                         {c.label}
                       </th>
                     ))}
-                    {editing && <th style={{ width: '8%' }} className="q-noprint" />}
+                    {editing && <th scope="col" style={{ width: '8%' }} className="q-noprint" />}
                   </tr>
                 </thead>
                 <tbody>

@@ -423,6 +423,7 @@ export default function Sidebar({ isOpen }) {
         <div className="form-group">
           <label>대분류 이름</label>
           <input
+            aria-label="대분류 이름"
             type="text"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}

@@ -134,10 +134,12 @@ export default function SiteManagementPage() {
         <table className="table cards-sm">
           <thead>
             <tr>
-              <th>프로젝트명</th>
-              <th>팀</th>
-              <th>담당자</th>
-              <th className="col-action">작업</th>
+              <th scope="col">프로젝트명</th>
+              <th scope="col">팀</th>
+              <th scope="col">담당자</th>
+              <th scope="col" className="col-action">
+                작업
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -187,6 +189,7 @@ export default function SiteManagementPage() {
           <div className="form-group">
             <label>프로젝트명 *</label>
             <input
+              aria-label="프로젝트명"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
@@ -196,6 +199,7 @@ export default function SiteManagementPage() {
           <div className="form-group">
             <label>팀</label>
             <input
+              aria-label="팀"
               value={form.team}
               onChange={(e) => setForm({ ...form, team: e.target.value })}
               placeholder="예: 전장 2팀"
@@ -243,6 +247,7 @@ export default function SiteManagementPage() {
           <div className="form-group">
             <label>기본 업체 목록 (쉼표 구분)</label>
             <textarea
+              aria-label="기본 업체 목록 (쉼표 구분)"
               value={vendorText}
               onChange={(e) => setVendorText(e.target.value)}
               rows={2}

@@ -337,6 +337,7 @@ export default function HomeTaskBoard() {
         <div className="task-form">
           <label className="task-form__label">제목</label>
           <input
+            aria-label="제목"
             type="text"
             className="task-form__input"
             value={form.title}
@@ -370,6 +371,7 @@ export default function HomeTaskBoard() {
             <div>
               <label className="task-form__label">마감일</label>
               <input
+                aria-label="마감일"
                 type="date"
                 className="task-form__input"
                 value={form.dueDate}
@@ -389,6 +391,7 @@ export default function HomeTaskBoard() {
 
           <label className="task-form__label">설명/메모</label>
           <textarea
+            aria-label="설명/메모"
             className="task-form__input task-form__textarea"
             value={form.memo}
             onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}

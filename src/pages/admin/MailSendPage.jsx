@@ -264,11 +264,19 @@ export default function MailSendPage() {
               <table className="table cards-sm">
                 <thead>
                   <tr>
-                    <th style={{ width: 140 }}>발송일시</th>
-                    <th style={{ width: 70 }}>대상</th>
-                    <th>제목</th>
-                    <th style={{ width: 90 }}>수신/성공</th>
-                    <th style={{ width: 70 }}>발송자</th>
+                    <th scope="col" style={{ width: 140 }}>
+                      발송일시
+                    </th>
+                    <th scope="col" style={{ width: 70 }}>
+                      대상
+                    </th>
+                    <th scope="col">제목</th>
+                    <th scope="col" style={{ width: 90 }}>
+                      수신/성공
+                    </th>
+                    <th scope="col" style={{ width: 70 }}>
+                      발송자
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -406,6 +414,7 @@ export default function MailSendPage() {
               <div className="form-group">
                 <label>제목</label>
                 <input
+                  aria-label="제목"
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
@@ -415,6 +424,7 @@ export default function MailSendPage() {
               <div className="form-group">
                 <label>본문</label>
                 <textarea
+                  aria-label="본문"
                   rows={10}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -425,6 +435,7 @@ export default function MailSendPage() {
               <div className="form-group">
                 <label>첨부파일 (선택)</label>
                 <input
+                  aria-label="첨부파일 (선택)"
                   ref={fileInputRef}
                   type="file"
                   multiple

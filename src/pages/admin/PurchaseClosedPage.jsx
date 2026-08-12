@@ -109,16 +109,36 @@ export default function PurchaseClosedPage() {
             <table className="table pur-table">
               <thead>
                 <tr>
-                  <th className="pur-c-status">상태</th>
-                  <th className="pur-c-title">제목</th>
-                  <th className="pur-c-sup">구매처</th>
-                  <th className="pur-c-proj">프로젝트</th>
-                  <th className="pur-c-items">품목/수량</th>
-                  <th className="pur-c-amt">금액</th>
-                  <th className="pur-c-vat">부가세 포함</th>
-                  <th className="pur-c-date">작성일</th>
-                  <th className="pur-c-date">종결일</th>
-                  <th className="pur-c-act col-action">작업</th>
+                  <th scope="col" className="pur-c-status">
+                    상태
+                  </th>
+                  <th scope="col" className="pur-c-title">
+                    제목
+                  </th>
+                  <th scope="col" className="pur-c-sup">
+                    구매처
+                  </th>
+                  <th scope="col" className="pur-c-proj">
+                    프로젝트
+                  </th>
+                  <th scope="col" className="pur-c-items">
+                    품목/수량
+                  </th>
+                  <th scope="col" className="pur-c-amt">
+                    금액
+                  </th>
+                  <th scope="col" className="pur-c-vat">
+                    부가세 포함
+                  </th>
+                  <th scope="col" className="pur-c-date">
+                    작성일
+                  </th>
+                  <th scope="col" className="pur-c-date">
+                    종결일
+                  </th>
+                  <th scope="col" className="pur-c-act col-action">
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody>

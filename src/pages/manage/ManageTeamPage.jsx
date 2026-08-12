@@ -355,8 +355,8 @@ export default function ManageTeamPage() {
             <table className="table cards-sm">
               <thead>
                 <tr>
-                  <th>이름</th>
-                  <th>직급</th>
+                  <th scope="col">이름</th>
+                  <th scope="col">직급</th>
                 </tr>
               </thead>
               <tbody>
@@ -630,9 +630,9 @@ export default function ManageTeamPage() {
           <table className="table cards-sm">
             <thead>
               <tr>
-                <th>이름</th>
-                <th>직급</th>
-                <th>이번 달 잔업</th>
+                <th scope="col">이름</th>
+                <th scope="col">직급</th>
+                <th scope="col">이번 달 잔업</th>
               </tr>
             </thead>
             <tbody>
@@ -690,11 +690,13 @@ export default function ManageTeamPage() {
         <table className="table cards-sm">
           <thead>
             <tr>
-              <th>팀 이름</th>
-              <th>팀장</th>
-              <th>부팀장</th>
-              <th>팀원</th>
-              <th className="col-action">작업</th>
+              <th scope="col">팀 이름</th>
+              <th scope="col">팀장</th>
+              <th scope="col">부팀장</th>
+              <th scope="col">팀원</th>
+              <th scope="col" className="col-action">
+                작업
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -745,6 +747,7 @@ export default function ManageTeamPage() {
           <div className="form-group">
             <label>팀 이름 *</label>
             <input
+              aria-label="팀 이름"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required

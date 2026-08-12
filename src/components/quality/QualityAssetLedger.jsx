@@ -160,13 +160,17 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
             </colgroup>
             <thead>
               <tr>
-                <th>관리번호</th>
+                <th scope="col">관리번호</th>
                 {cols.map((c) => (
-                  <th key={c.key}>{c.label}</th>
+                  <th scope="col" key={c.key}>
+                    {c.label}
+                  </th>
                 ))}
-                {hasCycle && <th>잔여</th>}
-                {hasCycle && <th>상태</th>}
-                <th className="col-action">작업</th>
+                {hasCycle && <th scope="col">잔여</th>}
+                {hasCycle && <th scope="col">상태</th>}
+                <th scope="col" className="col-action">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>

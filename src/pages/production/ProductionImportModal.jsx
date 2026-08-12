@@ -110,9 +110,11 @@ export default function ProductionImportModal({ company, onClose }) {
             <table className="board-table" style={{ minWidth: 760 }}>
               <thead>
                 <tr>
-                  <th style={{ width: 36 }}></th>
+                  <th scope="col" style={{ width: 36 }}></th>
                   {OCR_COLUMNS.map((c) => (
-                    <th key={c}>{c}</th>
+                    <th scope="col" key={c}>
+                      {c}
+                    </th>
                   ))}
                 </tr>
               </thead>

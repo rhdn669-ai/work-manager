@@ -896,7 +896,7 @@ export default function FileLibraryPage() {
                 <table className="table lib-detail-table">
                   <thead>
                     <tr>
-                      <th className="lib-col-check">
+                      <th scope="col" className="lib-col-check">
                         <input
                           type="checkbox"
                           checked={allSelected}
@@ -905,11 +905,21 @@ export default function FileLibraryPage() {
                           aria-label="전체 선택"
                         />
                       </th>
-                      <th className="lib-col-name">이름</th>
-                      <th className="lib-col-type">종류</th>
-                      <th className="lib-col-date">수정일</th>
-                      <th className="lib-col-size">크기</th>
-                      <th className="col-action">작업</th>
+                      <th scope="col" className="lib-col-name">
+                        이름
+                      </th>
+                      <th scope="col" className="lib-col-type">
+                        종류
+                      </th>
+                      <th scope="col" className="lib-col-date">
+                        수정일
+                      </th>
+                      <th scope="col" className="lib-col-size">
+                        크기
+                      </th>
+                      <th scope="col" className="col-action">
+                        작업
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1126,6 +1136,7 @@ export default function FileLibraryPage() {
         <div className="form-group">
           <label>폴더 이름</label>
           <input
+            aria-label="폴더 이름"
             type="text"
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
@@ -1154,6 +1165,7 @@ export default function FileLibraryPage() {
         <div className="form-group">
           <label>새 이름</label>
           <input
+            aria-label="새 이름"
             type="text"
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}

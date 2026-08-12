@@ -202,13 +202,19 @@ export default function QuotePage() {
           <table className="table cards-sm" style={{ '--row-min-h': '36px' }}>
             <thead>
               <tr style={{ height: 36 }}>
-                <th>제목</th>
-                <th>거래처</th>
-                <th>현장</th>
-                <th style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>공급가액</th>
-                <th style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>합계</th>
-                <th>작성일</th>
-                <th className="bom-project-action-col">작업</th>
+                <th scope="col">제목</th>
+                <th scope="col">거래처</th>
+                <th scope="col">현장</th>
+                <th scope="col" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  공급가액
+                </th>
+                <th scope="col" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  합계
+                </th>
+                <th scope="col">작성일</th>
+                <th scope="col" className="bom-project-action-col">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>

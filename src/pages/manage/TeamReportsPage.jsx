@@ -238,10 +238,10 @@ export default function TeamReportsPage() {
           <table className="table team-stats-table team-stats-4col cards-sm">
             <thead>
               <tr>
-                <th>이름</th>
-                <th>직급</th>
-                <th>잔업</th>
-                <th>연차</th>
+                <th scope="col">이름</th>
+                <th scope="col">직급</th>
+                <th scope="col">잔업</th>
+                <th scope="col">연차</th>
               </tr>
             </thead>
             <tbody>

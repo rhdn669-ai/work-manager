@@ -327,7 +327,9 @@ export default function QuoteFormPage() {
                 <table className="iopn-info-table">
                   <tbody>
                     <tr>
-                      <th className="lbl">수 신</th>
+                      <th scope="col" className="lbl">
+                        수 신
+                      </th>
                       <td className="val">
                         <Select
                           className="quote-inline-select"
@@ -350,11 +352,15 @@ export default function QuoteFormPage() {
                           />
                         )}
                       </td>
-                      <th className="lbl">사업자등록번호</th>
+                      <th scope="col" className="lbl">
+                        사업자등록번호
+                      </th>
                       <td className="val">{SELF_INFO.businessNumber}</td>
                     </tr>
                     <tr>
-                      <th className="lbl">프로젝트</th>
+                      <th scope="col" className="lbl">
+                        프로젝트
+                      </th>
                       <td className="val">
                         <input
                           type="text"
@@ -364,17 +370,25 @@ export default function QuoteFormPage() {
                           placeholder="예) SEMES 프로버설비"
                         />
                       </td>
-                      <th className="lbl">회사명/대표</th>
+                      <th scope="col" className="lbl">
+                        회사명/대표
+                      </th>
                       <td className="val">{SELF_INFO.companyAndCeo}</td>
                     </tr>
                     <tr>
-                      <th className="lbl">발행번호</th>
+                      <th scope="col" className="lbl">
+                        발행번호
+                      </th>
                       <td className="val">{previewQuoteNumber()}</td>
-                      <th className="lbl">주 소</th>
+                      <th scope="col" className="lbl">
+                        주 소
+                      </th>
                       <td className="val">{SELF_INFO.address}</td>
                     </tr>
                     <tr>
-                      <th className="lbl">유효기간</th>
+                      <th scope="col" className="lbl">
+                        유효기간
+                      </th>
                       <td className="val">
                         <input
                           type="text"
@@ -383,11 +397,15 @@ export default function QuoteFormPage() {
                           onChange={(e) => setForm({ ...form, validity: e.target.value })}
                         />
                       </td>
-                      <th className="lbl">TEL/FAX</th>
+                      <th scope="col" className="lbl">
+                        TEL/FAX
+                      </th>
                       <td className="val">{SELF_INFO.telFax}</td>
                     </tr>
                     <tr>
-                      <th className="lbl">납품기일</th>
+                      <th scope="col" className="lbl">
+                        납품기일
+                      </th>
                       <td className="val">
                         <input
                           type="text"
@@ -396,11 +414,15 @@ export default function QuoteFormPage() {
                           onChange={(e) => setForm({ ...form, delivery: e.target.value })}
                         />
                       </td>
-                      <th className="lbl">E-Mail</th>
+                      <th scope="col" className="lbl">
+                        E-Mail
+                      </th>
                       <td className="val">{SELF_INFO.email}</td>
                     </tr>
                     <tr>
-                      <th className="lbl">지불조건</th>
+                      <th scope="col" className="lbl">
+                        지불조건
+                      </th>
                       <td className="val">
                         <input
                           type="text"
@@ -409,7 +431,9 @@ export default function QuoteFormPage() {
                           onChange={(e) => setForm({ ...form, payment: e.target.value })}
                         />
                       </td>
-                      <th className="lbl">담당/연락처</th>
+                      <th scope="col" className="lbl">
+                        담당/연락처
+                      </th>
                       <td className="val">{SELF_INFO.contact}</td>
                     </tr>
                     <tr>
@@ -424,14 +448,30 @@ export default function QuoteFormPage() {
                   <table className="iopn-items-table quote-cols quote-edit-table">
                     <thead>
                       <tr>
-                        <th className="c-no">NO</th>
-                        <th className="c-name">품목명</th>
-                        <th className="c-spec">규격</th>
-                        <th className="c-unit">단위</th>
-                        <th className="c-qty">수량</th>
-                        <th className="c-price">단가</th>
-                        <th className="c-amount">금액</th>
-                        <th className="c-note">비고</th>
+                        <th scope="col" className="c-no">
+                          NO
+                        </th>
+                        <th scope="col" className="c-name">
+                          품목명
+                        </th>
+                        <th scope="col" className="c-spec">
+                          규격
+                        </th>
+                        <th scope="col" className="c-unit">
+                          단위
+                        </th>
+                        <th scope="col" className="c-qty">
+                          수량
+                        </th>
+                        <th scope="col" className="c-price">
+                          단가
+                        </th>
+                        <th scope="col" className="c-amount">
+                          금액
+                        </th>
+                        <th scope="col" className="c-note">
+                          비고
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -526,7 +566,9 @@ export default function QuoteFormPage() {
                 <table className="iopn-notes-table">
                   <tbody>
                     <tr>
-                      <th className="lbl">특이사항</th>
+                      <th scope="col" className="lbl">
+                        특이사항
+                      </th>
                       <td className="val">
                         <textarea
                           className="quote-inline-textarea"
@@ -542,13 +584,21 @@ export default function QuoteFormPage() {
                 <table className="iopn-total-table">
                   <tbody>
                     <tr>
-                      <th className="lbl">수 량</th>
+                      <th scope="col" className="lbl">
+                        수 량
+                      </th>
                       <td className="num">{totalQty.toLocaleString()}</td>
-                      <th className="lbl">공급가액</th>
+                      <th scope="col" className="lbl">
+                        공급가액
+                      </th>
                       <td className="num">{supplyAmount.toLocaleString()}</td>
-                      <th className="lbl">VAT</th>
+                      <th scope="col" className="lbl">
+                        VAT
+                      </th>
                       <td className="num">{vatAmount.toLocaleString()}</td>
-                      <th className="lbl">합 계</th>
+                      <th scope="col" className="lbl">
+                        합 계
+                      </th>
                       <td className="num grand">{grandTotal.toLocaleString()}</td>
                     </tr>
                   </tbody>

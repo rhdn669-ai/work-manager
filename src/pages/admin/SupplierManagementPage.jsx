@@ -262,23 +262,39 @@ export default function SupplierManagementPage() {
           <table className="table cards-sm supplier-table">
             <thead>
               <tr>
-                <th style={{ width: 172 }}>상호</th>
-                <th style={{ width: 76 }}>대표</th>
-                <th style={{ width: 130 }}>연락처</th>
-                <th style={{ width: 202 }}>이메일</th>
-                <th style={{ width: 122 }}>사업자번호</th>
-                <th style={{ width: 94 }}>은행</th>
-                <th style={{ width: 158 }}>계좌번호</th>
-                <th className="hide-mobile" style={{ width: 92 }}>
+                <th scope="col" style={{ width: 172 }}>
+                  상호
+                </th>
+                <th scope="col" style={{ width: 76 }}>
+                  대표
+                </th>
+                <th scope="col" style={{ width: 130 }}>
+                  연락처
+                </th>
+                <th scope="col" style={{ width: 202 }}>
+                  이메일
+                </th>
+                <th scope="col" style={{ width: 122 }}>
+                  사업자번호
+                </th>
+                <th scope="col" style={{ width: 94 }}>
+                  은행
+                </th>
+                <th scope="col" style={{ width: 158 }}>
+                  계좌번호
+                </th>
+                <th scope="col" className="hide-mobile" style={{ width: 92 }}>
                   결제 조건
                 </th>
-                <th className="hide-mobile" style={{ width: 144 }}>
+                <th scope="col" className="hide-mobile" style={{ width: 144 }}>
                   분류
                 </th>
-                <th className="hide-mobile" style={{ minWidth: 260 }}>
+                <th scope="col" className="hide-mobile" style={{ minWidth: 260 }}>
                   비고
                 </th>
-                <th className="bom-project-action-col">작업</th>
+                <th scope="col" className="bom-project-action-col">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -395,6 +411,7 @@ export default function SupplierManagementPage() {
           <div className="form-group">
             <label>상호 *</label>
             <input
+              aria-label="상호"
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -404,6 +421,7 @@ export default function SupplierManagementPage() {
           <div className="form-group">
             <label>대표자</label>
             <input
+              aria-label="대표자"
               type="text"
               value={form.representative}
               onChange={(e) => setForm({ ...form, representative: e.target.value })}
@@ -411,11 +429,17 @@ export default function SupplierManagementPage() {
           </div>
           <div className="form-group">
             <label>연락처</label>
-            <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+            <input
+              aria-label="연락처"
+              type="text"
+              value={form.contact}
+              onChange={(e) => setForm({ ...form, contact: e.target.value })}
+            />
           </div>
           <div className="form-group">
             <label>이메일</label>
             <input
+              aria-label="이메일"
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -425,6 +449,7 @@ export default function SupplierManagementPage() {
           <div className="form-group">
             <label>사업자번호</label>
             <input
+              aria-label="사업자번호"
               type="text"
               value={form.businessNumber}
               onChange={(e) => setForm({ ...form, businessNumber: e.target.value })}
@@ -433,6 +458,7 @@ export default function SupplierManagementPage() {
           <div className="form-group">
             <label>분류</label>
             <input
+              aria-label="분류"
               type="text"
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -441,11 +467,17 @@ export default function SupplierManagementPage() {
           </div>
           <div className="form-group">
             <label>은행</label>
-            <input type="text" value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} />
+            <input
+              aria-label="은행"
+              type="text"
+              value={form.bankName}
+              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+            />
           </div>
           <div className="form-group">
             <label>계좌번호</label>
             <input
+              aria-label="계좌번호"
               type="text"
               value={form.bankAccount}
               onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
@@ -492,7 +524,12 @@ export default function SupplierManagementPage() {
           </div>
           <div className="form-group">
             <label>메모</label>
-            <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} />
+            <textarea
+              aria-label="메모"
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+              rows={2}
+            />
           </div>
           <div className="modal-actions">
             <button

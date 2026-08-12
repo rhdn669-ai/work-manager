@@ -76,9 +76,11 @@ function OneDoc({ def, docNo, record }) {
         <table className="q-paper-table">
           <thead>
             <tr>
-              <th>번호</th>
+              <th scope="col">번호</th>
               {def.lines.columns.map((c) => (
-                <th key={c.key}>{c.label}</th>
+                <th scope="col" key={c.key}>
+                  {c.label}
+                </th>
               ))}
             </tr>
           </thead>
@@ -144,12 +146,14 @@ function LedgerDoc({ def, docNo, rows }) {
       <table className="q-paper-table q-ledger-print">
         <thead>
           <tr>
-            <th>번호</th>
-            <th>{def.asset ? '관리번호' : '문서번호'}</th>
+            <th scope="col">번호</th>
+            <th scope="col">{def.asset ? '관리번호' : '문서번호'}</th>
             {cols.map((c) => (
-              <th key={c.key}>{c.label}</th>
+              <th scope="col" key={c.key}>
+                {c.label}
+              </th>
             ))}
-            {verdict && <th>{verdict.label}</th>}
+            {verdict && <th scope="col">{verdict.label}</th>}
           </tr>
         </thead>
         <tbody>

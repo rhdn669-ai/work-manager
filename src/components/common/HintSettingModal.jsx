@@ -119,6 +119,7 @@ export default function HintSettingModal({ isOpen, onClose }) {
           <div className="form-group">
             <label>질문 직접 입력</label>
             <input
+              aria-label="질문 직접 입력"
               type="text"
               value={customQuestion}
               onChange={(e) => setCustomQuestion(e.target.value)}
@@ -132,6 +133,7 @@ export default function HintSettingModal({ isOpen, onClose }) {
         <div className="form-group">
           <label>힌트 답변</label>
           <input
+            aria-label="힌트 답변"
             type="text"
             value={hintAnswer}
             onChange={(e) => setHintAnswerVal(e.target.value)}

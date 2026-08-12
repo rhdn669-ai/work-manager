@@ -402,6 +402,7 @@ export default function EventManagementPage() {
           <div className="form-group">
             <label>제목</label>
             <input
+              aria-label="제목"
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -412,6 +413,7 @@ export default function EventManagementPage() {
             <div className="form-group" style={{ flex: 1 }}>
               <label>시작일</label>
               <input
+                aria-label="시작일"
                 type="date"
                 value={form.startDate}
                 onChange={(e) =>
@@ -427,6 +429,7 @@ export default function EventManagementPage() {
             <div className="form-group" style={{ flex: 1 }}>
               <label>종료일</label>
               <input
+                aria-label="종료일"
                 type="date"
                 value={form.endDate}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
@@ -437,6 +440,7 @@ export default function EventManagementPage() {
           <div className="form-group">
             <label>내용</label>
             <textarea
+              aria-label="내용"
               rows={4}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}

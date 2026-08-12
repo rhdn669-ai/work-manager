@@ -626,6 +626,7 @@ export default function HomeCalendar() {
           <div className="form-group">
             <label>제목 *</label>
             <input
+              aria-label="제목"
               value={personalForm.title}
               onChange={(e) => setPersonalForm({ ...personalForm, title: e.target.value })}
               placeholder="일정 제목"
@@ -636,6 +637,7 @@ export default function HomeCalendar() {
           <div className="form-group">
             <label>메모</label>
             <textarea
+              aria-label="메모"
               rows={2}
               value={personalForm.note}
               onChange={(e) => setPersonalForm({ ...personalForm, note: e.target.value })}

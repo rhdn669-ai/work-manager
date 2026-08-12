@@ -600,11 +600,13 @@ export default function OutsourceManagementPage() {
             <table className="table table-clickable cards-sm">
               <thead>
                 <tr>
-                  <th>이름</th>
-                  <th>{tab === 'daily' ? '시급' : '일당'}</th>
-                  <th>연락처</th>
-                  <th>비고</th>
-                  <th className="bom-project-action-col">작업</th>
+                  <th scope="col">이름</th>
+                  <th scope="col">{tab === 'daily' ? '시급' : '일당'}</th>
+                  <th scope="col">연락처</th>
+                  <th scope="col">비고</th>
+                  <th scope="col" className="bom-project-action-col">
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -667,18 +669,24 @@ export default function OutsourceManagementPage() {
           <table className="table cards-sm vendor-table">
             <thead>
               <tr>
-                <th>상호</th>
-                <th>대표</th>
-                <th>연락처</th>
-                <th>이메일</th>
-                <th>사업자번호</th>
-                <th>은행</th>
-                <th>계좌번호</th>
-                <th className="hide-mobile">분류</th>
-                <th>직원수</th>
-                <th>프로젝트수</th>
-                <th className="hide-mobile">비고</th>
-                <th className="bom-project-action-col">작업</th>
+                <th scope="col">상호</th>
+                <th scope="col">대표</th>
+                <th scope="col">연락처</th>
+                <th scope="col">이메일</th>
+                <th scope="col">사업자번호</th>
+                <th scope="col">은행</th>
+                <th scope="col">계좌번호</th>
+                <th scope="col" className="hide-mobile">
+                  분류
+                </th>
+                <th scope="col">직원수</th>
+                <th scope="col">프로젝트수</th>
+                <th scope="col" className="hide-mobile">
+                  비고
+                </th>
+                <th scope="col" className="bom-project-action-col">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -805,6 +813,7 @@ export default function OutsourceManagementPage() {
           <div className="form-group">
             <label>이름 *</label>
             <input
+              aria-label="이름"
               value={form.name || ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
@@ -829,6 +838,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>대표자</label>
                 <input
+                  aria-label="대표자"
                   value={form.representative || ''}
                   onChange={(e) => setForm({ ...form, representative: e.target.value })}
                   placeholder="대표자 성함"
@@ -840,6 +850,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>연락처</label>
                 <input
+                  aria-label="연락처"
                   value={form.contact || ''}
                   onChange={(e) => setForm({ ...form, contact: e.target.value })}
                   placeholder="010-0000-0000"
@@ -850,6 +861,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>이메일</label>
                 <input
+                  aria-label="이메일"
                   type="email"
                   value={form.email || ''}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -860,6 +872,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>사업자번호</label>
                 <input
+                  aria-label="사업자번호"
                   value={form.businessNumber || ''}
                   onChange={(e) => setForm({ ...form, businessNumber: e.target.value })}
                   placeholder="000-00-00000"
@@ -870,6 +883,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>분류</label>
                 <input
+                  aria-label="분류"
                   value={form.category || ''}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   placeholder="예: 자재, 공구, 소모품"
@@ -879,6 +893,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>은행</label>
                 <input
+                  aria-label="은행"
                   value={form.bankName || ''}
                   onChange={(e) => setForm({ ...form, bankName: e.target.value })}
                   placeholder="예: 국민은행"
@@ -890,6 +905,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>계좌번호</label>
                 <input
+                  aria-label="계좌번호"
                   value={form.bankAccount || ''}
                   onChange={(e) => setForm({ ...form, bankAccount: e.target.value })}
                   placeholder="계좌번호 · 예금주"
@@ -899,6 +915,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>메모</label>
                 <textarea
+                  aria-label="메모"
                   rows={2}
                   value={form.note || ''}
                   onChange={(e) => setForm({ ...form, note: e.target.value })}
@@ -911,6 +928,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>연락처</label>
                 <input
+                  aria-label="연락처"
                   value={form.contact || ''}
                   onChange={(e) => setForm({ ...form, contact: e.target.value })}
                   placeholder="010-0000-0000"
@@ -919,6 +937,7 @@ export default function OutsourceManagementPage() {
               <div className="form-group">
                 <label>비고</label>
                 <textarea
+                  aria-label="비고"
                   rows={2}
                   value={form.note || ''}
                   onChange={(e) => setForm({ ...form, note: e.target.value })}

@@ -86,6 +86,7 @@ export default function LoginPage() {
           <div className="login-field">
             <label>로그인 코드</label>
             <input
+              aria-label="로그인 코드"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -97,6 +98,7 @@ export default function LoginPage() {
           <div className="login-field">
             <label>비밀번호</label>
             <input
+              aria-label="비밀번호"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

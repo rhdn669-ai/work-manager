@@ -500,22 +500,52 @@ export default function PaymentPage() {
                       <table className="table cards-sm payment-detail-table">
                         <thead>
                           <tr>
-                            <th style={{ width: 84 }}>상태</th>
-                            <th style={{ width: 150 }}>상호</th>
-                            <th style={{ width: 80 }}>대표</th>
-                            <th style={{ width: 120 }}>연락처</th>
-                            <th style={{ width: 170 }}>이메일</th>
-                            <th style={{ width: 120 }}>사업자번호</th>
-                            <th style={{ width: 90 }}>은행</th>
-                            <th style={{ width: 140 }}>계좌번호</th>
-                            <th style={{ width: 110 }}>분류</th>
-                            <th style={{ width: 150 }}>비고</th>
-                            <th style={{ width: 120 }}>결제금액(VAT포함)</th>
-                            <th style={{ width: 120 }}>미입고</th>
-                            <th style={{ width: 96 }}>결제요청일</th>
-                            <th style={{ width: 104 }}>결제마감일</th>
-                            <th style={{ width: 150 }}>세금계산서</th>
-                            <th className="col-action" style={{ width: 280 }}>
+                            <th scope="col" style={{ width: 84 }}>
+                              상태
+                            </th>
+                            <th scope="col" style={{ width: 150 }}>
+                              상호
+                            </th>
+                            <th scope="col" style={{ width: 80 }}>
+                              대표
+                            </th>
+                            <th scope="col" style={{ width: 120 }}>
+                              연락처
+                            </th>
+                            <th scope="col" style={{ width: 170 }}>
+                              이메일
+                            </th>
+                            <th scope="col" style={{ width: 120 }}>
+                              사업자번호
+                            </th>
+                            <th scope="col" style={{ width: 90 }}>
+                              은행
+                            </th>
+                            <th scope="col" style={{ width: 140 }}>
+                              계좌번호
+                            </th>
+                            <th scope="col" style={{ width: 110 }}>
+                              분류
+                            </th>
+                            <th scope="col" style={{ width: 150 }}>
+                              비고
+                            </th>
+                            <th scope="col" style={{ width: 120 }}>
+                              결제금액(VAT포함)
+                            </th>
+                            <th scope="col" style={{ width: 120 }}>
+                              미입고
+                            </th>
+                            <th scope="col" style={{ width: 96 }}>
+                              결제요청일
+                            </th>
+                            <th scope="col" style={{ width: 104 }}>
+                              결제마감일
+                            </th>
+                            <th scope="col" style={{ width: 150 }}>
+                              세금계산서
+                            </th>
+                            <th scope="col" className="col-action" style={{ width: 280 }}>
                               작업
                             </th>
                           </tr>

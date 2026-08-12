@@ -197,20 +197,28 @@ function PriceHistoryView({ items, onDelete }) {
           <table className="table pc-history-table">
             <thead>
               <tr>
-                <th style={{ width: '12%' }}>날짜</th>
-                <th style={{ width: '16%' }}>품목</th>
-                <th style={{ width: '16%' }}>구매처</th>
-                <th className="num" style={{ width: '12%' }}>
+                <th scope="col" style={{ width: '12%' }}>
+                  날짜
+                </th>
+                <th scope="col" style={{ width: '16%' }}>
+                  품목
+                </th>
+                <th scope="col" style={{ width: '16%' }}>
+                  구매처
+                </th>
+                <th scope="col" className="num" style={{ width: '12%' }}>
                   이전가
                 </th>
-                <th className="num" style={{ width: '12%' }}>
+                <th scope="col" className="num" style={{ width: '12%' }}>
                   변경가
                 </th>
-                <th className="c" style={{ width: '12%' }}>
+                <th scope="col" className="c" style={{ width: '12%' }}>
                   변동률
                 </th>
-                <th style={{ width: '13%' }}>사유</th>
-                <th className="c" style={{ width: '7%' }}>
+                <th scope="col" style={{ width: '13%' }}>
+                  사유
+                </th>
+                <th scope="col" className="c" style={{ width: '7%' }}>
                   삭제
                 </th>
               </tr>
@@ -1081,19 +1089,41 @@ export default function PurchaseItemPage() {
                               <table className="table inline-edit-table cards-sm sortable-rows">
                                 <thead>
                                   <tr>
-                                    <th style={{ width: 32 }} aria-label="순서 변경"></th>
-                                    <th style={{ width: 110 }}>코드</th>
-                                    <th style={{ width: 150 }}>품명</th>
-                                    <th style={{ width: 110 }}>메이커</th>
-                                    <th style={{ width: 240 }}>규격</th>
-                                    <th style={{ width: 170 }}>분류</th>
-                                    <th style={{ width: 100 }}>수량/단위</th>
-                                    <th style={{ width: 70 }}>재고</th>
-                                    <th style={{ width: 100 }}>개별단가</th>
-                                    <th style={{ width: 100 }}>단가</th>
-                                    <th style={{ width: 150 }}>기본 구매처</th>
-                                    <th style={{ width: 110 }}>비고</th>
-                                    <th className="item-group-add-th">
+                                    <th scope="col" style={{ width: 32 }} aria-label="순서 변경"></th>
+                                    <th scope="col" style={{ width: 110 }}>
+                                      코드
+                                    </th>
+                                    <th scope="col" style={{ width: 150 }}>
+                                      품명
+                                    </th>
+                                    <th scope="col" style={{ width: 110 }}>
+                                      메이커
+                                    </th>
+                                    <th scope="col" style={{ width: 240 }}>
+                                      규격
+                                    </th>
+                                    <th scope="col" style={{ width: 170 }}>
+                                      분류
+                                    </th>
+                                    <th scope="col" style={{ width: 100 }}>
+                                      수량/단위
+                                    </th>
+                                    <th scope="col" style={{ width: 70 }}>
+                                      재고
+                                    </th>
+                                    <th scope="col" style={{ width: 100 }}>
+                                      개별단가
+                                    </th>
+                                    <th scope="col" style={{ width: 100 }}>
+                                      단가
+                                    </th>
+                                    <th scope="col" style={{ width: 150 }}>
+                                      기본 구매처
+                                    </th>
+                                    <th scope="col" style={{ width: 110 }}>
+                                      비고
+                                    </th>
+                                    <th scope="col" className="item-group-add-th">
                                       <button
                                         type="button"
                                         className="btn btn-sm btn-outline"
@@ -1597,6 +1627,7 @@ export default function PurchaseItemPage() {
                 <div className="form-group">
                   <label>새 개별단가</label>
                   <input
+                    aria-label="새 개별단가"
                     type="text"
                     inputMode="decimal"
                     value={fmtDec(pcNewValue)}
@@ -1619,6 +1650,7 @@ export default function PurchaseItemPage() {
                 <div className="form-group">
                   <label>변경 사유 (선택)</label>
                   <input
+                    aria-label="변경 사유 (선택)"
                     type="text"
                     value={pcReason}
                     onChange={(e) => setPcReason(e.target.value)}
@@ -1686,8 +1718,10 @@ export default function PurchaseItemPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>규격</th>
-                  <th style={{ textAlign: 'right' }}>개별단가</th>
+                  <th scope="col">규격</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>
+                    개별단가
+                  </th>
                 </tr>
               </thead>
               <tbody>

@@ -246,20 +246,22 @@ export default function TotalClosingPage() {
                 <table className="table cards-sm">
                   <thead>
                     <tr>
-                      <th style={{ minWidth: 80 }}>프로젝트</th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="매출">
+                      <th scope="col" style={{ minWidth: 80 }}>
+                        프로젝트
+                      </th>
+                      <th scope="col" style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="매출">
                         매출
                       </th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="지출">
+                      <th scope="col" style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="지출">
                         지출
                       </th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="인건비">
+                      <th scope="col" style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="인건비">
                         인건비
                       </th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="잔업">
+                      <th scope="col" style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="잔업">
                         잔업
                       </th>
-                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="합계">
+                      <th scope="col" style={{ textAlign: 'right', whiteSpace: 'nowrap' }} title="합계">
                         합계
                       </th>
                     </tr>

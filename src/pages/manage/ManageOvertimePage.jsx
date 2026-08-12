@@ -89,11 +89,17 @@ export default function ManageOvertimePage() {
               <table className="table cards-sm">
                 <thead>
                   <tr>
-                    <th>이름</th>
-                    <th>날짜</th>
-                    <th className="num-col">잔업 시간</th>
-                    <th className="hide-mobile">사유</th>
-                    <th className="col-action">작업</th>
+                    <th scope="col">이름</th>
+                    <th scope="col">날짜</th>
+                    <th scope="col" className="num-col">
+                      잔업 시간
+                    </th>
+                    <th scope="col" className="hide-mobile">
+                      사유
+                    </th>
+                    <th scope="col" className="col-action">
+                      작업
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,9 +172,13 @@ export default function ManageOvertimePage() {
               <table className="table cards-sm">
                 <thead>
                   <tr>
-                    <th>이름</th>
-                    <th className="num-col">총 잔업</th>
-                    <th className="num-col">등록 건수</th>
+                    <th scope="col">이름</th>
+                    <th scope="col" className="num-col">
+                      총 잔업
+                    </th>
+                    <th scope="col" className="num-col">
+                      등록 건수
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -214,12 +224,16 @@ export default function ManageOvertimePage() {
               <table className="table cards-sm">
                 <thead>
                   <tr>
-                    <th>이름</th>
-                    <th>날짜</th>
-                    <th className="hide-mobile">요일</th>
-                    <th>잔업 시간</th>
-                    <th className="hide-mobile">사유</th>
-                    <th>상태</th>
+                    <th scope="col">이름</th>
+                    <th scope="col">날짜</th>
+                    <th scope="col" className="hide-mobile">
+                      요일
+                    </th>
+                    <th scope="col">잔업 시간</th>
+                    <th scope="col" className="hide-mobile">
+                      사유
+                    </th>
+                    <th scope="col">상태</th>
                   </tr>
                 </thead>
                 <tbody>

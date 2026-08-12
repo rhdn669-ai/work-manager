@@ -124,6 +124,7 @@ export default function LeaveRequestPage() {
             >
               <label>시작일</label>
               <input
+                aria-label="시작일"
                 ref={startInputRef}
                 type="date"
                 value={startDate}
@@ -149,6 +150,7 @@ export default function LeaveRequestPage() {
               >
                 <label>종료일</label>
                 <input
+                  aria-label="종료일"
                   ref={endInputRef}
                   type="date"
                   value={endDate}
@@ -174,6 +176,7 @@ export default function LeaveRequestPage() {
           <div className="form-group">
             <label>사유</label>
             <textarea
+              aria-label="사유"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="사유를 입력해주세요 (선택)"

@@ -440,7 +440,9 @@ export default function UnassignedReportPage() {
           <table className="unassigned-table">
             <thead>
               <tr>
-                <th className="sticky-col">직원</th>
+                <th scope="col" className="sticky-col">
+                  직원
+                </th>
                 {dayHeaders.map((d) => {
                   const dow = new Date(year, month - 1, d).getDay();
                   const isHoliday = holidaySet.has(
@@ -449,6 +451,7 @@ export default function UnassignedReportPage() {
                   const dowCls = dow === 0 || isHoliday ? 'sun' : dow === 6 ? 'sat' : '';
                   return (
                     <th
+                      scope="col"
                       key={d}
                       className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`}
                       style={{ minWidth: 18, maxWidth: 24, fontSize: 10, width: 22 }}
@@ -457,9 +460,15 @@ export default function UnassignedReportPage() {
                     </th>
                   );
                 })}
-                <th className="sticky-col-right">연차</th>
-                <th className="sticky-col-right">미배정</th>
-                <th className="sticky-col-right">중복</th>
+                <th scope="col" className="sticky-col-right">
+                  연차
+                </th>
+                <th scope="col" className="sticky-col-right">
+                  미배정
+                </th>
+                <th scope="col" className="sticky-col-right">
+                  중복
+                </th>
               </tr>
             </thead>
             <tbody>

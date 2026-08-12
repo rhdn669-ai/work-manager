@@ -140,9 +140,11 @@ export default function DepartmentManagementPage() {
         <table className="table cards-sm">
           <thead>
             <tr>
-              <th>부서명</th>
-              <th>부서장</th>
-              <th className="col-action">작업</th>
+              <th scope="col">부서명</th>
+              <th scope="col">부서장</th>
+              <th scope="col" className="col-action">
+                작업
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -184,6 +186,7 @@ export default function DepartmentManagementPage() {
           <div className="form-group">
             <label>부서명</label>
             <input
+              aria-label="부서명"
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}

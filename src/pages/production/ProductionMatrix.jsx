@@ -177,37 +177,47 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
         <thead>
           {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
           <tr className="mx-group-row">
-            <th className="mx-sticky" colSpan={5}>
+            <th scope="col" className="mx-sticky" colSpan={5}>
               기본
             </th>
             {BUPMOK.map((b) => (
-              <th key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 2}>
+              <th scope="col" key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 2}>
                 {b}
               </th>
             ))}
-            <th colSpan={IPGO_ITEMS.length + 2}>일정</th>
-            <th colSpan={canEdit ? 3 : 2}>판정</th>
+            <th scope="col" colSpan={IPGO_ITEMS.length + 2}>
+              일정
+            </th>
+            <th scope="col" colSpan={canEdit ? 3 : 2}>
+              판정
+            </th>
           </tr>
           {/* 2행: 자재 그룹(판금·하네스·자재) + 불량·상태 — 하위 없는 칸은 rowSpan 2 */}
           <tr className="mx-sub-row">
-            <th className="mx-sticky mx-c0" rowSpan={2}>
+            <th scope="col" className="mx-sticky mx-c0" rowSpan={2}>
               #
             </th>
-            <th className="mx-sticky mx-c1" rowSpan={2}>
+            <th scope="col" className="mx-sticky mx-c1" rowSpan={2}>
               프로젝트 호기
             </th>
-            <th rowSpan={2}>정역</th>
-            <th rowSpan={2}>자재</th>
-            <th rowSpan={2}>기구</th>
+            <th scope="col" rowSpan={2}>
+              정역
+            </th>
+            <th scope="col" rowSpan={2}>
+              자재
+            </th>
+            <th scope="col" rowSpan={2}>
+              기구
+            </th>
             {BUPMOK.map((b) =>
               b === 'MP' ? (
                 <Fragment key={b}>
                   {MP_SUBS.map((s, si) => (
-                    <th key={s} className={`mx-sub-th${si === 0 ? ' mx-box-start' : ''}`} rowSpan={2}>
+                    <th scope="col" key={s} className={`mx-sub-th${si === 0 ? ' mx-box-start' : ''}`} rowSpan={2}>
                       {s}
                     </th>
                   ))}
-                  <th className="mx-sub-th" rowSpan={2}>
+                  <th scope="col" className="mx-sub-th" rowSpan={2}>
                     상태
                   </th>
                 </Fragment>
@@ -215,11 +225,17 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 <Fragment key={b}>
                   {JAIP_GROUPS.map((g, gi) =>
                     g.leaves.length === 1 ? (
-                      <th key={g.key} className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`} rowSpan={2}>
+                      <th
+                        scope="col"
+                        key={g.key}
+                        className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
+                        rowSpan={2}
+                      >
                         {g.label}
                       </th>
                     ) : (
                       <th
+                        scope="col"
                         key={g.key}
                         className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
                         colSpan={g.leaves.length}
@@ -228,10 +244,10 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                       </th>
                     ),
                   )}
-                  <th className="mx-sub-th mx-grp-start" rowSpan={2}>
+                  <th scope="col" className="mx-sub-th mx-grp-start" rowSpan={2}>
                     불량
                   </th>
-                  <th className="mx-sub-th" rowSpan={2}>
+                  <th scope="col" className="mx-sub-th" rowSpan={2}>
                     상태
                   </th>
                 </Fragment>
@@ -239,20 +255,32 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
             )}
             {IPGO_GROUPS.map((g) =>
               g.leaves.length === 1 ? (
-                <th key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
+                <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
                   {g.label}
                 </th>
               ) : (
-                <th key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
+                <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
                   {g.label}
                 </th>
               ),
             )}
-            <th rowSpan={2}>납기</th>
-            <th rowSpan={2}>턴온</th>
-            <th rowSpan={2}>진행</th>
-            <th rowSpan={2}>상태</th>
-            {canEdit && <th rowSpan={2}>작업</th>}
+            <th scope="col" rowSpan={2}>
+              납기
+            </th>
+            <th scope="col" rowSpan={2}>
+              턴온
+            </th>
+            <th scope="col" rowSpan={2}>
+              진행
+            </th>
+            <th scope="col" rowSpan={2}>
+              상태
+            </th>
+            {canEdit && (
+              <th scope="col" rowSpan={2}>
+                작업
+              </th>
+            )}
           </tr>
           {/* 3행: 하네스·자재 하위 leaf (non-MP만) */}
           <tr className="mx-sub-row mx-leaf-row">
@@ -262,7 +290,11 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                   ? null
                   : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g, gi) =>
                       g.leaves.map((l, li) => (
-                        <th key={`${b}-${l.key}`} className={`mx-sub-th${gi === 0 && li === 0 ? ' mx-grp-start' : ''}`}>
+                        <th
+                          scope="col"
+                          key={`${b}-${l.key}`}
+                          className={`mx-sub-th${gi === 0 && li === 0 ? ' mx-grp-start' : ''}`}
+                        >
                           {l.label}
                         </th>
                       )),
@@ -272,7 +304,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
             {/* 일정 입고일 — 하네스·자재 묶음 하위(사급·도급·제작 / 사급·도급) */}
             {IPGO_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
               g.leaves.map((l) => (
-                <th key={`ipgo-${l.key}`} className="mx-sub-th">
+                <th scope="col" key={`ipgo-${l.key}`} className="mx-sub-th">
                   {l.label}
                 </th>
               )),

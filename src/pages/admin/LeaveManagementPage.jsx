@@ -670,6 +670,7 @@ function LeaveTab({
                         <div className="form-group" style={{ marginBottom: 0, flex: '1 1 100px' }}>
                           <label style={{ fontSize: 12 }}>시작일</label>
                           <input
+                            aria-label="시작일"
                             type="date"
                             value={editForm.startDate}
                             onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
@@ -679,6 +680,7 @@ function LeaveTab({
                           <div className="form-group" style={{ marginBottom: 0, flex: '1 1 100px' }}>
                             <label style={{ fontSize: 12 }}>종료일</label>
                             <input
+                              aria-label="종료일"
                               type="date"
                               value={editForm.endDate}
                               min={editForm.startDate}
@@ -701,6 +703,7 @@ function LeaveTab({
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label style={{ fontSize: 12 }}>사유</label>
                         <input
+                          aria-label="사유"
                           type="text"
                           value={editForm.reason}
                           onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
@@ -941,6 +944,7 @@ function OvertimeTab({
                         <div className="form-group" style={{ marginBottom: 0, flex: '1 1 100px' }}>
                           <label style={{ fontSize: 12 }}>날짜</label>
                           <input
+                            aria-label="날짜"
                             type="date"
                             value={editForm.date}
                             onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
@@ -949,6 +953,7 @@ function OvertimeTab({
                         <div className="form-group" style={{ marginBottom: 0, flex: '0 0 60px' }}>
                           <label style={{ fontSize: 12 }}>시간</label>
                           <input
+                            aria-label="시간"
                             type="number"
                             min={0}
                             max={12}
@@ -960,6 +965,7 @@ function OvertimeTab({
                         <div className="form-group" style={{ marginBottom: 0, flex: '0 0 60px' }}>
                           <label style={{ fontSize: 12 }}>분</label>
                           <input
+                            aria-label="분"
                             type="number"
                             min={0}
                             max={59}
@@ -985,6 +991,7 @@ function OvertimeTab({
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label style={{ fontSize: 12 }}>사유</label>
                         <input
+                          aria-label="사유"
                           type="text"
                           value={editForm.reason}
                           onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}

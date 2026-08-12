@@ -258,18 +258,20 @@ export default function BomPage() {
             <table className="table cards-sm sortable-rows">
               <thead>
                 <tr>
-                  <th style={{ width: 36 }} aria-label="순서 변경"></th>
-                  <th>프로젝트명</th>
-                  <th style={{ width: 90 }} className="u-num">
+                  <th scope="col" style={{ width: 36 }} aria-label="순서 변경"></th>
+                  <th scope="col">프로젝트명</th>
+                  <th scope="col" style={{ width: 90 }} className="u-num">
                     품목 수
                   </th>
-                  <th style={{ width: 110 }} className="u-num">
+                  <th scope="col" style={{ width: 110 }} className="u-num">
                     개별수량 합
                   </th>
-                  <th style={{ width: 160 }} className="u-num">
+                  <th scope="col" style={{ width: 160 }} className="u-num">
                     예상 총액
                   </th>
-                  <th className="bom-project-action-col">작업</th>
+                  <th scope="col" className="bom-project-action-col">
+                    작업
+                  </th>
                 </tr>
               </thead>
               <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
@@ -295,6 +297,7 @@ export default function BomPage() {
         <div className="form-group">
           <label>프로젝트 이름</label>
           <input
+            aria-label="프로젝트 이름"
             type="text"
             value={newProjectName}
             placeholder="예: 2026 공장동 신축"
@@ -330,6 +333,7 @@ export default function BomPage() {
             <div className="form-group">
               <label>새 프로젝트 이름</label>
               <input
+                aria-label="새 프로젝트 이름"
                 type="text"
                 value={copyTarget.name}
                 onChange={(e) => setCopyTarget((t) => ({ ...t, name: e.target.value }))}

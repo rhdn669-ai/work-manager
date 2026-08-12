@@ -186,6 +186,7 @@ export default function LeaveHistoryPage() {
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label style={{ fontSize: 12 }}>시작일</label>
                           <input
+                            aria-label="시작일"
                             type="date"
                             value={editForm.startDate}
                             onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
@@ -195,6 +196,7 @@ export default function LeaveHistoryPage() {
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label style={{ fontSize: 12 }}>종료일</label>
                             <input
+                              aria-label="종료일"
                               type="date"
                               value={editForm.endDate}
                               min={editForm.startDate}
@@ -217,6 +219,7 @@ export default function LeaveHistoryPage() {
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label style={{ fontSize: 12 }}>사유</label>
                         <input
+                          aria-label="사유"
                           type="text"
                           value={editForm.reason}
                           onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}

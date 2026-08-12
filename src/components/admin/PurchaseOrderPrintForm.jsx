@@ -147,41 +147,65 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
             <table className="iopn-info-table">
               <tbody>
                 <tr>
-                  <th className="lbl">수 신</th>
+                  <th scope="col" className="lbl">
+                    수 신
+                  </th>
                   <td className="val">{recvTitle}</td>
-                  <th className="lbl">사업자등록번호</th>
+                  <th scope="col" className="lbl">
+                    사업자등록번호
+                  </th>
                   <td className="val">{SELF_INFO.businessNumber}</td>
                 </tr>
                 <tr>
-                  <th className="lbl">프로젝트</th>
+                  <th scope="col" className="lbl">
+                    프로젝트
+                  </th>
                   <td className="val">
                     {printSiteNameMode ? (printSiteNameMode === 'blank' ? ' ' : '미공개') : src.siteName}
                   </td>
-                  <th className="lbl">회사명/대표</th>
+                  <th scope="col" className="lbl">
+                    회사명/대표
+                  </th>
                   <td className="val">{SELF_INFO.companyAndCeo}</td>
                 </tr>
                 <tr>
-                  <th className="lbl">납품장소</th>
+                  <th scope="col" className="lbl">
+                    납품장소
+                  </th>
                   <td className="val">{src.deliveryPlace}</td>
-                  <th className="lbl">주 소</th>
+                  <th scope="col" className="lbl">
+                    주 소
+                  </th>
                   <td className="val">{SELF_INFO.address}</td>
                 </tr>
                 <tr>
-                  <th className="lbl">발행번호</th>
+                  <th scope="col" className="lbl">
+                    발행번호
+                  </th>
                   <td className="val">{src.poNum}</td>
-                  <th className="lbl">TEL/FAX</th>
+                  <th scope="col" className="lbl">
+                    TEL/FAX
+                  </th>
                   <td className="val">{SELF_INFO.telFax}</td>
                 </tr>
                 <tr>
-                  <th className="lbl">발 주 일</th>
+                  <th scope="col" className="lbl">
+                    발 주 일
+                  </th>
                   <td className="val">{src.orderDateKo}</td>
-                  <th className="lbl">납품기일</th>
+                  <th scope="col" className="lbl">
+                    납품기일
+                  </th>
                   <td className="val">{src.deliveryDue}</td>
                 </tr>
                 <tr>
-                  <th className="lbl">지불조건</th>
+                  <th scope="col" className="lbl">
+                    지불조건
+                  </th>
                   <td className="val">{src.payment}</td>
-                  <th className="lbl">담당/연락처</th>
+                  <th scope="col" className="lbl">
+                    담당/연락처
+                  </th>
                   <td className="val">{src.contactLine}</td>
                 </tr>
                 {!hideAmount && (
@@ -202,16 +226,40 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
           <table className={`iopn-items-table po-cols${showBox ? ' has-box' : ''}${showItemNo ? '' : ' no-itemno'}`}>
             <thead>
               <tr>
-                <th className="c-no">NO</th>
-                {showItemNo && <th className="c-itemno">품번</th>}
-                {showBox && <th className="c-box">BOX</th>}
-                <th className="c-name">품목명</th>
-                <th className="c-spec">규격</th>
-                <th className="c-qty">수량</th>
-                <th className="c-price">단가</th>
-                <th className="c-amount">금액</th>
-                <th className="c-recv">입고</th>
-                <th className="c-note">비고</th>
+                <th scope="col" className="c-no">
+                  NO
+                </th>
+                {showItemNo && (
+                  <th scope="col" className="c-itemno">
+                    품번
+                  </th>
+                )}
+                {showBox && (
+                  <th scope="col" className="c-box">
+                    BOX
+                  </th>
+                )}
+                <th scope="col" className="c-name">
+                  품목명
+                </th>
+                <th scope="col" className="c-spec">
+                  규격
+                </th>
+                <th scope="col" className="c-qty">
+                  수량
+                </th>
+                <th scope="col" className="c-price">
+                  단가
+                </th>
+                <th scope="col" className="c-amount">
+                  금액
+                </th>
+                <th scope="col" className="c-recv">
+                  입고
+                </th>
+                <th scope="col" className="c-note">
+                  비고
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -270,12 +318,16 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
               <table className="iopn-notes-table">
                 <tbody>
                   <tr>
-                    <th className="lbl">특이사항</th>
+                    <th scope="col" className="lbl">
+                      특이사항
+                    </th>
                     <td className="val">{src.note || ''}</td>
                   </tr>
                   {src.account !== null && (
                     <tr>
-                      <th className="lbl">입금계좌</th>
+                      <th scope="col" className="lbl">
+                        입금계좌
+                      </th>
                       <td className="val">{src.account || ''}</td>
                     </tr>
                   )}
@@ -285,15 +337,23 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
               <table className="iopn-total-table">
                 <tbody>
                   <tr>
-                    <th className="lbl">수량</th>
+                    <th scope="col" className="lbl">
+                      수량
+                    </th>
                     <td className="num">{totalQty.toLocaleString()}</td>
                     {!hideAmount && (
                       <>
-                        <th className="lbl">공급가액</th>
+                        <th scope="col" className="lbl">
+                          공급가액
+                        </th>
                         <td className="num">{supplyAmount.toLocaleString()}</td>
-                        <th className="lbl">VAT</th>
+                        <th scope="col" className="lbl">
+                          VAT
+                        </th>
                         <td className="num">{vat.toLocaleString()}</td>
-                        <th className="lbl">합계</th>
+                        <th scope="col" className="lbl">
+                          합계
+                        </th>
                         <td className="num grand">{grandTotal.toLocaleString()}</td>
                       </>
                     )}

@@ -92,6 +92,7 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         <div className="form-row">
           <label>항목명</label>
           <input
+            aria-label="항목명"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -110,7 +111,7 @@ export default function FixedExpenseModal({ isOpen, onClose, onSave, initial }) 
         <div className="form-row form-row-double">
           <div>
             <label>시작일</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <input aria-label="시작일" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div>
             <label>

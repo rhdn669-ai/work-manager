@@ -2428,16 +2428,29 @@ export default function SiteClosingPage() {
                 <table className="closing-matrix">
                   <thead>
                     <tr>
-                      <th className="mx-name">이름</th>
-                      <th className="mx-qty">공수</th>
-                      {canViewSalary && <th className="mx-price">단가</th>}
-                      {canViewSalary && <th className="mx-amt">금액</th>}
+                      <th scope="col" className="mx-name">
+                        이름
+                      </th>
+                      <th scope="col" className="mx-qty">
+                        공수
+                      </th>
+                      {canViewSalary && (
+                        <th scope="col" className="mx-price">
+                          단가
+                        </th>
+                      )}
+                      {canViewSalary && (
+                        <th scope="col" className="mx-amt">
+                          금액
+                        </th>
+                      )}
                       {mxDays.map((d) => {
                         const dow = new Date(y, m - 1, d).getDay();
                         const dayIso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         const isToday = mxThisMonth && d === mxToday;
                         return (
                           <th
+                            scope="col"
                             key={d}
                             className={`mx-dh ${dow === 6 ? 'sat' : ''} ${dow === 0 ? 'sun' : ''} ${holidaySet.has(dayIso) ? 'hol' : ''} ${isToday ? 'today' : ''}`}
                             title={holidayNameMap[dayIso] || undefined}
@@ -2919,6 +2932,7 @@ export default function SiteClosingPage() {
                 <div className="form-group" style={{ maxWidth: '100%' }}>
                   <label>현장명</label>
                   <input
+                    aria-label="현장명"
                     type="text"
                     value={csCellModal.siteName}
                     onChange={(e) => setCsCellModal({ ...csCellModal, siteName: e.target.value })}

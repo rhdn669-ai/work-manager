@@ -797,39 +797,63 @@ export default function BomDetailPage() {
                       <table className="iopn-info-table">
                         <tbody>
                           <tr>
-                            <th className="lbl">프로젝트명</th>
+                            <th scope="col" className="lbl">
+                              프로젝트명
+                            </th>
                             <td className="val">{project.name || ''}</td>
-                            <th className="lbl">사업자등록번호</th>
+                            <th scope="col" className="lbl">
+                              사업자등록번호
+                            </th>
                             <td className="val">{SELF_INFO.businessNumber}</td>
                           </tr>
                           <tr>
-                            <th className="lbl">문서번호</th>
+                            <th scope="col" className="lbl">
+                              문서번호
+                            </th>
                             <td className="val">{docNo}</td>
-                            <th className="lbl">회사명/대표</th>
+                            <th scope="col" className="lbl">
+                              회사명/대표
+                            </th>
                             <td className="val">{SELF_INFO.companyAndCeo}</td>
                           </tr>
                           <tr>
-                            <th className="lbl">작 성 일</th>
+                            <th scope="col" className="lbl">
+                              작 성 일
+                            </th>
                             <td className="val">{todayKo}</td>
-                            <th className="lbl">주 소</th>
+                            <th scope="col" className="lbl">
+                              주 소
+                            </th>
                             <td className="val">{SELF_INFO.address}</td>
                           </tr>
                           <tr>
-                            <th className="lbl">항목 수</th>
+                            <th scope="col" className="lbl">
+                              항목 수
+                            </th>
                             <td className="val">{bomItems.length}건</td>
-                            <th className="lbl">TEL/FAX</th>
+                            <th scope="col" className="lbl">
+                              TEL/FAX
+                            </th>
                             <td className="val">{SELF_INFO.telFax}</td>
                           </tr>
                           <tr>
-                            <th className="lbl">문서 종류</th>
+                            <th scope="col" className="lbl">
+                              문서 종류
+                            </th>
                             <td className="val">BOM 리스트</td>
-                            <th className="lbl">E-Mail</th>
+                            <th scope="col" className="lbl">
+                              E-Mail
+                            </th>
                             <td className="val">{SELF_INFO.email}</td>
                           </tr>
                           <tr>
-                            <th className="lbl">용 도</th>
+                            <th scope="col" className="lbl">
+                              용 도
+                            </th>
                             <td className="val">자재 산출 / 견적</td>
-                            <th className="lbl">담당/연락처</th>
+                            <th scope="col" className="lbl">
+                              담당/연락처
+                            </th>
                             <td className="val">{SELF_INFO.contact}</td>
                           </tr>
                         </tbody>
@@ -842,13 +866,27 @@ export default function BomDetailPage() {
                   <table className="iopn-items-table bom-no-price">
                     <thead>
                       <tr>
-                        <th className="c-no">NO</th>
-                        <th className="c-name">품목명</th>
-                        <th className="c-maker">메이커</th>
-                        <th className="c-spec">규격</th>
-                        <th className="c-qty">수량</th>
-                        <th className="c-supplier">구매처</th>
-                        <th className="c-note">비고</th>
+                        <th scope="col" className="c-no">
+                          NO
+                        </th>
+                        <th scope="col" className="c-name">
+                          품목명
+                        </th>
+                        <th scope="col" className="c-maker">
+                          메이커
+                        </th>
+                        <th scope="col" className="c-spec">
+                          규격
+                        </th>
+                        <th scope="col" className="c-qty">
+                          수량
+                        </th>
+                        <th scope="col" className="c-supplier">
+                          구매처
+                        </th>
+                        <th scope="col" className="c-note">
+                          비고
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -884,7 +922,9 @@ export default function BomDetailPage() {
                     <table className="iopn-notes-table">
                       <tbody>
                         <tr>
-                          <th className="lbl">특이사항</th>
+                          <th scope="col" className="lbl">
+                            특이사항
+                          </th>
                           <td className="val"></td>
                         </tr>
                       </tbody>
@@ -970,21 +1010,35 @@ export default function BomDetailPage() {
                   <table className="table inline-edit-table cards-sm bom-flat-table">
                     <thead>
                       <tr>
-                        <th className="bom-spacer-col" aria-hidden="true"></th>
-                        <th className="bom-no-col">No</th>
-                        <th style={{ minWidth: 90 }}>코드</th>
-                        <th style={{ minWidth: 90 }}>BOX</th>
-                        {variants.length > 0 && <th style={{ minWidth: 96 }}>타입</th>}
-                        <th style={{ minWidth: 120 }}>품명</th>
-                        <th>메이커</th>
-                        <th>규격</th>
-                        <th>분류</th>
-                        <th>수량</th>
-                        <th>단가</th>
-                        <th>합계</th>
-                        <th>구매처</th>
-                        <th style={{ minWidth: 120 }}>비고</th>
-                        <th className="bom-action-col no-print" aria-hidden="true"></th>
+                        <th scope="col" className="bom-spacer-col" aria-hidden="true"></th>
+                        <th scope="col" className="bom-no-col">
+                          No
+                        </th>
+                        <th scope="col" style={{ minWidth: 90 }}>
+                          코드
+                        </th>
+                        <th scope="col" style={{ minWidth: 90 }}>
+                          BOX
+                        </th>
+                        {variants.length > 0 && (
+                          <th scope="col" style={{ minWidth: 96 }}>
+                            타입
+                          </th>
+                        )}
+                        <th scope="col" style={{ minWidth: 120 }}>
+                          품명
+                        </th>
+                        <th scope="col">메이커</th>
+                        <th scope="col">규격</th>
+                        <th scope="col">분류</th>
+                        <th scope="col">수량</th>
+                        <th scope="col">단가</th>
+                        <th scope="col">합계</th>
+                        <th scope="col">구매처</th>
+                        <th scope="col" style={{ minWidth: 120 }}>
+                          비고
+                        </th>
+                        <th scope="col" className="bom-action-col no-print" aria-hidden="true"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1376,6 +1430,7 @@ export default function BomDetailPage() {
         <div className="form-group">
           <label>프로젝트명</label>
           <input
+            aria-label="프로젝트명"
             type="text"
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
@@ -1413,9 +1468,11 @@ export default function BomDetailPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>타입 이름</th>
-                <th>품목 수</th>
-                <th className="col-action">작업</th>
+                <th scope="col">타입 이름</th>
+                <th scope="col">품목 수</th>
+                <th scope="col" className="col-action">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>

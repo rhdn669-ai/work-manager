@@ -100,10 +100,10 @@ export default function OvertimePage() {
               <table className="table cards-sm">
                 <thead>
                   <tr>
-                    <th>주 시작일</th>
-                    <th>초과근무</th>
-                    <th>한도 대비</th>
-                    <th>상태</th>
+                    <th scope="col">주 시작일</th>
+                    <th scope="col">초과근무</th>
+                    <th scope="col">한도 대비</th>
+                    <th scope="col">상태</th>
                   </tr>
                 </thead>
                 <tbody>

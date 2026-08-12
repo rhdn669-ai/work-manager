@@ -341,6 +341,7 @@ export default function ProductionPanelModal({
               <div className="pm-field" key="프로젝트호기">
                 <label>프로젝트 호기</label>
                 <input
+                  aria-label="프로젝트 호기"
                   type="text"
                   defaultValue={`${p.프로젝트 || ''}${p.호기 ? ' ' + p.호기 : ''}`.trim()}
                   disabled={!canEdit}

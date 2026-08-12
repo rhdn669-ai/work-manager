@@ -330,35 +330,41 @@ export default function VehicleLogPage() {
             <table className="table vehicle-log-table">
               <thead>
                 <tr>
-                  <th style={{ padding: '7px 6px', height: 36 }}>운행자</th>
-                  <th style={{ padding: '7px 6px', height: 36 }}>차량번호</th>
-                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                  <th scope="col" style={{ padding: '7px 6px', height: 36 }}>
+                    운행자
+                  </th>
+                  <th scope="col" style={{ padding: '7px 6px', height: 36 }}>
+                    차량번호
+                  </th>
+                  <th scope="col" className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
                     월 금액
                   </th>
                   <th
+                    scope="col"
                     className="num-col"
                     title="이전월 누적"
                     style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}
                   >
                     이전월 누적
                   </th>
-                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                  <th scope="col" className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
                     이번월 누적
                   </th>
-                  <th className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                  <th scope="col" className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
                     운행 km
                   </th>
                   <th
+                    scope="col"
                     className="num-col"
                     title="전월 대비"
                     style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}
                   >
                     전월 대비
                   </th>
-                  <th title="입력일" style={{ padding: '7px 6px', height: 36 }}>
+                  <th scope="col" title="입력일" style={{ padding: '7px 6px', height: 36 }}>
                     입력일
                   </th>
-                  <th className="col-action" style={{ width: 160, padding: '7px 6px', height: 36 }}>
+                  <th scope="col" className="col-action" style={{ width: 160, padding: '7px 6px', height: 36 }}>
                     작업
                   </th>
                 </tr>
@@ -585,6 +591,7 @@ export default function VehicleLogPage() {
                 <div className="form-group">
                   <label>이전월 누적 (km)</label>
                   <input
+                    aria-label="이전월 누적 (km)"
                     type="text"
                     inputMode="numeric"
                     value={editForm.prevOdometer}
@@ -600,6 +607,7 @@ export default function VehicleLogPage() {
                 <div className="form-group">
                   <label>이번월 누적 (km)</label>
                   <input
+                    aria-label="이번월 누적 (km)"
                     type="text"
                     inputMode="numeric"
                     value={editForm.odometer}

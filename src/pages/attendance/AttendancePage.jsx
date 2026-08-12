@@ -109,6 +109,7 @@ export default function AttendancePage() {
           >
             <label>날짜</label>
             <input
+              aria-label="날짜"
               ref={dateInputRef}
               type="date"
               value={date}
@@ -123,6 +124,7 @@ export default function AttendancePage() {
             <div className="form-group">
               <label>시간</label>
               <input
+                aria-label="시간"
                 type="number"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
@@ -134,6 +136,7 @@ export default function AttendancePage() {
             <div className="form-group">
               <label>분</label>
               <input
+                aria-label="분"
                 type="number"
                 value={minutesInput}
                 onChange={(e) => setMinutesInput(e.target.value)}
@@ -158,6 +161,7 @@ export default function AttendancePage() {
           <div className="form-group">
             <label>사유</label>
             <input
+              aria-label="사유"
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}

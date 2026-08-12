@@ -255,7 +255,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
             <thead>
               <tr>
                 {!isLedger && (
-                  <th className="q-check-col">
+                  <th scope="col" className="q-check-col">
                     <input
                       type="checkbox"
                       aria-label="전체 선택"
@@ -267,12 +267,22 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                 )}
                 {/* 맨 앞 순번 — 몇 번째 줄인지 눈으로 짚기 위한 것. 서식 문서번호는 표 위(제목 옆)에 있다.
                     낱장 서식 목록은 번호를 눌러 들어가는 구조라 문서번호를 그대로 남긴다. (2026-08-10 대표님) */}
-                {isLedger ? <th className="q-rowno">NO</th> : <th>번호</th>}
+                {isLedger ? (
+                  <th scope="col" className="q-rowno">
+                    NO
+                  </th>
+                ) : (
+                  <th scope="col">번호</th>
+                )}
                 {cols.map((c) => (
-                  <th key={c.key}>{c.label}</th>
+                  <th scope="col" key={c.key}>
+                    {c.label}
+                  </th>
                 ))}
-                {hasVerdict && <th>판정</th>}
-                <th className="col-action">작업</th>
+                {hasVerdict && <th scope="col">판정</th>}
+                <th scope="col" className="col-action">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>

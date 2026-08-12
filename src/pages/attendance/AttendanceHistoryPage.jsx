@@ -187,6 +187,7 @@ export default function AttendanceHistoryPage() {
                         <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
                           <label style={{ fontSize: 12 }}>시간</label>
                           <input
+                            aria-label="시간"
                             type="number"
                             min={0}
                             max={12}
@@ -199,6 +200,7 @@ export default function AttendanceHistoryPage() {
                         <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
                           <label style={{ fontSize: 12 }}>분</label>
                           <input
+                            aria-label="분"
                             type="number"
                             min={0}
                             max={59}
@@ -222,6 +224,7 @@ export default function AttendanceHistoryPage() {
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label style={{ fontSize: 12 }}>사유</label>
                         <input
+                          aria-label="사유"
                           type="text"
                           value={editForm.reason}
                           onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}

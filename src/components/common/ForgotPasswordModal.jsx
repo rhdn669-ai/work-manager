@@ -129,6 +129,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
             <div className="form-group">
               <label>로그인 코드</label>
               <input
+                aria-label="로그인 코드"
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -159,6 +160,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
             <div className="form-group">
               <label>답변</label>
               <input
+                aria-label="답변"
                 type="text"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
@@ -194,6 +196,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
             <div className="form-group">
               <label>새 비밀번호</label>
               <input
+                aria-label="새 비밀번호"
                 type="password"
                 value={next}
                 onChange={(e) => setNext(e.target.value)}
@@ -206,6 +209,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
             <div className="form-group">
               <label>새 비밀번호 확인</label>
               <input
+                aria-label="새 비밀번호 확인"
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}

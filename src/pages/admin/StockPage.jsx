@@ -263,12 +263,18 @@ export default function StockPage() {
             </colgroup>
             <thead>
               <tr>
-                <th>코드</th>
-                <th>품명</th>
-                <th>규격</th>
-                <th className="col-unit">단위</th>
-                <th className="col-num">재고</th>
-                <th className="col-action">최근 조정</th>
+                <th scope="col">코드</th>
+                <th scope="col">품명</th>
+                <th scope="col">규격</th>
+                <th scope="col" className="col-unit">
+                  단위
+                </th>
+                <th scope="col" className="col-num">
+                  재고
+                </th>
+                <th scope="col" className="col-action">
+                  최근 조정
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -396,6 +402,7 @@ export default function StockPage() {
                   <div className="form-group">
                     <label>코드</label>
                     <input
+                      aria-label="코드"
                       type="text"
                       value={addForm.code}
                       onChange={(e) => setAddForm((f) => ({ ...f, code: e.target.value }))}
@@ -406,6 +413,7 @@ export default function StockPage() {
                   <div className="form-group">
                     <label>단위</label>
                     <input
+                      aria-label="단위"
                       type="text"
                       value={addForm.unit}
                       onChange={(e) => setAddForm((f) => ({ ...f, unit: e.target.value }))}
@@ -417,6 +425,7 @@ export default function StockPage() {
                 <div className="form-group">
                   <label>품명</label>
                   <input
+                    aria-label="품명"
                     type="text"
                     value={addForm.name}
                     onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
@@ -428,6 +437,7 @@ export default function StockPage() {
                 <div className="form-group">
                   <label>규격</label>
                   <input
+                    aria-label="규격"
                     type="text"
                     value={addForm.spec}
                     onChange={(e) => setAddForm((f) => ({ ...f, spec: e.target.value }))}
@@ -440,6 +450,7 @@ export default function StockPage() {
             <div className="form-group">
               <label>재고 수량</label>
               <input
+                aria-label="재고 수량"
                 type="number"
                 className="num-input"
                 value={addForm.stockQty}
@@ -483,10 +494,12 @@ export default function StockPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>날짜</th>
-              <th className="col-num">변경</th>
-              <th>사유</th>
-              <th>바꾼 사람</th>
+              <th scope="col">날짜</th>
+              <th scope="col" className="col-num">
+                변경
+              </th>
+              <th scope="col">사유</th>
+              <th scope="col">바꾼 사람</th>
             </tr>
           </thead>
           <tbody>

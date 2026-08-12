@@ -107,12 +107,14 @@ export default function PurchaseTrashPage() {
           <table className="table cards-sm">
             <thead>
               <tr>
-                <th>구분</th>
-                <th>이름</th>
-                <th>내용</th>
-                <th>삭제일시</th>
-                <th>삭제자</th>
-                <th className="col-action">작업</th>
+                <th scope="col">구분</th>
+                <th scope="col">이름</th>
+                <th scope="col">내용</th>
+                <th scope="col">삭제일시</th>
+                <th scope="col">삭제자</th>
+                <th scope="col" className="col-action">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>

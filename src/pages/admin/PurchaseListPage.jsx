@@ -852,16 +852,36 @@ export default function PurchaseListPage() {
           <table className="table pur-table">
             <thead>
               <tr>
-                <th className="pur-c-status">상태</th>
-                <th className="pur-c-title">제목</th>
-                <th className="pur-c-sup">구매처</th>
-                <th className="pur-c-proj">프로젝트</th>
-                <th className="pur-c-items">품목/수량</th>
-                <th className="pur-c-amt">금액</th>
-                <th className="pur-c-vat">부가세 포함</th>
-                <th className="pur-c-date">작성일</th>
-                <th className="pur-c-date">납기</th>
-                <th className="pur-c-act col-action">작업</th>
+                <th scope="col" className="pur-c-status">
+                  상태
+                </th>
+                <th scope="col" className="pur-c-title">
+                  제목
+                </th>
+                <th scope="col" className="pur-c-sup">
+                  구매처
+                </th>
+                <th scope="col" className="pur-c-proj">
+                  프로젝트
+                </th>
+                <th scope="col" className="pur-c-items">
+                  품목/수량
+                </th>
+                <th scope="col" className="pur-c-amt">
+                  금액
+                </th>
+                <th scope="col" className="pur-c-vat">
+                  부가세 포함
+                </th>
+                <th scope="col" className="pur-c-date">
+                  작성일
+                </th>
+                <th scope="col" className="pur-c-date">
+                  납기
+                </th>
+                <th scope="col" className="pur-c-act col-action">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -965,6 +985,7 @@ export default function PurchaseListPage() {
           <div className="form-group">
             <label>제목 *</label>
             <input
+              aria-label="제목"
               type="text"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -977,6 +998,7 @@ export default function PurchaseListPage() {
           <div className="form-group">
             <label>부제 (내부용)</label>
             <input
+              aria-label="부제 (내부용)"
               type="text"
               value={form.subtitle}
               onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
@@ -1039,6 +1061,7 @@ export default function PurchaseListPage() {
           <div className="form-group">
             <label>납기 (납품기일)</label>
             <input
+              aria-label="납기 (납품기일)"
               type="text"
               value={form.deliveryDue}
               onChange={(e) => setForm({ ...form, deliveryDue: e.target.value })}
@@ -1069,6 +1092,7 @@ export default function PurchaseListPage() {
             <div className="form-group">
               <label>담당자</label>
               <input
+                aria-label="담당자"
                 type="text"
                 value={form.contactName}
                 title={form.contactName || ''}
@@ -1078,6 +1102,7 @@ export default function PurchaseListPage() {
             <div className="form-group">
               <label>연락처</label>
               <input
+                aria-label="연락처"
                 type="text"
                 value={form.contactPhone}
                 onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
@@ -1166,6 +1191,7 @@ export default function PurchaseListPage() {
         <div className="form-group">
           <label>내용 (한 건씩 등록 · 이 페이지를 보는 관리자에게 공유)</label>
           <textarea
+            aria-label="내용 (한 건씩 등록 · 이 페이지를 보는 관리자에게 공유)"
             className="pur-note-textarea"
             rows={4}
             value={noteDraft}

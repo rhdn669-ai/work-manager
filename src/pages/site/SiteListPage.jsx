@@ -882,7 +882,12 @@ export default function SiteListPage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>프로젝트명 *</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <input
+              aria-label="프로젝트명"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
           </div>
           <div className="form-group">
             <label>팀</label>

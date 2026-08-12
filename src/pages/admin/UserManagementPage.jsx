@@ -591,16 +591,24 @@ export default function UserManagementPage() {
         <table className="table user-management-table table-clickable cards-sm">
           <thead>
             <tr>
-              <th>이름</th>
-              <th>코드</th>
-              <th style={isSmall ? { display: 'none' } : undefined}>직급</th>
-              <th style={isSmall ? { display: 'none' } : undefined}>연락처</th>
-              <th>부서</th>
-              <th>고정비용</th>
-              <th style={isSmall ? { display: 'none' } : undefined}>시급</th>
-              <th style={isSmall ? { display: 'none' } : undefined}>{view === 'resigned' ? '퇴사일' : '입사일'}</th>
-              <th>연차 (누적/사용/잔여)</th>
-              <th style={{ width: 44 }} aria-label="로그인 전환"></th>
+              <th scope="col">이름</th>
+              <th scope="col">코드</th>
+              <th scope="col" style={isSmall ? { display: 'none' } : undefined}>
+                직급
+              </th>
+              <th scope="col" style={isSmall ? { display: 'none' } : undefined}>
+                연락처
+              </th>
+              <th scope="col">부서</th>
+              <th scope="col">고정비용</th>
+              <th scope="col" style={isSmall ? { display: 'none' } : undefined}>
+                시급
+              </th>
+              <th scope="col" style={isSmall ? { display: 'none' } : undefined}>
+                {view === 'resigned' ? '퇴사일' : '입사일'}
+              </th>
+              <th scope="col">연차 (누적/사용/잔여)</th>
+              <th scope="col" style={{ width: 44 }} aria-label="로그인 전환"></th>
             </tr>
           </thead>
           <tbody>
@@ -725,6 +733,7 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>이름</label>
             <input
+              aria-label="이름"
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -734,6 +743,7 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>로그인 코드</label>
             <input
+              aria-label="로그인 코드"
               type="text"
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
@@ -807,6 +817,7 @@ export default function UserManagementPage() {
           <div className="form-group">
             <label>연락처</label>
             <input
+              aria-label="연락처"
               type="text"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -834,6 +845,7 @@ export default function UserManagementPage() {
             <div className="form-group">
               <label>입사일</label>
               <input
+                aria-label="입사일"
                 type="date"
                 value={form.joinDate}
                 onChange={(e) => setForm({ ...form, joinDate: e.target.value })}

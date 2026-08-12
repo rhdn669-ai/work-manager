@@ -2051,22 +2051,28 @@ export default function PurchaseDetailPage() {
                     </colgroup>
                     <thead>
                       <tr>
-                        <th className="bom-no-col">No</th>
-                        <th>코드</th>
-                        <th>BOX</th>
-                        <th>품명</th>
-                        <th>메이커</th>
-                        <th>규격</th>
-                        <th>분류</th>
-                        <th>moq/단위</th>
-                        <th>수량</th>
-                        <th className="no-print">재고</th>
-                        <th>단가</th>
-                        <th>합계</th>
-                        <th>기본 구매처</th>
-                        <th>비고</th>
-                        <th className="no-print">입고</th>
-                        <th className="bom-action-col no-print" aria-hidden="true"></th>
+                        <th scope="col" className="bom-no-col">
+                          No
+                        </th>
+                        <th scope="col">코드</th>
+                        <th scope="col">BOX</th>
+                        <th scope="col">품명</th>
+                        <th scope="col">메이커</th>
+                        <th scope="col">규격</th>
+                        <th scope="col">분류</th>
+                        <th scope="col">moq/단위</th>
+                        <th scope="col">수량</th>
+                        <th scope="col" className="no-print">
+                          재고
+                        </th>
+                        <th scope="col">단가</th>
+                        <th scope="col">합계</th>
+                        <th scope="col">기본 구매처</th>
+                        <th scope="col">비고</th>
+                        <th scope="col" className="no-print">
+                          입고
+                        </th>
+                        <th scope="col" className="bom-action-col no-print" aria-hidden="true"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2430,6 +2436,7 @@ export default function PurchaseDetailPage() {
               <div className="form-group" style={{ marginBottom: 12 }}>
                 <label>발주서 메일 본문 (공통 문구 — 수정 가능)</label>
                 <textarea
+                  aria-label="발주서 메일 본문 (공통 문구 — 수정 가능)"
                   value={form.mailBody}
                   onChange={(e) => {
                     setForm((f) => ({ ...f, mailBody: e.target.value }));
@@ -2490,17 +2497,37 @@ export default function PurchaseDetailPage() {
               <table className="table inline-edit-table cards-sm po-sup-table">
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 140 }}>구매처</th>
-                    <th style={{ minWidth: 80, width: 100 }}>품목</th>
-                    <th style={{ minWidth: 170, width: 200 }}>발행번호</th>
-                    <th style={{ minWidth: 170, width: 170 }}>발주 상태</th>
-                    <th style={{ minWidth: 170, width: 170 }}>회신</th>
-                    <th style={{ minWidth: 140, width: 150 }}>입고</th>
-                    <th style={{ minWidth: 130, width: 150 }}>결제 대상</th>
-                    <th style={{ minWidth: 130, width: 150 }}>미입고</th>
-                    <th style={{ minWidth: 110, width: 130 }}>납기</th>
-                    <th style={{ minWidth: 200, width: '100%' }}>특이사항</th>
-                    <th className="col-action" aria-label="작업"></th>
+                    <th scope="col" style={{ minWidth: 140 }}>
+                      구매처
+                    </th>
+                    <th scope="col" style={{ minWidth: 80, width: 100 }}>
+                      품목
+                    </th>
+                    <th scope="col" style={{ minWidth: 170, width: 200 }}>
+                      발행번호
+                    </th>
+                    <th scope="col" style={{ minWidth: 170, width: 170 }}>
+                      발주 상태
+                    </th>
+                    <th scope="col" style={{ minWidth: 170, width: 170 }}>
+                      회신
+                    </th>
+                    <th scope="col" style={{ minWidth: 140, width: 150 }}>
+                      입고
+                    </th>
+                    <th scope="col" style={{ minWidth: 130, width: 150 }}>
+                      결제 대상
+                    </th>
+                    <th scope="col" style={{ minWidth: 130, width: 150 }}>
+                      미입고
+                    </th>
+                    <th scope="col" style={{ minWidth: 110, width: 130 }}>
+                      납기
+                    </th>
+                    <th scope="col" style={{ minWidth: 200, width: '100%' }}>
+                      특이사항
+                    </th>
+                    <th scope="col" className="col-action" aria-label="작업"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2780,6 +2807,7 @@ export default function PurchaseDetailPage() {
                     <div className="form-group">
                       <label>입고일 *</label>
                       <input
+                        aria-label="입고일"
                         type="date"
                         value={bulkForm.date}
                         onChange={(e) => setBulkForm({ ...bulkForm, date: e.target.value })}
@@ -2789,6 +2817,7 @@ export default function PurchaseDetailPage() {
                     <div className="form-group">
                       <label>검수 메모</label>
                       <textarea
+                        aria-label="검수 메모"
                         value={bulkForm.note}
                         onChange={(e) => setBulkForm({ ...bulkForm, note: e.target.value })}
                         rows={2}
@@ -2877,6 +2906,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>입고 수량 *</label>
               <input
+                aria-label="입고 수량"
                 type="number"
                 min="0"
                 max={Number(receiveModal.line.qty) || 0}
@@ -2894,6 +2924,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>입고일 *</label>
               <input
+                aria-label="입고일"
                 type="date"
                 value={receiveForm.date}
                 onChange={(e) => setReceiveForm({ ...receiveForm, date: e.target.value })}
@@ -2903,6 +2934,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>검수 메모</label>
               <textarea
+                aria-label="검수 메모"
                 value={receiveForm.note}
                 onChange={(e) => setReceiveForm({ ...receiveForm, note: e.target.value })}
                 rows={2}
@@ -3028,6 +3060,7 @@ export default function PurchaseDetailPage() {
         <div className="form-group">
           <label>세트 수량 (배수)</label>
           <input
+            aria-label="세트 수량 (배수)"
             type="number"
             min="1"
             value={bomSetCount}
@@ -3226,6 +3259,7 @@ export default function PurchaseDetailPage() {
         <div className="form-group">
           <label>파일명</label>
           <input
+            aria-label="파일명"
             type="text"
             value={pdfFileName}
             onChange={(e) => setPdfFileName(e.target.value)}
@@ -3305,6 +3339,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>발주 수량</label>
               <input
+                aria-label="발주 수량"
                 type="text"
                 inputMode="numeric"
                 autoFocus
@@ -3347,6 +3382,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>받는 사람</label>
               <input
+                aria-label="받는 사람"
                 type="email"
                 value={mailPreview.to}
                 onChange={(e) => setMailPreview((p) => ({ ...p, to: e.target.value }))}
@@ -3355,6 +3391,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>제목</label>
               <input
+                aria-label="제목"
                 type="text"
                 value={mailPreview.subject}
                 onChange={(e) => setMailPreview((p) => ({ ...p, subject: e.target.value }))}
@@ -3379,6 +3416,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>추가 첨부파일 (선택)</label>
               <input
+                aria-label="추가 첨부파일 (선택)"
                 ref={mailFileInputRef}
                 type="file"
                 multiple
@@ -3473,12 +3511,18 @@ export default function PurchaseDetailPage() {
             <table className="table cards-sm">
               <thead>
                 <tr>
-                  <th>품명</th>
-                  <th>규격</th>
-                  <th style={{ width: 70 }}>수량</th>
-                  <th style={{ width: 90 }}>단가</th>
-                  <th style={{ width: 130 }}>삭제일시</th>
-                  <th className="col-action" style={{ width: 150 }}>
+                  <th scope="col">품명</th>
+                  <th scope="col">규격</th>
+                  <th scope="col" style={{ width: 70 }}>
+                    수량
+                  </th>
+                  <th scope="col" style={{ width: 90 }}>
+                    단가
+                  </th>
+                  <th scope="col" style={{ width: 130 }}>
+                    삭제일시
+                  </th>
+                  <th scope="col" className="col-action" style={{ width: 150 }}>
                     작업
                   </th>
                 </tr>
@@ -3531,6 +3575,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>납기일</label>
               <input
+                aria-label="납기일"
                 type="date"
                 value={replyModal.due || ''}
                 onChange={(e) => setReplyModal((p) => ({ ...p, due: e.target.value }))}
@@ -3568,6 +3613,7 @@ export default function PurchaseDetailPage() {
             <div className="form-group">
               <label>결제 마감일</label>
               <input
+                aria-label="결제 마감일"
                 type="date"
                 value={payReqModal.due || ''}
                 onChange={(e) => setPayReqModal((p) => ({ ...p, due: e.target.value }))}

@@ -113,7 +113,13 @@ export default function PdfFabGroup({
         </p>
         <div className="form-group">
           <label>파일명</label>
-          <input type="text" value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="파일명" />
+          <input
+            aria-label="파일명"
+            type="text"
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            placeholder="파일명"
+          />
           <p className="field-hint">확장자(.pdf)는 자동으로 붙습니다.</p>
         </div>
         <div className="form-group">

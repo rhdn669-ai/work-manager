@@ -248,12 +248,12 @@ export default function ReportsPage() {
                 <table className="table cards-sm">
                   <thead>
                     <tr>
-                      <th>날짜</th>
-                      <th>직원</th>
-                      <th>프로젝트</th>
-                      <th>시간</th>
-                      <th>사유</th>
-                      <th style={{ width: 140 }}></th>
+                      <th scope="col">날짜</th>
+                      <th scope="col">직원</th>
+                      <th scope="col">프로젝트</th>
+                      <th scope="col">시간</th>
+                      <th scope="col">사유</th>
+                      <th scope="col" style={{ width: 140 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -323,11 +323,13 @@ export default function ReportsPage() {
             <table className="table team-stats-table cards-sm">
               <thead>
                 <tr>
-                  <th style={{ width: 48 }}>#</th>
-                  <th>이름</th>
-                  <th>부서</th>
-                  <th>잔업</th>
-                  <th>연차</th>
+                  <th scope="col" style={{ width: 48 }}>
+                    #
+                  </th>
+                  <th scope="col">이름</th>
+                  <th scope="col">부서</th>
+                  <th scope="col">잔업</th>
+                  <th scope="col">연차</th>
                 </tr>
               </thead>
               <tbody>
@@ -538,6 +540,7 @@ export function EmployeeDetailModal({
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label>날짜</label>
                               <input
+                                aria-label="날짜"
                                 type="date"
                                 value={editForm.date}
                                 onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
@@ -546,6 +549,7 @@ export function EmployeeDetailModal({
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label>시간 (분)</label>
                               <input
+                                aria-label="시간 (분)"
                                 type="number"
                                 min={0}
                                 value={editForm.minutes}
@@ -571,6 +575,7 @@ export function EmployeeDetailModal({
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label>사유</label>
                             <input
+                              aria-label="사유"
                               type="text"
                               value={editForm.reason}
                               onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
@@ -642,6 +647,7 @@ export function EmployeeDetailModal({
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label>시작일</label>
                             <input
+                              aria-label="시작일"
                               type="date"
                               value={editForm.startDate}
                               onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
@@ -650,6 +656,7 @@ export function EmployeeDetailModal({
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label>종료일</label>
                             <input
+                              aria-label="종료일"
                               type="date"
                               value={editForm.endDate}
                               onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
@@ -660,6 +667,7 @@ export function EmployeeDetailModal({
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label>일수</label>
                             <input
+                              aria-label="일수"
                               type="number"
                               min={0}
                               step={0.5}
@@ -686,6 +694,7 @@ export function EmployeeDetailModal({
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label>사유</label>
                           <input
+                            aria-label="사유"
                             type="text"
                             value={editForm.reason}
                             onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}

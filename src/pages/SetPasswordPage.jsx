@@ -67,6 +67,7 @@ export default function SetPasswordPage() {
           <div className="login-field">
             <label>새 비밀번호</label>
             <input
+              aria-label="새 비밀번호"
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
@@ -78,6 +79,7 @@ export default function SetPasswordPage() {
           <div className="login-field">
             <label>비밀번호 확인</label>
             <input
+              aria-label="비밀번호 확인"
               type="password"
               value={pw2}
               onChange={(e) => setPw2(e.target.value)}
