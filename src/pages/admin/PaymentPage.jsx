@@ -734,7 +734,7 @@ export default function PaymentPage() {
                     </a>
                   </div>
                   {isImg ? (
-                    <img className="biz-doc-img" src={f.downloadURL} alt={f.name} />
+                    <img loading="lazy" className="biz-doc-img" src={f.downloadURL} alt={f.name} />
                   ) : isPdf ? (
                     <iframe className="biz-doc-frame" src={f.downloadURL} title={f.name} />
                   ) : (

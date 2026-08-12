@@ -226,7 +226,13 @@ export default function ProductionPanelModal({
                   {upSlots[slotKey(part, round, i, '사진')] !== undefined ? (
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '사진')]} />
                   ) : it.사진 ? (
-                    <img className="defect-ba-photo" src={it.사진} alt="발생 사진" onClick={() => openPhoto(it.사진)} />
+                    <img
+                      loading="lazy"
+                      className="defect-ba-photo"
+                      src={it.사진}
+                      alt="발생 사진"
+                      onClick={() => openPhoto(it.사진)}
+                    />
                   ) : canEdit ? (
                     <button className="defect-ba-add before" onClick={() => openCamera(part, round, i, '사진')}>
                       <Icon name="image" className="btn-ic" />
@@ -242,6 +248,7 @@ export default function ProductionPanelModal({
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '조치사진')]} />
                   ) : it.조치사진 ? (
                     <img
+                      loading="lazy"
                       className="defect-ba-photo"
                       src={it.조치사진}
                       alt="조치 사진"

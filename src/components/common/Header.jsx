@@ -32,7 +32,7 @@ export default function Header({ onToggleSidebar }) {
           </button>
         )}
         <div className="header-brand" style={{ marginLeft: 'var(--space-3)' }}>
-          <img src="/icnp-emblem.png" className="header-logo" alt="IOPN" draggable="false" />
+          <img loading="lazy" src="/icnp-emblem.png" className="header-logo" alt="IOPN" draggable="false" />
         </div>
         <span className="header-version" title={new Date(__APP_BUILD_TIME__).toLocaleString('ko-KR')}>
           <span className="header-version-num">v{__APP_VERSION__}</span>

@@ -856,7 +856,7 @@
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
-  background: #15803d;
+  background: var(--success);
   color: #fff;
   border: 0;
   font-size: 12px;
@@ -949,7 +949,7 @@
 .defect-card-top input[type='checkbox'] {
   width: 18px;
   height: 18px;
-  accent-color: #15803d;
+  accent-color: var(--success);
   flex-shrink: 0;
 }
 .defect-card-top input[type='text'] {
@@ -1055,7 +1055,7 @@
   color: #c53030;
 }
 .defect-ba-col.after .defect-ba-head {
-  color: #15803d;
+  color: var(--success);
 }
 .defect-ba-photo {
   width: 100%;
@@ -1091,7 +1091,7 @@
 }
 .defect-ba-add.after {
   border-color: #86e0a3;
-  color: #15803d;
+  color: var(--success);
 }
 .defect-ba-empty {
   height: 84px;
@@ -1266,7 +1266,7 @@
   border-radius: 999px;
 }
 .mx-prog-fill.is-done {
-  background: #15803d;
+  background: var(--success);
 }
 .mx-prog-num {
   font-size: 11px;
@@ -1304,7 +1304,9 @@
 }
 
 /* 매트릭스로 통일 — 모바일 카드 미사용(매트릭스가 가로스크롤로 대체) */
-.board-cards { display: none !important; }
+.board-cards {
+  display: none !important;
+}
 
 /* BOX 그룹 하위 셀 — th·td 동일 고정폭으로 칸 폭 완전 통일 */
 .mx-sub-th,

@@ -4,7 +4,7 @@ export default function IopnDocBrand({ title, titleClass = '' }) {
   return (
     <div className="iopn-brand-band">
       <div className="iopn-brand-l">
-        <img className="iopn-brand-logo" src="/iopn-logo-doc.png" alt="IOPN" />
+        <img loading="lazy" className="iopn-brand-logo" src="/iopn-logo-doc.png" alt="IOPN" />
       </div>
       <div className={`iopn-brand-title ${titleClass}`}>{title}</div>
       <div className="iopn-brand-r" aria-hidden="true" />

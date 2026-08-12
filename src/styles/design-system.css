@@ -478,7 +478,7 @@ body {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* brand-color fix (issue #3): Core financial stat numbers must use navy (#002050), NOT green/red.
+/* brand-color fix (issue #3): Core financial stat numbers must use navy (var(--primary)), NOT green/red.
    Green (--success) and red (--danger) are reserved for status badges only.
    Pages using var(--success) on revenue/expense values should switch to .stat-value--navy or inline color: var(--primary). */
 .stat-value {
@@ -2210,9 +2210,9 @@ body {
 }
 
 /* =========================================================
-   brand-color global enforcement — Navy #002050 chrome
+   brand-color global enforcement — Navy var(--primary) chrome
    테이블 thead, 칸반 컬럼 헤드, 카드 베이스 스타일을 전역에서
-   navy(#002050) 크롬 / --bg-card 카드 베이스로 고정한다.
+   navy(var(--primary)) 크롬 / --bg-card 카드 베이스로 고정한다.
    개별 페이지에 grey/white 헤더가 남지 않도록 여기서 덮어쓴다.
    ========================================================= */
 

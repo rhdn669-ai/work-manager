@@ -10,7 +10,7 @@ export default function IopnDocSeal({ statement, date }) {
         <span className="iopn-seal-ceo">대표이사 이 종 현</span>
         <span className="iopn-seal-mark">
           (인)
-          <img className="iopn-seal-img" src="/company-seal.png" alt="직인" />
+          <img loading="lazy" className="iopn-seal-img" src="/company-seal.png" alt="직인" />
         </span>
       </div>
     </div>

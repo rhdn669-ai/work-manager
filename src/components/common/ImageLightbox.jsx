@@ -105,6 +105,7 @@ export default function ImageLightbox({ images, index, onIndex, onClose }) {
       <figure className="lib-lightbox-stage" onClick={(e) => e.stopPropagation()}>
         <div className="lib-lightbox-view" onWheel={onWheel} onDoubleClick={() => (zoom > 1 ? reset() : zoomBy(2))}>
           <img
+            loading="lazy"
             src={cur.downloadURL}
             alt={cur.name}
             className={zoom > 1 ? 'is-zoomed' : undefined}

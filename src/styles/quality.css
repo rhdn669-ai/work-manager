@@ -36,7 +36,7 @@
 .q-delta-bad {
   color: var(--danger);
 }
-/* 네이비 히어로 위에서는 --success(#15803d)가 대비 미달 → 흰색으로 두고
+/* 네이비 히어로 위에서는 --success(var(--success))가 대비 미달 → 흰색으로 두고
    증감 방향은 ▼/▲ 기호가 전달한다. */
 .q-hero .q-delta-good,
 .q-hero .q-delta-bad {
@@ -522,7 +522,6 @@
 .q-chip-company i {
   background: var(--primary);
 }
-
 
 /* 자동계산 필드 — 입력 불가임을 시각적으로 구분 */
 .q-calc-input {

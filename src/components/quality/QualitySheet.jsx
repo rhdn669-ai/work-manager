@@ -73,7 +73,7 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
         <div className={`q-paper ${editing ? 'is-editing' : ''}`}>
           {/* 상단 — 좌: 로고+문서번호 / 우: 결재란. 제목은 그 아래 중앙 (2026-07-31 대표님) */}
           <div className="q-paper-head">
-            <img className="q-paper-logo" src="/iopn-logo-doc.png" alt="IOPN" />
+            <img loading="lazy" className="q-paper-logo" src="/iopn-logo-doc.png" alt="IOPN" />
             <div className="q-approve">
               <div className="q-approve-side">결재</div>
               {['작성', '검토', '승인'].map((r) => (

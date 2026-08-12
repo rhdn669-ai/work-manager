@@ -173,7 +173,7 @@
   /* BRAND AUDIT: 금융 지표(금액·일수·건수) 셀에 --success(초록) 사용 금지 —
      매출·지출 등 주요 수치는 반드시 --primary(네이비) 또는 --text 계열로 표시.
      --success는 '완료 상태 배지'에만 허용. var(--danger)는 음수·초과에만 허용.
-     accent-hover(#d94810)·accent-press(#001230)를 데이터 셀 전경색으로 사용 금지. */
+     accent-hover(#d94810)·accent-press(var(--primary-press))를 데이터 셀 전경색으로 사용 금지. */
 
   /* 모서리 반경 체계 (토스: 카드 18 / 버튼·칩 12~14 / 모달 24) */
   --radius-sm: 11px;
@@ -1085,7 +1085,7 @@ body {
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(34, 197, 94, 0.1);
-  color: #15803d;
+  color: var(--success);
 }
 .pwchange-hint-status:empty {
   display: none;
@@ -2067,13 +2067,13 @@ body {
   background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
 }
 .ua-legend-swatch.leave-annual {
-  background: #dc2626;
+  background: var(--danger);
 }
 .ua-legend-swatch.leave-half {
-  background: linear-gradient(to right, #dc2626 50%, #fee2e2 50%);
+  background: linear-gradient(to right, var(--danger) 50%, #fee2e2 50%);
 }
 .ua-legend-swatch.leave-quarter {
-  background: linear-gradient(to right, #dc2626 25%, #fee2e2 25%);
+  background: linear-gradient(to right, var(--danger) 25%, #fee2e2 25%);
 }
 .ua-legend-swatch.leave-sick {
   background: var(--accent-tint);
@@ -2200,13 +2200,13 @@ body {
   background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
 }
 .ua-timeline-seg.leave-annual {
-  background: #dc2626;
+  background: var(--danger);
 }
 .ua-timeline-seg.leave-half {
-  background: linear-gradient(to right, #dc2626 50%, #fee2e2 50%);
+  background: linear-gradient(to right, var(--danger) 50%, #fee2e2 50%);
 }
 .ua-timeline-seg.leave-quarter {
-  background: linear-gradient(to right, #dc2626 25%, #fee2e2 25%);
+  background: linear-gradient(to right, var(--danger) 25%, #fee2e2 25%);
 }
 .ua-timeline-seg.leave-sick {
   background: var(--btn-danger-bd);
@@ -2475,13 +2475,13 @@ body {
   background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
 }
 .unassigned-cell.leave-annual {
-  background: #dc2626;
+  background: var(--danger);
 }
 .unassigned-cell.leave-half {
-  background: linear-gradient(to right, #dc2626 50%, #fee2e2 50%);
+  background: linear-gradient(to right, var(--danger) 50%, #fee2e2 50%);
 }
 .unassigned-cell.leave-quarter {
-  background: linear-gradient(to right, #dc2626 25%, #fee2e2 25%);
+  background: linear-gradient(to right, var(--danger) 25%, #fee2e2 25%);
 }
 .unassigned-cell.leave-sick {
   background: var(--accent-tint);
@@ -2971,7 +2971,7 @@ body {
   color: var(--text-muted);
 }
 .team-calendar-dow.sunday {
-  color: #dc2626;
+  color: var(--danger);
 }
 .team-calendar-dow.saturday {
   color: #2563eb;
@@ -3022,7 +3022,7 @@ body {
   margin-bottom: 3px;
 }
 .team-cal-cell.sunday .team-cal-day {
-  color: #dc2626;
+  color: var(--danger);
 }
 .team-cal-cell.saturday .team-cal-day {
   color: #2563eb;
@@ -3313,7 +3313,7 @@ body {
 .outsource-icon-btn.is-danger:hover {
   border-color: var(--danger);
   background: var(--danger-tint);
-  color: #dc2626;
+  color: var(--danger);
 }
 .outsource-icon-btn:active {
   transform: translateY(1px);
@@ -4931,7 +4931,7 @@ table.cards-sm td {
 }
 /* 결제 마감일 */
 .payment-due.is-overdue {
-  color: #dc2626;
+  color: var(--danger);
 }
 .payment-folder-due {
   /* 마감일 = 무채색 정보 배지, 기한 초과 시에만 빨강(경고) */
@@ -4979,7 +4979,7 @@ table.cards-sm td {
 .btn.purchase-sup-toggle.po-act-paid {
   background: #e8f3ec;
   border: 1px solid #bfe3cc;
-  color: #15803d;
+  color: var(--success);
   font-weight: 700;
 }
 /* 사업자등록증 미리보기 모달 */
@@ -5557,7 +5557,7 @@ table.cards-sm td {
   color: var(--text-muted);
 }
 .purchase-save-indicator.error {
-  color: #dc2626;
+  color: var(--danger);
 }
 /* 발주서 출력 이력 뱃지 (구매 현황 리스트) */
 .purchase-print-badge {
@@ -6872,7 +6872,7 @@ table.cards-sm td {
 }
 .item-group-delete-btn:hover {
   background: #fee2e2;
-  color: #dc2626;
+  color: var(--danger);
   border-color: var(--btn-danger-bd);
 }
 .item-group-code-input {
@@ -10390,7 +10390,7 @@ tr.is-newly-added > td {
 .site-row.site-row-balance-neg,
 .site-row.site-row-balance-neg:hover {
   box-shadow:
-    inset 0 0 0 2.5px #dc2626,
+    inset 0 0 0 2.5px var(--danger),
     0 1px 2px rgba(17, 24, 39, 0.04);
 }
 
@@ -12139,7 +12139,7 @@ tr.is-newly-added > td {
   width: 110px;
   text-align: right;
   font-weight: 700;
-  color: #dc2626;
+  color: var(--danger);
   transition:
     color 0.2s,
     background 0.2s;
@@ -12489,7 +12489,7 @@ tr.is-newly-added > td {
 .home-cal-holiday-label {
   font-size: 10px;
   font-weight: 600;
-  color: #dc2626;
+  color: var(--danger);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -12545,9 +12545,9 @@ tr.is-newly-added > td {
   line-height: 1.4;
   padding: 2px 5px 2px 6px;
   border-radius: 4px;
-  border-left: 3px solid #002050;
+  border-left: 3px solid var(--primary);
   background: #eef1f8;
-  color: #002050;
+  color: var(--primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -13772,7 +13772,7 @@ td.mx-dc {
   max-width: 52px;
   height: 30px;
   background: #e8f6ec;
-  color: #15803d;
+  color: var(--success);
   border: 1px solid #86efac;
   border-radius: 5px;
   font-size: 12px;
@@ -13932,7 +13932,7 @@ td.mx-dc {
 }
 .cc-leave {
   background: #fdecec;
-  color: #dc2626;
+  color: var(--danger);
 }
 .cc-over {
   background: #e8f6ec;
@@ -14238,7 +14238,7 @@ td.mx-dc {
 }
 
 .day-calendar-dow.sunday {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .day-calendar-dow.saturday {
@@ -14287,7 +14287,7 @@ td.mx-dc {
 }
 
 .day-cal-cell.sunday label {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .day-cal-cell.saturday label {
@@ -14296,7 +14296,7 @@ td.mx-dc {
 
 /* 공휴일 (근로자의 날·어린이날 등) — 주말과 동일한 회색 배경 + 빨간 라벨 */
 .day-cal-cell.is-holiday label {
-  color: #dc2626;
+  color: var(--danger);
 }
 .day-cal-cell.is-holiday {
   background: #f9fafb;
@@ -14345,11 +14345,11 @@ td.mx-dc {
 .day-cal-cell.sunday.has-value input {
   background: var(--danger-tint);
   border-color: var(--btn-danger-bd);
-  color: #dc2626;
+  color: var(--danger);
 }
 
 .day-cal-cell.on-leave label {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 /* 공수 입력칸을 대체하는 전일 휴가 표시 (입력칸과 동일 크기) */
@@ -16343,7 +16343,7 @@ td.mx-dc {
   gap: 8px;
   padding: 0 2px 8px;
   margin: 0 0 10px;
-  border-bottom: 2.2px solid #002050;
+  border-bottom: 2.2px solid var(--primary);
 }
 .iopn-brand-l {
   display: flex;
@@ -19570,7 +19570,7 @@ a.lib-row-name:hover {
   color: #16a34a;
 }
 .regen-po__row.is-fail .regen-po__row-msg {
-  color: #dc2626;
+  color: var(--danger);
 }
 .regen-po__row.is-skip .regen-po__row-msg {
   color: #94a3b8;
@@ -19833,7 +19833,7 @@ a.lib-row-name:hover {
 }
 /* 모자란 수량(음수)은 빨갛게 — 창고에 없는데 쓴 것이 눈에 띄어야 한다 */
 .stock-input.is-minus {
-  color: #dc2626;
+  color: var(--danger);
 }
 .stock-input:focus {
   outline: none;
@@ -20056,10 +20056,10 @@ a.lib-row-name:hover {
 
 /* 재고 이력 — 나간 수량은 빨강, 들어온 수량은 초록 (상태배지 연한톤 규칙) */
 .stock-delta-out {
-  color: #dc2626;
+  color: var(--danger);
 }
 .stock-delta-in {
-  color: #15803d;
+  color: var(--success);
 }
 
 /* 재고를 쓰는 중인 줄 — 원래 필요했던 수량에 줄을 긋는다 */
@@ -20105,7 +20105,7 @@ a.lib-row-name:hover {
 /* 모자란 몫을 이미 발주에 더해 둔 상태 — 눌러서 도로 뺄 수 있다 */
 .stock-used-badge.is-short.is-filled {
   border-color: #bbf7d0;
-  color: #15803d;
+  color: var(--success);
   background: #f0fdf4;
 }
 .stock-used-badge.is-short.is-filled:hover:not(:disabled) {
