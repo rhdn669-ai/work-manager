@@ -1,11 +1,13 @@
 {
   "name": "work-manager",
   "private": true,
-  "version": "106.1",
+  "version": "106.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "gate": "vite build --logLevel error && eslint src --quiet && vitest run tests/unit --reporter=dot",
+    "ship": "npm run gate && wrangler deploy",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"*.{js,json}\"",
