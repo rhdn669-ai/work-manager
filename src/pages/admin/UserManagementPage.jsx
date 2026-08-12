@@ -929,11 +929,11 @@ export default function UserManagementPage() {
               <div className="form-group">
                 <div className="toggle-row">
                   <div className="toggle-row-text">
-                    <span className="toggle-row-title">생산·품질 접근</span>
+                    <span className="toggle-row-title">생산·품질 권한</span>
                     <small className="text-muted">
                       {autoGranted
-                        ? '관리자는 자동으로 부여됩니다.'
-                        : '켜면 로그인 후 생산·품질 워크스페이스를 선택할 수 있습니다.'}
+                        ? '관리자는 자동으로 부여됩니다. 지우고 되살리는 것은 관리자만 할 수 있습니다.'
+                        : '켜면 생산현황 검수·판넬 등록과 품질 대장 작성까지 할 수 있습니다. 삭제·휴지통은 관리자만.'}
                     </small>
                   </div>
                   <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>

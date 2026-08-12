@@ -27,7 +27,7 @@ const verdictOf = (row) => {
 export default function QualityRecordLedger({ formKey, docNo }) {
   const def = FORM_FIELDS[formKey];
   const { confirm, toast } = useDialog();
-  const { userProfile } = useAuth();
+  const { userProfile, isAdmin } = useAuth();
   const [rows, setRows] = useState([]);
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(0); // 휴지통 버튼 옆 건수
@@ -179,10 +179,12 @@ export default function QualityRecordLedger({ formKey, docNo }) {
               출력{checked.size > 0 ? ` (${checked.size})` : ''}
             </button>
           )}
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-            <Icon name="trash" className="btn-ic" />
-            휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
-          </button>
+          {isAdmin && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+              <Icon name="trash" className="btn-ic" />
+              휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
+            </button>
+          )}
           {formKey === 'master.goal' && rows.length === 0 && (
             <button type="button" className="btn btn-sm btn-outline" onClick={seedGoals}>
               <Icon name="doc" className="btn-ic" />
@@ -345,10 +347,14 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                           생산현황에서 삭제
                         </span>
                       ) : (
-                        <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(r)}>
-                          <Icon name="trash" className="btn-ic" />
-                          삭제
-                        </button>
+                        /* 권한자는 적고 고치는 것까지, 지우는 것은 관리자만 (2026-08-12 대표님).
+                           ISO 기록이라 직원이 지우면 심사 때 맞출 문서가 사라진다. */
+                        isAdmin && (
+                          <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(r)}>
+                            <Icon name="trash" className="btn-ic" />
+                            삭제
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>

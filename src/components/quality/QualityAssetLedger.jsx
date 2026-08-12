@@ -18,7 +18,7 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   const formKey = `assets.${assetType}`;
   const def = FORM_FIELDS[formKey];
   const { confirm, toast } = useDialog();
-  const { userProfile } = useAuth();
+  const { userProfile, isAdmin } = useAuth();
   const [all, setAll] = useState([]);
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
@@ -105,10 +105,12 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
             <Icon name="doc" className="btn-ic" />
             대장 출력{view.length > 0 ? ` (${view.length})` : ''}
           </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-            <Icon name="trash" className="btn-ic" />
-            휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
-          </button>
+          {isAdmin && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+              <Icon name="trash" className="btn-ic" />
+              휴지통{trashCount > 0 ? ` (${trashCount})` : ''}
+            </button>
+          )}
           <button type="button" className="btn btn-primary btn-sm" onClick={addBlankRow}>
             <Icon name="plus" className="btn-ic" />행 추가
           </button>
@@ -198,10 +200,12 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
                     </td>
                   )}
                   <td className="col-action">
-                    <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(a)}>
-                      <Icon name="trash" className="btn-ic" />
-                      삭제
-                    </button>
+                    {isAdmin && (
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(a)}>
+                        <Icon name="trash" className="btn-ic" />
+                        삭제
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

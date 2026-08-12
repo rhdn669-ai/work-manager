@@ -238,22 +238,21 @@ export default function ProductionPage() {
       <div className="page-header">
         <h2>생산현황</h2>
         <div className="page-actions" style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+          {/* 권한자는 적고 고칠 수 있고, 지우는 것만 관리자 (2026-08-12 대표님 — 관리자·권한자 2단계) */}
           {isAdmin && (
-            <>
-              <button className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-                <Icon name="trash" className="btn-ic" />
-                휴지통
-              </button>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowImport(true)}>
-                <Icon name="image" className="btn-ic" />
-                사진 가져오기
-              </button>
-              <button className="btn btn-primary btn-sm" onClick={handleAdd}>
-                <Icon name="plus" className="btn-ic" />
-                판넬 추가
-              </button>
-            </>
+            <button className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+              <Icon name="trash" className="btn-ic" />
+              휴지통
+            </button>
           )}
+          <button className="btn btn-sm btn-outline" onClick={() => setShowImport(true)}>
+            <Icon name="image" className="btn-ic" />
+            사진 가져오기
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={handleAdd}>
+            <Icon name="plus" className="btn-ic" />
+            판넬 추가
+          </button>
         </div>
       </div>
 
@@ -300,7 +299,7 @@ export default function ProductionPage() {
             <>
               <ProductionMatrix
                 panels={filtered}
-                canEdit={isAdmin}
+                canEdit={allowed}
                 checkerName={userProfile?.name || ''}
                 onOpen={openModal}
                 onRemove={handleRemove}
@@ -513,7 +512,7 @@ export default function ProductionPage() {
           panel={openPanel}
           mode={openMode}
           part={openPart}
-          canEdit={isAdmin}
+          canEdit={allowed}
           checkerName={userProfile?.name || ''}
           onClose={() => setOpenId(null)}
         />
