@@ -119,6 +119,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
 
   // 엑셀에서 한 열을 긁어 붙여넣기 — 누른 칸부터 아래로 채운다.
   // 줄이 표의 행보다 많으면 그만큼 판넬을 새로 만들어 이어 붙인다 (2026-08-12 대표님).
+  // 날짜로 다룰 열인지 — 나머지(프로젝트·호기·자재)는 글자 그대로 넣는다
+  const isDateField = (f) => f === '납기' || f === '턴온' || f === '자재입고' || AFTER_TURNON.includes(f);
+
   const pasteColumn = async (e, field, startRow) => {
     if (!canEdit) return;
     const text = e.clipboardData?.getData('text/plain') || '';
@@ -126,9 +129,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
     if (lines.length <= 1) return; // 한 줄이면 평소대로 그 칸에만 붙는다
     e.preventDefault();
 
-    const values = mapPastedValues(lines, { type: 'date' });
+    const values = mapPastedValues(lines, { type: isDateField(field) ? 'date' : 'text' });
     if (values.length === 0) {
-      toast('붙여넣은 내용에서 날짜를 찾지 못했습니다', 'error');
+      toast('붙여넣은 내용에서 넣을 값을 찾지 못했습니다', 'error');
       return;
     }
     const need = startRow + lines.length - panels.length;
@@ -372,8 +375,29 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
             return (
               <tr key={p.id} className={od ? 'mx-od' : urg ? 'mx-urg' : ''}>
                 <td className="mx-sticky mx-c0 mx-no">{idx + 1}</td>
-                <td className="mx-sticky mx-c1 mx-proj" onClick={() => onOpen(p.id, 'info')} title="클릭: 기본정보">
-                  <span className="mx-proj-name">{`${p.프로젝트 || '—'}${p.호기 ? ' ' + p.호기 : ''}`}</span>
+                {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
+                    프로젝트·호기가 각각 다른 칸이라 열 단위 붙여넣기도 그대로 먹는다. */}
+                <td className="mx-sticky mx-c1 mx-proj">
+                  {canEdit ? (
+                    <div className="mx-proj-edit">
+                      <input
+                        className="mx-proj-input"
+                        value={p.프로젝트 || ''}
+                        placeholder="프로젝트"
+                        onChange={(e) => setField(p, { 프로젝트: e.target.value })}
+                        onPaste={(e) => pasteColumn(e, '프로젝트', idx)}
+                      />
+                      <input
+                        className="mx-proj-input mx-hogi-input"
+                        value={p.호기 || ''}
+                        placeholder="호기"
+                        onChange={(e) => setField(p, { 호기: e.target.value })}
+                        onPaste={(e) => pasteColumn(e, '호기', idx)}
+                      />
+                    </div>
+                  ) : (
+                    <span className="mx-proj-name">{`${p.프로젝트 || '—'}${p.호기 ? ' ' + p.호기 : ''}`}</span>
+                  )}
                 </td>
                 <td
                   className="mx-cell mx-dir"
@@ -387,7 +411,18 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
                     <span className="mx-cell-empty">·</span>
                   )}
                 </td>
-                <td className="mx-cell mx-jaje">{p.자재 || ''}</td>
+                <td className="mx-cell mx-jaje">
+                  {canEdit ? (
+                    <input
+                      className="mx-text-input"
+                      value={p.자재 || ''}
+                      onChange={(e) => setField(p, { 자재: e.target.value })}
+                      onPaste={(e) => pasteColumn(e, '자재', idx)}
+                    />
+                  ) : (
+                    p.자재 || ''
+                  )}
+                </td>
                 <td
                   className="mx-cell mx-gigu"
                   style={{ cursor: canEdit ? 'pointer' : 'default' }}

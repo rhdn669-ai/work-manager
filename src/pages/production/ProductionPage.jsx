@@ -178,9 +178,10 @@ export default function ProductionPage() {
     setOpenPart(part);
   };
 
+  // 표에 빈 줄만 하나 늘린다 — 모달을 띄우지 않는다 (2026-08-12 대표님, 엑셀처럼).
+  // 이름·호기는 표에서 바로 쳐 넣으면 된다.
   async function handleAdd() {
-    const row = await addPanel(emptyPanel({ 프로젝트: '새 프로젝트', 회사: company }));
-    if (row?.id) openModal(row.id, 'info');
+    await addPanel(emptyPanel({ 회사: company }));
   }
 
   // 엑셀에서 붙여넣은 줄이 표의 행보다 많을 때 — 모자란 만큼 빈 판넬을 만들어 채운다.
