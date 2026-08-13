@@ -170,6 +170,30 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
     }
   };
 
+  // 글자 칸 — 치는 동안은 화면만 바꾸고, 칸을 벗어날 때 한 번만 저장한다.
+  // 글자마다 저장하면 「YS-TEPS1026033」 한 번 치는 데 저장 14번·표 다시 그리기 14번이다.
+  const TextCell = ({ p, field, rowIndex, className }) => {
+    const saved = p[field] || '';
+    const [v, setV] = useState(saved);
+    useEffect(() => setV(saved), [saved]);
+    return (
+      <input
+        className={className}
+        value={v}
+        placeholder={field === '프로젝트' ? '프로젝트' : undefined}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => {
+          if (v !== saved) setField(p, { [field]: v });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') setV(saved);
+        }}
+        onPaste={(e) => pasteColumn(e, field, rowIndex)}
+      />
+    );
+  };
+
   const DateCell = ({ p, field }) => {
     const row = panels.findIndex((x) => x.id === p.id);
     return (
@@ -399,13 +423,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                     프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
                 <td className="mx-sticky mx-c1 mx-proj">
                   {canEdit ? (
-                    <input
-                      className="mx-proj-input"
-                      value={p.프로젝트 || ''}
-                      placeholder="프로젝트"
-                      onChange={(e) => setField(p, { 프로젝트: e.target.value })}
-                      onPaste={(e) => pasteColumn(e, '프로젝트', idx)}
-                    />
+                    <TextCell p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
                   ) : (
                     <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
                   )}
@@ -426,28 +444,10 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                   )}
                 </td>
                 <td className="mx-cell mx-jaje">
-                  {canEdit ? (
-                    <input
-                      className="mx-text-input"
-                      value={p.자재 || ''}
-                      onChange={(e) => setField(p, { 자재: e.target.value })}
-                      onPaste={(e) => pasteColumn(e, '자재', idx)}
-                    />
-                  ) : (
-                    p.자재 || ''
-                  )}
+                  {canEdit ? <TextCell p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
                 </td>
                 <td className="mx-cell mx-chuck">
-                  {canEdit ? (
-                    <input
-                      className="mx-text-input"
-                      value={p.CHUCK || ''}
-                      onChange={(e) => setField(p, { CHUCK: e.target.value })}
-                      onPaste={(e) => pasteColumn(e, 'CHUCK', idx)}
-                    />
-                  ) : (
-                    p.CHUCK || ''
-                  )}
+                  {canEdit ? <TextCell p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
                 </td>
                 <td
                   className="mx-cell mx-gigu"
