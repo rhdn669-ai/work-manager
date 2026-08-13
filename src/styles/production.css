@@ -1171,7 +1171,9 @@
 }
 .mx-c1 {
   left: 34px;
-  min-width: 150px;
+  /* YS-TEPS1026033(14자) 기준 — 남는 폭은 자재 칸에 넘긴다 */
+  min-width: 126px;
+  width: 126px;
   text-align: left;
   box-shadow: 2px 0 0 var(--border, #e5e8eb);
 }
@@ -1194,11 +1196,16 @@
 .mx-status,
 .mx-jaip,
 .mx-dir,
-.mx-jaje,
 .mx-gigu {
   width: 64px;
   min-width: 64px;
   max-width: 64px;
+}
+/* 자재는 「U/Flex PLUS」(11자)처럼 길어 64px 로는 잘렸다 */
+.mx-jaje {
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
 }
 .mx-status,
 .mx-jaip {
