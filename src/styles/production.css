@@ -1434,3 +1434,48 @@
   color: var(--muted, #8b95a1);
   font-variant-numeric: tabular-nums;
 }
+
+/* 월별 대수 — 회사 탭 바로 아래 한 줄. 자리를 거의 먹지 않게 칩으로만 늘어놓는다.
+   회사마다 세는 날이 달라(메티스=출하, 디에이치=I/O CHECK) 기준을 작게 함께 적는다. */
+.pr-month-load {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.pr-month-load-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.pr-month-load-title em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-secondary, #8a94a6);
+}
+.pr-month-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft, #e8edf5);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pr-month-chip b {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+  .pr-month-load-title em {
+    display: none;
+  }
+}

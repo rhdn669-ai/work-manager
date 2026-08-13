@@ -5,6 +5,7 @@ import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
+import { monthlyCounts, monthLabel, basisField } from '../../domain/monthlyLoad';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import { backfillNcrFromPanels } from '../../services/qualityRecordService';
 import ProductionPanelModal from './ProductionPanelModal';
@@ -272,6 +273,22 @@ export default function ProductionPage() {
           ))}
         </div>
       </div>
+
+      {/* 월별 대수 — 회사마다 세는 날이 다르다(메티스=출하, 디에이치=I/O CHECK).
+          달은 25일에 끊는다: 26일에 나가는 판넬은 다음 달 몫이다. */}
+      {monthlyCounts(panels, company).length > 0 && (
+        <div className="pr-month-load">
+          <span className="pr-month-load-title">
+            월별 대수<em>{basisField(company)} 기준 · 25일 마감</em>
+          </span>
+          {monthlyCounts(panels, company).map(({ month, count }) => (
+            <span key={month} className="pr-month-chip">
+              {monthLabel(month)}
+              <b>{count}</b>
+            </span>
+          ))}
+        </div>
+      )}
 
       {view === '현황' && (
         <>

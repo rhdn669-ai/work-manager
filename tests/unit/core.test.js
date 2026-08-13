@@ -10,6 +10,7 @@ import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { isStockTracked } from '../../src/domain/stock';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
+import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -263,5 +264,61 @@ describe('발주서 세트 내역', () => {
     expect(setLotsLabel([])).toBe('');
     expect(setLotsLabel(undefined)).toBe('');
     expect(totalSetCount(undefined)).toBe(0);
+  });
+});
+
+describe('월별 대수 — 25일 컷 · 회사별 기준일', () => {
+  it('25일까지는 그 달', () => {
+    expect(cutoffMonth('2026-09-25')).toBe('2026-09');
+    expect(cutoffMonth('2026-09-01')).toBe('2026-09');
+  });
+
+  it('26일부터는 다음 달로 넘어간다', () => {
+    expect(cutoffMonth('2026-09-26')).toBe('2026-10');
+    expect(cutoffMonth('2026-09-30')).toBe('2026-10');
+  });
+
+  it('연말은 해를 넘긴다', () => {
+    expect(cutoffMonth('2026-12-26')).toBe('2027-01');
+  });
+
+  it('날짜가 없으면 세지 않는다', () => {
+    expect(cutoffMonth('')).toBe(null);
+    expect(cutoffMonth(undefined)).toBe(null);
+    expect(cutoffMonth('미정')).toBe(null);
+  });
+
+  it('회사마다 기준 날짜가 다르다', () => {
+    expect(basisField('메티스')).toBe('출하');
+    expect(basisField('디에이치')).toBe('I/O CHECK');
+  });
+
+  it('메티스는 출하일로, 디에이치는 I/O CHECK 로 센다', () => {
+    const panels = [
+      { 회사: '메티스', 출하: '2026-09-10', 'I/O CHECK': '2026-08-01' },
+      { 회사: '메티스', 출하: '2026-09-26', 'I/O CHECK': '2026-08-02' }, // 26일 → 10월
+      { 회사: '디에이치', 출하: '2026-12-31', 'I/O CHECK': '2026-09-20' },
+    ];
+    expect(monthlyCounts(panels)).toEqual([
+      { month: '2026-09', count: 2 }, // 메티스 9/10 + 디에이치 I/O 9/20
+      { month: '2026-10', count: 1 },
+    ]);
+  });
+
+  it('회사를 주면 그 회사만 센다', () => {
+    const panels = [
+      { 회사: '메티스', 출하: '2026-09-10' },
+      { 회사: '디에이치', 'I/O CHECK': '2026-09-20' },
+    ];
+    expect(monthlyCounts(panels, '메티스')).toEqual([{ month: '2026-09', count: 1 }]);
+    expect(monthlyCounts(panels, '디에이치')).toEqual([{ month: '2026-09', count: 1 }]);
+  });
+
+  it('기준 날짜가 비면 그 판넬은 빠진다', () => {
+    expect(monthlyCounts([{ 회사: '메티스', 출하: '' }])).toEqual([]);
+  });
+
+  it('달 이름은 「9월」로 읽는다', () => {
+    expect(monthLabel('2026-09')).toBe('9월');
   });
 });
