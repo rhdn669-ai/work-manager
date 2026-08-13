@@ -1,4 +1,13 @@
-import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  onSnapshot,
+  serverTimestamp,
+  getDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
@@ -49,6 +58,27 @@ export async function updatePanel(id, patch) {
     err.ncrSync = true;
     throw err;
   }
+}
+
+// 엑셀 붙여넣기처럼 여러 줄을 한꺼번에 쓸 때 — 한 번의 왕복으로 끝낸다.
+// 줄마다 updatePanel 을 부르면 저장 왕복도 줄 수만큼이고, 그때마다 구독이 깨어나
+// 74칸짜리 표가 통째로 다시 그려진다. 8줄이면 8번. 그래서 눈에 띄게 굼떴다.
+//
+// 새로 만드는 판넬은 id 를 미리 뽑아 같은 묶음에 넣는다 — 만들고 나서 다시 채우지 않는다.
+export async function bulkWritePanels({ creates = [], updates = [] }) {
+  if (creates.length === 0 && updates.length === 0) return [];
+  const batch = writeBatch(db);
+  const made = [];
+  for (const data of creates) {
+    const ref = doc(panelsRef);
+    batch.set(ref, { ...data, createdAt: serverTimestamp() });
+    made.push({ id: ref.id, ...data });
+  }
+  for (const { id, patch } of updates) {
+    batch.update(doc(db, 'productionPanels', id), { ...patch, updatedAt: serverTimestamp() });
+  }
+  await batch.commit();
+  return made;
 }
 
 // 불량 사진 업로드 → 다운로드 URL 반환 (Firestore엔 URL만 저장 — 문서 1MB 제한 보호)

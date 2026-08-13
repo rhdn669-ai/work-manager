@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect } from 'react';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
-import { updatePanel } from '../../services/productionService';
+import { bulkWritePanels, updatePanel } from '../../services/productionService';
 import {
   BUPMOK,
   JAIP,
@@ -25,6 +25,7 @@ import {
   normState,
   AFTER_TURNON,
   AFTER_TURNON_KEYS,
+  emptyPanel,
 } from '../../domain/production';
 import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 
@@ -33,7 +34,7 @@ import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 const mmdd = (d) => (d ? String(d).slice(5) : '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, onAddBlank }) {
+export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, company }) {
   const { toast } = useDialog();
   const setField = (p, patch) => {
     if (!canEdit) return;
@@ -135,31 +136,38 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
       toast('붙여넣은 내용에서 넣을 값을 찾지 못했습니다', 'error');
       return;
     }
-    const need = startRow + lines.length - panels.length;
-    let extra = [];
-    if (need > 0) {
-      if (!onAddBlank) {
-        toast(`행이 ${need}개 모자랍니다 — 판넬을 먼저 추가해 주세요`, 'error');
-        return;
+
+    // 기존 행에 덮을 것과, 모자라 새로 만들 것을 갈라 담아 한 번에 쓴다.
+    // 줄마다 저장하면 왕복도 그만큼이고 표가 매번 다시 그려져 굼뜨다.
+    const updates = [];
+    const creates = [];
+    const createdIndex = new Map(); // 붙여넣기 줄 → creates 안 자리
+    for (const { index, value } of values) {
+      const row = panels[startRow + index];
+      const patch = toPatch ? toPatch(row || emptyPanel({ 회사: company }), value) : { [field]: value };
+      if (row?.id) {
+        updates.push({ id: row.id, patch });
+      } else {
+        const at = startRow + index - panels.length;
+        if (createdIndex.has(at)) {
+          Object.assign(creates[createdIndex.get(at)], patch);
+        } else {
+          createdIndex.set(at, creates.length);
+          creates.push(emptyPanel({ 회사: company, ...patch }));
+        }
       }
-      extra = (await onAddBlank(need)) || [];
     }
-    const target = (i) => panels[startRow + i] || extra[startRow + i - panels.length];
-    let done = 0;
-    await Promise.all(
-      values
-        .map(({ index, value }) => {
-          const row = target(index);
-          if (!row?.id) return null;
-          done += 1;
-          return updatePanel(row.id, toPatch ? toPatch(row, value) : { [field]: value });
-        })
-        .filter(Boolean),
-    ).catch((err) => {
+    try {
+      await bulkWritePanels({ creates, updates });
+      const n = updates.length + creates.length;
+      toast(
+        `${isDateField(field) ? field : field} ${n}개 행에 붙여넣었습니다` +
+          (creates.length ? ` (판넬 ${creates.length}대 추가)` : ''),
+      );
+    } catch (err) {
       console.error(err);
       toast('붙여넣기 저장 중 오류가 발생했습니다', 'error', 0);
-    });
-    toast(`${field} ${done}개 행에 붙여넣었습니다${need > 0 ? ` (판넬 ${need}대 추가)` : ''}`);
+    }
   };
 
   const DateCell = ({ p, field }) => {
