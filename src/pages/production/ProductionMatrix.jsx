@@ -122,7 +122,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
   // 날짜로 다룰 열인지 — 나머지(프로젝트·호기·자재)는 글자 그대로 넣는다
   const isDateField = (f) => f === '납기' || f === '턴온' || f === '자재입고' || AFTER_TURNON.includes(f);
 
-  const pasteColumn = async (e, field, startRow) => {
+  const pasteColumn = async (e, field, startRow, toPatch) => {
     if (!canEdit) return;
     const text = e.clipboardData?.getData('text/plain') || '';
     const lines = splitPasted(text);
@@ -151,7 +151,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
           const row = target(index);
           if (!row?.id) return null;
           done += 1;
-          return updatePanel(row.id, { [field]: value });
+          return updatePanel(row.id, toPatch ? toPatch(row, value) : { [field]: value });
         })
         .filter(Boolean),
     ).catch((err) => {
@@ -204,6 +204,11 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
               className="mx-date-input"
               value={cur}
               onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
+              onPaste={(e) =>
+                pasteColumn(e, field, row, (target, value) => ({
+                  자재입고일: { ...(target.자재입고일 || {}), [itemKey]: value },
+                }))
+              }
             />
             <span
               className="cell-fill"
@@ -394,7 +399,10 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
                   className="mx-cell mx-dir"
                   style={{ cursor: canEdit ? 'pointer' : 'default' }}
                   onClick={() => cycleDir(p)}
-                  title="클릭: 정 / 역 전환"
+                  /* 입력칸이 없는 칸이라, 칸 자체가 포커스를 받아야 Ctrl+V 가 걸린다 */
+                  tabIndex={canEdit ? 0 : -1}
+                  onPaste={(e) => pasteColumn(e, '정역', idx)}
+                  title="클릭: 정 / 역 전환 · 붙여넣기 가능"
                 >
                   {p.정역 ? (
                     <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span>
@@ -418,7 +426,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
                   className="mx-cell mx-gigu"
                   style={{ cursor: canEdit ? 'pointer' : 'default' }}
                   onClick={() => cycleGigu(p)}
-                  title="클릭: 기구제작 선택"
+                  tabIndex={canEdit ? 0 : -1}
+                  onPaste={(e) => pasteColumn(e, '기구제작', idx)}
+                  title="클릭: 기구제작 선택 · 붙여넣기 가능"
                 >
                   {p.기구제작 ? (
                     <span className="mx-gigu-badge">{p.기구제작}</span>
