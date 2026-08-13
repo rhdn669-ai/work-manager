@@ -55,8 +55,8 @@ export const IPGO_ITEMS = IPGO_GROUPS.flatMap((g) => g.leaves.map((l) => ({ key:
 export const MP_SUBS = ['PLC', 'I/O', '드라이브', 'INV', 'CN', 'BORAD', 'EMS', 'SWITCH', 'V메타']; // MAIN → 부품 'MP'로 승격 (2026-07-20)
 // 진행률에서 MP가 차지하는 고정 비중(12.5%). 하위 9종으로 다시 분할, 나머지 부품은 87.5% 균등.
 // 턴온 뒤 마무리 일정 — 표·상세 모달이 같은 정의를 쓴다.
-// 현장 흐름 순서 그대로: 조정 → 입고검수 → 고객검수 → 출하검수 → 포장 → 출하
-export const AFTER_TURNON = ['조정', '입고검수', '고객검수', '출하검수', '포장', '출하'];
+// 현장 흐름 순서 그대로: I/O CHECK → 조정 → 입고검수 → 고객검수 → 출하검수 → 포장 → 출하
+export const AFTER_TURNON = ['I/O CHECK', '조정', '입고검수', '고객검수', '출하검수', '포장', '출하'];
 
 export const MP_WEIGHT = 0.125;
 
@@ -236,6 +236,7 @@ export function emptyPanel(overrides = {}) {
     납기: '',
     턴온: '',
     // 턴온 뒤 마무리 일정 — 현장에서 이 순서대로 흐른다 (2026-08-12 대표님)
+    'I/O CHECK': '',
     조정: '',
     입고검수: '',
     고객검수: '',

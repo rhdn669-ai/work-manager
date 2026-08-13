@@ -265,8 +265,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 </th>
               ),
             )}
+            {/* 자재 납기(발주)와 헷갈려 「판넬납기」로 부른다 — 저장 필드명은 납기 그대로 */}
             <th scope="col" rowSpan={2}>
-              납기
+              판넬납기
             </th>
             <th scope="col" rowSpan={2}>
               턴온

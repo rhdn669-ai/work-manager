@@ -220,10 +220,11 @@ export function parsePhotoText(text) {
         자재입고: 자재필요,
         납기,
         턴온,
+        'I/O CHECK': ioCheck || '',
       });
   }
   return parsed;
 }
 
-export const OCR_COLUMNS = ['프로젝트', '호기', '정역', '기구제작', '자재', '자재입고', '납기', '턴온'];
+export const OCR_COLUMNS = ['프로젝트', '호기', '정역', '기구제작', '자재', '자재입고', '납기', '턴온', 'I/O CHECK'];
 export { BUPMOK };

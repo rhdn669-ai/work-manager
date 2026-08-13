@@ -393,7 +393,7 @@ export default function ProductionPanelModal({
                 </div>
               </div>
               {field('자재입고일', '자재입고', 'date')}
-              {field('납기', '납기', 'date')}
+              {field('판넬납기', '납기', 'date')}
               {field('턴온', '턴온', 'date')}
               {/* 턴온 뒤 마무리 일정 — 표와 같은 정의를 쓴다 */}
               {AFTER_TURNON.map((f) => (
