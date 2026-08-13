@@ -53,7 +53,7 @@ export default function ProductionImportModal({ company, onClose }) {
           자재입고: r.자재입고,
           납기: r.납기,
           턴온: r.턴온,
-          'I/O CHECK': r['I/O CHECK'] || '',
+          ioCheck: r.ioCheck || '',
           비고: r.납입처 || '',
         }),
       );

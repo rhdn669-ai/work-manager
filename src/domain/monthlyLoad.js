@@ -8,7 +8,7 @@
 // 달을 가르는 선은 말일이 아니라 25일이다. 26일부터는 다음 달로 넘어간다 —
 // 9/26 에 나가는 판넬은 10월 몫으로 잡힌다.
 
-export const MONTH_BASIS = { 메티스: '출하', 디에이치: 'I/O CHECK' };
+export const MONTH_BASIS = { 메티스: '출하', 디에이치: 'ioCheck' };
 
 export const CUT_DAY = 25;
 

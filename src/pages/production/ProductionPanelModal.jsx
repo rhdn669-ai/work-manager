@@ -397,7 +397,7 @@ export default function ProductionPanelModal({
               {field('턴온', '턴온', 'date')}
               {/* 턴온 뒤 마무리 일정 — 표와 같은 정의를 쓴다 */}
               {AFTER_TURNON.map((f) => (
-                <Fragment key={f}>{field(f, f, 'date')}</Fragment>
+                <Fragment key={f.key}>{field(f.label, f.key, 'date')}</Fragment>
               ))}
             </div>
             <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>

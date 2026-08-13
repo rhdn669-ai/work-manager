@@ -1520,3 +1520,10 @@
   background: #fff;
   border-color: var(--primary, #002050);
 }
+
+/* CHUCK — 자재 옆 짧은 값 */
+.mx-chuck {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+}

@@ -291,14 +291,14 @@ describe('월별 대수 — 25일 컷 · 회사별 기준일', () => {
 
   it('회사마다 기준 날짜가 다르다', () => {
     expect(basisField('메티스')).toBe('출하');
-    expect(basisField('디에이치')).toBe('I/O CHECK');
+    expect(basisField('디에이치')).toBe('ioCheck');
   });
 
   it('메티스는 출하일로, 디에이치는 I/O CHECK 로 센다', () => {
     const panels = [
-      { 회사: '메티스', 출하: '2026-09-10', 'I/O CHECK': '2026-08-01' },
-      { 회사: '메티스', 출하: '2026-09-26', 'I/O CHECK': '2026-08-02' }, // 26일 → 10월
-      { 회사: '디에이치', 출하: '2026-12-31', 'I/O CHECK': '2026-09-20' },
+      { 회사: '메티스', 출하: '2026-09-10', ioCheck: '2026-08-01' },
+      { 회사: '메티스', 출하: '2026-09-26', ioCheck: '2026-08-02' }, // 26일 → 10월
+      { 회사: '디에이치', 출하: '2026-12-31', ioCheck: '2026-09-20' },
     ];
     expect(monthlyCounts(panels)).toEqual([
       { month: '2026-09', count: 2 }, // 메티스 9/10 + 디에이치 I/O 9/20
@@ -309,7 +309,7 @@ describe('월별 대수 — 25일 컷 · 회사별 기준일', () => {
   it('회사를 주면 그 회사만 센다', () => {
     const panels = [
       { 회사: '메티스', 출하: '2026-09-10' },
-      { 회사: '디에이치', 'I/O CHECK': '2026-09-20' },
+      { 회사: '디에이치', ioCheck: '2026-09-20' },
     ];
     expect(monthlyCounts(panels, '메티스')).toEqual([{ month: '2026-09', count: 1 }]);
     expect(monthlyCounts(panels, '디에이치')).toEqual([{ month: '2026-09', count: 1 }]);

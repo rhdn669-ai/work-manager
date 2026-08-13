@@ -24,6 +24,7 @@ import {
   deriveMpState,
   normState,
   AFTER_TURNON,
+  AFTER_TURNON_KEYS,
 } from '../../domain/production';
 import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 
@@ -120,7 +121,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
   // 엑셀에서 한 열을 긁어 붙여넣기 — 누른 칸부터 아래로 채운다.
   // 줄이 표의 행보다 많으면 그만큼 판넬을 새로 만들어 이어 붙인다 (2026-08-12 대표님).
   // 날짜로 다룰 열인지 — 나머지(프로젝트·호기·자재)는 글자 그대로 넣는다
-  const isDateField = (f) => f === '납기' || f === '턴온' || f === '자재입고' || AFTER_TURNON.includes(f);
+  const isDateField = (f) => f === '납기' || f === '턴온' || f === '자재입고' || AFTER_TURNON_KEYS.includes(f);
 
   const pasteColumn = async (e, field, startRow, toPatch) => {
     if (!canEdit) return;
@@ -229,7 +230,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
         <thead>
           {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
           <tr className="mx-group-row">
-            <th scope="col" className="mx-sticky" colSpan={5}>
+            <th scope="col" className="mx-sticky" colSpan={6}>
               기본
             </th>
             {BUPMOK.map((b) => (
@@ -237,7 +238,10 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
                 {b}
               </th>
             ))}
-            <th scope="col" colSpan={IPGO_ITEMS.length + 2 + AFTER_TURNON.length}>
+            <th scope="col" colSpan={IPGO_ITEMS.length}>
+              입고 예정일
+            </th>
+            <th scope="col" colSpan={2 + AFTER_TURNON.length}>
               일정
             </th>
             <th scope="col" colSpan={canEdit ? 3 : 2}>
@@ -257,6 +261,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
             </th>
             <th scope="col" rowSpan={2}>
               자재
+            </th>
+            <th scope="col" rowSpan={2}>
+              CHUCK
             </th>
             <th scope="col" rowSpan={2}>
               기구
@@ -325,8 +332,8 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
             </th>
             {/* 턴온 뒤 마무리 일정 — 조정부터 출하까지 현장 흐름 순서 (2026-08-12 대표님) */}
             {AFTER_TURNON.map((f) => (
-              <th scope="col" key={f} rowSpan={2}>
-                {f}
+              <th scope="col" key={f.key} rowSpan={2}>
+                {f.label}
               </th>
             ))}
             <th scope="col" rowSpan={2}>
@@ -422,6 +429,18 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
                     p.자재 || ''
                   )}
                 </td>
+                <td className="mx-cell mx-chuck">
+                  {canEdit ? (
+                    <input
+                      className="mx-text-input"
+                      value={p.CHUCK || ''}
+                      onChange={(e) => setField(p, { CHUCK: e.target.value })}
+                      onPaste={(e) => pasteColumn(e, 'CHUCK', idx)}
+                    />
+                  ) : (
+                    p.CHUCK || ''
+                  )}
+                </td>
                 <td
                   className="mx-cell mx-gigu"
                   style={{ cursor: canEdit ? 'pointer' : 'default' }}
@@ -479,7 +498,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
                 <DateCell p={p} field="납기" />
                 <DateCell p={p} field="턴온" />
                 {AFTER_TURNON.map((f) => (
-                  <DateCell key={f} p={p} field={f} />
+                  <DateCell key={f.key} p={p} field={f.key} />
                 ))}
                 <td className="mx-cell mx-prog">
                   <div className="mx-prog-wrap">

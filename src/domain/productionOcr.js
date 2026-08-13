@@ -220,7 +220,7 @@ export function parsePhotoText(text) {
         자재입고: 자재필요,
         납기,
         턴온,
-        'I/O CHECK': ioCheck || '',
+        ioCheck: ioCheck || '',
       });
   }
   return parsed;
