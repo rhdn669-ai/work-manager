@@ -1322,10 +1322,11 @@
   text-align: center;
 }
 .mx-sub-th {
-  font-size: 11px;
+  /* 칸이 54px 인데 글자가 11px 이라 지나치게 작았다 — 2~3글자는 12px 로도 넉넉히 들어간다 */
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 .mx-boxmat,
 .mx-boxdefect,
@@ -1354,9 +1355,10 @@
 .mx-table td.mx-box-start {
   border-left: 2px solid var(--border-strong, #d1d6db);
 }
-/* 3행 leaf 헤더(사급·제작·도급) — 약간 작게 */
+/* 3행 leaf 헤더(사급·제작·도급) — 크기는 2행과 같게 두고 색·굵기로만 한 단 낮춘다.
+   10px 은 눈에 잘 안 들어오는 데다 타입 램프에도 없는 크기였다. */
 .mx-leaf-row .mx-sub-th {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-light, #6b7684);
 }
