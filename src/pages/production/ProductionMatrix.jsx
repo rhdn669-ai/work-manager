@@ -245,7 +245,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
               #
             </th>
             <th scope="col" className="mx-sticky mx-c1" rowSpan={2}>
-              프로젝트 호기
+              프로젝트
             </th>
             <th scope="col" rowSpan={2}>
               정역
@@ -376,27 +376,18 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, on
               <tr key={p.id} className={od ? 'mx-od' : urg ? 'mx-urg' : ''}>
                 <td className="mx-sticky mx-c0 mx-no">{idx + 1}</td>
                 {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
-                    프로젝트·호기가 각각 다른 칸이라 열 단위 붙여넣기도 그대로 먹는다. */}
+                    프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
                 <td className="mx-sticky mx-c1 mx-proj">
                   {canEdit ? (
-                    <div className="mx-proj-edit">
-                      <input
-                        className="mx-proj-input"
-                        value={p.프로젝트 || ''}
-                        placeholder="프로젝트"
-                        onChange={(e) => setField(p, { 프로젝트: e.target.value })}
-                        onPaste={(e) => pasteColumn(e, '프로젝트', idx)}
-                      />
-                      <input
-                        className="mx-proj-input mx-hogi-input"
-                        value={p.호기 || ''}
-                        placeholder="호기"
-                        onChange={(e) => setField(p, { 호기: e.target.value })}
-                        onPaste={(e) => pasteColumn(e, '호기', idx)}
-                      />
-                    </div>
+                    <input
+                      className="mx-proj-input"
+                      value={p.프로젝트 || ''}
+                      placeholder="프로젝트"
+                      onChange={(e) => setField(p, { 프로젝트: e.target.value })}
+                      onPaste={(e) => pasteColumn(e, '프로젝트', idx)}
+                    />
                   ) : (
-                    <span className="mx-proj-name">{`${p.프로젝트 || '—'}${p.호기 ? ' ' + p.호기 : ''}`}</span>
+                    <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
                   )}
                 </td>
                 <td
