@@ -1,11 +1,11 @@
-import { useRef, useState, useMemo } from 'react';
+import { Fragment, useRef, useState, useMemo } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto, attachDefectPhoto } from '../../services/productionService';
 import { useUploads } from '../../contexts/useUploads';
 import ImageLightbox from '../../components/common/ImageLightbox';
-import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus } from '../../domain/production';
+import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus, AFTER_TURNON } from '../../domain/production';
 import { DEFECT_TYPE_LABELS } from '../../domain/defectTypes';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -395,6 +395,10 @@ export default function ProductionPanelModal({
               {field('자재입고일', '자재입고', 'date')}
               {field('납기', '납기', 'date')}
               {field('턴온', '턴온', 'date')}
+              {/* 턴온 뒤 마무리 일정 — 표와 같은 정의를 쓴다 */}
+              {AFTER_TURNON.map((f) => (
+                <Fragment key={f}>{field(f, f, 'date')}</Fragment>
+              ))}
             </div>
             <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
               {field('비고', '비고')}

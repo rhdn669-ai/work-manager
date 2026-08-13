@@ -1,7 +1,7 @@
 {
   "name": "work-manager",
   "private": true,
-  "version": "106.4",
+  "version": "106.5",
   "type": "module",
   "scripts": {
     "dev": "vite",

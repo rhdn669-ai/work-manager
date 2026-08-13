@@ -23,6 +23,7 @@ import {
   deriveBoxStatus,
   deriveMpState,
   normState,
+  AFTER_TURNON,
 } from '../../domain/production';
 
 // 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
@@ -185,7 +186,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 {b}
               </th>
             ))}
-            <th scope="col" colSpan={IPGO_ITEMS.length + 2}>
+            <th scope="col" colSpan={IPGO_ITEMS.length + 2 + AFTER_TURNON.length}>
               일정
             </th>
             <th scope="col" colSpan={canEdit ? 3 : 2}>
@@ -270,6 +271,12 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
             <th scope="col" rowSpan={2}>
               턴온
             </th>
+            {/* 턴온 뒤 마무리 일정 — 조정부터 출하까지 현장 흐름 순서 (2026-08-12 대표님) */}
+            {AFTER_TURNON.map((f) => (
+              <th scope="col" key={f} rowSpan={2}>
+                {f}
+              </th>
+            ))}
             <th scope="col" rowSpan={2}>
               진행
             </th>
@@ -391,6 +398,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
                 ))}
                 <DateCell p={p} field="납기" />
                 <DateCell p={p} field="턴온" />
+                {AFTER_TURNON.map((f) => (
+                  <DateCell key={f} p={p} field={f} />
+                ))}
                 <td className="mx-cell mx-prog">
                   <div className="mx-prog-wrap">
                     <div className="mx-prog-track">
