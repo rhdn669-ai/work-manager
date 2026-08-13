@@ -182,6 +182,17 @@ export default function ProductionPage() {
     const row = await addPanel(emptyPanel({ 프로젝트: '새 프로젝트', 회사: company }));
     if (row?.id) openModal(row.id, 'info');
   }
+
+  // 엑셀에서 붙여넣은 줄이 표의 행보다 많을 때 — 모자란 만큼 빈 판넬을 만들어 채운다.
+  // 만든 순서대로 돌려주어야 붙여넣은 순서와 어긋나지 않는다.
+  async function addBlankPanels(n) {
+    const made = [];
+    for (let i = 0; i < n; i++) {
+      const row = await addPanel(emptyPanel({ 회사: company }));
+      if (row?.id) made.push(row);
+    }
+    return made;
+  }
   async function handleRemove(e, p) {
     e.stopPropagation();
     const name = `${p.프로젝트 || '이 판넬'}${p.호기 ? ` · ${p.호기}` : ''}`;
@@ -317,6 +328,7 @@ export default function ProductionPage() {
               <ProductionMatrix
                 panels={filtered}
                 canEdit={allowed}
+                onAddBlank={addBlankPanels}
                 checkerName={userProfile?.name || ''}
                 onOpen={openModal}
                 onRemove={handleRemove}

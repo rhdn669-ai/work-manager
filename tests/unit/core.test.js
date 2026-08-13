@@ -11,6 +11,7 @@ import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { isStockTracked } from '../../src/domain/stock';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
 import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
+import { splitPasted, toISODate, mapPastedValues } from '../../src/utils/pasteColumn';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -320,5 +321,53 @@ describe('월별 대수 — 25일 컷 · 회사별 기준일', () => {
 
   it('달 이름은 「9월」로 읽는다', () => {
     expect(monthLabel('2026-09')).toBe('9월');
+  });
+});
+
+describe('엑셀 한 열 붙여넣기', () => {
+  it('세로로 긁은 셀은 줄바꿈으로 나뉜다', () => {
+    expect(splitPasted('2026-07-21\n2026-07-29\n2026-08-09\n')).toEqual(['2026-07-21', '2026-07-29', '2026-08-09']);
+  });
+
+  it('가로로 딸려온 칸은 첫 칸만 쓴다', () => {
+    expect(splitPasted('2026-07-21\t건일\n2026-07-29\t대한')).toEqual(['2026-07-21', '2026-07-29']);
+  });
+
+  it('중간 빈 줄은 그대로 두고, 끝의 빈 줄만 버린다', () => {
+    expect(splitPasted('2026-07-21\n\n2026-08-09\n')).toEqual(['2026-07-21', '', '2026-08-09']);
+  });
+
+  it('엑셀이 뱉는 날짜 형태를 모두 읽는다', () => {
+    expect(toISODate('2026-07-21')).toBe('2026-07-21');
+    expect(toISODate('2026. 7. 21')).toBe('2026-07-21');
+    expect(toISODate('2026.07.21')).toBe('2026-07-21');
+    expect(toISODate('2026/7/21')).toBe('2026-07-21');
+    expect(toISODate('20260721')).toBe('2026-07-21');
+  });
+
+  it('연도가 없으면 기준 연도를 붙인다', () => {
+    expect(toISODate('7/21', 2026)).toBe('2026-07-21');
+    expect(toISODate('6/23', 2026)).toBe('2026-06-23');
+  });
+
+  it('날짜가 아니면 null — 머리글이 섞여도 그 줄만 건너뛴다', () => {
+    expect(toISODate('I/O CHECK')).toBe(null);
+    expect(toISODate('미정')).toBe(null);
+    expect(toISODate('')).toBe('');
+  });
+
+  it('날짜 열에 머리글이 섞이면 그 줄만 빠지고 나머지는 자리를 지킨다', () => {
+    const lines = ['I/O CHECK', '2026-07-21', '2026-07-29'];
+    expect(mapPastedValues(lines, { type: 'date' })).toEqual([
+      { index: 1, value: '2026-07-21' },
+      { index: 2, value: '2026-07-29' },
+    ]);
+  });
+
+  it('글자 열은 그대로 넣는다', () => {
+    expect(mapPastedValues(['네패스아크', '티스나'], { type: 'text' })).toEqual([
+      { index: 0, value: '네패스아크' },
+      { index: 1, value: '티스나' },
+    ]);
   });
 });

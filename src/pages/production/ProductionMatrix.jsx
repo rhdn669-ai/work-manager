@@ -25,13 +25,14 @@ import {
   normState,
   AFTER_TURNON,
 } from '../../domain/production';
+import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 
 // 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
 // BOX 상태는 하위(자재입고4·불량)에서 자동 산출. 셀 직접 입력. MP 하위 상세는 상세모달.
 const mmdd = (d) => (d ? String(d).slice(5) : '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) {
+export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, onAddBlank }) {
   const { toast } = useDialog();
   const setField = (p, patch) => {
     if (!canEdit) return;
@@ -116,6 +117,47 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
     setField(p, { mp하위상태: { ...(p.mp하위상태 || {}), [k]: next } });
   };
 
+  // 엑셀에서 한 열을 긁어 붙여넣기 — 누른 칸부터 아래로 채운다.
+  // 줄이 표의 행보다 많으면 그만큼 판넬을 새로 만들어 이어 붙인다 (2026-08-12 대표님).
+  const pasteColumn = async (e, field, startRow) => {
+    if (!canEdit) return;
+    const text = e.clipboardData?.getData('text/plain') || '';
+    const lines = splitPasted(text);
+    if (lines.length <= 1) return; // 한 줄이면 평소대로 그 칸에만 붙는다
+    e.preventDefault();
+
+    const values = mapPastedValues(lines, { type: 'date' });
+    if (values.length === 0) {
+      toast('붙여넣은 내용에서 날짜를 찾지 못했습니다', 'error');
+      return;
+    }
+    const need = startRow + lines.length - panels.length;
+    let extra = [];
+    if (need > 0) {
+      if (!onAddBlank) {
+        toast(`행이 ${need}개 모자랍니다 — 판넬을 먼저 추가해 주세요`, 'error');
+        return;
+      }
+      extra = (await onAddBlank(need)) || [];
+    }
+    const target = (i) => panels[startRow + i] || extra[startRow + i - panels.length];
+    let done = 0;
+    await Promise.all(
+      values
+        .map(({ index, value }) => {
+          const row = target(index);
+          if (!row?.id) return null;
+          done += 1;
+          return updatePanel(row.id, { [field]: value });
+        })
+        .filter(Boolean),
+    ).catch((err) => {
+      console.error(err);
+      toast('붙여넣기 저장 중 오류가 발생했습니다', 'error', 0);
+    });
+    toast(`${field} ${done}개 행에 붙여넣었습니다${need > 0 ? ` (판넬 ${need}대 추가)` : ''}`);
+  };
+
   const DateCell = ({ p, field }) => {
     const row = panels.findIndex((x) => x.id === p.id);
     return (
@@ -127,6 +169,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove }) 
               className="mx-date-input"
               value={p[field] || ''}
               onChange={(e) => setField(p, { [field]: e.target.value })}
+              onPaste={(e) => pasteColumn(e, field, row)}
             />
             <span
               className="cell-fill"
