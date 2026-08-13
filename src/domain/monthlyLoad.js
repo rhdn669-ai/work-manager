@@ -12,6 +12,11 @@ export const MONTH_BASIS = { 메티스: '출하', 디에이치: 'ioCheck' };
 
 export const CUT_DAY = 25;
 
+// 화면에 적을 이름 — 저장 필드명(ioCheck)이 아니라 현장에서 부르는 대로
+export function basisLabel(company) {
+  return basisField(company) === 'ioCheck' ? 'I/O CHECK' : basisField(company);
+}
+
 export function basisField(company) {
   return MONTH_BASIS[company] || '출하';
 }

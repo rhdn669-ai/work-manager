@@ -5,7 +5,7 @@ import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
-import { monthlyCounts, monthLabel, basisField } from '../../domain/monthlyLoad';
+import { monthlyCounts, monthLabel, basisLabel } from '../../domain/monthlyLoad';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import { backfillNcrFromPanels } from '../../services/qualityRecordService';
 import ProductionPanelModal from './ProductionPanelModal';
@@ -291,7 +291,7 @@ export default function ProductionPage() {
       {monthlyCounts(panels, company).length > 0 && (
         <div className="pr-month-load">
           <span className="pr-month-load-title">
-            월별 대수<em>{basisField(company)} 기준 · 25일 마감</em>
+            월별 대수<em>{basisLabel(company)} 기준 · 25일 마감</em>
           </span>
           {monthlyCounts(panels, company).map(({ month, count }) => (
             <span key={month} className="pr-month-chip">
