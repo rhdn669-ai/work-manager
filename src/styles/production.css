@@ -1103,7 +1103,13 @@
 
 /* ── 엑셀식 가로 매트릭스 ── */
 .mx-wrap {
-  overflow-x: auto;
+  /* 표가 길어지면 가로 스크롤바가 저 아래 끝에 붙어 쓸 수가 없다.
+     화면 높이에 맞춰 잘라 두면 가로·세로 스크롤바가 늘 손 닿는 곳에 있고,
+     머리 3줄도 sticky 로 붙어 따라온다. */
+  max-height: calc(100dvh - 240px);
+  min-height: 320px;
+  overflow: auto;
+  overscroll-behavior: contain;
   padding: 0;
   background: #fff;
   border: 1px solid var(--border, #e5e8eb);

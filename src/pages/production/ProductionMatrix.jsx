@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useRef, useMemo } from 'react';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { bulkWritePanels, updatePanel } from '../../services/productionService';
@@ -48,6 +48,40 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
   // 같은 날 잡힌 일정을 호기마다 하나씩 고르는 일이 잦아, 구매 품목표와 같은 방식으로 맞춘다.
   const [fill, setFill] = useState(null); // { field, value, start, end }
 
+  // 화면에 보이는 행만 그린다.
+  // 192대를 다 그리면 칸이 14,592개·입력칸 3,456개가 되어 탭 하나 누르는 데 3.4초가 걸렸다.
+  // 위아래로 여유 몇 줄을 더 그려 두어 스크롤 중에 빈 칸이 보이지 않게 한다.
+  const ROW_H = 53; // 행 높이(고정) — 이 값이 어긋나면 스크롤이 튄다
+  const OVERSCAN = 6;
+  const wrapRef = useRef(null);
+  const [view, setView] = useState({ top: 0, height: 900 });
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return undefined;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      setView({ top: el.scrollTop, height: el.clientHeight || 900 });
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+  const HEAD_H = 126; // 머리 3줄이 sticky 로 덮는 높이
+  const win = useMemo(() => {
+    const first = Math.max(0, Math.floor((view.top - HEAD_H) / ROW_H) - OVERSCAN);
+    const last = Math.min(panels.length, Math.ceil((view.top + view.height) / ROW_H) + OVERSCAN);
+    return { first, last };
+  }, [view, panels.length]);
+
   function startFill(e, field, value, startIndex) {
     e.preventDefault();
     e.stopPropagation();
@@ -86,13 +120,8 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
 
   // 정/역 인라인 토글 (빈값 → 정 → 역 → 빈값)
   const DIR_CYCLE = ['', '정', '역'];
-  const cycleDir = (p) => setField(p, { 정역: DIR_CYCLE[(DIR_CYCLE.indexOf(p.정역 || '') + 1) % DIR_CYCLE.length] });
   // 기구제작 인라인 토글 (회사별 선택지 순환, 빈값 포함)
   const gigusOf = (p) => GIGU_MAKERS[p.회사] || [...GIGU_MAKERS['메티스'], ...GIGU_MAKERS['디에이치']];
-  const cycleGigu = (p) => {
-    const opts = ['', ...gigusOf(p)];
-    setField(p, { 기구제작: opts[(opts.indexOf(p.기구제작 || '') + 1) % opts.length] });
-  };
 
   // BOX 자재입고 항목 토글 → 박스입고 + 체크일자 갱신 + 박스 상태 자동 산출
   const toggleBoxMat = (p, box, k) => {
@@ -168,6 +197,33 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
       console.error(err);
       toast('붙여넣기 저장 중 오류가 발생했습니다', 'error', 0);
     }
+  };
+
+  // 눌러서 값을 돌리는 칸(정역·기구제작).
+  // 저장이 끝나기를 기다렸다가 다시 그리면 누른 뒤 한 박자 늦게 바뀌는 것처럼 보인다.
+  // 화면을 먼저 바꿔 두고 저장은 뒤에서 시킨다 — 실패하면 원래 값으로 되돌아온다.
+  const CycleCell = ({ p, field, options, rowIndex, className, title, render }) => {
+    const saved = p[field] || '';
+    const [v, setV] = useState(saved);
+    useEffect(() => setV(saved), [saved]);
+    const next = () => {
+      if (!canEdit) return;
+      const nv = options[(options.indexOf(v) + 1) % options.length];
+      setV(nv);
+      setField(p, { [field]: nv });
+    };
+    return (
+      <td
+        className={className}
+        style={{ cursor: canEdit ? 'pointer' : 'default' }}
+        onClick={next}
+        tabIndex={canEdit ? 0 : -1}
+        onPaste={(e) => pasteColumn(e, field, rowIndex)}
+        title={title}
+      >
+        {render(v)}
+      </td>
+    );
   };
 
   // 글자 칸 — 치는 동안은 화면만 바꾸고, 칸을 벗어날 때 한 번만 저장한다.
@@ -257,7 +313,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
   };
 
   return (
-    <div className="mx-wrap card">
+    <div className="mx-wrap card" ref={wrapRef}>
       <table className="mx-table">
         <thead>
           {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
@@ -410,7 +466,9 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
           </tr>
         </thead>
         <tbody>
-          {panels.map((p, idx) => {
+          {win.first > 0 && <tr style={{ height: win.first * ROW_H }} aria-hidden="true" />}
+          {panels.slice(win.first, win.last).map((p, i) => {
+            const idx = win.first + i;
             const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
             const dd = getDday(p.납기);
             const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
@@ -428,41 +486,38 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                     <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
                   )}
                 </td>
-                <td
+                <CycleCell
+                  p={p}
+                  field="정역"
+                  options={DIR_CYCLE}
+                  rowIndex={idx}
                   className="mx-cell mx-dir"
-                  style={{ cursor: canEdit ? 'pointer' : 'default' }}
-                  onClick={() => cycleDir(p)}
-                  /* 입력칸이 없는 칸이라, 칸 자체가 포커스를 받아야 Ctrl+V 가 걸린다 */
-                  tabIndex={canEdit ? 0 : -1}
-                  onPaste={(e) => pasteColumn(e, '정역', idx)}
                   title="클릭: 정 / 역 전환 · 붙여넣기 가능"
-                >
-                  {p.정역 ? (
-                    <span className={`dir-badge ${p.정역 === '정' ? 'jung' : 'yeok'}`}>{p.정역}</span>
-                  ) : (
-                    <span className="mx-cell-empty">·</span>
-                  )}
-                </td>
+                  render={(v) =>
+                    v ? (
+                      <span className={`dir-badge ${v === '정' ? 'jung' : 'yeok'}`}>{v}</span>
+                    ) : (
+                      <span className="mx-cell-empty">·</span>
+                    )
+                  }
+                />
                 <td className="mx-cell mx-jaje">
                   {canEdit ? <TextCell p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
                 </td>
                 <td className="mx-cell mx-chuck">
                   {canEdit ? <TextCell p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
                 </td>
-                <td
+                <CycleCell
+                  p={p}
+                  field="기구제작"
+                  options={['', ...gigusOf(p)]}
+                  rowIndex={idx}
                   className="mx-cell mx-gigu"
-                  style={{ cursor: canEdit ? 'pointer' : 'default' }}
-                  onClick={() => cycleGigu(p)}
-                  tabIndex={canEdit ? 0 : -1}
-                  onPaste={(e) => pasteColumn(e, '기구제작', idx)}
                   title="클릭: 기구제작 선택 · 붙여넣기 가능"
-                >
-                  {p.기구제작 ? (
-                    <span className="mx-gigu-badge">{p.기구제작}</span>
-                  ) : (
-                    <span className="mx-cell-empty">·</span>
-                  )}
-                </td>
+                  render={(v) =>
+                    v ? <span className="mx-gigu-badge">{v}</span> : <span className="mx-cell-empty">·</span>
+                  }
+                />
                 {BUPMOK.map((b) => {
                   if (b === 'MP') {
                     const st = deriveMpState(p.mp하위상태 || {});
@@ -534,6 +589,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
               </tr>
             );
           })}
+          {win.last < panels.length && <tr style={{ height: (panels.length - win.last) * ROW_H }} aria-hidden="true" />}
         </tbody>
       </table>
     </div>
