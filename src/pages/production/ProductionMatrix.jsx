@@ -59,8 +59,16 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
     const el = wrapRef.current;
     if (!el) return undefined;
     let raf = 0;
+    // 표 높이를 화면 남는 만큼으로 맞춘다. 고정값으로 잡으면 상단 알림 배너가
+    // 있고 없고에 따라 표 아래가 화면 밖으로 밀려, 가로 스크롤바를 쓰려면
+    // 페이지를 한 번 더 내려야 했다.
+    const fit = () => {
+      const top = el.getBoundingClientRect().top;
+      el.style.maxHeight = `${Math.max(280, Math.round(window.innerHeight - top - 16))}px`;
+    };
     const measure = () => {
       raf = 0;
+      fit();
       setView({ top: el.scrollTop, height: el.clientHeight || 900 });
     };
     const onScroll = () => {
@@ -69,9 +77,13 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
     measure();
     el.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
+    // 배너가 닫히는 등 위쪽 높이가 바뀌면 다시 맞춘다
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(document.body);
     return () => {
       el.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      ro.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);

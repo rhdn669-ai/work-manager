@@ -1106,8 +1106,9 @@
   /* 표가 길어지면 가로 스크롤바가 저 아래 끝에 붙어 쓸 수가 없다.
      화면 높이에 맞춰 잘라 두면 가로·세로 스크롤바가 늘 손 닿는 곳에 있고,
      머리 3줄도 sticky 로 붙어 따라온다. */
+  /* 초기값 — 실제 높이는 화면 남는 만큼으로 스크립트가 다시 맞춘다 */
   max-height: calc(100dvh - 240px);
-  min-height: 320px;
+  min-height: 280px;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0;
