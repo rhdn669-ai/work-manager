@@ -237,7 +237,7 @@ export default function ProductionPage() {
   if (userProfile && !allowed) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div>
+    <div className="pr-page">
       <div className="page-header">
         <h2>생산현황</h2>
         <div className="page-actions" style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
