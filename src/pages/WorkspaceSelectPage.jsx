@@ -23,7 +23,7 @@ export default function WorkspaceSelectPage() {
   return (
     <div className="ws-wrap">
       <div className="ws-inner">
-        <img loading="lazy" className="ws-logo" src="/icnp-emblem.png" alt="IOPN" />
+        <img className="ws-logo" src="/icnp-emblem.png" alt="IOPN" />
         <h1 className="ws-title">어디로 갈까요?</h1>
         <p className="ws-sub">{userProfile?.name}님, 사용할 업무 공간을 선택하세요</p>
         <div className="ws-cards">

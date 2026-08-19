@@ -2552,7 +2552,7 @@ export default function PurchaseDetailPage() {
                     const mailSubject = `[주식회사 아이오피엔] ${purchase.title || ''}`;
                     const cardSrc = cardFileFor(purchase.contactName);
                     const cardHtml = cardSrc
-                      ? `<br><br><br><img loading="lazy" src="${cardSrc}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
+                      ? `<br><br><br><img src="${cardSrc}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
                       : '';
                     // 발주별 메일 본문(form.mailBody) 사용, 비었으면 공통 기본 문구
                     const bodyText =
