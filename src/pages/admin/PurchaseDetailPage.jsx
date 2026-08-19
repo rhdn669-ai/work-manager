@@ -257,6 +257,8 @@ export default function PurchaseDetailPage() {
 
   // 특정 업체 품목만 PDF 출력 (null = 전체 발주서)
   const [printSupplierFilter, setPrintSupplierFilter] = useState(null);
+  // 같은 업체라도 담당자별로 갈라 출력·발송한다 (예: COSEL 담당 / 델타 담당)
+  const [printContactFilter, setPrintContactFilter] = useState(null);
   // ★ 메일 발송 직렬화 체인 — 여러 업체를 연속 발송해도 단일 PDF 렌더 폼(printRef)을
   //   동시에 만지지 않도록 한 번에 하나씩 순차 처리한다. (한 업체에 전체 품목이 첨부되던
   //   레이스 컨디션 사고 방지) 사용자는 그대로 빠르게 눌러도 내부에서 큐로 직렬 실행.
@@ -1067,13 +1069,15 @@ export default function PurchaseDetailPage() {
 
   // 특정 업체 품목만 PDF 출력 (발주완료도 함께 표시)
   // PDF 출력은 발주완료 표시를 하지 않는다 (발주완료는 메일 발송 시에만)
-  function printForSupplier(supName) {
+  function printForSupplier(supName, contact = null) {
     setPrintSupplierFilter(supName);
+    setPrintContactFilter(contact);
     setPrintAccountMode(true); // 수동 출력 = 내부용: 계좌 표시 (현장명은 기본 null=실제)
     setPrintStamp(fmtDateTime(new Date()));
     setTimeout(() => {
       window.print();
       setPrintSupplierFilter(null);
+      setPrintContactFilter(null);
       setPrintAccountMode(false);
     }, 200);
   }
@@ -1518,7 +1522,7 @@ export default function PurchaseDetailPage() {
   // 메일 발송 버튼 → 미리보기 모달 열기 (실제 발송은 모달의 "발송"에서)
   // 발송(첨부) 파일명 = 발주서_제목_업체명_발행번호 (부제 제외 — 외부 노출)
   // 저장(자료실) 파일명 = 발주서_제목_부제_업체명_발행번호 (부제 포함 — 내부 식별)
-  function openMailPreview(supplierName, toEmail, subject, htmlBody, poNo) {
+  function openMailPreview(supplierName, toEmail, subject, htmlBody, poNo, contact = null, contactName = '') {
     const build = (arr) =>
       `${arr
         .filter(Boolean)
@@ -1528,7 +1532,16 @@ export default function PurchaseDetailPage() {
     const fileName = build(['발주서', purchase.title, supplierName]); // 발송용(제목·업체명까지만)
     const saveFileName = build(['발주서', purchase.title, purchase.subtitle, supplierName, poNo]); // 저장용(부제 포함)
     setMailExtraFiles([]); // 추가 첨부 초기화
-    setMailPreview({ supplierName, to: toEmail, subject, html: htmlBody, fileName, saveFileName });
+    setMailPreview({
+      supplierName,
+      contact,
+      contactName,
+      to: toEmail,
+      subject,
+      html: htmlBody,
+      fileName,
+      saveFileName,
+    });
   }
 
   // 미리보기 모달에서 "첨부파일" 클릭 → 실제 첨부될 발주서 PDF를 그 자리에서 생성해 새 탭으로 열어 확인.
@@ -1572,7 +1585,7 @@ export default function PurchaseDetailPage() {
   // 미리보기 모달의 "발송" → 모달 즉시 닫고 백그라운드로 PDF 생성·발송 (대기 없음)
   function confirmSendMail() {
     if (!mailPreview) return;
-    const { supplierName, to, subject, html, fileName, saveFileName } = mailPreview;
+    const { supplierName, to, subject, html, fileName, saveFileName, contact: contactFilter = null } = mailPreview;
     const extraFiles = mailExtraFiles; // 발송 시점의 추가 첨부 캡처
     setMailPreview(null);
     setMailExtraFiles([]);
@@ -1602,6 +1615,7 @@ export default function PurchaseDetailPage() {
         setPrintSiteNameMode('blank');
         setPrintAccountMode(false); // 메일 첨부용: 계좌 미표시
         setPrintSupplierFilter(supplierName);
+        setPrintContactFilter(contactFilter);
         setPrintStamp(fmtDateTime(new Date()));
         await new Promise((r) => setTimeout(r, 250));
         setPct(40);
@@ -1621,6 +1635,7 @@ export default function PurchaseDetailPage() {
           }
         } finally {
           setPrintSupplierFilter(null);
+          setPrintContactFilter(null);
           setPrintSiteNameMode(null);
           setPrintAccountMode(false);
         }
@@ -1679,6 +1694,7 @@ export default function PurchaseDetailPage() {
         if (purchase.siteName && printRef.current) {
           try {
             setPrintSupplierFilter(supplierName);
+            setPrintContactFilter(contactFilter);
             setPrintAccountMode(true);
             setPrintSiteNameMode(null);
             await new Promise((r) => setTimeout(r, 250));
@@ -1691,6 +1707,7 @@ export default function PurchaseDetailPage() {
             console.warn('[자료실] 보관본 재캡처 실패 — 메일본으로 대체:', e);
           } finally {
             setPrintSupplierFilter(null);
+            setPrintContactFilter(null);
             setPrintAccountMode(false);
             setPrintSiteNameMode(null);
           }
@@ -1971,6 +1988,7 @@ export default function PurchaseDetailPage() {
         sites={sites}
         itemMaster={itemMaster}
         printSupplierFilter={printSupplierFilter}
+        printContactFilter={printContactFilter}
         printAccountMode={printAccountMode}
         printSiteNameMode={printSiteNameMode}
         printStamp={printStamp}
@@ -2598,11 +2616,12 @@ export default function PurchaseDetailPage() {
                       .replace(/</g, '&lt;')
                       .replace(/>/g, '&gt;')
                       .replace(/\n/g, '<br>');
-                    const mailHtml = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.name}</p><br><br><p>${bodyHtml}</p>${cardHtml}`;
+                    const mailHtml = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.label || sup.name}</p><br><br><p>${bodyHtml}</p>${cardHtml}`;
                     return (
-                      <tr key={sup.name}>
-                        <td data-label="구매처" title={sup.name}>
+                      <tr key={`${sup.name} ${sup.contact || ''}`}>
+                        <td data-label="구매처" title={sup.label || sup.name}>
                           <strong>{sup.name}</strong>
+                          {sup.contactName ? <em className="purchase-sup-contact">{sup.contactName}</em> : null}
                         </td>
                         <td data-label="품목">{sup.count}품목</td>
                         <td data-label="발행번호">
@@ -2692,16 +2711,16 @@ export default function PurchaseDetailPage() {
                             <button
                               type="button"
                               className="btn btn-sm po-act-btn"
-                              onClick={() => printForSupplier(sup.name)}
-                              title={`${sup.name} 품목만 발주서 PDF 출력`}
+                              onClick={() => printForSupplier(sup.name, sup.contact ?? null)}
+                              title={`${sup.label || sup.name} 품목만 발주서 PDF 출력`}
                             >
                               <Icon name="download" className="btn-ic" />
                               PDF 출력
                             </button>
                             <button
                               type="button"
-                              className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${mailSending[sup.name] != null ? ' is-sending' : ''}`}
-                              disabled={mailSending[sup.name] != null}
+                              className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${mailSending[sup.label || sup.name] != null ? ' is-sending' : ''}`}
+                              disabled={mailSending[sup.label || sup.name] != null}
                               onClick={() => {
                                 if (!sup.email) {
                                   alert(
@@ -2709,11 +2728,21 @@ export default function PurchaseDetailPage() {
                                   );
                                   return;
                                 }
-                                openMailPreview(sup.name, sup.email, mailSubject, mailHtml, supPoNo);
+                                openMailPreview(
+                                  sup.name,
+                                  sup.email,
+                                  mailSubject,
+                                  mailHtml,
+                                  supPoNo,
+                                  sup.contact ?? null,
+                                  sup.contactName || '',
+                                );
                               }}
                               title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}
                             >
-                              {mailSending[sup.name] != null ? `발송 중 ${mailSending[sup.name]}%` : '메일 발송'}
+                              {mailSending[sup.label || sup.name] != null
+                                ? `발송 중 ${mailSending[sup.label || sup.name]}%`
+                                : '메일 발송'}
                             </button>
                             {sent ? (
                               <button

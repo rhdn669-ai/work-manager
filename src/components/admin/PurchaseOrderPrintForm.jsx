@@ -21,6 +21,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     sites = [],
     itemMaster = [],
     printSupplierFilter = null,
+    printContactFilter = null, // 같은 업체라도 담당자별로 갈라 보낼 때
     printAccountMode = false,
     printSiteNameMode = null,
     printStamp = '',
@@ -88,7 +89,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     })(),
     // 특정 업체 출력이면 그 업체 품목만
     items: mapPrintItems(form.items, itemMaster, suppliers).filter(
-      (ln) => !printSupplierFilter || (ln._supplier || '(구매처 미지정)') === printSupplierFilter,
+      (ln) =>
+        (!printSupplierFilter || (ln._supplier || '(구매처 미지정)') === printSupplierFilter) &&
+        (printContactFilter == null || (ln._contact || '') === printContactFilter),
     ),
   };
 

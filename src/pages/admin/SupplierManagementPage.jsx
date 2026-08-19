@@ -17,6 +17,7 @@ const EMPTY_FORM = {
   representative: '',
   contact: '',
   email: '',
+  emails: [], // 담당자 여러 명 — [{ name, email }]. 첫 줄이 대표
   businessNumber: '',
   bankName: '',
   bankAccount: '',
@@ -82,6 +83,7 @@ export default function SupplierManagementPage() {
       representative: s.representative || '',
       contact: s.contact || '',
       email: s.email || '',
+      emails: Array.isArray(s.emails) && s.emails.length ? s.emails : s.email ? [{ name: '', email: s.email }] : [],
       businessNumber: s.businessNumber || '',
       bankName: s.bankName || '',
       bankAccount: s.bankAccount || '',
@@ -155,7 +157,17 @@ export default function SupplierManagementPage() {
     }
     const supplierName = normalizeCompany(form.name) || form.name.trim(); // 주식회사 → (주) 통일
     const filesToUpload = pdfFiles;
-    const data = { ...form, name: supplierName };
+    // 담당자 줄 — 메일이 빈 줄은 버리고, 첫 줄을 대표(email)로 맞춰 둔다.
+    // 예전 화면·메일 로직이 email 한 칸을 보고 있어 이 동기화가 있어야 안 깨진다.
+    const cleanEmails = (form.emails || [])
+      .map((c) => ({ name: String(c?.name ?? '').trim(), email: String(c?.email ?? '').trim() }))
+      .filter((c) => c.email);
+    const data = {
+      ...form,
+      name: supplierName,
+      emails: cleanEmails,
+      email: cleanEmails[0]?.email || String(form.email || '').trim(),
+    };
     setSubmitting(true);
     try {
       if (editTarget) {
@@ -436,15 +448,61 @@ export default function SupplierManagementPage() {
               onChange={(e) => setForm({ ...form, contact: e.target.value })}
             />
           </div>
+          {/* 한 업체 안에서도 취급 제품에 따라 받는 사람이 다르다(예: COSEL 담당 / 델타 담당).
+              첫 줄이 대표 — 품목에서 담당자를 고르지 않으면 대표로 간다. */}
           <div className="form-group">
             <label>이메일</label>
-            <input
-              aria-label="이메일"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="예: sales@company.com"
-            />
+            <div className="sup-mail-list">
+              {(form.emails.length ? form.emails : [{ name: '', email: form.email || '' }]).map((c, i) => (
+                <div key={i} className="sup-mail-row">
+                  <input
+                    className="sup-mail-name"
+                    aria-label={`담당자 ${i + 1} 이름`}
+                    value={c.name || ''}
+                    placeholder="담당(예: COSEL)"
+                    onChange={(e) => {
+                      const next = [...(form.emails.length ? form.emails : [{ name: '', email: form.email || '' }])];
+                      next[i] = { ...next[i], name: e.target.value };
+                      setForm({ ...form, emails: next });
+                    }}
+                  />
+                  <input
+                    type="email"
+                    aria-label={`담당자 ${i + 1} 이메일`}
+                    value={c.email || ''}
+                    placeholder="예: sales@company.com"
+                    onChange={(e) => {
+                      const next = [...(form.emails.length ? form.emails : [{ name: '', email: form.email || '' }])];
+                      next[i] = { ...next[i], email: e.target.value };
+                      setForm({ ...form, emails: next, email: i === 0 ? e.target.value : form.email });
+                    }}
+                  />
+                  {i === 0 ? (
+                    <span className="sup-mail-badge">대표</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => setForm({ ...form, emails: form.emails.filter((_, j) => j !== i) })}
+                    >
+                      <Icon name="trash" className="btn-ic" />
+                      삭제
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => {
+                const base = form.emails.length ? form.emails : [{ name: '', email: form.email || '' }];
+                setForm({ ...form, emails: [...base, { name: '', email: '' }] });
+              }}
+            >
+              <Icon name="plus" className="btn-ic" />
+              담당자 추가
+            </button>
           </div>
           <div className="form-group">
             <label>사업자번호</label>

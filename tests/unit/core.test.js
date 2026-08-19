@@ -12,6 +12,7 @@ import { isStockTracked } from '../../src/domain/stock';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
 import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
 import { splitPasted, toISODate, mapPastedValues } from '../../src/utils/pasteColumn';
+import { contactsOf, primaryEmail, hasChoice, resolveEmail } from '../../src/domain/supplierContacts';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -369,5 +370,40 @@ describe('엑셀 한 열 붙여넣기', () => {
       { index: 0, value: '네패스아크' },
       { index: 1, value: '티스나' },
     ]);
+  });
+});
+
+describe('구매처 담당자 메일', () => {
+  it('예전 데이터(email 한 칸)도 그대로 읽는다', () => {
+    expect(contactsOf({ email: 'sales@a.com' })).toEqual([{ name: '', email: 'sales@a.com' }]);
+    expect(primaryEmail({ email: 'sales@a.com' })).toBe('sales@a.com');
+  });
+
+  it('여러 줄이면 첫 줄이 대표', () => {
+    const sup = { email: '옛날@a.com', emails: [{ name: '김', email: 'cosel@a.com' }, { name: '박', email: 'delta@a.com' }] };
+    expect(primaryEmail(sup)).toBe('cosel@a.com');
+    expect(contactsOf(sup)).toHaveLength(2);
+  });
+
+  it('빈 줄·공백은 버린다', () => {
+    const sup = { emails: [{ name: '김', email: ' a@b.c ' }, { name: '빈', email: '' }] };
+    expect(contactsOf(sup)).toEqual([{ name: '김', email: 'a@b.c' }]);
+  });
+
+  it('고를 거리가 둘 이상일 때만 품목에 담당자 칸을 띄운다', () => {
+    expect(hasChoice({ email: 'a@b.c' })).toBe(false);
+    expect(hasChoice({ emails: [{ email: 'a@b.c' }, { email: 'd@e.f' }] })).toBe(true);
+  });
+
+  it('품목에 박힌 담당자를 구매처에서 지우면 대표로 돌아간다', () => {
+    const sup = { emails: [{ email: 'cosel@a.com' }, { email: 'delta@a.com' }] };
+    expect(resolveEmail(sup, 'delta@a.com')).toBe('delta@a.com');
+    expect(resolveEmail(sup, '사라진@a.com')).toBe('cosel@a.com');
+    expect(resolveEmail(sup, '')).toBe('cosel@a.com');
+  });
+
+  it('이메일이 하나도 없으면 빈 값', () => {
+    expect(contactsOf({})).toEqual([]);
+    expect(primaryEmail({})).toBe('');
   });
 });

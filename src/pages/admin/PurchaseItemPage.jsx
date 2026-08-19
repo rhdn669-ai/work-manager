@@ -40,6 +40,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { contactsOf, hasChoice } from '../../domain/supplierContacts';
 
 // 드래그 가능한 행 — useSortable 훅을 적용한 <tr>
 function SortableItemRow({ id, isHighlight, isFillTarget, onActivate, onMouseEnter, children }) {
@@ -1120,6 +1121,7 @@ export default function PurchaseItemPage() {
                                     <th scope="col" style={{ width: 150 }}>
                                       기본 구매처
                                     </th>
+                                    <th scope="col">담당자</th>
                                     <th scope="col" style={{ width: 110 }}>
                                       비고
                                     </th>
@@ -1471,6 +1473,48 @@ export default function PurchaseItemPage() {
                                               }
                                             />
                                           </td>
+                                          {/* 담당자 — 한 업체에 메일이 둘 이상일 때만 고를 거리가 있다.
+                                              (예: 텔콤 아이피씨 → COSEL 담당 / 델타 담당)
+                                              고르지 않으면 대표 메일로 간다. */}
+                                          {(() => {
+                                            const sup = suppliers.find((x) => x.id === it.defaultSupplierId);
+                                            const pick = hasChoice(sup);
+                                            return (
+                                              <td data-label="담당자" className="item-cell-contact">
+                                                {pick ? (
+                                                  <Select
+                                                    className="po-supplier-select"
+                                                    value={it.contactEmail || ''}
+                                                    onChange={(val) => {
+                                                      updateField(it.id, { contactEmail: val });
+                                                      if (!String(it.id).startsWith('tmp-')) {
+                                                        const {
+                                                          id: _i,
+                                                          createdAt: _c,
+                                                          updatedAt: _u,
+                                                          ...data
+                                                        } = { ...it, contactEmail: val };
+                                                        updatePurchaseItem(it.id, data).catch(() =>
+                                                          toast('담당자 저장 중 오류가 발생했습니다', 'error'),
+                                                        );
+                                                      }
+                                                    }}
+                                                    options={[
+                                                      { value: '', label: '대표' },
+                                                      ...contactsOf(sup).map((c) => ({
+                                                        value: c.email,
+                                                        label: c.name || c.email,
+                                                      })),
+                                                    ]}
+                                                    placeholder="대표"
+                                                    ariaLabel="담당자 선택"
+                                                  />
+                                                ) : (
+                                                  <span className="mx-cell-empty">-</span>
+                                                )}
+                                              </td>
+                                            );
+                                          })()}
                                           <td
                                             data-label="비고"
                                             className={fillCol('note')}
