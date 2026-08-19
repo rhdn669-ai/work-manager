@@ -58,6 +58,7 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
+import { contactsOf, hasChoice, resolveEmail } from '../../domain/supplierContacts';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
 import {
   PO_DEFAULTS,
@@ -1333,24 +1334,27 @@ export default function PurchaseDetailPage() {
       const supId = master?.defaultSupplierId || '';
       const sup = (supId ? suppliers.find((s) => s.id === supId) : null) || fallbackSup || null;
       const supName = sup?.name || cur?.supplierName || '(구매처 미지정)';
+      // 담당자가 갈린 업체는 담당별로 따로 센다 — 키를 업체명만 쓰면 COSEL·델타가
+      // 한 칸에 쌓여 두 줄에 같은 금액이 찍힌다. 발송 목록과 같은 키를 쓴다.
+      const who = contactsOf(sup).find((c) => c.email === resolveEmail(sup, master?.contactEmail));
+      const key = hasChoice(sup) ? `${supName} ${who?.email || ''}` : supName;
       const savedQty = Number(ln.qty) || 0;
       const receivedQty = Number(ln.receivedQty) || 0;
       const full = savedQty > 0 && receivedQty >= savedQty;
-      if (!map[supName])
-        map[supName] = { total: 0, full: 0, latest: null, recvAmount: 0, pendingCount: 0, pendingAmount: 0 };
-      map[supName].total += 1;
-      if (full) map[supName].full += 1;
+      if (!map[key]) map[key] = { total: 0, full: 0, latest: null, recvAmount: 0, pendingCount: 0, pendingAmount: 0 };
+      map[key].total += 1;
+      if (full) map[key].full += 1;
       const price = Number(ln.unitPrice) || 0;
       const got = Math.min(receivedQty, savedQty); // 초과 입고는 발주 수량까지만 센다
-      map[supName].recvAmount += got * price;
+      map[key].recvAmount += got * price;
       const left = savedQty - got;
       if (left > 0) {
-        map[supName].pendingCount += 1;
-        map[supName].pendingAmount += left * price;
+        map[key].pendingCount += 1;
+        map[key].pendingAmount += left * price;
       }
       if (ln.receivedAt) {
         const d = ln.receivedAt.toDate ? ln.receivedAt.toDate() : new Date(ln.receivedAt);
-        if (!Number.isNaN(d.getTime()) && (!map[supName].latest || d > map[supName].latest)) map[supName].latest = d;
+        if (!Number.isNaN(d.getTime()) && (!map[key].latest || d > map[key].latest)) map[key].latest = d;
       }
     }
     return map;
@@ -2587,14 +2591,17 @@ export default function PurchaseDetailPage() {
                     const sentKey = sup.name.replace(/\./g, '_');
                     const sent = purchase.supplierSent?.[sentKey];
                     const replied = purchase.supplierReplied?.[sentKey];
-                    const recv = recvStatus[sup.name] || {
-                      total: 0,
-                      full: 0,
-                      latest: null,
-                      recvAmount: 0,
-                      pendingCount: 0,
-                      pendingAmount: 0,
-                    };
+                    // 담당자가 갈린 업체는 담당별 키로 찾는다 (computeSupplierReceiveStatus 와 같은 규칙)
+                    const recvKey = sup.contact ? `${sup.name} ${sup.contact}` : sup.name;
+                    const recv = recvStatus[recvKey] ||
+                      recvStatus[sup.name] || {
+                        total: 0,
+                        full: 0,
+                        latest: null,
+                        recvAmount: 0,
+                        pendingCount: 0,
+                        pendingAmount: 0,
+                      };
                     const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
                     const payReq = purchase.paymentRequested?.[sentKey];
                     const paid = purchase.supplierPaid?.[sentKey];
