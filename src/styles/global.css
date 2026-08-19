@@ -6399,6 +6399,16 @@ table.cards-sm td {
 .item-cell-unit-price {
   min-width: 100px;
 }
+/* 담당자 — 「COSEL」·「델타」 같은 짧은 이름이라 좁게 못 박는다.
+   폭을 안 주면 남는 자리를 다 먹어 표가 밀린다. */
+.item-cell-contact {
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+}
+.item-cell-contact .ds-select__trigger {
+  padding: 0 6px;
+}
 
 .item-actions-cell {
   white-space: nowrap;
