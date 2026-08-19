@@ -124,6 +124,22 @@ function deductStock(need, master) {
   return { qty: want, stockUsed: 0, stockNeed: want };
 }
 
+// 서버 렌더(브라우저 PDF)는 보통 7~13초. 응답이 아예 없으면 진행률이 영영 멈추므로
+// 시간을 끊어 실패로 돌린다 — 사람이 다시 눌러 볼 수 있어야 한다.
+const PDF_TIMEOUT_MS = 60000;
+function withTimeout(promise, ms, what) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${what}이(가) ${Math.round(ms / 1000)}초 안에 끝나지 않았습니다`)),
+        ms,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 // SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
 // 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
 const BUSINESS_CARD_NAMES = ['이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱'];
@@ -1591,19 +1607,17 @@ export default function PurchaseDetailPage() {
         setPct(40);
         let attachments = [];
         let pdfBlob = null;
-        let saveBlob = null;
         try {
           const el = printRef.current;
           if (el) {
-            // ① 메일 첨부용 (계좌 없음)
-            pdfBlob = await captureToPdfBlob(el, fileName);
+            // 메일에 붙일 것만 먼저 만든다 (계좌 없음).
+            // 내부 보관본은 발송이 끝난 뒤에 만든다 — 서버 렌더가 한 번에 7~13초라
+            // 두 장을 앞에서 다 만들면 보내는 사람이 20초 넘게 기다리게 된다.
+            setPct(45);
+            pdfBlob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
+            setPct(60);
             const base64 = await blobToBase64(pdfBlob);
             attachments = [{ filename: fileName, content: base64, encoding: 'base64' }];
-            // ② 내부 저장용 (계좌 포함 + 실제 현장명) — 별도 재캡처
-            setPrintAccountMode(true);
-            setPrintSiteNameMode(null); // 저장본은 실제 현장명(프로젝트) 표시
-            await new Promise((r) => setTimeout(r, 250));
-            saveBlob = await captureToPdfBlob(el, saveFileName);
           }
         } finally {
           setPrintSupplierFilter(null);
@@ -1653,14 +1667,34 @@ export default function PurchaseDetailPage() {
           }
         }
         setPct(88);
-        await callSendEmail({ to, subject, html: sendHtml, attachments });
+        await withTimeout(callSendEmail({ to, subject, html: sendHtml, attachments }), PDF_TIMEOUT_MS, '메일 발송');
         setPct(100);
         toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
         const sentKey = supplierName.replace(/\./g, '_');
         if (!purchase.supplierSent?.[sentKey]) markSent(supplierName);
         // 발송 성공 → 프로젝트 자료실 "발주이력 > YYYY-MM" 월 폴더에 발주서 PDF 자동 보관
         // 내부 저장본은 계좌 포함(saveBlob), 없으면 메일본(pdfBlob)
-        const archiveBlob = saveBlob || pdfBlob;
+        // 보관본(계좌 포함·실제 현장명)은 여기서 다시 뜬다 — 사람은 이미 발송 완료를 봤다.
+        let archiveBlob = pdfBlob;
+        if (purchase.siteName && printRef.current) {
+          try {
+            setPrintSupplierFilter(supplierName);
+            setPrintAccountMode(true);
+            setPrintSiteNameMode(null);
+            await new Promise((r) => setTimeout(r, 250));
+            archiveBlob = await withTimeout(
+              captureToPdfBlob(printRef.current, saveFileName),
+              PDF_TIMEOUT_MS,
+              '보관용 PDF 생성',
+            );
+          } catch (e) {
+            console.warn('[자료실] 보관본 재캡처 실패 — 메일본으로 대체:', e);
+          } finally {
+            setPrintSupplierFilter(null);
+            setPrintAccountMode(false);
+            setPrintSiteNameMode(null);
+          }
+        }
         if (archiveBlob && purchase.siteName) {
           try {
             const result = await ensureProjectFolders(purchase.siteName, userProfile);
