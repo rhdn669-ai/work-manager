@@ -721,7 +721,8 @@
     padding: 0;
   }
   @page {
-    size: A4;
+    /* 방향 키워드까지 준다 — 치수·크기만 주면 시스템 프린터가 제 기본 방향으로 저장한다 */
+    size: A4 portrait;
     margin: 12mm;
   }
 }
