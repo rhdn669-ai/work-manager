@@ -12,7 +12,6 @@ import { PO_DEFAULTS, poDateStr, deriveSupplier, mapPrintItems, computeSupplierL
 //   printSupplierFilter : 특정 업체만 출력(null=전체)
 //   printAccountMode    : true면 특이사항 아래 구매처 계좌 표시(내부용)
 //   printSiteNameMode   : null=실제 현장명 / 'blank'=공백 / 그 외=미공개(외부용)
-//   printStamp          : 하단 출력 일시 스탬프
 const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   {
     purchase,
@@ -24,7 +23,6 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     printContactFilter = null, // 같은 업체라도 담당자별로 갈라 보낼 때
     printAccountMode = false,
     printSiteNameMode = null,
-    printStamp = '',
     hideAmount = false,
     showBox = false, // BOX 열 표시 — 「PDF 출력」(전체) 옵션에서만 켬. 업체별·메일·자료실 저장엔 미표시
   },
@@ -372,7 +370,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
             <span>
               구매발주서{supplierLabel ? ` · ${supplierLabel}` : ''} · {src.poNum}
             </span>
-            <span>{printStamp ? `출력 ${printStamp}` : ''}</span>
+            {/* 출력 시각은 넣지 않는다 — 같은 내용인데도 파일이 매번 달라져
+                미리 만들어 둔 발주서를 다시 쓸 수 없게 된다 (2026-08-20 대표님) */}
+            <span />
             <span>
               페이지 {pageIdx + 1} / {pageCount}
             </span>

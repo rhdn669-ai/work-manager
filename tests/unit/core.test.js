@@ -13,6 +13,7 @@ import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLo
 import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
 import { splitPasted, toISODate, mapPastedValues } from '../../src/utils/pasteColumn';
 import { contactsOf, primaryEmail, hasChoice, resolveEmail, supplierKey } from '../../src/domain/supplierContacts';
+import { poFingerprint } from '../../src/utils/poFingerprint';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -423,5 +424,46 @@ describe('발송 표시 키', () => {
   it('Firestore 가 못 쓰는 점·골뱅이는 밑줄로 바꾼다', () => {
     expect(supplierKey('텔콤', 'cosel@a.com')).toBe('텔콤__cosel_a_com');
     expect(supplierKey('텔콤')).not.toContain('__');
+  });
+});
+
+describe('발주서 내용 지문', () => {
+  const base = [{ itemId: 'a', name: 'CP', spec: '10A', qty: 3, unitPrice: 1000 }];
+
+  it('같은 내용이면 같은 지문 — 미리 만든 발주서를 다시 쓴다', () => {
+    expect(poFingerprint(base, { supplierName: '텔콤' })).toBe(poFingerprint([...base], { supplierName: '텔콤' }));
+  });
+
+  it('수량이 바뀌면 지문도 바뀐다', () => {
+    expect(poFingerprint([{ ...base[0], qty: 5 }], {})).not.toBe(poFingerprint(base, {}));
+  });
+
+  it('단가·규격·비고가 바뀌어도 잡는다', () => {
+    for (const patch of [{ unitPrice: 2000 }, { spec: '20A' }, { note: '급함' }]) {
+      expect(poFingerprint([{ ...base[0], ...patch }], {})).not.toBe(poFingerprint(base, {}));
+    }
+  });
+
+  it('특이사항·납기가 바뀌면 다시 만들어야 한다', () => {
+    expect(poFingerprint(base, { note: '가' })).not.toBe(poFingerprint(base, { note: '나' }));
+    expect(poFingerprint(base, { deliveryDue: '2026-09-01' })).not.toBe(poFingerprint(base, {}));
+  });
+
+  it('담당자가 다르면 다른 발주서다', () => {
+    expect(poFingerprint(base, { supplierName: '텔콤', contact: 'a@b.c' })).not.toBe(
+      poFingerprint(base, { supplierName: '텔콤', contact: 'd@e.f' }),
+    );
+  });
+
+  it('발주서에 안 찍히는 값(입고 수량)은 지문에 넣지 않는다', () => {
+    expect(poFingerprint([{ ...base[0], receivedQty: 3 }], {})).toBe(poFingerprint(base, {}));
+  });
+
+  it('빈 줄은 세지 않는다', () => {
+    expect(poFingerprint([...base, { name: '', qty: 0 }], {})).toBe(poFingerprint(base, {}));
+  });
+
+  it('값 경계가 섞이지 않는다 — 「가」+「나」와 「가나」+「」는 다른 지문', () => {
+    expect(poFingerprint(base, { title: '가', subtitle: '나' })).not.toBe(poFingerprint(base, { title: '가나' }));
   });
 });

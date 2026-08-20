@@ -59,6 +59,7 @@ import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
 import { contactsOf, hasChoice, resolveEmail, supplierKey } from '../../domain/supplierContacts';
+import { poFingerprint } from '../../utils/poFingerprint';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
 import {
   PO_DEFAULTS,
@@ -262,6 +263,10 @@ export default function PurchaseDetailPage() {
   const [printContactFilter, setPrintContactFilter] = useState(null);
   // 메일 모달에서 미리 떠 두는 첨부본 — 미리보기로 여는 파일이 그대로 첨부된다
   const [mailPdf, setMailPdf] = useState({ blob: null, url: '', name: '', error: '' });
+  // 업체별로 미리 만들어 둔 발주서 — { [키]: { sig, blob, url } }
+  // sig 는 그 업체 발주서의 「내용 지문」. 내용이 그대로면 다시 만들지 않는다.
+  const poCacheRef = useRef(new Map());
+  const preBuildRef = useRef({ running: false, timer: 0 });
   // ★ 메일 발송 직렬화 체인 — 여러 업체를 연속 발송해도 단일 PDF 렌더 폼(printRef)을
   //   동시에 만지지 않도록 한 번에 하나씩 순차 처리한다. (한 업체에 전체 품목이 첨부되던
   //   레이스 컨디션 사고 방지) 사용자는 그대로 빠르게 눌러도 내부에서 큐로 직렬 실행.
@@ -1320,6 +1325,58 @@ export default function PurchaseDetailPage() {
     return computeSupplierListPure(form.items, itemMaster, suppliers, purchaseRef.current || purchase);
   }
 
+  // ── 발주서 미리 만들기 ─────────────────────────────────────────────
+  // 품목을 고치고 손을 멈추면(3초), 아직 안 보낸 업체의 발주서를 뒤에서 한 장씩 떠 둔다.
+  // 메일 모달을 열 때 이미 준비돼 있으면 기다리는 시간이 0이 된다.
+  //
+  // 낭비를 막는 장치 —
+  //   · 타이핑 중에는 안 만든다 (3초 조용해야 시작)
+  //   · 내용 지문이 그대로면 다시 안 만든다
+  //   · 이미 발송한 업체는 건너뛴다
+  //   · 한 번에 한 장씩, 발송 큐와 같은 줄에 서서 (렌더 폼을 동시에 만지지 않게)
+  //   · 창을 닫거나 품목이 또 바뀌면 그 자리에서 멈춘다
+  async function preBuildAll(alive) {
+    if (preBuildRef.current.running) return;
+    preBuildRef.current.running = true;
+    try {
+      const cur = purchaseRef.current || purchase;
+      const sent = cur?.supplierSent || {};
+      for (const sup of computeSupplierList()) {
+        if (!alive() || mailPreview || pdfModalOpen) break;
+        const contact = hasChoice(suppliers.find((x) => x.name === sup.name)) ? sup.contact : null;
+        if (sent[supplierKey(sup.name, contact)]) continue; // 이미 보낸 업체
+        const key = supplierKey(sup.name, contact);
+        const hit = poCacheRef.current.get(key);
+        if (hit && hit.sig === poSigOf(sup.name, contact)) continue; // 그대로면 그대로 둔다
+        const fileName = `${['발주서', purchase?.title, sup.name]
+          .filter(Boolean)
+          .map((x) => String(x).trim())
+          .join('_')}.pdf`.replace(/[/\\]/g, '_');
+        // 한 장 실패해도 나머지는 계속 — 어차피 모달에서 다시 만들 수 있다
+        await mailSendChainRef.current
+          .then(() => (alive() ? ensurePoPdf(sup.name, contact, fileName) : null))
+          .catch(() => null);
+      }
+    } finally {
+      preBuildRef.current.running = false;
+    }
+  }
+
+  const preBuildSig = (form.items || [])
+    .map((ln) => `${ln.itemId || ''}:${ln.name || ''}:${ln.qty || 0}:${ln.unitPrice || 0}:${ln.box || ''}`)
+    .join('~');
+  useEffect(() => {
+    if (!id || !purchase || mailPreview || pdfModalOpen) return undefined;
+    let alive = true;
+    clearTimeout(preBuildRef.current.timer);
+    preBuildRef.current.timer = setTimeout(() => preBuildAll(() => alive), 3000);
+    return () => {
+      alive = false;
+      clearTimeout(preBuildRef.current.timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preBuildSig, id, mailPreview, pdfModalOpen, itemMaster, suppliers]);
+
   // 업체별 입고 집계 — 상단 품목 입고 처리(receivedQty)를 업체 단위로 모아 자동 판정
   // { [업체명]: { total, full, latest, recvAmount, pendingCount, pendingAmount } }
   //   recvAmount    입고된 수량 × 단가 — 이 금액만 결제로 넘어간다
@@ -1570,32 +1627,71 @@ export default function PurchaseDetailPage() {
   // (발송 전 양식이 정상인지 눈으로 검증 — 깨진 채 발송되는 것 방지)
   // 첨부본을 미리 떠 둔다 — 모달을 여는 순간 시작해 사람이 본문을 읽는 동안 끝난다.
   // 여기서 만든 그 파일이 미리보기로도 열리고 메일에도 그대로 붙는다.
+  // 그 업체 발주서의 지문 — 내용이 그대로면 미리 만든 것을 다시 쓴다
+  function poSigOf(supplierName, contact) {
+    const cur = purchaseRef.current || purchase;
+    const key = supplierKey(supplierName, contact);
+    const mine = (formRef.current?.items || []).filter((ln) => {
+      const m = ln.itemId ? itemMaster.find((x) => x.id === ln.itemId) : null;
+      const sup = m?.defaultSupplierId ? suppliers.find((x) => x.id === m.defaultSupplierId) : null;
+      const name = sup?.name || cur?.supplierName || '(구매처 미지정)';
+      if (name !== supplierName) return false;
+      return contact == null || resolveEmail(sup, m?.contactEmail) === contact;
+    });
+    return poFingerprint(mine, {
+      supplierName,
+      contact,
+      title: cur?.title,
+      subtitle: cur?.subtitle,
+      deliveryDue: cur?.deliveryDue,
+      note: formRef.current?.supplierNotes?.[key] || formRef.current?.note || '',
+    });
+  }
+
+  // 한 업체 발주서를 떠서 캐시에 넣는다. 이미 같은 내용이 있으면 그냥 돌려준다.
+  async function ensurePoPdf(supplierName, contact, fileName) {
+    const key = supplierKey(supplierName, contact);
+    const sig = poSigOf(supplierName, contact);
+    const hit = poCacheRef.current.get(key);
+    if (hit && hit.sig === sig) return hit;
+    await ensureAnonymousAuth();
+    await flushAutoSave();
+    setPrintSiteNameMode('blank');
+    setPrintAccountMode(false);
+    setPrintSupplierFilter(supplierName);
+    setPrintContactFilter(contact ?? null);
+    await new Promise((r) => setTimeout(r, 250));
+    let blob = null;
+    try {
+      const el = printRef.current;
+      if (el) blob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
+    } finally {
+      setPrintSupplierFilter(null);
+      setPrintContactFilter(null);
+      setPrintSiteNameMode(null);
+      setPrintAccountMode(false);
+    }
+    if (!blob) throw new Error('PDF를 만들지 못했습니다 (배포 환경에서만 동작)');
+    if (hit?.url) URL.revokeObjectURL(hit.url);
+    const made = { sig, blob, url: URL.createObjectURL(blob), name: fileName };
+    poCacheRef.current.set(key, made);
+    return made;
+  }
+
+  // 모달에서 쓸 첨부본을 채운다 — 미리 만들어 둔 것이 있으면 그것을 그대로 쓴다
   async function buildMailPdf(supplierName, contact, fileName) {
+    const key = supplierKey(supplierName, contact);
+    const hit = poCacheRef.current.get(key);
+    if (hit && hit.sig === poSigOf(supplierName, contact)) {
+      setMailPdf({ blob: hit.blob, url: hit.url, name: hit.name || fileName, error: '' });
+      return;
+    }
     if (mailAttachBusy) return;
     setMailPdf({ blob: null, url: '', name: fileName, error: '' });
     setMailAttachBusy(true);
     try {
-      await ensureAnonymousAuth();
-      await flushAutoSave();
-      // 메일 첨부본과 동일 조건: 현장명 공백 + 계좌 미표시 + 해당 업체만
-      setPrintSiteNameMode('blank');
-      setPrintAccountMode(false);
-      setPrintSupplierFilter(supplierName);
-      setPrintContactFilter(contact ?? null);
-      setPrintStamp(fmtDateTime(new Date()));
-      await new Promise((r) => setTimeout(r, 250));
-      let blob = null;
-      try {
-        const el = printRef.current;
-        if (el) blob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
-      } finally {
-        setPrintSupplierFilter(null);
-        setPrintContactFilter(null);
-        setPrintSiteNameMode(null);
-        setPrintAccountMode(false);
-      }
-      if (!blob) throw new Error('PDF를 만들지 못했습니다 (배포 환경에서만 동작)');
-      setMailPdf({ blob, url: URL.createObjectURL(blob), name: fileName, error: '' });
+      const made = await ensurePoPdf(supplierName, contact, fileName);
+      setMailPdf({ blob: made.blob, url: made.url, name: made.name, error: '' });
     } catch (err) {
       setMailPdf({ blob: null, url: '', name: fileName, error: err.message || String(err) });
     } finally {
