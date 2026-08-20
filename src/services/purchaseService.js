@@ -639,18 +639,28 @@ export async function unmarkSupplierReplied(purchaseId, key) {
 }
 
 // 업체별 결제 완료 표시 / 취소 (결제 페이지 노출용)
-export async function markSupplierPaid(purchaseId, key, by = '') {
+// 결제 완료 — 회차로 쌓는다. 한 업체 물량이 나눠 들어오면 들어온 만큼씩 나눠 낸다.
+// amount 는 그 회차에 낸 공급가액. 옛 기록(객체 하나)은 1차로 읽어 그대로 살린다.
+export async function markSupplierPaid(purchaseId, key, by = '', amount = null) {
   key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
-  await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierPaid.${key}.paidAt`]: new Date(),
-    [`supplierPaid.${key}.paidBy`]: by,
-    updatedAt: new Date(),
-  });
+  const ref = doc(db, 'purchases', purchaseId);
+  const snap = await getDoc(ref);
+  const prev = snap.data()?.supplierPaid?.[key];
+  const list = !prev ? [] : Array.isArray(prev) ? prev.filter(Boolean) : [{ seq: 1, ...prev }];
+  list.push({ seq: list.length + 1, paidAt: new Date(), paidBy: by, amount: amount == null ? null : Number(amount) });
+  await updateDoc(ref, { [`supplierPaid.${key}`]: list, updatedAt: new Date() });
 }
+
+// 결제 취소 — 마지막 회차만 무른다. 앞 회차는 이미 나간 돈이라 건드리지 않는다.
 export async function unmarkSupplierPaid(purchaseId, key) {
   key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
-  await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierPaid.${key}`]: deleteField(),
+  const ref = doc(db, 'purchases', purchaseId);
+  const snap = await getDoc(ref);
+  const prev = snap.data()?.supplierPaid?.[key];
+  const list = !prev ? [] : Array.isArray(prev) ? prev.filter(Boolean) : [{ seq: 1, ...prev }];
+  list.pop();
+  await updateDoc(ref, {
+    [`supplierPaid.${key}`]: list.length ? list : deleteField(),
     updatedAt: new Date(),
   });
 }

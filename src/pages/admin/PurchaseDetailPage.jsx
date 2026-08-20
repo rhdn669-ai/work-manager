@@ -59,6 +59,7 @@ import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
 import { contactsOf, hasChoice, resolveEmail, supplierKey } from '../../domain/supplierContacts';
+import { paidList, payButtonLabel, unpaidAmount } from '../../domain/payment';
 import { poFingerprint } from '../../utils/poFingerprint';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
 import {
@@ -2869,7 +2870,12 @@ export default function PurchaseDetailPage() {
                     const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
                     // 결제는 업체 단위 — 담당이 갈린 업체는 두 줄이 같은 결제 상태를 본다
                     const payReq = purchase.paymentRequested?.[payKey(sup.name)];
-                    const paid = purchase.supplierPaid?.[payKey(sup.name)];
+                    const paidRaw = purchase.supplierPaid?.[payKey(sup.name)];
+                    const paidRows = paidList(paidRaw);
+                    // 나눠 들어오는 물량은 나눠 낸다 — 들어온 금액에서 이미 낸 금액을 뺀 몫이 남아 있으면
+                    // 「2차 결제요청」으로 다시 열린다. 새로 들어온 것이 없으면 「결제완료」 그대로.
+                    const unpaidLeft = unpaidAmount(recv.recvAmount, paidRaw);
+                    const paid = paidRows.length > 0 && unpaidLeft <= 0;
                     // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
                     const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
                     const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
@@ -3082,9 +3088,13 @@ export default function PurchaseDetailPage() {
                                 type="button"
                                 className="btn btn-sm btn-primary purchase-sup-toggle"
                                 onClick={() => handleRequestPayment(sup.name, recv.latest)}
-                                title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
+                                title={
+                                  paidRows.length > 0
+                                    ? `이미 ${paidRows.length}회 결제했습니다. 새로 들어온 ${unpaidLeft.toLocaleString()}원을 요청합니다`
+                                    : '결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다'
+                                }
                               >
-                                결제 요청
+                                {payButtonLabel(paidRaw)}
                               </button>
                             )}
                           </div>

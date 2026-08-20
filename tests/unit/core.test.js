@@ -2,6 +2,14 @@
 // 대상: 발주 구매처 도출·그룹핑·발행번호 / 연차 계산 / 출력 글자축소 / 날짜 유틸
 import { describe, it, expect } from 'vitest';
 import { poNumber, deriveSupplier, mapPrintItems, computeSupplierList } from '../../src/utils/purchaseOrder';
+import {
+  paidList,
+  paidTotal,
+  hasLegacyPaid,
+  unpaidAmount,
+  nextSeq,
+  payButtonLabel,
+} from '../../src/domain/payment';
 import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
 import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
@@ -488,5 +496,45 @@ describe('발주서 내용 지문', () => {
 
   it('값 경계가 섞이지 않는다 — 「가」+「나」와 「가나」+「」는 다른 지문', () => {
     expect(poFingerprint(base, { title: '가', subtitle: '나' })).not.toBe(poFingerprint(base, { title: '가나' }));
+  });
+});
+
+describe('결제 — 회차 나눠 결제 (payment)', () => {
+  it('결제 기록이 없으면 들어온 금액 전부가 청구 대상', () => {
+    expect(unpaidAmount(1870000, undefined)).toBe(1870000);
+    expect(nextSeq(undefined)).toBe(1);
+    expect(payButtonLabel(undefined)).toBe('결제 요청');
+  });
+
+  it('1차를 결제했으면 그만큼 빼고 청구한다', () => {
+    const paid = [{ seq: 1, amount: 1870000 }];
+    expect(unpaidAmount(3740000, paid)).toBe(1870000);
+    expect(nextSeq(paid)).toBe(2);
+    expect(payButtonLabel(paid)).toBe('2차 결제요청');
+  });
+
+  it('아직 새로 들어온 것이 없으면 청구할 몫이 없다', () => {
+    expect(unpaidAmount(1870000, [{ seq: 1, amount: 1870000 }])).toBe(0);
+  });
+
+  it('입고 수량을 줄여 이미 낸 돈보다 적어져도 음수가 되지 않는다', () => {
+    expect(unpaidAmount(1000000, [{ seq: 1, amount: 1870000 }])).toBe(0);
+  });
+
+  it('금액이 없는 옛 기록은 전액 결제로 본다 — 다시 청구하지 않는다', () => {
+    const legacy = { paidAt: new Date(), paidBy: 'IOPN' };
+    expect(paidList(legacy)).toHaveLength(1);
+    expect(hasLegacyPaid(legacy)).toBe(true);
+    expect(unpaidAmount(3740000, legacy)).toBe(0);
+  });
+
+  it('세 번째 회차도 이어서 센다', () => {
+    const paid = [
+      { seq: 1, amount: 1000000 },
+      { seq: 2, amount: 500000 },
+    ];
+    expect(paidTotal(paid)).toBe(1500000);
+    expect(unpaidAmount(2000000, paid)).toBe(500000);
+    expect(payButtonLabel(paid)).toBe('3차 결제요청');
   });
 });

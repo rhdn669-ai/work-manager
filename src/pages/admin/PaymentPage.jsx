@@ -15,6 +15,7 @@ import {
 import { getSupplierLibraryFiles } from '../../services/fileLibraryService';
 import { mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
 import { supplierKey } from '../../domain/supplierContacts';
+import { paidList, unpaidAmount } from '../../domain/payment';
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -128,8 +129,12 @@ export default function PaymentPage() {
           ? mine.filter((l) => (Number(l.qty) || 0) - Math.min(Number(l.receivedQty) || 0, Number(l.qty) || 0) > 0)
               .length
           : 0;
-        const vat = Math.round(supply * 0.1);
-        out.push({
+        // 회차 결제 — 나눠 들어온 물량은 들어온 만큼씩 나눠 낸다.
+        // 이미 낸 회차는 각각 한 줄, 아직 안 낸 몫이 있으면 그 몫으로 한 줄 더.
+        const paidRows = paidList(paid);
+        const unpaid = unpaidAmount(supply, paid);
+        const rowCount = paidRows.length + (unpaid > 0 ? 1 : 0);
+        const base = {
           purchaseId: p.id,
           title: p.title || '(제목 없음)',
           siteName: p.siteName || '',
@@ -144,15 +149,36 @@ export default function PaymentPage() {
           category: supInfo.category || '',
           note: supInfo.note || '',
           taxInvoice: p.taxInvoice?.[key] || null,
-          supply,
-          total: supply + vat,
-          pendingAmount,
-          pendingCount,
           requestedAt: req.requestedAt,
           dueDate: req.dueDate || '',
-          paid: !!paid,
-          paidAt: paid?.paidAt,
-          paidBy: paid?.paidBy || '',
+          seqTotal: rowCount,
+        };
+        for (const pd of paidRows) {
+          const amt = pd.amount == null ? supply : Number(pd.amount) || 0;
+          out.push({
+            ...base,
+            seq: pd.seq || paidRows.indexOf(pd) + 1,
+            supply: amt,
+            total: amt + Math.round(amt * 0.1),
+            pendingAmount: 0,
+            pendingCount: 0,
+            paid: true,
+            paidAt: pd.paidAt,
+            paidBy: pd.paidBy || '',
+            canCancel: pd.seq === paidRows.length || paidRows.indexOf(pd) === paidRows.length - 1,
+          });
+        }
+        if (unpaid <= 0 && paidRows.length > 0) continue; // 남은 몫 없음 — 완료 줄만
+        const vat = Math.round(unpaid * 0.1);
+        out.push({
+          ...base,
+          seq: paidRows.length + 1,
+          supply: unpaid,
+          total: unpaid + vat,
+          pendingAmount,
+          pendingCount,
+          paid: false,
+          canCancel: false,
         });
       }
     }
@@ -336,9 +362,9 @@ export default function PaymentPage() {
       }))
     )
       return;
-    setBusy(`${r.purchaseId}-${r.supplier}`);
+    setBusy(`${r.purchaseId}-${r.supplier}-${r.seq || 1}`);
     try {
-      await markSupplierPaid(r.purchaseId, r.supplierKey || r.supplier, userProfile?.name || '');
+      await markSupplierPaid(r.purchaseId, r.supplierKey || r.supplier, userProfile?.name || '', r.supply);
       applyPaidLocal(r.purchaseId, r.supplierKey || r.supplier, {
         paidAt: new Date(),
         paidBy: userProfile?.name || '',
@@ -352,7 +378,7 @@ export default function PaymentPage() {
   }
   async function cancelPay(r) {
     if (!(await confirm({ title: '결제 취소', message: `"${r.supplier}" 결제 완료를 취소할까요?` }))) return;
-    setBusy(`${r.purchaseId}-${r.supplier}`);
+    setBusy(`${r.purchaseId}-${r.supplier}-${r.seq || 1}`);
     try {
       await unmarkSupplierPaid(r.purchaseId, r.supplierKey || r.supplier);
       applyPaidLocal(r.purchaseId, r.supplierKey || r.supplier, null);
@@ -563,13 +589,15 @@ export default function PaymentPage() {
                         </thead>
                         <tbody>
                           {f.rows.map((r) => {
-                            const k = `${r.purchaseId}-${r.supplier}`;
+                            const k = `${r.purchaseId}-${r.supplier}-${r.seq || 1}`;
+                            const seqTag = r.seqTotal > 1 ? `${r.seq}차` : '';
                             return (
                               <tr key={k} className={r.paid ? 'is-paid-row' : ''}>
                                 <td data-label="상태">
                                   <span
                                     className={`purchase-badge ${r.paid ? 'purchase-badge-received' : 'purchase-badge-draft'}`}
                                   >
+                                    {seqTag ? `${seqTag} ` : ''}
                                     {r.paid ? '결제완료' : '결제대기'}
                                   </span>
                                 </td>
@@ -665,7 +693,12 @@ export default function PaymentPage() {
                                         type="button"
                                         className="btn btn-sm po-act-btn--on"
                                         onClick={() => cancelPay(r)}
-                                        disabled={busy === k}
+                                        disabled={busy === k || !r.canCancel}
+                                        title={
+                                          r.canCancel
+                                            ? '결제 완료를 취소합니다'
+                                            : '앞선 회차는 무를 수 없습니다 — 마지막 회차부터 취소하세요'
+                                        }
                                       >
                                         결제 취소
                                       </button>
