@@ -1356,9 +1356,7 @@ export default function PurchaseDetailPage() {
           .map((x) => String(x).trim())
           .join('_')}.pdf`.replace(/[/\\]/g, '_');
         // 한 장 실패해도 나머지는 계속 — 어차피 모달에서 다시 만들 수 있다
-        await mailSendChainRef.current
-          .then(() => (alive() ? ensurePoPdf(sup.name, contact, fileName) : null))
-          .catch(() => null);
+        await ensurePoPdf(sup.name, contact, fileName).catch(() => null);
       }
     } finally {
       preBuildRef.current.running = false;
@@ -1372,8 +1370,8 @@ export default function PurchaseDetailPage() {
     if (!id || !purchase || mailPreview || pdfModalOpen) return undefined;
     let alive = true;
     clearTimeout(preBuildRef.current.timer);
-    // 8초 — 잠깐 열어 보고 나가는 경우까지 굽지 않도록 넉넉히 둔다
-    preBuildRef.current.timer = setTimeout(() => preBuildAll(() => alive), 8000);
+    // 4초 — 타이핑 중에는 안 굽되, 필요할 때 준비돼 있을 만큼은 일찍 시작한다
+    preBuildRef.current.timer = setTimeout(() => preBuildAll(() => alive), 4000);
     return () => {
       alive = false;
       clearTimeout(preBuildRef.current.timer);
@@ -1653,7 +1651,16 @@ export default function PurchaseDetailPage() {
   }
 
   // 한 업체 발주서를 떠서 캐시에 넣는다. 이미 같은 내용이 있으면 그냥 돌려준다.
-  async function ensurePoPdf(supplierName, contact, fileName) {
+  //
+  // ★ 반드시 한 줄로 선다 — 발송·미리 만들기·미리보기가 모두 같은 렌더 폼(printRef) 하나를
+  //   쓴다. 둘이 겹치면 업체 필터를 서로 덮어써서 엉뚱한 발주서가 만들어진다.
+  function ensurePoPdf(supplierName, contact, fileName) {
+    const run = mailSendChainRef.current.then(() => buildPoPdfNow(supplierName, contact, fileName));
+    mailSendChainRef.current = run.catch(() => {}); // 한 장이 실패해도 줄은 계속 흐르게
+    return run;
+  }
+
+  async function buildPoPdfNow(supplierName, contact, fileName) {
     const key = supplierKey(supplierName, contact);
     const sig = poSigOf(supplierName, contact);
     const hit = poCacheRef.current.get(key);
