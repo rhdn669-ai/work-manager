@@ -2830,6 +2830,9 @@ export default function PurchaseDetailPage() {
                     // 담당자가 갈린 업체는 담당까지 넣은 키로 — COSEL 에 보낸 것이 델타 줄에 뜨지 않게
                     const sentKey = supplierKey(sup.name, sup.contact ?? null);
                     const sendingPct = mailSending[sentKey]; // 발송 진행률 — 발송 쪽과 같은 키
+                    // 결제는 업체 단위라, 담당이 갈려 두 줄인 업체는 첫 줄에만 결제 버튼을 둔다.
+                    // (줄마다 버튼이 있으면 담당별로 따로 결제하는 것처럼 읽힌다)
+                    const isFirstOfSupplier = supList.findIndex((x) => x.name === sup.name) === supIdx;
                     const sent = purchase.supplierSent?.[sentKey];
                     const replied = purchase.supplierReplied?.[sentKey];
                     // 담당자가 갈린 업체는 담당별 키로 찾는다 (computeSupplierReceiveStatus 와 같은 규칙)
@@ -3029,7 +3032,15 @@ export default function PurchaseDetailPage() {
                                 회신 확인
                               </button>
                             )}
-                            {paid ? (
+                            {!isFirstOfSupplier ? (
+                              <span
+                                className="btn btn-sm purchase-sup-toggle is-static"
+                                style={{ opacity: 0.5 }}
+                                title={`결제는 "${sup.name}" 업체 단위로 위 줄에서 함께 처리됩니다`}
+                              >
+                                업체 합산
+                              </span>
+                            ) : paid ? (
                               <span
                                 className="btn btn-sm purchase-sup-toggle is-static po-act-paid"
                                 title={`결제 완료 ${fmtDate(paid.paidAt)} — 결제 페이지에서 처리됨`}

@@ -16472,6 +16472,11 @@ td.mx-dc {
   white-space: nowrap;
   overflow: hidden;
 }
+/* 전체 출력(품번 열이 없는 내부용)은 입고 칸에 「n개 재고 사용」이 들어가므로 넓게.
+   업체로 나가는 발주서는 짧은 상태만 적히니 그대로 둔다. (2026-08-20 대표님) */
+.iopn-items-table.no-itemno .c-recv {
+  width: 14%;
+}
 .iopn-items-table .c-recv.recv-done {
   color: #166534;
   font-weight: 700;

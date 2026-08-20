@@ -289,7 +289,14 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                 const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
                 const q = Number(ln.qty) || 0;
                 const rq = Number(ln.receivedQty) || 0;
-                const recvText = q <= 0 ? '' : rq >= q ? '완료' : rq > 0 ? `${rq}/${q}` : '미입고';
+                const baseRecv = q <= 0 ? '' : rq >= q ? '완료' : rq > 0 ? `${rq}/${q}` : '미입고';
+                // 전체 출력(내부용)은 「필요 수량」을 적고, 재고로 채운 몫은 입고 칸에 적는다.
+                // 업체로 나가는 발주서는 실제 발주 수량만 — 거래처는 우리 재고 사정을 알 필요가 없다.
+                const need = Number(ln.stockNeed) || q;
+                const used = Number(ln.stockUsed) || 0;
+                const showQty = printSupplierFilter ? q : need;
+                const stockNote = used > 0 ? `${used.toLocaleString()}개 재고 사용` : '';
+                const recvText = printSupplierFilter ? baseRecv : [stockNote, baseRecv].filter(Boolean).join(' · ');
                 return (
                   <tr key={r}>
                     <td className="c-no">{pg.startNo + r + 1}</td>
@@ -305,10 +312,10 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                     <td className="c-spec" title={ln._spec || ''}>
                       {ln._spec || ''}
                     </td>
-                    <td className="c-qty">{Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}</td>
+                    <td className="c-qty">{showQty ? showQty.toLocaleString() : ''}</td>
                     <td className="c-price">{Number(ln.unitPrice) ? Number(ln.unitPrice).toLocaleString() : ''}</td>
                     <td className="c-amount">{amount ? amount.toLocaleString() : ''}</td>
-                    <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : rq === 0 ? 'recv-none' : ''}`}>
+                    <td className={`c-recv ${rq >= q && q > 0 ? 'recv-done' : q > 0 && rq === 0 ? 'recv-none' : ''}`}>
                       {recvText}
                     </td>
                     <td className={`c-note ${specFontClass(ln.note, 11)}`} title={ln.note || ''}>
