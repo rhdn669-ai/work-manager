@@ -1340,6 +1340,9 @@ export default function PurchaseDetailPage() {
     preBuildRef.current.running = true;
     try {
       const cur = purchaseRef.current || purchase;
+      // 발주대기 건만 미리 만든다. 이미 내보낸 발주서는 다시 보낼 일이 드물어,
+      // 열어 보기만 해도 업체 수만큼 굽는 것은 그냥 낭비다.
+      if ((cur?.status || 'draft') !== 'draft') return;
       const sent = cur?.supplierSent || {};
       for (const sup of computeSupplierList()) {
         if (!alive() || mailPreview || pdfModalOpen) break;
@@ -1369,7 +1372,8 @@ export default function PurchaseDetailPage() {
     if (!id || !purchase || mailPreview || pdfModalOpen) return undefined;
     let alive = true;
     clearTimeout(preBuildRef.current.timer);
-    preBuildRef.current.timer = setTimeout(() => preBuildAll(() => alive), 3000);
+    // 8초 — 잠깐 열어 보고 나가는 경우까지 굽지 않도록 넉넉히 둔다
+    preBuildRef.current.timer = setTimeout(() => preBuildAll(() => alive), 8000);
     return () => {
       alive = false;
       clearTimeout(preBuildRef.current.timer);
