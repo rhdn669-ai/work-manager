@@ -98,8 +98,13 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     {
       recvTitle: src.supplierTitle,
       supplierLabel: src.supplierLabel || '',
-      // 재고로 채워 발주 수량이 0인 줄은 싣지 않는다 — 업체는 실제 발주분만 받는다
-      items: src.items.filter((ln) => (ln._name || ln.name || '').trim() && (Number(ln.qty) || 0) > 0),
+      items: src.items.filter((ln) => {
+        if (!(ln._name || ln.name || '').trim()) return false;
+        // 재고로 채워 수량이 0인 줄은 「업체별 발주서」에서만 뺀다 — 거래처는 실제 발주분만 받는다.
+        // 전체 출력은 발주 내역을 통째로 보는 내부용이라 앱 품목 리스트와 줄·번호가 그대로 맞아야 한다.
+        if (printSupplierFilter) return (Number(ln.qty) || 0) > 0;
+        return true;
+      }),
     },
   ];
 
