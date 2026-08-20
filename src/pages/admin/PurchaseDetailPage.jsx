@@ -1441,7 +1441,7 @@ export default function PurchaseDetailPage() {
     if (!cur || (cur.status || 'draft') !== 'draft') return; // 발주대기 상태에서만 자동 전환
     const supList = computeSupplierList().filter((s) => s.orderCount > 0);
     if (supList.length === 0) return;
-    const allSent = supList.every((s) => sentMap[s.name.replace(/\./g, '_')]);
+    const allSent = supList.every((s) => sentMap[supplierKey(s.name, s.contact ?? null)]);
     if (!allSent) return;
     try {
       await confirmPurchase(id, userProfile?.name || '');
@@ -1469,18 +1469,20 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  async function handleMarkSupplierSent(supplierName) {
+  async function handleMarkSupplierSent(supplierName, contact = null) {
     if (!(await confirm(`"${supplierName}" 업체에 발주 완료 표시하시겠습니까?`))) return;
-    await markSent(supplierName);
+    // 담당이 갈린 업체는 담당까지 넘겨야 그 줄에 표시가 붙는다 (회신 확인과 같은 규칙)
+    await markSent(supplierName, contact);
   }
 
   // 모든 업체 회신 확인 + 현재 '발주완료' 상태면 → '회신'으로 자동 전환
   async function maybeAutoReply(repliedMap) {
     const cur = purchaseRef.current || purchase;
     if (!cur || (cur.status || 'draft') !== 'ordered') return; // 발주완료 상태에서만 전환
-    const supList = computeSupplierList();
+    // 보낼 것이 없던 업체는 회신도 없다 — 자동 전환 판정에서 뺀다 (발주완료 전환과 같은 규칙)
+    const supList = computeSupplierList().filter((s) => s.orderCount > 0);
     if (supList.length === 0) return;
-    const allReplied = supList.every((s) => repliedMap[s.name.replace(/\./g, '_')]);
+    const allReplied = supList.every((s) => repliedMap[supplierKey(s.name, s.contact ?? null)]);
     if (!allReplied) return;
     try {
       await setPurchaseReplied(id, userProfile?.name || '');
@@ -2625,7 +2627,9 @@ export default function PurchaseDetailPage() {
         if (supList.length === 0) return null;
         const recvStatus = computeSupplierReceiveStatus(); // 업체별 입고 자동 집계
         const liveList = supList.filter((s) => s.orderCount > 0); // 실제로 보낼 것이 있는 업체
-        const sentCount = supList.filter((s) => purchase.supplierSent?.[s.name.replace(/\./g, '_')]).length;
+        const sentCount = liveList.filter(
+          (s) => purchase.supplierSent?.[supplierKey(s.name, s.contact ?? null)],
+        ).length;
         return (
           <div className="form-group screen-only">
             <label>
@@ -2919,7 +2923,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline purchase-sup-toggle"
-                                onClick={() => handleMarkSupplierSent(sup.name)}
+                                onClick={() => handleMarkSupplierSent(sup.name, sup.contact ?? null)}
                               >
                                 발주 완료 표시
                               </button>

@@ -14,6 +14,7 @@ import {
 } from '../../services/purchaseService';
 import { getSupplierLibraryFiles } from '../../services/fileLibraryService';
 import { mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
+import { hasChoice, supplierKey } from '../../domain/supplierContacts';
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -101,14 +102,21 @@ export default function PaymentPage() {
       const lines = mapPrintItems(p.items || [], itemMaster, suppliers);
       const supList = computeSupplierList(p.items || [], itemMaster, suppliers, p);
       for (const sup of supList) {
-        const key = sup.name.replace(/\./g, '_');
-        const req = reqMap[key];
-        if (!req) continue; // 결제 요청된 업체만
-        const paid = p.supplierPaid?.[key];
+        // 담당이 갈린 업체(예: COSEL 담당 / 델타 담당)는 담당별로 따로 요청·결제된다.
+        // 업체명만으로 찾으면 요청이 아예 안 뜨거나 두 담당의 금액이 한 줄에 합쳐진다.
         const supInfo = supByName.get(sup.name) || {};
+        const multi = hasChoice(supInfo);
+        const key = supplierKey(sup.name, sup.contact ?? null);
+        const legacyKey = sup.name.replace(/\./g, '_'); // 담당 나누기 전에 저장된 건
+        const req = reqMap[key] || (multi ? null : reqMap[legacyKey]);
+        if (!req) continue; // 결제 요청된 업체만
+        const paid = p.supplierPaid?.[key] || (multi ? null : p.supplierPaid?.[legacyKey]);
         // 결제로 넘어오는 돈은 실제로 들어온 만큼이다. 아직 안 들어온 품목은 빠진다.
         // (입고 전에는 발주 수량으로 잡아 금액이 0 원으로 보이지 않게 한다)
-        const mine = lines.filter((l) => (l._supplier || '(구매처 미지정)') === sup.name);
+        const mine = lines.filter(
+          (l) =>
+            (l._supplier || '(구매처 미지정)') === sup.name && (!multi || (l._contact || '') === (sup.contact || '')),
+        );
         const anyReceived = mine.some((l) => Number(l.receivedQty) > 0);
         const supply = mine.reduce((s, l) => {
           const qty = Number(l.qty) || 0;
@@ -127,6 +135,8 @@ export default function PaymentPage() {
           title: p.title || '(제목 없음)',
           siteName: p.siteName || '',
           supplier: sup.name,
+          supplierKey: key, // 결제 완료·취소는 이 키로 — 담당이 갈린 업체를 한 줄씩 처리한다
+          supplierLabel: sup.label || sup.name,
           representative: supInfo.representative || '',
           contact: supInfo.contact || '',
           email: supInfo.email || '',
@@ -330,8 +340,11 @@ export default function PaymentPage() {
       return;
     setBusy(`${r.purchaseId}-${r.supplier}`);
     try {
-      await markSupplierPaid(r.purchaseId, r.supplier, userProfile?.name || '');
-      applyPaidLocal(r.purchaseId, r.supplier, { paidAt: new Date(), paidBy: userProfile?.name || '' });
+      await markSupplierPaid(r.purchaseId, r.supplierKey || r.supplier, userProfile?.name || '');
+      applyPaidLocal(r.purchaseId, r.supplierKey || r.supplier, {
+        paidAt: new Date(),
+        paidBy: userProfile?.name || '',
+      });
       toast('결제 완료 처리했습니다.');
     } catch (err) {
       toast('처리 오류: ' + (err.message || err), 'error');
@@ -343,8 +356,8 @@ export default function PaymentPage() {
     if (!(await confirm({ title: '결제 취소', message: `"${r.supplier}" 결제 완료를 취소할까요?` }))) return;
     setBusy(`${r.purchaseId}-${r.supplier}`);
     try {
-      await unmarkSupplierPaid(r.purchaseId, r.supplier);
-      applyPaidLocal(r.purchaseId, r.supplier, null);
+      await unmarkSupplierPaid(r.purchaseId, r.supplierKey || r.supplier);
+      applyPaidLocal(r.purchaseId, r.supplierKey || r.supplier, null);
       toast('결제 완료를 취소했습니다.');
     } catch (err) {
       toast('처리 오류: ' + (err.message || err), 'error');
