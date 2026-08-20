@@ -1350,7 +1350,9 @@ export default function PurchaseDetailPage() {
       const sent = cur?.supplierSent || {};
       for (const sup of computeSupplierList()) {
         if (!alive() || mailPreview || pdfModalOpen) break;
-        const contact = hasChoice(suppliers.find((x) => x.name === sup.name)) ? sup.contact : null;
+        // ★ 화면의 「메일 발송」 버튼과 똑같은 값을 써야 한다 —
+        //   여기서 다른 값을 쓰면 캐시 키가 어긋나 미리 만들어 둔 것을 못 찾는다.
+        const contact = sup.contact ?? null;
         if (sent[supplierKey(sup.name, contact)]) continue; // 이미 보낸 업체
         const key = supplierKey(sup.name, contact);
         const hit = poCacheRef.current.get(key);
