@@ -20298,3 +20298,24 @@ a.lib-row-name:hover {
   font-weight: 600;
   color: var(--primary);
 }
+
+/* 메일 본문 — 이 건만 고쳐 보낼 수 있는 칸 */
+.mail-body-edit {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 13px);
+  background: var(--bg-card, #fff);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.mail-body-edit:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}

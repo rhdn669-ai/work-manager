@@ -260,6 +260,8 @@ export default function PurchaseDetailPage() {
   const [printSupplierFilter, setPrintSupplierFilter] = useState(null);
   // 같은 업체라도 담당자별로 갈라 출력·발송한다 (예: COSEL 담당 / 델타 담당)
   const [printContactFilter, setPrintContactFilter] = useState(null);
+  // 메일 모달에서 미리 떠 두는 첨부본 — 미리보기로 여는 파일이 그대로 첨부된다
+  const [mailPdf, setMailPdf] = useState({ blob: null, url: '', name: '', error: '' });
   // ★ 메일 발송 직렬화 체인 — 여러 업체를 연속 발송해도 단일 PDF 렌더 폼(printRef)을
   //   동시에 만지지 않도록 한 번에 하나씩 순차 처리한다. (한 업체에 전체 품목이 첨부되던
   //   레이스 컨디션 사고 방지) 사용자는 그대로 빠르게 눌러도 내부에서 큐로 직렬 실행.
@@ -1526,7 +1528,18 @@ export default function PurchaseDetailPage() {
   // 메일 발송 버튼 → 미리보기 모달 열기 (실제 발송은 모달의 "발송"에서)
   // 발송(첨부) 파일명 = 발주서_제목_업체명_발행번호 (부제 제외 — 외부 노출)
   // 저장(자료실) 파일명 = 발주서_제목_부제_업체명_발행번호 (부제 포함 — 내부 식별)
-  function openMailPreview(supplierName, toEmail, subject, htmlBody, poNo, contact = null, contactName = '') {
+  function openMailPreview(
+    supplierName,
+    toEmail,
+    subject,
+    htmlBody,
+    poNo,
+    contact = null,
+    contactName = '',
+    bodyText = '',
+    head = '',
+    tail = '',
+  ) {
     const build = (arr) =>
       `${arr
         .filter(Boolean)
@@ -1543,16 +1556,23 @@ export default function PurchaseDetailPage() {
       to: toEmail,
       subject,
       html: htmlBody,
+      // 이 건만 고쳐 보낼 수 있게 본문 글을 따로 싣는다 — 공통 문구(form.mailBody)는 건드리지 않는다
+      bodyText,
+      head,
+      tail,
       fileName,
       saveFileName,
     });
+    buildMailPdf(supplierName, contact, fileName);
   }
 
   // 미리보기 모달에서 "첨부파일" 클릭 → 실제 첨부될 발주서 PDF를 그 자리에서 생성해 새 탭으로 열어 확인.
   // (발송 전 양식이 정상인지 눈으로 검증 — 깨진 채 발송되는 것 방지)
-  async function previewMailAttachment() {
-    if (!mailPreview || mailAttachBusy) return;
-    const { supplierName, fileName } = mailPreview;
+  // 첨부본을 미리 떠 둔다 — 모달을 여는 순간 시작해 사람이 본문을 읽는 동안 끝난다.
+  // 여기서 만든 그 파일이 미리보기로도 열리고 메일에도 그대로 붙는다.
+  async function buildMailPdf(supplierName, contact, fileName) {
+    if (mailAttachBusy) return;
+    setMailPdf({ blob: null, url: '', name: fileName, error: '' });
     setMailAttachBusy(true);
     try {
       await ensureAnonymousAuth();
@@ -1561,26 +1581,23 @@ export default function PurchaseDetailPage() {
       setPrintSiteNameMode('blank');
       setPrintAccountMode(false);
       setPrintSupplierFilter(supplierName);
+      setPrintContactFilter(contact ?? null);
       setPrintStamp(fmtDateTime(new Date()));
       await new Promise((r) => setTimeout(r, 250));
       let blob = null;
       try {
         const el = printRef.current;
-        if (el) blob = await captureToPdfBlob(el, fileName);
+        if (el) blob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
       } finally {
         setPrintSupplierFilter(null);
+        setPrintContactFilter(null);
         setPrintSiteNameMode(null);
         setPrintAccountMode(false);
       }
-      if (!blob) {
-        toast('미리보기 생성에 실패했습니다. (배포 환경에서만 동작)', 'error');
-        return;
-      }
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      if (!blob) throw new Error('PDF를 만들지 못했습니다 (배포 환경에서만 동작)');
+      setMailPdf({ blob, url: URL.createObjectURL(blob), name: fileName, error: '' });
     } catch (err) {
-      toast('미리보기 실패: ' + (err.message || err), 'error');
+      setMailPdf({ blob: null, url: '', name: fileName, error: err.message || String(err) });
     } finally {
       setMailAttachBusy(false);
     }
@@ -1589,7 +1606,25 @@ export default function PurchaseDetailPage() {
   // 미리보기 모달의 "발송" → 모달 즉시 닫고 백그라운드로 PDF 생성·발송 (대기 없음)
   function confirmSendMail() {
     if (!mailPreview) return;
-    const { supplierName, to, subject, html, fileName, saveFileName, contact: contactFilter = null } = mailPreview;
+    const {
+      supplierName,
+      to,
+      subject,
+      html,
+      fileName,
+      saveFileName,
+      contact: contactFilter = null,
+      bodyText = '',
+      head = '',
+      tail = '',
+    } = mailPreview;
+    // 모달에서 고친 본문으로 다시 짠다. 앞뒤 틀(발신·수신·명함)은 그대로 둔다.
+    const editedHtml = head
+      ? head +
+        String(bodyText).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') +
+        tail
+      : html;
+    const readyPdf = mailPdf.blob; // 미리보기로 확인한 바로 그 파일
     const extraFiles = mailExtraFiles; // 발송 시점의 추가 첨부 캡처
     setMailPreview(null);
     setMailExtraFiles([]);
@@ -1632,7 +1667,9 @@ export default function PurchaseDetailPage() {
             // 내부 보관본은 발송이 끝난 뒤에 만든다 — 서버 렌더가 한 번에 7~13초라
             // 두 장을 앞에서 다 만들면 보내는 사람이 20초 넘게 기다리게 된다.
             setPct(45);
-            pdfBlob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
+            // 모달을 열 때 떠 둔 것이 있으면 그대로 쓴다 — 본 것과 다른 파일이 갈 일이 없고 빠르다
+            pdfBlob =
+              readyPdf || (await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성'));
             setPct(60);
             const base64 = await blobToBase64(pdfBlob);
             attachments = [{ filename: fileName, content: base64, encoding: 'base64' }];
@@ -1650,8 +1687,8 @@ export default function PurchaseDetailPage() {
         }
         setPct(70);
         // 본문 명함 이미지를 cid 인라인 첨부로 변환 (메일 클라이언트 이미지 차단 방지)
-        let sendHtml = html;
-        const cardMatch = html.match(/src="(\/cards\/[^"]*)"/);
+        let sendHtml = editedHtml;
+        const cardMatch = editedHtml.match(/src="(\/cards\/[^"]*)"/);
         if (cardMatch) {
           try {
             const res = await fetch(cardMatch[1]);
@@ -1665,7 +1702,7 @@ export default function PurchaseDetailPage() {
                 contentDisposition: 'inline',
                 cid: 'bizcard',
               });
-              sendHtml = html.replace(cardMatch[1], 'cid:bizcard');
+              sendHtml = editedHtml.replace(cardMatch[1], 'cid:bizcard');
             }
           } catch {
             /* 명함 로드 실패 시 경로 이미지 그대로 발송 */
@@ -2614,7 +2651,9 @@ export default function PurchaseDetailPage() {
                       .replace(/</g, '&lt;')
                       .replace(/>/g, '&gt;')
                       .replace(/\n/g, '<br>');
-                    const mailHtml = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.label || sup.name}</p><br><br><p>${bodyHtml}</p>${cardHtml}`;
+                    const mailHead = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.label || sup.name}</p><br><br><p>`;
+                    const mailTail = `</p>${cardHtml}`;
+                    const mailHtml = `${mailHead}${bodyHtml}${mailTail}`;
                     return (
                       <tr key={`${sup.name} ${sup.contact || ''}`}>
                         <td data-label="구매처" title={sup.label || sup.name}>
@@ -3462,15 +3501,21 @@ export default function PurchaseDetailPage() {
               <button
                 type="button"
                 className="mail-attach-chip mail-attach-chip--btn"
-                onClick={previewMailAttachment}
+                onClick={() => {
+                  if (mailPdf.url) window.open(mailPdf.url, '_blank', 'noopener');
+                  else if (mailPdf.error)
+                    buildMailPdf(mailPreview.supplierName, mailPreview.contact, mailPreview.fileName);
+                }}
                 disabled={mailAttachBusy}
-                title="클릭하면 실제 첨부될 발주서 PDF를 새 탭에서 미리 확인합니다"
+                title={mailAttachBusy ? '첨부본을 만드는 중입니다' : '눌러서 실제 첨부될 발주서를 확인합니다'}
               >
                 <Icon name={mailAttachBusy ? 'clock' : 'download'} className="btn-ic" />
-                {mailAttachBusy ? '미리보기 생성 중…' : mailPreview.fileName}
+                {mailAttachBusy ? '첨부본 준비 중…' : mailPdf.error ? '다시 만들기' : mailPreview.fileName}
               </button>
               <p className="field-hint">
-                첨부파일을 클릭하면 실제 발송될 발주서 PDF를 미리 확인할 수 있습니다. 발송 시 동일한 PDF가 첨부됩니다.
+                {mailPdf.error
+                  ? `첨부본을 만들지 못했습니다 — ${mailPdf.error}`
+                  : '여기서 여는 파일이 그대로 첨부됩니다. 모달을 여는 순간 만들어 두므로 발송도 바로 끝납니다.'}
               </p>
             </div>
             <div className="form-group">
@@ -3539,8 +3584,17 @@ export default function PurchaseDetailPage() {
               </p>
             </div>
             <div className="form-group">
-              <label>본문 미리보기</label>
-              <div className="mail-body-preview" dangerouslySetInnerHTML={{ __html: mailPreview.html }} />
+              <label>본문 (이 건만 고쳐 보냅니다)</label>
+              <textarea
+                className="mail-body-edit"
+                rows={8}
+                value={mailPreview.bodyText || ''}
+                onChange={(e) => setMailPreview((p) => ({ ...p, bodyText: e.target.value }))}
+                aria-label="메일 본문"
+              />
+              <p className="field-hint">
+                여기서 고친 글은 이번 발송에만 쓰입니다. 늘 쓰는 문구는 상단 「메일 본문」에서 바꾸세요.
+              </p>
             </div>
             <div className="modal-actions">
               <button
