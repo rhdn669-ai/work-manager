@@ -69,6 +69,9 @@ import {
   computeSupplierList as computeSupplierListPure,
 } from '../../utils/purchaseOrder';
 
+// 발주서 미리 만들기 — 위 useEffect 주석 참고. 출력 경로 직렬화가 끝나면 다시 켠다.
+const PREBUILD_ENABLED = false;
+
 const STATUS = {
   draft: { label: '발주대기', cls: 'draft' },
   ordered: { label: '발주완료', cls: 'ordered' },
@@ -1370,6 +1373,12 @@ export default function PurchaseDetailPage() {
     .map((ln) => `${ln.itemId || ''}:${ln.name || ''}:${ln.qty || 0}:${ln.unitPrice || 0}:${ln.box || ''}`)
     .join('~');
   useEffect(() => {
+    // ★ 미리 만들기 일시 중지 (2026-08-20)
+    //   발주서 렌더 폼이 화면에 하나뿐이라, 뒤에서 업체를 바꿔가며 굽는 동안
+    //   사용자가 「PDF 출력」·「자료실 저장」을 누르면 그때 폼에 걸려 있던
+    //   다른 업체 상태로 캡처된다 — 엉뚱한 발주서가 나갈 수 있다.
+    //   출력 경로를 전부 한 줄에 세운 뒤에 다시 켠다.
+    if (!PREBUILD_ENABLED) return undefined;
     if (!id || !purchase || mailPreview || pdfModalOpen) return undefined;
     let alive = true;
     clearTimeout(preBuildRef.current.timer);
