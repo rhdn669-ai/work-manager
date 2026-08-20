@@ -1537,10 +1537,16 @@ export default function PurchaseDetailPage() {
     }
   }
 
+  // 결제 키 — 결제는 회사 대 회사라 담당이 갈려도 업체 하나로 묶는다 (2026-08-20 대표님).
+  // 발송·발주완료·회신은 담당별로 갈리지만, 돈은 업체 앞으로 한 번에 나간다.
+  function payKey(supplierName) {
+    return supplierKey(supplierName, null);
+  }
+
   // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다.
   // 구매처에 결제 조건이 있으면 마감일을 미리 계산해 채워 둔다. 사람은 확인만 하면 된다.
-  function handleRequestPayment(supplierName, receivedAt, contact = null) {
-    const key = supplierKey(supplierName, contact);
+  function handleRequestPayment(supplierName, receivedAt) {
+    const key = payKey(supplierName);
     const prevDue = purchase.paymentRequested?.[key]?.dueDate || '';
     const sup = suppliers.find((x) => x.name === supplierName);
     const base = receivedAt || new Date(); // 입고 완료일이 기준, 없으면 오늘
@@ -1557,10 +1563,10 @@ export default function PurchaseDetailPage() {
   // 마감일 입력 후 결제 요청 확정 → 결제 페이지에 결제 대기로 노출
   async function confirmPaymentRequest() {
     if (!payReqModal) return;
-    const { supplierName, contact = null, due } = payReqModal;
+    const { supplierName, due } = payReqModal;
     setPayReqModal(null);
     try {
-      const key = supplierKey(supplierName, contact);
+      const key = payKey(supplierName);
       await markPaymentRequested(id, key, userProfile?.name || '', due || '');
       const next = {
         ...(purchaseRef.current?.paymentRequested || {}),
@@ -1573,10 +1579,10 @@ export default function PurchaseDetailPage() {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
-  async function handleCancelPaymentRequest(supplierName, contact = null) {
+  async function handleCancelPaymentRequest(supplierName) {
     if (!(await confirm(`"${supplierName}" 업체의 결제 요청을 취소하시겠습니까?`))) return;
     try {
-      const key = supplierKey(supplierName, contact);
+      const key = payKey(supplierName);
       await unmarkPaymentRequested(id, key);
       setPurchase((prev) => {
         const next = { ...(prev.paymentRequested || {}) };
@@ -2759,8 +2765,9 @@ export default function PurchaseDetailPage() {
                         pendingAmount: 0,
                       };
                     const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
-                    const payReq = purchase.paymentRequested?.[sentKey];
-                    const paid = purchase.supplierPaid?.[sentKey];
+                    // 결제는 업체 단위 — 담당이 갈린 업체는 두 줄이 같은 결제 상태를 본다
+                    const payReq = purchase.paymentRequested?.[payKey(sup.name)];
+                    const paid = purchase.supplierPaid?.[payKey(sup.name)];
                     // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
                     const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
                     const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
@@ -2956,7 +2963,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                onClick={() => handleCancelPaymentRequest(sup.name, sup.contact ?? null)}
+                                onClick={() => handleCancelPaymentRequest(sup.name)}
                                 title={`결제 요청됨 ${fmtDate(payReq.requestedAt)} — 클릭 시 요청 취소`}
                               >
                                 요청 취소
@@ -2965,7 +2972,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-primary purchase-sup-toggle"
-                                onClick={() => handleRequestPayment(sup.name, recv.latest, sup.contact ?? null)}
+                                onClick={() => handleRequestPayment(sup.name, recv.latest)}
                                 title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
                               >
                                 결제 요청

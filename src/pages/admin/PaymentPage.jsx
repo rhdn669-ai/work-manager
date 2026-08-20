@@ -14,7 +14,7 @@ import {
 } from '../../services/purchaseService';
 import { getSupplierLibraryFiles } from '../../services/fileLibraryService';
 import { mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
-import { hasChoice, supplierKey } from '../../domain/supplierContacts';
+import { supplierKey } from '../../domain/supplierContacts';
 
 function fmtDate(ts) {
   if (!ts) return '-';
@@ -101,22 +101,21 @@ export default function PaymentPage() {
       if (!reqMap || Object.keys(reqMap).length === 0) continue;
       const lines = mapPrintItems(p.items || [], itemMaster, suppliers);
       const supList = computeSupplierList(p.items || [], itemMaster, suppliers, p);
+      const seenSup = new Set(); // 담당이 갈린 업체는 목록에 두 번 나온다 — 결제는 한 줄로 묶는다
       for (const sup of supList) {
-        // 담당이 갈린 업체(예: COSEL 담당 / 델타 담당)는 담당별로 따로 요청·결제된다.
-        // 업체명만으로 찾으면 요청이 아예 안 뜨거나 두 담당의 금액이 한 줄에 합쳐진다.
+        // 결제는 회사 대 회사 — 담당이 갈려도 업체 하나로 본다 (2026-08-20 대표님).
+        // 담당별로 저장된 옛 요청(업체명__담당)도 같은 업체 것으로 받아 준다.
+        const key = supplierKey(sup.name, null);
+        if (seenSup.has(key)) continue;
+        seenSup.add(key);
         const supInfo = supByName.get(sup.name) || {};
-        const multi = hasChoice(supInfo);
-        const key = supplierKey(sup.name, sup.contact ?? null);
-        const legacyKey = sup.name.replace(/\./g, '_'); // 담당 나누기 전에 저장된 건
-        const req = reqMap[key] || (multi ? null : reqMap[legacyKey]);
+        const byContact = (m) => Object.entries(m || {}).find(([k]) => k.startsWith(`${key}__`))?.[1];
+        const req = reqMap[key] || byContact(reqMap);
         if (!req) continue; // 결제 요청된 업체만
-        const paid = p.supplierPaid?.[key] || (multi ? null : p.supplierPaid?.[legacyKey]);
+        const paid = p.supplierPaid?.[key] || byContact(p.supplierPaid);
         // 결제로 넘어오는 돈은 실제로 들어온 만큼이다. 아직 안 들어온 품목은 빠진다.
         // (입고 전에는 발주 수량으로 잡아 금액이 0 원으로 보이지 않게 한다)
-        const mine = lines.filter(
-          (l) =>
-            (l._supplier || '(구매처 미지정)') === sup.name && (!multi || (l._contact || '') === (sup.contact || '')),
-        );
+        const mine = lines.filter((l) => (l._supplier || '(구매처 미지정)') === sup.name);
         const anyReceived = mine.some((l) => Number(l.receivedQty) > 0);
         const supply = mine.reduce((s, l) => {
           const qty = Number(l.qty) || 0;
@@ -135,8 +134,7 @@ export default function PaymentPage() {
           title: p.title || '(제목 없음)',
           siteName: p.siteName || '',
           supplier: sup.name,
-          supplierKey: key, // 결제 완료·취소는 이 키로 — 담당이 갈린 업체를 한 줄씩 처리한다
-          supplierLabel: sup.label || sup.name,
+          supplierKey: key, // 결제 완료·취소는 이 키로 (업체 단위)
           representative: supInfo.representative || '',
           contact: supInfo.contact || '',
           email: supInfo.email || '',
