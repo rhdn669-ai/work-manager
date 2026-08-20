@@ -211,10 +211,14 @@ async function renderPdf(request, env) {
       /* 폰트 API 미지원 시 무시 */
     }
 
+    // preferCSSPageSize 는 쓰지 않는다 — 앱의 @page 는 브라우저 인쇄에서 사용자가 고른
+    // 용지·방향을 따르도록 size:auto 로 두었는데, 서버가 그 auto 를 따라가면 콘텐츠 폭에
+    // 맞춰 제멋대로 잡혀 메일 첨부본과 「PDF 출력」 결과가 미세하게 달라진다.
+    // 서버는 언제나 A4 세로로 못 박는다. (2026-08-20 대표님 — 두 출력물 셀 크기 차이)
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
-      preferCSSPageSize: true,
+      preferCSSPageSize: false,
       margin: { top: '12mm', right: '10mm', bottom: '5mm', left: '10mm' },
     });
 
