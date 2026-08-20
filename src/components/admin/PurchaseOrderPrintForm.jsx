@@ -4,6 +4,7 @@ import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import IopnDocBrand from './IopnDocBrand';
 import IopnDocSeal from './IopnDocSeal';
 import { PO_DEFAULTS, poDateStr, deriveSupplier, mapPrintItems, computeSupplierList } from '../../utils/purchaseOrder';
+import { supplierKey } from '../../domain/supplierContacts';
 
 // 인쇄 전용 IOPN 구매발주서 양식 (PDF 캡처 대상).
 // PurchaseDetailPage(실시간 출력·메일)와 저장본 일괄 재생성 도구가 공유한다.
@@ -55,8 +56,14 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     // 업체별 출력이면 그 업체 특이사항 우선, 없으면 발주 전체 메모
     note: (() => {
       if (printSupplierFilter) {
-        const key = printSupplierFilter.replace(/\./g, '_');
-        const supNote = form.supplierNotes?.[key];
+        // 특이사항은 화면 표와 같은 키(담당까지 포함)로 저장된다 — 업체명만으로 찾으면
+        // 적어 둔 글이 발주서에 안 실린다. 담당 나누기 전에 저장된 옛 키도 함께 본다.
+        const key = supplierKey(printSupplierFilter, printContactFilter ?? null);
+        const legacyKey = printSupplierFilter.replace(/\./g, '_');
+        const notes = form.supplierNotes || {};
+        // 담당을 모르고 부르는 경로(저장본 일괄 재생성)도 있어, 그때는 그 업체 것 중 하나를 쓴다
+        const supNote =
+          notes[key] || notes[legacyKey] || Object.entries(notes).find(([k]) => k.startsWith(`${legacyKey}__`))?.[1];
         if (supNote && supNote.trim()) return supNote;
       }
       return form.note || '';
