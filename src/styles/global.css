@@ -16472,11 +16472,6 @@ td.mx-dc {
   white-space: nowrap;
   overflow: hidden;
 }
-/* 전체 출력(품번 열이 없는 내부용)은 입고 칸에 「n개 재고 사용」이 들어가므로 넓게.
-   업체로 나가는 발주서는 짧은 상태만 적히니 그대로 둔다. (2026-08-20 대표님) */
-.iopn-items-table.no-itemno .c-recv {
-  width: 14%;
-}
 .iopn-items-table .c-recv.recv-done {
   color: #166534;
   font-weight: 700;
@@ -16594,6 +16589,23 @@ td.mx-dc {
 }
 .iopn-items-table.po-cols .c-note {
   width: 9%;
+}
+/* 전체 출력(내부용)은 입고 칸에 「n개 재고 사용」이 들어가 좁으면 잘린다.
+   비고까지 함께 넓히고, 규격이 그만큼 양보한다. (2026-08-20 대표님)
+   ※ .po-cols 규칙보다 뒤에·구체적으로 둬야 먹는다 */
+.iopn-items-table.po-cols.no-itemno .c-recv {
+  width: 17%;
+  white-space: normal;
+  line-height: 1.15;
+}
+.iopn-items-table.po-cols.no-itemno .c-note {
+  width: 12%;
+}
+.iopn-items-table.po-cols.no-itemno .c-spec {
+  width: 22%;
+}
+.iopn-items-table.po-cols.no-itemno.has-box .c-spec {
+  width: 12%;
 }
 /* 발주서 출력 목록 전체 중앙정렬 */
 .iopn-items-table.po-cols th,
@@ -17591,6 +17603,23 @@ td.mx-dc {
   }
   .iopn-items-table.po-cols .c-note {
     width: 9%;
+  }
+  /* 전체 출력(내부용)은 입고 칸에 「n개 재고 사용」이 들어가 좁으면 잘린다.
+     비고까지 함께 넓히고, 규격이 그만큼 양보한다. (2026-08-20 대표님)
+     ※ .po-cols 규칙보다 뒤에·구체적으로 둬야 먹는다 */
+  .iopn-items-table.po-cols.no-itemno .c-recv {
+    width: 17%;
+    white-space: normal;
+    line-height: 1.15;
+  }
+  .iopn-items-table.po-cols.no-itemno .c-note {
+    width: 12%;
+  }
+  .iopn-items-table.po-cols.no-itemno .c-spec {
+    width: 22%;
+  }
+  .iopn-items-table.po-cols.no-itemno.has-box .c-spec {
+    width: 12%;
   }
   /* 금액 미표기 옵션 — 단가·금액(23%) 숨김분을 규격·비고에 재분배 */
   .print-form-iopn.hide-amount .iopn-items-table.po-cols .c-spec {
