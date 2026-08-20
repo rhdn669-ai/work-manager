@@ -58,7 +58,7 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
-import { contactsOf, hasChoice, resolveEmail } from '../../domain/supplierContacts';
+import { contactsOf, hasChoice, resolveEmail, supplierKey } from '../../domain/supplierContacts';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
 import {
   PO_DEFAULTS,
@@ -1378,10 +1378,10 @@ export default function PurchaseDetailPage() {
   }
 
   // 발주완료 마킹 (확인창 없이 바로 — 메일 발송 후 자동 호출용)
-  async function markSent(supplierName) {
+  async function markSent(supplierName, contact = null) {
     try {
-      await markSupplierSent(id, supplierName, userProfile?.name || '');
-      const sentKey = supplierName.replace(/\./g, '_');
+      const sentKey = supplierKey(supplierName, contact);
+      await markSupplierSent(id, sentKey, userProfile?.name || '');
       const nextSent = {
         ...(purchaseRef.current?.supplierSent || {}),
         [sentKey]: { sentAt: new Date(), sentBy: userProfile?.name || '' },
@@ -1417,20 +1417,20 @@ export default function PurchaseDetailPage() {
   }
 
   // 업체별 회신 확인 — 납기 입력 모달을 먼저 띄운다
-  function handleMarkSupplierReplied(supplierName) {
-    const key = supplierName.replace(/\./g, '_');
+  function handleMarkSupplierReplied(supplierName, contact = null) {
+    const key = supplierKey(supplierName, contact);
     const prevDue = purchase.supplierReplied?.[key]?.deliveryDue || purchase.deliveryDue || '';
-    setReplyModal({ supplierName, due: prevDue });
+    setReplyModal({ supplierName, contact, due: prevDue });
   }
 
   // 납기 입력 후 회신 확인 확정
   async function confirmReplyWithDue() {
     if (!replyModal) return;
-    const { supplierName, due } = replyModal;
+    const { supplierName, contact = null, due } = replyModal;
     setReplyModal(null);
     try {
-      await markSupplierReplied(id, supplierName, userProfile?.name || '', due || '');
-      const key = supplierName.replace(/\./g, '_');
+      const key = supplierKey(supplierName, contact);
+      await markSupplierReplied(id, key, userProfile?.name || '', due || '');
       const nextReplied = {
         ...(purchaseRef.current?.supplierReplied || {}),
         [key]: { repliedAt: new Date(), repliedBy: userProfile?.name || '', deliveryDue: due || '' },
@@ -1444,11 +1444,11 @@ export default function PurchaseDetailPage() {
   }
 
   // 업체별 회신 확인 취소
-  async function handleUnmarkSupplierReplied(supplierName) {
+  async function handleUnmarkSupplierReplied(supplierName, contact = null) {
     if (!(await confirm(`"${supplierName}" 업체의 회신 확인을 취소하시겠습니까?`))) return;
     try {
-      await unmarkSupplierReplied(id, supplierName);
-      const key = supplierName.replace(/\./g, '_');
+      const key = supplierKey(supplierName, contact);
+      await unmarkSupplierReplied(id, key);
       setPurchase((prev) => {
         const next = { ...(prev.supplierReplied || {}) };
         delete next[key];
@@ -1462,8 +1462,8 @@ export default function PurchaseDetailPage() {
 
   // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다.
   // 구매처에 결제 조건이 있으면 마감일을 미리 계산해 채워 둔다. 사람은 확인만 하면 된다.
-  function handleRequestPayment(supplierName, receivedAt) {
-    const key = supplierName.replace(/\./g, '_');
+  function handleRequestPayment(supplierName, receivedAt, contact = null) {
+    const key = supplierKey(supplierName, contact);
     const prevDue = purchase.paymentRequested?.[key]?.dueDate || '';
     const sup = suppliers.find((x) => x.name === supplierName);
     const base = receivedAt || new Date(); // 입고 완료일이 기준, 없으면 오늘
@@ -1480,11 +1480,11 @@ export default function PurchaseDetailPage() {
   // 마감일 입력 후 결제 요청 확정 → 결제 페이지에 결제 대기로 노출
   async function confirmPaymentRequest() {
     if (!payReqModal) return;
-    const { supplierName, due } = payReqModal;
+    const { supplierName, contact = null, due } = payReqModal;
     setPayReqModal(null);
     try {
-      await markPaymentRequested(id, supplierName, userProfile?.name || '', due || '');
-      const key = supplierName.replace(/\./g, '_');
+      const key = supplierKey(supplierName, contact);
+      await markPaymentRequested(id, key, userProfile?.name || '', due || '');
       const next = {
         ...(purchaseRef.current?.paymentRequested || {}),
         [key]: { requestedAt: new Date(), requestedBy: userProfile?.name || '', dueDate: due || '' },
@@ -1496,11 +1496,11 @@ export default function PurchaseDetailPage() {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
   }
-  async function handleCancelPaymentRequest(supplierName) {
+  async function handleCancelPaymentRequest(supplierName, contact = null) {
     if (!(await confirm(`"${supplierName}" 업체의 결제 요청을 취소하시겠습니까?`))) return;
     try {
-      await unmarkPaymentRequested(id, supplierName);
-      const key = supplierName.replace(/\./g, '_');
+      const key = supplierKey(supplierName, contact);
+      await unmarkPaymentRequested(id, key);
       setPurchase((prev) => {
         const next = { ...(prev.paymentRequested || {}) };
         delete next[key];
@@ -1689,8 +1689,8 @@ export default function PurchaseDetailPage() {
         await withTimeout(callSendEmail({ to, subject, html: sendHtml, attachments }), PDF_TIMEOUT_MS, '메일 발송');
         setPct(100);
         toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
-        const sentKey = supplierName.replace(/\./g, '_');
-        if (!purchase.supplierSent?.[sentKey]) markSent(supplierName);
+        const sentKey = supplierKey(supplierName, contactFilter);
+        if (!purchase.supplierSent?.[sentKey]) markSent(supplierName, contactFilter);
         // 발송 성공 → 프로젝트 자료실 "발주이력 > YYYY-MM" 월 폴더에 발주서 PDF 자동 보관
         // 내부 저장본은 계좌 포함(saveBlob), 없으면 메일본(pdfBlob)
         // 보관본(계좌 포함·실제 현장명)은 여기서 다시 뜬다 — 사람은 이미 발송 완료를 봤다.
@@ -1751,11 +1751,11 @@ export default function PurchaseDetailPage() {
     mailSendChainRef.current = mailSendChainRef.current.then(runSend, runSend);
   }
 
-  async function handleUnmarkSupplierSent(supplierName) {
+  async function handleUnmarkSupplierSent(supplierName, contact = null) {
     if (!(await confirm(`"${supplierName}" 업체의 발주 완료 표시를 취소하시겠습니까?`))) return;
     try {
-      await unmarkSupplierSent(id, supplierName);
-      const sentKey = supplierName.replace(/\./g, '_');
+      const sentKey = supplierKey(supplierName, contact);
+      await unmarkSupplierSent(id, sentKey);
       setPurchase((prev) => {
         const next = { ...(prev.supplierSent || {}) };
         delete next[sentKey];
@@ -2578,7 +2578,8 @@ export default function PurchaseDetailPage() {
                 </thead>
                 <tbody>
                   {supList.map((sup, supIdx) => {
-                    const sentKey = sup.name.replace(/\./g, '_');
+                    // 담당자가 갈린 업체는 담당까지 넣은 키로 — COSEL 에 보낸 것이 델타 줄에 뜨지 않게
+                    const sentKey = supplierKey(sup.name, sup.contact ?? null);
                     const sent = purchase.supplierSent?.[sentKey];
                     const replied = purchase.supplierReplied?.[sentKey];
                     // 담당자가 갈린 업체는 담당별 키로 찾는다 (computeSupplierReceiveStatus 와 같은 규칙)
@@ -2689,12 +2690,11 @@ export default function PurchaseDetailPage() {
                         <td data-label="특이사항">
                           <input
                             type="text"
-                            value={form.supplierNotes?.[sup.name.replace(/\./g, '_')] || ''}
+                            value={form.supplierNotes?.[sentKey] || ''}
                             onChange={(e) => {
-                              const key = sup.name.replace(/\./g, '_');
                               setForm((f) => ({
                                 ...f,
-                                supplierNotes: { ...f.supplierNotes, [key]: e.target.value },
+                                supplierNotes: { ...f.supplierNotes, [sentKey]: e.target.value },
                               }));
                               scheduleAutoSave();
                             }}
@@ -2745,7 +2745,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                onClick={() => handleUnmarkSupplierSent(sup.name)}
+                                onClick={() => handleUnmarkSupplierSent(sup.name, sup.contact ?? null)}
                               >
                                 발주 취소
                               </button>
@@ -2762,7 +2762,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                onClick={() => handleUnmarkSupplierReplied(sup.name)}
+                                onClick={() => handleUnmarkSupplierReplied(sup.name, sup.contact ?? null)}
                               >
                                 회신 취소
                               </button>
@@ -2770,7 +2770,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline purchase-sup-toggle"
-                                onClick={() => handleMarkSupplierReplied(sup.name)}
+                                onClick={() => handleMarkSupplierReplied(sup.name, sup.contact ?? null)}
                               >
                                 회신 확인
                               </button>
@@ -2786,7 +2786,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm po-act-btn--on purchase-sup-toggle"
-                                onClick={() => handleCancelPaymentRequest(sup.name)}
+                                onClick={() => handleCancelPaymentRequest(sup.name, sup.contact ?? null)}
                                 title={`결제 요청됨 ${fmtDate(payReq.requestedAt)} — 클릭 시 요청 취소`}
                               >
                                 요청 취소
@@ -2795,7 +2795,7 @@ export default function PurchaseDetailPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-primary purchase-sup-toggle"
-                                onClick={() => handleRequestPayment(sup.name, recv.latest)}
+                                onClick={() => handleRequestPayment(sup.name, recv.latest, sup.contact ?? null)}
                                 title="결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다"
                               >
                                 결제 요청

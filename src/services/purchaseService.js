@@ -600,8 +600,8 @@ export async function confirmPurchase(id, confirmedBy = '') {
 }
 
 // 업체별 발주 완료 마킹 — 발주완료 일시·발송자만 기록 (발행번호는 생성하지 않음)
-export async function markSupplierSent(purchaseId, supplierName, sentBy = '') {
-  const key = supplierName.replace(/\./g, '_');
+export async function markSupplierSent(purchaseId, key, sentBy = '') {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`supplierSent.${key}.sentAt`]: new Date(),
     [`supplierSent.${key}.sentBy`]: sentBy,
@@ -610,16 +610,17 @@ export async function markSupplierSent(purchaseId, supplierName, sentBy = '') {
 }
 
 // 업체별 발주 완료 마킹 취소
-export async function unmarkSupplierSent(purchaseId, supplierName) {
+export async function unmarkSupplierSent(purchaseId, key) {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierSent.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    [`supplierSent.${key}`]: deleteField(),
     updatedAt: new Date(),
   });
 }
 
 // 업체별 회신 확인 마킹 — 회신 일시·확인자 기록
-export async function markSupplierReplied(purchaseId, supplierName, by = '', deliveryDue = '') {
-  const key = supplierName.replace(/\./g, '_');
+export async function markSupplierReplied(purchaseId, key, by = '', deliveryDue = '') {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`supplierReplied.${key}.repliedAt`]: new Date(),
     [`supplierReplied.${key}.repliedBy`]: by,
@@ -629,33 +630,35 @@ export async function markSupplierReplied(purchaseId, supplierName, by = '', del
 }
 
 // 업체별 회신 확인 취소
-export async function unmarkSupplierReplied(purchaseId, supplierName) {
+export async function unmarkSupplierReplied(purchaseId, key) {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierReplied.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    [`supplierReplied.${key}`]: deleteField(),
     updatedAt: new Date(),
   });
 }
 
 // 업체별 결제 완료 표시 / 취소 (결제 페이지 노출용)
-export async function markSupplierPaid(purchaseId, supplierName, by = '') {
-  const key = supplierName.replace(/\./g, '_');
+export async function markSupplierPaid(purchaseId, key, by = '') {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`supplierPaid.${key}.paidAt`]: new Date(),
     [`supplierPaid.${key}.paidBy`]: by,
     updatedAt: new Date(),
   });
 }
-export async function unmarkSupplierPaid(purchaseId, supplierName) {
+export async function unmarkSupplierPaid(purchaseId, key) {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierPaid.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    [`supplierPaid.${key}`]: deleteField(),
     updatedAt: new Date(),
   });
 }
 
 // 업체별 결제 요청 — 발주 상세에서 '결제 요청'을 누르면 결제 페이지에 결제 대기로 올라온다.
 // dueDate: 결제 마감일(YYYY-MM-DD) — 결제 페이지에 함께 전달.
-export async function markPaymentRequested(purchaseId, supplierName, by = '', dueDate = '') {
-  const key = supplierName.replace(/\./g, '_');
+export async function markPaymentRequested(purchaseId, key, by = '', dueDate = '') {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`paymentRequested.${key}.requestedAt`]: new Date(),
     [`paymentRequested.${key}.requestedBy`]: by,
@@ -663,16 +666,17 @@ export async function markPaymentRequested(purchaseId, supplierName, by = '', du
     updatedAt: new Date(),
   });
 }
-export async function unmarkPaymentRequested(purchaseId, supplierName) {
+export async function unmarkPaymentRequested(purchaseId, key) {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`paymentRequested.${supplierName.replace(/\./g, '_')}`]: deleteField(),
+    [`paymentRequested.${key}`]: deleteField(),
     updatedAt: new Date(),
   });
 }
 
 // 업체별 세금계산서(홈택스/코드에프 또는 수동) 정보 저장 — 결제 페이지 표시용
-export async function setSupplierTaxInvoice(purchaseId, supplierName, data) {
-  const key = supplierName.replace(/\./g, '_');
+export async function setSupplierTaxInvoice(purchaseId, key, data) {
+  key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`taxInvoice.${key}`]: { ...data, fetchedAt: new Date() },
     updatedAt: new Date(),

@@ -12,7 +12,7 @@ import { isStockTracked } from '../../src/domain/stock';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
 import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
 import { splitPasted, toISODate, mapPastedValues } from '../../src/utils/pasteColumn';
-import { contactsOf, primaryEmail, hasChoice, resolveEmail } from '../../src/domain/supplierContacts';
+import { contactsOf, primaryEmail, hasChoice, resolveEmail, supplierKey } from '../../src/domain/supplierContacts';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -405,5 +405,23 @@ describe('구매처 담당자 메일', () => {
   it('이메일이 하나도 없으면 빈 값', () => {
     expect(contactsOf({})).toEqual([]);
     expect(primaryEmail({})).toBe('');
+  });
+});
+
+describe('발송 표시 키', () => {
+  it('담당자가 없으면 업체명만 — 예전 데이터와 같은 키', () => {
+    expect(supplierKey('(주)형제전기')).toBe('(주)형제전기');
+    expect(supplierKey('(주)에이.비', '')).toBe('(주)에이_비');
+  });
+
+  it('담당자가 있으면 담당까지 넣어 갈린다', () => {
+    const a = supplierKey('텔콤', 'cosel@a.com');
+    const b = supplierKey('텔콤', 'delta@a.com');
+    expect(a).not.toBe(b);
+  });
+
+  it('Firestore 가 못 쓰는 점·골뱅이는 밑줄로 바꾼다', () => {
+    expect(supplierKey('텔콤', 'cosel@a.com')).toBe('텔콤__cosel_a_com');
+    expect(supplierKey('텔콤')).not.toContain('__');
   });
 });

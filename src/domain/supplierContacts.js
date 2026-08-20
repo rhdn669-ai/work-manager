@@ -41,3 +41,12 @@ export function contactLabel(c) {
   if (!c?.email) return '';
   return c.name ? `${c.name} · ${c.email}` : c.email;
 }
+
+// 발송·회신·결제 표시를 저장할 때 쓰는 키.
+// 담당자가 갈린 업체는 담당까지 넣어야 COSEL 에 보낸 것이 델타 줄에도 「완료」로 뜨지 않는다.
+// Firestore 필드 이름에는 「.」을 쓸 수 없어(경로 구분자) 「@」와 함께 밑줄로 바꾼다.
+export function supplierKey(name, contact) {
+  const base = String(name ?? '').replace(/\./g, '_');
+  const who = String(contact ?? '').trim();
+  return who ? `${base}__${who.replace(/[.@]/g, '_')}` : base;
+}
