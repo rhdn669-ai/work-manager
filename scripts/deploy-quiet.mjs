@@ -4,7 +4,7 @@
 import { execSync } from 'node:child_process';
 
 try {
-  const out = execSync('wrangler deploy', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const out = execSync('npx --yes wrangler deploy', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const id = (out.match(/Current Version ID:\s*(\S+)/) || [])[1] || '';
   const url = (out.match(/(https:\/\/\S+workers\.dev)/) || [])[1] || '';
   console.log(`배포 완료${id ? ` · ${id.slice(0, 8)}` : ''}${url ? ` · ${url}` : ''}`);
