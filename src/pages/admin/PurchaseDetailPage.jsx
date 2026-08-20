@@ -70,7 +70,7 @@ import {
 } from '../../utils/purchaseOrder';
 
 // 발주서 미리 만들기 — 위 useEffect 주석 참고. 출력 경로 직렬화가 끝나면 다시 켠다.
-const PREBUILD_ENABLED = false;
+const PREBUILD_ENABLED = true;
 
 const STATUS = {
   draft: { label: '발주대기', cls: 'draft' },
@@ -269,6 +269,8 @@ export default function PurchaseDetailPage() {
   // 업체별로 미리 만들어 둔 발주서 — { [키]: { sig, blob, url } }
   // sig 는 그 업체 발주서의 「내용 지문」. 내용이 그대로면 다시 만들지 않는다.
   const poCacheRef = useRef(new Map());
+  const preFormRef = useRef(null); // 미리 만들기 전용 양식 (화면 폼과 분리)
+  const [preTarget, setPreTarget] = useState(null); // { supplierName, contact } — 있을 때만 전용 양식을 띄운다
   const preBuildRef = useRef({ running: false, timer: 0 });
   // ★ 메일 발송 직렬화 체인 — 여러 업체를 연속 발송해도 단일 PDF 렌더 폼(printRef)을
   //   동시에 만지지 않도록 한 번에 하나씩 순차 처리한다. (한 업체에 전체 품목이 첨부되던
@@ -1348,7 +1350,7 @@ export default function PurchaseDetailPage() {
       if ((cur?.status || 'draft') !== 'draft') return;
       const sent = cur?.supplierSent || {};
       for (const sup of computeSupplierList()) {
-        if (!alive() || mailPreview || pdfModalOpen) break;
+        if (!alive()) break;
         if (!sup.orderCount) continue; // 재고로 다 채운 업체 — 보낼 발주서가 없다
         // ★ 화면의 「메일 발송」 버튼과 똑같은 값을 써야 한다 —
         //   여기서 다른 값을 쓰면 캐시 키가 어긋나 미리 만들어 둔 것을 못 찾는다.
@@ -1362,7 +1364,7 @@ export default function PurchaseDetailPage() {
           .map((x) => String(x).trim())
           .join('_')}.pdf`.replace(/[/\\]/g, '_');
         // 한 장 실패해도 나머지는 계속 — 어차피 모달에서 다시 만들 수 있다
-        await ensurePoPdf(sup.name, contact, fileName).catch(() => null);
+        await ensurePoPdf(sup.name, contact, fileName, true).catch(() => null);
       }
     } finally {
       preBuildRef.current.running = false;
@@ -1379,7 +1381,8 @@ export default function PurchaseDetailPage() {
     //   다른 업체 상태로 캡처된다 — 엉뚱한 발주서가 나갈 수 있다.
     //   출력 경로를 전부 한 줄에 세운 뒤에 다시 켠다.
     if (!PREBUILD_ENABLED) return undefined;
-    if (!id || !purchase || mailPreview || pdfModalOpen) return undefined;
+    // 모달이 열려 있어도 계속 굽는다 — 전용 양식을 쓰므로 화면 작업과 겹치지 않는다
+    if (!id || !purchase) return undefined;
     let alive = true;
     clearTimeout(preBuildRef.current.timer);
     // 4초 — 타이핑 중에는 안 굽되, 필요할 때 준비돼 있을 만큼은 일찍 시작한다
@@ -1391,7 +1394,7 @@ export default function PurchaseDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // itemMaster·suppliers 는 넣지 않는다 — 구독으로 배열 참조가 자주 바뀌어
     // 타이머가 계속 되감기면 미리 만들기가 영영 시작되지 않는다.
-  }, [preBuildSig, id, mailPreview, pdfModalOpen, itemMaster.length, suppliers.length]);
+  }, [preBuildSig, id, itemMaster.length, suppliers.length]);
 
   // 업체별 입고 집계 — 상단 품목 입고 처리(receivedQty)를 업체 단위로 모아 자동 판정
   // { [업체명]: { total, full, latest, recvAmount, pendingCount, pendingAmount } }
@@ -1679,33 +1682,48 @@ export default function PurchaseDetailPage() {
   //
   // ★ 반드시 한 줄로 선다 — 발송·미리 만들기·미리보기가 모두 같은 렌더 폼(printRef) 하나를
   //   쓴다. 둘이 겹치면 업체 필터를 서로 덮어써서 엉뚱한 발주서가 만들어진다.
-  function ensurePoPdf(supplierName, contact, fileName) {
+  function ensurePoPdf(supplierName, contact, fileName, background = false) {
+    // 미리 만들기는 전용 양식을 쓰므로 발송 줄에 서지 않는다 — 서면 발송이 끝날 때까지 굶는다.
+    if (background) return buildPoPdfNow(supplierName, contact, fileName, true);
     const run = mailSendChainRef.current.then(() => buildPoPdfNow(supplierName, contact, fileName));
     mailSendChainRef.current = run.catch(() => {}); // 한 장이 실패해도 줄은 계속 흐르게
     return run;
   }
 
-  async function buildPoPdfNow(supplierName, contact, fileName) {
+  //   background=true 면 전용 양식(preFormRef)으로 뜬다 — 화면 폼을 건드리지 않으므로
+  //   그 사이 사용자가 「PDF 출력」·「자료실 저장」을 눌러도 서로 방해하지 않는다.
+  async function buildPoPdfNow(supplierName, contact, fileName, background = false) {
     const key = supplierKey(supplierName, contact);
     const sig = poSigOf(supplierName, contact);
     const hit = poCacheRef.current.get(key);
     if (hit && hit.sig === sig) return hit;
     await ensureAnonymousAuth();
     await flushAutoSave();
-    setPrintSiteNameMode('blank');
-    setPrintAccountMode(false);
-    setPrintSupplierFilter(supplierName);
-    setPrintContactFilter(contact ?? null);
-    await new Promise((r) => setTimeout(r, 250));
     let blob = null;
-    try {
-      const el = printRef.current;
-      if (el) blob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
-    } finally {
-      setPrintSupplierFilter(null);
-      setPrintContactFilter(null);
-      setPrintSiteNameMode(null);
+    if (background) {
+      setPreTarget({ supplierName, contact: contact ?? null });
+      await new Promise((r) => setTimeout(r, 350)); // 전용 양식이 그려질 때까지
+      try {
+        const el = preFormRef.current;
+        if (el) blob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
+      } finally {
+        setPreTarget(null);
+      }
+    } else {
+      setPrintSiteNameMode('blank');
       setPrintAccountMode(false);
+      setPrintSupplierFilter(supplierName);
+      setPrintContactFilter(contact ?? null);
+      await new Promise((r) => setTimeout(r, 250));
+      try {
+        const el = printRef.current;
+        if (el) blob = await withTimeout(captureToPdfBlob(el, fileName), PDF_TIMEOUT_MS, '발주서 PDF 생성');
+      } finally {
+        setPrintSupplierFilter(null);
+        setPrintContactFilter(null);
+        setPrintSiteNameMode(null);
+        setPrintAccountMode(false);
+      }
     }
     if (!blob) throw new Error('PDF를 만들지 못했습니다 (배포 환경에서만 동작)');
     if (hit?.url) URL.revokeObjectURL(hit.url);
@@ -2201,6 +2219,29 @@ export default function PurchaseDetailPage() {
         hideAmount={printHideAmount}
         showBox={printShowBox}
       />
+
+      {/* 미리 만들기 전용 양식 — 화면 밖에 잠깐 띄웠다 내린다.
+          화면 폼(printRef)을 뒤에서 바꿔 쓰면, 그 사이 사용자가 「PDF 출력」을 눌렀을 때
+          엉뚱한 업체 상태로 찍힌다. 그래서 아예 따로 둔다. */}
+      {preTarget && (
+        <div className="no-print" style={{ position: 'fixed', left: -99999, top: 0, width: '210mm' }} aria-hidden>
+          <PurchaseOrderPrintForm
+            ref={preFormRef}
+            purchase={purchase}
+            form={form}
+            suppliers={suppliers}
+            sites={sites}
+            itemMaster={itemMaster}
+            printSupplierFilter={preTarget.supplierName}
+            printContactFilter={preTarget.contact ?? null}
+            printAccountMode={false}
+            printSiteNameMode="blank"
+            printStamp=""
+            hideAmount={false}
+            showBox={false}
+          />
+        </div>
+      )}
 
       <div className="purchase-meta-bar screen-only">
         <div className="purchase-meta-items">
