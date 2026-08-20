@@ -72,7 +72,14 @@ export function mapPrintItems(items, itemMaster, suppliers) {
   });
 }
 
-// 발주 품목을 구매처별로 묶어 [{ name, email, count }] 반환 (발행번호 순번·발송 단위 기준)
+// 발주 품목을 구매처별로 묶어 [{ name, email, count, orderCount }] 반환 (발행번호 순번·발송 단위 기준)
+//
+// count      그 업체의 전체 품목 수
+// orderCount 그중 실제로 발주할 품목 수 (재고로 채워 수량이 0인 줄은 뺀다)
+//
+// ★ 발주분이 없는 업체도 목록에서 지우지 않는다 — 발행번호가 이 목록의 순번이라
+//   중간을 빼면 뒤 업체들의 발주서 번호가 당겨져, 이미 나간 발주서와 어긋난다.
+//   화면에서 감추는 것은 orderCount 로 판단한다.
 export function computeSupplierList(items, itemMaster, suppliers, purchase) {
   const fallbackSup = purchase?.supplierId ? suppliers.find((s) => s.id === purchase.supplierId) : null;
   const supMap = new Map();
@@ -94,9 +101,11 @@ export function computeSupplierList(items, itemMaster, suppliers, purchase) {
         contactName: who?.name || '',
         label: who?.name ? `${supName} (${who.name})` : supName,
         count: 0,
+        orderCount: 0,
       });
     }
     supMap.get(key).count++;
+    if ((Number(ln.qty) || 0) > 0) supMap.get(key).orderCount++;
   }
   return [...supMap.values()];
 }

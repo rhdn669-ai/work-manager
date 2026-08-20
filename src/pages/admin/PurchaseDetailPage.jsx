@@ -1346,6 +1346,7 @@ export default function PurchaseDetailPage() {
       const sent = cur?.supplierSent || {};
       for (const sup of computeSupplierList()) {
         if (!alive() || mailPreview || pdfModalOpen) break;
+        if (!sup.orderCount) continue; // 재고로 다 채운 업체 — 보낼 발주서가 없다
         // ★ 화면의 「메일 발송」 버튼과 똑같은 값을 써야 한다 —
         //   여기서 다른 값을 쓰면 캐시 키가 어긋나 미리 만들어 둔 것을 못 찾는다.
         const contact = sup.contact ?? null;
@@ -1429,7 +1430,7 @@ export default function PurchaseDetailPage() {
   async function maybeAutoConfirm(sentMap) {
     const cur = purchaseRef.current || purchase;
     if (!cur || (cur.status || 'draft') !== 'draft') return; // 발주대기 상태에서만 자동 전환
-    const supList = computeSupplierList();
+    const supList = computeSupplierList().filter((s) => s.orderCount > 0);
     if (supList.length === 0) return;
     const allSent = supList.every((s) => sentMap[s.name.replace(/\./g, '_')]);
     if (!allSent) return;
@@ -2614,13 +2615,14 @@ export default function PurchaseDetailPage() {
         const supList = computeSupplierList();
         if (supList.length === 0) return null;
         const recvStatus = computeSupplierReceiveStatus(); // 업체별 입고 자동 집계
+        const liveList = supList.filter((s) => s.orderCount > 0); // 실제로 보낼 것이 있는 업체
         const sentCount = supList.filter((s) => purchase.supplierSent?.[s.name.replace(/\./g, '_')]).length;
         return (
           <div className="form-group screen-only">
             <label>
               업체별 발주 현황
               <span className="text-muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 13 }}>
-                {supList.length}개 업체 · {sentCount}개 발주완료
+                {liveList.length}개 업체 · {sentCount}개 발주완료
               </span>
             </label>
             <p className="field-hint">
@@ -2726,6 +2728,9 @@ export default function PurchaseDetailPage() {
                 </thead>
                 <tbody>
                   {supList.map((sup, supIdx) => {
+                    // 재고로 다 채워 보낼 것이 없는 업체는 줄을 내지 않는다.
+                    // (목록에서 빼지 않고 건너뛰기만 한다 — supIdx 가 발행번호라 순번이 밀리면 안 된다)
+                    if (!sup.orderCount) return null;
                     // 담당자가 갈린 업체는 담당까지 넣은 키로 — COSEL 에 보낸 것이 델타 줄에 뜨지 않게
                     const sentKey = supplierKey(sup.name, sup.contact ?? null);
                     const sent = purchase.supplierSent?.[sentKey];

@@ -16792,7 +16792,10 @@ td.mx-dc {
   padding: 0;
 }
 .print-form-paged .bom-print-page {
-  border: 1.9px solid #000; /* 원본 외곽 프레임 1.44pt와 동일 */
+  /* 정수 두께로 못 박는다 — 1.9px 같은 소수는 우측 경계가 서브픽셀로 갈려
+     한쪽만 얇게 그려진다 (2026-08-20 대표님 지적). 원본 1.44pt≒1.92px 와 사실상 같다. */
+  box-sizing: border-box;
+  border: 2px solid #000;
   padding: 12px 14px;
 }
 .iopn-pagetotal-table {
@@ -17736,7 +17739,8 @@ td.mx-dc {
     padding: 0 !important;
   }
   .print-form-paged .bom-print-page {
-    border: 1.44pt solid #000; /* 원본 외곽 프레임 두께와 동일 */
+    box-sizing: border-box;
+    border: 2px solid #000; /* 소수(1.44pt)는 우측 경계가 갈려 얇게 보인다 */
     padding: 3mm 4mm;
   }
   /* 발주서·견적서 — 페이지 하단까지 채워 테두리가 닫히는 전체 프레임 */

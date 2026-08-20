@@ -98,7 +98,8 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     {
       recvTitle: src.supplierTitle,
       supplierLabel: src.supplierLabel || '',
-      items: src.items.filter((ln) => (ln._name || ln.name || '').trim()),
+      // 재고로 채워 발주 수량이 0인 줄은 싣지 않는다 — 업체는 실제 발주분만 받는다
+      items: src.items.filter((ln) => (ln._name || ln.name || '').trim() && (Number(ln.qty) || 0) > 0),
     },
   ];
 

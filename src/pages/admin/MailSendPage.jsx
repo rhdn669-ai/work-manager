@@ -81,7 +81,8 @@ export default function MailSendPage() {
     const p = purchases.find((x) => x.id === purchaseId);
     if (!p) return;
     const supList = computeSupplierList(p.items || [], itemMaster, suppliers, p);
-    const names = new Set(supList.map((s) => s.name));
+    // 재고로 다 채워 보낼 발주분이 없는 업체는 고르지 않는다
+    const names = new Set(supList.filter((s) => s.orderCount > 0).map((s) => s.name));
     const ids = suppliers.filter((s) => names.has(s.name) && s.email).map((s) => s.id);
     setSelected(new Set(ids));
   }

@@ -52,6 +52,29 @@ describe('발주 — computeSupplierList (구매처별 그룹핑)', () => {
     expect(r.find((s) => s.name === '(주)상진미크론').count).toBe(2);
     expect(r.find((s) => s.name === '(주)전설의대장간').count).toBe(1);
   });
+  it('재고로 채워 수량이 0인 줄은 발주분(orderCount)에서 뺀다', () => {
+    const items = [
+      { itemId: 'I1', name: 'SLIDE PACK', qty: 5 },
+      { itemId: 'I3', name: 'NUT', qty: 0 }, // 재고로 채움
+      { itemId: 'I2', name: 'BOLT', qty: 3 },
+    ];
+    const r = computeSupplierList(items, itemMaster, suppliers, {});
+    const 상진 = r.find((s) => s.name === '(주)상진미크론');
+    expect(상진.count).toBe(2); // 품목은 둘
+    expect(상진.orderCount).toBe(1); // 실제 발주는 하나
+  });
+
+  it('발주분이 0이어도 업체는 목록에 남는다 — 발행번호 순번이 밀리면 안 된다', () => {
+    const items = [
+      { itemId: 'I1', name: 'SLIDE PACK', qty: 0 }, // 상진: 전부 재고
+      { itemId: 'I2', name: 'BOLT', qty: 3 },
+    ];
+    const r = computeSupplierList(items, itemMaster, suppliers, {});
+    expect(r).toHaveLength(2);
+    expect(r[0].orderCount).toBe(0); // 화면에서는 감추되 순번은 그대로
+    expect(r[1].orderCount).toBe(1);
+  });
+
   it('빈 이름 라인은 제외', () => {
     const r = computeSupplierList([{ itemId: 'I1', name: '  ' }], itemMaster, suppliers, {});
     expect(r).toHaveLength(0);
