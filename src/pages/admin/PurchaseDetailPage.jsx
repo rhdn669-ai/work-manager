@@ -1339,7 +1339,7 @@ export default function PurchaseDetailPage() {
       // 담당자가 갈린 업체는 담당별로 따로 센다 — 키를 업체명만 쓰면 COSEL·델타가
       // 한 칸에 쌓여 두 줄에 같은 금액이 찍힌다. 발송 목록과 같은 키를 쓴다.
       const who = contactsOf(sup).find((c) => c.email === resolveEmail(sup, master?.contactEmail));
-      const key = hasChoice(sup) ? `${supName} ${who?.email || ''}` : supName;
+      const key = supplierKey(supName, hasChoice(sup) ? who?.email || '' : '');
       const savedQty = Number(ln.qty) || 0;
       const receivedQty = Number(ln.receivedQty) || 0;
       const full = savedQty > 0 && receivedQty >= savedQty;
@@ -2620,8 +2620,7 @@ export default function PurchaseDetailPage() {
                     const sent = purchase.supplierSent?.[sentKey];
                     const replied = purchase.supplierReplied?.[sentKey];
                     // 담당자가 갈린 업체는 담당별 키로 찾는다 (computeSupplierReceiveStatus 와 같은 규칙)
-                    const recvKey = sup.contact ? `${sup.name} ${sup.contact}` : sup.name;
-                    const recv = recvStatus[recvKey] ||
+                    const recv = recvStatus[sentKey] ||
                       recvStatus[sup.name] || {
                         total: 0,
                         full: 0,
@@ -2655,7 +2654,7 @@ export default function PurchaseDetailPage() {
                     const mailTail = `</p>${cardHtml}`;
                     const mailHtml = `${mailHead}${bodyHtml}${mailTail}`;
                     return (
-                      <tr key={`${sup.name} ${sup.contact || ''}`}>
+                      <tr key={sentKey}>
                         <td data-label="구매처" title={sup.label || sup.name}>
                           <strong>{sup.name}</strong>
                           {sup.contactName ? <em className="purchase-sup-contact">{sup.contactName}</em> : null}
