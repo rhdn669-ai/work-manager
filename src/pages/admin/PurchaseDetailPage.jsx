@@ -2101,7 +2101,7 @@ export default function PurchaseDetailPage() {
                   >
                     {/* 칸 폭 배분(%) — 대표님 지정 1~4번, 나머지는 내용 길이에 맞춰 나눔 */}
                     <colgroup>
-                      {[2, 5, 6, 10, 7, 15, 5, 3, 3, 4, 7, 7, 6, 6, 6, 8].map((pct, i) => (
+                      {[2, 5, 6, 12, 7, 17, 5, 3, 4, 7, 7, 6, 6, 6, 8].map((pct, i) => (
                         <col key={i} style={{ width: `${pct}%` }} />
                       ))}
                     </colgroup>
@@ -2116,7 +2116,6 @@ export default function PurchaseDetailPage() {
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
-                        <th scope="col">moq/단위</th>
                         <th scope="col">수량</th>
                         <th scope="col" className="no-print">
                           재고
@@ -2238,15 +2237,6 @@ export default function PurchaseDetailPage() {
                                 type="text"
                                 className="bom-readonly-input"
                                 value={master?.category || ''}
-                                readOnly
-                                tabIndex={-1}
-                              />
-                            </td>
-                            <td data-label="moq/단위" title={master?.unit || ln.unit || ''}>
-                              <input
-                                type="text"
-                                className="bom-readonly-input"
-                                value={master?.unit || ln.unit || ''}
                                 readOnly
                                 tabIndex={-1}
                               />
