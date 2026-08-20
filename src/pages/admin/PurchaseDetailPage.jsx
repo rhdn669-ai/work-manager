@@ -2771,6 +2771,9 @@ export default function PurchaseDetailPage() {
                                   supPoNo,
                                   sup.contact ?? null,
                                   sup.contactName || '',
+                                  bodyText, // 늘 쓰는 문구 — 모달에 채워 두고 이 건만 고쳐 보낸다
+                                  mailHead,
+                                  mailTail,
                                 );
                               }}
                               title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}
