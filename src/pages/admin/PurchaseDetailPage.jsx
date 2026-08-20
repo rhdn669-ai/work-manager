@@ -1336,17 +1336,13 @@ export default function PurchaseDetailPage() {
   //   · 한 번에 한 장씩, 발송 큐와 같은 줄에 서서 (렌더 폼을 동시에 만지지 않게)
   //   · 창을 닫거나 품목이 또 바뀌면 그 자리에서 멈춘다
   async function preBuildAll(alive) {
-    console.log('[po] 미리 만들기 시작 검토');
     if (preBuildRef.current.running) return;
     preBuildRef.current.running = true;
     try {
       const cur = purchaseRef.current || purchase;
       // 발주대기 건만 미리 만든다. 이미 내보낸 발주서는 다시 보낼 일이 드물어,
       // 열어 보기만 해도 업체 수만큼 굽는 것은 그냥 낭비다.
-      if ((cur?.status || 'draft') !== 'draft') {
-        console.log('[po] 발주대기 아님 → 건너뜀:', cur?.status);
-        return;
-      }
+      if ((cur?.status || 'draft') !== 'draft') return;
       const sent = cur?.supplierSent || {};
       for (const sup of computeSupplierList()) {
         if (!alive() || mailPreview || pdfModalOpen) break;
@@ -1362,12 +1358,7 @@ export default function PurchaseDetailPage() {
           .map((x) => String(x).trim())
           .join('_')}.pdf`.replace(/[/\\]/g, '_');
         // 한 장 실패해도 나머지는 계속 — 어차피 모달에서 다시 만들 수 있다
-        console.log('[po] 굽는 중:', sup.name, contact || '');
-        await ensurePoPdf(sup.name, contact, fileName).catch((e) => {
-          console.log('[po] 실패:', sup.name, e?.message || e);
-          return null;
-        });
-        console.log('[po] 완료:', sup.name);
+        await ensurePoPdf(sup.name, contact, fileName).catch(() => null);
       }
     } finally {
       preBuildRef.current.running = false;
