@@ -1644,6 +1644,9 @@ export default function PurchaseDetailPage() {
       fileName,
       saveFileName,
     });
+    // ★ 이전 업체 첨부본을 먼저 비운다 — 안 비우면 새 첨부가 준비되기 전에 발송했을 때
+    //   앞 업체 발주서가 그대로 붙어 나갈 수 있다.
+    setMailPdf({ blob: null, url: '', name: fileName, error: '' });
     buildMailPdf(supplierName, contact, fileName);
   }
 
@@ -1719,7 +1722,7 @@ export default function PurchaseDetailPage() {
       setMailPdf({ blob: hit.blob, url: hit.url, name: hit.name || fileName, error: '' });
       return;
     }
-    if (mailAttachBusy) return;
+    // busy 여도 그냥 줄을 선다 — 여기서 되돌아가면 첨부본이 앞 업체 것으로 남는다
     setMailPdf({ blob: null, url: '', name: fileName, error: '' });
     setMailAttachBusy(true);
     try {
@@ -1753,15 +1756,20 @@ export default function PurchaseDetailPage() {
         String(bodyText).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') +
         tail
       : html;
-    const readyPdf = mailPdf.blob; // 미리보기로 확인한 바로 그 파일
+    // 미리보기로 확인한 바로 그 파일. 단 파일명이 이 업체 것과 다르면 쓰지 않는다
+    // (앞 업체 첨부본이 남아 있을 때 그대로 나가는 것을 막는 마지막 빗장)
+    const readyPdf = mailPdf.blob && mailPdf.name === fileName ? mailPdf.blob : null;
     const extraFiles = mailExtraFiles; // 발송 시점의 추가 첨부 캡처
     setMailPreview(null);
     setMailExtraFiles([]);
-    const setPct = (pct) => setMailSending((prev) => ({ ...prev, [supplierName]: pct }));
+    // 발송 중 표시는 담당까지 넣은 키로 — 업체명만 쓰면 델타·COSEL 처럼 담당이 갈린
+    // 업체에서 버튼이 잠기지 않아 같은 발주서를 두 번 보낼 수 있다.
+    const sendingKey = supplierKey(supplierName, contactFilter);
+    const setPct = (pct) => setMailSending((prev) => ({ ...prev, [sendingKey]: pct }));
     const clearPct = () =>
       setMailSending((prev) => {
         const next = { ...prev };
-        delete next[supplierName];
+        delete next[sendingKey];
         return next;
       });
     // ★ 안전 가드 — 업체명이 비어 있으면 필터가 무력화되어 "전체 품목"이 첨부될 수 있으므로
@@ -1769,6 +1777,10 @@ export default function PurchaseDetailPage() {
     if (!supplierName || !String(supplierName).trim()) {
       toast('업체가 지정되지 않아 발송을 중단했습니다. (전체 발주서 오발송 방지)', 'error');
       clearPct();
+      return;
+    }
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to).trim())) {
+      toast('받는 사람 메일 주소가 올바르지 않습니다. 확인 후 다시 보내세요.', 'error');
       return;
     }
     setPct(5);
@@ -1840,8 +1852,9 @@ export default function PurchaseDetailPage() {
         // 사용자가 추가한 첨부파일(도면·사양서 등)을 메일에 함께 첨부
         if (extraFiles.length > 0) {
           const totalExtra = extraFiles.reduce((s, f) => s + (f.size || 0), 0);
-          if (totalExtra > 8 * 1024 * 1024) {
-            toast('추가 첨부 용량이 너무 큽니다(총 8MB 이하). 일부를 빼고 다시 보내세요.', 'error');
+          // 발주서·명함이 함께 가므로 추가 첨부만으로 6MB 를 넘기면 거의 확실히 못 보낸다
+          if (totalExtra > 6 * 1024 * 1024) {
+            toast('추가 첨부 용량이 너무 큽니다(총 6MB 이하). 일부를 빼고 다시 보내세요.', 'error');
             clearPct();
             return;
           }
@@ -1852,11 +1865,23 @@ export default function PurchaseDetailPage() {
           }
         }
         setPct(88);
+        // 보내기 직전 실제 전송 크기 확인 — base64 는 원본보다 1/3 커져서,
+        // 원본 기준으로만 재면 다 만들어 놓고 서버에서 거부당한다(한계 10MB).
+        const totalB64 = attachments.reduce((acc, a) => acc + (a.content?.length || 0), 0);
+        if (totalB64 > 9 * 1024 * 1024) {
+          toast(
+            `첨부 용량이 커서 보낼 수 없습니다 (약 ${Math.round(totalB64 / 1024 / 1024)}MB). 추가 첨부를 줄여 다시 보내세요.`,
+            'error',
+          );
+          clearPct();
+          return;
+        }
         await withTimeout(callSendEmail({ to, subject, html: sendHtml, attachments }), PDF_TIMEOUT_MS, '메일 발송');
         setPct(100);
         toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
         const sentKey = supplierKey(supplierName, contactFilter);
-        if (!purchase.supplierSent?.[sentKey]) markSent(supplierName, contactFilter);
+        // purchase 는 이 발송이 시작될 때의 값이라 오래됐을 수 있다 — 최신 것으로 본다
+        if (!purchaseRef.current?.supplierSent?.[sentKey]) markSent(supplierName, contactFilter);
         // 발송 성공 → 프로젝트 자료실 "발주이력 > YYYY-MM" 월 폴더에 발주서 PDF 자동 보관
         // 내부 저장본은 계좌 포함(saveBlob), 없으면 메일본(pdfBlob)
         // 보관본(계좌 포함·실제 현장명)은 여기서 다시 뜬다 — 사람은 이미 발송 완료를 봤다.
@@ -1907,7 +1932,18 @@ export default function PurchaseDetailPage() {
       } catch (err) {
         setPrintSupplierFilter(null);
         setPrintSiteNameMode(null);
-        toast('메일 발송 실패: ' + (err.message || err), 'error');
+        const msg = err.message || String(err);
+        // 시간 초과는 「실패」가 아니다 — 서버가 이미 보냈을 수 있다.
+        // 실패로 단정하면 다시 눌러 같은 발주서를 두 번 보내게 된다.
+        if (/끝나지 않았습니다|시간이 초과|timeout/i.test(msg)) {
+          toast(
+            `"${supplierName}" 발송 결과를 확인하지 못했습니다. 보내진 편지함을 확인한 뒤 다시 보내세요.`,
+            'error',
+            0,
+          );
+        } else {
+          toast('메일 발송 실패: ' + msg, 'error');
+        }
       } finally {
         // 100% 잠깐 보여준 뒤 이 업체만 정리
         setTimeout(clearPct, 600);
@@ -2752,6 +2788,7 @@ export default function PurchaseDetailPage() {
                     if (!sup.orderCount) return null;
                     // 담당자가 갈린 업체는 담당까지 넣은 키로 — COSEL 에 보낸 것이 델타 줄에 뜨지 않게
                     const sentKey = supplierKey(sup.name, sup.contact ?? null);
+                    const sendingPct = mailSending[sentKey]; // 발송 진행률 — 발송 쪽과 같은 키
                     const sent = purchase.supplierSent?.[sentKey];
                     const replied = purchase.supplierReplied?.[sentKey];
                     // 담당자가 갈린 업체는 담당별 키로 찾는다 (computeSupplierReceiveStatus 와 같은 규칙)
@@ -2890,12 +2927,13 @@ export default function PurchaseDetailPage() {
                             </button>
                             <button
                               type="button"
-                              className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${mailSending[sup.label || sup.name] != null ? ' is-sending' : ''}`}
-                              disabled={mailSending[sup.label || sup.name] != null}
+                              className={`btn btn-sm btn-outline purchase-sup-mail${sup.email ? '' : ' is-no-email'}${sendingPct != null ? ' is-sending' : ''}`}
+                              disabled={sendingPct != null}
                               onClick={() => {
                                 if (!sup.email) {
-                                  alert(
+                                  toast(
                                     `"${sup.name}"에 등록된 이메일이 없습니다.\n구매처 관리에서 이메일을 먼저 등록해주세요.`,
+                                    'error',
                                   );
                                   return;
                                 }
@@ -2914,9 +2952,7 @@ export default function PurchaseDetailPage() {
                               }}
                               title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}
                             >
-                              {mailSending[sup.label || sup.name] != null
-                                ? `발송 중 ${mailSending[sup.label || sup.name]}%`
-                                : '메일 발송'}
+                              {sendingPct != null ? `발송 중 ${sendingPct}%` : '메일 발송'}
                             </button>
                             {sent ? (
                               <button
