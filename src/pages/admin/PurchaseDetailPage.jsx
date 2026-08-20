@@ -1082,17 +1082,30 @@ export default function PurchaseDetailPage() {
 
   // 특정 업체 품목만 PDF 출력 (발주완료도 함께 표시)
   // PDF 출력은 발주완료 표시를 하지 않는다 (발주완료는 메일 발송 시에만)
-  function printForSupplier(supName, contact = null) {
-    setPrintSupplierFilter(supName);
-    setPrintContactFilter(contact);
-    setPrintAccountMode(true); // 수동 출력 = 내부용: 계좌 표시 (현장명은 기본 null=실제)
-    setPrintStamp(fmtDateTime(new Date()));
-    setTimeout(() => {
-      window.print();
-      setPrintSupplierFilter(null);
-      setPrintContactFilter(null);
-      setPrintAccountMode(false);
-    }, 200);
+  // 업체별 「PDF 출력」 — 메일 첨부와 같은 서버 렌더로 만든다.
+  // 브라우저 인쇄로 뽑으면 만드는 엔진·폰트·최종 처리가 달라 같은 내용인데도
+  // 셀 높이·글자 두께가 미세하게 어긋난다 (2026-08-20 대표님).
+  // 미리 구워 둔 것이 있으면 그대로 열어 기다림이 없다.
+  async function printForSupplier(supName, contact = null) {
+    const fileName = `${['발주서', purchase?.title, supName]
+      .filter(Boolean)
+      .map((x) => String(x).trim())
+      .join('_')}.pdf`.replace(/[/\\]/g, '_');
+    const hit = poCacheRef.current.get(poCacheKey(supName, contact, 'inner'));
+    if (hit && hit.sig === poSigOf(supName, contact, 'inner')) {
+      window.open(hit.url, '_blank');
+      return;
+    }
+    // 클릭 순간에 창을 열어 둔다 — 다 만든 뒤에 열면 팝업 차단에 걸린다
+    const win = window.open('', '_blank');
+    try {
+      const made = await ensurePoPdf(supName, contact, fileName, true, 'inner');
+      if (win) win.location = made.url;
+      else window.open(made.url, '_blank');
+    } catch (err) {
+      if (win) win.close();
+      toast(`발주서를 만들지 못했습니다: ${err?.message || err}`, 'error');
+    }
   }
 
   // PDF 자료실 저장 모달 열기 — 기본 파일명/스탬프 세팅
@@ -1364,7 +1377,11 @@ export default function PurchaseDetailPage() {
           .map((x) => String(x).trim())
           .join('_')}.pdf`.replace(/[/\\]/g, '_');
         // 한 장 실패해도 나머지는 계속 — 어차피 모달에서 다시 만들 수 있다
-        await ensurePoPdf(sup.name, contact, fileName, true).catch(() => null);
+        // 메일용(계좌 없음·현장명 공백)과 내부용(계좌 표시·실제 현장명) 두 벌
+        for (const kind of ['mail', 'inner']) {
+          if (!alive()) break;
+          await ensurePoPdf(sup.name, contact, fileName, true, kind).catch(() => null);
+        }
       }
     } finally {
       preBuildRef.current.running = false;
@@ -1658,7 +1675,12 @@ export default function PurchaseDetailPage() {
   // 첨부본을 미리 떠 둔다 — 모달을 여는 순간 시작해 사람이 본문을 읽는 동안 끝난다.
   // 여기서 만든 그 파일이 미리보기로도 열리고 메일에도 그대로 붙는다.
   // 그 업체 발주서의 지문 — 내용이 그대로면 미리 만든 것을 다시 쓴다
-  function poSigOf(supplierName, contact) {
+  // 같은 업체라도 내부용(inner)과 메일용(mail)은 다른 문서다 — 캐시를 따로 둔다
+  function poCacheKey(supplierName, contact, kind) {
+    return `${supplierKey(supplierName, contact)}::${kind}`;
+  }
+
+  function poSigOf(supplierName, contact, kind = 'mail') {
     const cur = purchaseRef.current || purchase;
     const key = supplierKey(supplierName, contact);
     const mine = (formRef.current?.items || []).filter((ln) => {
@@ -1670,7 +1692,7 @@ export default function PurchaseDetailPage() {
     });
     return poFingerprint(mine, {
       supplierName,
-      contact,
+      contact: `${contact ?? ''}|${kind}`,
       title: cur?.title,
       subtitle: cur?.subtitle,
       deliveryDue: cur?.deliveryDue,
@@ -1682,26 +1704,26 @@ export default function PurchaseDetailPage() {
   //
   // ★ 반드시 한 줄로 선다 — 발송·미리 만들기·미리보기가 모두 같은 렌더 폼(printRef) 하나를
   //   쓴다. 둘이 겹치면 업체 필터를 서로 덮어써서 엉뚱한 발주서가 만들어진다.
-  function ensurePoPdf(supplierName, contact, fileName, background = false) {
+  function ensurePoPdf(supplierName, contact, fileName, background = false, kind = 'mail') {
     // 미리 만들기는 전용 양식을 쓰므로 발송 줄에 서지 않는다 — 서면 발송이 끝날 때까지 굶는다.
-    if (background) return buildPoPdfNow(supplierName, contact, fileName, true);
-    const run = mailSendChainRef.current.then(() => buildPoPdfNow(supplierName, contact, fileName));
+    if (background) return buildPoPdfNow(supplierName, contact, fileName, true, kind);
+    const run = mailSendChainRef.current.then(() => buildPoPdfNow(supplierName, contact, fileName, false, kind));
     mailSendChainRef.current = run.catch(() => {}); // 한 장이 실패해도 줄은 계속 흐르게
     return run;
   }
 
   //   background=true 면 전용 양식(preFormRef)으로 뜬다 — 화면 폼을 건드리지 않으므로
   //   그 사이 사용자가 「PDF 출력」·「자료실 저장」을 눌러도 서로 방해하지 않는다.
-  async function buildPoPdfNow(supplierName, contact, fileName, background = false) {
-    const key = supplierKey(supplierName, contact);
-    const sig = poSigOf(supplierName, contact);
+  async function buildPoPdfNow(supplierName, contact, fileName, background = false, kind = 'mail') {
+    const key = poCacheKey(supplierName, contact, kind);
+    const sig = poSigOf(supplierName, contact, kind);
     const hit = poCacheRef.current.get(key);
     if (hit && hit.sig === sig) return hit;
     await ensureAnonymousAuth();
     await flushAutoSave();
     let blob = null;
     if (background) {
-      setPreTarget({ supplierName, contact: contact ?? null });
+      setPreTarget({ supplierName, contact: contact ?? null, kind });
       await new Promise((r) => setTimeout(r, 350)); // 전용 양식이 그려질 때까지
       try {
         const el = preFormRef.current;
@@ -1710,8 +1732,8 @@ export default function PurchaseDetailPage() {
         setPreTarget(null);
       }
     } else {
-      setPrintSiteNameMode('blank');
-      setPrintAccountMode(false);
+      setPrintSiteNameMode(kind === 'inner' ? null : 'blank');
+      setPrintAccountMode(kind === 'inner');
       setPrintSupplierFilter(supplierName);
       setPrintContactFilter(contact ?? null);
       await new Promise((r) => setTimeout(r, 250));
@@ -1734,9 +1756,8 @@ export default function PurchaseDetailPage() {
 
   // 모달에서 쓸 첨부본을 채운다 — 미리 만들어 둔 것이 있으면 그것을 그대로 쓴다
   async function buildMailPdf(supplierName, contact, fileName) {
-    const key = supplierKey(supplierName, contact);
-    const hit = poCacheRef.current.get(key);
-    if (hit && hit.sig === poSigOf(supplierName, contact)) {
+    const hit = poCacheRef.current.get(poCacheKey(supplierName, contact, 'mail'));
+    if (hit && hit.sig === poSigOf(supplierName, contact, 'mail')) {
       setMailPdf({ blob: hit.blob, url: hit.url, name: hit.name || fileName, error: '' });
       return;
     }
@@ -2234,8 +2255,8 @@ export default function PurchaseDetailPage() {
             itemMaster={itemMaster}
             printSupplierFilter={preTarget.supplierName}
             printContactFilter={preTarget.contact ?? null}
-            printAccountMode={false}
-            printSiteNameMode="blank"
+            printAccountMode={preTarget.kind === 'inner'}
+            printSiteNameMode={preTarget.kind === 'inner' ? null : 'blank'}
             printStamp=""
             hideAmount={false}
             showBox={false}
