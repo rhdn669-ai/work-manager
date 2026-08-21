@@ -58,7 +58,7 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
-import { contactsOf, hasChoice, resolveEmail, supplierKey } from '../../domain/supplierContacts';
+import { contactsOf, hasChoice, mailToLine, resolveEmail, supplierKey } from '../../domain/supplierContacts';
 import { paidList, payButtonLabel, unpaidAmount } from '../../domain/payment';
 import { poFingerprint } from '../../utils/poFingerprint';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
@@ -1819,8 +1819,14 @@ export default function PurchaseDetailPage() {
       clearPct();
       return;
     }
-    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to).trim())) {
-      toast('받는 사람 메일 주소가 올바르지 않습니다. 확인 후 다시 보내세요.', 'error');
+    // 받는 사람은 담당자 + 참조(CC)라 여럿일 수 있다 — 한 줄에 쉼표로 들어온다
+    const toList = String(to || '')
+      .split(/[,;]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const badTo = toList.find((x) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+    if (toList.length === 0 || badTo) {
+      toast(badTo ? `받는 사람 주소가 올바르지 않습니다: ${badTo}` : '받는 사람 메일 주소를 입력해 주세요.', 'error');
       return;
     }
     setPct(5);
@@ -3010,7 +3016,11 @@ export default function PurchaseDetailPage() {
                                 }
                                 openMailPreview(
                                   sup.name,
-                                  sup.email,
+                                  // 담당자 + 그 업체 참조(CC) — 구매처 등록의 「참조」 칸
+                                  mailToLine(
+                                    sup.email,
+                                    suppliers.find((x) => x.name === sup.name),
+                                  ),
                                   mailSubject,
                                   mailHtml,
                                   supPoNo,
@@ -3739,10 +3749,15 @@ export default function PurchaseDetailPage() {
               <label>받는 사람</label>
               <input
                 aria-label="받는 사람"
-                type="email"
+                type="text"
                 value={mailPreview.to}
                 onChange={(e) => setMailPreview((p) => ({ ...p, to: e.target.value }))}
+                placeholder="담당자 주소 (여러 명은 쉼표로)"
               />
+              <p className="field-hint">
+                구매처에 「참조」를 적어 두면 담당자와 함께 자동으로 들어옵니다. 이 건만 빼거나 더하려면 여기서
+                고치세요.
+              </p>
             </div>
             <div className="form-group">
               <label>제목</label>

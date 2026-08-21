@@ -22,6 +22,24 @@ export function primaryEmail(supplier) {
   return contactsOf(supplier)[0]?.email || '';
 }
 
+// 참조(CC) — 담당이 누구든 늘 함께 받아야 하는 사람들.
+// 업체 한 곳에 한 칸으로 두고 쉼표·세미콜론·줄바꿈 아무거나로 나눠 적을 수 있게 한다.
+export function ccOf(supplier) {
+  return String(supplier?.ccEmails ?? '')
+    .split(/[,;\n]/)
+    .map((x) => x.trim())
+    .filter((x) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+}
+
+// 발주서를 보낼 주소 한 줄 — 담당자 + 참조. 같은 주소가 두 번 들어가지 않게 거른다.
+// (지금은 메일 함수가 참조 칸을 따로 받지 않아 받는 사람에 함께 넣는다 — 2026-08-21 대표님)
+export function mailToLine(primary, supplier) {
+  const seen = new Set();
+  return [String(primary ?? '').trim(), ...ccOf(supplier)]
+    .filter((x) => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase()))
+    .join(', ');
+}
+
 // 고를 거리가 있을 때만 품목에 담당자 칸을 띄운다
 export function hasChoice(supplier) {
   return contactsOf(supplier).length >= 2;

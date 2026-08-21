@@ -18,6 +18,7 @@ const EMPTY_FORM = {
   contact: '',
   email: '',
   emails: [], // 담당자 여러 명 — [{ name, email }]. 첫 줄이 대표
+  ccEmails: '', // 참조(CC) — 담당이 누구든 늘 함께 받는 사람. 쉼표로 여러 명
   businessNumber: '',
   bankName: '',
   bankAccount: '',
@@ -84,6 +85,7 @@ export default function SupplierManagementPage() {
       contact: s.contact || '',
       email: s.email || '',
       emails: Array.isArray(s.emails) && s.emails.length ? s.emails : s.email ? [{ name: '', email: s.email }] : [],
+      ccEmails: s.ccEmails || '',
       businessNumber: s.businessNumber || '',
       bankName: s.bankName || '',
       bankAccount: s.bankAccount || '',
@@ -503,6 +505,20 @@ export default function SupplierManagementPage() {
               <Icon name="plus" className="btn-ic" />
               담당자 추가
             </button>
+          </div>
+          <div className="form-group">
+            <label htmlFor="sup-cc">참조 (CC)</label>
+            <input
+              id="sup-cc"
+              type="text"
+              value={form.ccEmails}
+              onChange={(e) => setForm({ ...form, ccEmails: e.target.value })}
+              placeholder="sales@telcom.kr, mgr@telcom.kr"
+            />
+            <p className="field-hint">
+              발주서를 보낼 때 담당자와 함께 늘 받는 사람입니다. 담당이 누구든 이 주소가 함께 들어갑니다. 여러 명은
+              쉼표로 나눠 적으세요.
+            </p>
           </div>
           <div className="form-group">
             <label>사업자번호</label>

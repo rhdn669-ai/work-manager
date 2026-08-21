@@ -2,6 +2,7 @@
 // 대상: 발주 구매처 도출·그룹핑·발행번호 / 연차 계산 / 출력 글자축소 / 날짜 유틸
 import { describe, it, expect } from 'vitest';
 import { poNumber, deriveSupplier, mapPrintItems, computeSupplierList } from '../../src/utils/purchaseOrder';
+import { ccOf, mailToLine } from '../../src/domain/supplierContacts';
 import {
   paidList,
   paidTotal,
@@ -536,5 +537,28 @@ describe('결제 — 회차 나눠 결제 (payment)', () => {
     expect(paidTotal(paid)).toBe(1500000);
     expect(unpaidAmount(2000000, paid)).toBe(500000);
     expect(payButtonLabel(paid)).toBe('3차 결제요청');
+  });
+});
+
+describe('구매처 — 참조(CC)', () => {
+  it('쉼표·세미콜론·줄바꿈 아무거나로 나눠 적어도 읽는다', () => {
+    const sup = { ccEmails: 'a@x.com, b@y.com; c@z.com\nd@w.com' };
+    expect(ccOf(sup)).toEqual(['a@x.com', 'b@y.com', 'c@z.com', 'd@w.com']);
+  });
+
+  it('메일 주소 꼴이 아닌 것은 버린다', () => {
+    expect(ccOf({ ccEmails: 'a@x.com, 홍길동, 010-1234' })).toEqual(['a@x.com']);
+  });
+
+  it('참조가 없으면 담당자만', () => {
+    expect(mailToLine('me@x.com', {})).toBe('me@x.com');
+  });
+
+  it('담당자 뒤에 참조를 붙인다', () => {
+    expect(mailToLine('me@x.com', { ccEmails: 'cc@y.com' })).toBe('me@x.com, cc@y.com');
+  });
+
+  it('같은 주소가 두 번 들어가지 않는다 (대소문자 무시)', () => {
+    expect(mailToLine('me@x.com', { ccEmails: 'ME@X.com, cc@y.com' })).toBe('me@x.com, cc@y.com');
   });
 });
