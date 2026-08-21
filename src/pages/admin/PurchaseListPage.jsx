@@ -803,16 +803,16 @@ export default function PurchaseListPage() {
             @media (max-width: 430px) { .kb-board { grid-template-columns: 1fr !important; } }
             @media (max-width: 768px) { .kb-board { grid-template-columns: 1fr !important; } }
             .po-card { gap: 5px; width: 100%; box-sizing: border-box; padding: 14px; }
-            .po-card__title { font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .po-card__subtitle, .kb-card__subtitle { font-size: 12px; font-weight: 400; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .po-card__meta { font-size: 12px; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__title { font-size: var(--font-lg); font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__subtitle, .kb-card__subtitle { font-size: var(--font-base); font-weight: 400; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__meta { font-size: var(--font-base); color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__by { overflow: hidden; text-overflow: ellipsis; word-break: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; min-width: 0; }
             .po-card__actions { display: flex; flex-wrap: nowrap; gap: 4px; align-items: center; flex-shrink: 0; }
             .po-card__actions .btn { min-height: 32px; white-space: nowrap; }
             @media (max-width: 430px) { .po-card { padding: 6px !important; } .po-card-list { gap: 2px !important; } }
             @media (max-width: 360px) { .po-card { padding: 6px !important; gap: 3px !important; } .po-card-list { gap: 2px !important; } }
-            .kb-card__title { font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-            .kb-card__meta { font-size: 12px; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .kb-card__title { font-size: var(--font-lg); font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .kb-card__meta { font-size: var(--font-base); color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .kb-card__actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; }
             .kb-card__actions .btn { min-height: 32px; white-space: nowrap; }
             .kb-col__head { background: var(--navy, #002050); color: var(--text-sidebar, #fff); border-radius: 11px 11px 0 0; }
@@ -822,16 +822,16 @@ export default function PurchaseListPage() {
             .purchase-list-page .kb-card:hover { box-shadow: 0 8px 20px rgba(0,23,51,0.10); transform: translateY(-1px); }
             .purchase-list-page .kb-card__title { color: var(--primary, #002050); }
             .purchase-list-page .kb-card { display: flex; flex-direction: column; gap: 4px; }
-            .purchase-list-page .kb-card__title { font-size: 14px; line-height: 1.3; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-            .purchase-list-page .kb-card__meta { font-size: 12px; color: var(--muted, #8b95a1); }
-            .purchase-list-page .kb-card__items { align-self: flex-start; font-size: 11px; color: var(--slate, #4e5968); background: var(--canvas, #f2f4f6); border-radius: var(--radius-sm); padding: 2px 7px; margin: 1px 0; }
+            .purchase-list-page .kb-card__title { font-size: var(--font-lg); line-height: 1.3; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+            .purchase-list-page .kb-card__meta { font-size: var(--font-base); color: var(--muted, #8b95a1); }
+            .purchase-list-page .kb-card__items { align-self: flex-start; font-size: var(--font-sm); color: var(--slate, #4e5968); background: var(--canvas, #f2f4f6); border-radius: var(--radius-sm); padding: 2px 7px; margin: 1px 0; }
             /* 세트는 타입마다 배지 하나 — 칸이 모자라면 다음 줄로 흐른다 */
             .purchase-list-page .kb-card__sets { display: flex; flex-wrap: wrap; gap: 4px; margin: 1px 0; }
-            .purchase-list-page .kb-card__set { font-size: 11px; font-weight: 700; color: var(--primary, #002050); background: var(--primary-soft, #e8edf5); border-radius: var(--radius-sm); padding: 2px 7px; white-space: nowrap; }
-            .purchase-list-page .kb-card__amount { font-size: 16px; font-weight: 800; color: var(--safety-orange, #f05819); line-height: 1.1; }
-            .purchase-list-page .kb-card__amount em { font-weight: 700; font-size: 12px; margin-left: 2px; font-style: normal; }
-            .purchase-list-page .kb-card__amount-vat { font-size: 11px; color: var(--muted, #8b95a1); }
-            .purchase-list-page .kb-card__dates { display: flex; flex-direction: column; gap: 1px; font-size: 11px; color: var(--muted, #8b95a1); }
+            .purchase-list-page .kb-card__set { font-size: var(--font-sm); font-weight: 700; color: var(--primary, #002050); background: var(--primary-soft, #e8edf5); border-radius: var(--radius-sm); padding: 2px 7px; white-space: nowrap; }
+            .purchase-list-page .kb-card__amount { font-size: var(--font-xl); font-weight: 800; color: var(--safety-orange, #f05819); line-height: 1.1; }
+            .purchase-list-page .kb-card__amount em { font-weight: 700; font-size: var(--font-base); margin-left: 2px; font-style: normal; }
+            .purchase-list-page .kb-card__amount-vat { font-size: var(--font-sm); color: var(--muted, #8b95a1); }
+            .purchase-list-page .kb-card__dates { display: flex; flex-direction: column; gap: 1px; font-size: var(--font-sm); color: var(--muted, #8b95a1); }
             .purchase-list-page .kb-card__foot { margin-top: 3px; display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; }
             @media (max-width: 480px) { .field-hint { font-size: 12px; margin-top: 4px; } }
           `}</style>
