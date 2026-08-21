@@ -73,10 +73,10 @@ export default function TrashList({
             <th scope="col" style={{ width: 96, minWidth: 96 }}>
               구분
             </th>
-            <th scope="col" style={{ width: '24%' }}>
+            <th scope="col" style={{ width: '30%' }}>
               이름
             </th>
-            <th scope="col" style={{ width: '32%' }}>
+            <th scope="col" style={{ width: '26%' }}>
               내용
             </th>
             <th scope="col" style={{ width: 152, minWidth: 152 }}>
