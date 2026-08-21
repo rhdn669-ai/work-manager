@@ -17081,24 +17081,28 @@ td.mx-dc {
   .outsource-management-page table.cards-sm.vendor-table th:nth-child(11) {
     width: 16%;
   }
-  /* 구매처 표 — 10컬럼(이메일 추가): 상호 대표 연락처 이메일 사업자 은행 계좌 분류 비고 + 작업(클래스 9%) */
+  /* 구매처 표 — 11컬럼 전부에 비율을 준다.
+     결제 조건 열이 뒤에 끼면서 순번이 밀려 「비고」에 폭이 없었고, 그래서 화면이 넓어지거나
+     사이드바를 접으면 남는 자리를 비고가 혼자 다 먹어 우측이 휑해 보였다.
+     (사이드바를 접으면 늘어난 164px 중 149px 를 비고가 가져갔다 — 2026-08-21 대표님)
+     상호 대표 연락처 이메일 사업자 은행 계좌 결제조건 분류 비고 작업 = 100% */
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(1) {
-    width: 11%;
+    width: 10%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(2) {
-    width: 8%;
+    width: 4%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(3) {
-    width: 11%;
+    width: 8%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(4) {
-    width: 12%;
+    width: 13%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(5) {
-    width: 9%;
+    width: 8%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(6) {
-    width: 7%;
+    width: 5%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(7) {
     width: 10%;
@@ -17107,7 +17111,14 @@ td.mx-dc {
     width: 6%;
   }
   .supplier-management-page table.cards-sm.supplier-table th:nth-child(9) {
-    width: 17%;
+    width: 9%;
+  }
+  .supplier-management-page table.cards-sm.supplier-table th:nth-child(10) {
+    width: 18%;
+  }
+  .supplier-management-page table.cards-sm.supplier-table th:nth-child(11) {
+    width: 9%;
+    min-width: 140px; /* 화면이 좁아도 「수정·삭제」 두 버튼이 눌리지 않게 */
   }
   /* 프리랜서·일용직 표(5컬럼: 이름 일당 연락처 비고 + 작업 9%) — 작업 칸 과도 확대 방지(버튼 떨어짐 해소) */
   .outsource-management-page table.cards-sm:not(.vendor-table) th:nth-child(1) {
