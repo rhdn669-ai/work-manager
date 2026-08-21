@@ -3257,9 +3257,13 @@ body {
   position: relative;
 }
 .login-back-btn {
-  position: absolute;
-  top: 14px;
-  left: 14px;
+  /* 카드 맨 위 왼쪽에 한 줄로 둔다. 예전에는 카드 위에 띄워(absolute) 로고와 겹쳐
+     어디에 걸린 버튼인지 애매했다 (2026-08-21 대표님) */
+  align-self: flex-start;
+  margin: 0 0 10px -4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   background: transparent;
   border: none;
   color: var(--text-muted, #64748b);
