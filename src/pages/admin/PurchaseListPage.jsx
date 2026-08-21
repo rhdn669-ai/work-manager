@@ -803,7 +803,7 @@ export default function PurchaseListPage() {
             @media (max-width: 430px) { .kb-board { grid-template-columns: 1fr !important; } }
             @media (max-width: 768px) { .kb-board { grid-template-columns: 1fr !important; } }
             .po-card { gap: 5px; width: 100%; box-sizing: border-box; padding: 14px; }
-            .po-card__title { font-size: var(--font-lg); font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .po-card__title { font-size: var(--font-lg); font-weight: 700; line-height: 1.35; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__subtitle, .kb-card__subtitle { font-size: var(--font-base); font-weight: 400; color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__meta { font-size: var(--font-base); color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .po-card__by { overflow: hidden; text-overflow: ellipsis; word-break: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; min-width: 0; }
@@ -811,7 +811,7 @@ export default function PurchaseListPage() {
             .po-card__actions .btn { min-height: 32px; white-space: nowrap; }
             @media (max-width: 430px) { .po-card { padding: 6px !important; } .po-card-list { gap: 2px !important; } }
             @media (max-width: 360px) { .po-card { padding: 6px !important; gap: 3px !important; } .po-card-list { gap: 2px !important; } }
-            .kb-card__title { font-size: var(--font-lg); font-weight: 700; line-height: 1.35; color: var(--text, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+            .kb-card__title { font-size: var(--font-lg); font-weight: 700; line-height: 1.35; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .kb-card__meta { font-size: var(--font-base); color: var(--text-secondary, #8a94a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
             .kb-card__actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; }
             .kb-card__actions .btn { min-height: 32px; white-space: nowrap; }

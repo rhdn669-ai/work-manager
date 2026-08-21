@@ -1523,7 +1523,7 @@
   box-sizing: border-box;
 }
 .mx-text-input {
-  color: var(--text, #1a1a1a);
+  color: var(--text);
   font-weight: 400;
   text-align: center;
 }
