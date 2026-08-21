@@ -1121,7 +1121,9 @@ export default function PurchaseItemPage() {
                                     <th scope="col" style={{ width: 150 }}>
                                       기본 구매처
                                     </th>
-                                    <th scope="col">담당자</th>
+                                    <th scope="col" className="item-cell-contact">
+                                      담당자
+                                    </th>
                                     <th scope="col" style={{ width: 110 }}>
                                       비고
                                     </th>
@@ -1484,7 +1486,7 @@ export default function PurchaseItemPage() {
                                                 {pick ? (
                                                   <Select
                                                     className="po-supplier-select"
-                                                    value={it.contactEmail || ''}
+                                                    value={it.contactEmail || contactsOf(sup)[0]?.email || ''}
                                                     onChange={(val) => {
                                                       updateField(it.id, { contactEmail: val });
                                                       if (!String(it.id).startsWith('tmp-')) {
@@ -1499,14 +1501,11 @@ export default function PurchaseItemPage() {
                                                         );
                                                       }
                                                     }}
-                                                    options={[
-                                                      { value: '', label: '대표' },
-                                                      ...contactsOf(sup).map((c) => ({
-                                                        value: c.email,
-                                                        label: c.name || c.email,
-                                                      })),
-                                                    ]}
-                                                    placeholder="대표"
+                                                    options={contactsOf(sup).map((c) => ({
+                                                      value: c.email,
+                                                      label: c.name || c.email,
+                                                    }))}
+                                                    placeholder={contactsOf(sup)[0]?.name || '담당자'}
                                                     ariaLabel="담당자 선택"
                                                   />
                                                 ) : (
