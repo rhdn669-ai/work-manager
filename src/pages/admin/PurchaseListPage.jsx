@@ -273,7 +273,7 @@ function KanbanColumn({ col, cards, onOpen, onEdit, onDelete, onClose }) {
 }
 
 export default function PurchaseListPage() {
-  const { userProfile } = useAuth();
+  const { userProfile, isAdmin } = useAuth();
   const { alert, confirm, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -442,7 +442,15 @@ export default function PurchaseListPage() {
     setEditingId(null);
     // 납품 공장 기본값: '본사'가 있으면 자동 선택 + 주소 채움
     const hq = factories.find((f) => f.name === '본사') || factories[0];
-    setForm({ ...EMPTY_FORM, factoryKey: hq?.name || '', deliveryPlace: hq?.address || '' });
+    // 담당자는 로그인한 직원으로 자동 — 관리자만 다른 사람으로 바꿀 수 있다 (2026-08-21 대표님)
+    const me = users.find((u) => u.id === userProfile?.id) || userProfile || {};
+    setForm({
+      ...EMPTY_FORM,
+      factoryKey: hq?.name || '',
+      deliveryPlace: hq?.address || '',
+      contactName: me.name || '',
+      contactPhone: me.phone || '',
+    });
     setFormModal(true);
   }
 
@@ -1069,46 +1077,62 @@ export default function PurchaseListPage() {
             <p className="field-hint">날짜 또는 "협의·긴급" 등 자유 입력. 비워두면 발주서에 "협의"로 표시됩니다.</p>
           </div>
 
-          <div className="form-group">
-            <label>직원에서 불러오기</label>
-            <Select
-              value=""
-              onChange={(v) => {
-                const u = users.find((x) => x.id === v);
-                if (u) setForm({ ...form, contactName: u.name || '', contactPhone: u.phone || '' });
-              }}
-              options={users
-                .filter((u) => u.isActive !== false)
-                .map((u) => ({
-                  value: u.id,
-                  label: `${u.name}${u.position ? ` · ${u.position}` : ''}${u.phone ? ` · ${u.phone}` : ''}`,
-                }))}
-              placeholder="직원 선택 (담당자·연락처 자동 입력)"
-              ariaLabel="직원 선택"
-            />
-          </div>
-
-          <div className="form-row">
+          {/* 담당자는 로그인한 직원으로 자동 들어간다. 다른 사람 이름으로 내보내는 것은 관리자만. */}
+          {!isAdmin && (
             <div className="form-group">
               <label>담당자</label>
               <input
-                aria-label="담당자"
                 type="text"
-                value={form.contactName}
-                title={form.contactName || ''}
-                onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+                value={`${form.contactName}${form.contactPhone ? ` · ${form.contactPhone}` : ''}`}
+                readOnly
               />
+              <p className="field-hint">발주서에 나갈 담당자입니다. 로그인한 직원으로 들어갑니다.</p>
             </div>
+          )}
+          {isAdmin && (
             <div className="form-group">
-              <label>연락처</label>
-              <input
-                aria-label="연락처"
-                type="text"
-                value={form.contactPhone}
-                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+              <label>직원에서 불러오기</label>
+              <Select
+                value=""
+                onChange={(v) => {
+                  const u = users.find((x) => x.id === v);
+                  if (u) setForm({ ...form, contactName: u.name || '', contactPhone: u.phone || '' });
+                }}
+                options={users
+                  .filter((u) => u.isActive !== false)
+                  .map((u) => ({
+                    value: u.id,
+                    label: `${u.name}${u.position ? ` · ${u.position}` : ''}${u.phone ? ` · ${u.phone}` : ''}`,
+                  }))}
+                placeholder="직원 선택 (담당자·연락처 자동 입력)"
+                ariaLabel="직원 선택"
               />
             </div>
-          </div>
+          )}
+
+          {isAdmin && (
+            <div className="form-row">
+              <div className="form-group">
+                <label>담당자</label>
+                <input
+                  aria-label="담당자"
+                  type="text"
+                  value={form.contactName}
+                  title={form.contactName || ''}
+                  onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>연락처</label>
+                <input
+                  aria-label="연락처"
+                  type="text"
+                  value={form.contactPhone}
+                  onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
 
           <p className="field-hint">
             {editingId
