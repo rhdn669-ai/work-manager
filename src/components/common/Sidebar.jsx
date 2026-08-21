@@ -21,7 +21,7 @@ const LS_KEY_PREFIX = 'sidebar-order-v1:';
 const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 
 // 기본 메뉴 정의
-function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }) {
+function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase }) {
   return [
     { key: 'home', to: '/dashboard', label: '홈', icon: 'home', show: true, end: false },
     { key: 'library', to: '/library', label: '자료실', icon: 'folder', show: canViewArchive, end: true },
@@ -65,7 +65,7 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive
     },
     { key: 'admin-events', to: '/admin/events', label: '이벤트·공지', icon: 'alert', show: isAdmin },
     { key: 'admin-vehicle-log', to: '/admin/vehicle-log', label: '운행일지', icon: 'list', show: isAdmin },
-    { key: 'admin-purchase', to: '/admin/purchase', label: '구매', icon: 'cart', show: isAdmin, end: false },
+    { key: 'admin-purchase', to: '/admin/purchase', label: '구매', icon: 'cart', show: canPurchase, end: false },
     { key: 'admin-payment', to: '/admin/payment', label: '결제', icon: 'card', show: isAdmin, end: false },
     { key: 'admin-mail', to: '/admin/mail', label: '메일 발송', icon: 'mail', show: isAdmin, end: false },
     { key: 'admin-trash', to: '/admin/trash', label: '휴지통', icon: 'trash', show: isAdmin, end: false },
@@ -81,7 +81,7 @@ function buildProductionItems() {
 }
 
 export default function Sidebar({ isOpen }) {
-  const { userProfile, isAdmin, canApproveLeave, canCreateSite, canViewArchive } = useAuth();
+  const { userProfile, isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase } = useAuth();
   const { confirm } = useDialog();
   const [editing, setEditing] = useState(false);
   const [order, setOrder] = useState(null);
@@ -191,10 +191,10 @@ export default function Sidebar({ isOpen }) {
 
   const allItems = useMemo(
     () =>
-      buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive }).map((it) =>
+      buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase }).map((it) =>
         it.key === 'admin-payment' ? { ...it, badgeCount: isAdmin ? paymentPending : 0 } : it,
       ),
-    [isAdmin, canApproveLeave, canCreateSite, canViewArchive, paymentPending],
+    [isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, paymentPending],
   );
 
   // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬

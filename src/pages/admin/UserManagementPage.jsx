@@ -64,6 +64,7 @@ export default function UserManagementPage() {
     canCreateSite: false,
     canViewArchive: false,
     productionAccess: false,
+    purchaseAccess: false,
     usesVehicle: false,
     vehiclePlate: '',
     vehicleMonthlyCost: '',
@@ -117,6 +118,7 @@ export default function UserManagementPage() {
       canCreateSite: false,
       canViewArchive: false,
       productionAccess: false,
+      purchaseAccess: false,
       usesVehicle: false,
       vehiclePlate: '',
       vehicleMonthlyCost: '',
@@ -143,6 +145,7 @@ export default function UserManagementPage() {
       canCreateSite: !!user.canCreateSite,
       canViewArchive: !!user.canViewArchive,
       productionAccess: !!user.productionAccess,
+      purchaseAccess: !!user.purchaseAccess,
       usesVehicle: !!user.usesVehicle,
       vehiclePlate: user.vehiclePlate || '',
       vehicleMonthlyCost: user.vehicleMonthlyCost ? Number(user.vehicleMonthlyCost).toLocaleString() : '',
@@ -170,6 +173,7 @@ export default function UserManagementPage() {
           canCreateSite: !!form.canCreateSite,
           canViewArchive: !!form.canViewArchive,
           productionAccess: !!form.productionAccess,
+          purchaseAccess: !!form.purchaseAccess,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
@@ -195,6 +199,7 @@ export default function UserManagementPage() {
           canCreateSite: !!form.canCreateSite,
           canViewArchive: !!form.canViewArchive,
           productionAccess: !!form.productionAccess,
+          purchaseAccess: !!form.purchaseAccess,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
@@ -954,6 +959,33 @@ export default function UserManagementPage() {
                       checked={on}
                       disabled={autoGranted}
                       onChange={(e) => setForm({ ...form, productionAccess: e.target.checked })}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+            );
+          })()}
+          {(() => {
+            const autoGranted = form.role === 'admin';
+            const on = autoGranted || !!form.purchaseAccess;
+            return (
+              <div className="form-group">
+                <div className="toggle-row">
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">구매 권한</span>
+                    <small className="text-muted">
+                      {autoGranted
+                        ? '관리자는 자동으로 부여됩니다.'
+                        : '켜면 구매 탭(발주·BOM·품목·재고·구매처·견적)을 쓸 수 있습니다. 결제와 메일 발송은 관리자만.'}
+                    </small>
+                  </div>
+                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={autoGranted}
+                      onChange={(e) => setForm({ ...form, purchaseAccess: e.target.checked })}
                     />
                     <span className="toggle-slider" />
                   </label>

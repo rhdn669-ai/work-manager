@@ -213,6 +213,9 @@ export function AuthProvider({ children }) {
   const canCreateSite = userProfile?.role === 'admin' || !!userProfile?.canCreateSite;
   // 자료실 열람 권한: 관리자 + 대표/부사장 + canViewArchive 플래그 (일반 직원은 기본 미공개)
   const canViewArchive = userProfile?.role === 'admin' || isExecutive || !!userProfile?.canViewArchive;
+  // 구매 탭 권한: 관리자 + purchaseAccess 플래그.
+  // 발주·BOM·품목·재고·구매처·견적까지 — 결제와 메일 발송은 관리자만 그대로 둔다.
+  const canPurchase = userProfile?.role === 'admin' || !!userProfile?.purchaseAccess;
 
   const value = {
     user: userProfile,
@@ -237,6 +240,7 @@ export function AuthProvider({ children }) {
     canViewSalary,
     canCreateSite,
     canViewArchive,
+    canPurchase,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,8 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import { canProduction } from '../../utils/workspace';
 
-export default function ProtectedRoute({ allowedRoles }) {
-  const { user, userProfile, loading, canApproveLeave } = useAuth();
+export default function ProtectedRoute({ allowedRoles, requirePurchase }) {
+  const { user, userProfile, loading, canApproveLeave, canPurchase } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -27,6 +27,11 @@ export default function ProtectedRoute({ allowedRoles }) {
   // (모바일 재접속 포함 — 세션이 새로 시작될 때마다 선택. 무권한 직원은 해당 없음)
   if (canProduction(userProfile) && !sessionStorage.getItem('wmWorkspaceMode') && location.pathname !== '/workspace') {
     return <Navigate to="/workspace" replace />;
+  }
+
+  // 구매 탭 — 관리자이거나 「구매 권한」을 켠 직원만
+  if (requirePurchase && !canPurchase) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (allowedRoles) {

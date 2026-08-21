@@ -93,23 +93,12 @@ const router = createBrowserRouter([
     ],
   },
   {
-    element: <ProtectedRoute allowedRoles={['admin']} />,
+    // 구매 탭 — 관리자 + 「구매 권한」을 켠 직원. 결제·메일 발송은 관리자 블록에 그대로 둔다.
+    element: <ProtectedRoute requirePurchase />,
     children: [
       {
         element: <Layout />,
         children: [
-          { path: '/admin/users', element: <StaffHubPage /> },
-          { path: '/admin/sites', element: <SiteManagementPage /> },
-          { path: '/admin/reports', element: <ReportsPage /> },
-          { path: '/admin/unassigned', element: <UnassignedReportPage /> },
-          { path: '/admin/outsource', element: <OutsourceManagementPage /> },
-          { path: '/admin/events', element: <EventManagementPage /> },
-          { path: '/admin/leaves', element: <LeaveManagementPage /> },
-          { path: '/admin/total-closing', element: <TotalClosingPage /> },
-          { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
-          { path: '/admin/trash', element: <TrashPage /> },
-          { path: '/admin/mail', element: <MailSendPage /> },
-          { path: '/admin/payment', element: <PaymentPage /> },
           {
             path: '/admin/purchase',
             element: <PurchaseLayout />,
@@ -133,6 +122,28 @@ const router = createBrowserRouter([
               { path: ':id', element: <PurchaseDetailPage /> },
             ],
           },
+        ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute allowedRoles={['admin']} />,
+    children: [
+      {
+        element: <Layout />,
+        children: [
+          { path: '/admin/users', element: <StaffHubPage /> },
+          { path: '/admin/sites', element: <SiteManagementPage /> },
+          { path: '/admin/reports', element: <ReportsPage /> },
+          { path: '/admin/unassigned', element: <UnassignedReportPage /> },
+          { path: '/admin/outsource', element: <OutsourceManagementPage /> },
+          { path: '/admin/events', element: <EventManagementPage /> },
+          { path: '/admin/leaves', element: <LeaveManagementPage /> },
+          { path: '/admin/total-closing', element: <TotalClosingPage /> },
+          { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
+          { path: '/admin/trash', element: <TrashPage /> },
+          { path: '/admin/mail', element: <MailSendPage /> },
+          { path: '/admin/payment', element: <PaymentPage /> },
         ],
       },
     ],
