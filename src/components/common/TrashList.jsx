@@ -68,17 +68,21 @@ export default function TrashList({
       <table className="table cards-sm trash-table">
         <thead>
           <tr>
-            <th scope="col" style={{ width: 60 }}>
+            {/* 잘리던 칸은 넓히고, 남는 폭을 혼자 먹던 「내용」에는 비율을 준다
+                (구분 배지 「생산판넬」·「지출·매출」과 삭제일시가 잘렸다 — 2026-08-21 대표님) */}
+            <th scope="col" style={{ width: 96, minWidth: 96 }}>
               구분
             </th>
-            <th scope="col" style={{ width: '30%' }}>
+            <th scope="col" style={{ width: '24%' }}>
               이름
             </th>
-            <th scope="col">내용</th>
-            <th scope="col" style={{ width: 130 }}>
+            <th scope="col" style={{ width: '32%' }}>
+              내용
+            </th>
+            <th scope="col" style={{ width: 152, minWidth: 152 }}>
               삭제일시
             </th>
-            <th scope="col" style={{ width: 76 }}>
+            <th scope="col" style={{ width: 92, minWidth: 92 }}>
               삭제자
             </th>
             <th
