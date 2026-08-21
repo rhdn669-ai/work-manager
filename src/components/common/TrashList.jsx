@@ -102,8 +102,10 @@ export default function TrashList({
                 <td data-label="구분">
                   <span className={`purchase-badge purchase-badge-${cls}`}>{label}</span>
                 </td>
-                <td data-label="이름">
-                  <strong>{t.title || '(이름 없음)'}</strong>
+                <td data-label="이름" className="trash-name-cell">
+                  {/* 판넬을 여럿 묶어 지운 건은 이름이 1,100px 를 넘는다 — 두 줄까지 보이고
+                      나머지는 마우스를 올려 확인한다 (2026-08-21 대표님) */}
+                  <strong title={t.title || ''}>{t.title || '(이름 없음)'}</strong>
                 </td>
                 <td data-label="내용" style={{ color: 'var(--accent)', fontSize: 13 }}>
                   {t.summary || '-'}
