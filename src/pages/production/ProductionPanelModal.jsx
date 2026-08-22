@@ -32,6 +32,7 @@ function getInsp(p) {
 export default function ProductionPanelModal({
   panel: p,
   canEdit,
+  canDefect = canEdit,
   checkerName = '',
   onClose,
   mode = 'info',
@@ -96,7 +97,7 @@ export default function ProductionPanelModal({
   };
   // 불량항목 변경 시 검수(insp) + 부품상태(자동 불량/완료) + 검수자를 함께 저장
   const saveInspDerive = (part, mut) => {
-    if (!canEdit) return;
+    if (!canDefect) return; // 불량·조치는 현장 공용 아이디도 쓸 수 있다
     const next = structuredClone(getInsp(p));
     mut(next);
     // 박스 상태 = 자재입고+불량 종합 자동산출 (매트릭스와 동일 규칙)
@@ -162,7 +163,7 @@ export default function ProductionPanelModal({
     const items = sec.항목 || [];
     // 작업자 입력이 있어야 불량 등록 가능 (대표님 지시)
     const workerName = insp.공정작업자?.[part] || '';
-    const canAdd = canEdit && !!workerName;
+    const canAdd = canDefect && !!workerName;
     const mutSec = (mut) =>
       saveInspDerive(part, (n) => {
         if (!n[`차${round}`]) n[`차${round}`] = { 공정비고: {} };
@@ -170,7 +171,7 @@ export default function ProductionPanelModal({
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
         mut(n[`차${round}`].공정비고[part]);
       });
-    if (items.length === 0 && (round === 2 || !canEdit)) return null; // 1차는 「불량 없음」 체크가 있어 늘 보인다
+    if (items.length === 0 && (round === 2 || !canDefect)) return null; // 1차는 「불량 없음」 체크가 있어 늘 보인다
     return (
       <div key={round}>
         <div className="defect-round-label">
@@ -187,7 +188,7 @@ export default function ProductionPanelModal({
                 <input
                   type="checkbox"
                   checked={!!it.완료}
-                  disabled={!canEdit}
+                  disabled={!canDefect}
                   onChange={(e) =>
                     mutSec((s) => {
                       s.항목[i].완료 = e.target.checked;
@@ -200,7 +201,7 @@ export default function ProductionPanelModal({
                 <select
                   className={`defect-type ${it.유형 ? '' : 'is-empty'}`}
                   value={it.유형 || ''}
-                  disabled={!canEdit}
+                  disabled={!canDefect}
                   aria-label="불량 유형"
                   onChange={(e) => mutSec((s) => (s.항목[i].유형 = e.target.value))}
                 >
@@ -215,13 +216,18 @@ export default function ProductionPanelModal({
                   type="text"
                   defaultValue={it.내용 || ''}
                   placeholder="불량 내용…"
-                  disabled={!canEdit}
+                  disabled={!canDefect}
                   onBlur={(e) => {
                     if (e.target.value !== (it.내용 || '')) mutSec((s) => (s.항목[i].내용 = e.target.value));
                   }}
                 />
                 {canEdit && (
-                  <button className="defect-del" onClick={() => mutSec((s) => s.항목.splice(i, 1))} aria-label="삭제">
+                  <button
+                    className="defect-del"
+                    disabled={!canDefect}
+                    onClick={() => mutSec((s) => s.항목.splice(i, 1))}
+                    aria-label="삭제"
+                  >
                     <Icon name="trash" />
                   </button>
                 )}
@@ -240,7 +246,7 @@ export default function ProductionPanelModal({
                       alt="등록 사진"
                       onClick={() => openPhoto(it.사진)}
                     />
-                  ) : canEdit ? (
+                  ) : canDefect ? (
                     <button className="defect-ba-add before" onClick={() => openCamera(part, round, i, '사진')}>
                       <Icon name="image" className="btn-ic" />
                       등록 사진
@@ -263,7 +269,7 @@ export default function ProductionPanelModal({
                       alt="조치 사진"
                       onClick={() => openPhoto(it.조치사진)}
                     />
-                  ) : canEdit ? (
+                  ) : canDefect ? (
                     <button className="defect-ba-add after" onClick={() => openCamera(part, round, i, '조치사진')}>
                       <Icon name="image" className="btn-ic" />
                       조치 사진
@@ -275,7 +281,7 @@ export default function ProductionPanelModal({
               </div>
             </div>
           ))}
-          {canEdit && (
+          {canDefect && (
             <div className="defect-add-row">
               <button className="defect-add" disabled={!canAdd} onClick={() => openCamera(part, round, null)}>
                 <Icon name="image" className="btn-ic" /> {`${round}차 불량 추가 (사진 촬영)`}
@@ -298,7 +304,7 @@ export default function ProductionPanelModal({
           {/* 「불량 없음」 — 들여다봤고 불량이 없다는 표시.
               이걸 체크해야 박스가 완료로 넘어간다. 자재만 들어온 상태는 완료가 아니다.
               (2026-08-22 대표님: 상태는 불량 확인까지 되어야 완료) */}
-          {canEdit && round === 1 && (
+          {canDefect && round === 1 && (
             <label className={`defect-none-row${items.length > 0 ? ' is-disabled' : ''}`}>
               <input
                 type="checkbox"

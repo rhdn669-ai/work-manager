@@ -4,7 +4,7 @@ import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
-import { canProduction } from '../../utils/workspace';
+import { canProduction, isDefectOnly, canEnterProduction } from '../../utils/workspace';
 import { monthlyCounts, monthLabel, basisLabel } from '../../domain/monthlyLoad';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import { backfillNcrFromPanels } from '../../services/qualityRecordService';
@@ -136,7 +136,12 @@ export default function ProductionPage() {
   const [showImport, setShowImport] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
 
-  const allowed = canProduction(userProfile);
+  // 편집 권한과 불량 권한을 나눈다 —
+  //   canEdit  : 자재 입고·일정·판넬 추가/삭제까지 (생산·품질 권한자)
+  //   canDefect: 불량 확인·조치만 (현장 공용 아이디도 포함)
+  const defectOnly = isDefectOnly(userProfile);
+  const allowed = canEnterProduction(userProfile); // 화면에 들어올 수 있는가
+  const canEdit = canProduction(userProfile); // 표를 고칠 수 있는가
   const backfilled = useRef(false);
   useEffect(() => {
     if (!allowed) return undefined;
@@ -239,6 +244,16 @@ export default function ProductionPage() {
 
   return (
     <div className="pr-page">
+      {/* 현장 공용 아이디로 들어왔을 때 — 무엇을 할 수 있는지 먼저 알린다 */}
+      {defectOnly && (
+        <div className="pr-defect-only-note">
+          <Icon name="alert" />
+          <span>
+            불량 확인·조치 전용으로 로그인했습니다. 호기·판넬의 <strong>불량 칸</strong>과 <strong>출고사진</strong>만
+            쓸 수 있고, 자재 입고·일정·판넬 추가는 잠겨 있습니다.
+          </span>
+        </div>
+      )}
       <div className="page-header">
         <h2>생산현황</h2>
         <div className="page-actions" style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
@@ -249,14 +264,19 @@ export default function ProductionPage() {
               휴지통
             </button>
           )}
-          <button className="btn btn-sm btn-outline" onClick={() => setShowImport(true)}>
-            <Icon name="image" className="btn-ic" />
-            사진 가져오기
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={handleAdd}>
-            <Icon name="plus" className="btn-ic" />
-            판넬 추가
-          </button>
+          {/* 현장 공용 아이디(불량 조치 전용)는 표를 늘리거나 지우지 않는다 */}
+          {canEdit && (
+            <>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowImport(true)}>
+                <Icon name="image" className="btn-ic" />
+                사진 가져오기
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={handleAdd}>
+                <Icon name="plus" className="btn-ic" />
+                판넬 추가
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -319,7 +339,8 @@ export default function ProductionPage() {
             <>
               <ProductionMatrix
                 panels={filtered}
-                canEdit={allowed}
+                canEdit={canEdit}
+                canDefect={allowed}
                 company={company}
                 checkerName={userProfile?.name || ''}
                 onOpen={openModal}
@@ -543,7 +564,8 @@ export default function ProductionPage() {
           panel={openPanel}
           mode={openMode}
           part={openPart}
-          canEdit={allowed}
+          canEdit={canEdit}
+          canDefect={allowed}
           checkerName={userProfile?.name || ''}
           onClose={() => setOpenId(null)}
         />

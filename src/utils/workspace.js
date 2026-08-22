@@ -13,3 +13,14 @@ export function setWorkspaceMode(mode) {
 export function canProduction(userProfile) {
   return userProfile?.role === 'admin' || !!userProfile?.productionAccess;
 }
+
+// 불량 조치 전용 — 현장 공용 아이디용. 호기·판넬별 불량을 보고 조치만 한다.
+// 자재 입고·일정·판넬 추가/삭제는 잠긴다 (2026-08-22 대표님).
+export function isDefectOnly(userProfile) {
+  return userProfile?.role !== 'admin' && !!userProfile?.productionDefectOnly;
+}
+
+// 생산현황에 들어올 수 있는가 — 생산·품질 권한자 또는 불량 조치 전용 계정
+export function canEnterProduction(userProfile) {
+  return canProduction(userProfile) || isDefectOnly(userProfile);
+}

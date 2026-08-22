@@ -35,7 +35,7 @@ import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 const mmdd = (d) => (d ? String(d).slice(5) : '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, company }) {
+export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit, onOpen, onRemove, company }) {
   const { toast } = useDialog();
   const setField = (p, patch) => {
     if (!canEdit) return;
@@ -569,6 +569,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                       sc={sc}
                       canEdit={canEdit}
                       onMat={(k) => toggleBoxMat(p, b, k)}
+                      canDefect={canDefect}
                       onDefect={() => onOpen(p.id, 'defect', b)}
                       shipCount={shipPhotoCount(p, b)}
                       onShip={() => onOpen(p.id, 'ship', b)}
@@ -651,6 +652,7 @@ const GRP_START = new Set(JAIP_GROUPS.map((g) => g.leaves[0].key));
 
 // BOX 하위: 판금 · 하네스{사급·제작} · 자재{사급·도급} · 불량 · 상태 — 체크 시 일자(MM-DD)
 function BoxGroup({
+  canDefect,
   mat,
   matDate,
   defect,
@@ -689,7 +691,7 @@ function BoxGroup({
           color: defectDone ? 'var(--status-done-fg)' : 'var(--status-cancel-fg)',
           background: defect ? 'var(--status-cancel-bg)' : defectDone ? 'var(--status-done-bg)' : undefined,
         }}
-        onClick={onDefect}
+        onClick={canDefect ? onDefect : undefined}
         title={
           defect
             ? '미해결 불량 (클릭: 상세)'

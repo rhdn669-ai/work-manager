@@ -65,6 +65,7 @@ export default function UserManagementPage() {
     canViewArchive: false,
     productionAccess: false,
     purchaseAccess: false,
+    productionDefectOnly: false,
     usesVehicle: false,
     vehiclePlate: '',
     vehicleMonthlyCost: '',
@@ -119,6 +120,7 @@ export default function UserManagementPage() {
       canViewArchive: false,
       productionAccess: false,
       purchaseAccess: false,
+      productionDefectOnly: false,
       usesVehicle: false,
       vehiclePlate: '',
       vehicleMonthlyCost: '',
@@ -146,6 +148,7 @@ export default function UserManagementPage() {
       canViewArchive: !!user.canViewArchive,
       productionAccess: !!user.productionAccess,
       purchaseAccess: !!user.purchaseAccess,
+      productionDefectOnly: !!user.productionDefectOnly,
       usesVehicle: !!user.usesVehicle,
       vehiclePlate: user.vehiclePlate || '',
       vehicleMonthlyCost: user.vehicleMonthlyCost ? Number(user.vehicleMonthlyCost).toLocaleString() : '',
@@ -174,6 +177,7 @@ export default function UserManagementPage() {
           canViewArchive: !!form.canViewArchive,
           productionAccess: !!form.productionAccess,
           purchaseAccess: !!form.purchaseAccess,
+          productionDefectOnly: !!form.productionDefectOnly,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
@@ -200,6 +204,7 @@ export default function UserManagementPage() {
           canViewArchive: !!form.canViewArchive,
           productionAccess: !!form.productionAccess,
           purchaseAccess: !!form.purchaseAccess,
+          productionDefectOnly: !!form.productionDefectOnly,
           usesVehicle: !!form.usesVehicle,
           vehiclePlate: form.usesVehicle ? (form.vehiclePlate || '').trim() : '',
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
@@ -966,6 +971,26 @@ export default function UserManagementPage() {
               </div>
             );
           })()}
+          {/* 현장 공용 아이디 — 불량만 보고 조치한다 */}
+          <div className="form-group">
+            <div className="toggle-row">
+              <div className="toggle-row-text">
+                <span className="toggle-row-title">불량 조치 전용 (현장 공용)</span>
+                <small className="text-muted">
+                  켜면 생산현황에서 호기·판넬별 불량을 보고 조치 사진만 올릴 수 있습니다. 자재 입고·일정·판넬
+                  추가·삭제는 잠깁니다.
+                </small>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={!!form.productionDefectOnly}
+                  onChange={(e) => setForm({ ...form, productionDefectOnly: e.target.checked })}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </div>
           {(() => {
             const autoGranted = form.role === 'admin';
             const on = autoGranted || !!form.purchaseAccess;

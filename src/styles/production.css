@@ -1727,3 +1727,22 @@ body:has(.pr-page) .main-content {
   font-size: var(--font-xs);
   color: var(--status-cancel-fg, #d6303f);
 }
+
+/* 현장 공용 아이디 안내 — 무엇을 할 수 있는지 화면 맨 위에 알린다 (2026-08-22 대표님) */
+.pr-defect-only-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft, #e8edf5);
+  color: var(--primary);
+  font-size: var(--font-base);
+  line-height: 1.45;
+}
+.pr-defect-only-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
