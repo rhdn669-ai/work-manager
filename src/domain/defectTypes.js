@@ -1,9 +1,10 @@
-// 불량 유형 10종 — 원본 서식 F03(출하검사 실적)의 유형 컬럼을 그대로 옮긴 것.
+// 불량 유형 — 원본 서식 F03(출하검사 실적)의 유형 컬럼을 옮긴 뒤 현장에서 쓰는 항목을 더한다.
 // 생산현장(불량 등록)과 품질보증(부적합·출하검사 실적 집계)이 같은 목록을 써야
 // 현장에서 체크한 유형이 그대로 대장에 집계된다. 여기가 유일한 출처.
 export const DEFECT_TYPES = [
   { key: 'defectCable', label: '케이블' },
   { key: 'defectWiring', label: '배선정리' },
+  { key: 'defectMiswiring', label: '오배선' }, // 2026-08-22 대표님
   { key: 'defectAssembly', label: '조립불량' },
   { key: 'defectCleaning', label: '크리닝' },
   { key: 'defectStickerHole', label: '스티커·잔공누락' },
