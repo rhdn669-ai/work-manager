@@ -21,6 +21,7 @@ import {
   boxHasDefect,
   boxDefectResolved,
   deriveBoxStatus,
+  shipPhotoCount,
   deriveMpState,
   normState,
   AFTER_TURNON,
@@ -334,7 +335,7 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
               기본
             </th>
             {BUPMOK.map((b) => (
-              <th scope="col" key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 2}>
+              <th scope="col" key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 3}>
                 {b}
               </th>
             ))}
@@ -378,6 +379,10 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                   ))}
                   <th scope="col" className="mx-sub-th" rowSpan={2}>
                     상태
+                  </th>
+                  {/* 내보내기 전 다섯 면을 찍어 남긴다 (2026-08-22 대표님) */}
+                  <th scope="col" className="mx-sub-th" rowSpan={2}>
+                    출고사진
                   </th>
                 </Fragment>
               ) : (
@@ -564,6 +569,8 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                       canEdit={canEdit}
                       onMat={(k) => toggleBoxMat(p, b, k)}
                       onDefect={() => onOpen(p.id, 'defect', b)}
+                      shipCount={shipPhotoCount(p, b)}
+                      onShip={() => onOpen(p.id, 'ship', b)}
                     />
                   );
                 })}
@@ -642,7 +649,21 @@ function MpGroup({ p, st, sc, canEdit, onToggle }) {
 const GRP_START = new Set(JAIP_GROUPS.map((g) => g.leaves[0].key));
 
 // BOX 하위: 판금 · 하네스{사급·제작} · 자재{사급·도급} · 불량 · 상태 — 체크 시 일자(MM-DD)
-function BoxGroup({ mat, matDate, defect, defectDone, defectDate, doneDate, st, sc, canEdit, onMat, onDefect }) {
+function BoxGroup({
+  mat,
+  matDate,
+  defect,
+  defectDone,
+  defectDate,
+  doneDate,
+  st,
+  sc,
+  canEdit,
+  onMat,
+  onDefect,
+  shipCount,
+  onShip,
+}) {
   return (
     <>
       {JAIP.map((k, ki) => {
@@ -684,6 +705,18 @@ function BoxGroup({ mat, matDate, defect, defectDone, defectDate, doneDate, st, 
           : st === '문제'
             ? mmdd(defectDate) || <Icon name="close" />
             : ''}
+      </td>
+      <td
+        className="mx-cell mx-boxship mx-dcell"
+        style={{ cursor: 'pointer', background: shipCount > 0 ? 'var(--status-done-bg)' : undefined }}
+        onClick={onShip}
+        title={shipCount > 0 ? `출고사진 ${shipCount}/5 (클릭: 보기·등록)` : '출고사진 등록 (전면·후면·좌측·우측·상부)'}
+      >
+        {shipCount > 0 ? (
+          <span className="mx-ship-count">{shipCount}/5</span>
+        ) : (
+          <Icon name="image" className="mx-ship-empty" />
+        )}
       </td>
     </>
   );

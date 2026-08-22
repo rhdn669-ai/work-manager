@@ -1616,3 +1616,93 @@ body:has(.pr-page) .main-content {
     display: block;
   }
 }
+
+/* ── 출고사진 — 박스 다섯 면 (2026-08-22 대표님) ── */
+.ship-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.ship-photo-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+.ship-photo-slot.has-photo {
+  border-color: var(--primary);
+}
+.ship-photo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: var(--font-base);
+}
+.ship-photo-del {
+  border: none;
+  background: transparent;
+  color: var(--danger, #d6303f);
+  cursor: pointer;
+  padding: 2px 4px;
+  min-height: 28px;
+}
+.ship-photo-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+.ship-photo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ship-photo-box.is-empty:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.ship-photo-box.is-busy {
+  border-style: solid;
+  color: var(--primary);
+  font-weight: 700;
+}
+.ship-photo-foot {
+  min-height: 16px;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+.ship-photo-again {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  min-height: 32px;
+  cursor: pointer;
+}
+/* 표의 출고사진 칸 */
+.mx-boxship {
+  text-align: center;
+}
+.mx-ship-count {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: var(--status-done-fg);
+}
+.mx-ship-empty {
+  opacity: 0.35;
+}

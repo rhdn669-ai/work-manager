@@ -98,6 +98,39 @@ export async function uploadDefectPhoto(file, onProgress) {
   return getDownloadURL(task.snapshot.ref);
 }
 
+// 출고사진 — 박스 다섯 면. 불량 사진과 같은 방식으로 줄여 올린다.
+export async function uploadShipPhoto(file, onProgress) {
+  const small = await shrinkImage(file);
+  const path = `productionShipPhotos/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const task = uploadBytesResumable(ref(storage, path), small, { contentType: small.type || 'image/jpeg' });
+  if (onProgress) {
+    task.on('state_changed', (snap) => {
+      const pct = snap.totalBytes ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0;
+      onProgress(pct);
+    });
+  }
+  await task;
+  return getDownloadURL(task.snapshot.ref);
+}
+
+// 올라간 출고사진을 그 박스의 면에 붙인다(url 이 비면 지운다).
+// 모달이 닫힌 뒤 끝나도 안전하도록 저장된 최신 문서를 읽어 고친다.
+export async function attachShipPhoto(panelId, { box, side, url, by, today }) {
+  const snap = await getDoc(doc(db, 'productionPanels', panelId));
+  if (!snap.exists()) return;
+  const panel = snap.data();
+  const all = structuredClone(panel.출고사진 || {});
+  if (!all[box]) all[box] = {};
+  if (url) {
+    all[box][side] = url;
+    all[box][`${side}_정보`] = { by: by || '', at: today || '' };
+  } else {
+    delete all[box][side];
+    delete all[box][`${side}_정보`];
+  }
+  await updatePanel(panelId, { 출고사진: all });
+}
+
 // 올라간 사진을 그 판넬의 불량 항목에 붙인다.
 // 모달이 닫힌 뒤에 끝나도 안전하도록, 화면의 상태가 아니라 저장된 최신 문서를 읽어 고친다.
 //   index == null 이면 불량 항목을 새로 만들고, 값이 있으면 그 항목의 kind 칸(사진/조치사진)에 넣는다.

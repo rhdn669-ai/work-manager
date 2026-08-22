@@ -9,6 +9,7 @@ import { monthlyCounts, monthLabel, basisLabel } from '../../domain/monthlyLoad'
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
 import { backfillNcrFromPanels } from '../../services/qualityRecordService';
 import ProductionPanelModal from './ProductionPanelModal';
+import ShipPhotoModal from './ShipPhotoModal';
 import ProductionImportModal from './ProductionImportModal';
 import ProductionMatrix from './ProductionMatrix';
 import {
@@ -130,7 +131,7 @@ export default function ProductionPage() {
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [hideShipped, setHideShipped] = useState(true);
   const [openId, setOpenId] = useState(null);
-  const [openMode, setOpenMode] = useState('info'); // 'info'(기본정보) | 'defect'(부품 불량)
+  const [openMode, setOpenMode] = useState('info'); // 'info'(기본정보) | 'defect'(부품 불량) | 'ship'(출고사진)
   const [openPart, setOpenPart] = useState(null); // defect 모드일 때 대상 BOX
   const [showImport, setShowImport] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -527,7 +528,17 @@ export default function ProductionPage() {
         </div>
       )}
 
-      {openPanel && (
+      {/* 출고사진 — 표의 「출고사진」 칸을 누르면 그 박스 다섯 면을 등록·확인한다 */}
+      {openPanel && openMode === 'ship' && (
+        <ShipPhotoModal
+          panel={openPanel}
+          box={openPart}
+          canEdit={allowed}
+          checkerName={userProfile?.name || ''}
+          onClose={() => setOpenId(null)}
+        />
+      )}
+      {openPanel && openMode !== 'ship' && (
         <ProductionPanelModal
           panel={openPanel}
           mode={openMode}

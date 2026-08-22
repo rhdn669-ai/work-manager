@@ -124,6 +124,21 @@ export function unresolvedDefectParts(p, round) {
   return BUPMOK.filter((b) => (sec[b]?.항목 || []).some((it) => (it.내용 || it.사진) && !it.완료));
 }
 
+/* ── 출고사진 (2026-08-22 대표님) ──
+   박스를 내보내기 전 다섯 면을 찍어 남긴다. 나중에 현장에서 파손 시비가 생기면
+   나갈 때 상태를 확인할 근거가 된다. */
+export const SHIP_PHOTO_SIDES = ['전면', '후면', '좌측', '우측', '상부'];
+
+// p.출고사진 = { 'P/W BOX': { 전면: url, ... } }
+export function boxShipPhotos(p, box) {
+  return (p.출고사진 || {})[box] || {};
+}
+// 그 박스에 찍어 둔 면의 수
+export function shipPhotoCount(p, box) {
+  const v = boxShipPhotos(p, box);
+  return SHIP_PHOTO_SIDES.filter((k) => v[k]).length;
+}
+
 /* ── BOX별 하위(자재입고·불량) → 상태 자동 산출 (2026-07-20) ── */
 // 박스입고: p.박스입고 = { 'P/W BOX': {판금,하네스,사급,도급 boolean}, ... }
 export function boxMat(p, box) {
