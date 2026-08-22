@@ -145,7 +145,11 @@ export async function attachDefectPhoto(panelId, { part, round, index, kind, url
   const sec = insp[`차${round}`].공정비고[part];
   if (index == null)
     sec.항목.push({ 내용: '', 유형: '', 완료: false, 사진: url, 검수자: checkerName || '', 일자: today });
-  else if (sec.항목[index]) sec.항목[index][kind] = url;
+  else if (sec.항목[index]) {
+    sec.항목[index][kind] = url;
+    // 조치 사진을 올린 사람이 조치자다 — 등록자(검수자)는 건드리지 않는다
+    if (kind === '조치사진' && checkerName) sec.항목[index].조치자 = checkerName;
+  }
 
   const st = deriveBoxStatus(panel, part, insp);
   await updatePanel(panelId, {

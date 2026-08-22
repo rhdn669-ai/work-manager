@@ -58,7 +58,7 @@ export default function ProductionPanelModal({
       const 공정 = insp[`차${n}`]?.공정비고 || {};
       Object.keys(공정).forEach((box) => {
         (공정[box]?.항목 || []).forEach((it, i) => {
-          if (it.사진) out.push({ downloadURL: it.사진, name: `${n}차 · ${box} · ${i + 1}번 발생` });
+          if (it.사진) out.push({ downloadURL: it.사진, name: `${n}차 · ${box} · ${i + 1}번 등록` });
           if (it.조치사진) out.push({ downloadURL: it.조치사진, name: `${n}차 · ${box} · ${i + 1}번 조치` });
         });
       });
@@ -191,7 +191,9 @@ export default function ProductionPanelModal({
                   onChange={(e) =>
                     mutSec((s) => {
                       s.항목[i].완료 = e.target.checked;
-                      if (e.target.checked) s.항목[i].검수자 = checkerName;
+                      // 등록자(검수자)는 그대로 두고 조치한 사람을 따로 남긴다 —
+                      // 예전에는 완료를 누르면 등록자 이름이 조치자로 덮여 누가 올렸는지 사라졌다.
+                      if (e.target.checked) s.항목[i].조치자 = checkerName;
                     })
                   }
                 />
@@ -224,10 +226,10 @@ export default function ProductionPanelModal({
                   </button>
                 )}
               </div>
-              {/* 하단 좌우 2칸: 발생 / 조치 */}
+              {/* 하단 좌우 2칸: 등록(올린 사람) / 조치(처리한 사람) */}
               <div className="defect-ba">
                 <div className="defect-ba-col before">
-                  <div className="defect-ba-head">발생</div>
+                  <div className="defect-ba-head">등록{it.검수자 ? ` · ${it.검수자}` : ''}</div>
                   {upSlots[slotKey(part, round, i, '사진')] !== undefined ? (
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '사진')]} />
                   ) : it.사진 ? (
@@ -235,20 +237,22 @@ export default function ProductionPanelModal({
                       loading="lazy"
                       className="defect-ba-photo"
                       src={it.사진}
-                      alt="발생 사진"
+                      alt="등록 사진"
                       onClick={() => openPhoto(it.사진)}
                     />
                   ) : canEdit ? (
                     <button className="defect-ba-add before" onClick={() => openCamera(part, round, i, '사진')}>
                       <Icon name="image" className="btn-ic" />
-                      발생 사진
+                      등록 사진
                     </button>
                   ) : (
                     <div className="defect-ba-empty">사진 없음</div>
                   )}
                 </div>
                 <div className="defect-ba-col after">
-                  <div className="defect-ba-head">조치{it.검수자 ? ` · ${it.검수자}` : ''}</div>
+                  <div className="defect-ba-head">
+                    조치{it.조치자 || (it.완료 && it.검수자) ? ` · ${it.조치자 || it.검수자}` : ''}
+                  </div>
                   {upSlots[slotKey(part, round, i, '조치사진')] !== undefined ? (
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '조치사진')]} />
                   ) : it.조치사진 ? (
