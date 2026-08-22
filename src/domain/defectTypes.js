@@ -7,7 +7,7 @@ export const DEFECT_TYPES = [
   { key: 'defectMiswiring', label: '오배선' }, // 2026-08-22 대표님
   { key: 'defectAssembly', label: '조립불량' },
   { key: 'defectCleaning', label: '크리닝' },
-  { key: 'defectStickerHole', label: '스티커·잔공누락' },
+  { key: 'defectStickerHole', label: '잔공 누락' },
   { key: 'defectEyeMarking', label: '아이마킹' }, // 2026-08-22 대표님
   { key: 'defectLabelMissing', label: '라벨 누락' }, // 2026-08-22 대표님
   { key: 'defectLabeling', label: '식별표시' },
