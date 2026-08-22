@@ -52,11 +52,21 @@ function inspectorsOf(panel) {
   return names.join(', ');
 }
 
-// 검사 단위 수 — 작업자가 배정된 부품 개수(없으면 부품 전체 수를 쓴다)
+// 검사 단위 수 — 판넬 한 대에서 들여다보는 실물 BOX 개수.
+//
+// 예전에는 「작업자 이름이 적힌 부품 칸 수」를 썼다. 그러면 이름을 한 칸에만 적어 둔
+// 판넬은 검사수가 1이 되어, 불량 3건이 불량률 300% 로 잡혔다 (2026-08-22 대표님).
+// 이름을 어디에 적었느냐에 따라 지표가 6배씩 흔들리면 추이를 볼 수 없다.
+// 판넬을 검사하면 실물 BOX 를 다 보는 것이므로 그 수로 고정한다(MP 는 실물이 아니라 뺀다).
 function inspectedUnits(panel) {
-  const workers = panel?.검수?.공정작업자 || {};
-  const n = BUPMOK.filter((b) => workers[b]).length;
-  return n || BUPMOK.length;
+  const boxes = BUPMOK.filter((b) => b !== 'MP');
+  return boxes.length || 1;
+}
+
+// 불량이 난 BOX 수 — 같은 BOX 에서 불량이 여럿 나와도 한 대로 센다.
+// 불량률은 「검사한 것 중 몇이 불량이었나」라서, 건수로 세면 100% 를 넘어 버린다.
+function defectUnits(defects) {
+  return new Set((defects || []).map((d) => d.부품)).size;
 }
 
 // 유형 칸은 0으로 시작해야 이전 집계가 남지 않는다(유형을 바꿨을 때 옛 값이 그대로 붙는 것 방지)
@@ -78,7 +88,8 @@ export function panelToNcrFacts(panel) {
     // 검사수 = 그 판넬에서 작업자가 배정된 부품 수. 1(판넬 1대)로 두면
     // 불량 3건짜리 판넬이 불량률 300% 로 잡혀 추이가 망가진다.
     inspectedQty: inspectedUnits(panel),
-    defectQty: defects.length,
+    defectQty: defectUnits(defects), // 불량이 난 BOX 수 — 불량률이 100% 를 넘지 않게
+    defectCount: defects.length, // 불량 건수(참고용) — 유형별 집계와 맞는 숫자
     openQty: open,
     defectDetail: describe(defects),
     // 현장에서 고른 불량 유형을 그대로 유형별 건수로 집계
@@ -101,7 +112,8 @@ export function panelToShipmentFacts(panel) {
     equipmentName: panel.자재 || '',
     inspector: inspectorsOf(panel),
     inspectedQty: inspectedUnits(panel), // 화면에서는 감췄지만 월별 불량률 추이가 쓴다
-    defectQty: defects.length,
+    defectQty: defectUnits(defects),
+    defectCount: defects.length,
     defectDetail: describe(defects), // 현장에서 적은 불량 내용 그대로
     ...zeroTypes(),
     ...countByType(defects),

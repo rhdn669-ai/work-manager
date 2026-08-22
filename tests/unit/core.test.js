@@ -18,6 +18,7 @@ import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
+import { panelToNcrFacts } from '../../src/domain/productionQuality';
 import {
   deriveBoxStatus,
   boxDefectChecked,
@@ -662,5 +663,48 @@ describe('불량 유형 집계', () => {
   it('유형 키가 겹치지 않는다', () => {
     const keys = DEFECT_TYPES.map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+// 불량률이 300% 로 튀던 자리 — 검사수가 「작업자 이름이 적힌 칸 수」였다.
+describe('품질 — 불량률 기준', () => {
+  const 판넬 = (항목들) => ({
+    회사: '메티스',
+    프로젝트: 'YS-TEPS',
+    호기: '165',
+    검수: { 공정작업자: { 'P/W BOX': '홍길동' }, 차1: { 공정비고: 항목들 } },
+  });
+
+  it('검사수는 작업자 배정과 무관하게 실물 BOX 수로 고정된다', () => {
+    const f = panelToNcrFacts(판넬({ 'P/W BOX': { 항목: [{ 내용: 'a', 유형: '조립불량' }] } }));
+    expect(f.inspectedQty).toBe(6); // 작업자를 한 칸에만 적어도 6
+  });
+
+  it('한 BOX 에서 불량이 셋 나와도 불량률은 100% 를 넘지 않는다', () => {
+    const f = panelToNcrFacts(
+      판넬({
+        'P/W BOX': {
+          항목: [
+            { 내용: 'a', 유형: '조립불량' },
+            { 내용: 'b', 유형: '오배선' },
+            { 내용: 'c', 유형: '케이블' },
+          ],
+        },
+      }),
+    );
+    expect(f.defectQty).toBe(1); // 불량이 난 BOX 는 하나
+    expect(f.defectCount).toBe(3); // 건수는 따로 남는다
+    expect((f.defectQty / f.inspectedQty) * 100).toBeCloseTo(16.67, 1);
+  });
+
+  it('BOX 두 곳에서 나면 둘로 센다', () => {
+    const f = panelToNcrFacts(
+      판넬({
+        'P/W BOX': { 항목: [{ 내용: 'a', 유형: '조립불량' }] },
+        LODER: { 항목: [{ 내용: 'b', 유형: '오배선' }] },
+      }),
+    );
+    expect(f.defectQty).toBe(2);
+    expect((f.defectQty / f.inspectedQty) * 100).toBeCloseTo(33.33, 1);
   });
 });
