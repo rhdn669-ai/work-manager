@@ -1162,8 +1162,9 @@
 .mx-table th,
 .mx-table td {
   border: none;
+  /* 가로선만 긋는다. 칸마다 세로선을 그으면 격자가 내용을 덮어
+     선이 제각각으로 보인다 (2026-08-22 대표님) — 세로 구분은 그룹·BOX 경계에만. */
   border-bottom: 1px solid #eef1f4;
-  border-right: 1px solid #eef1f4;
   padding: 8px 6px;
   text-align: center;
   height: 42px;
@@ -1183,6 +1184,10 @@
 }
 .mx-group-row th.mx-grp-start {
   border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+/* 네이비 머리글에서도 BOX 경계가 보이게 — 본문 세로선과 위아래로 이어진다 */
+.mx-group-row th.mx-box-start {
+  border-left: 2px solid rgba(255, 255, 255, 0.3);
 }
 .mx-sub-row th {
   background: var(--mx-head-2);
@@ -1393,9 +1398,8 @@
   font-weight: 800;
   font-size: 13px;
 }
-/* 종합 상태 — 표에서 가장 먼저 눈에 들어와야 하는 칸 */
+/* 종합 상태 — 색으로 눈에 들어오게 하고 선은 다른 칸과 같게 둔다 */
 .mx-table td.mx-boxstate {
-  border-left: 2px solid var(--border-strong, #d1d6db);
   font-size: var(--font-sm);
 }
 /* 빈 줄(프로젝트 이름을 아직 안 적은 행)은 한 단 물러나 보이게 */
@@ -1410,7 +1414,7 @@
   color: var(--mx-done-fg);
 }
 .mx-boxstate {
-  border-left: 2px solid var(--border-strong, #d1d6db);
+  border-left: 1px solid var(--border, #e5e8eb);
 }
 /* 경계는 두 단계로 나눈다.
    BOX가 바뀌는 자리(P/W BOX | LODER | S/D …)는 굵고 진하게,
@@ -1422,7 +1426,7 @@
 .mx-table .mx-box-start,
 .mx-table th.mx-box-start,
 .mx-table td.mx-box-start {
-  border-left: 3px solid var(--primary, #002050);
+  border-left: 2px solid var(--border-strong, #d1d6db);
 }
 /* 3행 leaf 헤더(사급·제작·도급) — 크기는 2행과 같게 두고 색·굵기로만 한 단 낮춘다.
    10px 은 눈에 잘 안 들어오는 데다 타입 램프에도 없는 크기였다. */
