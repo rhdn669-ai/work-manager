@@ -805,7 +805,7 @@ function LeaveTab({
                           <span
                             title={l.cancelReason}
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               color: 'var(--danger)',
                               textAlign: 'right',
                               maxWidth: 220,
@@ -1107,7 +1107,7 @@ function OvertimeTab({
                           <span
                             title={r.rejectionReason}
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               color: 'var(--danger)',
                               textAlign: 'right',
                               maxWidth: 220,

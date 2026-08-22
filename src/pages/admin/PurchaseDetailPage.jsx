@@ -2039,12 +2039,12 @@ export default function PurchaseDetailPage() {
         }
         @media (max-width: 390px) {
           .purchase-detail-top-actions { flex-wrap: nowrap !important; overflow-x: auto; }
-          .purchase-detail-top-actions .btn { font-size: 11px !important; padding: 0 6px !important; white-space: nowrap; flex-shrink: 0; }
+          .purchase-detail-top-actions .btn { font-size: 12px !important; padding: 0 6px !important; white-space: nowrap; flex-shrink: 0; }
           .bom-flat-table tbody tr { min-height: 36px !important; }
           .u-right-numeric input { min-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         }
         @media (max-width: 360px) {
-          .bom-flat-table th { padding: 4px 2px !important; font-size: 10px; min-width: 35px; }
+          .bom-flat-table th { padding: 4px 2px !important; font-size: 12px; min-width: 35px; }
           .bom-flat-table td { padding: 4px 2px !important; }
           .bom-flat-table tbody tr { min-height: 34px !important; }
         }

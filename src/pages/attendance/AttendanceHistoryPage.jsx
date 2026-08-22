@@ -263,7 +263,7 @@ export default function AttendanceHistoryPage() {
                           {r.status === 'pending' && (
                             <span
                               style={{
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: 700,
                                 color: 'var(--accent)',
                                 background: 'transparent',
@@ -279,7 +279,7 @@ export default function AttendanceHistoryPage() {
                           {r.status === 'rejected' && (
                             <span
                               style={{
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: 700,
                                 color: 'var(--danger)',
                                 background: 'var(--danger-tint)',

@@ -329,7 +329,7 @@ export default function UnassignedReportPage() {
 
       <div
         className="ua-legend"
-        style={isXSmall ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, fontSize: 10 } : undefined}
+        style={isXSmall ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, fontSize: 12 } : undefined}
       >
         <span>
           <span className="ua-legend-swatch assigned" />
@@ -396,7 +396,7 @@ export default function UnassignedReportPage() {
                   >
                     {r.name}
                     {r.position && (
-                      <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>
+                      <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', marginLeft: 4 }}>
                         {r.position}
                       </span>
                     )}
@@ -454,7 +454,7 @@ export default function UnassignedReportPage() {
                       scope="col"
                       key={d}
                       className={`day-col ${dowCls} ${hoverDay === d ? 'col-hover' : ''}`}
-                      style={{ minWidth: 18, maxWidth: 24, fontSize: 10, width: 22 }}
+                      style={{ minWidth: 18, maxWidth: 24, fontSize: 12, width: 22 }}
                     >
                       {d}
                     </th>

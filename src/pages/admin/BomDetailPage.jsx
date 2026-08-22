@@ -672,7 +672,7 @@ export default function BomDetailPage() {
           .bom-flat-table { font-size: 12px; }
           .bom-flat-table th, .bom-flat-table td { padding: 6px 4px !important; }
           .bom-flat-table th { min-width: 60px; }
-          .bom-supplier-header td, .bom-supplier-subtotal td { font-size: 11px; padding: 4px 8px !important; }
+          .bom-supplier-header td, .bom-supplier-subtotal td { font-size: 12px; padding: 4px 8px !important; }
         }
         @media (max-width: 390px) {
           .bom-flat-table th { min-width: 40px; }

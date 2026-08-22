@@ -122,7 +122,7 @@
 }
 .q-axis {
   fill: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -138,7 +138,7 @@
 }
 .q-tip-text {
   fill: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -169,7 +169,7 @@
 }
 .q-donut-cap {
   fill: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .q-legend {
   list-style: none;
@@ -233,7 +233,7 @@
   border-radius: 5px;
   background: var(--bg-subtle);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
 }
@@ -251,7 +251,7 @@
 }
 .q-recent-sub {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -285,7 +285,7 @@
 }
 .q-alert-sub {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }

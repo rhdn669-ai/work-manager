@@ -40,7 +40,7 @@ export default function LeaveBalancePage() {
           <div className="card-body">
             <div className="balance-overview" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               <div className="balance-item" style={{ flex: '1 1 50px', minWidth: 50 }}>
-                <div className="balance-label" style={{ fontSize: 11 }}>
+                <div className="balance-label" style={{ fontSize: 12 }}>
                   누적 발생
                 </div>
                 <div className="balance-value" style={{ fontSize: 18 }}>
@@ -48,7 +48,7 @@ export default function LeaveBalancePage() {
                 </div>
               </div>
               <div className="balance-item" style={{ flex: '1 1 50px', minWidth: 50 }}>
-                <div className="balance-label" style={{ fontSize: 11 }}>
+                <div className="balance-label" style={{ fontSize: 12 }}>
                   사용
                 </div>
                 <div className="balance-value used" style={{ fontSize: 18 }}>
@@ -56,7 +56,7 @@ export default function LeaveBalancePage() {
                 </div>
               </div>
               <div className="balance-item" style={{ flex: '1 1 50px', minWidth: 50 }}>
-                <div className="balance-label" style={{ fontSize: 11 }}>
+                <div className="balance-label" style={{ fontSize: 12 }}>
                   잔여
                 </div>
                 <div className="balance-value remaining" style={{ fontSize: 18 }}>

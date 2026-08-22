@@ -934,7 +934,7 @@ export default function SiteListPage() {
           </div>
           <div className="form-group">
             <label>
-              아이콘 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(선택, 미선택 시 유형별 기본)</span>
+              아이콘 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(선택, 미선택 시 유형별 기본)</span>
             </label>
             <div className="icon-picker-grid">
               <button
@@ -943,7 +943,7 @@ export default function SiteListPage() {
                 onClick={() => setForm({ ...form, icon: '' })}
                 title="기본"
               >
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>기본</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>기본</span>
               </button>
               {PROJECT_ICONS.map((ic) => {
                 const c = getIconColor(form.iconColor);
@@ -967,7 +967,7 @@ export default function SiteListPage() {
           </div>
           <div className="form-group">
             <label>
-              아이콘 배경색 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(선택)</span>
+              아이콘 배경색 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(선택)</span>
             </label>
             <div className="color-picker-grid">
               {ICON_COLORS.map((c) => (
@@ -980,7 +980,7 @@ export default function SiteListPage() {
                   aria-label={c.label}
                   style={c.bg ? { background: c.bg, borderColor: c.fg + '33' } : undefined}
                 >
-                  {c.bg ? '' : <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>기본</span>}
+                  {c.bg ? '' : <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>기본</span>}
                 </button>
               ))}
             </div>
@@ -1007,7 +1007,7 @@ export default function SiteListPage() {
             </div>
             <div className="form-group">
               <label>
-                종료 년/월 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(선택)</span>
+                종료 년/월 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(선택)</span>
               </label>
               <div style={{ display: 'flex', gap: 6 }}>
                 <Select
@@ -1062,7 +1062,7 @@ export default function SiteListPage() {
           </div>
           <div className="form-group">
             <label>
-              지출 합산 대상 프로젝트 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(선택)</span>
+              지출 합산 대상 프로젝트 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(선택)</span>
             </label>
             <p className="field-hint" style={{ marginTop: 0, marginBottom: 6 }}>
               선택한 프로젝트의 지출이 이 프로젝트 화면에 읽기 전용으로 표시되고 합계에 포함됩니다.

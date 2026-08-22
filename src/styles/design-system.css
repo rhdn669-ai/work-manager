@@ -1149,7 +1149,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 .task-ic {
@@ -1164,7 +1164,7 @@ body {
 .task-dday {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   padding: 2px 8px;
@@ -1186,7 +1186,7 @@ body {
 .task-prio {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
@@ -1374,7 +1374,7 @@ body {
   border-top: 1px solid var(--border);
 }
 .kb-card__date {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 .kb-card__actions {
@@ -1384,7 +1384,7 @@ body {
 .kb-card__actions .btn {
   padding: 3px 8px;
   min-height: 28px;
-  font-size: 11px;
+  font-size: 12px;
 }
 @media (max-width: 768px) {
   .kb-board {
@@ -1445,7 +1445,7 @@ body {
   .kb-card__actions .btn {
     padding: 2px 6px;
     min-height: 24px;
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -2011,7 +2011,7 @@ body {
   stroke-linejoin: round;
 }
 .bn-more-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   line-height: 1.25;
@@ -2145,7 +2145,7 @@ body {
   }
   .table th {
     padding: 6px 5px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .table td {
     padding: 5px 5px;

@@ -206,7 +206,7 @@
 }
 .board-table-dense th {
   padding: 8px 8px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .board-table-dense td {
   padding: 8px 8px;
@@ -222,17 +222,17 @@
   border-radius: 2px;
 }
 .cell-no {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--grey-400);
   font-variant-numeric: tabular-nums;
 }
 .proj-group {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   margin-top: 1px;
 }
 .cell-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-light);
   white-space: nowrap;
   overflow: hidden;
@@ -255,13 +255,13 @@
   white-space: nowrap;
 }
 .dd-none {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--grey-300);
 }
 
 /* 정역 배지 (정=파랑 / 역=빨강) */
 .dir-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 5px;
@@ -328,7 +328,7 @@
   border-color: #9ae6b4;
 }
 .jaip-dots b {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--grey-400);
   margin-left: 2px;
@@ -345,7 +345,7 @@
   gap: 3px;
 }
 .dtag {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -879,7 +879,7 @@
 /* 체크 일자 표시 (자재입고 칩·검수/출고 토글) */
 .chip-date {
   margin-left: 6px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   opacity: 0.75;
 }
@@ -912,7 +912,7 @@
 
 /* 불량 검수자(체크한 직원) 자동 표시 */
 .checker-name {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #276749;
   background: var(--status-done-bg, #e7f4ec);
@@ -931,7 +931,7 @@
   border-radius: 20px;
   background: var(--status-done-bg, #e7f4ec);
   color: #276749;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1022,7 +1022,7 @@
 }
 .worker-type.sm {
   padding: 2px 7px;
-  font-size: 11px;
+  font-size: 12px;
 }
 /* 유형을 안 고른 불량 — 필수값이 빈 상태임을 눈에 띄게 */
 .worker-type.is-none {
@@ -1082,7 +1082,7 @@
   border-color: #bbf7d0;
 }
 .defect-ba-head {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   margin-bottom: 5px;
   text-align: center;
@@ -1112,7 +1112,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -1133,7 +1133,7 @@
   height: 84px;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -1285,7 +1285,7 @@
   border-radius: 999px;
   background: var(--primary-soft, #e7ebf2);
   color: var(--primary, #002050);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 .mx-prog {
@@ -1333,7 +1333,7 @@
   background: var(--success);
 }
 .mx-prog-num {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #4e5968;
   min-width: 30px;
@@ -1530,7 +1530,7 @@
 .pr-month-load-title em {
   font-style: normal;
   font-weight: 400;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary, #8a94a6);
 }
 .pr-month-chip {

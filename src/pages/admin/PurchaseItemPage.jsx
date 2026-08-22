@@ -840,7 +840,7 @@ export default function PurchaseItemPage() {
           .inline-edit-table td { min-width: 0; }
         }
         @media (max-width: 390px) {
-          .inline-edit-table th, .inline-edit-table td { padding: 6px 4px; font-size: 11px; }
+          .inline-edit-table th, .inline-edit-table td { padding: 6px 4px; font-size: 12px; }
           .inline-edit-table th { min-width: 40px; }
         }
         @media (max-width: 360px) {
@@ -1743,7 +1743,7 @@ export default function PurchaseItemPage() {
 
         <div className="form-group">
           <label>
-            구매처 선택 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(선택)</span>
+            구매처 선택 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(선택)</span>
           </label>
           <Select
             value={groupBulkSupplier}
