@@ -10,7 +10,6 @@ export const DEFECT_TYPES = [
   { key: 'defectStickerHole', label: '잔공 누락' },
   { key: 'defectEyeMarking', label: '아이마킹' }, // 2026-08-22 대표님
   { key: 'defectLabelMissing', label: '라벨 누락' }, // 2026-08-22 대표님
-  { key: 'defectLabeling', label: '식별표시' },
   { key: 'defectCableTie', label: '케이블타이·후크밴드' },
   { key: 'defectDuct', label: 'DUCT 미준수' },
   { key: 'defectTorque', label: 'Torque 체결미흡' },
@@ -29,6 +28,7 @@ export const defectTypeFields = () =>
 const OLD_LABELS = {
   '스티커·잔공누락': 'defectStickerHole', // → 잔공 누락
   '아이마킹 누락': 'defectEyeMarking', // → 아이마킹
+  식별표시: 'defectLabelMissing', // 「라벨 누락」과 겹쳐 목록에서 뺐다 — 그쪽으로 모은다 (2026-08-22 대표님)
 };
 
 // 라벨 → 키. 현장에서 고른 유형 문자열을 집계 키로 되돌린다.

@@ -644,6 +644,10 @@ describe('불량 유형 집계', () => {
     expect(countByType([{ 유형: '아이마킹 누락' }, { 유형: '아이마킹' }])).toEqual({ defectEyeMarking: 2 });
   });
 
+  it('목록에서 뺀 「식별표시」는 「라벨 누락」으로 모인다', () => {
+    expect(countByType([{ 유형: '식별표시' }, { 유형: '라벨 누락' }])).toEqual({ defectLabelMissing: 2 });
+  });
+
   it('유형을 고르지 않은 건은 어느 칸에도 안 들어간다 — 그 수를 따로 셀 수 있어야 한다', () => {
     const list = [{ 유형: '' }, { 유형: '조립불량' }, { 유형: '없는유형' }];
     expect(countByType(list)).toEqual({ defectAssembly: 1 });
