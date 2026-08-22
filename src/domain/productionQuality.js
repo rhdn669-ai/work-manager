@@ -58,7 +58,7 @@ function inspectorsOf(panel) {
 // 판넬은 검사수가 1이 되어, 불량 3건이 불량률 300% 로 잡혔다 (2026-08-22 대표님).
 // 이름을 어디에 적었느냐에 따라 지표가 6배씩 흔들리면 추이를 볼 수 없다.
 // 판넬을 검사하면 실물 BOX 를 다 보는 것이므로 그 수로 고정한다(MP 는 실물이 아니라 뺀다).
-function inspectedUnits(panel) {
+function inspectedUnits() {
   const boxes = BUPMOK.filter((b) => b !== 'MP');
   return boxes.length || 1;
 }
@@ -87,7 +87,7 @@ export function panelToNcrFacts(panel) {
     processType: '출하검사',
     // 검사수 = 그 판넬에서 작업자가 배정된 부품 수. 1(판넬 1대)로 두면
     // 불량 3건짜리 판넬이 불량률 300% 로 잡혀 추이가 망가진다.
-    inspectedQty: inspectedUnits(panel),
+    inspectedQty: inspectedUnits(),
     defectQty: defectUnits(defects), // 불량이 난 BOX 수 — 불량률이 100% 를 넘지 않게
     defectCount: defects.length, // 불량 건수(참고용) — 유형별 집계와 맞는 숫자
     openQty: open,
@@ -111,7 +111,7 @@ export function panelToShipmentFacts(panel) {
     projectNo: panel.프로젝트 || '',
     equipmentName: panel.자재 || '',
     inspector: inspectorsOf(panel),
-    inspectedQty: inspectedUnits(panel), // 화면에서는 감췄지만 월별 불량률 추이가 쓴다
+    inspectedQty: inspectedUnits(), // 화면에서는 감췄지만 월별 불량률 추이가 쓴다
     defectQty: defectUnits(defects),
     defectCount: defects.length,
     defectDetail: describe(defects), // 현장에서 적은 불량 내용 그대로
