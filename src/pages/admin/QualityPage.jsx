@@ -7,6 +7,8 @@ import { QUALITY_TABS, VERDICT } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
 import { defectRateTargetOf } from '../../domain/qualityGoalSeed';
 import { AreaChart, Donut, Sparkline } from '../../components/quality/QualityCharts';
+// 불량 유형 분포 — 등록 화면과 같은 목록을 쓴다 (유형을 더하면 차트도 함께 늘어난다)
+import { DEFECT_TYPES } from '../../domain/defectTypes';
 import QualityAssetLedger from '../../components/quality/QualityAssetLedger';
 import QualityRecordLedger from '../../components/quality/QualityRecordLedger';
 import { subscribeAssets } from '../../services/qualityAssetService';
@@ -44,15 +46,6 @@ function recentMonths(n = 6) {
   }
   return out;
 }
-
-// 불량 유형 분포 — 출하검사 실적의 유형별 건수 합계
-const DEFECT_TYPES = [
-  { key: 'defectWiring', label: '배선정리', color: 'var(--chart-1)' },
-  { key: 'defectAssembly', label: '조립불량', color: 'var(--chart-2)' },
-  { key: 'defectCleaning', label: '크리닝', color: 'var(--chart-3)' },
-  { key: 'defectCableTie', label: '케이블타이', color: 'var(--accent)' },
-  { key: 'defectEtc', label: '기타', color: 'var(--grey-400)' },
-];
 
 function KpiCard({ item }) {
   return (

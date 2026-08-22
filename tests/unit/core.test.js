@@ -17,7 +17,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
-import { countByType, countUnclassified } from '../../src/domain/defectTypes';
+import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import {
   deriveBoxStatus,
   boxDefectChecked,
@@ -652,5 +652,15 @@ describe('불량 유형 집계', () => {
     const list = [{ 유형: '' }, { 유형: '조립불량' }, { 유형: '없는유형' }];
     expect(countByType(list)).toEqual({ defectAssembly: 1 });
     expect(countUnclassified(list)).toBe(2);
+  });
+
+  it('모든 유형에 차트 색이 있다 — 색이 없으면 분포 차트에서 빠진다', () => {
+    const 색없음 = DEFECT_TYPES.filter((t) => !t.color).map((t) => t.label);
+    expect(색없음).toEqual([]);
+  });
+
+  it('유형 키가 겹치지 않는다', () => {
+    const keys = DEFECT_TYPES.map((t) => t.key);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

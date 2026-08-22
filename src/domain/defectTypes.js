@@ -1,19 +1,22 @@
 // 불량 유형 — 원본 서식 F03(출하검사 실적)의 유형 컬럼을 옮긴 뒤 현장에서 쓰는 항목을 더한다.
 // 생산현장(불량 등록)과 품질보증(부적합·출하검사 실적 집계)이 같은 목록을 써야
 // 현장에서 체크한 유형이 그대로 대장에 집계된다. 여기가 유일한 출처.
+// color 는 품질보증 「불량 유형 분포」 차트가 쓴다. 유형을 여기에만 더하면
+// 등록 화면과 차트가 같이 늘어난다 — 예전에는 차트가 제 목록을 따로 들고 있어
+// 새 유형(오배선·아이마킹…)이 저장돼도 그려지지 않았다 (2026-08-22 대표님).
 export const DEFECT_TYPES = [
-  { key: 'defectCable', label: '케이블' },
-  { key: 'defectWiring', label: '배선정리' },
-  { key: 'defectMiswiring', label: '오배선' }, // 2026-08-22 대표님
-  { key: 'defectAssembly', label: '조립불량' },
-  { key: 'defectCleaning', label: '크리닝' },
-  { key: 'defectStickerHole', label: '잔공 누락' },
-  { key: 'defectEyeMarking', label: '아이마킹' }, // 2026-08-22 대표님
-  { key: 'defectLabelMissing', label: '라벨 누락' }, // 2026-08-22 대표님
-  { key: 'defectCableTie', label: '케이블타이·후크밴드' },
-  { key: 'defectDuct', label: 'DUCT 미준수' },
-  { key: 'defectTorque', label: 'Torque 체결미흡' },
-  { key: 'defectEtc', label: '기타' },
+  { key: 'defectCable', label: '케이블', color: '#3b82f6' },
+  { key: 'defectWiring', label: '배선정리', color: '#8b5cf6' },
+  { key: 'defectMiswiring', label: '오배선', color: '#ef4444' }, // 2026-08-22 대표님
+  { key: 'defectAssembly', label: '조립불량', color: '#06b6d4' },
+  { key: 'defectCleaning', label: '크리닝', color: '#22c55e' },
+  { key: 'defectStickerHole', label: '잔공 누락', color: '#f59e0b' },
+  { key: 'defectEyeMarking', label: '아이마킹', color: '#ec4899' }, // 2026-08-22 대표님
+  { key: 'defectLabelMissing', label: '라벨 누락', color: '#14b8a6' }, // 2026-08-22 대표님
+  { key: 'defectCableTie', label: '케이블타이·후크밴드', color: '#f97316' },
+  { key: 'defectDuct', label: 'DUCT 미준수', color: '#6366f1' },
+  { key: 'defectTorque', label: 'Torque 체결미흡', color: '#84cc16' },
+  { key: 'defectEtc', label: '기타', color: '#94a3b8' },
 ];
 
 export const DEFECT_TYPE_LABELS = DEFECT_TYPES.map((t) => t.label);
