@@ -1717,3 +1717,13 @@ body:has(.pr-page) .main-content {
 .mx-ship-empty {
   opacity: 0.35;
 }
+
+/* 유형을 고르지 않은 불량 — 집계에서 빠지므로 눈에 띄게 알린다 (2026-08-22 대표님) */
+.defect-untyped-warn {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-weight: 400;
+  font-size: var(--font-xs);
+  color: var(--status-cancel-fg, #d6303f);
+}

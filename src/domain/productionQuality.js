@@ -1,5 +1,5 @@
 import { BUPMOK } from './production';
-import { DEFECT_TYPES, countByType } from './defectTypes';
+import { DEFECT_TYPES, countByType, countUnclassified } from './defectTypes';
 
 // 생산현황 판넬 → 품질보증 「출하·부적합 > 부적합 실적」 연동 규칙 (2026-07-31 대표님 확정)
 //  · 판넬(호기) 1대 = 부적합 1건        · 처리 전(미완료)·후(완료) 불량 모두 대상
@@ -60,7 +60,7 @@ function inspectedUnits(panel) {
 }
 
 // 유형 칸은 0으로 시작해야 이전 집계가 남지 않는다(유형을 바꿨을 때 옛 값이 그대로 붙는 것 방지)
-const zeroTypes = () => Object.fromEntries(DEFECT_TYPES.map((t) => [t.key, 0]));
+const zeroTypes = () => ({ ...Object.fromEntries(DEFECT_TYPES.map((t) => [t.key, 0])), defectUnclassified: 0 });
 
 // 판넬 → 부적합 실적의 "생산 유래 필드"만. 불량이 없으면 null.
 export function panelToNcrFacts(panel) {
@@ -84,6 +84,7 @@ export function panelToNcrFacts(panel) {
     // 현장에서 고른 불량 유형을 그대로 유형별 건수로 집계
     ...zeroTypes(),
     ...countByType(defects),
+    defectUnclassified: countUnclassified(defects), // 유형을 안 고른 건 — 그냥 두면 집계에서 사라진다
   };
 }
 
@@ -104,5 +105,6 @@ export function panelToShipmentFacts(panel) {
     defectDetail: describe(defects), // 현장에서 적은 불량 내용 그대로
     ...zeroTypes(),
     ...countByType(defects),
+    defectUnclassified: countUnclassified(defects),
   };
 }

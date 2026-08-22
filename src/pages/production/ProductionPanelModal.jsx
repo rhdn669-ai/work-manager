@@ -173,7 +173,12 @@ export default function ProductionPanelModal({
     if (items.length === 0 && (round === 2 || !canEdit)) return null; // 1차는 「불량 없음」 체크가 있어 늘 보인다
     return (
       <div key={round}>
-        <div className="defect-round-label">{round}차 불량</div>
+        <div className="defect-round-label">
+          {round}차 불량
+          {items.some((it) => (it.내용 || it.사진) && !it.유형) && (
+            <em className="defect-untyped-warn">유형을 고르지 않은 건이 있습니다 — 분포 집계에서 빠집니다</em>
+          )}
+        </div>
         <div className="defect-list">
           {items.map((it, i) => (
             <div className={`defect-card ${it.완료 ? 'done' : ''}`} key={i}>

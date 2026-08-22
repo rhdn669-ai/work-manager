@@ -142,11 +142,17 @@ function Overview({ assets, records, now }) {
   const [sliceView, setSliceView] = useState('all');
   const slices = useMemo(() => {
     const src = sliceView === 'all' ? records : records.filter((r) => r.customerName === sliceView);
-    return DEFECT_TYPES.map((t) => ({
+    const byType = DEFECT_TYPES.map((t) => ({
       label: t.label,
       color: t.color,
       value: src.reduce((a, r) => a + (Number(r[t.key]) || 0), 0),
-    })).filter((x) => x.value > 0);
+    }));
+    // 유형을 고르지 않은 불량 — 이걸 빼 두면 총 불량 수와 분포 합계가 조용히 어긋난다.
+    // 몇 건이 분류가 안 됐는지 눈에 보여야 현장에서 채워 넣을 수 있다 (2026-08-22 대표님).
+    const unclassified = src.reduce((a, r) => a + (Number(r.defectUnclassified) || 0), 0);
+    return [...byType, { label: '유형 미지정', color: 'var(--text-muted)', value: unclassified }].filter(
+      (x) => x.value > 0,
+    );
   }, [records, sliceView]);
   const sliceTotal = slices.reduce((a, x) => a + x.value, 0);
   // 발주사별로 유형 분포가 다른지 보려면 전환이 필요하다(추이 차트와 같은 방식)
