@@ -170,6 +170,15 @@
   --status-cancel-bg: #fdebec;
   --status-cancel-fg: #d6303f; /* 취소/경고 = 빨강 */
 
+  /* 생산현황 매트릭스 전용 — 배지용 연한 톤은 54px 짜리 작은 칸에서 거의 흰색으로 보인다.
+     칸이 작을수록 색이 진해야 채워진 칸과 빈 칸이 멀리서도 갈린다 (2026-08-22 대표님) */
+  --mx-done-bg: #dcefe4;
+  --mx-done-fg: #14713a;
+  --mx-defect-bg: #fbdfe1;
+  --mx-defect-fg: #c42a38;
+  --mx-head-2: #eef2f7; /* 머리글 2행 — 박스명(네이비) 아래 단계 */
+  --mx-head-3: #f6f8fb; /* 머리글 3행 — 가장 옅게 */
+
   /* BRAND AUDIT: 금융 지표(금액·일수·건수) 셀에 --success(초록) 사용 금지 —
      매출·지출 등 주요 수치는 반드시 --primary(네이비) 또는 --text 계열로 표시.
      --success는 '완료 상태 배지'에만 허용. var(--danger)는 음수·초과에만 허용.

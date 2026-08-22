@@ -1185,7 +1185,7 @@
   border-left: 1px solid rgba(255, 255, 255, 0.14);
 }
 .mx-sub-row th {
-  background: #f7f9fb;
+  background: var(--mx-head-2);
   color: var(--text-light, #4e5968);
   font-weight: 700;
   font-size: 12px;
@@ -1200,7 +1200,7 @@
   position: sticky;
   top: 83px; /* 1행 40 + 2행 43 */
   z-index: 3;
-  background: #f7f9fb;
+  background: var(--mx-head-3);
 }
 .mx-rot {
   white-space: nowrap;
@@ -1393,11 +1393,21 @@
   font-weight: 800;
   font-size: 13px;
 }
+/* 종합 상태 — 표에서 가장 먼저 눈에 들어와야 하는 칸 */
+.mx-table td.mx-boxstate {
+  border-left: 2px solid var(--border-strong, #d1d6db);
+  font-size: var(--font-sm);
+}
+/* 빈 줄(프로젝트 이름을 아직 안 적은 행)은 한 단 물러나 보이게 */
+.mx-table tbody tr:has(td.mx-sticky:empty) td {
+  opacity: 0.55;
+}
 /* 체크 일자(MM-DD) 표기 셀 — 54px 안에 들어가도록 축소 */
 .mx-dcell {
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: 700;
   letter-spacing: -0.4px;
+  color: var(--mx-done-fg);
 }
 .mx-boxstate {
   border-left: 2px solid var(--border-strong, #d1d6db);
@@ -1412,7 +1422,7 @@
 .mx-table .mx-box-start,
 .mx-table th.mx-box-start,
 .mx-table td.mx-box-start {
-  border-left: 2px solid var(--border-strong, #d1d6db);
+  border-left: 3px solid var(--primary, #002050);
 }
 /* 3행 leaf 헤더(사급·제작·도급) — 크기는 2행과 같게 두고 색·굵기로만 한 단 낮춘다.
    10px 은 눈에 잘 안 들어오는 데다 타입 램프에도 없는 크기였다. */

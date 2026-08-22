@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { isDefectOnly } from '../../utils/workspace';
 import BottomNav from './BottomNav';
 import { ensureBodyScrollUnlockedIfIdle } from './bodyScrollLock';
 import HintReminderBanner from './HintReminderBanner';
@@ -15,6 +16,8 @@ import { useDialog } from './useDialog';
 export default function Layout() {
   const { isImpersonating, impersonator, userProfile, stopImpersonation, isAdmin } = useAuth();
   const { alert } = useDialog();
+  // 현장 공용 아이디 — 생산현황 한 화면만 쓰므로 사이드바·하단탭이 필요 없다 (2026-08-22 대표님)
+  const defectOnly = isDefectOnly(userProfile);
   // 사이드바: 관리자만 사용. PC는 기본 열림, 모바일은 기본 닫힘
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -171,11 +174,11 @@ export default function Layout() {
             - 관리자: 항상 (PC는 기본 열림, 모바일은 햄버거로 토글)
             - 비관리자 PC: 항상 (BottomNav 대용)
             - 비관리자 모바일: 미표시 (BottomNav만 사용) */}
-        {(isAdmin || !isMobile) && <Sidebar isOpen={sidebarOpen} />}
+        {!defectOnly && (isAdmin || !isMobile) && <Sidebar isOpen={sidebarOpen} />}
         {isAdmin && isMobile && sidebarOpen && (
           <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         )}
-        <main className={`main-content ${(isAdmin || !isMobile) && sidebarOpen ? '' : 'expanded'}`}>
+        <main className={`main-content ${!defectOnly && (isAdmin || !isMobile) && sidebarOpen ? '' : 'expanded'}`}>
           {/* 힌트 설정 안내 배너 — 고정 헤더 아래 보이는 영역 안에서 렌더(헤더 뒤에 가려져
               빈 공간을 만들던 문제 수정). 힌트 미설정 계정에만 노출. */}
           <HintReminderBanner />
@@ -184,7 +187,7 @@ export default function Layout() {
           </Suspense>
         </main>
       </div>
-      {!isAdmin && <BottomNav />}
+      {!isAdmin && !defectOnly && <BottomNav />}
       {exitToast && (
         <div className="exit-toast" role="status" aria-live="polite">
           한 번 더 누르면 종료됩니다

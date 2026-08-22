@@ -629,7 +629,7 @@ function MpGroup({ p, st, sc, canEdit, onToggle }) {
             key={k}
             className={`mx-cell mx-boxmat${ki === 0 ? ' mx-box-start' : ''}`}
             style={{
-              background: s === '완료' ? 'var(--status-done-bg)' : s === '문제' ? 'var(--status-cancel-bg)' : undefined,
+              background: s === '완료' ? 'var(--mx-done-bg)' : s === '문제' ? 'var(--mx-defect-bg)' : undefined,
               color: c.dot,
               cursor: canEdit ? 'pointer' : 'default',
             }}
@@ -676,7 +676,7 @@ function BoxGroup({
             key={k}
             // BOX가 바뀌는 첫 칸은 굵게, BOX 안의 자재 그룹 경계는 얇게 — 두 단계로 구분한다
             className={`mx-cell mx-boxmat mx-dcell${ki === 0 ? ' mx-box-start' : GRP_START.has(k) ? ' mx-grp-start' : ''}`}
-            style={{ background: on ? 'var(--status-done-bg)' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
+            style={{ background: on ? 'var(--mx-done-bg)' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onMat(k)}
             title={k}
           >
@@ -688,8 +688,8 @@ function BoxGroup({
         className="mx-cell mx-boxdefect mx-dcell mx-grp-start"
         style={{
           cursor: 'pointer',
-          color: defectDone ? 'var(--status-done-fg)' : 'var(--status-cancel-fg)',
-          background: defect ? 'var(--status-cancel-bg)' : defectDone ? 'var(--status-done-bg)' : undefined,
+          color: defectDone ? 'var(--mx-done-fg)' : 'var(--mx-defect-fg)',
+          background: defect ? 'var(--mx-defect-bg)' : defectDone ? 'var(--mx-done-bg)' : undefined,
         }}
         onClick={canDefect ? onDefect : undefined}
         title={
@@ -711,7 +711,7 @@ function BoxGroup({
       </td>
       <td
         className="mx-cell mx-boxship mx-dcell"
-        style={{ cursor: 'pointer', background: shipCount > 0 ? 'var(--status-done-bg)' : undefined }}
+        style={{ cursor: 'pointer', background: shipCount > 0 ? 'var(--mx-done-bg)' : undefined }}
         onClick={onShip}
         title={shipCount > 0 ? `출고사진 ${shipCount}/5 (클릭: 보기·등록)` : '출고사진 등록 (전면·후면·좌측·우측·상부)'}
       >
