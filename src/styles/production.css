@@ -1742,21 +1742,77 @@ body:has(.pr-page) .main-content {
   color: var(--status-cancel-fg, #d6303f);
 }
 
-/* 현장 공용 아이디 안내 — 무엇을 할 수 있는지 화면 맨 위에 알린다 (2026-08-22 대표님) */
-.pr-defect-only-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 10px 14px;
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-sm);
+/* 현장 공용 아이디 — 제목 옆 작은 배지 하나로 (2026-08-22 대표님) */
+.pr-shared-tag {
+  border: none;
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
   background: var(--primary-soft, #e8edf5);
   color: var(--primary);
-  font-size: var(--font-base);
-  line-height: 1.45;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  vertical-align: middle;
 }
-.pr-defect-only-note svg {
-  flex-shrink: 0;
-  margin-top: 2px;
+
+/* 사진 위 삭제 버튼 — 예전에는 항목을 통째로 지우는 수밖에 없었다 (2026-08-22 대표님) */
+.defect-ba-photo-wrap {
+  position: relative;
+  display: block;
+}
+.defect-photo-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+.defect-photo-del:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+/* 공용 아이디 — 쓰는 사람 이름을 먼저 받는 화면 */
+.pr-worker-ask {
+  max-width: 420px;
+  margin: 64px auto;
+  padding: 28px;
+  border-radius: var(--radius-lg, 14px);
+  background: var(--bg-card);
+  box-shadow: 0 4px 16px rgba(0, 32, 80, 0.08);
+  text-align: center;
+}
+.pr-worker-ask h2 {
+  margin: 0 0 6px;
+}
+.pr-worker-ask p {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: var(--font-base);
+  line-height: 1.5;
+}
+.pr-worker-ask form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pr-worker-ask input {
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-lg);
+  text-align: center;
+}
+.pr-worker-ask .btn {
+  height: 46px;
 }

@@ -239,13 +239,26 @@ export default function ProductionPanelModal({
                   {upSlots[slotKey(part, round, i, '사진')] !== undefined ? (
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '사진')]} />
                   ) : it.사진 ? (
-                    <img
-                      loading="lazy"
-                      className="defect-ba-photo"
-                      src={it.사진}
-                      alt="등록 사진"
-                      onClick={() => openPhoto(it.사진)}
-                    />
+                    <div className="defect-ba-photo-wrap">
+                      <img
+                        loading="lazy"
+                        className="defect-ba-photo"
+                        src={it.사진}
+                        alt="등록 사진"
+                        onClick={() => openPhoto(it.사진)}
+                      />
+                      {canDefect && (
+                        <button
+                          type="button"
+                          className="defect-photo-del"
+                          aria-label="등록 사진 삭제"
+                          title="사진 삭제"
+                          onClick={() => mutSec((x) => delete x.항목[i].사진)}
+                        >
+                          <Icon name="close" />
+                        </button>
+                      )}
+                    </div>
                   ) : canDefect ? (
                     <button className="defect-ba-add before" onClick={() => openCamera(part, round, i, '사진')}>
                       <Icon name="image" className="btn-ic" />
@@ -262,13 +275,26 @@ export default function ProductionPanelModal({
                   {upSlots[slotKey(part, round, i, '조치사진')] !== undefined ? (
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '조치사진')]} />
                   ) : it.조치사진 ? (
-                    <img
-                      loading="lazy"
-                      className="defect-ba-photo"
-                      src={it.조치사진}
-                      alt="조치 사진"
-                      onClick={() => openPhoto(it.조치사진)}
-                    />
+                    <div className="defect-ba-photo-wrap">
+                      <img
+                        loading="lazy"
+                        className="defect-ba-photo"
+                        src={it.조치사진}
+                        alt="조치 사진"
+                        onClick={() => openPhoto(it.조치사진)}
+                      />
+                      {canDefect && (
+                        <button
+                          type="button"
+                          className="defect-photo-del"
+                          aria-label="조치 사진 삭제"
+                          title="사진 삭제"
+                          onClick={() => mutSec((x) => delete x.항목[i].조치사진)}
+                        >
+                          <Icon name="close" />
+                        </button>
+                      )}
+                    </div>
                   ) : canDefect ? (
                     <button className="defect-ba-add after" onClick={() => openCamera(part, round, i, '조치사진')}>
                       <Icon name="image" className="btn-ic" />

@@ -140,6 +140,17 @@ export default function ProductionPage() {
   //   canEdit  : 자재 입고·일정·판넬 추가/삭제까지 (생산·품질 권한자)
   //   canDefect: 불량 확인·조치만 (현장 공용 아이디도 포함)
   const defectOnly = isDefectOnly(userProfile);
+  // 공용 아이디는 여러 사람이 함께 쓴다. 계정 이름("공용아이디")으로 남기면 누가 했는지 알 수 없어,
+  // 쓰는 사람 이름을 한 번 받아 이 브라우저에 기억해 둔다 (2026-08-22 대표님).
+  const [sharedWorker, setSharedWorker] = useState(() => sessionStorage.getItem('wmSharedWorker') || '');
+  const [askWorker, setAskWorker] = useState('');
+  const workerName = defectOnly ? sharedWorker : userProfile?.name || '';
+  function saveWorker(name) {
+    const v = String(name || '').trim();
+    if (!v) return;
+    sessionStorage.setItem('wmSharedWorker', v);
+    setSharedWorker(v);
+  }
   const allowed = canEnterProduction(userProfile); // 화면에 들어올 수 있는가
   const canEdit = canProduction(userProfile); // 표를 고칠 수 있는가
   const backfilled = useRef(false);
@@ -242,20 +253,57 @@ export default function ProductionPage() {
 
   if (userProfile && !allowed) return <Navigate to="/dashboard" replace />;
 
+  // 공용 아이디인데 이름을 아직 안 적었다면 먼저 묻는다.
+  // 이름 없이 조치하면 기록에 「공용아이디」만 남아 나중에 누가 했는지 알 수 없다.
+  if (defectOnly && !sharedWorker) {
+    return (
+      <div className="pr-page">
+        <div className="pr-worker-ask">
+          <h2>작업자 이름</h2>
+          <p>공용 아이디입니다. 오늘 쓰시는 분 이름을 적어 주세요. 불량 등록·조치에 이 이름이 남습니다.</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveWorker(askWorker);
+            }}
+          >
+            <input
+              type="text"
+              value={askWorker}
+              onChange={(e) => setAskWorker(e.target.value)}
+              placeholder="예: 김신혜"
+              aria-label="작업자 이름"
+              autoFocus
+            />
+            <button type="submit" className="btn btn-primary" disabled={!askWorker.trim()}>
+              시작하기
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pr-page">
-      {/* 현장 공용 아이디로 들어왔을 때 — 무엇을 할 수 있는지 먼저 알린다 */}
-      {defectOnly && (
-        <div className="pr-defect-only-note">
-          <Icon name="alert" />
-          <span>
-            불량 확인·조치 전용으로 로그인했습니다. 호기·판넬의 <strong>불량 칸</strong>과 <strong>출고사진</strong>만
-            쓸 수 있고, 자재 입고·일정·판넬 추가는 잠겨 있습니다.
-          </span>
-        </div>
-      )}
       <div className="page-header">
-        <h2>생산현황</h2>
+        <h2>
+          생산현황
+          {/* 현장 공용 아이디 — 어느 계정으로 보고 있는지만 조용히 알린다 (2026-08-22 대표님) */}
+          {defectOnly && (
+            <button
+              type="button"
+              className="pr-shared-tag"
+              title="이름을 바꾸려면 누르세요"
+              onClick={() => {
+                setAskWorker(sharedWorker);
+                setSharedWorker('');
+              }}
+            >
+              공용 아이디 · {sharedWorker}
+            </button>
+          )}
+        </h2>
         <div className="page-actions" style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
           {/* 권한자는 적고 고칠 수 있고, 지우는 것만 관리자 (2026-08-12 대표님 — 관리자·권한자 2단계) */}
           {isAdmin && (
@@ -342,7 +390,7 @@ export default function ProductionPage() {
                 canEdit={canEdit}
                 canDefect={allowed}
                 company={company}
-                checkerName={userProfile?.name || ''}
+                checkerName={workerName}
                 onOpen={openModal}
                 onRemove={handleRemove}
               />
@@ -555,7 +603,7 @@ export default function ProductionPage() {
           panel={openPanel}
           box={openPart}
           canEdit={allowed}
-          checkerName={userProfile?.name || ''}
+          checkerName={workerName}
           onClose={() => setOpenId(null)}
         />
       )}
@@ -566,7 +614,7 @@ export default function ProductionPage() {
           part={openPart}
           canEdit={canEdit}
           canDefect={allowed}
-          checkerName={userProfile?.name || ''}
+          checkerName={workerName}
           onClose={() => setOpenId(null)}
         />
       )}
