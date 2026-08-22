@@ -17,6 +17,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
+import { countByType, countUnclassified } from '../../src/domain/defectTypes';
 import {
   deriveBoxStatus,
   boxDefectChecked,
@@ -627,5 +628,25 @@ describe('생산현황 표 — 머리글 폭과 본문 칸 수', () => {
 
   it('출고사진은 다섯 면', () => {
     expect(SHIP_PHOTO_SIDES).toEqual(['전면', '후면', '좌측', '우측', '상부']);
+  });
+});
+
+describe('불량 유형 집계', () => {
+  it('유형별로 센다', () => {
+    expect(countByType([{ 유형: '조립불량' }, { 유형: '케이블' }, { 유형: '조립불량' }])).toEqual({
+      defectAssembly: 2,
+      defectCable: 1,
+    });
+  });
+
+  it('이름을 바꿔도 예전 이름으로 저장된 건이 사라지지 않는다', () => {
+    expect(countByType([{ 유형: '스티커·잔공누락' }, { 유형: '잔공 누락' }])).toEqual({ defectStickerHole: 2 });
+    expect(countByType([{ 유형: '아이마킹 누락' }, { 유형: '아이마킹' }])).toEqual({ defectEyeMarking: 2 });
+  });
+
+  it('유형을 고르지 않은 건은 어느 칸에도 안 들어간다 — 그 수를 따로 셀 수 있어야 한다', () => {
+    const list = [{ 유형: '' }, { 유형: '조립불량' }, { 유형: '없는유형' }];
+    expect(countByType(list)).toEqual({ defectAssembly: 1 });
+    expect(countUnclassified(list)).toBe(2);
   });
 });

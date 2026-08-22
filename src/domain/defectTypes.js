@@ -23,8 +23,22 @@ export const DEFECT_TYPE_LABELS = DEFECT_TYPES.map((t) => t.label);
 export const defectTypeFields = () =>
   DEFECT_TYPES.map((t) => ({ key: t.key, label: t.label, type: 'num', group: '불량 유형' }));
 
+// 예전 이름 → 키. 불량 항목에는 키가 아니라 「라벨 문자열」이 저장된다.
+// 그래서 이름을 바꾸면 예전에 저장된 건이 집계에서 통째로 사라진다.
+// 이름을 고칠 때마다 옛 이름을 여기에 남겨 둔다 (2026-08-22).
+const OLD_LABELS = {
+  '스티커·잔공누락': 'defectStickerHole', // → 잔공 누락
+  '아이마킹 누락': 'defectEyeMarking', // → 아이마킹
+};
+
 // 라벨 → 키. 현장에서 고른 유형 문자열을 집계 키로 되돌린다.
-const KEY_OF = Object.fromEntries(DEFECT_TYPES.map((t) => [t.label, t.key]));
+const KEY_OF = { ...OLD_LABELS, ...Object.fromEntries(DEFECT_TYPES.map((t) => [t.label, t.key])) };
+
+// 유형을 고르지 않았거나 목록에 없는 이름으로 저장된 건수.
+// 이 수가 0이 아니면 「총 불량 수」와 「유형별 합계」가 어긋난다 — 조용히 사라지지 않게 밖으로 알린다.
+export function countUnclassified(defects) {
+  return (defects || []).filter((d) => !KEY_OF[d.유형]).length;
+}
 
 // 불량 목록 → { defectCable: 2, defectEtc: 1, ... } (0건인 유형은 넣지 않는다)
 export function countByType(defects) {
