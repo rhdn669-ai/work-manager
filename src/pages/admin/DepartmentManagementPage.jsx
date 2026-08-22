@@ -10,6 +10,7 @@ import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
+import { isRealStaff } from '../../utils/workspace';
 
 function useViewportWidth() {
   const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
@@ -199,7 +200,7 @@ export default function DepartmentManagementPage() {
               value={form.managerId}
               onChange={(v) => setForm({ ...form, managerId: v })}
               options={users
-                .filter((u) => (u.role === 'manager' || u.role === 'admin') && u.isActive !== false)
+                .filter((u) => (u.role === 'manager' || u.role === 'admin') && u.isActive !== false && isRealStaff(u))
                 .map((u) => ({ value: u.uid, label: u.name }))}
               ariaLabel="부서장 선택"
               placeholder="선택"

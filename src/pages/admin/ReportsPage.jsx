@@ -110,7 +110,7 @@ export default function ReportsPage() {
       ]);
       const byUser = {};
       users
-        .filter((u) => (u.isActive !== false || hadRecord.has(u.uid)) && u.role !== 'admin')
+        .filter((u) => (u.isActive !== false || hadRecord.has(u.uid)) && u.role !== 'admin' && isRealStaff(u))
         .forEach((u) => {
           byUser[u.uid] = {
             name: u.name,
@@ -752,6 +752,7 @@ export function EmployeeDetailModal({
 }
 
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
+import { isRealStaff } from '../../utils/workspace';
 
 function leaveTypeLabel(type) {
   return LEAVE_TYPE_LABELS[type] || type || '-';

@@ -40,6 +40,7 @@ import { setLotsLabel, setLotsOf } from '../../utils/setLots';
 import Skeleton from '../../components/common/Skeleton';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
 import RegenOrderPdfRunner from '../../components/admin/RegenOrderPdfRunner';
+import { isRealStaff } from '../../utils/workspace';
 
 const STATUS = {
   draft: { label: '발주대기', cls: 'draft' },
@@ -1099,7 +1100,7 @@ export default function PurchaseListPage() {
                   if (u) setForm({ ...form, contactName: u.name || '', contactPhone: u.phone || '' });
                 }}
                 options={users
-                  .filter((u) => u.isActive !== false)
+                  .filter((u) => u.isActive !== false && isRealStaff(u))
                   .map((u) => ({
                     value: u.id,
                     label: `${u.name}${u.position ? ` · ${u.position}` : ''}${u.phone ? ` · ${u.phone}` : ''}`,

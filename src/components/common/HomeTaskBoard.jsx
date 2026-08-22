@@ -17,6 +17,7 @@ import { useDialog } from './useDialog';
 import Modal from './Modal';
 import Select from './Select';
 import Icon from './Icon';
+import { isRealStaff } from '../../utils/workspace';
 
 const COLS = [
   { key: 'todo', label: '할 일' },
@@ -210,7 +211,7 @@ export default function HomeTaskBoard() {
     try {
       const [t, u] = await Promise.all([getTasks(), getUsers().catch(() => [])]);
       setTasks(t);
-      setUsers(u.filter((x) => x.isActive !== false));
+      setUsers(u.filter((x) => x.isActive !== false && isRealStaff(x)));
     } catch (err) {
       console.error('업무 보드 로드 실패:', err);
     } finally {

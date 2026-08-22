@@ -4530,6 +4530,16 @@ table.cards-sm td {
   word-break: break-all;
   line-height: 1.35;
 }
+/* 직원 목록의 공용 아이디 표시 — 사람이 아니라 계정임을 알린다 (2026-08-22 대표님) */
+.user-shared-tag {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
 .purchase-badge {
   display: inline-flex;
   align-items: center;

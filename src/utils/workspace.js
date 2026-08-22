@@ -24,3 +24,10 @@ export function isDefectOnly(userProfile) {
 export function canEnterProduction(userProfile) {
   return canProduction(userProfile) || isDefectOnly(userProfile);
 }
+
+// 사람인가 — 공용 아이디는 계정일 뿐 사람이 아니다.
+// 재직 인원, 공수표·근태 대상, 담당자 고르기 같은 「사람 목록」에서는 빼야 한다
+// (2026-08-22 대표님: 공용아이디는 재직 수에 미포함).
+export function isRealStaff(user) {
+  return !user?.productionDefectOnly;
+}

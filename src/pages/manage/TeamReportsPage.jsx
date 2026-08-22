@@ -11,6 +11,7 @@ import { EmployeeDetailModal } from '../admin/ReportsPage';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import { isRealStaff } from '../../utils/workspace';
 
 export default function TeamReportsPage() {
   const { userProfile, isAdmin, canApproveAll } = useAuth();
@@ -103,7 +104,7 @@ export default function TeamReportsPage() {
   // 퇴사자라도 그 달에 잔업·연차가 있었으면 남긴다 (기록은 사라지지 않는다)
   const hadRecord = new Set([...Object.keys(overtimeByUser), ...Object.keys(leaveByUser)]);
   const rows = teamMembers
-    .filter((u) => (u.isActive !== false || hadRecord.has(u.uid)) && u.role !== 'admin')
+    .filter((u) => (u.isActive !== false || hadRecord.has(u.uid)) && u.role !== 'admin' && isRealStaff(u))
     .map((u) => ({
       uid: u.uid,
       name: u.name,

@@ -11,6 +11,7 @@ import { getEvents } from '../services/eventService';
 import { formatMinutes, getMonthStart, getMonthEnd, formatDisplayDate } from '../utils/dateUtils';
 import HomeCalendar from '../components/common/HomeCalendar';
 import Skeleton from '../components/common/Skeleton';
+import { isRealStaff } from '../utils/workspace';
 
 export default function DashboardPage() {
   const { userProfile, isAdmin } = useAuth();
@@ -53,7 +54,7 @@ export default function DashboardPage() {
       setNotices((events || []).slice(0, 4));
 
       if (isAdmin) {
-        const activeUsers = users.filter((u) => u.isActive !== false).length;
+        const activeUsers = users.filter((u) => u.isActive !== false && isRealStaff(u)).length;
         setAdminStats({ users: activeUsers, departments: departments.length });
 
         const [pendingOt, purchases, leaves] = await Promise.all([

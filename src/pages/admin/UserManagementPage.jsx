@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getUsers, updateUser, createUser, seedSiteCreatorsIfNeeded } from '../../services/userService';
 import { getDepartments } from '../../services/departmentService';
 import { initLeaveBalance, getLeaveBalance, setLeaveRemaining } from '../../services/leaveService';
+import { isRealStaff } from '../../utils/workspace';
 import { trashGeneric } from '../../services/trashService';
 import { setUserResigned } from '../../services/userService';
 import { POSITIONS } from '../../utils/constants';
@@ -341,6 +342,8 @@ export default function UserManagementPage() {
   }
   // 재직·퇴사를 나눠 본다. 퇴사자는 지운 것이 아니라 접어둔 것이다.
   const activeUsers = users.filter((u) => u.isActive !== false);
+  // 공용 아이디는 계정이지 사람이 아니다 — 목록에는 두되 인원 수에서는 뺀다
+  const activeStaffCount = activeUsers.filter(isRealStaff).length;
   const resignedUsers = users.filter((u) => u.isActive === false);
   const shownUsers = view === 'resigned' ? resignedUsers : activeUsers;
 
@@ -584,7 +587,7 @@ export default function UserManagementPage() {
 
       <div className="purchase-filters no-print" style={{ marginBottom: 12 }}>
         {[
-          { k: 'active', label: '재직', n: activeUsers.length },
+          { k: 'active', label: '재직', n: activeStaffCount },
           { k: 'resigned', label: '퇴사', n: resignedUsers.length },
         ].map((o) => (
           <button
@@ -634,6 +637,8 @@ export default function UserManagementPage() {
                     style={{ wordBreak: 'break-word', overflowWrap: 'break-word', minHeight: 36 }}
                   >
                     {u.name}
+                    {/* 공용 아이디는 사람이 아니라 계정 — 목록에서 한눈에 갈리게 */}
+                    {!isRealStaff(u) && <span className="user-shared-tag">공용</span>}
                     {u.isActive === false && (
                       <span className="purchase-badge purchase-badge-closed" style={{ marginLeft: 6 }}>
                         퇴사
