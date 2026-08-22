@@ -1694,7 +1694,18 @@ body:has(.pr-page) .main-content {
   min-height: 32px;
   cursor: pointer;
 }
-/* 표의 출고사진 칸 */
+/* 표의 출고사진 칸 — 박스 안 다른 칸(54px)보다 넓게.
+   「출고사진」 네 글자가 54px 을 넘어 옆 판금 칸과 겹쳤다 (2026-08-22 대표님) */
+.mx-table th.mx-ship-th,
+.mx-table td.mx-boxship {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  box-sizing: border-box;
+  padding-left: 2px;
+  padding-right: 2px;
+  text-align: center;
+}
 .mx-boxship {
   text-align: center;
 }

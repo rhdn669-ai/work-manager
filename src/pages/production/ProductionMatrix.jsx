@@ -380,10 +380,6 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                   <th scope="col" className="mx-sub-th" rowSpan={2}>
                     상태
                   </th>
-                  {/* 내보내기 전 다섯 면을 찍어 남긴다 (2026-08-22 대표님) */}
-                  <th scope="col" className="mx-sub-th" rowSpan={2}>
-                    출고사진
-                  </th>
                 </Fragment>
               ) : (
                 <Fragment key={b}>
@@ -413,6 +409,11 @@ export default function ProductionMatrix({ panels, canEdit, onOpen, onRemove, co
                   </th>
                   <th scope="col" className="mx-sub-th" rowSpan={2}>
                     상태
+                  </th>
+                  {/* 내보내기 전 다섯 면을 찍어 남긴다 (2026-08-22 대표님).
+                      「출고사진」 네 글자가 54px 을 넘어 옆 칸과 겹쳐 이 칸만 넓게 잡는다. */}
+                  <th scope="col" className="mx-sub-th mx-ship-th" rowSpan={2}>
+                    출고사진
                   </th>
                 </Fragment>
               ),

@@ -17,7 +17,14 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
-import { deriveBoxStatus, boxDefectChecked, JAIP } from '../../src/domain/production';
+import {
+  deriveBoxStatus,
+  boxDefectChecked,
+  JAIP,
+  JAIP_GROUPS,
+  MP_SUBS,
+  SHIP_PHOTO_SIDES,
+} from '../../src/domain/production';
 import { isStockTracked } from '../../src/domain/stock';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
 import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
@@ -596,5 +603,29 @@ describe('생산 — 박스 상태는 불량 확인까지 되어야 완료', () 
 
   it('불량을 처리했어도 자재가 덜 들어왔으면 대기', () => {
     expect(deriveBoxStatus(판넬({ 판금: true }, 불량('스크래치', true)), 박스)).toBe('대기');
+  });
+});
+
+// 매트릭스 표는 머리글 폭(colSpan)과 본문 칸 수가 어긋나면 열이 통째로 밀린다.
+// 출고사진 칸을 더할 때 실제로 MP 쪽에 잘못 넣어 밀린 적이 있어, 숫자로 못 박아 둔다.
+describe('생산현황 표 — 머리글 폭과 본문 칸 수', () => {
+  // 실물 BOX 한 칸: 자재 5 + 불량 + 상태 + 출고사진
+  const 실물박스칸 = JAIP.length + 3;
+
+  it('실물 BOX 는 자재 5칸 + 불량·상태·출고사진 3칸 = 8칸', () => {
+    expect(실물박스칸).toBe(8);
+  });
+
+  it('머리글 2행(자재 그룹 + 불량·상태·출고사진)이 같은 폭이다', () => {
+    const 그룹폭 = JAIP_GROUPS.reduce((a, g) => a + g.leaves.length, 0);
+    expect(그룹폭 + 3).toBe(실물박스칸);
+  });
+
+  it('MP 는 실물 박스가 아니라 출고사진 칸이 없다 — 하위 9 + 상태 1', () => {
+    expect(MP_SUBS.length + 1).toBe(10);
+  });
+
+  it('출고사진은 다섯 면', () => {
+    expect(SHIP_PHOTO_SIDES).toEqual(['전면', '후면', '좌측', '우측', '상부']);
   });
 });
