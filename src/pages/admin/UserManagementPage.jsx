@@ -184,7 +184,8 @@ export default function UserManagementPage() {
         };
         if (form.password !== '') updateData.password = form.password;
         await updateUser(editUser.uid, updateData);
-        if (form.joinDate) await initLeaveBalance(editUser.uid, form.joinDate);
+        // 현장 공용 아이디는 연차가 없다 — 입사일도 안 받는다
+        if (form.joinDate && !form.productionDefectOnly) await initLeaveBalance(editUser.uid, form.joinDate);
       } else {
         const userId = 'user_' + Date.now();
         targetUid = userId;
@@ -210,7 +211,7 @@ export default function UserManagementPage() {
           vehicleMonthlyCost: form.usesVehicle ? Number(String(form.vehicleMonthlyCost).replace(/[^\d]/g, '')) || 0 : 0,
           ...(form.password !== '' && { password: form.password }),
         });
-        if (form.joinDate) await initLeaveBalance(userId, form.joinDate);
+        if (form.joinDate && !form.productionDefectOnly) await initLeaveBalance(userId, form.joinDate);
       }
 
       // 연차 잔여 조정: 편집 중 현재 잔여와 다르면 업데이트
@@ -740,6 +741,27 @@ export default function UserManagementPage() {
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editUser ? '사용자 수정' : '직원 추가'}>
         <form onSubmit={handleSubmit}>
+          {/* 현장 공용 아이디 — 이름·코드·비밀번호만 받는다.
+              입사일·급여·연차 같은 인사 정보는 쓸 일이 없어 켜면 아래 칸이 접힌다 (2026-08-22 대표님) */}
+          <div className="form-group">
+            <div className="toggle-row">
+              <div className="toggle-row-text">
+                <span className="toggle-row-title">불량 조치 전용 (현장 공용)</span>
+                <small className="text-muted">
+                  여러 사람이 함께 쓰는 현장 아이디입니다. 로그인하면 생산현황으로 바로 들어가 불량 확인·조치만 합니다.
+                  인사 정보는 받지 않습니다.
+                </small>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={!!form.productionDefectOnly}
+                  onChange={(e) => setForm({ ...form, productionDefectOnly: e.target.checked })}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </div>
           <div className="form-group">
             <label>이름</label>
             <input
@@ -804,292 +826,277 @@ export default function UserManagementPage() {
               autoComplete="new-password"
             />
           </div>
-          <div className="form-group">
-            <label>직급</label>
-            <Select
-              value={form.position}
-              onChange={(v) => setForm({ ...form, position: v })}
-              options={POSITIONS.map((p) => ({ value: p, label: p }))}
-              ariaLabel="직급 선택"
-              placeholder="없음"
-            />
-          </div>
-          <div className="form-group">
-            <label>부서</label>
-            <Select
-              value={form.departmentId}
-              onChange={(v) => setForm({ ...form, departmentId: v })}
-              options={departments.map((d) => ({ value: d.id, label: d.name }))}
-              ariaLabel="부서 선택"
-              placeholder="선택"
-            />
-          </div>
-          <div className="form-group">
-            <label>연락처</label>
-            <input
-              aria-label="연락처"
-              type="text"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="예: 010-1234-5678"
-              inputMode="tel"
-            />
-          </div>
-          <div className="form-group">
-            <label>고정비용 (월급, 원)</label>
-            <MoneyInput
-              value={form.fixedCost}
-              onChange={(e) => setForm({ ...form, fixedCost: e.target.value })}
-              placeholder="예: 3,000,000"
-            />
-          </div>
-          <div className="form-group">
-            <label>시급 (잔업 단가, 원)</label>
-            <MoneyInput
-              value={form.hourlyRate}
-              onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
-              placeholder="예: 15,000"
-            />
-          </div>
-          {form.role !== 'admin' && (
-            <div className="form-group">
-              <label>입사일</label>
-              <input
-                aria-label="입사일"
-                type="date"
-                value={form.joinDate}
-                onChange={(e) => setForm({ ...form, joinDate: e.target.value })}
-                required
-              />
-            </div>
-          )}
-          {(() => {
-            const autoGranted = form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position);
-            const on = autoGranted || !!form.canViewSalary;
-            return (
-              <div className="form-group">
-                <div className="toggle-row">
-                  <div className="toggle-row-text">
-                    <span className="toggle-row-title">금액 열람 권한</span>
-                    <small className="text-muted">
-                      {autoGranted
-                        ? '관리자/대표/부사장은 자동으로 부여됩니다.'
-                        : '프로젝트 단가·고정비용 등 금액 정보 열람 여부'}
-                    </small>
-                  </div>
-                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={autoGranted}
-                      onChange={(e) => setForm({ ...form, canViewSalary: e.target.checked })}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              </div>
-            );
-          })()}
-          {(() => {
-            const autoGranted = form.role === 'admin';
-            const on = autoGranted || !!form.canCreateSite;
-            return (
-              <div className="form-group">
-                <div className="toggle-row">
-                  <div className="toggle-row-text">
-                    <span className="toggle-row-title">프로젝트 추가 권한</span>
-                    <small className="text-muted">
-                      {autoGranted
-                        ? '관리자는 자동으로 부여됩니다.'
-                        : '프로젝트 목록에서 신규 프로젝트를 등록할 수 있습니다.'}
-                    </small>
-                  </div>
-                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={autoGranted}
-                      onChange={(e) => setForm({ ...form, canCreateSite: e.target.checked })}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              </div>
-            );
-          })()}
-          {(() => {
-            const autoGranted = form.role === 'admin' || ['대표', '부사장'].includes(form.position);
-            const on = autoGranted || !!form.canViewArchive;
-            return (
-              <div className="form-group">
-                <div className="toggle-row">
-                  <div className="toggle-row-text">
-                    <span className="toggle-row-title">자료실 열람 권한</span>
-                    <small className="text-muted">
-                      {autoGranted
-                        ? '관리자·대표/부사장은 자동으로 부여됩니다.'
-                        : '일반 직원은 기본 미공개입니다. 켜면 자료실 메뉴가 보입니다.'}
-                    </small>
-                  </div>
-                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={autoGranted}
-                      onChange={(e) => setForm({ ...form, canViewArchive: e.target.checked })}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              </div>
-            );
-          })()}
-          {(() => {
-            const autoGranted = form.role === 'admin';
-            const on = autoGranted || !!form.productionAccess;
-            return (
-              <div className="form-group">
-                <div className="toggle-row">
-                  <div className="toggle-row-text">
-                    <span className="toggle-row-title">생산·품질 권한</span>
-                    <small className="text-muted">
-                      {autoGranted
-                        ? '관리자는 자동으로 부여됩니다. 지우고 되살리는 것은 관리자만 할 수 있습니다.'
-                        : '켜면 생산현황 검수·판넬 등록과 품질 대장 작성까지 할 수 있습니다. 삭제·휴지통은 관리자만.'}
-                    </small>
-                  </div>
-                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={autoGranted}
-                      onChange={(e) => setForm({ ...form, productionAccess: e.target.checked })}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              </div>
-            );
-          })()}
-          {/* 현장 공용 아이디 — 불량만 보고 조치한다 */}
-          <div className="form-group">
-            <div className="toggle-row">
-              <div className="toggle-row-text">
-                <span className="toggle-row-title">불량 조치 전용 (현장 공용)</span>
-                <small className="text-muted">
-                  켜면 생산현황에서 호기·판넬별 불량을 보고 조치 사진만 올릴 수 있습니다. 자재 입고·일정·판넬
-                  추가·삭제는 잠깁니다.
-                </small>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={!!form.productionDefectOnly}
-                  onChange={(e) => setForm({ ...form, productionDefectOnly: e.target.checked })}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-          </div>
-          {(() => {
-            const autoGranted = form.role === 'admin';
-            const on = autoGranted || !!form.purchaseAccess;
-            return (
-              <div className="form-group">
-                <div className="toggle-row">
-                  <div className="toggle-row-text">
-                    <span className="toggle-row-title">구매 권한</span>
-                    <small className="text-muted">
-                      {autoGranted
-                        ? '관리자는 자동으로 부여됩니다.'
-                        : '켜면 구매 탭(발주·BOM·품목·재고·구매처·견적)을 쓸 수 있습니다. 결제와 메일 발송은 관리자만.'}
-                    </small>
-                  </div>
-                  <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={autoGranted}
-                      onChange={(e) => setForm({ ...form, purchaseAccess: e.target.checked })}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              </div>
-            );
-          })()}
-          <div className="form-group">
-            <div className="toggle-row">
-              <div className="toggle-row-text">
-                <span className="toggle-row-title">차량 운행자 지정</span>
-                <small className="text-muted">
-                  지정 시 매월 누적 키로수를 입력하지 않으면 로그인할 때마다 안내 모달이 표시됩니다.
-                </small>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={!!form.usesVehicle}
-                  onChange={(e) => setForm({ ...form, usesVehicle: e.target.checked })}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-          </div>
-          {form.usesVehicle && (
+          {/* 현장 공용 아이디는 여기까지 필요 없다 — 이름·코드·비밀번호만 받는다 */}
+          {!form.productionDefectOnly && (
             <>
               <div className="form-group">
-                <label>
-                  차량번호{' '}
-                  <span className="text-muted text-sm" style={{ fontWeight: 400 }}>
-                    (선택)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={form.vehiclePlate}
-                  onChange={(e) => setForm({ ...form, vehiclePlate: e.target.value })}
-                  placeholder="예: 12가 3456"
-                  maxLength={20}
+                <label>직급</label>
+                <Select
+                  value={form.position}
+                  onChange={(v) => setForm({ ...form, position: v })}
+                  options={POSITIONS.map((p) => ({ value: p, label: p }))}
+                  ariaLabel="직급 선택"
+                  placeholder="없음"
                 />
               </div>
               <div className="form-group">
-                <label>
-                  차량 월 금액{' '}
-                  <span className="text-muted text-sm" style={{ fontWeight: 400 }}>
-                    (원, 선택)
-                  </span>
-                </label>
-                <MoneyInput
-                  value={form.vehicleMonthlyCost}
-                  onChange={(e) => setForm({ ...form, vehicleMonthlyCost: e.target.value })}
-                  placeholder="예: 500,000"
+                <label>부서</label>
+                <Select
+                  value={form.departmentId}
+                  onChange={(v) => setForm({ ...form, departmentId: v })}
+                  options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                  ariaLabel="부서 선택"
+                  placeholder="선택"
                 />
-                <small className="text-muted">
-                  리스료·보조금 등 매월 동일하게 들어가는 금액. 운행일지에 함께 표시됩니다.
-                </small>
               </div>
+              <div className="form-group">
+                <label>연락처</label>
+                <input
+                  aria-label="연락처"
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="예: 010-1234-5678"
+                  inputMode="tel"
+                />
+              </div>
+              <div className="form-group">
+                <label>고정비용 (월급, 원)</label>
+                <MoneyInput
+                  value={form.fixedCost}
+                  onChange={(e) => setForm({ ...form, fixedCost: e.target.value })}
+                  placeholder="예: 3,000,000"
+                />
+              </div>
+              <div className="form-group">
+                <label>시급 (잔업 단가, 원)</label>
+                <MoneyInput
+                  value={form.hourlyRate}
+                  onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
+                  placeholder="예: 15,000"
+                />
+              </div>
+              {form.role !== 'admin' && (
+                <div className="form-group">
+                  <label>입사일</label>
+                  <input
+                    aria-label="입사일"
+                    type="date"
+                    value={form.joinDate}
+                    onChange={(e) => setForm({ ...form, joinDate: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              {(() => {
+                const autoGranted = form.role === 'admin' || EXECUTIVE_POSITIONS.includes(form.position);
+                const on = autoGranted || !!form.canViewSalary;
+                return (
+                  <div className="form-group">
+                    <div className="toggle-row">
+                      <div className="toggle-row-text">
+                        <span className="toggle-row-title">금액 열람 권한</span>
+                        <small className="text-muted">
+                          {autoGranted
+                            ? '관리자/대표/부사장은 자동으로 부여됩니다.'
+                            : '프로젝트 단가·고정비용 등 금액 정보 열람 여부'}
+                        </small>
+                      </div>
+                      <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={autoGranted}
+                          onChange={(e) => setForm({ ...form, canViewSalary: e.target.checked })}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const autoGranted = form.role === 'admin';
+                const on = autoGranted || !!form.canCreateSite;
+                return (
+                  <div className="form-group">
+                    <div className="toggle-row">
+                      <div className="toggle-row-text">
+                        <span className="toggle-row-title">프로젝트 추가 권한</span>
+                        <small className="text-muted">
+                          {autoGranted
+                            ? '관리자는 자동으로 부여됩니다.'
+                            : '프로젝트 목록에서 신규 프로젝트를 등록할 수 있습니다.'}
+                        </small>
+                      </div>
+                      <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={autoGranted}
+                          onChange={(e) => setForm({ ...form, canCreateSite: e.target.checked })}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const autoGranted = form.role === 'admin' || ['대표', '부사장'].includes(form.position);
+                const on = autoGranted || !!form.canViewArchive;
+                return (
+                  <div className="form-group">
+                    <div className="toggle-row">
+                      <div className="toggle-row-text">
+                        <span className="toggle-row-title">자료실 열람 권한</span>
+                        <small className="text-muted">
+                          {autoGranted
+                            ? '관리자·대표/부사장은 자동으로 부여됩니다.'
+                            : '일반 직원은 기본 미공개입니다. 켜면 자료실 메뉴가 보입니다.'}
+                        </small>
+                      </div>
+                      <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={autoGranted}
+                          onChange={(e) => setForm({ ...form, canViewArchive: e.target.checked })}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const autoGranted = form.role === 'admin';
+                const on = autoGranted || !!form.productionAccess;
+                return (
+                  <div className="form-group">
+                    <div className="toggle-row">
+                      <div className="toggle-row-text">
+                        <span className="toggle-row-title">생산·품질 권한</span>
+                        <small className="text-muted">
+                          {autoGranted
+                            ? '관리자는 자동으로 부여됩니다. 지우고 되살리는 것은 관리자만 할 수 있습니다.'
+                            : '켜면 생산현황 검수·판넬 등록과 품질 대장 작성까지 할 수 있습니다. 삭제·휴지통은 관리자만.'}
+                        </small>
+                      </div>
+                      <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={autoGranted}
+                          onChange={(e) => setForm({ ...form, productionAccess: e.target.checked })}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
+              {(() => {
+                const autoGranted = form.role === 'admin';
+                const on = autoGranted || !!form.purchaseAccess;
+                return (
+                  <div className="form-group">
+                    <div className="toggle-row">
+                      <div className="toggle-row-text">
+                        <span className="toggle-row-title">구매 권한</span>
+                        <small className="text-muted">
+                          {autoGranted
+                            ? '관리자는 자동으로 부여됩니다.'
+                            : '켜면 구매 탭(발주·BOM·품목·재고·구매처·견적)을 쓸 수 있습니다. 결제와 메일 발송은 관리자만.'}
+                        </small>
+                      </div>
+                      <label className={`toggle-switch${autoGranted ? ' is-locked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={autoGranted}
+                          onChange={(e) => setForm({ ...form, purchaseAccess: e.target.checked })}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
+              <div className="form-group">
+                <div className="toggle-row">
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">차량 운행자 지정</span>
+                    <small className="text-muted">
+                      지정 시 매월 누적 키로수를 입력하지 않으면 로그인할 때마다 안내 모달이 표시됩니다.
+                    </small>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={!!form.usesVehicle}
+                      onChange={(e) => setForm({ ...form, usesVehicle: e.target.checked })}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+              {form.usesVehicle && (
+                <>
+                  <div className="form-group">
+                    <label>
+                      차량번호{' '}
+                      <span className="text-muted text-sm" style={{ fontWeight: 400 }}>
+                        (선택)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.vehiclePlate}
+                      onChange={(e) => setForm({ ...form, vehiclePlate: e.target.value })}
+                      placeholder="예: 12가 3456"
+                      maxLength={20}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      차량 월 금액{' '}
+                      <span className="text-muted text-sm" style={{ fontWeight: 400 }}>
+                        (원, 선택)
+                      </span>
+                    </label>
+                    <MoneyInput
+                      value={form.vehicleMonthlyCost}
+                      onChange={(e) => setForm({ ...form, vehicleMonthlyCost: e.target.value })}
+                      placeholder="예: 500,000"
+                    />
+                    <small className="text-muted">
+                      리스료·보조금 등 매월 동일하게 들어가는 금액. 운행일지에 함께 표시됩니다.
+                    </small>
+                  </div>
+                </>
+              )}
+              {editUser && balances[editUser.uid] && (
+                <div className="form-group">
+                  <label>
+                    잔여 연차 조정 (일)
+                    <span className="text-muted text-sm" style={{ marginLeft: 8, fontWeight: 400 }}>
+                      누적 {balances[editUser.uid].totalDays}일 · 사용 {balances[editUser.uid].usedDays}일
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    value={form.leaveRemaining}
+                    onChange={(e) => setForm({ ...form, leaveRemaining: e.target.value })}
+                    placeholder="현재 잔여 일수 (음수 입력 가능)"
+                  />
+                  <small className="text-muted">
+                    현재 잔여 일수를 입력하면 반영됩니다. 초과 사용 시 음수(-) 입력 가능. 이후 발생분은 자동 계산됩니다.
+                  </small>
+                </div>
+              )}
             </>
-          )}
-          {editUser && balances[editUser.uid] && (
-            <div className="form-group">
-              <label>
-                잔여 연차 조정 (일)
-                <span className="text-muted text-sm" style={{ marginLeft: 8, fontWeight: 400 }}>
-                  누적 {balances[editUser.uid].totalDays}일 · 사용 {balances[editUser.uid].usedDays}일
-                </span>
-              </label>
-              <input
-                type="number"
-                step="0.25"
-                value={form.leaveRemaining}
-                onChange={(e) => setForm({ ...form, leaveRemaining: e.target.value })}
-                placeholder="현재 잔여 일수 (음수 입력 가능)"
-              />
-              <small className="text-muted">
-                현재 잔여 일수를 입력하면 반영됩니다. 초과 사용 시 음수(-) 입력 가능. 이후 발생분은 자동 계산됩니다.
-              </small>
-            </div>
           )}
           <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
             {editUser ? (

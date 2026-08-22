@@ -1,13 +1,19 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import Icon from '../components/common/Icon';
-import { canProduction, setWorkspaceMode } from '../utils/workspace';
+import { canProduction, isDefectOnly, setWorkspaceMode } from '../utils/workspace';
 import '../styles/workspace.css';
 
 // 로그인 직후 워크스페이스 선택 — 생산·품질 카드는 권한자에게만.
 // 권한 없는 직원은 선택 없이 바로 업무 모드로 진입(카드 1장뿐이라 선택 불필요).
 export default function WorkspaceSelectPage() {
   const { userProfile } = useAuth();
+
+  // 현장 공용 아이디 — 업무 화면은 볼 일이 없다. 고를 것 없이 생산현황으로 바로 (2026-08-22 대표님)
+  if (userProfile && isDefectOnly(userProfile)) {
+    setWorkspaceMode('production');
+    return <Navigate to="/production" replace />;
+  }
 
   if (userProfile && !canProduction(userProfile)) {
     setWorkspaceMode('work');
