@@ -17,6 +17,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
+import { deriveBoxStatus, boxDefectChecked, JAIP } from '../../src/domain/production';
 import { isStockTracked } from '../../src/domain/stock';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../src/utils/setLots';
 import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/domain/monthlyLoad';
@@ -560,5 +561,40 @@ describe('구매처 — 참조(CC)', () => {
 
   it('같은 주소가 두 번 들어가지 않는다 (대소문자 무시)', () => {
     expect(mailToLine('me@x.com', { ccEmails: 'ME@X.com, cc@y.com' })).toBe('me@x.com, cc@y.com');
+  });
+});
+
+describe('생산 — 박스 상태는 불량 확인까지 되어야 완료', () => {
+  const 입고완료 = Object.fromEntries(JAIP.map((k) => [k, true]));
+  const 박스 = 'P/W BOX';
+  const 판넬 = (mat, insp) => ({ 박스입고: { [박스]: mat }, 검수: insp });
+  const 불량 = (내용, 완료) => ({
+    차1: { 공정비고: { [박스]: { 항목: [{ 내용, 완료, 일자: '2026-08-22' }] } } },
+  });
+
+  it('자재가 덜 들어왔으면 대기', () => {
+    expect(deriveBoxStatus(판넬({ 판금: true }, {}), 박스)).toBe('대기');
+  });
+
+  it('자재는 다 들어왔지만 아무도 들여다보지 않았으면 진행중 — 예전에는 완료였다', () => {
+    expect(deriveBoxStatus(판넬(입고완료, {}), 박스)).toBe('진행중');
+  });
+
+  it('「불량 없음」을 체크하면 완료', () => {
+    const insp = { 차1: { 공정비고: { [박스]: { 항목: [], 불량없음: true } } } };
+    expect(boxDefectChecked(insp, 박스)).toBe(true);
+    expect(deriveBoxStatus(판넬(입고완료, insp), 박스)).toBe('완료');
+  });
+
+  it('미해결 불량이 있으면 문제 — 자재가 다 들어왔어도', () => {
+    expect(deriveBoxStatus(판넬(입고완료, 불량('스크래치', false)), 박스)).toBe('문제');
+  });
+
+  it('불량을 모두 처리했으면 완료', () => {
+    expect(deriveBoxStatus(판넬(입고완료, 불량('스크래치', true)), 박스)).toBe('완료');
+  });
+
+  it('불량을 처리했어도 자재가 덜 들어왔으면 대기', () => {
+    expect(deriveBoxStatus(판넬({ 판금: true }, 불량('스크래치', true)), 박스)).toBe('대기');
   });
 });

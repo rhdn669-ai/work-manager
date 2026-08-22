@@ -170,13 +170,29 @@ export function boxDefectResolved(insp, box) {
   return resolved && !unresolved;
 }
 
-// 박스 종합상태: 미해결 불량→문제 / 입고4개 완료→완료 / 그 외 대기
+// 불량 점검을 마쳤다고 표시했나 — 「불량 없음」 체크 (검수 1·2차 중 한 곳이라도)
+export function boxNoDefectChecked(insp, box) {
+  return [1, 2].some((r) => !!insp?.[`차${r}`]?.공정비고?.[box]?.불량없음);
+}
+
+// 불량 확인이 끝났나 —
+//   ① 「불량 없음」을 체크했거나 ② 불량이 있었지만 모두 처리됐거나.
+// 자재만 들어오고 아직 아무도 들여다보지 않은 박스는 여기에 들지 않는다.
+export function boxDefectChecked(insp, box) {
+  return boxNoDefectChecked(insp, box) || boxDefectResolved(insp, box);
+}
+
+// 박스 종합상태 (2026-08-22 대표님: 불량 확인까지 되어야 완료)
+//   미해결 불량            → 문제
+//   자재 4종 + 불량 확인   → 완료
+//   자재 4종 · 불량 미확인 → 진행중  (예전에는 여기서 바로 완료가 됐다)
+//   그 외                  → 대기
 export function deriveBoxStatus(p, box, inspOverride, matOverride) {
   const insp = inspOverride || p.검수;
   if (boxHasDefect(insp, box)) return '문제';
   const mat = matOverride || boxMat(p, box);
-  if (JAIP.every((k) => mat[k])) return '완료';
-  return '대기';
+  if (!JAIP.every((k) => mat[k])) return '대기';
+  return boxDefectChecked(insp, box) ? '완료' : '진행중';
 }
 
 /* ── 로직 ── */

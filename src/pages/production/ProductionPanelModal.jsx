@@ -170,7 +170,7 @@ export default function ProductionPanelModal({
         if (!n[`차${round}`].공정비고[part]) n[`차${round}`].공정비고[part] = { 항목: [] };
         mut(n[`차${round}`].공정비고[part]);
       });
-    if (items.length === 0 && (round === 2 || !canEdit)) return null;
+    if (items.length === 0 && (round === 2 || !canEdit)) return null; // 1차는 「불량 없음」 체크가 있어 늘 보인다
     return (
       <div key={round}>
         <div className="defect-round-label">{round}차 불량</div>
@@ -275,13 +275,47 @@ export default function ProductionPanelModal({
                 className="defect-add-plain"
                 disabled={!canAdd}
                 onClick={() =>
-                  mutSec((s) => s.항목.push({ 내용: '', 유형: '', 완료: false, 검수자: checkerName, 일자: today() }))
+                  mutSec((s) => {
+                    s.불량없음 = false; // 불량을 등록하면 「불량 없음」은 성립하지 않는다
+                    s.항목.push({ 내용: '', 유형: '', 완료: false, 검수자: checkerName, 일자: today() });
+                  })
                 }
               >
                 사진 없이
               </button>
               {!workerName && <span className="defect-worker-hint">작업자 입력 후 등록 가능</span>}
             </div>
+          )}
+          {/* 「불량 없음」 — 들여다봤고 불량이 없다는 표시.
+              이걸 체크해야 박스가 완료로 넘어간다. 자재만 들어온 상태는 완료가 아니다.
+              (2026-08-22 대표님: 상태는 불량 확인까지 되어야 완료) */}
+          {canEdit && round === 1 && (
+            <label className={`defect-none-row${items.length > 0 ? ' is-disabled' : ''}`}>
+              <input
+                type="checkbox"
+                checked={!!sec.불량없음 && items.length === 0}
+                disabled={!canAdd || items.length > 0}
+                onChange={(e) =>
+                  mutSec((x) => {
+                    x.불량없음 = e.target.checked;
+                    if (e.target.checked) {
+                      x.확인자 = checkerName;
+                      x.확인일자 = today();
+                    }
+                  })
+                }
+              />
+              <span>
+                불량 없음
+                <em>
+                  {items.length > 0
+                    ? '등록된 불량이 있어 체크할 수 없습니다'
+                    : sec.불량없음
+                      ? `${sec.확인자 || ''} · ${sec.확인일자 || ''}`
+                      : '확인 후 체크하면 이 박스가 완료됩니다'}
+                </em>
+              </span>
+            </label>
           )}
         </div>
       </div>

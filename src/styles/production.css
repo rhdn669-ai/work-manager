@@ -793,6 +793,42 @@
   width: 16px;
   height: 16px;
 }
+/* 「불량 없음」 — 확인을 마쳤다는 표시. 이걸 눌러야 박스가 완료로 넘어간다. */
+.defect-none-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  cursor: pointer;
+  font-size: var(--font-base);
+  font-weight: 700;
+}
+.defect-none-row input {
+  margin-top: 2px;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.defect-none-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.defect-none-row em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+.defect-none-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .defect-add-row {
   display: flex;
   gap: 6px;
