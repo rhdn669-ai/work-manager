@@ -154,8 +154,9 @@
   --text: #19222f; /* 네이비 기운 도는 진회색 (로고와 조화) */
   --text-light: #3f4a5a; /* 4e5968 → 더 진하게 */
   /* 8b95a1 은 흰 배경에서 대비 2.9:1 로 웹 접근성 기준(4.5:1)에 못 미쳤다.
-     보조 글자가 옅어 안 읽힌다는 지적의 주범 (2026-08-22 대표님). 6b7684 는 5.0:1. */
-  --text-muted: #6b7684;
+     6b7684(4.6:1)로 한 번 올렸지만 기준선에 겨우 걸치는 값이라 여전히 옅어 보였다.
+     5c6675 는 5.8:1 — 보조 글자로 읽히면서도 확실히 눈에 들어온다 (2026-08-24 대표님). */
+  --text-muted: #5c6675;
   --text-sidebar: #eaf0fa; /* 네이비 사이드바 위 밝은 글자 */
 
   /* ===== 구분선 ===== */
@@ -164,11 +165,11 @@
 
   /* ===== 상태 배지 (의미색 연한톤 = palm) ===== */
   --status-wait-bg: #f2f4f6;
-  --status-wait-fg: #6b7684; /* 대기 = 회색 */
+  --status-wait-fg: #5c6675; /* 대기 = 회색 (4.6→5.8:1) */
   --status-progress-bg: #e8f2fe;
-  --status-progress-fg: #2272eb; /* 진행중 = 파랑 */
+  --status-progress-fg: #1b5fd0; /* 진행중 = 파랑 (4.5→5.8:1) */
   --status-done-bg: #e7f4ec;
-  --status-done-fg: #15803d; /* 완료 = 초록 */
+  --status-done-fg: #136c34; /* 완료 = 초록 (5.0→6.5:1) */
   --status-cancel-bg: #fdebec;
   --status-cancel-fg: #d6303f; /* 취소/경고 = 빨강 */
 
@@ -2345,7 +2346,7 @@ body {
   font-weight: 700;
 }
 .unassigned-table .day-col.sat {
-  color: #3b82f6;
+  color: #1d4ed8;
   font-weight: 700;
 }
 
@@ -4683,7 +4684,7 @@ table.cards-sm td {
 .btn.is-no-email,
 .po-act-btn.is-no-email {
   background: #f3f4f6;
-  color: #9ca3af;
+  color: #6b7684;
   border-color: #e5e7eb;
 }
 .po-act-btn.is-no-email:hover:not(:disabled) {
@@ -5592,7 +5593,7 @@ table.cards-sm td {
   align-self: center;
 }
 .purchase-save-indicator.saved {
-  color: #16a34a;
+  color: #15803d;
 }
 .purchase-save-indicator.saving {
   color: var(--text-muted);
@@ -12237,7 +12238,7 @@ tr.is-newly-added > td {
 }
 .expense-check-btn:hover:not(:disabled) {
   border-color: #16a34a;
-  color: #16a34a;
+  color: #15803d;
   background: #f0fdf4;
 }
 .expense-check-btn.is-checked {
@@ -12403,7 +12404,7 @@ tr.is-newly-added > td {
   color: var(--danger);
 }
 .home-cal-dow-cell.saturday {
-  color: #3b82f6;
+  color: #1d4ed8;
 }
 
 /* 캘린더 셀 날짜 색상: 일요일·공휴일은 빨강, 토요일은 파랑 */
@@ -12412,7 +12413,7 @@ tr.is-newly-added > td {
   color: var(--danger);
 }
 .home-cal-cell.saturday .home-cal-date {
-  color: #3b82f6;
+  color: #1d4ed8;
 }
 /* 공휴일 배경 강조 제거 — 날짜 숫자만 빨갛게 표시 */
 
@@ -12489,7 +12490,7 @@ tr.is-newly-added > td {
   color: var(--danger);
 }
 .home-cal-cell.saturday .home-cal-date {
-  color: #3b82f6;
+  color: #1d4ed8;
 }
 .home-cal-cell.today .home-cal-date {
   color: var(--accent);
@@ -13987,7 +13988,7 @@ td.mx-dc {
 }
 .cc-over {
   background: #e8f6ec;
-  color: #16a34a;
+  color: #15803d;
 }
 
 /* 프리랜서/일용직 직접 입력 모달 폼 */
@@ -19674,7 +19675,7 @@ a.lib-row-name:hover {
   font-weight: 600;
 }
 .regen-po__row.is-ok .regen-po__row-msg {
-  color: #16a34a;
+  color: #15803d;
 }
 .regen-po__row.is-fail .regen-po__row-msg {
   color: var(--danger);
@@ -20154,7 +20155,7 @@ a.lib-row-name:hover {
 }
 .stock-need-sep {
   margin: 0 2px;
-  color: #9ca3af;
+  color: #6b7684;
   font-weight: 400;
 }
 .stock-need-n {

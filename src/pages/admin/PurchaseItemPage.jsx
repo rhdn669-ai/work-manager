@@ -881,7 +881,7 @@ export default function PurchaseItemPage() {
         .pc-change { display:flex; align-items:center; gap:var(--space-2); font-size:16px; font-weight:700; flex-wrap:wrap; }
         .pc-price { color:#6b7280; }
         .pc-price.to { color:var(--primary); }
-        .pc-arrow { color:#9aa0ad; }
+        .pc-arrow { color:#5c6675; }
         .pc-supplier { font-size:12px; color:#6b7280; }
         .pc-cur { font-size:13px; color:var(--text); }
         .pc-cur strong { color:var(--primary); font-size:16px; }
@@ -1595,7 +1595,7 @@ export default function PurchaseItemPage() {
                                                             <div
                                                               style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                                                             >
-                                                              <span style={{ color: '#9aa0ad' }}>
+                                                              <span style={{ color: '#5c6675' }}>
                                                                 {Number(h.from).toLocaleString()}→
                                                               </span>
                                                               <strong>{Number(h.to).toLocaleString()}원</strong>
