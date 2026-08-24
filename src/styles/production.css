@@ -206,7 +206,7 @@
 }
 .board-table-dense th {
   padding: 8px 8px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .board-table-dense td {
   padding: 8px 8px;
@@ -222,17 +222,17 @@
   border-radius: 2px;
 }
 .cell-no {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--grey-400);
   font-variant-numeric: tabular-nums;
 }
 .proj-group {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   margin-top: 1px;
 }
 .cell-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-light);
   white-space: nowrap;
   overflow: hidden;
@@ -255,13 +255,13 @@
   white-space: nowrap;
 }
 .dd-none {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--grey-300);
 }
 
 /* 정역 배지 (정=파랑 / 역=빨강) */
 .dir-badge {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 5px;
@@ -328,7 +328,7 @@
   border-color: #9ae6b4;
 }
 .jaip-dots b {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--grey-400);
   margin-left: 2px;
@@ -345,7 +345,7 @@
   gap: 3px;
 }
 .dtag {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -836,7 +836,7 @@
   flex-wrap: wrap;
 }
 .defect-worker-hint {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #d6303f;
 }
@@ -879,7 +879,7 @@
 /* 체크 일자 표시 (자재입고 칩·검수/출고 토글) */
 .chip-date {
   margin-left: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   opacity: 0.75;
 }
@@ -895,7 +895,7 @@
   background: var(--success);
   color: #fff;
   border: 0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -912,7 +912,7 @@
 
 /* 불량 검수자(체크한 직원) 자동 표시 */
 .checker-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #276749;
   background: var(--status-done-bg, #e7f4ec);
@@ -931,7 +931,7 @@
   border-radius: 20px;
   background: var(--status-done-bg, #e7f4ec);
   color: #276749;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1012,7 +1012,7 @@
   border-radius: 999px;
   background: var(--grey-100);
   color: var(--text-light);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1022,7 +1022,7 @@
 }
 .worker-type.sm {
   padding: 2px 7px;
-  font-size: 12px;
+  font-size: 13px;
 }
 /* 유형을 안 고른 불량 — 필수값이 빈 상태임을 눈에 띄게 */
 .worker-type.is-none {
@@ -1082,7 +1082,7 @@
   border-color: #bbf7d0;
 }
 .defect-ba-head {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   margin-bottom: 5px;
   text-align: center;
@@ -1112,7 +1112,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -1133,7 +1133,7 @@
   height: 84px;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -1193,7 +1193,7 @@
   background: var(--mx-head-2);
   color: var(--text-light, #4e5968);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   position: sticky;
   top: 40px;
   z-index: 3;
@@ -1209,7 +1209,7 @@
 }
 .mx-rot {
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
 }
 /* 좌측 고정 컬럼 */
 .mx-sticky {
@@ -1247,7 +1247,7 @@
 .mx-proj-hogi {
   margin-left: 6px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-light, #6b7684);
 }
 .mx-status,
@@ -1285,7 +1285,7 @@
   border-radius: 999px;
   background: var(--primary-soft, #e7ebf2);
   color: var(--primary, #002050);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .mx-prog {
@@ -1295,7 +1295,7 @@
 .mx-date-input {
   border: 0;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
   width: 96px;
   font-family: inherit;
   text-align: center;
@@ -1333,7 +1333,7 @@
   background: var(--success);
 }
 .mx-prog-num {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #4e5968;
   min-width: 30px;
@@ -1387,7 +1387,7 @@
 }
 .mx-sub-th {
   /* 칸이 54px 인데 글자가 11px 이라 지나치게 작았다 — 2~3글자는 12px 로도 넉넉히 들어간다 */
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   white-space: nowrap;
   letter-spacing: -0.2px;
@@ -1431,7 +1431,7 @@
 /* 3행 leaf 헤더(사급·제작·도급) — 크기는 2행과 같게 두고 색·굵기로만 한 단 낮춘다.
    10px 은 눈에 잘 안 들어오는 데다 타입 램프에도 없는 크기였다. */
 .mx-leaf-row .mx-sub-th {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-light, #6b7684);
 }
@@ -1504,7 +1504,7 @@
   transition: width 0.2s ease;
 }
 .defect-up-pct {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--muted, #8b95a1);
   font-variant-numeric: tabular-nums;
@@ -1523,14 +1523,14 @@
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--primary);
 }
 .pr-month-load-title em {
   font-style: normal;
   font-weight: 400;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary, #8a94a6);
 }
 .pr-month-chip {
@@ -1541,7 +1541,7 @@
   border-radius: 999px;
   background: var(--primary-soft, #e8edf5);
   color: var(--primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1566,7 +1566,7 @@
   border-radius: 6px;
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--primary, #002050);
   font-weight: 700;
   outline: none;

@@ -7758,7 +7758,7 @@ tr.is-newly-added > td {
 }
 
 .admin-stat-label {
-  font-size: 12px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--text-light);
   letter-spacing: -0.005em;
@@ -7779,7 +7779,7 @@ tr.is-newly-added > td {
 }
 
 .admin-stat-value span {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--text-light);
   margin-left: 3px;
