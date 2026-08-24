@@ -168,10 +168,10 @@ export function Donut({ slices, total, caption = '총 건수' }) {
             />
           ))}
         </g>
-        <text x="70" y="68" className="q-donut-num" textAnchor="middle">
+        <text x="70" y="70" className="q-donut-num" textAnchor="middle">
           {total}
         </text>
-        <text x="70" y="86" className="q-donut-cap" textAnchor="middle">
+        <text x="70" y="90" className="q-donut-cap" textAnchor="middle">
           {caption}
         </text>
       </svg>

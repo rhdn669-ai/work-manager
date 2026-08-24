@@ -150,8 +150,8 @@
   gap: var(--space-3);
 }
 .q-donut {
-  width: 140px;
-  height: 140px;
+  width: 168px;
+  height: 168px;
   flex: 0 0 auto;
 }
 .q-donut circle {
@@ -163,13 +163,13 @@
 }
 .q-donut-num {
   fill: var(--text);
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .q-donut-cap {
   fill: var(--text-muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 .q-legend {
   list-style: none;
@@ -181,8 +181,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
-  font-size: 13px;
+  padding: 7px 0;
+  font-size: var(--font-md);
   border-bottom: 1px solid var(--border-light, var(--border));
 }
 .q-legend li:last-child {
@@ -203,10 +203,10 @@
   font-variant-numeric: tabular-nums;
 }
 .q-legend em {
-  width: 38px;
+  width: 46px;
   text-align: right;
   font-style: normal;
-  color: var(--text-muted);
+  color: var(--text-light);
   font-variant-numeric: tabular-nums;
 }
 
