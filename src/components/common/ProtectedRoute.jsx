@@ -2,8 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import { canProduction, isDefectOnly } from '../../utils/workspace';
 
-export default function ProtectedRoute({ allowedRoles, requirePurchase }) {
-  const { user, userProfile, loading, canApproveLeave, canPurchase } = useAuth();
+export default function ProtectedRoute({ allowedRoles, requirePurchase, requireApproveAll }) {
+  const { user, userProfile, loading, canApproveLeave, canPurchase, canApproveAll } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -36,6 +36,12 @@ export default function ProtectedRoute({ allowedRoles, requirePurchase }) {
 
   // 구매 탭 — 관리자이거나 「구매 권한」을 켠 직원만
   if (requirePurchase && !canPurchase) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // 마감 리스트 등 — 관리자 + 대표·부사장. 사이드바에 보여 주는 조건(canApproveAll)과 같아야
+  // 「메뉴는 보이는데 누르면 홈으로 튕기는」 일이 없다 (2026-08-26 대표님 지적).
+  if (requireApproveAll && !canApproveAll) {
     return <Navigate to="/dashboard" replace />;
   }
 

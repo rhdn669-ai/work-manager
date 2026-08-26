@@ -62,6 +62,7 @@ export default function MarginClosingPage() {
   const [manual, setManual] = useState([]);
   const [editing, setEditing] = useState(null); // { key, value }
   const [adding, setAdding] = useState(null); // { kind, ... }
+  const [tab, setTab] = useState('expense'); // 'expense' | 'revenue' — 지출을 먼저 본다(업체에 줄 돈)
   const [trashOpen, setTrashOpen] = useState(false);
   const [busy, setBusy] = useState('');
 
@@ -282,6 +283,24 @@ export default function MarginClosingPage() {
 
   return (
     <div className="margin-closing-page">
+      {/* 매출·지출 탭 (제목 위 — 상단 탭 표준) */}
+      <div className="tab-nav" style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          className={`tab-nav-item ${tab === 'expense' ? 'active' : ''}`}
+          onClick={() => setTab('expense')}
+        >
+          지출{expSum.count > 0 && <span className="tab-nav-count">{expSum.count}</span>}
+        </button>
+        <button
+          type="button"
+          className={`tab-nav-item ${tab === 'revenue' ? 'active' : ''}`}
+          onClick={() => setTab('revenue')}
+        >
+          매출{revSum.count > 0 && <span className="tab-nav-count">{revSum.count}</span>}
+        </button>
+      </div>
+
       <div className="page-header">
         <h2>마감 리스트</h2>
         <div className="page-actions">
@@ -293,7 +312,7 @@ export default function MarginClosingPage() {
             type="button"
             className="btn btn-sm btn-outline"
             onClick={() =>
-              setAdding({ kind: 'expense', vendor: '', siteName: '', description: '', amount: '', payMonth: '' })
+              setAdding({ kind: tab, vendor: '', siteName: '', description: '', amount: '', payMonth: '' })
             }
             disabled={locked}
           >
@@ -377,7 +396,7 @@ export default function MarginClosingPage() {
           </div>
 
           {/* 매출 — 현장이 곧 고객사라 현장별로 본다 */}
-          <section className="mc-sec">
+          <section className="mc-sec" hidden={tab !== 'revenue'}>
             <div className="mc-sec-head">
               <h3>매출</h3>
               <span className="mc-sec-n">{revSum.count}건</span>
@@ -425,7 +444,7 @@ export default function MarginClosingPage() {
           </section>
 
           {/* 지출 — 결제할 업체로 묶는다 */}
-          <section className="mc-sec">
+          <section className="mc-sec" hidden={tab !== 'expense'}>
             <div className="mc-sec-head">
               <h3>지출</h3>
               <span className="mc-sec-n">업체에 줄 돈 · {expSum.count}건</span>

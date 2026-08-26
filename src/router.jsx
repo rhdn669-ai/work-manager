@@ -128,6 +128,16 @@ const router = createBrowserRouter([
     ],
   },
   {
+    // 마감 리스트 — 관리자만이 아니라 대표·부사장도 본다
+    element: <ProtectedRoute requireApproveAll />,
+    children: [
+      {
+        element: <Layout />,
+        children: [{ path: '/admin/margin-closing', element: <MarginClosingPage /> }],
+      },
+    ],
+  },
+  {
     element: <ProtectedRoute allowedRoles={['admin']} />,
     children: [
       {
@@ -141,7 +151,6 @@ const router = createBrowserRouter([
           { path: '/admin/events', element: <EventManagementPage /> },
           { path: '/admin/leaves', element: <LeaveManagementPage /> },
           { path: '/admin/total-closing', element: <TotalClosingPage /> },
-          { path: '/admin/margin-closing', element: <MarginClosingPage /> },
           { path: '/admin/vehicle-log', element: <VehicleLogPage /> },
           { path: '/admin/trash', element: <TrashPage /> },
           { path: '/admin/mail', element: <MailSendPage /> },
