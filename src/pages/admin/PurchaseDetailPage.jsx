@@ -174,6 +174,17 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 좁은 칩 안에서 쓰는 짧은 날짜. 올해 것은 연도를 뺀다 — 대부분 올해 발주라
+// 연도는 자리만 차지하고, 지난해 건만 두 자리로 표시해 구분한다 (2026-08-26 대표님 「글짤림」).
+function fmtDateShort(ts) {
+  if (!ts) return '-';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '-';
+  const md = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const thisYear = new Date().getFullYear();
+  return d.getFullYear() === thisYear ? md : `${String(d.getFullYear()).slice(2)}-${md}`;
+}
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -2727,7 +2738,7 @@ export default function PurchaseDetailPage() {
                                     >
                                       <span className="purchase-recv-cancel-status">
                                         {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty} ·{' '}
-                                        {fmtDate(ln.receivedAt)}
+                                        {fmtDateShort(ln.receivedAt)}
                                       </span>
                                       <span className="purchase-recv-cancel-act">입고 취소</span>
                                     </button>
