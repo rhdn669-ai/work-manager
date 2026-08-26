@@ -14,6 +14,7 @@ const TRASH_TABS = [
   { key: 'bom', label: 'BOM', types: ['bomProject', 'bom'] },
   { key: 'site', label: '현장', types: ['sites'] },
   { key: 'closing', label: '공수표', types: ['siteClosingItems', 'siteFinances'] },
+  { key: 'marginClosing', label: '마감 리스트', types: ['marginClosingItems'] },
   { key: 'attendance', label: '근태·연차', types: ['overtimeRecords', 'leaves'] },
   { key: 'library', label: '자료실', types: ['libraryFiles', 'libraryFolders'] },
   { key: 'production', label: '생산현황', types: ['productionPanels'] },

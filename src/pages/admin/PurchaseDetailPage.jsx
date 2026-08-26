@@ -35,6 +35,8 @@ import {
   unmarkSupplierReplied,
   markPaymentRequested,
   unmarkPaymentRequested,
+  markSupplierClosed,
+  unmarkSupplierClosed,
   setPurchaseReplied,
   getPurchaseConfig,
   consumeItemStock,
@@ -317,6 +319,7 @@ export default function PurchaseDetailPage() {
   const mailFileInputRef = useRef(null);
   const [replyModal, setReplyModal] = useState(null); // 회신 확인 시 납기 입력 모달 { supplierName, due } | null
   const [payReqModal, setPayReqModal] = useState(null); // 결제 요청 시 마감일 입력 모달 { supplierName, due } | null
+  const [closeModal, setCloseModal] = useState(null); // 마감 시 월 선택 모달 { supplierName, monthKey, amount, payDue } | null
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
   const [mailSending, setMailSending] = useState({});
   // 백그라운드 PDF 캡처 시 현장명 표시 모드 (null=실제 현장명, 'hidden'=미공개, 'blank'=공백)
@@ -1409,7 +1412,7 @@ export default function PurchaseDetailPage() {
       alive = false;
       clearTimeout(preBuildRef.current.timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     // itemMaster·suppliers 는 넣지 않는다 — 구독으로 배열 참조가 자주 바뀌어
     // 타이머가 계속 되감기면 미리 만들기가 영영 시작되지 않는다.
   }, [preBuildSig, id, itemMaster.length, suppliers.length]);
@@ -1562,6 +1565,68 @@ export default function PurchaseDetailPage() {
   // 발송·발주완료·회신은 담당별로 갈리지만, 돈은 업체 앞으로 한 번에 나간다.
   function payKey(supplierName) {
     return supplierKey(supplierName, null);
+  }
+
+  // 업체별 마감 — 회신 확인과 결제 요청 사이의 단계.
+  //
+  // 「이 업체에서 이번 달에 이만큼 납품받았다」를 담당자가 확정한다. 앱이 입고일로 짐작하지
+  // 않는 이유는, 부분입고나 늦게 찍힌 입고일 때문에 엉뚱한 달로 새기 때문이다.
+  // 여기서 정한 달·금액이 그대로 마감 리스트에 확정으로 올라간다 (2026-08-26 대표님).
+  function handleCloseSupplier(supplierName, receivedAt, amount) {
+    const key = payKey(supplierName);
+    const prev = purchase.supplierClosed?.[key];
+    const sup = suppliers.find((x) => x.name === supplierName);
+    const base = receivedAt || new Date(); // 납품 완료일이 기준, 없으면 오늘
+    const d = base instanceof Date ? base : new Date(base);
+    const auto = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    setCloseModal({
+      supplierName,
+      monthKey: prev?.monthKey || auto,
+      amount: prev?.amount ?? amount ?? 0,
+      payDue: prev?.payDue || calcPaymentDue(sup, base),
+      termLabel: paymentTermLabel(sup),
+      baseDate: base,
+    });
+  }
+
+  async function confirmCloseSupplier() {
+    if (!closeModal) return;
+    const { supplierName, monthKey, amount, payDue } = closeModal;
+    setCloseModal(null);
+    try {
+      const key = payKey(supplierName);
+      const info = {
+        vendor: supplierName,
+        monthKey,
+        amount: Number(amount) || 0,
+        payDue: payDue || '',
+        by: userProfile?.name || '',
+      };
+      await markSupplierClosed(id, key, info);
+      const next = { ...(purchaseRef.current?.supplierClosed || {}), [key]: { ...info, at: new Date() } };
+      purchaseRef.current = { ...(purchaseRef.current || {}), supplierClosed: next };
+      setPurchase((prev) => ({ ...prev, supplierClosed: next }));
+      toast('마감했습니다. 마감 리스트에서 확인하세요.');
+    } catch {
+      toast('처리 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  async function handleCancelClose(supplierName) {
+    if (!(await confirm(`"${supplierName}" 업체 건의 마감을 취소하시겠습니까?`))) return;
+    try {
+      const key = payKey(supplierName);
+      await unmarkSupplierClosed(id, key);
+      setPurchase((prev) => {
+        const next = { ...(prev.supplierClosed || {}) };
+        delete next[key];
+        purchaseRef.current = { ...(purchaseRef.current || {}), supplierClosed: next };
+        return { ...prev, supplierClosed: next };
+      });
+      toast('마감을 취소했습니다');
+    } catch {
+      toast('처리 중 오류가 발생했습니다', 'error');
+    }
   }
 
   // 업체별 결제 요청 → 결제 마감일 입력 모달을 먼저 띄운다.
@@ -2875,6 +2940,7 @@ export default function PurchaseDetailPage() {
                       };
                     const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
                     // 결제는 업체 단위 — 담당이 갈린 업체는 두 줄이 같은 결제 상태를 본다
+                    const closed = purchase.supplierClosed?.[payKey(sup.name)];
                     const payReq = purchase.paymentRequested?.[payKey(sup.name)];
                     const paidRaw = purchase.supplierPaid?.[payKey(sup.name)];
                     const paidRows = paidList(paidRaw);
@@ -3069,6 +3135,26 @@ export default function PurchaseDetailPage() {
                                 회신 확인
                               </button>
                             )}
+                            {isFirstOfSupplier &&
+                              (closed ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm po-act-btn--on purchase-sup-toggle"
+                                  onClick={() => handleCloseSupplier(sup.name, recv.latest, recv.recvAmount)}
+                                  title={`${closed.monthKey} 마감 · ${(closed.amount || 0).toLocaleString()}원 — 눌러서 마감 내역 보기·고치기`}
+                                >
+                                  마감내역 확인
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline purchase-sup-toggle"
+                                  onClick={() => handleCloseSupplier(sup.name, recv.latest, recv.recvAmount)}
+                                  title="이 업체에서 이번 달 납품받은 금액을 마감합니다 — 마감 리스트에 올라갑니다"
+                                >
+                                  마감
+                                </button>
+                              ))}
                             {!isFirstOfSupplier ? (
                               <span
                                 className="btn btn-sm purchase-sup-toggle is-static"
@@ -3974,6 +4060,76 @@ export default function PurchaseDetailPage() {
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmReplyWithDue}>
                 회신 확인
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* 마감 — 그달 납품받은 금액을 확정해 마감 리스트로 올린다 */}
+      <Modal isOpen={!!closeModal} onClose={() => setCloseModal(null)} title="마감 — 납품 내역 확정">
+        {closeModal && (
+          <>
+            <p className="field-hint">
+              <strong>{closeModal.supplierName}</strong> 업체에서 납품받은 내역을 마감합니다. 마감한 금액은 마감
+              리스트에 확정으로 올라갑니다.
+            </p>
+            <div className="form-group">
+              <label>마감 월</label>
+              <input
+                aria-label="마감 월"
+                type="month"
+                value={closeModal.monthKey || ''}
+                onChange={(e) => setCloseModal((p) => ({ ...p, monthKey: e.target.value }))}
+                autoFocus
+              />
+              <p className="field-hint">납품받은 달입니다. 늦게 처리하실 때는 지난달로 고치세요.</p>
+            </div>
+            <div className="form-group">
+              <label>납품 금액</label>
+              <input
+                aria-label="납품 금액"
+                inputMode="numeric"
+                value={(Number(closeModal.amount) || 0).toLocaleString()}
+                onChange={(e) =>
+                  setCloseModal((p) => ({ ...p, amount: Number(e.target.value.replace(/[^0-9]/g, '')) || 0 }))
+                }
+              />
+              <p className="field-hint">입고된 만큼으로 채워 두었습니다. 다르면 고치세요.</p>
+            </div>
+            <div className="form-group">
+              <label>결제 예정일</label>
+              <input
+                aria-label="결제 예정일"
+                type="date"
+                value={closeModal.payDue || ''}
+                onChange={(e) => setCloseModal((p) => ({ ...p, payDue: e.target.value }))}
+              />
+              {closeModal.termLabel && (
+                <p className="field-hint">
+                  이 구매처의 결제 조건은 <strong>{closeModal.termLabel}</strong>입니다 — 그 조건으로 미리 채웠습니다.
+                </p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setCloseModal(null)}>
+                취소
+              </button>
+              {purchase.supplierClosed?.[payKey(closeModal.supplierName)] && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  onClick={() => {
+                    setCloseModal(null);
+                    handleCancelClose(closeModal.supplierName);
+                  }}
+                >
+                  <Icon name="trash" className="btn-ic" />
+                  마감 취소
+                </button>
+              )}
+              <button type="button" className="btn btn-primary" onClick={confirmCloseSupplier}>
+                마감
               </button>
             </div>
           </>

@@ -27,6 +27,7 @@ const TRASH_TYPE_LABEL = {
   vehicleMileages: { label: '운행기록', cls: 'partial' },
   siteClosingItems: { label: '공수표', cls: 'received' },
   siteFinances: { label: '지출·매출', cls: 'settled' },
+  marginClosingItems: { label: '마감 항목', cls: 'settled' },
   overtimeRecords: { label: '잔업', cls: 'ordered' },
   leaves: { label: '연차', cls: 'partial' },
   tasks: { label: '업무', cls: 'ordered' },

@@ -1,0 +1,390 @@
+/* 마감 리스트 — 대표님이 금액을 확정하는 화면.
+ *
+ * 이 화면만 글자를 앱 기준보다 크게 쓴다. 대표님이 큼직하고 진한 글을 보신다고 해서다
+ * (2026-08-25 대표님). 전역 토큰은 건드리지 않는다 — 여기만 커야 다른 화면이 안 흔들린다.
+ */
+
+.margin-closing-page .filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.mc-locked-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--grey-200);
+  color: var(--grey-800);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ── 요약 세 장 ───────────────────────────────────────── */
+.mc-sum {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.mc-sum-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  padding: 20px 22px;
+}
+
+.mc-sum-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-light);
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+
+.mc-sum-note {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.mc-sum-value {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-sum-value em {
+  font-style: normal;
+  font-size: 22px;
+  font-weight: 700;
+  margin-left: 3px;
+}
+
+.mc-sum-card.is-diff .mc-sum-value {
+  color: var(--success);
+}
+
+.mc-sum-sub {
+  margin-top: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.mc-sum-sub b {
+  color: var(--accent);
+}
+
+/* ── 확정 진행 ────────────────────────────────────────── */
+.mc-prog {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  padding: 16px 22px;
+  margin-bottom: 20px;
+}
+
+.mc-prog-text {
+  font-size: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mc-prog-text b {
+  color: var(--accent);
+}
+
+.mc-prog-bar {
+  flex: 1;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--grey-200);
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.mc-prog-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.mc-prog-left {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+/* ── 매출 / 지출 덩어리 ───────────────────────────────── */
+.mc-sec {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.mc-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 18px 22px;
+  border-bottom: 2px solid var(--border);
+}
+
+.mc-sec-head h3 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.mc-sec-n {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.mc-sec-sp {
+  flex: 1;
+}
+
+.mc-sec-total {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* ── 표 ───────────────────────────────────────────────── */
+.mc-table th {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-light);
+}
+
+.mc-table td {
+  height: 58px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* 손대야 할 줄은 눈에 띄게 — 대표님이 여기만 보면 되게 한다 */
+.mc-table tbody tr.is-todo td {
+  background: #fffbf0;
+}
+
+.mc-site,
+.mc-vd {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.mc-sub-site {
+  padding-left: 34px !important;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.mc-desc {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 업체 묶음 줄 — 이 업체에 이번 달 얼마를 줘야 하는지 한 줄로 */
+.mc-table tbody tr.mc-vendor td {
+  background: var(--grey-50);
+  border-top: 1px solid var(--grey-300);
+  border-bottom: 1px solid var(--grey-300);
+  height: 54px;
+}
+
+.mc-vd-n {
+  margin-left: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.mc-vd-sum {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* ── 금액 — 눌러서 그 자리에서 고친다 ────────────────── */
+.mc-amt {
+  display: inline-block;
+  min-width: 170px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-card, #fff);
+  font-family: inherit;
+  font-size: 23px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mc-amt:hover {
+  border-color: var(--primary);
+}
+
+.mc-amt.is-edited {
+  border-color: var(--accent);
+  color: var(--accent-press);
+}
+
+.mc-amt-input {
+  width: 100%;
+  min-width: 170px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--primary);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 23px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+/* ── 배지 ─────────────────────────────────────────────── */
+.mc-src,
+.mc-when {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mc-src {
+  background: var(--grey-100);
+  color: var(--text-light);
+}
+
+.mc-when {
+  background: var(--primary-softer);
+  color: var(--primary);
+}
+
+.mc-chip {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mc-chip.is-done {
+  background: #dcefe4;
+  color: #14713a;
+}
+
+.mc-chip.is-todo {
+  background: #fdf0cf;
+  color: #8a6100;
+}
+
+.mc-chip.is-static {
+  cursor: default;
+}
+
+.mc-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.mc-note {
+  margin: 22px 0 0;
+  padding: 16px 20px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--accent);
+  border-radius: var(--radius-md, 14px);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.mc-note b {
+  color: var(--text);
+}
+
+/* ── 반응형 — 아이폰·갤럭시·폴더블 ───────────────────── */
+@media (max-width: 900px) {
+  .mc-sum {
+    grid-template-columns: 1fr;
+  }
+
+  .mc-sum-value {
+    font-size: 32px;
+  }
+
+  .mc-prog {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .mc-prog-bar {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .mc-sec-head {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .mc-sec-total {
+    font-size: 22px;
+  }
+
+  .mc-table td {
+    height: 52px;
+    font-size: 15px;
+  }
+
+  .mc-amt,
+  .mc-amt-input {
+    min-width: 130px;
+    font-size: 19px;
+  }
+
+  .mc-sub-site {
+    padding-left: 20px !important;
+  }
+}

@@ -18,6 +18,7 @@ export const SiteManagementPage = lazy(() => import('./pages/admin/SiteManagemen
 export const EventManagementPage = lazy(() => import('./pages/admin/EventManagementPage'));
 export const LeaveManagementPage = lazy(() => import('./pages/admin/LeaveManagementPage'));
 export const TotalClosingPage = lazy(() => import('./pages/admin/TotalClosingPage'));
+export const MarginClosingPage = lazy(() => import('./pages/admin/MarginClosingPage'));
 export const VehicleLogPage = lazy(() => import('./pages/admin/VehicleLogPage'));
 export const PurchaseDetailPage = lazy(() => import('./pages/admin/PurchaseDetailPage'));
 export const SupplierManagementPage = lazy(() => import('./pages/admin/SupplierManagementPage'));

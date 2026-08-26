@@ -21,7 +21,7 @@ const LS_KEY_PREFIX = 'sidebar-order-v1:';
 const lsKeyFor = (uid) => (uid ? `${LS_KEY_PREFIX}${uid}` : null);
 
 // 기본 메뉴 정의
-function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase }) {
+function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, canApproveAll }) {
   return [
     { key: 'home', to: '/dashboard', label: '홈', icon: 'home', show: true, end: false },
     { key: 'library', to: '/library', label: '자료실', icon: 'folder', show: canViewArchive, end: true },
@@ -39,6 +39,13 @@ function buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive
       end: true,
     },
     { key: 'admin-total-closing', to: '/admin/total-closing', label: '총 마감', icon: 'check', show: isAdmin },
+    {
+      key: 'admin-margin-closing',
+      to: '/admin/margin-closing',
+      label: '마감 리스트',
+      icon: 'list',
+      show: canApproveAll,
+    },
     {
       key: 'manage-team-employee',
       to: '/manage/team',
@@ -81,7 +88,8 @@ function buildProductionItems() {
 }
 
 export default function Sidebar({ isOpen }) {
-  const { userProfile, isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase } = useAuth();
+  const { userProfile, isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, canApproveAll } =
+    useAuth();
   const { confirm } = useDialog();
   const [editing, setEditing] = useState(false);
   const [order, setOrder] = useState(null);
@@ -191,10 +199,10 @@ export default function Sidebar({ isOpen }) {
 
   const allItems = useMemo(
     () =>
-      buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase }).map((it) =>
-        it.key === 'admin-payment' ? { ...it, badgeCount: isAdmin ? paymentPending : 0 } : it,
+      buildAllItems({ isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, canApproveAll }).map(
+        (it) => (it.key === 'admin-payment' ? { ...it, badgeCount: isAdmin ? paymentPending : 0 } : it),
       ),
-    [isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, paymentPending],
+    [isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, canApproveAll, paymentPending],
   );
 
   // 메뉴 + 사용자 추가 대분류 합쳐서 사용자 순서대로 정렬

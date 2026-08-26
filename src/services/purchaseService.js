@@ -665,6 +665,37 @@ export async function unmarkSupplierPaid(purchaseId, key) {
   });
 }
 
+// 업체별 마감 — 회신 확인과 결제 요청 사이의 단계.
+//
+// 「그 업체에서 이번 달에 이만큼 납품받았다」를 발주 담당자가 확정하는 행위다.
+// 입고일로 앱이 짐작하지 않는다 — 부분입고나 늦게 찍힌 입고일 때문에 엉뚱한 달로 새기 때문.
+// 여기서 정한 달·금액이 그대로 마감 리스트에 확정으로 올라간다 (2026-08-26 대표님).
+//
+// monthKey 'YYYY-MM' · amount 납품 금액 · payDue 업체 결제조건으로 계산한 결제 예정일
+export async function markSupplierClosed(purchaseId, key, { vendor, monthKey, amount, payDue, note, by = '' }) {
+  key = String(key ?? '').replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierClosed.${key}`]: {
+      vendor: vendor || '',
+      monthKey: monthKey || '',
+      amount: Number(amount) || 0,
+      payDue: payDue || '',
+      note: note || '',
+      at: new Date(),
+      by,
+    },
+    updatedAt: new Date(),
+  });
+}
+
+export async function unmarkSupplierClosed(purchaseId, key) {
+  key = String(key ?? '').replace(/\./g, '_');
+  await updateDoc(doc(db, 'purchases', purchaseId), {
+    [`supplierClosed.${key}`]: deleteField(),
+    updatedAt: new Date(),
+  });
+}
+
 // 업체별 결제 요청 — 발주 상세에서 '결제 요청'을 누르면 결제 페이지에 결제 대기로 올라온다.
 // dueDate: 결제 마감일(YYYY-MM-DD) — 결제 페이지에 함께 전달.
 export async function markPaymentRequested(purchaseId, key, by = '', dueDate = '') {
