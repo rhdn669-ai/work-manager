@@ -4925,11 +4925,15 @@ table.cards-sm td {
   background: #dcfce7;
   color: #166534;
 }
+/* 폴더 총액 — 이 업체에 얼마인지가 이 줄에서 가장 중요하다. 크게 둔다 (2026-08-26 대표님) */
 .payment-folder-amount {
   flex: 0 0 auto;
-  font-weight: 700;
-  font-size: 14px;
-  min-width: 92px;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 118px;
   text-align: right;
 }
 .payment-folder-body {
@@ -20464,4 +20468,136 @@ a.lib-row-name:hover {
   border-color: var(--accent-tint);
   color: var(--accent-press);
   font-size: 19px;
+}
+
+/* ===== 요약 카드 — 큰 숫자로 한눈에 (마감 리스트·결제 공용) =====
+ * 마감 리스트에서 쓰던 것을 결제 페이지도 함께 쓰도록 공용으로 옮겼다.
+ * 돈을 다루는 화면은 같은 얼굴이어야 한다 (2026-08-26 대표님). */
+.sum-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sum-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  padding: 20px 22px;
+}
+
+.sum-card-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-light);
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+
+.sum-card-note {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.sum-card-value {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sum-card-value em {
+  font-style: normal;
+  font-size: 22px;
+  font-weight: 700;
+  margin-left: 3px;
+}
+
+.sum-card.is-good .sum-card-value {
+  color: var(--success);
+}
+
+.sum-card.is-wait .sum-card-value {
+  color: var(--accent-press);
+}
+
+.sum-card-sub {
+  margin-top: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.sum-card-sub b {
+  color: var(--accent);
+}
+
+/* 진행 막대 — 「N건 중 M건」 */
+.sum-prog {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  padding: 16px 22px;
+  margin-bottom: 20px;
+}
+
+.sum-prog-text {
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sum-prog-text b {
+  color: var(--accent);
+}
+
+.sum-prog-bar {
+  flex: 1;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--grey-200);
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.sum-prog-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.sum-prog-left {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .sum-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .sum-card-value {
+    font-size: 30px;
+  }
+
+  .sum-prog {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .sum-prog-bar {
+    order: 3;
+    flex-basis: 100%;
+  }
 }

@@ -26,111 +26,7 @@
 }
 
 /* ── 요약 세 장 ───────────────────────────────────────── */
-.mc-sum {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.mc-sum-card {
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md, 14px);
-  padding: 20px 22px;
-}
-
-.mc-sum-label {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--text-light);
-  letter-spacing: 0.03em;
-  margin-bottom: 8px;
-}
-
-.mc-sum-note {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-.mc-sum-value {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-  color: var(--primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.mc-sum-value em {
-  font-style: normal;
-  font-size: 22px;
-  font-weight: 700;
-  margin-left: 3px;
-}
-
-.mc-sum-card.is-diff .mc-sum-value {
-  color: var(--success);
-}
-
-.mc-sum-sub {
-  margin-top: 9px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-light);
-}
-
-.mc-sum-sub b {
-  color: var(--accent);
-}
-
 /* ── 확정 진행 ────────────────────────────────────────── */
-.mc-prog {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md, 14px);
-  padding: 16px 22px;
-  margin-bottom: 20px;
-}
-
-.mc-prog-text {
-  font-size: 16px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.mc-prog-text b {
-  color: var(--accent);
-}
-
-.mc-prog-bar {
-  flex: 1;
-  height: 11px;
-  border-radius: 999px;
-  background: var(--grey-200);
-  overflow: hidden;
-  min-width: 80px;
-}
-
-.mc-prog-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--primary);
-  transition: width 0.3s ease;
-}
-
-.mc-prog-left {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-light);
-  white-space: nowrap;
-}
-
 /* ── 매출 / 지출 덩어리 ───────────────────────────────── */
 .mc-sec {
   background: var(--bg-card, #fff);
@@ -345,23 +241,7 @@
 
 /* ── 반응형 — 아이폰·갤럭시·폴더블 ───────────────────── */
 @media (max-width: 900px) {
-  .mc-sum {
-    grid-template-columns: 1fr;
-  }
 
-  .mc-sum-value {
-    font-size: 32px;
-  }
-
-  .mc-prog {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .mc-prog-bar {
-    order: 3;
-    flex-basis: 100%;
-  }
 }
 
 @media (max-width: 640px) {

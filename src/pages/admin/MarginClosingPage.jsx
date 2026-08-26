@@ -27,7 +27,6 @@ import {
   applyConfirm,
   sumRows,
   groupState,
-  GROUP_STATE_LABEL,
 } from '../../domain/marginClosing';
 import '../../styles/margin-closing.css';
 
@@ -64,6 +63,7 @@ export default function MarginClosingPage() {
   const [manual, setManual] = useState([]);
   const [editing, setEditing] = useState(null); // { key, value }
   const [adding, setAdding] = useState(null); // { kind, ... }
+  const [openVendors, setOpenVendors] = useState(() => new Set()); // 펼쳐 둔 업체 폴더
   const [tab, setTab] = useState('expense'); // 'expense' | 'revenue' — 지출을 먼저 본다(업체에 줄 돈)
   const [trashOpen, setTrashOpen] = useState(false);
   const [busy, setBusy] = useState('');
@@ -357,49 +357,49 @@ export default function MarginClosingPage() {
         <Skeleton.Rows count={8} />
       ) : (
         <>
-          <div className="mc-sum">
-            <div className="mc-sum-card">
-              <div className="mc-sum-label">매출</div>
-              <div className="mc-sum-value">
+          <div className="sum-cards">
+            <div className="sum-card">
+              <div className="sum-card-label">매출</div>
+              <div className="sum-card-value">
                 {won(revSum.confirmed)}
                 <em>원</em>
               </div>
-              <div className="mc-sum-sub">
+              <div className="sum-card-sub">
                 확정 {revSum.confirmedCount}건{revSum.pendingCount > 0 && <b> · 미확정 {revSum.pendingCount}건</b>}
               </div>
             </div>
-            <div className="mc-sum-card">
-              <div className="mc-sum-label">
-                지출 <span className="mc-sum-note">업체 결제분</span>
+            <div className="sum-card">
+              <div className="sum-card-label">
+                지출 <span className="sum-card-note">업체 결제분</span>
               </div>
-              <div className="mc-sum-value">
+              <div className="sum-card-value">
                 {won(expSum.confirmed)}
                 <em>원</em>
               </div>
-              <div className="mc-sum-sub">
+              <div className="sum-card-sub">
                 업체 {expense.length}곳{expSum.pendingCount > 0 && <b> · 미확정 {expSum.pendingCount}건</b>}
               </div>
             </div>
-            <div className="mc-sum-card is-diff">
-              <div className="mc-sum-label">차액</div>
-              <div className="mc-sum-value">
+            <div className="sum-card is-good">
+              <div className="sum-card-label">차액</div>
+              <div className="sum-card-value">
                 {won(revSum.confirmed - expSum.confirmed)}
                 <em>원</em>
               </div>
-              <div className="mc-sum-sub">
+              <div className="sum-card-sub">
                 {leftCount > 0 ? `미확정 ${leftCount}건이 빠진 금액입니다` : '모두 확정되었습니다'}
               </div>
             </div>
           </div>
 
-          <div className="mc-prog">
-            <div className="mc-prog-text">
+          <div className="sum-prog">
+            <div className="sum-prog-text">
               {totalCount}건 중 <b>{doneCount}건</b> 확정
             </div>
-            <div className="mc-prog-bar">
+            <div className="sum-prog-bar">
               <i style={{ width: `${totalCount ? Math.round((doneCount / totalCount) * 100) : 0}%` }} />
             </div>
-            <div className="mc-prog-left">남은 {leftCount}건</div>
+            <div className="sum-prog-left">남은 {leftCount}건</div>
           </div>
 
           {/* 매출 — 현장이 곧 고객사라 현장별로 본다 */}
@@ -465,61 +465,81 @@ export default function MarginClosingPage() {
                 desc="그달에 입고 확정된 발주가 있으면 업체별로 올라옵니다."
               />
             ) : (
-              <div className="table-scroll-x">
-                <table className="table mc-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 260 }}>업체 · 현장</th>
-                      <th>내역</th>
-                      <th className="col-unit" style={{ width: 100 }}>
-                        출처
-                      </th>
-                      <th className="col-unit" style={{ width: 100 }}>
-                        결제 예정
-                      </th>
-                      <th className="col-num" style={{ width: 220 }}>
-                        금액
-                      </th>
-                      <th className="col-action">확정</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expense.map((g) => {
-                      const st = groupState(g.lines);
-                      return [
-                        <tr key={`v-${g.vendor}`} className="mc-vendor">
-                          <td>
-                            <span className="mc-vd">{g.vendor}</span>
-                            <span className="mc-vd-n">{g.lines.length}건</span>
-                          </td>
-                          <td colSpan={3} />
-                          <td className="col-num">
-                            <span className="mc-vd-sum">{won(g.total)}</span>
-                          </td>
-                          <td className="col-action">
-                            <span className={`mc-chip is-static ${st === 'confirmed' ? 'is-done' : 'is-todo'}`}>
-                              {GROUP_STATE_LABEL[st]}
-                            </span>
-                          </td>
-                        </tr>,
-                        ...g.lines.map((r) => (
-                          <tr key={r.key} className={r.confirmed ? '' : 'is-todo'}>
-                            <td className="mc-sub-site">{r.siteName}</td>
-                            <td className="mc-desc">{r.description}</td>
-                            <td className="col-unit">
-                              <span className="mc-src">{r.manual ? '직접입력' : '자동'}</span>
-                            </td>
-                            <td className="col-unit">
-                              {r.payMonth ? <span className="mc-when">{r.payMonth}</span> : ''}
-                            </td>
-                            {amountCell(r)}
-                            {confirmCell(r)}
-                          </tr>
-                        )),
-                      ];
-                    })}
-                  </tbody>
-                </table>
+              <div className="payment-folders mc-folders">
+                {expense.map((g) => {
+                  const st = groupState(g.lines);
+                  const open = openVendors.has(g.vendor);
+                  const todo = g.lines.filter((l) => !l.confirmed).length;
+                  return (
+                    <div
+                      key={g.vendor}
+                      className={`payment-folder${open ? ' is-open' : ''}${st === 'confirmed' ? ' is-paid' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        className="payment-folder-head"
+                        onClick={() =>
+                          setOpenVendors((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(g.vendor)) next.delete(g.vendor);
+                            else next.add(g.vendor);
+                            return next;
+                          })
+                        }
+                      >
+                        <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
+                        <Icon name="building" className="payment-folder-ic" />
+                        <span className="payment-folder-title" title={g.vendor}>
+                          {g.vendor}
+                        </span>
+                        <span className="payment-folder-site">{g.lines.length}건</span>
+                        <span className="payment-folder-spacer" />
+                        {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
+                        {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
+                        <span className="payment-folder-amount">{won(g.total)}원</span>
+                      </button>
+
+                      {open && (
+                        <div className="payment-folder-body table-scroll-x">
+                          <table className="table mc-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: 200 }}>현장</th>
+                                <th>내역</th>
+                                <th className="col-unit" style={{ width: 100 }}>
+                                  출처
+                                </th>
+                                <th className="col-unit" style={{ width: 100 }}>
+                                  결제 예정
+                                </th>
+                                <th className="col-num" style={{ width: 200 }}>
+                                  금액
+                                </th>
+                                <th className="col-action">확정</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.lines.map((r) => (
+                                <tr key={r.key} className={r.confirmed ? '' : 'is-todo'}>
+                                  <td className="mc-site">{r.siteName}</td>
+                                  <td className="mc-desc">{r.description}</td>
+                                  <td className="col-unit">
+                                    <span className="mc-src">{r.manual ? '직접입력' : '자동'}</span>
+                                  </td>
+                                  <td className="col-unit">
+                                    {r.payMonth ? <span className="mc-when">{r.payMonth}</span> : ''}
+                                  </td>
+                                  {amountCell(r)}
+                                  {confirmCell(r)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

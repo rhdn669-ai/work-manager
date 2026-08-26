@@ -224,6 +224,9 @@ export default function PaymentPage() {
   const paidRows = filtered.filter((r) => r.paid);
   const sumPaid = paidRows.reduce((s, r) => s + r.total, 0);
   const sumPending = filtered.reduce((s, r) => s + (r.pendingAmount || 0), 0);
+  // 요약 카드용 — 아직 줄 돈과 이미 준 돈
+  const sumWait = filtered.filter((r) => !r.paid).reduce((s, r) => s + r.total, 0);
+  const vendorCount = new Set(filtered.map((r) => r.supplier)).size;
   const pendingItemCount = filtered.reduce((s, r) => s + (r.pendingCount || 0), 0);
 
   // 발주서 단위 폴더로 그룹핑 (자료실 폴더 느낌)
@@ -493,6 +496,50 @@ export default function PaymentPage() {
         </div>
       ) : (
         <>
+          {/* 요약 — 마감 리스트와 같은 얼굴. 돈을 다루는 화면은 첫인상이 같아야 한다 */}
+          <div className="sum-cards no-print">
+            <div className="sum-card is-wait">
+              <div className="sum-card-label">결제 대기</div>
+              <div className="sum-card-value">
+                {sumWait.toLocaleString()}
+                <em>원</em>
+              </div>
+              <div className="sum-card-sub">{pendingCount > 0 ? <b>대기 {pendingCount}건</b> : '대기 없음'}</div>
+            </div>
+            <div className="sum-card is-good">
+              <div className="sum-card-label">결제 완료</div>
+              <div className="sum-card-value">
+                {sumPaid.toLocaleString()}
+                <em>원</em>
+              </div>
+              <div className="sum-card-sub">완료 {paidCount}건</div>
+            </div>
+            <div className="sum-card">
+              <div className="sum-card-label">합계</div>
+              <div className="sum-card-value">
+                {sumTotal.toLocaleString()}
+                <em>원</em>
+              </div>
+              <div className="sum-card-sub">업체 {vendorCount}곳</div>
+            </div>
+          </div>
+
+          {pendingCount + paidCount > 0 && (
+            <div className="sum-prog no-print">
+              <div className="sum-prog-text">
+                {pendingCount + paidCount}건 중 <b>{paidCount}건</b> 결제 완료
+              </div>
+              <div className="sum-prog-bar">
+                <i
+                  style={{
+                    width: `${Math.round((paidCount / (pendingCount + paidCount)) * 100)}%`,
+                  }}
+                />
+              </div>
+              <div className="sum-prog-left">남은 {pendingCount}건</div>
+            </div>
+          )}
+
           <div className="payment-folders">
             {folders.map((f) => {
               const open = expanded.has(f.key);
