@@ -9,7 +9,7 @@ import Icon from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
-import { getPurchases } from '../../services/purchaseService';
+import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
 import {
   getMonthClosing,
   getManualItems,
@@ -20,7 +20,7 @@ import {
   unlockMonth,
 } from '../../services/marginClosingService';
 import {
-  closedRowsOf,
+  receivedRowsOf,
   groupByVendor,
   payMonthLabel,
   revenueRows,
@@ -54,6 +54,8 @@ export default function MarginClosingPage() {
 
   const [loading, setLoading] = useState(true);
   const [purchases, setPurchases] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [itemMaster, setItemMaster] = useState([]);
   const [sites, setSites] = useState([]);
   const [financesBySite, setFinancesBySite] = useState({});
   const [confirms, setConfirms] = useState({});
@@ -79,9 +81,10 @@ export default function MarginClosingPage() {
     (async () => {
       setLoading(true);
       try {
-        const [ps, st] = await Promise.all([getPurchases(), getAllSites()]);
+        const [ps, sp, st] = await Promise.all([getPurchases(), getSuppliers(), getAllSites()]);
         if (cancelled) return;
         setPurchases(ps);
+        setSuppliers(sp);
         setSites(st);
         // 매출은 현장별 마감에 적힌 것을 그대로 가져온다 — 총 마감과 같은 소스라야 숫자가 어긋나지 않는다.
         const fin = await Promise.all(st.map((s) => getFinanceItems(s.id, year, month)));
@@ -99,6 +102,8 @@ export default function MarginClosingPage() {
       cancelled = true;
     };
   }, [year, month, loadClosing, toast]);
+
+  useEffect(() => subscribePurchaseItems(setItemMaster), []);
 
   // ── 매출: 현장별 / 지출: 업체별 ──────────────────────────
   const revenue = useMemo(() => {
@@ -118,9 +123,10 @@ export default function MarginClosingPage() {
   }, [sites, financesBySite, manual, confirms]);
 
   const expense = useMemo(() => {
-    // 발주서에서 「마감」을 누른 건만 올라온다. 앱이 입고일로 짐작하지 않는다.
+    // 그달 입고 확정된 건은 전부 올라온다 — 마감 버튼을 눌렀든 안 눌렀든.
+    // 누르는 걸 잊어 통째로 빠지는 일이 없어야 한다 (2026-08-26 대표님).
     const rows = purchases
-      .flatMap((p) => closedRowsOf(p, year, month))
+      .flatMap((p) => receivedRowsOf(p, itemMaster, suppliers, year, month))
       .map((r) => ({ ...r, payMonth: payMonthLabel(r.payDue) }));
     const hand = manual
       .filter((m) => m.kind !== 'revenue')
@@ -134,13 +140,14 @@ export default function MarginClosingPage() {
         payMonth: m.payMonth || '',
         manual: true,
       }));
-    // 담당자가 마감한 건 = 금액이 정해진 것이라 확정으로 올라온다 (2026-08-26 대표님).
+    // 발주서에서 마감한 건만 확정으로 선다. 입고만 되고 마감을 안 누른 건은 미확정 —
+    // 노란 줄로 떠서 「아직 손 안 댄 것」이 한눈에 보인다.
     const all = [
-      ...applyConfirm(rows, confirms, { defaultConfirmed: true }),
+      ...rows.map((r) => applyConfirm([r], confirms, { defaultConfirmed: !!r.closed })[0]),
       ...applyConfirm(hand, confirms, { defaultConfirmed: true }),
     ];
     return groupByVendor(all);
-  }, [purchases, year, month, manual, confirms]);
+  }, [purchases, itemMaster, suppliers, year, month, manual, confirms]);
 
   const expenseRows = useMemo(() => expense.flatMap((g) => g.lines), [expense]);
   const revSum = useMemo(() => sumRows(revenue), [revenue]);
@@ -455,7 +462,7 @@ export default function MarginClosingPage() {
               <EmptyState
                 icon="inbox"
                 title="이 달 업체 결제분이 없습니다"
-                desc="발주서에서 「마감」을 누르면 업체별로 올라옵니다."
+                desc="그달에 입고 확정된 발주가 있으면 업체별로 올라옵니다."
               />
             ) : (
               <div className="table-scroll-x">

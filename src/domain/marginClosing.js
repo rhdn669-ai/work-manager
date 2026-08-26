@@ -7,8 +7,9 @@
 // 이 파일을 지배하는 세 가지.
 //  ① 마감은 그달에 납품받은 내역이다. 결제가 다음 달이어도 납품이 8월이면 8월 지출이다.
 //     ("마감은 해당 월에 납품 받은 내역" · "마감은 이번달에 결제는 다음달에 되는 경우가 많음")
-//  ② 마감월은 앱이 추정하지 않는다. 발주서에서 담당자가 「마감」을 눌러 정한다 —
-//     부분입고·늦게 찍힌 입고일 때문에 자동 추정은 엉뚱한 달로 새기 때문이다.
+//  ② 그달 입고 확정된 건은 마감 버튼을 눌렀든 안 눌렀든 전부 목록에 오른다.
+//     ("입고확정이 해당 월인 내용은 다 리스트에 올라와야함" — 빠지는 건이 없어야 한다)
+//     마감 버튼은 담당자가 금액을 확정하는 표시이고, 안 누른 건은 미확정으로 선다.
 //  ③ 지출은 업체에 줄 돈만 담는다. 잔업 수당·고정비는 총 마감에서 따로 본다.
 //     ("마감리스트에는 업체에 결제해줘야하는 금액만 지출로")
 import { mapPrintItems } from '../utils/purchaseOrder';
@@ -24,6 +25,11 @@ function toDate(v) {
   if (!v) return null;
   const d = v.toDate ? v.toDate() : new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function inMonth(v, year, month) {
+  const d = toDate(v);
+  return !!d && d.getFullYear() === year && d.getMonth() + 1 === month;
 }
 
 // 그달에 실제로 들어온 몫만 금액으로 친다.
@@ -51,25 +57,74 @@ export function receivedAmountOf(purchase, itemMaster, suppliers, vendorName) {
   return { amount: total, count };
 }
 
-// 마감 처리된 (발주 × 업체) 한 건.
-export function closedRowsOf(purchase, year, month) {
+// 그달 입고 확정된 (발주 × 업체) 건 — 마감 버튼을 눌렀든 안 눌렀든 전부 올라온다.
+//
+// 처음에는 마감 버튼을 누른 것만 올렸는데, 그러면 누르는 걸 잊은 건이 통째로 빠진다.
+// 대표님이 총 마감을 못 믿으신 이유가 바로 「빠진 게 있다」였으므로, 입고된 것은
+// 무조건 목록에 세우고 마감 여부를 상태로 보여 준다 (2026-08-26 대표님).
+//
+// 마감을 누른 건은 담당자가 금액을 확정한 것이라 그 금액을 쓰고, 안 누른 건은
+// 입고분으로 계산해 미확정으로 세운다.
+export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
+  const lines = mapPrintItems(purchase.items || [], itemMaster, suppliers);
+  const byVendor = new Map();
+  for (const ln of lines) {
+    if (!inMonth(ln.receivedAt, year, month)) continue;
+    const amt = receivedAmount(ln);
+    if (amt <= 0) continue;
+    const vendor = ln._supplier || purchase.supplierName || MISC_VENDOR;
+    if (!byVendor.has(vendor)) byVendor.set(vendor, { amount: 0, names: [], count: 0, latest: null });
+    const g = byVendor.get(vendor);
+    g.amount += amt;
+    g.count += 1;
+    if (g.names.length < 2) g.names.push(ln._name || ln.name || '');
+    const d = toDate(ln.receivedAt);
+    if (d && (!g.latest || d > g.latest)) g.latest = d;
+  }
+
   const closed = purchase.supplierClosed || {};
   const want = monthKey(year, month);
   const out = [];
-  for (const [key, info] of Object.entries(closed)) {
-    if (!info || info.monthKey !== want) continue;
+  for (const [vendor, g] of byVendor) {
+    const vkey = closeKeyOf(vendor);
+    const info = closed[vkey];
+    const isClosed = !!info && info.monthKey === want;
     out.push({
-      key: `po:${purchase.id}:${key}`,
+      key: `po:${purchase.id}:${vkey}`,
       purchaseId: purchase.id,
-      vendorKey: key,
-      vendor: info.vendor || key,
+      vendorKey: vkey,
+      vendor,
       siteName: purchase.siteName || '',
       title: purchase.title || '(제목 없음)',
-      description: info.note || purchase.title || '(제목 없음)',
+      description: g.count > 1 ? `${g.names[0]} 외 ${g.count - 1}건` : g.names[0] || purchase.title || '',
+      // 마감한 건은 담당자가 정한 금액, 아니면 입고분 그대로
+      amount: isClosed ? Number(info.amount) || 0 : g.amount,
+      receivedAmount: g.amount,
+      payDue: isClosed ? info.payDue || '' : '',
+      closed: isClosed,
+      closedBy: isClosed ? info.by || '' : '',
+      receivedAt: g.latest,
+    });
+  }
+
+  // 그달에 입고는 없는데 마감만 걸어 둔 건(손으로 월을 옮긴 경우)도 빠뜨리지 않는다
+  for (const [vkey, info] of Object.entries(closed)) {
+    if (!info || info.monthKey !== want) continue;
+    if (out.some((r) => r.vendorKey === vkey)) continue;
+    out.push({
+      key: `po:${purchase.id}:${vkey}`,
+      purchaseId: purchase.id,
+      vendorKey: vkey,
+      vendor: info.vendor || vkey,
+      siteName: purchase.siteName || '',
+      title: purchase.title || '(제목 없음)',
+      description: purchase.title || '(제목 없음)',
       amount: Number(info.amount) || 0,
+      receivedAmount: 0,
       payDue: info.payDue || '',
-      closedAt: toDate(info.at),
+      closed: true,
       closedBy: info.by || '',
+      receivedAt: null,
     });
   }
   return out;
