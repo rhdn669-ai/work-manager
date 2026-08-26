@@ -27,6 +27,14 @@ export async function setSidebarPref(uid, pref) {
   await setDoc(refFor(uid), { sidebar: pref, updatedAt: new Date() }, { merge: true });
 }
 
+// 화면 배율 — 「보통」과 「크게」. 글자만이 아니라 여백·버튼까지 함께 커진다.
+// 앱 곳곳에 글자 크기가 934곳 직접 박혀 있어 토큰만 바꿔서는 대부분이 안 따라온다.
+// 배율은 브라우저가 화면 전체에 걸어 주므로 누락이 원리적으로 생기지 않는다 (2026-08-26 대표님).
+export async function setUiScale(uid, scale) {
+  if (!uid) return;
+  await setDoc(refFor(uid), { uiScale: scale === 'lg' ? 'lg' : 'md', updatedAt: new Date() }, { merge: true });
+}
+
 export async function clearSidebarPref(uid) {
   if (!uid) return;
   await setDoc(refFor(uid), { sidebar: deleteField(), updatedAt: new Date() }, { merge: true });

@@ -1,7 +1,8 @@
 /* 마감 리스트 — 대표님이 금액을 확정하는 화면.
  *
- * 이 화면만 글자를 앱 기준보다 크게 쓴다. 대표님이 큼직하고 진한 글을 보신다고 해서다
- * (2026-08-25 대표님). 전역 토큰은 건드리지 않는다 — 여기만 커야 다른 화면이 안 흔들린다.
+ * 큰 글씨는 헤더 「가」 버튼(화면 배율)이 맡는다. 이 화면만 혼자 크면 배율을 켰을 때
+ * 여기만 더 튀어 통일감이 깨진다 — 금액·합계처럼 「숫자를 크게 보여야 하는 곳」만
+ * 크게 두고, 나머지는 앱 표준을 따른다 (2026-08-26 대표님).
  */
 
 .margin-closing-page .filters {
@@ -48,13 +49,13 @@
 }
 
 .mc-sum-note {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
 }
 
 .mc-sum-value {
-  font-size: 38px;
+  font-size: 34px;
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.1;
@@ -97,7 +98,7 @@
 }
 
 .mc-prog-text {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -148,7 +149,7 @@
 }
 
 .mc-sec-head h3 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0;
@@ -180,8 +181,8 @@
 }
 
 .mc-table td {
-  height: 58px;
-  font-size: 16px;
+  height: 52px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
 }
@@ -193,7 +194,7 @@
 
 .mc-site,
 .mc-vd {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--primary);
 }
@@ -205,7 +206,7 @@
 }
 
 .mc-desc {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -235,13 +236,13 @@
 /* ── 금액 — 눌러서 그 자리에서 고친다 ────────────────── */
 .mc-amt {
   display: inline-block;
-  min-width: 170px;
+  min-width: 160px;
   padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--bg-card, #fff);
   font-family: inherit;
-  font-size: 23px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -261,13 +262,13 @@
 
 .mc-amt-input {
   width: 100%;
-  min-width: 170px;
-  height: 42px;
+  min-width: 160px;
+  height: 40px;
   padding: 0 12px;
   border: 1px solid var(--primary);
   border-radius: 9px;
   font-family: inherit;
-  font-size: 23px;
+  font-size: 20px;
   font-weight: 800;
   text-align: center;
   font-variant-numeric: tabular-nums;

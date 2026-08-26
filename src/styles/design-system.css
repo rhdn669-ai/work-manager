@@ -972,7 +972,7 @@ body {
   color: var(--primary-hover);
 }
 .dash-quick-label {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-light);
   text-align: center;
@@ -1130,7 +1130,7 @@ body {
   word-break: break-word;
 }
 .task-card__memo {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-light);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1149,7 +1149,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 .task-ic {
@@ -1164,7 +1164,7 @@ body {
 .task-dday {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
   padding: 2px 8px;
@@ -1186,7 +1186,7 @@ body {
 .task-prio {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
@@ -1214,7 +1214,7 @@ body {
   border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -1233,7 +1233,7 @@ body {
 }
 .task-form__label {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-light);
 }
@@ -1292,7 +1292,7 @@ body {
   padding: 4px 6px 10px;
 }
 .kb-col__count {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -1302,7 +1302,7 @@ body {
   gap: 6px;
 }
 .kb-col__empty {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   text-align: center;
   padding: 18px 8px;
@@ -1341,7 +1341,7 @@ body {
 /* 프로젝트/공급처명이 카드 폭을 넘어도 소리없이 잘리지 않도록 2줄 줄바꿈.
    마크업 필수: title={프로젝트/공급처 전체값} — 2줄 초과 시 데이터 소실 방지 툴팁 */
 .kb-card__meta {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-light);
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -1359,7 +1359,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .kb-card__amount em {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-style: normal;
   color: var(--text-light);
@@ -1374,7 +1374,7 @@ body {
   border-top: 1px solid var(--border);
 }
 .kb-card__date {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 .kb-card__actions {
@@ -1384,7 +1384,7 @@ body {
 .kb-card__actions .btn {
   padding: 3px 8px;
   min-height: 28px;
-  font-size: 12px;
+  font-size: 13px;
 }
 @media (max-width: 768px) {
   .kb-board {
@@ -1445,7 +1445,7 @@ body {
   .kb-card__actions .btn {
     padding: 2px 6px;
     min-height: 24px;
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 
@@ -1573,7 +1573,7 @@ body {
 /* 발주 카드 — 공급가 아래 부가세 포함액 보조 표기 */
 .po-card__amount-vat,
 .kb-card__amount-vat {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
@@ -1586,7 +1586,7 @@ body {
   margin-right: 4px;
 }
 .po-card__date {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -1600,7 +1600,7 @@ body {
   border-top: 1px solid var(--border);
 }
 .po-card__by {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 .po-card__actions {
@@ -2011,7 +2011,7 @@ body {
   stroke-linejoin: round;
 }
 .bn-more-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-align: center;
   line-height: 1.25;
@@ -2085,7 +2085,7 @@ body {
     padding: 10px;
   }
   .table th {
-    font-size: 11.5px;
+    font-size: 12px;
   }
   .table td {
     font-size: 13px;
@@ -2106,14 +2106,14 @@ body {
   }
   .card-header {
     padding: 8px 10px;
-    font-size: 12.5px;
+    font-size: 13px;
   }
   .table th {
     padding: 7px 6px;
   }
   .table td {
     padding: 6px 6px;
-    font-size: 12.5px;
+    font-size: 13px;
   }
   .btn-group {
     gap: 5px;
@@ -2135,21 +2135,21 @@ body {
   }
   .card-header {
     padding: 7px 9px;
-    font-size: 12px;
+    font-size: 13px;
   }
   .card {
     margin-bottom: 8px;
   }
   .table {
-    font-size: 12px;
+    font-size: 13px;
   }
   .table th {
     padding: 6px 5px;
-    font-size: 12px;
+    font-size: 13px;
   }
   .table td {
     padding: 5px 5px;
-    font-size: 12px;
+    font-size: 13px;
   }
   .form-row {
     gap: 6px;

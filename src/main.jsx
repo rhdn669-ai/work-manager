@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ensureAnonymousAuth } from './config/firebase';
 import './styles/global.css';
+import { bootUiScale } from './utils/uiScale';
 import './styles/design-system.css';
 
 // 다크모드 폐지 — 항상 라이트 강제 (이전에 다크 저장한 사용자도 해제)
@@ -20,6 +21,7 @@ ensureAnonymousAuth()
     /* 익명 인증 실패해도 앱은 렌더 (규칙 배포 전엔 무관, 배포 후엔 재시도) */
   })
   .finally(() => {
+    bootUiScale();
     createRoot(document.getElementById('root')).render(
       <StrictMode>
         <App />

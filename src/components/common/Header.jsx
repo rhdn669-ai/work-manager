@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import UserMenu from './UserMenu';
 import { canProduction } from '../../utils/workspace';
 import Icon from './Icon';
+import UiScaleToggle from './UiScaleToggle';
 import { formatRelativeKo } from '../../utils/dateUtils';
 
 export default function Header({ onToggleSidebar }) {
@@ -40,6 +41,7 @@ export default function Header({ onToggleSidebar }) {
         </span>
       </div>
       <div className="header-right">
+        <UiScaleToggle />
         {userProfile && (
           <>
             <UserMenu />
