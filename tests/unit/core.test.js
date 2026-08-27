@@ -901,6 +901,9 @@ describe('메일 기본 틀', () => {
     expect(senderLine('')).toBe('주식회사 아이오피엔입니다.');
     expect(senderLine(null)).toBe('주식회사 아이오피엔입니다.');
     expect(senderLine('  ')).toBe('주식회사 아이오피엔입니다.'); // 공백만 친 경우
+    // 계정 이름이 「IOPN」 같은 회사 계정일 때 「아이오피엔 IOPN입니다」로 나가면 안 된다
+    expect(senderLine('IOPN')).toBe('주식회사 아이오피엔입니다.');
+    expect(senderLine('없는사람')).toBe('주식회사 아이오피엔입니다.');
   });
 
   it('제목 접두는 한 번만 붙는다', () => {

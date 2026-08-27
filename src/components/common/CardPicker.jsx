@@ -29,7 +29,9 @@ export default function CardPicker({ value, onChange, label = '명함' }) {
     <div className="form-group">
       <label>{label}</label>
       <Select
-        value={value || ''}
+        // 명단에 없는 값(회사 계정 이름 등)은 「명함 없이」로 본다 — 목록에 없는 값을
+        // 그대로 두면 무엇이 골라졌는지 알 수 없다 (2026-08-27 대표님)
+        value={BUSINESS_CARD_NAMES.includes(value) ? value : ''}
         onChange={onChange}
         options={[
           { value: '', label: '명함 없이 보내기' },
