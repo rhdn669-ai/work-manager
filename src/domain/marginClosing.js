@@ -90,6 +90,20 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
   // 두 번째 문 — 그달 결제 완료된 업체. 선결제처럼 입고보다 돈이 먼저 나간 건을 잡는다.
   // 이미 입고로 잡힌 업체는 건드리지 않는다(같은 건이 두 줄이 되지 않게).
   const paidMap = purchase.supplierPaid || {};
+
+  // 그 업체에 실제로 나간 돈 — 「결제 예정」과 「결제 완료」는 다른 사실이라 따로 담는다.
+  // 예정일만 보여 주면 대표님이 이미 나간 돈인지 알 수 없다 (2026-08-27 대표님).
+  const paidInfoOf = (vkey) => {
+    const rows = paidList(paidMap[vkey]);
+    if (rows.length === 0) return { paid: false, paidAt: null, paidAmount: 0 };
+    let at = null;
+    for (const pd of rows) {
+      const d = toDate(pd.paidAt);
+      if (d && (!at || d > at)) at = d;
+    }
+    return { paid: true, paidAt: at, paidAmount: paidTotal(paidMap[vkey]) };
+  };
+
   const prepaid = new Map();
   for (const [vkey, raw] of Object.entries(paidMap)) {
     for (const pd of paidList(raw)) {
@@ -122,7 +136,8 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
       // 돈이 이미 나갔으면 확정이다 — 우리 통장이 곧 사실이라 대조할 것이 없다.
       // 결제가 어느 달이었는지는 따지지 않는다. 나갔다는 사실 자체가 확정 근거다
       // (2026-08-27 대표님 「선결제 된건 기본이 확정인 상태가 낫지않나?」).
-      closed: paidTotal(paidMap[vkey]) > 0 || hasLegacyPaid(paidMap[vkey]),
+      closed: paidInfoOf(vkey).paid || hasLegacyPaid(paidMap[vkey]),
+      ...paidInfoOf(vkey),
       receivedAt: g.latest,
     });
   }
@@ -142,6 +157,7 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
       receivedAmount: 0,
       payDue: req[vkey]?.dueDate || '',
       closed: true, // 이미 나갔으면 확정 — 우리 통장이 곧 사실이라 대조할 것이 없다
+      ...paidInfoOf(vkey),
       receivedAt: null,
       prepaid: true,
     });
@@ -149,8 +165,7 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
   return out;
 }
 
-// 결제 — 업체마다 정해진 결제일이 있다 (구매처의 결제 조건).
-// 「이 돈은 9월 10일에 나간다」를 대표님이 한눈에 보시는 칸이다.
+// 날짜를 「9.10」으로 — 결제 예정일에도, 실제 결제일에도 같은 형식을 쓴다.
 export function payMonthLabel(payDue) {
   const d = toDate(payDue);
   if (!d) return '';

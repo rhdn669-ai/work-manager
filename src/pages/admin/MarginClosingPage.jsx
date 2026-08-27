@@ -348,6 +348,13 @@ export default function MarginClosingPage() {
           className={`mc-chip ${row.confirmed ? 'is-done' : 'is-todo'}`}
           onClick={() => toggleConfirm(row)}
           disabled={locked || busy === row.key}
+          title={
+            row.paid
+              ? `결제 완료 ${payMonthLabel(row.paidAt)} — 돈이 나갔으므로 확정입니다`
+              : row.confirmed
+                ? '금액을 확정했습니다 (아직 결제 전)'
+                : '업체 내역과 대조한 뒤 눌러 확정하세요'
+          }
         >
           {row.confirmed ? '확정' : '미확정'}
         </button>
@@ -539,6 +546,10 @@ export default function MarginClosingPage() {
                   // 혹시 갈리면 「9.30 외」로 알린다. 숨기지 않는다.
                   const payDays = [...new Set(g.lines.map((l) => l.payMonth).filter(Boolean))];
                   const anyPrepaid = g.lines.some((l) => l.prepaid);
+                  // 「결제 예정」과 「결제 완료」는 다른 사실이다. 예정일만 보여 주면
+                  // 이미 나간 돈인지 알 수 없다 (2026-08-27 대표님 「결제 완료인지 아닌지는?」).
+                  const allPaid = g.lines.length > 0 && g.lines.every((l) => l.paid);
+                  const paidDays = [...new Set(g.lines.map((l) => payMonthLabel(l.paidAt)).filter(Boolean))];
                   return (
                     <div
                       key={g.vendor}
@@ -565,11 +576,18 @@ export default function MarginClosingPage() {
                           <span className="payment-folder-site">{g.lines.length}건</span>
                           {anyPrepaid && <span className="mc-prepaid-tag">선결제</span>}
                           <span className="payment-folder-spacer" />
-                          {payDays.length > 0 && (
-                            <span className="mc-when" title="구매처 결제 조건으로 계산한 결제일">
-                              결제 {payDays[0]}
-                              {payDays.length > 1 ? ' 외' : ''}
+                          {allPaid && paidDays.length > 0 ? (
+                            <span className="mc-paid-tag" title="실제로 돈이 나간 날">
+                              결제완료 {paidDays[0]}
+                              {paidDays.length > 1 ? ' 외' : ''}
                             </span>
+                          ) : (
+                            payDays.length > 0 && (
+                              <span className="mc-when" title="구매처 결제 조건으로 계산한 결제 예정일">
+                                결제예정 {payDays[0]}
+                                {payDays.length > 1 ? ' 외' : ''}
+                              </span>
+                            )
                           )}
                           {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
                           {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}

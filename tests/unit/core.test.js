@@ -800,6 +800,57 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
     expect(receivedRowsOf(paidNextMonth, itemMaster, suppliers, 2026, 8)[0].closed).toBe(true);
   });
 
+  // 「결제 예정」과 「결제 완료」는 다른 사실이다 — 예정일만 보면 나간 돈인지 알 수 없다
+  it('결제가 끝난 건은 실제 결제일을 들고 온다', () => {
+    const paid = {
+      id: 'p7',
+      title: '결제 완료',
+      siteName: '메티스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 9000, receivedQty: 2, receivedAt: D('2026-08-03') },
+      ],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-25'), amount: 18000 }] },
+    };
+    const r = receivedRowsOf(paid, itemMaster, suppliers, 2026, 8)[0];
+    expect(r.paid).toBe(true);
+    expect(payMonthLabel(r.paidAt)).toBe('8.25');
+    expect(r.paidAmount).toBe(18000);
+  });
+
+  it('결제 전이면 결제일이 없다 — 예정일과 섞이지 않게', () => {
+    const unpaid = {
+      id: 'p8',
+      title: '결제 전',
+      siteName: '한화',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 4000, receivedQty: 1, receivedAt: D('2026-08-07') },
+      ],
+    };
+    const r = receivedRowsOf(unpaid, itemMaster, suppliers, 2026, 8)[0];
+    expect(r.paid).toBe(false);
+    expect(r.paidAt).toBe(null);
+  });
+
+  it('회차 결제는 마지막 결제일을 쓴다', () => {
+    const twice = {
+      id: 'p9',
+      title: '회차 결제',
+      siteName: '양산',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 4, unitPrice: 5000, receivedQty: 4, receivedAt: D('2026-08-02') },
+      ],
+      supplierPaid: {
+        델타전기: [
+          { seq: 1, paidAt: D('2026-08-10'), amount: 10000 },
+          { seq: 2, paidAt: D('2026-08-28'), amount: 10000 },
+        ],
+      },
+    };
+    const r = receivedRowsOf(twice, itemMaster, suppliers, 2026, 8)[0];
+    expect(payMonthLabel(r.paidAt)).toBe('8.28'); // 마지막
+    expect(r.paidAmount).toBe(20000); // 합계
+  });
+
   it('입고만 있고 결제 전이면 미확정 — 업체 내역과 대조해야 한다', () => {
     const recvOnly = {
       id: 'p4',
