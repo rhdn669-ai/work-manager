@@ -51,9 +51,10 @@ export function escapeBody(text) {
  * @param {string} o.body      본문 글 (일반 텍스트 — 안에서 escape 한다)
  * @param {string} o.bodyHtml  이미 HTML 인 본문 (표 등). body 보다 우선한다.
  * @param {string} o.cardName  명함을 붙일 사람 이름. 명단에 없으면 명함 없이 나간다.
+ * @param {boolean} o.preview  화면 미리보기용. 명함을 파일 경로로 가리킨다(브라우저는 cid: 를 모른다).
  * @returns {string} 발송·미리보기에 그대로 쓰는 HTML
  */
-export function buildMailHtml({ to, body, bodyHtml, cardName } = {}) {
+export function buildMailHtml({ to, body, bodyHtml, cardName, preview = false } = {}) {
   const head = [
     '<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p>',
     to ? `<p style="margin:0 0 14px;font-weight:700">수신 : ${escapeBody(to)}</p>` : '',
@@ -62,13 +63,16 @@ export function buildMailHtml({ to, body, bodyHtml, cardName } = {}) {
 
   const inner = bodyHtml || `<p>${escapeBody(body)}</p>`;
 
-  // 명함은 첨부로 실어 보낸다(cid).
+  // 명함 그림이 가리키는 곳이 보낼 때와 볼 때 다르다.
   //
-  // 전에는 src="/cards/이름.png" 상대 경로를 넣었는데, 받는 쪽 메일함에는 우리 서버가
-  // 없어 깨진 그림으로 나갔다. 절대 주소로 바꿔도 대부분의 메일함이 외부 이미지를
-  // 기본 차단해 첫 화면에서 안 보인다. 첨부는 늘 보인다 (2026-08-27 대표님 「명함이 깨져서 나감」).
-  const tail = cardFileFor(cardName)
-    ? `<br><br><br><img src="cid:${CARD_CID}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
+  //   보낼 때  cid:bizcard  — 첨부로 실어 보낸다. 상대 경로는 받는 쪽 메일함에서 깨지고,
+  //                          절대 주소는 대부분의 메일함이 외부 이미지를 기본 차단한다.
+  //   볼 때    /cards/이름.png — 브라우저는 cid: 를 모른다. 미리보기가 깨져 버린다.
+  //
+  // (2026-08-27 대표님 「명함이 깨져서 나감」 → 미리보기도 깨짐)
+  const cardSrc = cardFileFor(cardName);
+  const tail = cardSrc
+    ? `<br><br><br><img src="${preview ? cardSrc : `cid:${CARD_CID}`}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
     : '';
 
   return `${head}${inner}${tail}`;

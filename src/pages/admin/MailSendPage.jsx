@@ -138,7 +138,7 @@ export default function MailSendPage() {
   const previewHtml = useMemo(
     // 발주서와 같은 틀 — 발신·수신 줄과 명함이 함께 붙는다.
     // 미리보기는 첫 수신처 이름으로 보여 주고, 실제 발송은 업체마다 제 이름으로 나간다.
-    () => buildMailHtml({ to: recipients[0]?.name || '○○○', body, cardName }),
+    () => buildMailHtml({ to: recipients[0]?.name || '○○○', body, cardName, preview: true }),
     [body, cardName, recipients],
   );
 

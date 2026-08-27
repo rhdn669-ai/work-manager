@@ -3914,6 +3914,7 @@ export default function PurchaseDetailPage() {
                     to: mailPreview.supplierName,
                     body: mailPreview.bodyText || '',
                     cardName: mailPreview.cardName || '',
+                    preview: true, // 브라우저는 cid: 를 모른다 — 파일 경로로 보여 준다
                   }),
                 }}
               />

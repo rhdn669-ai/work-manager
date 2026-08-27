@@ -838,7 +838,12 @@ export default function MarginClosingPage() {
             <div
               className="mail-body-preview"
               dangerouslySetInnerHTML={{
-                __html: buildMailHtml({ to: askModal.vendor, body: askModal.body, cardName: askModal.cardName }),
+                __html: buildMailHtml({
+                  to: askModal.vendor,
+                  body: askModal.body,
+                  cardName: askModal.cardName,
+                  preview: true, // 브라우저는 cid: 를 모른다 — 파일 경로로 보여 준다
+                }),
               }}
             />
             <p className="field-hint">받는 업체에게 이대로 보입니다.</p>

@@ -955,9 +955,15 @@ describe('메일 기본 틀', () => {
     expect(buildMailHtml({ to: 'A', body: 'x' })).not.toContain('cid:');
   });
 
-  it('본문에 서버 경로가 새어 나가지 않는다', () => {
+  it('보낼 때는 서버 경로가 새어 나가지 않는다', () => {
     // /cards/... 가 들어가면 받는 쪽에서 깨진 그림이 된다
     expect(buildMailHtml({ to: 'A', body: 'x', cardName: '손성욱' })).not.toContain('/cards/');
+  });
+
+  it('미리보기는 파일 경로를 쓴다 — 브라우저는 cid: 를 모른다', () => {
+    const html = buildMailHtml({ to: 'A', body: 'x', cardName: '손성욱', preview: true });
+    expect(html).toContain('/cards/');
+    expect(html).not.toContain('cid:');
   });
 
   it('본문의 태그는 글자로 나간다 — 메일이 깨지지 않게', () => {
