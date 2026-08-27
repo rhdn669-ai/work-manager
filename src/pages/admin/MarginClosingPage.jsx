@@ -120,7 +120,7 @@ export default function MarginClosingPage() {
       .map((m) => ({
         key: `manual:${m.id}`,
         manualId: m.id,
-        siteName: m.siteName || '(현장 없음)',
+        siteName: m.siteName || '(사용처 없음)',
         description: m.description || '(내역 없음)',
         amount: Number(m.amount) || 0,
         manual: true,
@@ -141,7 +141,7 @@ export default function MarginClosingPage() {
         key: `manual:${m.id}`,
         manualId: m.id,
         vendor: m.vendor || '(업체 없음)',
-        siteName: m.siteName || '(현장 없음)',
+        siteName: m.siteName || '(사용처 없음)',
         description: m.description || '(내역 없음)',
         amount: Number(m.amount) || 0,
         payDue: m.payDue || '',
@@ -208,15 +208,9 @@ export default function MarginClosingPage() {
   // 「주식회사 아이오피엔 ○○○입니다」 — 누가 보냈는지 첫머리에 드러나야 회신이 그 사람에게 온다.
   // 이름은 고른 명함을 따라간다. 아무도 안 골랐으면 이름 없이 회사명까지만 나간다.
   const askBodyOf = (who) =>
-    [
-      '안녕하세요.',
-      senderLine(who),
-      '',
-      `${year}년 ${month}월 마감내역을 회신 부탁드립니다.`,
-      '확인 후 결제 진행하겠습니다.',
-      '',
-      '감사합니다.',
-    ].join('\n');
+    ['안녕하세요.', senderLine(who), '', `${year}년 ${month}월 마감내역 회신 부탁드립니다.`, '', '감사합니다.'].join(
+      '\n',
+    );
 
   function openAskModal(vendor) {
     const sup = suppliers.find((x) => x.name === vendor);
@@ -486,14 +480,14 @@ export default function MarginClosingPage() {
               <EmptyState
                 icon="inbox"
                 title="이 달 매출이 없습니다"
-                desc="현장 마감에 매출을 적으면 여기 올라옵니다."
+                desc="프로젝트 마감에 매출을 적으면 여기 올라옵니다."
               />
             ) : (
               <div className="table-scroll-x">
                 <table className="table mc-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 200 }}>현장</th>
+                      <th style={{ width: 200 }}>사용처</th>
                       <th>내역</th>
                       <th className="col-unit" style={{ width: 100 }}>
                         출처
@@ -610,7 +604,7 @@ export default function MarginClosingPage() {
                           <table className="table mc-table">
                             <thead>
                               <tr>
-                                <th style={{ width: 180 }}>현장</th>
+                                <th style={{ width: 180 }}>사용처</th>
                                 <th style={{ width: 230 }}>발주서</th>
                                 <th>내역</th>
                                 <th className="col-unit" style={{ width: 100 }}>
@@ -685,7 +679,7 @@ export default function MarginClosingPage() {
               </div>
             )}
             <div className="form-field">
-              <label>현장</label>
+              <label>사용처</label>
               <input
                 value={adding.siteName}
                 onChange={(e) => setAdding((s) => ({ ...s, siteName: e.target.value }))}
