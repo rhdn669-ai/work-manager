@@ -5,6 +5,7 @@ import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
+import MoneyCard from '../../components/common/MoneyCard';
 import Icon from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
@@ -33,7 +34,6 @@ import {
   sumRows,
   groupState,
   withVat,
-  vatOf,
 } from '../../domain/marginClosing';
 import '../../styles/margin-closing.css';
 
@@ -457,57 +457,51 @@ export default function MarginClosingPage() {
         <Skeleton.Rows count={8} />
       ) : (
         <>
+          {/* 카드도 탭을 따른다 — 지출 탭에서 매출 카드가 보이면 무엇을 보는지 흐려진다.
+              카드마다 공급가와 VAT 포함을 나란히 세운다. 결제 화면과 같은 문법이다
+              (2026-08-27 대표님 「공급가 부가세포함가로 나눠줘」) */}
           <div className="sum-cards">
-            {/* 카드도 탭을 따른다 — 지출 탭에서 매출 카드가 보이면 무엇을 보는지 흐려진다 */}
-            <div className="sum-card" hidden={tab === 'expense'}>
-              <div className="sum-card-label">매출</div>
-              <div className="sum-card-value">
-                {won(revSum.confirmed)}
-                <em>원</em>
-              </div>
-              <div className="sum-card-sub">
-                확정 {revSum.confirmedCount}건{revSum.pendingCount > 0 && <b> · 미확정 {revSum.pendingCount}건</b>}
-              </div>
-            </div>
-            <div className="sum-card" hidden={tab === 'revenue'}>
-              <div className="sum-card-label">
-                지출 <span className="sum-card-note">업체 결제분</span>
-              </div>
-              <div className="sum-card-value">
-                {won(expSum.confirmed)}
-                <em>원</em>
-              </div>
-              {/* 확정분만 큰 숫자로 세면 「아직 얼마가 더 남았나」를 알 수 없다.
-                  예정(확정+미확정)을 함께 적는다 (2026-08-27 대표님) */}
-              <div className="sum-card-sub">예정 포함 {won(expSum.confirmed + expSum.pending)}원</div>
-              <div className="sum-card-sub">
-                업체 {expense.length}곳{expSum.pendingCount > 0 && <b> · 미확정 {expSum.pendingCount}건</b>}
-              </div>
-            </div>
-            {/* VAT 포함 — 지출과 짝이 되는 값이라 옆에 따로 세운다. 작은 글씨로 묻어가면
-                실제로 나갈 돈이 눈에 안 들어온다 (2026-08-27 대표님) */}
-            <div className="sum-card" hidden={tab === 'revenue'}>
-              <div className="sum-card-label">
-                VAT 포함 <span className="sum-card-note">실제 나갈 돈</span>
-              </div>
-              <div className="sum-card-value">
-                {won(withVat(expSum.confirmed))}
-                <em>원</em>
-              </div>
-              <div className="sum-card-sub">예정 포함 {won(withVat(expSum.confirmed + expSum.pending))}원</div>
-              <div className="sum-card-sub">부가세 {won(vatOf(expSum.confirmed))}원 포함</div>
-            </div>
+            <MoneyCard
+              label="매출"
+              supply={revSum.confirmed}
+              tone="good"
+              hidden={tab === 'expense'}
+              sub={
+                <>
+                  확정 {revSum.confirmedCount}건{revSum.pendingCount > 0 && <b> · 미확정 {revSum.pendingCount}건</b>}
+                </>
+              }
+            />
+            <MoneyCard
+              label="지출"
+              note="확정분"
+              supply={expSum.confirmed}
+              hidden={tab === 'revenue'}
+              sub={
+                <>
+                  업체 {expense.length}곳{expSum.pendingCount > 0 && <b> · 미확정 {expSum.pendingCount}건</b>}
+                </>
+              }
+            />
+            {/* 확정분만 세면 「아직 얼마가 더 남았나」를 알 수 없다 — 예정까지 더한 카드를 따로 세운다 */}
+            <MoneyCard
+              label="지출"
+              note="예정 포함"
+              supply={expSum.confirmed + expSum.pending}
+              tone="wait"
+              hidden={tab === 'revenue'}
+              sub={expSum.pendingCount > 0 ? `미확정 ${expSum.pendingCount}건을 더한 값` : '모두 확정되었습니다'}
+            />
             {/* 차액은 매출에서 지출을 뺀 값이라 둘 다 보는 「전체」에서만 뜻이 있다 */}
-            <div className="sum-card is-good" hidden={tab !== 'all'}>
-              <div className="sum-card-label">차액</div>
-              <div className="sum-card-value">
-                {won(revSum.confirmed - expSum.confirmed)}
-                <em>원</em>
-              </div>
-              <div className="sum-card-sub">
-                {leftCount > 0 ? `미확정 ${leftCount}건이 빠진 금액입니다` : '모두 확정되었습니다'}
-              </div>
-            </div>
+            {/* 마이너스인데 초록이면 「좋다」로 읽힌다 — 부호에 색을 맞춘다 */}
+            <MoneyCard
+              label="차액"
+              note="매출 − 지출"
+              supply={revSum.confirmed - expSum.confirmed}
+              tone={revSum.confirmed - expSum.confirmed >= 0 ? 'good' : 'bad'}
+              hidden={tab !== 'all'}
+              sub={leftCount > 0 ? `미확정 ${leftCount}건이 빠진 금액입니다` : '모두 확정되었습니다'}
+            />
           </div>
 
           <div className="sum-prog">

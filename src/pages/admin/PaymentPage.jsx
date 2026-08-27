@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
+import MoneyCard from '../../components/common/MoneyCard';
 import {
   getPurchases,
   getSuppliers,
@@ -256,8 +257,11 @@ export default function PaymentPage() {
   const paidRows = filtered.filter((r) => r.paid);
   const sumPaid = paidRows.reduce((s, r) => s + r.total, 0);
   const sumPending = filtered.reduce((s, r) => s + (r.pendingAmount || 0), 0);
-  // 요약 카드용 — 아직 줄 돈과 이미 준 돈
-  const sumWait = filtered.filter((r) => !r.paid).reduce((s, r) => s + r.total, 0);
+  // 요약 카드용 — 아직 줄 돈과 이미 준 돈.
+  // 카드는 공급가만 받는다. VAT 는 MoneyCard 가 한 식으로 계산한다 — 화면마다 다른 식을 쓰면 숫자가 갈린다.
+  const waitSupply = filtered.filter((r) => !r.paid).reduce((s, r) => s + r.supply, 0);
+  const paidSupply = paidRows.reduce((s, r) => s + r.supply, 0);
+  const waitConfirmedSupply = filtered.filter((r) => !r.paid && r.closingConfirmed).reduce((s, r) => s + r.supply, 0);
   const vendorCount = new Set(filtered.map((r) => r.supplier)).size;
   const pendingItemCount = filtered.reduce((s, r) => s + (r.pendingCount || 0), 0);
 
@@ -498,56 +502,23 @@ export default function PaymentPage() {
       ) : (
         <>
           {/* 요약 — 마감 리스트와 같은 얼굴. 돈을 다루는 화면은 첫인상이 같아야 한다 */}
+          {/* 카드 셋 — 「결제 대기 · 결제 완료 · 합계」. 각 카드가 공급가와 VAT 포함을
+              나란히 들고 있어, 카드 이름만 읽으면 무슨 돈인지 바로 안다
+              (2026-08-27 대표님 「한눈에 구분하기 편하게」) */}
           <div className="sum-cards no-print">
-            <div className="sum-card is-wait">
-              <div className="sum-card-label">
-                결제 대기 <span className="sum-card-note">VAT 포함</span>
-              </div>
-              <div className="sum-card-value">
-                {sumWait.toLocaleString()}
-                <em>원</em>
-              </div>
-              {/* 마감 확정된 몫과 아직 대조 전인 몫을 갈라 준다 */}
-              <div className="sum-card-sub">
-                마감 확정{' '}
-                {filtered
-                  .filter((r) => !r.paid && r.closingConfirmed)
-                  .reduce((a, r) => a + r.total, 0)
-                  .toLocaleString()}
-                원
-              </div>
-              <div className="sum-card-sub">{pendingCount > 0 ? <b>대기 {pendingCount}건</b> : '대기 없음'}</div>
-            </div>
-            {/* 공급가 — 마감 리스트가 이 값으로 본다. 대조하려면 제 칸이 있어야 한다 */}
-            <div className="sum-card">
-              <div className="sum-card-label">
-                공급가 <span className="sum-card-note">VAT 별도</span>
-              </div>
-              <div className="sum-card-value">
-                {filtered
-                  .filter((r) => !r.paid)
-                  .reduce((a, r) => a + r.supply, 0)
-                  .toLocaleString()}
-                <em>원</em>
-              </div>
-              <div className="sum-card-sub">마감 리스트와 대조하는 값</div>
-            </div>
-            <div className="sum-card is-good">
-              <div className="sum-card-label">결제 완료</div>
-              <div className="sum-card-value">
-                {sumPaid.toLocaleString()}
-                <em>원</em>
-              </div>
-              <div className="sum-card-sub">완료 {paidCount}건</div>
-            </div>
-            <div className="sum-card">
-              <div className="sum-card-label">합계</div>
-              <div className="sum-card-value">
-                {sumTotal.toLocaleString()}
-                <em>원</em>
-              </div>
-              <div className="sum-card-sub">업체 {vendorCount}곳</div>
-            </div>
+            <MoneyCard
+              label="결제 대기"
+              supply={waitSupply}
+              tone="wait"
+              sub={
+                <>
+                  마감 확정 {waitConfirmedSupply.toLocaleString()}원
+                  {pendingCount > 0 ? <b> · 대기 {pendingCount}건</b> : ' · 대기 없음'}
+                </>
+              }
+            />
+            <MoneyCard label="결제 완료" supply={paidSupply} tone="good" sub={`완료 ${paidCount}건`} />
+            <MoneyCard label="합계" supply={waitSupply + paidSupply} sub={`업체 ${vendorCount}곳`} />
           </div>
 
           {pendingCount + paidCount > 0 && (

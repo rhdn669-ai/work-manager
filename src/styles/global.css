@@ -20591,6 +20591,7 @@ a.lib-row-name:hover {
 }
 
 .sum-card-note {
+  margin-left: 6px; /* 이름과 설명이 붙어 「지출확정분」처럼 한 낱말로 읽혔다 */
   font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
@@ -20618,6 +20619,82 @@ a.lib-row-name:hover {
 
 .sum-card.is-wait .sum-card-value {
   color: var(--accent-press);
+}
+
+/* ── 돈 카드 두 줄 ────────────────────────────────────────────
+   카드 하나에 「공급가 / VAT 포함」이 함께 선다. 이름표를 왼쪽에 두고
+   숫자를 오른쪽 끝에 맞춰, 카드가 여럿이어도 자릿수가 같은 자리에 선다.
+   VAT 포함이 실제로 나갈 돈이라 카드 색을 입는 쪽은 이 줄이다
+   (2026-08-27 대표님 「한눈에 구분하기 편하게」). */
+.money-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.money-line + .money-line {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+
+.money-tag {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.money-num {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.money-num em {
+  font-style: normal;
+  font-size: 15px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* VAT 포함 줄이 그 카드의 주인공 — 색과 굵기를 여기에 몰아 준다 */
+.money-line.is-vat .money-tag {
+  color: var(--text-light);
+}
+
+.money-line.is-vat .money-num {
+  font-size: 27px;
+  color: var(--primary);
+}
+
+.money-card.is-good .money-line.is-vat .money-num {
+  color: var(--success);
+}
+
+.money-card.is-wait .money-line.is-vat .money-num {
+  color: var(--accent-press);
+}
+
+/* 마이너스 차액 — 좋을 것이 없다는 뜻이 색으로 보여야 한다 */
+.money-card.is-bad .money-line.is-vat .money-num,
+.money-card.is-bad .money-line .money-num {
+  color: var(--btn-danger-fg, #c53030);
+}
+
+@media (max-width: 480px) {
+  .money-num {
+    font-size: 20px;
+  }
+  .money-line.is-vat .money-num {
+    font-size: 23px;
+  }
 }
 
 .sum-card-sub {
