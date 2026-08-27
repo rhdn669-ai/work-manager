@@ -3862,6 +3862,22 @@ export default function PurchaseDetailPage() {
                 여기서 고친 글은 이번 발송에만 쓰입니다. 늘 쓰는 문구는 상단 「메일 본문」에서 바꾸세요.
               </p>
             </div>
+            {/* 실제로 나갈 모습 그대로 — 본문을 고치면 여기도 바로 따라 바뀐다.
+                발신·수신 줄과 명함까지 다 보여야 「이대로 나간다」를 믿을 수 있다 (2026-08-27 대표님). */}
+            <div className="form-group">
+              <label>발송 미리보기</label>
+              <div
+                className="mail-body-preview"
+                dangerouslySetInnerHTML={{
+                  __html: buildMailHtml({
+                    to: mailPreview.supplierName,
+                    body: mailPreview.bodyText || '',
+                    cardName: mailPreview.cardName || '',
+                  }),
+                }}
+              />
+              <p className="field-hint">받는 업체에게 이대로 보입니다.</p>
+            </div>
             <div className="modal-actions">
               <button
                 type="button"
