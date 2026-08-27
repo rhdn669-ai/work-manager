@@ -147,11 +147,11 @@ export default function MarginClosingPage() {
         payMonth: payMonthLabel(m.payDue),
         manual: true,
       }));
-    // 발주서에서 마감한 건만 확정으로 선다. 입고만 되고 마감을 안 누른 건은 미확정 —
-    // 노란 줄로 떠서 「아직 손 안 댄 것」이 한눈에 보인다.
+    // 확정은 대표님이 마감 리스트에서 하신다 — 업체 마감내역을 받아 대조해야 하기 때문.
+    // 선결제만 예외로 확정으로 선다(이미 나간 돈이라 대조할 것이 없다).
     const all = [
       ...rows.map((r) => applyConfirm([r], confirms, { defaultConfirmed: !!r.closed })[0]),
-      ...applyConfirm(hand, confirms, { defaultConfirmed: true }),
+      ...applyConfirm(hand, confirms, { defaultConfirmed: false }),
     ];
     return groupByVendor(all);
   }, [purchases, itemMaster, suppliers, year, month, manual, confirms]);
