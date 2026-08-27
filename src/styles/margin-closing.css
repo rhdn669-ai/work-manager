@@ -252,3 +252,39 @@
     margin-right: 10px;
   }
 }
+
+/* 선결제 표시 — 업체 줄에 붙여 「이 업체는 돈이 먼저 나갔다」를 알린다 (2026-08-27 대표님) */
+.mc-prepaid-tag {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--primary-softer);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 결제일 — 업체별로 같아서 안쪽 표가 아니라 업체 줄에 적는다 */
+.mc-fold-row .mc-when {
+  flex: 0 0 auto;
+  margin-right: 4px;
+}
+
+/* 발주서 명 — 어느 발주에서 온 돈인지 */
+.mc-po {
+  font-weight: 600;
+  color: var(--text-secondary);
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  /* 좁은 화면에서는 업체 줄이 빽빽해진다 — 선결제·결제일은 감추고 표 안에서 본다 */
+  .mc-prepaid-tag,
+  .mc-fold-row .mc-when {
+    display: none;
+  }
+}

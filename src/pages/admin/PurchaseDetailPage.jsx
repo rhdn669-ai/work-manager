@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
-import { buildMailHtml, senderLine } from '../../utils/mailTemplate';
+import { buildMailHtml, senderLine, mailSubject as withPrefix } from '../../utils/mailTemplate';
 import {
   DndContext,
   closestCenter,
@@ -2887,7 +2887,7 @@ export default function PurchaseDetailPage() {
                     // 발행번호 = 발주일 + 구매처 순번 + 발주건 고유ID(겹침 방지) — IOPN{날짜}-{순번}-{ID4}
                     const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
                     const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
-                    const mailSubject = `[주식회사 아이오피엔] ${purchase.title || ''}`;
+                    const mailSubject = withPrefix(purchase.title || ''); // 접두는 공용 함수가 붙인다
                     // 발주별 메일 본문(form.mailBody) 사용, 비었으면 공통 기본 문구
                     const bodyText =
                       form.mailBody && form.mailBody.trim()

@@ -203,7 +203,8 @@ export default function MarginClosingPage() {
   //
   // 제목·본문을 여기서 한 번만 만든다 — 모달에 보여 주는 글과 실제 나가는 글이
   // 갈리면 미리보기가 거짓말을 한다.
-  const askSubject = mailSubject(`${year}년 ${month}월 마감내역 요청`);
+  // 「… 요청 건.」 — 발주서 제목과 같은 말끝이다. 월은 화면에서 고른 달을 따라간다.
+  const askSubject = mailSubject(`${year}년 ${month}월 마감내역 요청 건.`);
   // 「주식회사 아이오피엔 ○○○입니다」 — 누가 보냈는지 첫머리에 드러나야 회신이 그 사람에게 온다.
   // 이름은 고른 명함을 따라간다. 아무도 안 골랐으면 이름 없이 회사명까지만 나간다.
   const askBodyOf = (who) =>
@@ -534,6 +535,10 @@ export default function MarginClosingPage() {
                   const st = groupState(g.lines);
                   const open = openVendors.has(g.vendor);
                   const todo = g.lines.filter((l) => !l.confirmed).length;
+                  // 결제일은 업체별로 같다 — 그래서 안쪽 표 대신 업체 줄에 적는다 (2026-08-27 대표님).
+                  // 혹시 갈리면 「9.30 외」로 알린다. 숨기지 않는다.
+                  const payDays = [...new Set(g.lines.map((l) => l.payMonth).filter(Boolean))];
+                  const anyPrepaid = g.lines.some((l) => l.prepaid);
                   return (
                     <div
                       key={g.vendor}
@@ -558,7 +563,14 @@ export default function MarginClosingPage() {
                             {g.vendor}
                           </span>
                           <span className="payment-folder-site">{g.lines.length}건</span>
+                          {anyPrepaid && <span className="mc-prepaid-tag">선결제</span>}
                           <span className="payment-folder-spacer" />
+                          {payDays.length > 0 && (
+                            <span className="mc-when" title="구매처 결제 조건으로 계산한 결제일">
+                              결제 {payDays[0]}
+                              {payDays.length > 1 ? ' 외' : ''}
+                            </span>
+                          )}
                           {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
                           {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
                           <span className="payment-folder-amount">{won(g.total)}원</span>
@@ -580,13 +592,11 @@ export default function MarginClosingPage() {
                           <table className="table mc-table">
                             <thead>
                               <tr>
-                                <th style={{ width: 200 }}>현장</th>
+                                <th style={{ width: 180 }}>현장</th>
+                                <th style={{ width: 230 }}>발주서</th>
                                 <th>내역</th>
                                 <th className="col-unit" style={{ width: 100 }}>
                                   출처
-                                </th>
-                                <th className="col-unit" style={{ width: 92 }}>
-                                  결제
                                 </th>
                                 <th className="col-num" style={{ width: 200 }}>
                                   금액
@@ -598,12 +608,12 @@ export default function MarginClosingPage() {
                               {g.lines.map((r) => (
                                 <tr key={r.key} className={r.confirmed ? '' : 'is-todo'}>
                                   <td className="mc-site">{r.siteName}</td>
+                                  <td className="mc-po" title={r.title || ''}>
+                                    {r.title || '—'}
+                                  </td>
                                   <td className="mc-desc">{r.description}</td>
                                   <td className="col-unit">
                                     <span className="mc-src">{r.manual ? '직접입력' : '자동'}</span>
-                                  </td>
-                                  <td className="col-unit">
-                                    {r.payMonth ? <span className="mc-when">{r.payMonth}</span> : ''}
                                   </td>
                                   {amountCell(r)}
                                   {confirmCell(r)}
