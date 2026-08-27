@@ -18,7 +18,7 @@
 //     ("마감리스트에는 업체에 결제해줘야하는 금액만 지출로")
 import { mapPrintItems } from '../utils/purchaseOrder';
 import { supplierKey } from './supplierContacts';
-import { paidList } from './payment';
+import { paidList, paidTotal, hasLegacyPaid } from './payment';
 
 export const MISC_VENDOR = '(구매처 미지정)';
 
@@ -119,7 +119,10 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
       amount: g.amount, // 입고분 그대로 — 업체 내역과 대조해 마감 리스트에서 고친다
       receivedAmount: g.amount,
       payDue: req[vkey]?.dueDate || '',
-      closed: false, // 확정은 마감 리스트에서만
+      // 돈이 이미 나갔으면 확정이다 — 우리 통장이 곧 사실이라 대조할 것이 없다.
+      // 결제가 어느 달이었는지는 따지지 않는다. 나갔다는 사실 자체가 확정 근거다
+      // (2026-08-27 대표님 「선결제 된건 기본이 확정인 상태가 낫지않나?」).
+      closed: paidTotal(paidMap[vkey]) > 0 || hasLegacyPaid(paidMap[vkey]),
       receivedAt: g.latest,
     });
   }

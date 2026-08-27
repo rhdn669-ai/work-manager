@@ -771,7 +771,36 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
     expect(payMonthLabel('')).toBe('');
   });
 
-  it('입고만 있는 건은 미확정으로 선다 — 마감을 눌러야 확정', () => {
+  // 돈이 나갔으면 확정이다 — 어느 문으로 들어왔든, 결제가 어느 달이었든
+  it('입고로 들어왔어도 결제가 끝났으면 확정으로 선다', () => {
+    const paidAfterRecv = {
+      id: 'p5',
+      title: '입고 후 결제',
+      siteName: '메티스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 9000, receivedQty: 2, receivedAt: D('2026-08-03') },
+      ],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-25'), amount: 18000 }] },
+    };
+    const r = receivedRowsOf(paidAfterRecv, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].closed).toBe(true);
+  });
+
+  it('결제가 다음 달이어도 확정으로 선다 — 나갔다는 사실이 근거', () => {
+    const paidNextMonth = {
+      id: 'p6',
+      title: '익월 결제',
+      siteName: '한화',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 5000, receivedQty: 1, receivedAt: D('2026-08-20') },
+      ],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-09-10'), amount: 5000 }] },
+    };
+    expect(receivedRowsOf(paidNextMonth, itemMaster, suppliers, 2026, 8)[0].closed).toBe(true);
+  });
+
+  it('입고만 있고 결제 전이면 미확정 — 업체 내역과 대조해야 한다', () => {
     const recvOnly = {
       id: 'p4',
       title: '입고만',
