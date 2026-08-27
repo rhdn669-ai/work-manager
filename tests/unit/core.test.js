@@ -16,6 +16,7 @@ import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
+import { receivedRowsOf } from '../../src/domain/marginClosing';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
@@ -706,5 +707,74 @@ describe('품질 — 불량률 기준', () => {
     );
     expect(f.defectQty).toBe(2);
     expect((f.defectQty / f.inspectedQty) * 100).toBeCloseTo(33.33, 1);
+  });
+});
+
+// ── 마감 리스트 — 선결제가 빠지지 않는지 (2026-08-27 대표님 「선결제 된거 마감리스트에 표시가 안되는디」)
+//
+// 목록에 오르는 문은 둘이다: 그달 「입고 확정」 또는 그달 「결제 완료」.
+// 선결제는 돈이 먼저 나가고 물건이 나중에 오므로, 입고만 보면 그달에서 통째로 빠진다.
+describe('마감 리스트 — 입고와 결제, 두 문', () => {
+  const suppliers = [{ id: 's1', name: '델타전기' }];
+  const itemMaster = [{ id: 'i1', name: 'STEP DRIVER', defaultSupplierId: 's1' }];
+  const D = (s) => new Date(s);
+
+  const prepaidOnly = {
+    id: 'p1',
+    title: '커넥터 선발주',
+    siteName: '메티스',
+    items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 10, unitPrice: 5000, receivedQty: 0 }],
+    supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-14'), amount: 50000 }] },
+  };
+
+  it('8월에 돈만 나간 선결제는 8월에 뜬다', () => {
+    const r = receivedRowsOf(prepaidOnly, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].amount).toBe(50000); // 나간 돈이 곧 금액
+    expect(r[0].closed).toBe(true); // 돈이 나갔으면 확정
+    expect(r[0].prepaid).toBe(true);
+  });
+
+  it('같은 달에 입고와 결제가 다 있어도 한 줄만 선다', () => {
+    const both = {
+      id: 'p2',
+      title: '동월 입고·결제',
+      siteName: '한화',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 4, unitPrice: 10000, receivedQty: 4, receivedAt: D('2026-08-05') },
+      ],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-20'), amount: 40000 }] },
+    };
+    expect(receivedRowsOf(both, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
+  });
+
+  it('입고도 결제도 없는 달은 뜨지 않는다', () => {
+    expect(receivedRowsOf(prepaidOnly, itemMaster, suppliers, 2026, 7)).toHaveLength(0);
+  });
+
+  it('금액이 안 적힌 옛 결제 기록도 줄은 세운다', () => {
+    const legacy = {
+      id: 'p3',
+      title: '옛 기록',
+      siteName: '양산',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 3000, receivedQty: 0 }],
+      supplierPaid: { 델타전기: { paidAt: D('2026-08-09') } },
+    };
+    expect(receivedRowsOf(legacy, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
+  });
+
+  it('입고만 있는 건은 미확정으로 선다 — 마감을 눌러야 확정', () => {
+    const recvOnly = {
+      id: 'p4',
+      title: '입고만',
+      siteName: '세메스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
+      ],
+    };
+    const r = receivedRowsOf(recvOnly, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].closed).toBe(false);
+    expect(r[0].amount).toBe(21000);
   });
 });

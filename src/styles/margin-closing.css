@@ -225,3 +225,38 @@
   }
 
   }
+
+/* 「내역 요청」 — 폴더를 펴지 않고 바로 누를 수 있어야 하므로 머리 버튼 밖에 둔다.
+ * 머리 안에 넣으면 누를 때 폴더가 같이 열려 버린다. */
+.mc-folders .payment-folder {
+  position: relative;
+}
+
+.mc-ask-btn {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* 펼친 폴더는 머리 높이만큼만 기준으로 잡는다 — 몸통 한가운데로 내려가지 않게 */
+.mc-folders .payment-folder.is-open .mc-ask-btn {
+  top: 32px;
+  transform: none;
+}
+
+/* 버튼이 금액을 가리지 않도록 머리 우측을 비워 둔다 */
+.mc-folders .payment-folder-head {
+  padding-right: 132px;
+}
+
+@media (max-width: 640px) {
+  .mc-ask-btn {
+    right: 12px;
+  }
+
+  .mc-folders .payment-folder-head {
+    padding-right: 120px;
+  }
+}

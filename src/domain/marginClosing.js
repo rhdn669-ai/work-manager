@@ -7,13 +7,16 @@
 // 이 파일을 지배하는 세 가지.
 //  ① 마감은 그달에 납품받은 내역이다. 결제가 다음 달이어도 납품이 8월이면 8월 지출이다.
 //     ("마감은 해당 월에 납품 받은 내역" · "마감은 이번달에 결제는 다음달에 되는 경우가 많음")
-//  ② 그달 입고 확정된 건은 마감 버튼을 눌렀든 안 눌렀든 전부 목록에 오른다.
+//  ② 목록에 오르는 문은 둘이다 — 그달 「입고 확정」 또는 그달 「결제 완료」.
 //     ("입고확정이 해당 월인 내용은 다 리스트에 올라와야함" — 빠지는 건이 없어야 한다)
+//     선결제처럼 돈이 먼저 나가고 물건이 나중에 오는 건은 입고만 보면 그달에서 빠진다.
+//     그달에 나간 돈은 그달에 다 보여야 하므로 결제일도 문으로 둔다 (2026-08-27 대표님).
 //     「마감 · 결제 요청」 버튼은 담당자가 금액을 확정하는 표시이고, 안 누른 건은 미확정으로 선다.
 //  ③ 지출은 업체에 줄 돈만 담는다. 잔업 수당·고정비는 총 마감에서 따로 본다.
 //     ("마감리스트에는 업체에 결제해줘야하는 금액만 지출로")
 import { mapPrintItems } from '../utils/purchaseOrder';
 import { supplierKey } from './supplierContacts';
+import { paidList } from './payment';
 
 export const MISC_VENDOR = '(구매처 미지정)';
 
@@ -82,6 +85,22 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
     if (d && (!g.latest || d > g.latest)) g.latest = d;
   }
 
+  // 두 번째 문 — 그달 결제 완료된 업체. 선결제처럼 입고보다 돈이 먼저 나간 건을 잡는다.
+  // 이미 입고로 잡힌 업체는 건드리지 않는다(같은 건이 두 줄이 되지 않게).
+  const paidMap = purchase.supplierPaid || {};
+  const prepaid = new Map();
+  for (const [vkey, raw] of Object.entries(paidMap)) {
+    for (const pd of paidList(raw)) {
+      if (!inMonth(pd.paidAt, year, month)) continue;
+      const amt = Number(pd.amount) || 0;
+      const cur = prepaid.get(vkey) || { amount: 0, at: null };
+      cur.amount += amt;
+      const d = toDate(pd.paidAt);
+      if (d && (!cur.at || d > cur.at)) cur.at = d;
+      prepaid.set(vkey, cur);
+    }
+  }
+
   const closed = purchase.supplierClosed || {};
   const want = monthKey(year, month);
   const out = [];
@@ -107,7 +126,31 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
     });
   }
 
-  // 그달에 입고는 없는데 마감만 걸어 둔 건(손으로 월을 옮긴 경우)도 빠뜨리지 않는다
+  // 입고는 없는데 그달 결제만 된 건 — 선결제. 돈이 나간 달에 세운다.
+  for (const [vkey, pd] of prepaid) {
+    if (out.some((r) => r.vendorKey === vkey)) continue;
+    const info = closed[vkey];
+    const isClosed = !!info && info.monthKey === want;
+    out.push({
+      key: `po:${purchase.id}:${vkey}`,
+      purchaseId: purchase.id,
+      vendorKey: vkey,
+      vendor: info?.vendor || vkey,
+      siteName: purchase.siteName || '',
+      title: purchase.title || '(제목 없음)',
+      description: `${purchase.title || '(제목 없음)'} — 선결제`,
+      // 결제된 금액이 곧 확정 금액이다. 이미 나간 돈이라 다툴 여지가 없다.
+      amount: isClosed ? Number(info.amount) || 0 : pd.amount,
+      receivedAmount: 0,
+      payDue: info?.payDue || '',
+      closed: true, // 돈이 나갔으면 확정이다
+      closedBy: info?.by || '',
+      receivedAt: null,
+      prepaid: true,
+    });
+  }
+
+  // 그달에 입고도 결제도 없는데 마감만 걸어 둔 건(손으로 월을 옮긴 경우)도 빠뜨리지 않는다
   for (const [vkey, info] of Object.entries(closed)) {
     if (!info || info.monthKey !== want) continue;
     if (out.some((r) => r.vendorKey === vkey)) continue;

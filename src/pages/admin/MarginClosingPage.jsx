@@ -10,6 +10,10 @@ import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
 import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
+import { callSendEmail } from '../../config/firebase';
+import { addMailLog } from '../../services/mailService';
+import { resolveEmail } from '../../domain/supplierContacts';
+import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import {
   getMonthClosing,
   getManualItems,
@@ -37,6 +41,8 @@ const won = (n) => (Number(n) || 0).toLocaleString();
 export default function MarginClosingPage() {
   const { canApproveAll, userProfile } = useAuth();
   const { toast, confirm } = useDialog();
+  const { info: SELF } = useCompanyInfo();
+  const [mailing, setMailing] = useState(''); // 발송 중인 업체
   const me = userProfile?.name || '';
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -185,6 +191,51 @@ export default function MarginClosingPage() {
     } catch (err) {
       console.error(err);
       toast('금액을 저장하지 못했습니다', 'error');
+    }
+  }
+
+  // 업체에 「그달 마감내역 보내 주세요」 요청 메일.
+  //
+  // 금액을 우리가 먼저 적어 보내면 업체가 그 숫자에 맞춰 오기 쉽다. 요청 문구만 보내
+  // 업체 장부에서 나온 숫자를 받고, 우리 숫자와 대조한다 (2026-08-27 대표님).
+  async function requestStatement(vendor) {
+    const sup = suppliers.find((x) => x.name === vendor);
+    const to = resolveEmail(sup, '');
+    if (!to) return toast(`"${vendor}" 이메일이 없습니다. 구매처 관리에서 등록해 주세요`, 'error', 0);
+    if (
+      !(await confirm(`"${vendor}"에 ${month}월 마감내역을 요청할까요?
+받는 곳: ${to}`))
+    )
+      return;
+
+    setMailing(vendor);
+    const subject = `[주식회사 아이오피엔] ${year}년 ${month}월 마감내역 요청`;
+    const html = [
+      '<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p>',
+      `<p style="margin:0 0 14px;font-weight:700">수신 : ${vendor}</p><br>`,
+      '<p>안녕하세요. 주식회사 아이오피엔입니다.</p>',
+      `<p>${year}년 ${month}월 마감내역을 회신 부탁드립니다.</p>`,
+      '<p>확인 후 결제 진행하겠습니다. 감사합니다.</p><br>',
+      `<p style="color:#5c6675">${SELF.companyAndCeo || ''}<br>${SELF.telFax || ''}<br>${SELF.email || ''}</p>`,
+    ].join('');
+
+    try {
+      await callSendEmail({ to, subject, html });
+      await addMailLog({
+        to,
+        supplier: vendor,
+        subject,
+        kind: 'statement-request',
+        monthKey: `${year}-${String(month).padStart(2, '0')}`,
+        sentBy: me,
+        sentAt: new Date(),
+      });
+      toast(`${vendor}에 마감내역을 요청했습니다`, 'success', 0);
+    } catch (err) {
+      console.error(err);
+      toast('메일 발송에 실패했습니다', 'error', 0);
+    } finally {
+      setMailing('');
     }
   }
 
@@ -497,6 +548,16 @@ export default function MarginClosingPage() {
                         {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
                         {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
                         <span className="payment-folder-amount">{won(g.total)}원</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline mc-ask-btn"
+                        onClick={() => requestStatement(g.vendor)}
+                        disabled={mailing === g.vendor}
+                        title={`${g.vendor}에 ${month}월 마감내역을 요청합니다`}
+                      >
+                        <Icon name="mail" className="btn-ic" />
+                        {mailing === g.vendor ? '보내는 중…' : '내역 요청'}
                       </button>
 
                       {open && (
