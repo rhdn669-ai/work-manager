@@ -83,9 +83,10 @@
   color: var(--text);
 }
 
-/* 손대야 할 줄은 눈에 띄게 — 대표님이 여기만 보면 되게 한다 */
+/* 손대야 할 줄 — 배지가 이미 빨강으로 상태를 말하므로, 줄은 아주 옅게만 깔아
+ * 「여기부터 보세요」만 거든다. 노랑+빨강이 한 행에서 같이 소리치지 않게 한다. */
 .mc-table tbody tr.is-todo td {
-  background: #fffbf0;
+  background: #fef7f7;
 }
 
 .mc-site {
@@ -171,16 +172,6 @@
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
-}
-
-.mc-chip.is-done {
-  background: #dcefe4;
-  color: #14713a;
-}
-
-.mc-chip.is-todo {
-  background: #fdf0cf;
-  color: #8a6100;
 }
 
 .mc-chip.is-static {

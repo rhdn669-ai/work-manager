@@ -20688,3 +20688,100 @@ a.lib-row-name:hover {
     flex-basis: 100%;
   }
 }
+
+/* ===== 상태 배지 — 전 앱 단일 표준 (2026-08-27 대표님) =====
+ *
+ * 같은 「완료」가 화면마다 다른 초록이었고, 모양도 알약과 모난 상자가 섞여 있었다.
+ * 색만 보고도 상태를 읽을 수 있게 의미별 네 색으로 고정한다.
+ *
+ *   대기   회색   아직 시작 안 함
+ *   진행   파랑   하는 중
+ *   완료   초록   끝남 — 손댈 것 없음
+ *   경고   빨강   미처리·문제 — 손대야 함
+ *
+ * 모양은 알약(999px) 하나로 통일한다. 버튼·입력칸은 모난 네모라 「누를 수 있는 것」과
+ * 「읽는 표시」가 모양만으로 갈린다. 연한 바탕 + 진한 글자 = 전부 4.5:1 이상.
+ */
+:root {
+  --sb-wait-bg: #eef0f3;
+  --sb-wait-fg: #414c5c; /* 7.62:1 */
+  --sb-doing-bg: #e8f3ff;
+  --sb-doing-fg: #0057d9; /* 5.56:1 */
+  --sb-done-bg: #dcefe4;
+  --sb-done-fg: #14713a; /* 5.07:1 */
+  --sb-warn-bg: #fbdfe1;
+  --sb-warn-fg: #bb2532; /* 4.89:1 */
+}
+
+.sbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  background: var(--sb-wait-bg);
+  color: var(--sb-wait-fg);
+}
+
+.sbadge.is-doing {
+  background: var(--sb-doing-bg);
+  color: var(--sb-doing-fg);
+}
+
+.sbadge.is-done {
+  background: var(--sb-done-bg);
+  color: var(--sb-done-fg);
+}
+
+.sbadge.is-warn {
+  background: var(--sb-warn-bg);
+  color: var(--sb-warn-fg);
+}
+
+/* 기존 배지들을 표준 문법으로 당긴다 — 클래스명은 그대로 두고 모양·색만 맞춘다.
+ * 화면 코드를 건드리지 않아 회귀 위험이 없다. */
+.badge,
+.purchase-badge,
+.payment-folder-badge,
+.event-type-badge,
+.lib-auto-badge,
+.lib-tree-badge,
+.home-cal-badge,
+.dup-warn-badge,
+.mc-chip,
+.mc-src,
+.mc-when {
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* 결제 「대기」 — 빨강 솔리드였다. 다른 배지와 같은 문법(연한 바탕+진한 글자)으로 낮춘다.
+ * 「돈 나가야 한다」는 신호는 색(빨강)이 이미 말한다. 솔리드까지 갈 필요가 없다. */
+.payment-folder-badge {
+  padding: 4px 11px;
+  background: var(--sb-warn-bg);
+  color: var(--sb-warn-fg);
+}
+
+.payment-folder-badge.is-done {
+  background: var(--sb-done-bg);
+  color: var(--sb-done-fg);
+}
+
+/* 마감 리스트 칩 — 같은 뜻은 같은 색 */
+.mc-chip.is-done {
+  background: var(--sb-done-bg);
+  color: var(--sb-done-fg);
+}
+
+.mc-chip.is-todo {
+  background: var(--sb-warn-bg);
+  color: var(--sb-warn-fg);
+}
