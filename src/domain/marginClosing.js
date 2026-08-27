@@ -43,6 +43,18 @@ function inMonth(v, year, month) {
   return !!d && d.getFullYear() === year && d.getMonth() + 1 === month;
 }
 
+// 부가세 — 공급가의 10%. 결제 페이지와 같은 규칙(반올림)이라야 두 화면 숫자가 맞는다.
+// 마감은 공급가로, 결제는 VAT 포함으로 보던 것을 나란히 놓기 위해 여기서 함께 낸다
+// (2026-08-27 대표님 「마감이랑 결제에 vat 포함 미포함 같이 봐야함」).
+export function vatOf(supply) {
+  return Math.round((Number(supply) || 0) * 0.1);
+}
+
+export function withVat(supply) {
+  const v = Number(supply) || 0;
+  return v + vatOf(v);
+}
+
 // 그달에 실제로 들어온 몫만 금액으로 친다.
 // 초과 입고는 발주 수량까지만 — 잘못 적힌 숫자가 지출을 부풀리지 않게 한다.
 function receivedAmount(line) {

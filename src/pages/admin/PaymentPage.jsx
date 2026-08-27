@@ -84,14 +84,11 @@ export default function PaymentPage() {
     }
   }, []);
 
-  // 보는 달이 바뀌면 그 달 기준으로 확정 기록을 다시 읽는다
+  // 마감 확정 기록 — 한 번만 읽는다. 보는 달과 확정 달이 어긋나도 놓치지 않게
+  // 최근 열두 달을 통째로 가져온다(monthFilter='전체'일 때도 동작).
   useEffect(() => {
     let cancelled = false;
-    const [y, m] = String(monthFilter || '')
-      .split('-')
-      .map(Number);
-    if (!y || !m) return undefined;
-    getConfirmedKeys(y, m)
+    getConfirmedKeys()
       .then((set) => {
         if (!cancelled) setConfirmedKeys(set);
       })
@@ -99,7 +96,7 @@ export default function PaymentPage() {
     return () => {
       cancelled = true;
     };
-  }, [monthFilter]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -526,7 +523,9 @@ export default function PaymentPage() {
           {/* 요약 — 마감 리스트와 같은 얼굴. 돈을 다루는 화면은 첫인상이 같아야 한다 */}
           <div className="sum-cards no-print">
             <div className="sum-card is-wait">
-              <div className="sum-card-label">결제 대기</div>
+              <div className="sum-card-label">
+                결제 대기 <span className="sum-card-note">VAT 포함</span>
+              </div>
               <div className="sum-card-value">
                 {sumWait.toLocaleString()}
                 <em>원</em>
@@ -606,7 +605,10 @@ export default function PaymentPage() {
                     {unconfirmed > 0 && <span className="pay-unconfirmed">마감 미확정 {unconfirmed}</span>}
                     {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
                     {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
-                    <span className="payment-folder-amount">{f.total.toLocaleString()}원</span>
+                    <span className="payment-folder-amount pay-amt-stack">
+                      {f.total.toLocaleString()}원
+                      <em title="부가세 별도">공급가 {f.rows.reduce((a, r) => a + r.supply, 0).toLocaleString()}</em>
+                    </span>
                   </button>
 
                   {open && (
@@ -714,12 +716,12 @@ export default function PaymentPage() {
                                 <td data-label="비고" className="supplier-note-cell" title={r.note || ''}>
                                   <span className="cell-clamp-2">{r.note || '-'}</span>
                                 </td>
-                                <td
-                                  data-label="결제금액(VAT포함)"
-                                  className="payment-amount-cell"
-                                  title={`공급가 ${r.supply.toLocaleString()}`}
-                                >
-                                  {r.total.toLocaleString()}원
+                                <td data-label="결제금액(VAT포함)" className="payment-amount-cell">
+                                  <span className="pay-amt-stack">
+                                    {r.total.toLocaleString()}원
+                                    {/* 마감 리스트는 공급가로 본다 — 대조하려면 여기에도 있어야 한다 */}
+                                    <em title="부가세 별도">공급가 {r.supply.toLocaleString()}</em>
+                                  </span>
                                 </td>
                                 <td data-label="미입고" className="payment-amount-cell">
                                   {r.pendingCount > 0 ? (

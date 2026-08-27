@@ -20786,3 +20786,37 @@ a.lib-row-name:hover {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* 금액 두 줄 — 큰 값 아래 짝이 되는 값을 작게.
+ * 마감은 공급가로, 결제는 VAT 포함으로 보던 것을 나란히 놓아 두 화면을 대조할 수 있게 한다
+ * (2026-08-27 대표님 「마감이랑 결제에 vat 포함 미포함 같이 봐야함」). */
+.pay-amt-stack,
+.mc-amt-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+
+.pay-amt-stack em,
+.mc-amt-stack em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* 표 머리글 아래 작은 설명 — 「금액 공급가」처럼 무슨 값인지 밝힌다 */
+.mc-th-sub {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.mc-vat {
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}

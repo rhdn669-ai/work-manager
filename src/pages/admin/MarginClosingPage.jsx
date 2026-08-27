@@ -32,6 +32,7 @@ import {
   applyConfirm,
   sumRows,
   groupState,
+  withVat,
 } from '../../domain/marginClosing';
 import '../../styles/margin-closing.css';
 
@@ -442,6 +443,7 @@ export default function MarginClosingPage() {
                 {won(expSum.confirmed)}
                 <em>원</em>
               </div>
+              <div className="sum-card-sub">VAT 포함 {won(withVat(expSum.confirmed))}원</div>
               <div className="sum-card-sub">
                 업체 {expense.length}곳{expSum.pendingCount > 0 && <b> · 미확정 {expSum.pendingCount}건</b>}
               </div>
@@ -587,7 +589,9 @@ export default function MarginClosingPage() {
                           )}
                           {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
                           {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
-                          <span className="payment-folder-amount">{won(g.total)}원</span>
+                          <span className="payment-folder-amount mc-amt-stack">
+                            {won(g.total)}원<em title="부가세 포함">+VAT {won(withVat(g.total))}</em>
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -612,8 +616,11 @@ export default function MarginClosingPage() {
                                 <th className="col-unit" style={{ width: 100 }}>
                                   출처
                                 </th>
-                                <th className="col-num" style={{ width: 200 }}>
-                                  금액
+                                <th className="col-num" style={{ width: 190 }}>
+                                  금액 <span className="mc-th-sub">공급가</span>
+                                </th>
+                                <th className="col-num" style={{ width: 140 }}>
+                                  VAT 포함
                                 </th>
                                 <th className="col-action">확정</th>
                               </tr>
@@ -632,6 +639,7 @@ export default function MarginClosingPage() {
                                     </span>
                                   </td>
                                   {amountCell(r)}
+                                  <td className="col-num mc-vat">{won(withVat(r.amount))}</td>
                                   {confirmCell(r)}
                                 </tr>
                               ))}

@@ -16,7 +16,7 @@ import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
-import { receivedRowsOf, payMonthLabel } from '../../src/domain/marginClosing';
+import { receivedRowsOf, payMonthLabel, vatOf, withVat } from '../../src/domain/marginClosing';
 import { buildMailHtml, mailSubject, senderLine } from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
@@ -915,6 +915,28 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
 });
 
 // ── 메일 기본 틀 — 발주서·메일발송·마감내역요청이 같은 얼굴로 나가는지 (2026-08-27 대표님)
+// 마감은 공급가로, 결제는 VAT 포함으로 본다 — 두 화면 숫자가 어긋나면 대조가 안 된다
+describe('부가세 — 두 화면이 같은 값을 낸다', () => {
+  it('공급가의 10%, 반올림 (결제 페이지와 같은 규칙)', () => {
+    expect(vatOf(2100000)).toBe(210000);
+    expect(withVat(2100000)).toBe(2310000);
+  });
+
+  it('원 단위가 갈리는 값도 결제와 같게 반올림한다', () => {
+    // 결제 페이지: Math.round(supply * 0.1)
+    for (const v of [1175852, 3737272, 5468155, 347028, 579348]) {
+      expect(vatOf(v)).toBe(Math.round(v * 0.1));
+      expect(withVat(v)).toBe(v + Math.round(v * 0.1));
+    }
+  });
+
+  it('빈 값·문자도 0 으로 다룬다', () => {
+    expect(vatOf(0)).toBe(0);
+    expect(withVat(null)).toBe(0);
+    expect(withVat(undefined)).toBe(0);
+  });
+});
+
 describe('메일 기본 틀', () => {
   it('발신·수신 줄이 순서대로 붙는다', () => {
     const html = buildMailHtml({ to: '델타전기', body: '안녕하세요.' });

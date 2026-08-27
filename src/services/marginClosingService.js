@@ -29,17 +29,24 @@ export async function getMonthClosing(year, month) {
   };
 }
 
-// 여러 달의 확정 기록을 한 번에 — 결제 페이지가 「이 건 마감 확정됐나」를 물을 때 쓴다.
+// 확정된 키를 모아 온다 — 결제 페이지가 「이 건 마감 확정됐나」를 물을 때 쓴다.
 //
-// 확정은 월별 문서에 나뉘어 있는데, 결제 페이지는 발주 단위로 본다. 8월 입고분을
-// 9월에 확정할 수도 있어 한 달만 봐서는 놓친다. 최근 몇 달을 합쳐 본다
-// (2026-08-27 대표님 「마감 안했는데 뜨네?」).
+// 확정은 월별 문서에 나뉘어 있는데, 두 화면이 보는 달이 서로 다르다.
+//   마감 확정 → 입고한 달에 저장   결제 페이지 → 결제 마감일 기준으로 봄
+// 8월 입고분의 결제 마감이 9월이면 두 달이 어긋난다. 게다가 결제에서 「전체」를 고르면
+// 기준 달 자체가 없다. 그래서 최근 열두 달을 통째로 읽어 합친다
+// (2026-08-27 대표님 「마감 리스트에 확정 했는데 결제에 미확정으로 남아있는건 뭐임」).
+//
+// 문서 열두 개 읽기가 무거워 보이지만 한 달치가 작고 한 번만 읽는다.
 //
 // 반환: 확정된 키만 담은 Set
-export async function getConfirmedKeys(year, month, backMonths = 3) {
+export async function getConfirmedKeys(baseDate = new Date(), months = 12) {
+  const base = baseDate instanceof Date ? baseDate : new Date(baseDate);
+  const from = Number.isNaN(base.getTime()) ? new Date() : base;
   const ids = [];
-  for (let i = 0; i <= backMonths; i += 1) {
-    const d = new Date(year, month - 1 - i, 1);
+  // 앞뒤로 본다 — 결제 마감일이 입고 달보다 뒤일 수도, 늦게 확정해 앞일 수도 있다
+  for (let i = -2; i < months; i += 1) {
+    const d = new Date(from.getFullYear(), from.getMonth() - i, 1);
     ids.push(monthDocId(d.getFullYear(), d.getMonth() + 1));
   }
   const snaps = await Promise.all(ids.map((mid) => getDoc(doc(closingsRef, mid))));
