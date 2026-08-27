@@ -45,7 +45,7 @@
 }
 
 .mc-sec-head h3 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0;
@@ -62,7 +62,7 @@
 }
 
 .mc-sec-total {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
@@ -88,45 +88,15 @@
   background: #fffbf0;
 }
 
-.mc-site,
-.mc-vd {
+.mc-site {
   font-size: 15px;
   font-weight: 800;
   color: var(--primary);
-}
-
-.mc-sub-site {
-  padding-left: 34px !important;
-  font-weight: 700;
-  color: var(--text-secondary);
 }
 
 .mc-desc {
   font-size: 15px;
   font-weight: 600;
-}
-
-/* 업체 묶음 줄 — 이 업체에 이번 달 얼마를 줘야 하는지 한 줄로 */
-.mc-table tbody tr.mc-vendor td {
-  background: var(--grey-50);
-  border-top: 1px solid var(--grey-300);
-  border-bottom: 1px solid var(--grey-300);
-  height: 54px;
-}
-
-.mc-vd-n {
-  margin-left: 9px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-light);
-}
-
-.mc-vd-sum {
-  font-size: 21px;
-  font-weight: 800;
-  color: var(--primary);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
 }
 
 /* ── 금액 — 눌러서 그 자리에서 고친다 ────────────────── */
@@ -265,7 +235,4 @@
     font-size: 19px;
   }
 
-  .mc-sub-site {
-    padding-left: 20px !important;
   }
-}
