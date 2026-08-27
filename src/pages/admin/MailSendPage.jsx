@@ -547,8 +547,16 @@ export default function MailSendPage() {
           </div>
         )}
         <div className="form-group">
-          <label>본문 미리보기</label>
+          <label>
+            발송 미리보기
+            {recipients.length > 1 && <span className="field-hint-inline"> — {recipients[0]?.name} 기준</span>}
+          </label>
           <div className="mail-body-preview" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          {recipients.length > 1 && (
+            <p className="field-hint">
+              「수신」 줄은 업체마다 제 이름으로 나갑니다. 나머지 {recipients.length - 1}곳도 각자 상호로 받습니다.
+            </p>
+          )}
         </div>
         <div className="modal-actions">
           <button type="button" className="btn btn-primary" onClick={confirmSend} disabled={sending}>

@@ -204,31 +204,35 @@ export default function MarginClosingPage() {
   // 제목·본문을 여기서 한 번만 만든다 — 모달에 보여 주는 글과 실제 나가는 글이
   // 갈리면 미리보기가 거짓말을 한다.
   const askSubject = mailSubject(`${year}년 ${month}월 마감내역 요청`);
-  const askBody = [
-    '안녕하세요. 주식회사 아이오피엔입니다.',
-    '',
-    `${year}년 ${month}월 마감내역을 회신 부탁드립니다.`,
-    '확인 후 결제 진행하겠습니다.',
-    '',
-    '감사합니다.',
-  ].join('\n');
+  // 「주식회사 아이오피엔 ○○○입니다」 — 누가 보냈는지 첫머리에 드러나야 회신이 그 사람에게 온다.
+  // 발주서 메일과 같은 말투다.
+  const askBodyOf = (who) =>
+    [
+      '안녕하세요.',
+      `주식회사 아이오피엔 ${who || ''}입니다.`,
+      '',
+      `${year}년 ${month}월 마감내역을 회신 부탁드립니다.`,
+      '확인 후 결제 진행하겠습니다.',
+      '',
+      '감사합니다.',
+    ].join('\n');
 
   function openAskModal(vendor) {
     const sup = suppliers.find((x) => x.name === vendor);
     const to = resolveEmail(sup, '');
     if (!to) return toast(`"${vendor}" 이메일이 없습니다. 구매처 관리에서 등록해 주세요`, 'error', 0);
-    setAskModal({ vendor, to, cardName: me });
+    setAskModal({ vendor, to, cardName: me, body: askBodyOf(me) });
   }
 
   async function sendStatementRequest() {
     if (!askModal) return;
-    const { vendor, to, cardName } = askModal;
+    const { vendor, to, cardName, body } = askModal;
     setAskModal(null);
     setMailing(vendor);
 
     const subject = askSubject;
     // 발신·수신 줄과 명함은 공용 틀이 붙인다 — 발주서와 같은 얼굴로 나간다
-    const html = buildMailHtml({ to: vendor, body: askBody, cardName });
+    const html = buildMailHtml({ to: vendor, body, cardName });
 
     try {
       await callSendEmail({ to, subject, html });
@@ -714,13 +718,23 @@ export default function MarginClosingPage() {
             <div className="mail-preview-subject">{askSubject}</div>
           </div>
           <CardPicker value={askModal.cardName} onChange={(v) => setAskModal((p) => ({ ...p, cardName: v }))} />
-          {/* 실제로 나갈 모습 그대로 — 발신·수신 줄과 명함까지 다 보인다 */}
+          <div className="form-group">
+            <label>본문 (이 건만 고쳐 보냅니다)</label>
+            <textarea
+              className="mail-body-edit"
+              rows={7}
+              value={askModal.body}
+              onChange={(e) => setAskModal((p) => ({ ...p, body: e.target.value }))}
+              aria-label="메일 본문"
+            />
+          </div>
+          {/* 실제로 나갈 모습 그대로 — 본문을 고치면 여기도 바로 따라 바뀐다 */}
           <div className="form-group">
             <label>발송 미리보기</label>
             <div
               className="mail-body-preview"
               dangerouslySetInnerHTML={{
-                __html: buildMailHtml({ to: askModal.vendor, body: askBody, cardName: askModal.cardName }),
+                __html: buildMailHtml({ to: askModal.vendor, body: askModal.body, cardName: askModal.cardName }),
               }}
             />
             <p className="field-hint">받는 업체에게 이대로 보입니다.</p>
