@@ -4879,8 +4879,12 @@ table.cards-sm td {
   padding: 0;
 }
 
+.fold-body.table-scroll-x,
 .fold-body .table-scroll-x,
-.fold-body .table {
+.fold-body .table,
+.payment-folder-body.table-scroll-x,
+.payment-folder-body .table-scroll-x,
+.payment-folder-body .table {
   border-radius: 0;
   border-left: none;
   border-right: none;
@@ -4888,17 +4892,24 @@ table.cards-sm td {
   box-shadow: none;
 }
 
-.fold-body .table-scroll-x {
+.fold-body.table-scroll-x,
+.fold-body .table-scroll-x,
+.payment-folder-body.table-scroll-x,
+.payment-folder-body .table-scroll-x {
   border: none;
 }
 
 .fold-body .table th:first-child,
-.fold-body .table td:first-child {
+.fold-body .table td:first-child,
+.payment-folder-body .table th:first-child,
+.payment-folder-body .table td:first-child {
   padding-left: 16px;
 }
 
 .fold-body .table th:last-child,
-.fold-body .table td:last-child {
+.fold-body .table td:last-child,
+.payment-folder-body .table th:last-child,
+.payment-folder-body .table td:last-child {
   padding-right: 16px;
 }
 .payment-folder.is-open {
@@ -5002,31 +5013,6 @@ table.cards-sm td {
   padding: 0;
 }
 
-/* 폴더 안의 표는 카드가 아니다 — 폴더 자체가 이미 카드라, 안에서 또 둥근 상자가 뜨면
- * 상자 안 상자가 된다. 라운드·테두리·그림자를 걷어 폴더 바닥에 붙인다 (2026-08-27 대표님). */
-.payment-folder-body .table-scroll-x,
-.payment-folder-body .table {
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  box-shadow: none;
-}
-
-.payment-folder-body .table-scroll-x {
-  border: none;
-}
-
-/* 첫 칸·끝 칸이 폴더 벽에 닿지 않게 — 표는 붙되 글자는 폴더 안쪽 여백을 지킨다 */
-.payment-folder-body .table th:first-child,
-.payment-folder-body .table td:first-child {
-  padding-left: 16px;
-}
-
-.payment-folder-body .table th:last-child,
-.payment-folder-body .table td:last-child {
-  padding-right: 16px;
-}
 .payment-sum-bar {
   margin-top: 14px;
   padding: 12px 16px;

@@ -27,21 +27,19 @@
 
 /* ── 요약 세 장 ───────────────────────────────────────── */
 /* ── 확정 진행 ────────────────────────────────────────── */
-/* ── 매출 / 지출 덩어리 ───────────────────────────────── */
+/* ── 매출 / 지출 덩어리 ─────────────────────────────────
+ * 결제 페이지는 폴더가 바로 배경 위에 뜬다. 마감 리스트도 같아야 한다 —
+ * 섹션이 카드가 되면 카드 안에 폴더 카드가 또 들어가 상자 안 상자가 된다.
+ * 섹션은 「여기부터 지출」이라고 알리는 머리글일 뿐 껍데기가 아니다 (2026-08-27 대표님). */
 .mc-sec {
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md, 14px);
   margin-bottom: 18px;
-  overflow: hidden;
 }
 
 .mc-sec-head {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 18px 22px;
-  border-bottom: 2px solid var(--border);
+  padding: 0 4px 12px;
 }
 
 .mc-sec-head h3 {
