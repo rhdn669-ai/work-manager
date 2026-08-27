@@ -310,23 +310,8 @@
   }
 }
 
-/* 선결제 예정 — 아직 돈이 안 나간 건. 이미 나간 「선결제」(네이비)와 색으로 갈린다. */
-.mc-prepay-tag {
-  flex: 0 0 auto;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--sb-warn-bg);
-  color: var(--sb-warn-fg);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-}
 
-@media (max-width: 900px) {
-  .mc-prepay-tag {
-    display: none;
-  }
-}
+
 
 /* 발주서로 이동 — 이름 자체를 누르게 한다. 별도 버튼을 두면 그러잖아도 빽빽한
  * 표에 칸이 하나 더 는다 (2026-08-27 대표님). */

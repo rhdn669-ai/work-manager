@@ -749,53 +749,6 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
     expect(receivedRowsOf(both, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
   });
 
-  // 선결제는 발주 전에 돈을 줘야 해 입고를 기다리면 목록에 뜨지도 못한다 — 닭과 달걀
-  it('발주서에서 선결제로 표시하면 입고 전에도 발주 달에 뜬다', () => {
-    const prepay = {
-      id: 'pp1',
-      title: '선결제 대상',
-      siteName: '메티스',
-      createdAt: D('2026-08-05'),
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 0 }],
-      supplierPrepay: { 델타전기: { at: D('2026-08-05'), by: '손성욱' } },
-    };
-    const r = receivedRowsOf(prepay, itemMaster, suppliers, 2026, 8);
-    expect(r).toHaveLength(1);
-    expect(r[0].prepay).toBe(true);
-    expect(r[0].amount).toBe(21000); // 발주 수량 기준 — 아직 안 들어왔다
-    expect(r[0].closed).toBe(false); // 돈이 아직 안 나갔으니 대표님이 확인한다
-  });
-
-  it('선결제 표시해도 발주 달이 아니면 뜨지 않는다', () => {
-    const prepay = {
-      id: 'pp2',
-      title: '7월 발주',
-      siteName: '한화',
-      createdAt: D('2026-07-20'),
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 5000, receivedQty: 0 }],
-      supplierPrepay: { 델타전기: { at: D('2026-07-20') } },
-    };
-    expect(receivedRowsOf(prepay, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
-    expect(receivedRowsOf(prepay, itemMaster, suppliers, 2026, 7)).toHaveLength(1);
-  });
-
-  it('선결제 표시 후 입고되면 한 줄만 — 입고분이 이긴다', () => {
-    const both = {
-      id: 'pp3',
-      title: '선결제 후 입고',
-      siteName: '양산',
-      createdAt: D('2026-08-01'),
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 6000, receivedQty: 2, receivedAt: D('2026-08-15') },
-      ],
-      supplierPrepay: { 델타전기: { at: D('2026-08-01') } },
-    };
-    const r = receivedRowsOf(both, itemMaster, suppliers, 2026, 8);
-    expect(r).toHaveLength(1);
-    expect(r[0].prepay).toBeUndefined(); // 입고 줄이 섰다
-    expect(r[0].amount).toBe(12000);
-  });
-
   it('입고도 결제도 없는 달은 뜨지 않는다', () => {
     expect(receivedRowsOf(prepaidOnly, itemMaster, suppliers, 2026, 7)).toHaveLength(0);
   });

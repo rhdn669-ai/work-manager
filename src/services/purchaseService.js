@@ -665,31 +665,6 @@ export async function unmarkSupplierPaid(purchaseId, key) {
   });
 }
 
-// 업체별 선결제 표시 — 물건보다 돈이 먼저 나가는 건.
-//
-// 마감 리스트는 「그달 납품받은 내역」이 원칙이라 입고를 문으로 쓴다. 그런데 선결제는
-// 발주 전에 돈을 줘야 해서 입고를 기다리면 목록에 뜨지도 못한다 — 닭과 달걀이 된다.
-// 그래서 이것만 예외로, 표시한 건은 입고 전에도 발주 달 마감 리스트에 세운다
-// (2026-08-27 대표님 「발주 전에 선결제 해야하는것도 있는데」).
-//
-// 발주 전체를 미리 올리지 않는 이유는 목록이 몇 배로 길어지고, 아직 안 들어온 건을
-// 매달 스무 번씩 지나쳐야 하기 때문이다.
-export async function markSupplierPrepay(purchaseId, key, by = '') {
-  key = String(key ?? '').replace(/\./g, '_');
-  await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierPrepay.${key}`]: { at: new Date(), by },
-    updatedAt: new Date(),
-  });
-}
-
-export async function unmarkSupplierPrepay(purchaseId, key) {
-  key = String(key ?? '').replace(/\./g, '_');
-  await updateDoc(doc(db, 'purchases', purchaseId), {
-    [`supplierPrepay.${key}`]: deleteField(),
-    updatedAt: new Date(),
-  });
-}
-
 // 업체별 결제 요청 — 발주 상세에서 '결제 요청'을 누르면 결제 페이지에 결제 대기로 올라온다.
 // dueDate: 결제 마감일(YYYY-MM-DD) — 결제 페이지에 함께 전달.
 export async function markPaymentRequested(purchaseId, key, by = '', dueDate = '') {

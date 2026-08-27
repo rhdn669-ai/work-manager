@@ -36,8 +36,6 @@ import {
   unmarkSupplierReplied,
   markPaymentRequested,
   unmarkPaymentRequested,
-  markSupplierPrepay,
-  unmarkSupplierPrepay,
   setPurchaseReplied,
   getPurchaseConfig,
   consumeItemStock,
@@ -1572,28 +1570,6 @@ export default function PurchaseDetailPage() {
     return supplierKey(supplierName, null);
   }
 
-  // 선결제 표시 — 물건보다 돈이 먼저 나가는 건.
-  // 표시하면 입고 전에도 마감 리스트(발주 달)에 올라가 대표님이 확인·확정할 수 있다.
-  async function togglePrepay(supplierName) {
-    const key = payKey(supplierName);
-    const on = !!purchase.supplierPrepay?.[key];
-    if (on && !(await confirm(`"${supplierName}" 선결제 표시를 뗄까요?`))) return;
-    try {
-      if (on) await unmarkSupplierPrepay(id, key);
-      else await markSupplierPrepay(id, key, userProfile?.name || '');
-      setPurchase((prev) => {
-        const next = { ...(prev.supplierPrepay || {}) };
-        if (on) delete next[key];
-        else next[key] = { at: new Date(), by: userProfile?.name || '' };
-        purchaseRef.current = { ...(purchaseRef.current || {}), supplierPrepay: next };
-        return { ...prev, supplierPrepay: next };
-      });
-      toast(on ? '선결제 표시를 뗐습니다' : '선결제로 표시했습니다. 마감 리스트에서 확인하세요.');
-    } catch {
-      toast('처리 중 오류가 발생했습니다', 'error');
-    }
-  }
-
   // 업체별 결제 요청 → 결제일 입력 모달.
   //
   // 마감 확정은 여기서 하지 않는다. 업체에서 마감내역을 받아 우리 숫자와 대조해야
@@ -2903,7 +2879,6 @@ export default function PurchaseDetailPage() {
                       };
                     const recvDone = recv.total > 0 && recv.full === recv.total; // 전량 입고
                     // 결제는 업체 단위 — 담당이 갈린 업체는 두 줄이 같은 결제 상태를 본다
-                    const prepay = purchase.supplierPrepay?.[payKey(sup.name)];
                     const payReq = purchase.paymentRequested?.[payKey(sup.name)];
                     const paidRaw = purchase.supplierPaid?.[payKey(sup.name)];
                     const paidRows = paidList(paidRaw);
@@ -3088,20 +3063,6 @@ export default function PurchaseDetailPage() {
                                 onClick={() => handleMarkSupplierReplied(sup.name, sup.contact ?? null)}
                               >
                                 회신 확인
-                              </button>
-                            )}
-                            {isFirstOfSupplier && !paid && (
-                              <button
-                                type="button"
-                                className={`btn btn-sm purchase-sup-toggle${prepay ? ' po-act-btn--on' : ' btn-outline'}`}
-                                onClick={() => togglePrepay(sup.name)}
-                                title={
-                                  prepay
-                                    ? '선결제 표시됨 — 입고 전에도 마감 리스트에 올라갑니다. 눌러서 뗍니다'
-                                    : '물건보다 돈이 먼저 나가는 건이면 표시하세요. 입고 전에도 마감 리스트에 올라갑니다'
-                                }
-                              >
-                                {prepay ? '선결제 해제' : '선결제'}
                               </button>
                             )}
                             {!isFirstOfSupplier ? (
