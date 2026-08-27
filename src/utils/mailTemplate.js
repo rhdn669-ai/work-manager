@@ -72,3 +72,11 @@ export function mailSubject(text) {
   const t = String(text || '').trim();
   return t.startsWith('[주식회사 아이오피엔]') ? t : `[주식회사 아이오피엔] ${t}`;
 }
+
+// 「주식회사 아이오피엔 ○○○입니다.」 — 담당자 이름이 있으면 넣는다.
+// 아무도 안 골랐으면 이름 자리를 비우지 않고 「주식회사 아이오피엔입니다.」로 끝낸다.
+// 「아이오피엔 입니다」처럼 빈칸이 남으면 받는 쪽에서 실수로 읽힌다 (2026-08-27 대표님).
+export function senderLine(name) {
+  const n = String(name || '').trim();
+  return n ? `주식회사 아이오피엔 ${n}입니다.` : '주식회사 아이오피엔입니다.';
+}

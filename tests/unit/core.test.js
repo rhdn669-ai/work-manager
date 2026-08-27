@@ -17,7 +17,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { receivedRowsOf, payMonthLabel } from '../../src/domain/marginClosing';
-import { buildMailHtml, mailSubject } from '../../src/utils/mailTemplate';
+import { buildMailHtml, mailSubject, senderLine } from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
@@ -842,6 +842,14 @@ describe('메일 기본 틀', () => {
 
   it('줄바꿈은 살린다', () => {
     expect(buildMailHtml({ to: 'A', body: '첫줄\n둘째줄' })).toContain('첫줄<br>둘째줄');
+  });
+
+  // 이름이 비면 「아이오피엔 입니다」처럼 빈칸이 남아 받는 쪽에서 실수로 읽힌다
+  it('담당자를 안 골랐으면 회사명까지만 적는다', () => {
+    expect(senderLine('손성욱')).toBe('주식회사 아이오피엔 손성욱입니다.');
+    expect(senderLine('')).toBe('주식회사 아이오피엔입니다.');
+    expect(senderLine(null)).toBe('주식회사 아이오피엔입니다.');
+    expect(senderLine('  ')).toBe('주식회사 아이오피엔입니다.'); // 공백만 친 경우
   });
 
   it('제목 접두는 한 번만 붙는다', () => {

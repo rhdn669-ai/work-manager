@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
-import { buildMailHtml } from '../../utils/mailTemplate';
+import { buildMailHtml, senderLine } from '../../utils/mailTemplate';
 import {
   DndContext,
   closestCenter,
@@ -152,7 +152,7 @@ function withTimeout(promise, ms, what) {
 function buildDefaultMailBody(name) {
   return [
     '안녕하세요.',
-    `주식회사 아이오피엔 ${name || ''}입니다.`,
+    senderLine(name),
     '해당 건 관련하여 발주서 첨부드립니다.',
     '',
     '바쁘시겠지만 납기 및 특이사항 확인하신 후 회신 부탁드리겠습니다.',

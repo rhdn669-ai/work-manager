@@ -13,7 +13,7 @@ import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../servic
 import { callSendEmail } from '../../config/firebase';
 import { addMailLog } from '../../services/mailService';
 import { resolveEmail } from '../../domain/supplierContacts';
-import { buildMailHtml, mailSubject } from '../../utils/mailTemplate';
+import { buildMailHtml, mailSubject, senderLine } from '../../utils/mailTemplate';
 import CardPicker from '../../components/common/CardPicker';
 import {
   getMonthClosing,
@@ -205,11 +205,11 @@ export default function MarginClosingPage() {
   // 갈리면 미리보기가 거짓말을 한다.
   const askSubject = mailSubject(`${year}년 ${month}월 마감내역 요청`);
   // 「주식회사 아이오피엔 ○○○입니다」 — 누가 보냈는지 첫머리에 드러나야 회신이 그 사람에게 온다.
-  // 발주서 메일과 같은 말투다.
+  // 이름은 고른 명함을 따라간다. 아무도 안 골랐으면 이름 없이 회사명까지만 나간다.
   const askBodyOf = (who) =>
     [
       '안녕하세요.',
-      `주식회사 아이오피엔 ${who || ''}입니다.`,
+      senderLine(who),
       '',
       `${year}년 ${month}월 마감내역을 회신 부탁드립니다.`,
       '확인 후 결제 진행하겠습니다.',
@@ -717,7 +717,17 @@ export default function MarginClosingPage() {
             <label>제목</label>
             <div className="mail-preview-subject">{askSubject}</div>
           </div>
-          <CardPicker value={askModal.cardName} onChange={(v) => setAskModal((p) => ({ ...p, cardName: v }))} />
+          <CardPicker
+            value={askModal.cardName}
+            onChange={(v) =>
+              setAskModal((p) => ({
+                ...p,
+                cardName: v,
+                // 손대지 않은 본문이면 이름도 함께 바꾼다. 고쳐 쓴 글은 건드리지 않는다.
+                body: p.body === askBodyOf(p.cardName) ? askBodyOf(v) : p.body,
+              }))
+            }
+          />
           <div className="form-group">
             <label>본문 (이 건만 고쳐 보냅니다)</label>
             <textarea
