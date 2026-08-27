@@ -4833,12 +4833,73 @@ table.cards-sm td {
   flex-direction: column;
   gap: 10px;
 }
+/* ===== 접었다 펴는 목록 — 전 앱 단일 표준 (2026-08-27 대표님) =====
+ * 결제·마감 리스트에서 다듬은 폴더가 기준이다. 공수표 카드·품목 그룹·지출 그룹처럼
+ * 같은 일을 하는 것들이 라운드·그림자·화살표가 제각각이라 한 앱처럼 보이지 않았다.
+ *   껍데기  .fold-card      1px 테두리 · radius-md · 흰 바탕 · 얕은 그림자 · overflow hidden
+ *   머리    .fold-head      좌우 16px · 위아래 14px · 화살표 → 아이콘 → 제목 → 우측 정보
+ *   몸통    .fold-body      안쪽에서 다시 카드가 되지 않는다(라운드 0)
+ * 펴진 것은 테두리가 네이비로 서고, 다 끝난 것은 연초록으로 「손댈 것 없음」을 말한다. */
+.fold-card,
 .payment-folder {
   border: 1px solid var(--border, #e5e7eb);
-  border-radius: var(--radius-md, 14px);
+  border-radius: var(--radius-md, 13px);
   background: #fff;
   box-shadow: var(--shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
   overflow: hidden;
+}
+
+.fold-card.is-open {
+  border-color: var(--primary, #002050);
+}
+
+.fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.fold-head:hover {
+  background: #fafbfc;
+}
+
+.fold-card.is-open .fold-head {
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+/* 몸통 — 폴더가 이미 카드다. 안에서 또 둥근 상자가 뜨면 상자 안 상자가 된다 */
+.fold-body {
+  padding: 0;
+}
+
+.fold-body .table-scroll-x,
+.fold-body .table {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.fold-body .table-scroll-x {
+  border: none;
+}
+
+.fold-body .table th:first-child,
+.fold-body .table td:first-child {
+  padding-left: 16px;
+}
+
+.fold-body .table th:last-child,
+.fold-body .table td:last-child {
+  padding-right: 16px;
 }
 .payment-folder.is-open {
   border-color: var(--primary, #002050);
@@ -7051,9 +7112,7 @@ table.cards-sm td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: var(--bg-subtle);
-  transition:
+    transition:
     background 0.18s ease,
     color 0.18s ease,
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -7075,7 +7134,8 @@ table.cards-sm td {
 }
 .item-group-detail .table {
   background: var(--bg-card);
-  border-radius: var(--radius-sm);
+  /* 그룹이 이미 카드다 — 안에서 또 둥근 상자가 되지 않는다 (2026-08-27 대표님) */
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -13467,9 +13527,9 @@ tr.is-newly-added > td {
 .closing-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 13px);
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
