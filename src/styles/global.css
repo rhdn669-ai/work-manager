@@ -20771,3 +20771,18 @@ a.lib-row-name:hover {
   background: var(--sb-warn-bg);
   color: var(--sb-warn-fg);
 }
+
+/* 마감 미확정 — 결제 페이지에서 「이 금액은 아직 업체 내역과 대조 전」을 알린다.
+ * 지급을 막지는 않는다. 급한 건은 대표님 판단으로 나갈 수 있어야 한다 (2026-08-27 대표님). */
+.pay-unconfirmed {
+  display: inline-block;
+  flex: 0 0 auto;
+  margin-left: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--sb-warn-bg);
+  color: var(--sb-warn-fg);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}

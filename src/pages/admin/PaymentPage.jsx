@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { getConfirmedKeys } from '../../services/marginClosingService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -48,6 +49,8 @@ export default function PaymentPage() {
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
   const [monthFilter, setMonthFilter] = useState(() => monthKey(new Date())); // 기본: 현재 월 (결제요청일 기준)
+  // 마감 리스트에서 확정된 건 — 「이 돈 줘도 되나」를 알려 준다. 막지는 않는다
+  const [confirmedKeys, setConfirmedKeys] = useState(() => new Set());
   const [expanded, setExpanded] = useState(() => new Set()); // 펼친 폴더 키
   // 묶는 기준 — 업체별 / 발주서(프로젝트)별 / 일자별(결제 마감일)
   // 처음 열면 업체별이다. 결제는 회사 대 회사로 나가므로 「이 업체에 얼마」가 먼저다
@@ -80,6 +83,23 @@ export default function PaymentPage() {
       setLoading(false);
     }
   }, []);
+
+  // 보는 달이 바뀌면 그 달 기준으로 확정 기록을 다시 읽는다
+  useEffect(() => {
+    let cancelled = false;
+    const [y, m] = String(monthFilter || '')
+      .split('-')
+      .map(Number);
+    if (!y || !m) return undefined;
+    getConfirmedKeys(y, m)
+      .then((set) => {
+        if (!cancelled) setConfirmedKeys(set);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [monthFilter]);
 
   useEffect(() => {
     load();
@@ -184,9 +204,12 @@ export default function PaymentPage() {
         });
       }
     }
+    // 마감 확정 여부 — 마감 리스트와 같은 열쇠를 쓴다. 확정 안 된 건은 금액이 아직
+    // 업체 내역과 대조되지 않았다는 뜻이라 알려 준다. 막지는 않는다 (2026-08-27 대표님).
+    for (const r of out) r.closingConfirmed = confirmedKeys.has(`po:${r.purchaseId}:${r.supplierKey}`);
     out.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     return out;
-  }, [purchases, itemMaster, suppliers, supByName]);
+  }, [purchases, itemMaster, suppliers, supByName, confirmedKeys]);
 
   const pendingCount = allRows.filter((r) => !r.paid).length;
   const paidCount = allRows.filter((r) => r.paid).length;
@@ -436,8 +459,10 @@ export default function PaymentPage() {
         </div>
       </div>
       <p className="field-hint" style={{ margin: '0 0 12px' }}>
-        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 업체명을
-        누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후 <strong>결제 완료</strong> 처리하세요.
+        발주서 상세에서 <strong>결제 요청</strong>을 누르면 여기에 <strong>결제 대기</strong>로 올라옵니다. 마감
+        리스트에서 확정하지 않은 건은 <strong>「마감 미확정」</strong>으로 표시됩니다 — 금액이 업체 내역과 대조되기
+        전입니다. 업체명을 누르면 등록된 <strong>사업자등록증</strong>을 확인할 수 있고, 확인 후{' '}
+        <strong>결제 완료</strong> 처리하세요.
       </p>
 
       {/* 년월 드롭다운 + 검색 */}
@@ -546,6 +571,8 @@ export default function PaymentPage() {
             {folders.map((f) => {
               const open = expanded.has(f.key);
               const allPaid = f.pending === 0 && f.paidCount > 0;
+              // 아직 마감 확정 안 된 미결제 건 — 접힌 채로도 보여야 지나치지 않는다
+              const unconfirmed = f.rows.filter((r) => !r.paid && !r.closingConfirmed).length;
               return (
                 <div key={f.key} className={`payment-folder ${open ? 'is-open' : ''} ${allPaid ? 'is-paid' : ''}`}>
                   <button type="button" className="payment-folder-head" onClick={() => toggleFolder(f.key)}>
@@ -576,6 +603,7 @@ export default function PaymentPage() {
                         ~{f.nearestDue} 마감
                       </span>
                     )}
+                    {unconfirmed > 0 && <span className="pay-unconfirmed">마감 미확정 {unconfirmed}</span>}
                     {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
                     {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
                     <span className="payment-folder-amount">{f.total.toLocaleString()}원</span>
@@ -649,6 +677,15 @@ export default function PaymentPage() {
                                     {seqTag ? `${seqTag} ` : ''}
                                     {r.paid ? '결제완료' : '결제대기'}
                                   </span>
+                                  {/* 마감 확정 전이면 금액이 아직 업체 내역과 대조되지 않았다 */}
+                                  {!r.paid && !r.closingConfirmed && (
+                                    <span
+                                      className="pay-unconfirmed"
+                                      title="마감 리스트에서 아직 확정하지 않았습니다 — 금액이 업체 내역과 대조되기 전입니다"
+                                    >
+                                      마감 미확정
+                                    </span>
+                                  )}
                                 </td>
                                 <td data-label="상호" title={r.supplier}>
                                   <strong>{r.supplier}</strong>

@@ -29,6 +29,30 @@ export async function getMonthClosing(year, month) {
   };
 }
 
+// 여러 달의 확정 기록을 한 번에 — 결제 페이지가 「이 건 마감 확정됐나」를 물을 때 쓴다.
+//
+// 확정은 월별 문서에 나뉘어 있는데, 결제 페이지는 발주 단위로 본다. 8월 입고분을
+// 9월에 확정할 수도 있어 한 달만 봐서는 놓친다. 최근 몇 달을 합쳐 본다
+// (2026-08-27 대표님 「마감 안했는데 뜨네?」).
+//
+// 반환: 확정된 키만 담은 Set
+export async function getConfirmedKeys(year, month, backMonths = 3) {
+  const ids = [];
+  for (let i = 0; i <= backMonths; i += 1) {
+    const d = new Date(year, month - 1 - i, 1);
+    ids.push(monthDocId(d.getFullYear(), d.getMonth() + 1));
+  }
+  const snaps = await Promise.all(ids.map((mid) => getDoc(doc(closingsRef, mid))));
+  const out = new Set();
+  for (const snap of snaps) {
+    if (!snap.exists()) continue;
+    for (const [k, v] of Object.entries(snap.data().confirms || {})) {
+      if (v?.confirmed) out.add(k);
+    }
+  }
+  return out;
+}
+
 // 한 건의 금액·확정 여부를 적는다. 금액을 안 고쳤으면 amount 는 넘기지 않는다 —
 // 그래야 나중에 입고가 더 잡혔을 때 자동 계산값이 그대로 따라온다.
 export async function setRowConfirm(year, month, key, { amount, confirmed, by }) {
