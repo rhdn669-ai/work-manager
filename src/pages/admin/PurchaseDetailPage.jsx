@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
+import { buildMailHtml } from '../../utils/mailTemplate';
 import {
   DndContext,
   closestCenter,
@@ -147,12 +148,6 @@ function withTimeout(promise, ms, what) {
 }
 
 // SELF_INFO / PO_DEFAULTS / poDateStr / poNumber / deriveSupplier 는 utils/purchaseOrder 로 이관(공용)
-// 발주 담당자 명함 — public/cards/{이름}.png 에 이미지를 두면 메일 하단에 자동 첨부됨
-const BUSINESS_CARD_NAMES = ['이주현', '박정현', '라혜림', '하성민', '이종현', '이종나', '하혜정', '이승빈', '손성욱'];
-function cardFileFor(name) {
-  const n = (name || '').trim();
-  return BUSINESS_CARD_NAMES.includes(n) ? `/cards/${encodeURIComponent(n)}.png` : '';
-}
 // 발주서 메일 기본(공통) 본문 — 담당자명 동적. 발주별로 수정 가능, 비우면 이 문구 사용
 function buildDefaultMailBody(name) {
   return [
@@ -1654,8 +1649,6 @@ export default function PurchaseDetailPage() {
     contact = null,
     contactName = '',
     bodyText = '',
-    head = '',
-    tail = '',
   ) {
     const build = (arr) =>
       `${arr
@@ -1675,8 +1668,7 @@ export default function PurchaseDetailPage() {
       html: htmlBody,
       // 이 건만 고쳐 보낼 수 있게 본문 글을 따로 싣는다 — 공통 문구(form.mailBody)는 건드리지 않는다
       bodyText,
-      head,
-      tail,
+      cardName: purchase.contactName || '',
       fileName,
       saveFileName,
     });
@@ -1802,15 +1794,10 @@ export default function PurchaseDetailPage() {
       saveFileName,
       contact: contactFilter = null,
       bodyText = '',
-      head = '',
-      tail = '',
+      cardName = '',
     } = mailPreview;
-    // 모달에서 고친 본문으로 다시 짠다. 앞뒤 틀(발신·수신·명함)은 그대로 둔다.
-    const editedHtml = head
-      ? head +
-        String(bodyText).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') +
-        tail
-      : html;
+    // 모달에서 고친 본문으로 다시 짠다. 앞뒤 틀(발신·수신·명함)은 공용 함수가 붙인다.
+    const editedHtml = bodyText ? buildMailHtml({ to: supplierName, body: bodyText, cardName }) : html;
     // 미리보기로 확인한 바로 그 파일. 단 파일명이 이 업체 것과 다르면 쓰지 않는다
     // (앞 업체 첨부본이 남아 있을 때 그대로 나가는 것을 막는 마지막 빗장)
     const readyPdf = mailPdf.blob && mailPdf.name === fileName ? mailPdf.blob : null;
@@ -2901,23 +2888,17 @@ export default function PurchaseDetailPage() {
                     const poIdTail = (purchase.id || '').slice(0, 4).toUpperCase();
                     const supPoNo = `${poDateStr(purchase)}-${supIdx + 1}-${poIdTail}`;
                     const mailSubject = `[주식회사 아이오피엔] ${purchase.title || ''}`;
-                    const cardSrc = cardFileFor(purchase.contactName);
-                    const cardHtml = cardSrc
-                      ? `<br><br><br><img src="${cardSrc}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
-                      : '';
                     // 발주별 메일 본문(form.mailBody) 사용, 비었으면 공통 기본 문구
                     const bodyText =
                       form.mailBody && form.mailBody.trim()
                         ? form.mailBody
                         : buildDefaultMailBody(purchase.contactName);
-                    const bodyHtml = bodyText
-                      .replace(/&/g, '&amp;')
-                      .replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;')
-                      .replace(/\n/g, '<br>');
-                    const mailHead = `<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p><p style="margin:0 0 14px;font-weight:700">수신 : ${sup.label || sup.name}</p><br><br><p>`;
-                    const mailTail = `</p>${cardHtml}`;
-                    const mailHtml = `${mailHead}${bodyHtml}${mailTail}`;
+                    // 발신·수신 줄과 담당자 명함은 공용 틀이 붙인다 (utils/mailTemplate)
+                    const mailHtml = buildMailHtml({
+                      to: sup.label || sup.name,
+                      body: bodyText,
+                      cardName: purchase.contactName,
+                    });
                     return (
                       <tr key={sentKey}>
                         <td data-label="구매처" title={sup.label || sup.name}>
@@ -3042,8 +3023,6 @@ export default function PurchaseDetailPage() {
                                   sup.contact ?? null,
                                   sup.contactName || '',
                                   bodyText, // 늘 쓰는 문구 — 모달에 채워 두고 이 건만 고쳐 보낸다
-                                  mailHead,
-                                  mailTail,
                                 );
                               }}
                               title={sup.email ? '발주서 메일 발송' : '이메일 미등록 — 구매처 관리에서 등록하세요'}

@@ -13,6 +13,8 @@ import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../servic
 import { callSendEmail } from '../../config/firebase';
 import { addMailLog } from '../../services/mailService';
 import { resolveEmail } from '../../domain/supplierContacts';
+import { buildMailHtml, mailSubject } from '../../utils/mailTemplate';
+import CardPicker from '../../components/common/CardPicker';
 import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import {
   getMonthClosing,
@@ -43,6 +45,7 @@ export default function MarginClosingPage() {
   const { toast, confirm } = useDialog();
   const { info: SELF } = useCompanyInfo();
   const [mailing, setMailing] = useState(''); // 발송 중인 업체
+  const [askModal, setAskModal] = useState(null); // 내역 요청 모달 { vendor, to, cardName }
   const me = userProfile?.name || '';
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -199,26 +202,30 @@ export default function MarginClosingPage() {
   //
   // 금액을 우리가 먼저 적어 보내면 업체가 그 숫자에 맞춰 오기 쉽다. 요청 문구만 보내
   // 업체 장부에서 나온 숫자를 받고, 우리 숫자와 대조한다 (2026-08-27 대표님).
-  async function requestStatement(vendor) {
+  function openAskModal(vendor) {
     const sup = suppliers.find((x) => x.name === vendor);
     const to = resolveEmail(sup, '');
     if (!to) return toast(`"${vendor}" 이메일이 없습니다. 구매처 관리에서 등록해 주세요`, 'error', 0);
-    if (
-      !(await confirm(`"${vendor}"에 ${month}월 마감내역을 요청할까요?
-받는 곳: ${to}`))
-    )
-      return;
+    setAskModal({ vendor, to, cardName: me });
+  }
 
+  async function sendStatementRequest() {
+    if (!askModal) return;
+    const { vendor, to, cardName } = askModal;
+    setAskModal(null);
     setMailing(vendor);
-    const subject = `[주식회사 아이오피엔] ${year}년 ${month}월 마감내역 요청`;
-    const html = [
-      '<p style="margin:0 0 4px;font-weight:700">발신 : (주)아이오피엔</p>',
-      `<p style="margin:0 0 14px;font-weight:700">수신 : ${vendor}</p><br>`,
-      '<p>안녕하세요. 주식회사 아이오피엔입니다.</p>',
-      `<p>${year}년 ${month}월 마감내역을 회신 부탁드립니다.</p>`,
-      '<p>확인 후 결제 진행하겠습니다. 감사합니다.</p><br>',
-      `<p style="color:#5c6675">${SELF.companyAndCeo || ''}<br>${SELF.telFax || ''}<br>${SELF.email || ''}</p>`,
-    ].join('');
+
+    const subject = mailSubject(`${year}년 ${month}월 마감내역 요청`);
+    const body = [
+      '안녕하세요. 주식회사 아이오피엔입니다.',
+      '',
+      `${year}년 ${month}월 마감내역을 회신 부탁드립니다.`,
+      '확인 후 결제 진행하겠습니다.',
+      '',
+      '감사합니다.',
+    ].join('\n');
+    // 발신·수신 줄과 명함은 공용 틀이 붙인다 — 발주서와 같은 얼굴로 나간다
+    const html = buildMailHtml({ to: vendor, body, cardName });
 
     try {
       await callSendEmail({ to, subject, html });
@@ -552,7 +559,7 @@ export default function MarginClosingPage() {
                         <button
                           type="button"
                           className="btn btn-sm btn-outline mc-ask-btn"
-                          onClick={() => requestStatement(g.vendor)}
+                          onClick={() => openAskModal(g.vendor)}
                           disabled={mailing === g.vendor}
                           title={`${g.vendor}에 ${month}월 마감내역을 요청합니다`}
                         >
@@ -687,6 +694,31 @@ export default function MarginClosingPage() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {askModal && (
+        <Modal isOpen onClose={() => setAskModal(null)} title="마감내역 요청">
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            <strong>{askModal.vendor}</strong>에 {year}년 {month}월 마감내역을 요청합니다.
+          </p>
+          <div className="form-group">
+            <label>받는 곳</label>
+            <input value={askModal.to} readOnly aria-label="받는 곳" />
+          </div>
+          <CardPicker value={askModal.cardName} onChange={(v) => setAskModal((p) => ({ ...p, cardName: v }))} />
+          <p className="field-hint">
+            금액은 넣지 않습니다 — 업체 장부에서 나온 숫자를 받아 우리 것과 대조하기 위해서입니다.
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setAskModal(null)}>
+              취소
+            </button>
+            <button type="button" className="btn btn-primary" onClick={sendStatementRequest}>
+              <Icon name="mail" className="btn-ic" />
+              보내기
+            </button>
+          </div>
         </Modal>
       )}
 

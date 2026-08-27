@@ -17,6 +17,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { receivedRowsOf, payMonthLabel } from '../../src/domain/marginClosing';
+import { buildMailHtml, mailSubject } from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
@@ -783,5 +784,39 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
     expect(r).toHaveLength(1);
     expect(r[0].closed).toBe(false);
     expect(r[0].amount).toBe(21000);
+  });
+});
+
+// ── 메일 기본 틀 — 발주서·메일발송·마감내역요청이 같은 얼굴로 나가는지 (2026-08-27 대표님)
+describe('메일 기본 틀', () => {
+  it('발신·수신 줄이 순서대로 붙는다', () => {
+    const html = buildMailHtml({ to: '델타전기', body: '안녕하세요.' });
+    expect(html.indexOf('발신 : (주)아이오피엔')).toBeLessThan(html.indexOf('수신 : 델타전기'));
+    expect(html.indexOf('수신 : 델타전기')).toBeLessThan(html.indexOf('안녕하세요.'));
+  });
+
+  it('수신처가 없으면 수신 줄을 넣지 않는다', () => {
+    expect(buildMailHtml({ body: '안녕하세요.' })).not.toContain('수신 :');
+  });
+
+  it('명함은 명단에 있는 사람만 붙는다', () => {
+    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '손성욱' })).toContain('/cards/');
+    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '없는사람' })).not.toContain('/cards/');
+    expect(buildMailHtml({ to: 'A', body: 'x' })).not.toContain('/cards/');
+  });
+
+  it('본문의 태그는 글자로 나간다 — 메일이 깨지지 않게', () => {
+    const html = buildMailHtml({ to: 'A', body: '<script>x</script>' });
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('줄바꿈은 살린다', () => {
+    expect(buildMailHtml({ to: 'A', body: '첫줄\n둘째줄' })).toContain('첫줄<br>둘째줄');
+  });
+
+  it('제목 접두는 한 번만 붙는다', () => {
+    expect(mailSubject('8월 마감내역 요청')).toBe('[주식회사 아이오피엔] 8월 마감내역 요청');
+    expect(mailSubject('[주식회사 아이오피엔] 이미 붙음')).toBe('[주식회사 아이오피엔] 이미 붙음');
   });
 });

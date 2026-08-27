@@ -8,6 +8,8 @@ import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import { computeSupplierList } from '../../utils/purchaseOrder';
+import { buildMailHtml } from '../../utils/mailTemplate';
+import CardPicker from '../../components/common/CardPicker';
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -43,6 +45,8 @@ export default function MailSendPage() {
   const [selected, setSelected] = useState(() => new Set());
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  // 메일 하단 명함 — 기본은 보내는 사람. 관리자는 CardPicker 로 바꿀 수 있다.
+  const [cardName, setCardName] = useState(() => userProfile?.name || '');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [sending, setSending] = useState(false);
@@ -131,10 +135,12 @@ export default function MailSendPage() {
   const recipients = useMemo(() => list.filter((c) => selected.has(c.id) && c.email), [list, selected]);
   const selectedCount = recipients.length;
   // 실제 발송될 본문 HTML (미리보기 = 발송본 동일)
-  const previewHtml = useMemo(() => {
-    const b = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-    return `<p style="margin:0 0 14px;font-weight:700">발신 : (주)아이오피엔</p><p>${b}</p>`;
-  }, [body]);
+  const previewHtml = useMemo(
+    // 발주서와 같은 틀 — 발신·수신 줄과 명함이 함께 붙는다.
+    // 미리보기는 첫 수신처 이름으로 보여 주고, 실제 발송은 업체마다 제 이름으로 나간다.
+    () => buildMailHtml({ to: recipients[0]?.name || '○○○', body, cardName }),
+    [body, cardName, recipients],
+  );
 
   // 발송 버튼 → 검증 후 미리보기 모달 열기 (바로 발송 X)
   function openPreview() {
@@ -173,7 +179,9 @@ export default function MailSendPage() {
       for (let i = 0; i < recipients.length; i += 1) {
         const r = recipients[i];
         try {
-          await callSendEmail({ to: r.email, subject: subject.trim(), html: previewHtml, attachments });
+          // 수신 줄은 업체마다 제 이름이어야 한다 — 미리보기 HTML 을 그대로 돌려쓰지 않는다
+          const html = buildMailHtml({ to: r.name, body, cardName });
+          await callSendEmail({ to: r.email, subject: subject.trim(), html, attachments });
           ok += 1;
         } catch (e) {
           fail.push(r.name);
@@ -429,10 +437,11 @@ export default function MailSendPage() {
                   rows={10}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="메일 본문을 입력하세요. (발신: (주)아이오피엔 이 자동으로 상단에 표시됩니다)"
+                  placeholder="메일 본문을 입력하세요. (발신·수신 줄은 자동으로 붙습니다)"
                   style={{ fontSize: 14, lineHeight: 1.6 }}
                 />
               </div>
+              <CardPicker value={cardName} onChange={setCardName} />
               <div className="form-group">
                 <label>첨부파일 (선택)</label>
                 <input
