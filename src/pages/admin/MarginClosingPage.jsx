@@ -33,6 +33,7 @@ import {
   sumRows,
   groupState,
   withVat,
+  vatOf,
 } from '../../domain/marginClosing';
 import '../../styles/margin-closing.css';
 
@@ -72,7 +73,7 @@ export default function MarginClosingPage() {
   const [editing, setEditing] = useState(null); // { key, value }
   const [adding, setAdding] = useState(null); // { kind, ... }
   const [openVendors, setOpenVendors] = useState(() => new Set()); // 펼쳐 둔 업체 폴더
-  const [tab, setTab] = useState('expense'); // 'expense' | 'revenue' — 지출을 먼저 본다(업체에 줄 돈)
+  const [tab, setTab] = useState('expense'); // 'expense' | 'revenue' | 'all' — 지출을 먼저 본다(업체에 줄 돈)
   const [trashOpen, setTrashOpen] = useState(false);
   const [busy, setBusy] = useState('');
 
@@ -161,8 +162,10 @@ export default function MarginClosingPage() {
   const expenseRows = useMemo(() => expense.flatMap((g) => g.lines), [expense]);
   const revSum = useMemo(() => sumRows(revenue), [revenue]);
   const expSum = useMemo(() => sumRows(expenseRows), [expenseRows]);
-  const totalCount = revSum.count + expSum.count;
-  const doneCount = revSum.confirmedCount + expSum.confirmedCount;
+  // 진행 막대는 보고 있는 탭 것만 센다 — 지출을 보는데 매출 미확정까지 세면 남은 수가 안 맞는다
+  const shown = tab === 'revenue' ? [revSum] : tab === 'expense' ? [expSum] : [revSum, expSum];
+  const totalCount = shown.reduce((a, x) => a + x.count, 0);
+  const doneCount = shown.reduce((a, x) => a + x.confirmedCount, 0);
   const leftCount = totalCount - doneCount;
 
   // ── 확정·금액 수정 ──────────────────────────────────────
@@ -375,6 +378,9 @@ export default function MarginClosingPage() {
         >
           매출{revSum.count > 0 && <span className="tab-nav-count">{revSum.count}</span>}
         </button>
+        <button type="button" className={`tab-nav-item ${tab === 'all' ? 'active' : ''}`} onClick={() => setTab('all')}>
+          전체
+        </button>
       </div>
 
       <div className="page-header">
@@ -425,7 +431,8 @@ export default function MarginClosingPage() {
       ) : (
         <>
           <div className="sum-cards">
-            <div className="sum-card">
+            {/* 카드도 탭을 따른다 — 지출 탭에서 매출 카드가 보이면 무엇을 보는지 흐려진다 */}
+            <div className="sum-card" hidden={tab === 'expense'}>
               <div className="sum-card-label">매출</div>
               <div className="sum-card-value">
                 {won(revSum.confirmed)}
@@ -435,7 +442,7 @@ export default function MarginClosingPage() {
                 확정 {revSum.confirmedCount}건{revSum.pendingCount > 0 && <b> · 미확정 {revSum.pendingCount}건</b>}
               </div>
             </div>
-            <div className="sum-card">
+            <div className="sum-card" hidden={tab === 'revenue'}>
               <div className="sum-card-label">
                 지출 <span className="sum-card-note">업체 결제분</span>
               </div>
@@ -443,12 +450,28 @@ export default function MarginClosingPage() {
                 {won(expSum.confirmed)}
                 <em>원</em>
               </div>
-              <div className="sum-card-sub">VAT 포함 {won(withVat(expSum.confirmed))}원</div>
+              {/* 확정분만 큰 숫자로 세면 「아직 얼마가 더 남았나」를 알 수 없다.
+                  예정(확정+미확정)을 함께 적는다 (2026-08-27 대표님) */}
+              <div className="sum-card-sub">예정 포함 {won(expSum.confirmed + expSum.pending)}원</div>
               <div className="sum-card-sub">
                 업체 {expense.length}곳{expSum.pendingCount > 0 && <b> · 미확정 {expSum.pendingCount}건</b>}
               </div>
             </div>
-            <div className="sum-card is-good">
+            {/* VAT 포함 — 지출과 짝이 되는 값이라 옆에 따로 세운다. 작은 글씨로 묻어가면
+                실제로 나갈 돈이 눈에 안 들어온다 (2026-08-27 대표님) */}
+            <div className="sum-card" hidden={tab === 'revenue'}>
+              <div className="sum-card-label">
+                VAT 포함 <span className="sum-card-note">실제 나갈 돈</span>
+              </div>
+              <div className="sum-card-value">
+                {won(withVat(expSum.confirmed))}
+                <em>원</em>
+              </div>
+              <div className="sum-card-sub">예정 포함 {won(withVat(expSum.confirmed + expSum.pending))}원</div>
+              <div className="sum-card-sub">부가세 {won(vatOf(expSum.confirmed))}원 포함</div>
+            </div>
+            {/* 차액은 매출에서 지출을 뺀 값이라 둘 다 보는 「전체」에서만 뜻이 있다 */}
+            <div className="sum-card is-good" hidden={tab !== 'all'}>
               <div className="sum-card-label">차액</div>
               <div className="sum-card-value">
                 {won(revSum.confirmed - expSum.confirmed)}
@@ -471,7 +494,7 @@ export default function MarginClosingPage() {
           </div>
 
           {/* 매출 — 현장이 곧 고객사라 현장별로 본다 */}
-          <section className="mc-sec" hidden={tab !== 'revenue'}>
+          <section className="mc-sec" hidden={tab === 'expense'}>
             <div className="mc-sec-head">
               <h3>매출</h3>
               <span className="mc-sec-n">{revSum.count}건</span>
@@ -519,7 +542,7 @@ export default function MarginClosingPage() {
           </section>
 
           {/* 지출 — 결제할 업체로 묶는다 */}
-          <section className="mc-sec" hidden={tab !== 'expense'}>
+          <section className="mc-sec" hidden={tab === 'revenue'}>
             <div className="mc-sec-head">
               <h3>지출</h3>
               <span className="mc-sec-n">업체에 줄 돈 · {expSum.count}건</span>
@@ -546,6 +569,10 @@ export default function MarginClosingPage() {
                   // 「결제 예정」과 「결제 완료」는 다른 사실이다. 예정일만 보여 주면
                   // 이미 나간 돈인지 알 수 없다 (2026-08-27 대표님 「결제 완료인지 아닌지는?」).
                   const allPaid = g.lines.length > 0 && g.lines.every((l) => l.paid);
+                  // 확정분만 보여 주면 「이 업체에 아직 얼마가 더 남았나」를 알 수 없다
+                  const gConfirmed = g.lines
+                    .filter((l) => l.confirmed)
+                    .reduce((a, l) => a + (Number(l.amount) || 0), 0);
                   const paidDays = [...new Set(g.lines.map((l) => payMonthLabel(l.paidAt)).filter(Boolean))];
                   return (
                     <div
@@ -589,8 +616,14 @@ export default function MarginClosingPage() {
                           )}
                           {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
                           {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
-                          <span className="payment-folder-amount mc-amt-stack">
-                            {won(g.total)}원<em title="부가세 포함">+VAT {won(withVat(g.total))}</em>
+                          <span className="fold-amount-vat" title="확정한 금액 — 합계에 들어가는 값">
+                            확정 {won(gConfirmed)}원
+                          </span>
+                          <span className="payment-folder-amount" title="확정·미확정을 모두 더한 공급가">
+                            {won(g.total)}원
+                          </span>
+                          <span className="fold-amount-vat" title="부가세 포함 — 실제 나갈 돈">
+                            VAT {won(withVat(g.total))}원
                           </span>
                         </button>
                         <button
