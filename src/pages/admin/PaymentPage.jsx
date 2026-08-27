@@ -49,7 +49,7 @@ export default function PaymentPage() {
   const [search, setSearch] = useState('');
   const [monthFilter, setMonthFilter] = useState(() => monthKey(new Date())); // 기본: 현재 월 (결제요청일 기준)
   // 마감 리스트에서 확정된 건 — 「이 돈 줘도 되나」를 알려 준다. 막지는 않는다
-  const [confirmedKeys, setConfirmedKeys] = useState(() => new Set());
+  const [confirmedKeys, setConfirmedKeys] = useState({});
   const [expanded, setExpanded] = useState(() => new Set()); // 펼친 폴더 키
   // 묶는 기준 — 업체별 / 발주서(프로젝트)별 / 일자별(결제 마감일)
   // 처음 열면 업체별이다. 결제는 회사 대 회사로 나가므로 「이 업체에 얼마」가 먼저다
@@ -200,9 +200,22 @@ export default function PaymentPage() {
         });
       }
     }
-    // 마감 확정 여부 — 마감 리스트와 같은 열쇠를 쓴다. 확정 안 된 건은 금액이 아직
-    // 업체 내역과 대조되지 않았다는 뜻이라 알려 준다. 막지는 않는다 (2026-08-27 대표님).
-    for (const r of out) r.closingConfirmed = confirmedKeys.has(`po:${r.purchaseId}:${r.supplierKey}`);
+    // 마감 확정 — 마감 리스트와 같은 열쇠를 쓴다.
+    //
+    // 확정 안 된 건은 금액이 아직 업체 내역과 대조되지 않았다는 뜻이라 알려 준다. 막지는 않는다.
+    // 대표님이 대조하며 금액을 고쳤으면 그 금액으로 결제한다 — 고친 값을 두고 옛 계산값으로
+    // 돈을 주면 틀린 금액이 나간다 (2026-08-27 대표님 「마감에서 금액 변동이 있어서…」).
+    for (const r of out) {
+      const c = confirmedKeys[`po:${r.purchaseId}:${r.supplierKey}`];
+      r.closingConfirmed = !!c;
+      if (r.paid) continue; // 이미 나간 돈은 건드리지 않는다
+      if (c && c.amount != null && Number(c.amount) !== r.supply) {
+        r.autoSupply = r.supply; // 원래 계산값 — 화면에서 함께 보여 준다
+        r.closingReason = c.reason || ''; // 왜 고쳤는지 (마감 리스트에서 적은 한 줄)
+        r.supply = Number(c.amount) || 0;
+        r.total = r.supply + Math.round(r.supply * 0.1);
+      }
+    }
     out.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     return out;
   }, [purchases, itemMaster, suppliers, supByName, confirmedKeys]);
@@ -567,36 +580,40 @@ export default function PaymentPage() {
                       name={groupBy === 'project' ? 'folder' : groupBy === 'supplier' ? 'building' : 'calendar'}
                       className="payment-folder-ic"
                     />
-                    <span className="payment-folder-title" title={f.title}>
-                      {f.title}
-                    </span>
-                    {groupBy === 'project' ? (
-                      f.siteName && <span className="payment-folder-site">{f.siteName}</span>
-                    ) : groupBy === 'supplier' ? (
-                      <span className="payment-folder-site">
-                        발주 {new Set(f.rows.map((r) => r.purchaseId)).size}건
+                    {/* 「누구 · 어떤 상태 · 얼마」 세 구역 — 마감 리스트와 같은 문법 (2026-08-27 대표님) */}
+                    <span className="fold-id">
+                      <span className="fold-name" title={f.title}>
+                        {f.title}
                       </span>
-                    ) : (
-                      f.key !== '(마감일 미지정)' && (
-                        <span className={`payment-folder-site${f.key < todayStr ? ' is-overdue' : ''}`}>
-                          {dDay(f.key, todayStr)}
+                      <span className="fold-meta">
+                        {groupBy === 'project' ? (
+                          f.siteName && <span>{f.siteName}</span>
+                        ) : groupBy === 'supplier' ? (
+                          <span>발주 {new Set(f.rows.map((r) => r.purchaseId)).size}건</span>
+                        ) : (
+                          f.key !== '(마감일 미지정)' && (
+                            <span className={f.key < todayStr ? 'is-overdue' : ''}>{dDay(f.key, todayStr)}</span>
+                          )
+                        )}
+                        {groupBy !== 'date' && f.nearestDue && (
+                          <span className={f.nearestDue < todayStr ? 'is-overdue' : ''}>~{f.nearestDue} 마감</span>
+                        )}
+                      </span>
+                    </span>
+                    <span className="fold-state">
+                      {unconfirmed > 0 && <span className="pay-unconfirmed">마감 미확정 {unconfirmed}</span>}
+                      {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
+                      {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
+                    </span>
+                    <span className="fold-money">
+                      <span className="payment-folder-amount" title="부가세 포함 — 실제 나갈 돈">
+                        {f.total.toLocaleString()}원
+                      </span>
+                      <span className="fold-money-sub">
+                        <span title="공급가 (부가세 별도)">
+                          공급가 {f.rows.reduce((a, r) => a + r.supply, 0).toLocaleString()}
                         </span>
-                      )
-                    )}
-                    <span className="payment-folder-spacer" />
-                    {groupBy !== 'date' && f.nearestDue && (
-                      <span className={`payment-folder-due${f.nearestDue < todayStr ? ' is-overdue' : ''}`}>
-                        ~{f.nearestDue} 마감
                       </span>
-                    )}
-                    {unconfirmed > 0 && <span className="pay-unconfirmed">마감 미확정 {unconfirmed}</span>}
-                    {f.pending > 0 && <span className="payment-folder-badge">대기 {f.pending}</span>}
-                    {f.paidCount > 0 && <span className="payment-folder-badge is-done">완료 {f.paidCount}</span>}
-                    <span className="fold-amount-vat" title="공급가 (부가세 별도)">
-                      공급가 {f.rows.reduce((a, r) => a + r.supply, 0).toLocaleString()}원
-                    </span>
-                    <span className="payment-folder-amount" title="부가세 포함 — 실제 나갈 돈">
-                      {f.total.toLocaleString()}원
                     </span>
                   </button>
 
@@ -711,6 +728,15 @@ export default function PaymentPage() {
                                 {/* 마감 리스트는 공급가로 본다 — 대조하려면 제 칸이 있어야 한다 */}
                                 <td data-label="공급가" className="payment-amount-cell pay-supply">
                                   {r.supply.toLocaleString()}원
+                                  {/* 마감에서 고친 금액이면 알린다 — 원래 계산값과 다르다는 사실이 보여야 한다 */}
+                                  {r.autoSupply != null && (
+                                    <span
+                                      className="pay-adjusted"
+                                      title={`발주 계산값 ${r.autoSupply.toLocaleString()}원 → ${r.closingReason || '마감에서 고침'}`}
+                                    >
+                                      마감 조정{r.closingReason ? ` · ${r.closingReason}` : ''}
+                                    </span>
+                                  )}
                                 </td>
                                 <td data-label="결제금액(VAT포함)" className="payment-amount-cell">
                                   {r.total.toLocaleString()}원

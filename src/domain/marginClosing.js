@@ -234,6 +234,8 @@ export function applyConfirm(rows, confirmMap, { defaultConfirmed = false } = {}
       autoAmount: r.amount,
       confirmed: c ? !!c.confirmed : defaultConfirmed,
       edited: amount !== r.amount,
+      // 금액을 고친 이유 — 몇 달 뒤에 「이 숫자 왜 이렇지」 할 때 답이 된다
+      reason: (c && c.reason) || '',
     };
   });
 }

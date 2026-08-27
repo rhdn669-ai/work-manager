@@ -47,6 +47,7 @@ export default function MarginClosingPage() {
   const navigate = useNavigate();
   const [mailing, setMailing] = useState(''); // 발송 중인 업체
   const [askModal, setAskModal] = useState(null); // 내역 요청 모달 { vendor, to, cardName }
+  const [reasonModal, setReasonModal] = useState(null); // 금액 고칠 때 이유 { row, amount, reason }
   const [asked, setAsked] = useState({}); // 그달 이미 요청한 업체 { 업체명: 보낸시각 }
   const me = userProfile?.name || '';
   const now = new Date();
@@ -196,13 +197,23 @@ export default function MarginClosingPage() {
     }
   }
 
-  async function saveAmount(row, value) {
+  // 금액을 고치면 이유를 묻는다 — 몇 달 뒤에 「이 숫자 왜 이렇지」 할 때 답이 되는 한 줄.
+  // 결제 페이지에서도 이 이유가 보인다 (2026-08-27 대표님).
+  function saveAmount(row, value) {
     setEditing(null);
     const next = Number(String(value).replace(/[^0-9-]/g, ''));
     if (!Number.isFinite(next) || next === row.amount) return;
+    setReasonModal({ row, amount: next, reason: row.reason || '' });
+  }
+
+  async function confirmAmountChange() {
+    if (!reasonModal) return;
+    const { row, amount, reason } = reasonModal;
+    setReasonModal(null);
     try {
-      await setRowConfirm(year, month, row.key, { amount: next, confirmed: row.confirmed, by: me });
+      await setRowConfirm(year, month, row.key, { amount, confirmed: row.confirmed, by: me, reason });
       await loadClosing();
+      toast('금액을 고쳤습니다', 'success');
     } catch (err) {
       console.error(err);
       toast('금액을 저장하지 못했습니다', 'error');
@@ -336,11 +347,15 @@ export default function MarginClosingPage() {
           type="button"
           className={`mc-amt${row.edited ? ' is-edited' : ''}`}
           onClick={() => !locked && setEditing({ key: row.key })}
-          title={row.edited ? `자동 계산 ${won(row.autoAmount)}원` : '눌러서 고치기'}
+          title={
+            row.edited ? `자동 계산 ${won(row.autoAmount)}원${row.reason ? ` · ${row.reason}` : ''}` : '눌러서 고치기'
+          }
         >
           {won(row.amount)}
         </button>
       )}
+      {/* 고친 이유는 숨기지 않고 금액 밑에 그대로 적는다 — 마우스를 올려야 보이면 아무도 안 본다 */}
+      {row.edited && row.reason && <span className="mc-amt-reason">{row.reason}</span>}
     </td>
   );
 
@@ -605,35 +620,46 @@ export default function MarginClosingPage() {
                         >
                           <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
                           <Icon name="building" className="payment-folder-ic" />
-                          <span className="payment-folder-title" title={g.vendor}>
-                            {g.vendor}
-                          </span>
-                          <span className="payment-folder-site">{g.lines.length}건</span>
-                          {anyPrepaid && <span className="mc-prepaid-tag">선결제</span>}
-                          <span className="payment-folder-spacer" />
-                          {allPaid && paidDays.length > 0 ? (
-                            <span className="mc-paid-tag" title="실제로 돈이 나간 날">
-                              결제완료 {paidDays[0]}
-                              {paidDays.length > 1 ? ' 외' : ''}
+                          {/* 한 줄에 아홉 조각이 나란히 있어 무엇이 무엇인지 구분이 안 됐다.
+                              「누구 · 어떤 상태 · 얼마」 세 구역으로 나누고, 각 구역 안에서만
+                              위아래로 쌓는다 (2026-08-27 대표님 「너무 복잡해서 헷갈려」). */}
+                          <span className="fold-id">
+                            <span className="fold-name" title={g.vendor}>
+                              {g.vendor}
                             </span>
-                          ) : (
-                            payDays.length > 0 && (
-                              <span className="mc-when" title="구매처 결제 조건으로 계산한 결제 예정일">
-                                결제예정 {payDays[0]}
-                                {payDays.length > 1 ? ' 외' : ''}
-                              </span>
-                            )
-                          )}
-                          {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
-                          {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
-                          <span className="fold-amount-vat" title="확정한 금액 — 합계에 들어가는 값">
-                            확정 {won(gConfirmed)}원
+                            <span className="fold-meta">
+                              <span>{g.lines.length}건</span>
+                              {allPaid && paidDays.length > 0 ? (
+                                <span className="mc-paid-tag" title="실제로 돈이 나간 날">
+                                  결제완료 {paidDays[0]}
+                                  {paidDays.length > 1 ? ' 외' : ''}
+                                </span>
+                              ) : (
+                                payDays.length > 0 && (
+                                  <span className="mc-when" title="구매처 결제 조건으로 계산한 결제 예정일">
+                                    결제예정 {payDays[0]}
+                                    {payDays.length > 1 ? ' 외' : ''}
+                                  </span>
+                                )
+                              )}
+                              {anyPrepaid && <span className="mc-prepaid-tag">선결제</span>}
+                            </span>
                           </span>
-                          <span className="payment-folder-amount" title="확정·미확정을 모두 더한 공급가">
-                            {won(g.total)}원
+                          <span className="fold-state">
+                            {todo > 0 ? (
+                              <span className="payment-folder-badge">미확정 {todo}</span>
+                            ) : (
+                              <span className="payment-folder-badge is-done">확정</span>
+                            )}
                           </span>
-                          <span className="fold-amount-vat" title="부가세 포함 — 실제 나갈 돈">
-                            VAT {won(withVat(g.total))}원
+                          <span className="fold-money">
+                            <span className="payment-folder-amount" title="확정·미확정을 모두 더한 공급가">
+                              {won(g.total)}원
+                            </span>
+                            <span className="fold-money-sub">
+                              <span title="부가세 포함 — 실제 나갈 돈">VAT {won(withVat(g.total))}</span>
+                              <span title="확정한 금액 — 합계에 들어가는 값">확정 {won(gConfirmed)}</span>
+                            </span>
                           </span>
                         </button>
                         <button
@@ -791,6 +817,47 @@ export default function MarginClosingPage() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {reasonModal && (
+        <Modal isOpen onClose={() => setReasonModal(null)} title="금액 고치기">
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            <strong>{reasonModal.row.vendor}</strong> · {reasonModal.row.title || '항목'}
+          </p>
+          <div className="form-group">
+            <label>금액</label>
+            <input
+              value={won(reasonModal.amount)}
+              onChange={(e) =>
+                setReasonModal((p) => ({ ...p, amount: Number(String(e.target.value).replace(/[^0-9-]/g, '')) || 0 }))
+              }
+              aria-label="금액"
+            />
+            <p className="field-hint">발주 계산값 {won(reasonModal.row.autoAmount)}원</p>
+          </div>
+          <div className="form-group">
+            <label>고친 이유</label>
+            <input
+              autoFocus
+              value={reasonModal.reason}
+              onChange={(e) => setReasonModal((p) => ({ ...p, reason: e.target.value }))}
+              placeholder="예) 단가 인하 반영, 반품 2개 차감"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmAmountChange();
+              }}
+              aria-label="고친 이유"
+            />
+            <p className="field-hint">결제 화면에서도 이 이유가 보입니다.</p>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setReasonModal(null)}>
+              취소
+            </button>
+            <button type="button" className="btn btn-primary" onClick={confirmAmountChange}>
+              저장
+            </button>
+          </div>
         </Modal>
       )}
 

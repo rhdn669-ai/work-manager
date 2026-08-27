@@ -39,7 +39,7 @@ export async function getMonthClosing(year, month) {
 //
 // 문서 열두 개 읽기가 무거워 보이지만 한 달치가 작고 한 번만 읽는다.
 //
-// 반환: 확정된 키만 담은 Set
+// 반환: { 키: { confirmed, amount, reason, by } } — amount 는 고친 금액(안 고쳤으면 없음)
 export async function getConfirmedKeys(baseDate = new Date(), months = 12) {
   const base = baseDate instanceof Date ? baseDate : new Date(baseDate);
   const from = Number.isNaN(base.getTime()) ? new Date() : base;
@@ -49,12 +49,21 @@ export async function getConfirmedKeys(baseDate = new Date(), months = 12) {
     const d = new Date(from.getFullYear(), from.getMonth() - i, 1);
     ids.push(monthDocId(d.getFullYear(), d.getMonth() + 1));
   }
-  const snaps = await Promise.all(ids.map((mid) => getDoc(doc(closingsRef, mid))));
-  const out = new Set();
-  for (const snap of snaps) {
-    if (!snap.exists()) continue;
-    for (const [k, v] of Object.entries(snap.data().confirms || {})) {
-      if (v?.confirmed) out.add(k);
+  // 달마다 getDoc 을 열네 개 한꺼번에 던졌더니 로컬 캐시가 뒤엉켜 앱이 통째로 죽었다
+  // (FIRESTORE INTERNAL ASSERTION FAILED). 마감 문서는 한 달에 하나뿐이라 컬렉션을
+  // 한 번에 읽는 편이 읽기 횟수도 적고 안전하다 (2026-08-27).
+  const all = await getDocs(closingsRef);
+  const byId = new Map();
+  for (const d of all.docs) byId.set(d.id, d.data());
+  const out = {};
+  for (const mid of ids) {
+    const data = byId.get(mid);
+    if (!data) continue;
+    for (const [k, v] of Object.entries(data.confirms || {})) {
+      if (!v?.confirmed) continue;
+      // 뒤에 읽은 달이 이기지 않게 — 먼저 잡힌 확정을 남긴다(최근 달부터 읽는다)
+      if (out[k]) continue;
+      out[k] = { confirmed: true, amount: v.amount, reason: v.reason || '', by: v.by || '' };
     }
   }
   return out;
@@ -62,10 +71,13 @@ export async function getConfirmedKeys(baseDate = new Date(), months = 12) {
 
 // 한 건의 금액·확정 여부를 적는다. 금액을 안 고쳤으면 amount 는 넘기지 않는다 —
 // 그래야 나중에 입고가 더 잡혔을 때 자동 계산값이 그대로 따라온다.
-export async function setRowConfirm(year, month, key, { amount, confirmed, by }) {
+export async function setRowConfirm(year, month, key, { amount, confirmed, by, reason }) {
   const ref = doc(closingsRef, monthDocId(year, month));
   const entry = { confirmed: !!confirmed, by: by || '', at: new Date() };
   if (amount != null) entry.amount = Number(amount) || 0;
+  // 금액을 왜 고쳤는지 — 몇 달 뒤에 「이 숫자 왜 이렇지」 할 때 답이 되는 한 줄
+  // (2026-08-27 대표님 「고친 이유 적고 보는것도 되게」)
+  if (reason !== undefined) entry.reason = String(reason || '');
   await setDoc(ref, { monthKey: monthDocId(year, month), confirms: { [key]: entry } }, { merge: true });
 }
 

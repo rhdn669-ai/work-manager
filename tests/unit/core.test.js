@@ -16,7 +16,7 @@ import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
-import { receivedRowsOf, payMonthLabel, vatOf, withVat } from '../../src/domain/marginClosing';
+import { receivedRowsOf, payMonthLabel, vatOf, withVat, applyConfirm } from '../../src/domain/marginClosing';
 import { buildMailHtml, mailSubject, senderLine, setLibraryCards, cardNames, cardFileFor } from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
@@ -829,6 +829,24 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
     const r = receivedRowsOf(unpaid, itemMaster, suppliers, 2026, 8)[0];
     expect(r.paid).toBe(false);
     expect(r.paidAt).toBe(null);
+  });
+
+  // 금액을 고치면 이유가 따라다녀야 한다 — 몇 달 뒤에 「이 숫자 왜 이렇지」 할 때 답이 된다
+  it('고친 금액과 이유가 줄에 실린다', () => {
+    const rows = [{ key: 'po:p1:델타전기', amount: 100000 }];
+    const [r] = applyConfirm(rows, {
+      'po:p1:델타전기': { confirmed: true, amount: 92000, reason: '반품 2개 차감' },
+    });
+    expect(r.amount).toBe(92000);
+    expect(r.autoAmount).toBe(100000);
+    expect(r.edited).toBe(true);
+    expect(r.reason).toBe('반품 2개 차감');
+  });
+
+  it('안 고친 줄은 이유가 빈 문자열 — undefined 가 화면에 새지 않게', () => {
+    const [r] = applyConfirm([{ key: 'k', amount: 5000 }], { k: { confirmed: true } });
+    expect(r.edited).toBe(false);
+    expect(r.reason).toBe('');
   });
 
   it('회차 결제는 마지막 결제일을 쓴다', () => {

@@ -125,6 +125,17 @@
   color: var(--accent-press);
 }
 
+/* 고친 이유 — 금액 바로 밑에 한 줄. 마우스를 올려야 보이면 아무도 안 본다 */
+.mc-amt-reason {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--accent-press);
+  word-break: keep-all;
+}
+
 .mc-amt-input {
   width: 100%;
   min-width: 160px;
@@ -265,10 +276,18 @@
   white-space: nowrap;
 }
 
-/* 결제일 — 업체별로 같아서 안쪽 표가 아니라 업체 줄에 적는다 */
-.mc-fold-row .mc-when {
-  flex: 0 0 auto;
-  margin-right: 4px;
+/* 결제일 — 업체별로 같아서 안쪽 표가 아니라 업체 줄에 적는다.
+   업체명 밑 곁줄에서는 알약을 벗긴다 — 색만 남기고 배경을 지워야
+   여러 개가 나란히 서도 복잡해 보이지 않는다 (2026-08-27 대표님). */
+.fold-meta .mc-when,
+.fold-meta .mc-paid-tag,
+.fold-meta .mc-prepaid-tag {
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 /* 발주서 명 — 어느 발주에서 온 돈인지 */
@@ -281,10 +300,9 @@
   white-space: nowrap;
 }
 
-@media (max-width: 900px) {
-  /* 좁은 화면에서는 업체 줄이 빽빽해진다 — 선결제·결제일은 감추고 표 안에서 본다 */
-  .mc-prepaid-tag,
-  .mc-fold-row .mc-when {
+@media (max-width: 640px) {
+  /* 아주 좁은 화면에서만 감춘다 — 이제 곁줄이 아래로 흐르므로 폭을 덜 먹는다 */
+  .fold-meta .mc-prepaid-tag {
     display: none;
   }
 }
