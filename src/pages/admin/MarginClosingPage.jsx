@@ -143,7 +143,8 @@ export default function MarginClosingPage() {
         siteName: m.siteName || '(현장 없음)',
         description: m.description || '(내역 없음)',
         amount: Number(m.amount) || 0,
-        payMonth: m.payMonth || '',
+        payDue: m.payDue || '',
+        payMonth: payMonthLabel(m.payDue),
         manual: true,
       }));
     // 발주서에서 마감한 건만 확정으로 선다. 입고만 되고 마감을 안 누른 건은 미확정 —
@@ -369,9 +370,7 @@ export default function MarginClosingPage() {
           <button
             type="button"
             className="btn btn-sm btn-outline"
-            onClick={() =>
-              setAdding({ kind: tab, vendor: '', siteName: '', description: '', amount: '', payMonth: '' })
-            }
+            onClick={() => setAdding({ kind: tab, vendor: '', siteName: '', description: '', amount: '', payDue: '' })}
             disabled={locked}
           >
             <Icon name="plus" className="btn-ic" />
@@ -526,39 +525,41 @@ export default function MarginClosingPage() {
                       key={g.vendor}
                       className={`payment-folder${open ? ' is-open' : ''}${st === 'confirmed' ? ' is-paid' : ''}`}
                     >
-                      <button
-                        type="button"
-                        className="payment-folder-head"
-                        onClick={() =>
-                          setOpenVendors((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(g.vendor)) next.delete(g.vendor);
-                            else next.add(g.vendor);
-                            return next;
-                          })
-                        }
-                      >
-                        <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
-                        <Icon name="building" className="payment-folder-ic" />
-                        <span className="payment-folder-title" title={g.vendor}>
-                          {g.vendor}
-                        </span>
-                        <span className="payment-folder-site">{g.lines.length}건</span>
-                        <span className="payment-folder-spacer" />
-                        {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
-                        {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
-                        <span className="payment-folder-amount">{won(g.total)}원</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline mc-ask-btn"
-                        onClick={() => requestStatement(g.vendor)}
-                        disabled={mailing === g.vendor}
-                        title={`${g.vendor}에 ${month}월 마감내역을 요청합니다`}
-                      >
-                        <Icon name="mail" className="btn-ic" />
-                        {mailing === g.vendor ? '보내는 중…' : '내역 요청'}
-                      </button>
+                      <div className="mc-fold-row">
+                        <button
+                          type="button"
+                          className="payment-folder-head"
+                          onClick={() =>
+                            setOpenVendors((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(g.vendor)) next.delete(g.vendor);
+                              else next.add(g.vendor);
+                              return next;
+                            })
+                          }
+                        >
+                          <Icon name={open ? 'chevronDown' : 'chevronRight'} className="payment-folder-caret" />
+                          <Icon name="building" className="payment-folder-ic" />
+                          <span className="payment-folder-title" title={g.vendor}>
+                            {g.vendor}
+                          </span>
+                          <span className="payment-folder-site">{g.lines.length}건</span>
+                          <span className="payment-folder-spacer" />
+                          {todo > 0 && <span className="payment-folder-badge">미확정 {todo}</span>}
+                          {todo === 0 && <span className="payment-folder-badge is-done">확정</span>}
+                          <span className="payment-folder-amount">{won(g.total)}원</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline mc-ask-btn"
+                          onClick={() => requestStatement(g.vendor)}
+                          disabled={mailing === g.vendor}
+                          title={`${g.vendor}에 ${month}월 마감내역을 요청합니다`}
+                        >
+                          <Icon name="mail" className="btn-ic" />
+                          {mailing === g.vendor ? '보내는 중…' : '내역 요청'}
+                        </button>
+                      </div>
 
                       {open && (
                         <div className="payment-folder-body table-scroll-x">
@@ -570,8 +571,8 @@ export default function MarginClosingPage() {
                                 <th className="col-unit" style={{ width: 100 }}>
                                   출처
                                 </th>
-                                <th className="col-unit" style={{ width: 100 }}>
-                                  결제 예정
+                                <th className="col-unit" style={{ width: 92 }}>
+                                  결제
                                 </th>
                                 <th className="col-num" style={{ width: 200 }}>
                                   금액
@@ -609,7 +610,7 @@ export default function MarginClosingPage() {
             <b>지출은 발주서에서 「마감」을 누른 건이 올라옵니다.</b> 담당자가 그달 납품받은 금액을 정한 것이라 확정
             상태로 들어오고, 대표님은 이상한 것만 금액을 눌러 고치시면 됩니다. 업체에 줄 돈만 담습니다 — 잔업
             수당·고정비는 총 마감에서 봅니다. 결제가 다음 달이어도 납품이 이번 달이면 이번 달에 잡히고, 업체별 결제
-            조건으로 계산한 달이 「결제 예정」에 표시됩니다.
+            조건으로 계산한 날짜가 「결제」에 표시됩니다.
             <br />
             <b>매출은 미확정으로 올라옵니다</b> — 한 건씩 확인해 주셔야 합계에 들어갑니다.
           </p>
@@ -668,11 +669,12 @@ export default function MarginClosingPage() {
             </div>
             {adding.kind === 'expense' && (
               <div className="form-field">
-                <label>결제 예정</label>
+                <label>결제일</label>
                 <input
-                  value={adding.payMonth}
-                  onChange={(e) => setAdding((s) => ({ ...s, payMonth: e.target.value }))}
-                  placeholder="예: 9월"
+                  type="date"
+                  value={adding.payDue}
+                  onChange={(e) => setAdding((s) => ({ ...s, payDue: e.target.value }))}
+                  aria-label="결제일"
                 />
               </div>
             )}

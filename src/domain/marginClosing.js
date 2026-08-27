@@ -173,11 +173,14 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
   return out;
 }
 
-// 결제 예정 — 업체마다 정해진 결제일이 있다 (구매처의 결제 조건).
-// 「이 돈은 9월에 나간다」를 대표님이 한눈에 보시는 칸이다.
+// 결제 — 업체마다 정해진 결제일이 있다 (구매처의 결제 조건).
+// 「이 돈은 9월 10일에 나간다」를 대표님이 한눈에 보시는 칸이다.
 export function payMonthLabel(payDue) {
   const d = toDate(payDue);
-  return d ? `${d.getMonth() + 1}월` : '';
+  if (!d) return '';
+  // 「9월」로는 그달 언제 나가는지 모른다. 업체마다 결제일이 정해져 있으니 날짜까지 적는다
+  // (2026-08-27 대표님). 연도는 뺀다 — 마감월 근처라 해가 헷갈릴 일이 없다.
+  return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // 발주 전체 → 업체별 묶음. 한 업체가 여러 발주·현장에 걸쳐 있으면 한 줄로 합친다 —

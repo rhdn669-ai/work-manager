@@ -84,7 +84,7 @@ export async function addManualItem(year, month, data) {
     siteName: data.siteName || '',
     description: data.description || '',
     amount: Number(data.amount) || 0,
-    payMonth: data.payMonth || '',
+    payDue: data.payDue || '', // 결제일 (YYYY-MM-DD) — 자동 건과 같은 형식
     createdAt: new Date(),
     createdBy: data.createdBy || '',
   });

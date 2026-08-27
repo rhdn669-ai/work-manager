@@ -16,7 +16,7 @@ import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
-import { receivedRowsOf } from '../../src/domain/marginClosing';
+import { receivedRowsOf, payMonthLabel } from '../../src/domain/marginClosing';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
@@ -761,6 +761,13 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
       supplierPaid: { 델타전기: { paidAt: D('2026-08-09') } },
     };
     expect(receivedRowsOf(legacy, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
+  });
+
+  // 「9월」로는 그달 언제 나가는지 모른다. 업체마다 결제일이 정해져 있으니 날짜까지 적는다
+  it('결제일은 「9.10」처럼 날짜까지 적는다', () => {
+    expect(payMonthLabel('2026-09-10')).toBe('9.10');
+    expect(payMonthLabel('2026-08-05')).toBe('8.05'); // 한 자리 날짜도 두 자리로
+    expect(payMonthLabel('')).toBe('');
   });
 
   it('입고만 있는 건은 미확정으로 선다 — 마감을 눌러야 확정', () => {
