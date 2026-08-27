@@ -32,6 +32,12 @@ function toDate(v) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+// 발주 달 — 선결제 건은 입고를 기다릴 수 없어 이 달에 세운다
+function poMonthOf(purchase) {
+  const d = toDate(purchase.orderDate || purchase.createdAt);
+  return d ? monthKey(d.getFullYear(), d.getMonth() + 1) : '';
+}
+
 function inMonth(v, year, month) {
   const d = toDate(v);
   return !!d && d.getFullYear() === year && d.getMonth() + 1 === month;
@@ -119,6 +125,7 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
 
   // 결제일은 결제 요청 때 정해진다 — 거기서 읽는다.
   const req = purchase.paymentRequested || {};
+  const want = monthKey(year, month);
   const out = [];
   for (const [vendor, g] of byVendor) {
     const vkey = closeKeyOf(vendor);
@@ -161,6 +168,49 @@ export function receivedRowsOf(purchase, itemMaster, suppliers, year, month) {
       receivedAt: null,
       prepaid: true,
     });
+  }
+  // 세 번째 문 — 발주서에서 「선결제」로 표시한 건. 물건보다 돈이 먼저 나가므로
+  // 입고를 기다리면 목록에 뜨지도 못한다. 이것만 예외로 발주 달에 세운다
+  // (2026-08-27 대표님 「발주 전에 선결제 해야하는것도 있는데」).
+  const prepayMap = purchase.supplierPrepay || {};
+  if (Object.keys(prepayMap).length > 0 && poMonthOf(purchase) === want) {
+    for (const vkey of Object.keys(prepayMap)) {
+      if (out.some((r) => r.vendorKey === vkey)) continue; // 입고·결제로 이미 섰다
+      // 아직 안 들어왔으니 발주 수량으로 센다
+      let amount = 0;
+      let count = 0;
+      const names = [];
+      let vendor = vkey;
+      for (const ln of lines) {
+        const v = ln._supplier || purchase.supplierName || MISC_VENDOR;
+        if (closeKeyOf(v) !== vkey) continue;
+        vendor = v;
+        const amt = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
+        if (amt <= 0) continue;
+        amount += amt;
+        count += 1;
+        if (names.length < 2) names.push(ln._name || ln.name || '');
+      }
+      if (amount <= 0) continue;
+      out.push({
+        key: `po:${purchase.id}:${vkey}`,
+        purchaseId: purchase.id,
+        vendorKey: vkey,
+        vendor,
+        siteName: purchase.siteName || '',
+        title: purchase.title || '(제목 없음)',
+        description: count > 1 ? `${names[0]} 외 ${count - 1}건` : names[0] || purchase.title || '',
+        amount, // 발주 금액 — 아직 안 들어왔다
+        receivedAmount: 0,
+        payDue: req[vkey]?.dueDate || '',
+        closed: false, // 돈이 아직 안 나갔다 — 대표님이 확인하고 확정한다
+        paid: false,
+        paidAt: null,
+        paidAmount: 0,
+        receivedAt: null,
+        prepay: true, // 선결제 예정
+      });
+    }
   }
   return out;
 }

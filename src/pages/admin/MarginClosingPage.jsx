@@ -539,7 +539,8 @@ export default function MarginClosingPage() {
                   // 결제일은 업체별로 같다 — 그래서 안쪽 표 대신 업체 줄에 적는다 (2026-08-27 대표님).
                   // 혹시 갈리면 「9.30 외」로 알린다. 숨기지 않는다.
                   const payDays = [...new Set(g.lines.map((l) => l.payMonth).filter(Boolean))];
-                  const anyPrepaid = g.lines.some((l) => l.prepaid);
+                  const anyPrepaid = g.lines.some((l) => l.prepaid); // 이미 나간 선결제
+                  const anyPrepay = g.lines.some((l) => l.prepay); // 아직 안 나간 선결제 예정
                   // 「결제 예정」과 「결제 완료」는 다른 사실이다. 예정일만 보여 주면
                   // 이미 나간 돈인지 알 수 없다 (2026-08-27 대표님 「결제 완료인지 아닌지는?」).
                   const allPaid = g.lines.length > 0 && g.lines.every((l) => l.paid);
@@ -569,6 +570,7 @@ export default function MarginClosingPage() {
                           </span>
                           <span className="payment-folder-site">{g.lines.length}건</span>
                           {anyPrepaid && <span className="mc-prepaid-tag">선결제</span>}
+                          {anyPrepay && <span className="mc-prepay-tag">선결제 예정</span>}
                           <span className="payment-folder-spacer" />
                           {allPaid && paidDays.length > 0 ? (
                             <span className="mc-paid-tag" title="실제로 돈이 나간 날">
@@ -625,7 +627,9 @@ export default function MarginClosingPage() {
                                   </td>
                                   <td className="mc-desc">{r.description}</td>
                                   <td className="col-unit">
-                                    <span className="mc-src">{r.manual ? '직접입력' : '자동'}</span>
+                                    <span className="mc-src">
+                                      {r.manual ? '직접입력' : r.prepay ? '발주분' : '자동'}
+                                    </span>
                                   </td>
                                   {amountCell(r)}
                                   {confirmCell(r)}
