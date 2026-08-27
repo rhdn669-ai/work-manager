@@ -49,8 +49,10 @@ export default function PaymentPage() {
   const [filterMode, setFilterMode] = useState('pending'); // 'pending' | 'paid' | 'all'
   const [monthFilter, setMonthFilter] = useState(() => monthKey(new Date())); // 기본: 현재 월 (결제요청일 기준)
   const [expanded, setExpanded] = useState(() => new Set()); // 펼친 폴더 키
-  // 묶는 기준 — 발주서(프로젝트)별 / 업체별 / 일자별(결제 마감일) (2026-08-03 대표님)
-  const [groupBy, setGroupBy] = useState('project');
+  // 묶는 기준 — 업체별 / 발주서(프로젝트)별 / 일자별(결제 마감일)
+  // 처음 열면 업체별이다. 결제는 회사 대 회사로 나가므로 「이 업체에 얼마」가 먼저다
+  // (2026-08-27 대표님). 마감 리스트도 업체 고정이라 두 화면이 같은 눈으로 열린다.
+  const [groupBy, setGroupBy] = useState('supplier');
   const [busy, setBusy] = useState('');
   // 사업자등록증 모달 { supplier, loading, files }
   const [bizDoc, setBizDoc] = useState(null);
@@ -440,11 +442,11 @@ export default function PaymentPage() {
 
       {/* 년월 드롭다운 + 검색 */}
       <div className="payment-filterbar no-print">
-        {/* 묶는 기준 — 프로젝트(발주서)별 / 업체별 */}
+        {/* 묶는 기준 — 업체별(기본) / 프로젝트(발주서)별 / 일자별 */}
         <div className="payment-groupby">
           {[
-            { k: 'project', label: '프로젝트별' },
             { k: 'supplier', label: '업체별' },
+            { k: 'project', label: '프로젝트별' },
             { k: 'date', label: '일자별' },
           ].map((o) => (
             <button
