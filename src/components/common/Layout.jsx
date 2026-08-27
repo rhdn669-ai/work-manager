@@ -3,6 +3,8 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { isDefectOnly } from '../../utils/workspace';
+import { getCardLibrary } from '../../services/fileLibraryService';
+import { setLibraryCards } from '../../utils/mailTemplate';
 import BottomNav from './BottomNav';
 import { ensureBodyScrollUnlockedIfIdle } from './bodyScrollLock';
 import HintReminderBanner from './HintReminderBanner';
@@ -30,6 +32,14 @@ export default function Layout() {
   // 마우스 옆 버튼(뒤로 4번 / 앞으로 5번) → 이전·다음 화면으로 이동.
   // 브라우저 기본 뒤로가기와 이중 이동하지 않도록 preventDefault로 차단하고 SPA 라우팅으로 처리.
   // (설치형 PWA처럼 주소창이 없는 창에서도 동일하게 동작)
+  // 자료실 「명함」 폴더를 한 번 읽어 둔다 — 메일 보낼 때마다 조회하면 느리다.
+  // 올리자마자 쓰려면 새로고침이 필요하지만, 명함은 자주 바뀌지 않는다.
+  useEffect(() => {
+    getCardLibrary()
+      .then(setLibraryCards)
+      .catch(() => {}); // 못 읽어도 붙박이 명함으로 나간다
+  }, []);
+
   useEffect(() => {
     const suppress = (e) => {
       if (e.button === 3 || e.button === 4) e.preventDefault();

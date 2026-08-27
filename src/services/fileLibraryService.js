@@ -131,6 +131,35 @@ export async function getSupplierLibraryFiles(supplierName) {
   return files;
 }
 
+// 자료실 「명함」 폴더 — 메일 하단에 붙일 담당자 명함.
+//
+// 전에는 public/cards 에 파일을 넣고 코드에 이름을 박아 두었다. 사람이 들어오거나
+// 명함을 바꿀 때마다 개발자가 파일을 넣고 코드를 고쳐 다시 배포해야 했다.
+// 자료실에 두면 대표님이 직접 올리고 바꾸실 수 있다 (2026-08-27 대표님).
+//
+// 파일 이름이 곧 사람 이름이다 — 「손성욱.png」.
+// 반환: { 이름: 내려받기주소 }
+export const CARD_FOLDER = '명함';
+
+export async function getCardLibrary() {
+  const folderSnap = await getDocs(query(foldersRef, where('name', '==', CARD_FOLDER)));
+  // 최상위(부모 없음) 「명함」 폴더만 본다 — 프로젝트 아래 같은 이름이 있어도 섞이지 않게
+  const folder = folderSnap.docs.find((d) => !d.data().parentId) || folderSnap.docs[0];
+  if (!folder) return {};
+  const fileSnap = await getDocs(query(filesRef, where('folderId', '==', folder.id)));
+  const out = {};
+  for (const d of fileSnap.docs) {
+    const v = d.data();
+    if (!v.downloadURL) continue;
+    // 「손성욱.png」 → 「손성욱」
+    const who = String(v.name || '')
+      .replace(/\.[^.]+$/, '')
+      .trim();
+    if (who) out[who] = v.downloadURL;
+  }
+  return out;
+}
+
 // 프로젝트(현장) 자료실 표준 하위 폴더 — 프로젝트 생성 시 자동 생성, 각 기능과 연동
 export const PROJECT_SUBFOLDERS = ['발주이력', '자료', '견적', 'BOM'];
 // 모든 프로젝트 폴더를 담는 최상위 묶음 폴더

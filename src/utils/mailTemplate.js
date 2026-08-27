@@ -14,8 +14,13 @@
 // 서명은 명함 하나로 끝낸다. 명함 이미지에 이름·직책·전화·메일이 다 있어
 // 글자 서명까지 넣으면 같은 말이 두 번 나온다.
 
-// 명함이 있는 사람 — public/cards/{이름}.png
-export const BUSINESS_CARD_NAMES = [
+// 명함이 있는 사람.
+//
+// 원래는 이 목록이 전부였다 — public/cards 에 파일을 넣고 여기에 이름을 박았다.
+// 사람이 들어오거나 명함을 바꿀 때마다 개발자가 다시 배포해야 했다.
+// 이제 자료실 「명함」 폴더가 먼저다. 이 목록은 아직 안 올린 사람을 위한 대비책으로 남긴다
+// (2026-08-27 대표님 「명함을 불러오기가 아니라 자료실에서 가져오는게 낫지않음?」).
+export const BUILTIN_CARD_NAMES = [
   '이주현',
   '박정현',
   '라혜림',
@@ -27,12 +32,25 @@ export const BUSINESS_CARD_NAMES = [
   '손성욱',
 ];
 
+// 자료실에서 읽어 둔 명함 — { 이름: 내려받기주소 }. 앱이 뜰 때 한 번 채운다.
+let libraryCards = {};
+
+export function setLibraryCards(map) {
+  libraryCards = map || {};
+}
+
+// 자료실에 있는 사람 + 아직 안 올린 붙박이 — 둘을 합친 것이 「고를 수 있는 명함」
+export function cardNames() {
+  return [...new Set([...Object.keys(libraryCards), ...BUILTIN_CARD_NAMES])].sort((a, b) => a.localeCompare(b, 'ko'));
+}
+
 // 인라인 첨부 식별자 — 본문의 cid: 와 첨부의 cid 가 같아야 이어진다
 export const CARD_CID = 'bizcard';
 
 export function cardFileFor(name) {
   const n = (name || '').trim();
-  return BUSINESS_CARD_NAMES.includes(n) ? `/cards/${encodeURIComponent(n)}.png` : '';
+  if (libraryCards[n]) return libraryCards[n]; // 자료실이 먼저
+  return BUILTIN_CARD_NAMES.includes(n) ? `/cards/${encodeURIComponent(n)}.png` : '';
 }
 
 // 사용자가 친 글을 HTML 로 — 태그로 읽히지 않게 막고 줄바꿈만 살린다
@@ -91,7 +109,7 @@ export function mailSubject(text) {
 // 명함이 없으면 이름도 없다 — 이름과 명함이 따로 놀면 받는 쪽이 헷갈린다.
 export function senderLine(name) {
   const n = String(name || '').trim();
-  return BUSINESS_CARD_NAMES.includes(n) ? `주식회사 아이오피엔 ${n}입니다.` : '주식회사 아이오피엔입니다.';
+  return cardFileFor(n) ? `주식회사 아이오피엔 ${n}입니다.` : '주식회사 아이오피엔입니다.';
 }
 
 // 명함을 첨부 형태로 — 발송 직전에 부른다. 명함이 없으면 빈 배열이라 그대로 이어붙이면 된다.
@@ -110,7 +128,7 @@ export async function cardAttachment(cardName) {
         filename: `${cardName}.png`,
         content: btoa(bin),
         encoding: 'base64',
-        contentType: 'image/png',
+        contentType: res.headers.get('content-type') || 'image/png',
         cid: CARD_CID,
         contentDisposition: 'inline',
       },

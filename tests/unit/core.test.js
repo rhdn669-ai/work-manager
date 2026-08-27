@@ -1,6 +1,6 @@
 // ⑨ 기능 회귀 유닛테스트 — 과거 지적 다발 지점의 순수 로직 고정
 // 대상: 발주 구매처 도출·그룹핑·발행번호 / 연차 계산 / 출력 글자축소 / 날짜 유틸
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { poNumber, deriveSupplier, mapPrintItems, computeSupplierList } from '../../src/utils/purchaseOrder';
 import { ccOf, mailToLine } from '../../src/domain/supplierContacts';
 import {
@@ -17,7 +17,7 @@ import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
 import { receivedRowsOf, payMonthLabel, vatOf, withVat } from '../../src/domain/marginClosing';
-import { buildMailHtml, mailSubject, senderLine } from '../../src/utils/mailTemplate';
+import { buildMailHtml, mailSubject, senderLine, setLibraryCards, cardNames, cardFileFor } from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
@@ -934,6 +934,34 @@ describe('부가세 — 두 화면이 같은 값을 낸다', () => {
     expect(vatOf(0)).toBe(0);
     expect(withVat(null)).toBe(0);
     expect(withVat(undefined)).toBe(0);
+  });
+});
+
+// 자료실 「명함」 폴더가 먼저다 — 코드에 박힌 목록은 아직 안 올린 사람을 위한 대비책
+describe('명함 — 자료실 우선', () => {
+  afterEach(() => setLibraryCards({})); // 다른 테스트에 새지 않게
+
+  it('자료실에 있으면 그 주소를 쓴다', () => {
+    setLibraryCards({ 손성욱: 'https://example.com/a.png' });
+    expect(cardFileFor('손성욱')).toBe('https://example.com/a.png');
+  });
+
+  it('자료실에 없으면 붙박이 파일로 대신한다', () => {
+    setLibraryCards({});
+    expect(cardFileFor('손성욱')).toContain('/cards/');
+  });
+
+  it('자료실에만 있는 새 사람도 고를 수 있다', () => {
+    setLibraryCards({ 김신혜: 'https://example.com/k.png' });
+    expect(cardNames()).toContain('김신혜'); // 코드에 없던 이름
+    expect(cardNames()).toContain('손성욱'); // 붙박이도 그대로
+    expect(senderLine('김신혜')).toBe('주식회사 아이오피엔 김신혜입니다.');
+  });
+
+  it('어느 쪽에도 없으면 이름을 넣지 않는다', () => {
+    setLibraryCards({});
+    expect(cardFileFor('없는사람')).toBe('');
+    expect(senderLine('없는사람')).toBe('주식회사 아이오피엔입니다.');
   });
 });
 

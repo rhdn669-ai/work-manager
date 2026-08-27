@@ -1,6 +1,6 @@
 import Select from './Select';
 import { useAuth } from '../../contexts/useAuth';
-import { BUSINESS_CARD_NAMES } from '../../utils/mailTemplate';
+import { cardNames, cardFileFor } from '../../utils/mailTemplate';
 
 // 메일 하단에 붙일 명함 고르기.
 //
@@ -14,7 +14,7 @@ export default function CardPicker({ value, onChange, label = '명함' }) {
   if (!isAdmin) {
     return (
       <p className="field-hint">
-        {BUSINESS_CARD_NAMES.includes(value) ? (
+        {cardFileFor(value) ? (
           <>
             메일 하단에 <strong>{value}</strong> 명함이 붙습니다.
           </>
@@ -31,15 +31,12 @@ export default function CardPicker({ value, onChange, label = '명함' }) {
       <Select
         // 명단에 없는 값(회사 계정 이름 등)은 「명함 없이」로 본다 — 목록에 없는 값을
         // 그대로 두면 무엇이 골라졌는지 알 수 없다 (2026-08-27 대표님)
-        value={BUSINESS_CARD_NAMES.includes(value) ? value : ''}
+        value={cardFileFor(value) ? value : ''}
         onChange={onChange}
-        options={[
-          { value: '', label: '명함 없이 보내기' },
-          ...BUSINESS_CARD_NAMES.map((n) => ({ value: n, label: n })),
-        ]}
+        options={[{ value: '', label: '명함 없이 보내기' }, ...cardNames().map((n) => ({ value: n, label: n }))]}
         ariaLabel="명함 선택"
       />
-      <p className="field-hint">메일 하단에 붙습니다. 받는 업체가 누구에게 회신할지 알 수 있습니다.</p>
+      <p className="field-hint">메일 하단에 붙습니다. 자료실 「명함」 폴더에 올리면 목록에 나타납니다.</p>
     </div>
   );
 }
