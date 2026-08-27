@@ -428,7 +428,7 @@ export default function SiteListPage() {
   return (
     <div className="site-list-page">
       {/* 필터 탭 (제목 위 — 상단 탭 표준) */}
-      <div className="tab-nav" style={{ marginBottom: 12 }}>
+      <div className="tab-nav">
         {[
           { key: 'all', label: '전체' },
           { key: 'recurring', label: '양산' },

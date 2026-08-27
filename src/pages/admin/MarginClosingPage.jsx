@@ -291,7 +291,7 @@ export default function MarginClosingPage() {
   return (
     <div className="margin-closing-page">
       {/* 매출·지출 탭 (제목 위 — 상단 탭 표준) */}
-      <div className="tab-nav" style={{ marginBottom: 12 }}>
+      <div className="tab-nav">
         <button
           type="button"
           className={`tab-nav-item ${tab === 'expense' ? 'active' : ''}`}

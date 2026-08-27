@@ -454,7 +454,7 @@ export default function OutsourceManagementPage() {
   return (
     <div className="outsource-management-page">
       {/* 주 탭 (제목 위 — 상단 탭 표준) */}
-      <div className="tab-nav" style={{ marginBottom: 14 }}>
+      <div className="tab-nav">
         <button
           type="button"
           className={`tab-nav-item ${tab === 'freelancer' ? 'active' : ''}`}
@@ -1083,7 +1083,7 @@ export default function OutsourceManagementPage() {
       <Modal isOpen={!!detailVendor} onClose={() => setDetailVendor(null)} title={detailVendor?.name || '업체 상세'}>
         {detailVendor && (
           <>
-            <div className="tab-nav" style={{ marginBottom: 8 }}>
+            <div className="tab-nav">
               <button
                 type="button"
                 className={`tab-nav-item ${detailTab === 'freelancers' ? 'active' : ''}`}

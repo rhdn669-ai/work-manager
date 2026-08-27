@@ -396,7 +396,7 @@ export default function PaymentPage() {
   return (
     <div className="payment-page">
       {/* 결제 상태 탭 (제목 위 — 상단 탭 표준) */}
-      <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
+      <div className="tab-nav no-print">
         <button
           type="button"
           className={`tab-nav-item ${filterMode === 'pending' ? 'active' : ''}`}

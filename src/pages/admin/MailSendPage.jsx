@@ -219,7 +219,7 @@ export default function MailSendPage() {
   return (
     <div className="mail-send-page">
       {/* 상단 탭 — 메일 작성 / 발송 이력 (제목 위 — 상단 탭 표준) */}
-      <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
+      <div className="tab-nav no-print">
         <button
           type="button"
           className={`tab-nav-item ${mode === 'compose' ? 'active' : ''}`}
@@ -320,7 +320,7 @@ export default function MailSendPage() {
           </p>
 
           {/* 대상 유형 */}
-          <div className="tab-nav no-print" style={{ marginBottom: 12 }}>
+          <div className="tab-nav no-print">
             <button
               type="button"
               className={`tab-nav-item ${targetType === 'supplier' ? 'active' : ''}`}
