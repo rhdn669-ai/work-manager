@@ -948,10 +948,16 @@ describe('메일 기본 틀', () => {
     expect(buildMailHtml({ body: '안녕하세요.' })).not.toContain('수신 :');
   });
 
+  // 명함은 첨부(cid)로 나간다 — 상대 경로 이미지는 받는 쪽 메일함에서 깨진다
   it('명함은 명단에 있는 사람만 붙는다', () => {
-    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '손성욱' })).toContain('/cards/');
-    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '없는사람' })).not.toContain('/cards/');
-    expect(buildMailHtml({ to: 'A', body: 'x' })).not.toContain('/cards/');
+    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '손성욱' })).toContain('cid:bizcard');
+    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '없는사람' })).not.toContain('cid:');
+    expect(buildMailHtml({ to: 'A', body: 'x' })).not.toContain('cid:');
+  });
+
+  it('본문에 서버 경로가 새어 나가지 않는다', () => {
+    // /cards/... 가 들어가면 받는 쪽에서 깨진 그림이 된다
+    expect(buildMailHtml({ to: 'A', body: 'x', cardName: '손성욱' })).not.toContain('/cards/');
   });
 
   it('본문의 태그는 글자로 나간다 — 메일이 깨지지 않게', () => {

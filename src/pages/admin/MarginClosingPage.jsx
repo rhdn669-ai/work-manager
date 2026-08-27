@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
@@ -11,9 +11,9 @@ import TrashModal from '../../components/common/TrashModal';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
 import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
 import { callSendEmail } from '../../config/firebase';
-import { addMailLog } from '../../services/mailService';
+import { addMailLog, getStatementRequests } from '../../services/mailService';
 import { resolveEmail } from '../../domain/supplierContacts';
-import { buildMailHtml, mailSubject, senderLine } from '../../utils/mailTemplate';
+import { buildMailHtml, mailSubject, senderLine, cardAttachment } from '../../utils/mailTemplate';
 import CardPicker from '../../components/common/CardPicker';
 import {
   getMonthClosing,
@@ -44,8 +44,10 @@ const won = (n) => (Number(n) || 0).toLocaleString();
 export default function MarginClosingPage() {
   const { canApproveAll, userProfile } = useAuth();
   const { toast, confirm } = useDialog();
+  const navigate = useNavigate();
   const [mailing, setMailing] = useState(''); // 발송 중인 업체
   const [askModal, setAskModal] = useState(null); // 내역 요청 모달 { vendor, to, cardName }
+  const [asked, setAsked] = useState({}); // 그달 이미 요청한 업체 { 업체명: 보낸시각 }
   const me = userProfile?.name || '';
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,11 +80,18 @@ export default function MarginClosingPage() {
   const [busy, setBusy] = useState('');
 
   const loadClosing = useCallback(async () => {
-    const [mc, mi] = await Promise.all([getMonthClosing(year, month), getManualItems(year, month)]);
+    const mk = `${year}-${String(month).padStart(2, '0')}`;
+    const [mc, mi, req] = await Promise.all([
+      getMonthClosing(year, month),
+      getManualItems(year, month),
+      // 이미 보낸 업체는 버튼이 「요청완료」로 바뀐다 — 두 번 보내면 업체 쪽에서 재촉으로 읽힌다
+      getStatementRequests(mk).catch(() => ({})),
+    ]);
     setConfirms(mc.confirms);
     setLocked(mc.locked);
     setLockedBy(mc.lockedBy);
     setManual(mi);
+    setAsked(req);
   }, [year, month]);
 
   useEffect(() => {
@@ -234,7 +243,9 @@ export default function MarginClosingPage() {
     const html = buildMailHtml({ to: vendor, body, cardName });
 
     try {
-      await callSendEmail({ to, subject, html });
+      // 명함은 첨부로 실어 보낸다 — 상대 경로 이미지는 받는 쪽에서 깨진다
+      const attachments = await cardAttachment(cardName);
+      await callSendEmail({ to, subject, html, attachments });
       await addMailLog({
         to,
         supplier: vendor,
@@ -244,6 +255,7 @@ export default function MarginClosingPage() {
         sentBy: me,
         sentAt: new Date(),
       });
+      setAsked((prev) => ({ ...prev, [vendor]: new Date() }));
       toast(`${vendor}에 마감내역을 요청했습니다`, 'success', 0);
     } catch (err) {
       console.error(err);
@@ -628,13 +640,17 @@ export default function MarginClosingPage() {
                         </button>
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline mc-ask-btn"
+                          className={`btn btn-sm mc-ask-btn${asked[g.vendor] ? ' po-act-btn--on' : ' btn-outline'}`}
                           onClick={() => openAskModal(g.vendor)}
                           disabled={mailing === g.vendor}
-                          title={`${g.vendor}에 ${month}월 마감내역을 요청합니다`}
+                          title={
+                            asked[g.vendor]
+                              ? `${payMonthLabel(asked[g.vendor])} 에 요청함 — 눌러서 다시 보낼 수 있습니다`
+                              : `${g.vendor}에 ${month}월 마감내역을 요청합니다`
+                          }
                         >
-                          <Icon name="mail" className="btn-ic" />
-                          {mailing === g.vendor ? '보내는 중…' : '내역 요청'}
+                          <Icon name={asked[g.vendor] ? 'check' : 'mail'} className="btn-ic" />
+                          {mailing === g.vendor ? '보내는 중…' : asked[g.vendor] ? '요청완료' : '내역 요청'}
                         </button>
                       </div>
 
@@ -662,8 +678,19 @@ export default function MarginClosingPage() {
                               {g.lines.map((r) => (
                                 <tr key={r.key} className={r.confirmed ? '' : 'is-todo'}>
                                   <td className="mc-site">{r.siteName}</td>
-                                  <td className="mc-po" title={r.title || ''}>
-                                    {r.title || '—'}
+                                  <td className="mc-po">
+                                    {r.purchaseId ? (
+                                      <button
+                                        type="button"
+                                        className="mc-po-link"
+                                        onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}
+                                        title={`${r.title || ''} — 눌러서 발주서로 이동`}
+                                      >
+                                        {r.title || '(제목 없음)'}
+                                      </button>
+                                    ) : (
+                                      <span title={r.title || ''}>{r.title || '—'}</span>
+                                    )}
                                   </td>
                                   <td className="mc-desc">{r.description}</td>
                                   <td className="col-unit">

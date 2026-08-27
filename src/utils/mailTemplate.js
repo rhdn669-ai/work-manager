@@ -27,6 +27,9 @@ export const BUSINESS_CARD_NAMES = [
   '손성욱',
 ];
 
+// 인라인 첨부 식별자 — 본문의 cid: 와 첨부의 cid 가 같아야 이어진다
+export const CARD_CID = 'bizcard';
+
 export function cardFileFor(name) {
   const n = (name || '').trim();
   return BUSINESS_CARD_NAMES.includes(n) ? `/cards/${encodeURIComponent(n)}.png` : '';
@@ -59,9 +62,13 @@ export function buildMailHtml({ to, body, bodyHtml, cardName } = {}) {
 
   const inner = bodyHtml || `<p>${escapeBody(body)}</p>`;
 
-  const card = cardFileFor(cardName);
-  const tail = card
-    ? `<br><br><br><img src="${card}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
+  // 명함은 첨부로 실어 보낸다(cid).
+  //
+  // 전에는 src="/cards/이름.png" 상대 경로를 넣었는데, 받는 쪽 메일함에는 우리 서버가
+  // 없어 깨진 그림으로 나갔다. 절대 주소로 바꿔도 대부분의 메일함이 외부 이미지를
+  // 기본 차단해 첫 화면에서 안 보인다. 첨부는 늘 보인다 (2026-08-27 대표님 「명함이 깨져서 나감」).
+  const tail = cardFileFor(cardName)
+    ? `<br><br><br><img src="cid:${CARD_CID}" alt="담당자 명함" width="220" style="width:220px;max-width:100%;border:1px solid #eee" />`
     : '';
 
   return `${head}${inner}${tail}`;
@@ -81,4 +88,30 @@ export function mailSubject(text) {
 export function senderLine(name) {
   const n = String(name || '').trim();
   return BUSINESS_CARD_NAMES.includes(n) ? `주식회사 아이오피엔 ${n}입니다.` : '주식회사 아이오피엔입니다.';
+}
+
+// 명함을 첨부 형태로 — 발송 직전에 부른다. 명함이 없으면 빈 배열이라 그대로 이어붙이면 된다.
+export async function cardAttachment(cardName) {
+  const src = cardFileFor(cardName);
+  if (!src) return [];
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return [];
+    const buf = await res.arrayBuffer();
+    let bin = '';
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
+    return [
+      {
+        filename: `${cardName}.png`,
+        content: btoa(bin),
+        encoding: 'base64',
+        contentType: 'image/png',
+        cid: CARD_CID,
+        contentDisposition: 'inline',
+      },
+    ];
+  } catch {
+    return []; // 명함을 못 읽어도 메일은 나가야 한다
+  }
 }

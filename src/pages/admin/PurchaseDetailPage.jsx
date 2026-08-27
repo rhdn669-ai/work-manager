@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
-import { buildMailHtml, senderLine, mailSubject as withPrefix } from '../../utils/mailTemplate';
+import { buildMailHtml, senderLine, cardAttachment, mailSubject as withPrefix } from '../../utils/mailTemplate';
 import {
   DndContext,
   closestCenter,
@@ -1937,6 +1937,8 @@ export default function PurchaseDetailPage() {
           }
         }
         setPct(88);
+        // 명함은 첨부로 실어 보낸다 — 상대 경로 이미지는 받는 쪽 메일함에서 깨진다
+        attachments.push(...(await cardAttachment(cardName)));
         // 보내기 직전 실제 전송 크기 확인 — base64 는 원본보다 1/3 커져서,
         // 원본 기준으로만 재면 다 만들어 놓고 서버에서 거부당한다(한계 10MB).
         const totalB64 = attachments.reduce((acc, a) => acc + (a.content?.length || 0), 0);

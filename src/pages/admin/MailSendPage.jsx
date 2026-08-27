@@ -8,7 +8,7 @@ import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
 import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
 import { computeSupplierList } from '../../utils/purchaseOrder';
-import { buildMailHtml } from '../../utils/mailTemplate';
+import { buildMailHtml, cardAttachment } from '../../utils/mailTemplate';
 import CardPicker from '../../components/common/CardPicker';
 
 function blobToBase64(blob) {
@@ -173,6 +173,8 @@ export default function MailSendPage() {
         const b64 = await blobToBase64(f);
         attachments.push({ filename: f.name, content: b64, encoding: 'base64' });
       }
+      // 명함을 첨부로 — 수신처마다 같은 것이라 한 번만 만든다
+      attachments.push(...(await cardAttachment(cardName)));
       let ok = 0;
       const fail = [];
       let firstErr = '';

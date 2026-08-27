@@ -327,3 +327,28 @@
     display: none;
   }
 }
+
+/* 발주서로 이동 — 이름 자체를 누르게 한다. 별도 버튼을 두면 그러잖아도 빽빽한
+ * 표에 칸이 하나 더 는다 (2026-08-27 대표님). */
+.mc-po-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--primary);
+  text-align: left;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.mc-po-link:hover {
+  text-decoration-color: currentColor;
+}
