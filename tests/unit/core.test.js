@@ -1032,6 +1032,21 @@ describe('마감 리스트 — 요청 안 된 입고분 그물', () => {
     };
     expect(unrequestedRowsOf(p, itemMaster, suppliers)).toHaveLength(0);
   });
+
+  // 종결한 발주는 이미 손을 뗀 건 — 알려 봐야 할 일이 없다 (2026-08-28 대표님)
+  it('종결한 발주는 안 잡는다', () => {
+    const closed = {
+      id: 'p4',
+      title: '종결된 건',
+      status: 'closed',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
+      ],
+    };
+    expect(unrequestedRowsOf(closed, itemMaster, suppliers)).toHaveLength(0);
+    // 종결만 풀면 다시 잡힌다
+    expect(unrequestedRowsOf({ ...closed, status: 'settled' }, itemMaster, suppliers)).toHaveLength(1);
+  });
 });
 
 // ── 메일 기본 틀 — 발주서·메일발송·마감내역요청이 같은 얼굴로 나가는지 (2026-08-27 대표님)

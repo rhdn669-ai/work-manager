@@ -174,6 +174,9 @@ export function closingRowsOf(purchase, itemMaster, suppliers, year, month) {
 // 문을 「결제 요청」 하나로 합치면서 생긴 사각지대다. 담당자가 버튼을 안 누르면
 // 마감에도 결제에도 안 뜬다 — 그 돈이 통째로 잊힌다. 마감 리스트 맨 위에서 세어 알린다.
 export function unrequestedRowsOf(purchase, itemMaster, suppliers) {
+  // 종결한 발주는 이미 손을 뗀 건이다. 알려 봐야 할 일이 없다
+  // (2026-08-28 대표님 「종결 처리된건은 여기 안올려도됨」).
+  if (purchase.status === 'closed') return [];
   const reqMap = purchase.paymentRequested || {};
   const lines = mapPrintItems(purchase.items || [], itemMaster, suppliers);
   const byVendor = new Map();
