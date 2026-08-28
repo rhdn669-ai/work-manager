@@ -771,9 +771,68 @@ describe('마감 리스트 — 결제 요청이 유일한 문', () => {
     };
     const r = closingRowsOf(prepaid, itemMaster, suppliers, 2026, 8);
     expect(r).toHaveLength(1);
-    expect(r[0].amount).toBe(50000); // 발주 수량 × 단가
+    expect(r[0].amount).toBe(50000); // 실제로 나간 돈이 곧 금액
     expect(r[0].prepaid).toBe(true);
     expect(r[0].closed).toBe(true); // 나간 돈은 대조할 것이 없다
+  });
+
+  // 대표님이 가른 두 종류의 선결제 (2026-08-28)
+  it('발주와 동시에 결제하고 물건은 10월에 받는 건 — 돈 나간 8월 마감', () => {
+    const payFirst = {
+      id: 'p3b',
+      title: 'M 10월납품 1차 발주',
+      siteName: '메티스',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 99, unitPrice: 1000, receivedQty: 0 }],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-20'), amount: 99000 }] },
+      paymentRequested: { 델타전기: { requestedAt: D('2026-08-20'), dueDate: '2026-08-20' } },
+    };
+    expect(closingRowsOf(payFirst, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
+    expect(closingRowsOf(payFirst, itemMaster, suppliers, 2026, 10)).toHaveLength(0);
+  });
+
+  it('입고 직전에 선결제하는 건 — 같은 달이라 결과가 같다', () => {
+    const justBefore = {
+      id: 'p3c',
+      title: '입고 직전 선결제',
+      siteName: '메티스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 10, unitPrice: 5000, receivedQty: 10, receivedAt: D('2026-08-14') },
+      ],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-13'), amount: 50000 }] },
+      paymentRequested: { 델타전기: { requestedAt: D('2026-08-13'), dueDate: '2026-08-13' } },
+    };
+    const r = closingRowsOf(justBefore, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].amount).toBe(50000); // 물건이 들어왔으니 입고분으로 센다
+    expect(r[0].prepaid).toBe(false);
+  });
+
+  // 결제 요청만 눌러 둔 건 — 10월 납품인데 8월 마감에 서던 문제 (2026-08-28 대표님)
+  it('돈도 안 나가고 물건도 안 왔으면 어느 달에도 안 뜬다', () => {
+    const notYet = {
+      id: 'p3d',
+      title: 'M 10월납품 1차 발주',
+      siteName: '메티스',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 99, unitPrice: 1000, receivedQty: 0 }],
+      paymentRequested: { 델타전기: { requestedAt: D('2026-08-20'), dueDate: '2026-10-31' } },
+    };
+    for (const m of [8, 9, 10]) {
+      expect(closingRowsOf(notYet, itemMaster, suppliers, 2026, m)).toHaveLength(0);
+    }
+  });
+
+  it('그 건도 물건이 들어오면 그때 그 달 마감에 오른다', () => {
+    const arrived = {
+      id: 'p3e',
+      title: 'M 10월납품 1차 발주',
+      siteName: '메티스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 99, unitPrice: 1000, receivedQty: 99, receivedAt: D('2026-10-05') },
+      ],
+      paymentRequested: { 델타전기: { requestedAt: D('2026-08-20'), dueDate: '2026-10-31' } },
+    };
+    expect(closingRowsOf(arrived, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
+    expect(closingRowsOf(arrived, itemMaster, suppliers, 2026, 10)).toHaveLength(1);
   });
 
   it('돈이 나갔으면 확정으로 선다 — 결제가 다음 달이어도', () => {
@@ -853,12 +912,12 @@ describe('마감 리스트 — 결제 요청이 유일한 문', () => {
       ],
       paymentRequested: { 델타전기: { requestedAt: D('2026-07-10'), dueDate: '2026-08-31' } },
     };
-    expect(closingMonthOf(legacy, '델타전기')).toBe('2026-07');
+    expect(closingMonthOf(legacy, '델타전기', D('2026-07-09'))).toBe('2026-07');
     expect(closingRowsOf(legacy, itemMaster, suppliers, 2026, 7)).toHaveLength(1);
     expect(closingRowsOf(legacy, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
   });
 
-  it('입고도 없는 옛 기록은 결제일 → 요청일 순으로 되짚는다', () => {
+  it('입고가 없으면 결제일의 달로 되짚는다 — 요청일은 쓰지 않는다', () => {
     const onlyPaid = {
       id: 'p9',
       title: '결제만',
@@ -868,13 +927,14 @@ describe('마감 리스트 — 결제 요청이 유일한 문', () => {
     };
     expect(closingMonthOf(onlyPaid, '델타전기')).toBe('2026-06');
 
+    // 요청일로 되짚으면 10월 납품 건이 8월에 선다 — 그래서 걷었다
     const onlyReq = {
       id: 'p10',
       title: '요청만',
       items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 1000, receivedQty: 0 }],
       paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
     };
-    expect(closingMonthOf(onlyReq, '델타전기')).toBe('2026-07');
+    expect(closingMonthOf(onlyReq, '델타전기')).toBe('');
   });
 });
 

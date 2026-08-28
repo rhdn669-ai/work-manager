@@ -15,6 +15,7 @@
 //     해야 돈이 나간다.
 //     어느 달 마감에 넣을지는 결제 요청 모달에서 함께 정한다(마감 달). 입고는 8월인데
 //     결제는 9월인 일이 흔해, 달을 자동으로 정하면 늘 어긋난다.
+//     다만 요청만 눌러 둔 건은 아직 오르지 않는다 — 돈이 나갔거나 물건이 들어와야 지출이다.
 //  ④ 지출은 업체에 줄 돈만 담는다. 잔업 수당·고정비는 총 마감에서 따로 본다.
 //     ("마감리스트에는 업체에 결제해줘야하는 금액만 지출로")
 import { mapPrintItems } from '../utils/purchaseOrder';
@@ -55,24 +56,31 @@ function pickByKey(map, vkey) {
 
 // 어느 달 마감에 넣을 것인가.
 //
-// 결제 요청 모달에서 대표님/담당자가 정한다. 옛 기록에는 없으니 순서대로 되짚는다 —
-// 그 업체 입고 완료일 → 실제 결제일 → 요청일. 되짚는 값이라도 있어야 지난 달 목록이 비지 않는다.
+// 결제 요청 모달에서 대표님/담당자가 정한다. 옛 기록에는 없으니 되짚는데, 그 순서가
+// 선결제 두 종류를 가른다 (2026-08-28 대표님).
 //
-// 입고일은 「그 업체 것」이어야 한다. 발주서 전체의 최신 입고일을 쓰면, 한 업체만 8월에
-// 들어와도 같은 발주서의 다른 업체까지 8월로 딸려 온다 (2026-08-28).
+//   발주와 동시에 결제하고 물건은 10월에 받는 건 → 돈이 나간 달(8월) 마감
+//   입고 직전에 선결제하는 건                    → 어차피 같은 달이라 결과가 같다
+//   물건 받고 나중에 결제하는 보통의 건          → 물건이 들어온 달 마감
+//
+// 그래서 규칙은 하나로 적힌다 — 돈이 물건보다 먼저 나갔으면 돈 나간 달, 아니면 입고 달.
+//
+// 입고일은 반드시 「그 업체 것」이어야 한다. 발주서 전체의 최신 입고일을 쓰면, 한 업체만
+// 8월에 들어와도 같은 발주서의 다른 업체까지 8월로 딸려 온다.
 export function closingMonthOf(purchase, vkey, vendorReceivedAt = null) {
   const req = pickByKey(purchase.paymentRequested, vkey);
   if (req?.closingMonth) return req.closingMonth;
 
-  let latest = toDate(vendorReceivedAt);
-  if (!latest) {
-    for (const pd of paidList(pickByKey(purchase.supplierPaid, vkey))) {
-      const d = toDate(pd.paidAt);
-      if (d && (!latest || d > latest)) latest = d;
-    }
+  const recv = toDate(vendorReceivedAt);
+  let firstPaid = null; // 첫 결제일 — 선결제인지 가리는 기준
+  for (const pd of paidList(pickByKey(purchase.supplierPaid, vkey))) {
+    const d = toDate(pd.paidAt);
+    if (d && (!firstPaid || d < firstPaid)) firstPaid = d;
   }
-  if (!latest) latest = toDate(req?.requestedAt);
-  return latest ? monthKey(latest.getFullYear(), latest.getMonth() + 1) : '';
+
+  const at = firstPaid && (!recv || firstPaid < recv) ? firstPaid : recv;
+  // 돈도 물건도 없으면 아직 마감이 아니다 — 요청일로 되짚으면 10월 납품 건이 8월에 선다
+  return at ? monthKey(at.getFullYear(), at.getMonth() + 1) : '';
 }
 
 // 그달 마감에 오르는 (발주 × 업체) 건.
@@ -122,16 +130,23 @@ export function closingRowsOf(purchase, itemMaster, suppliers, year, month) {
     if (!req) continue; // 결제 요청된 업체만
     if (closingMonthOf(purchase, vkey, g.latest) !== want) continue;
 
-    // 들어온 만큼 센다. 아직 하나도 안 들어왔으면 발주 수량으로 — 그래야 선결제 건이
-    // 0 원으로 보이지 않는다. 초과 입고는 발주 수량까지만 친다.
     const anyReceived = g.lines.some((l) => Number(l.receivedQty) > 0);
-    const amount = g.lines.reduce((sum, l) => {
+    const info = paidInfoOf(vkey);
+    // 돈도 안 나가고 물건도 안 왔으면 아직 그달 지출이 아니다. 결제 요청만 눌러 둔
+    // 10월 납품 건이 8월 마감에 서던 문제 (2026-08-28 대표님 「마감에서 빼기」).
+    // 입고되거나 돈이 나가면 그때 그 달 마감에 오른다.
+    if (!anyReceived && !info.paid) continue;
+
+    // 들어온 만큼 센다. 초과 입고는 발주 수량까지만 — 잘못 적힌 숫자가 지출을 부풀리지 않게.
+    // 아직 안 들어온 선결제 건은 실제로 나간 돈이 곧 금액이다.
+    const receivedTotal = g.lines.reduce((sum, l) => {
       const qty = Number(l.qty) || 0;
       const got = Math.min(Number(l.receivedQty) || 0, qty);
-      return sum + (anyReceived ? got : qty) * (Number(l.unitPrice) || 0);
+      return sum + got * (Number(l.unitPrice) || 0);
     }, 0);
-
-    const info = paidInfoOf(vkey);
+    const orderedTotal = g.lines.reduce((sum, l) => sum + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
+    // 금액 없는 옛 결제 기록(전액 결제)은 발주 금액으로 본다 — 0 원으로 서면 안 된다
+    const amount = anyReceived ? receivedTotal : info.paidAmount || orderedTotal;
     out.push({
       key: `po:${purchase.id}:${vkey}`,
       purchaseId: purchase.id,
