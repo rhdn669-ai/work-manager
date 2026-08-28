@@ -20570,7 +20570,7 @@ a.lib-row-name:hover {
 .sum-cards {
   display: grid;
   /* 장수가 3~4로 갈린다 — 개수를 박지 않고 폭에 맞춰 접는다 */
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -20583,16 +20583,16 @@ a.lib-row-name:hover {
 }
 
 .sum-card-label {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 800;
-  color: var(--text-light);
-  letter-spacing: 0.03em;
-  margin-bottom: 8px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
 }
 
 .sum-card-note {
-  margin-left: 6px; /* 이름과 설명이 붙어 「지출확정분」처럼 한 낱말로 읽혔다 */
-  font-size: 13px;
+  margin-left: 7px; /* 이름과 설명이 붙어 「지출확정분」처럼 한 낱말로 읽혔다 */
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -20630,27 +20630,22 @@ a.lib-row-name:hover {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
-}
-
-.money-line + .money-line {
-  margin-top: 4px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border);
+  gap: 12px;
+  padding: 4px 2px;
 }
 
 .money-tag {
   flex: 0 0 auto;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-light);
+  letter-spacing: -0.01em;
 }
 
 .money-num {
-  font-size: 23px;
+  font-size: 27px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   line-height: 1.15;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -20659,41 +20654,74 @@ a.lib-row-name:hover {
 
 .money-num em {
   font-style: normal;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   margin-left: 2px;
 }
 
-/* VAT 포함 줄이 그 카드의 주인공 — 색과 굵기를 여기에 몰아 준다 */
-.money-line.is-vat .money-tag {
-  color: var(--text-light);
+/* VAT 포함이 그 카드의 주인공 — 실제로 나갈(들어올) 돈이다.
+   옅은 띠 위에 얹어, 위의 공급가와 한눈에 갈리게 한다
+   (2026-08-28 대표님 「뭐가뭔지 구분 한눈에 들어오게」). */
+.money-line.is-vat {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--primary-softer, #eef2f8);
 }
 
-.money-line.is-vat .money-num {
-  font-size: 27px;
+.money-line.is-vat .money-tag {
   color: var(--primary);
 }
 
+.money-line.is-vat .money-num {
+  font-size: 34px;
+  color: var(--primary);
+}
+
+.money-line.is-vat .money-num em {
+  font-size: 19px;
+}
+
+.money-card.is-good .money-line.is-vat {
+  background: #edf7f1; /* 초록 글자와 4.58:1 — #e7f4ec 은 4.43 으로 모자랐다 */
+}
+
+.money-card.is-good .money-line.is-vat .money-tag,
 .money-card.is-good .money-line.is-vat .money-num {
   color: var(--success);
 }
 
+.money-card.is-wait .money-line.is-vat {
+  background: var(--accent-soft, #fdeee6);
+}
+
+.money-card.is-wait .money-line.is-vat .money-tag,
 .money-card.is-wait .money-line.is-vat .money-num {
   color: var(--accent-press);
 }
 
 /* 마이너스 차액 — 좋을 것이 없다는 뜻이 색으로 보여야 한다 */
-.money-card.is-bad .money-line.is-vat .money-num,
-.money-card.is-bad .money-line .money-num {
+.money-card.is-bad .money-line.is-vat {
+  background: #fdeaea;
+}
+
+.money-card.is-bad .money-num,
+.money-card.is-bad .money-line.is-vat .money-tag {
   color: var(--btn-danger-fg, #c53030);
 }
 
-@media (max-width: 480px) {
+/* 좁은 화면 — 이름표와 숫자를 한 줄에 붙이면 숫자가 잘린다. 위아래로 쌓는다 */
+@media (max-width: 560px) {
+  .money-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
   .money-num {
-    font-size: 20px;
+    font-size: 25px;
   }
   .money-line.is-vat .money-num {
-    font-size: 23px;
+    font-size: 30px;
   }
 }
 
