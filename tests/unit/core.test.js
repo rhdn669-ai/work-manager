@@ -15,7 +15,13 @@ import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
 import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
-import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
+import {
+  calcPaymentDue,
+  paymentTermLabel,
+  PAYMENT_TERM_TYPES,
+  isPrepaidTerm,
+  prepaidBasisOf,
+} from '../../src/utils/paymentTerms';
 import {
   closingRowsOf,
   unrequestedRowsOf,
@@ -935,6 +941,50 @@ describe('마감 리스트 — 결제 요청이 유일한 문', () => {
       paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
     };
     expect(closingMonthOf(onlyReq, '델타전기')).toBe('');
+  });
+});
+
+// ── 구매처 결제 조건 — 선결제 두 종류 (2026-08-28 대표님)
+//
+// 「돈을 먼저 보내야 물건이 오는 곳」과 「물건 오기 직전에 보내는 곳」은 기준일이 다르다.
+// 한 종류로 두면 발주시 선결제 업체의 마감일이 오지도 않은 입고일로 계산된다.
+describe('구매처 결제 조건 — 선결제 두 종류', () => {
+  it('두 종류가 목록에 있고, 옛 값은 빠져 있다', () => {
+    const values = PAYMENT_TERM_TYPES.map((t) => t.value);
+    expect(values).toContain('prepaidOrder');
+    expect(values).toContain('prepaidArrival');
+    // 옛 「선결제」는 고를 수 없다 — 어느 쪽인지 알 수 없어 다시 골라야 한다
+    expect(values).not.toContain('prepaid');
+  });
+
+  it('둘 다 미루지 않는다 — 마감일은 준 기준일 당일', () => {
+    expect(calcPaymentDue({ paymentTermType: 'prepaidOrder' }, new Date('2026-08-20'))).toBe('2026-08-20');
+    expect(calcPaymentDue({ paymentTermType: 'prepaidArrival' }, new Date('2026-10-05'))).toBe('2026-10-05');
+  });
+
+  it('기준일이 갈린다 — 발주시는 발주일, 입고전은 입고일', () => {
+    expect(prepaidBasisOf('prepaidOrder')).toBe('order');
+    expect(prepaidBasisOf('prepaidArrival')).toBe('arrival');
+  });
+
+  it('선결제 여부를 가려낸다', () => {
+    expect(isPrepaidTerm('prepaidOrder')).toBe(true);
+    expect(isPrepaidTerm('prepaidArrival')).toBe(true);
+    expect(isPrepaidTerm('nextMonthEnd')).toBe(false);
+    expect(isPrepaidTerm('')).toBe(false);
+    expect(isPrepaidTerm('prepaid')).toBe(false); // 옛 값은 선결제로 안 친다
+  });
+
+  // 옛 값이 남은 구매처는 계산이 멈추면 안 된다 — 다시 고르기 전까지 하던 대로
+  it('옛 「선결제」도 마감일은 그대로 낸다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'prepaid' }, new Date('2026-08-20'))).toBe('2026-08-20');
+  });
+
+  it('선결제가 아닌 조건은 그대로다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, new Date('2026-08-11'))).toBe('2026-09-30');
+    expect(calcPaymentDue({ paymentTermType: 'afterDays', paymentTermDay: 30 }, new Date('2026-08-01'))).toBe(
+      '2026-08-31',
+    );
   });
 });
 

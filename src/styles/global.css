@@ -20945,3 +20945,31 @@ a.lib-row-name:hover {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* 발주시 선결제인데 아직 결제 요청 전 — 돈을 먼저 보내야 물건이 오는 업체다.
+   보통의 결제 요청 버튼(네이비)과 갈라 보여야 놓치지 않는다 (2026-08-28 대표님). */
+.po-act-warn {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+}
+
+.po-act-warn:hover {
+  background: var(--accent-press);
+  border-color: var(--accent-press);
+}
+
+/* 폼 아래 경고 한 줄 — 그냥 두면 틀린 값이 계속 쓰이는 자리에 쓴다 */
+.field-warn {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 11px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-soft, #feefe7);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--accent-press);
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { calcPaymentDue, paymentTermLabel } from '../../utils/paymentTerms';
+import { calcPaymentDue, paymentTermLabel, isPrepaidTerm, prepaidBasisOf } from '../../utils/paymentTerms';
 import { buildMailHtml, senderLine, cardAttachment, mailSubject as withPrefix } from '../../utils/mailTemplate';
 import {
   DndContext,
@@ -158,6 +158,14 @@ function buildDefaultMailBody(name) {
     '바쁘시겠지만 납기 및 특이사항 확인하신 후 회신 부탁드리겠습니다.',
     '감사합니다.',
   ].join('\n');
+}
+
+// Firestore Timestamp 든 문자열이든 Date 로. 못 읽으면 null —
+// 「기준일이 없다」와 「1970년」은 다른 말이다.
+function toDateOrNull(ts) {
+  if (!ts) return null;
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function fmtDate(ts) {
@@ -1570,6 +1578,13 @@ export default function PurchaseDetailPage() {
     return supplierKey(supplierName, null);
   }
 
+  // 발주시 선결제 업체인데 아직 결제 요청을 안 눌렀는가.
+  // 돈을 먼저 보내야 물건이 오는 곳이라, 놓치면 납기가 통째로 밀린다 (2026-08-28 대표님).
+  function payFirstPending(sup) {
+    const info = suppliers.find((x) => x.name === sup.name);
+    return info?.paymentTermType === 'prepaidOrder';
+  }
+
   // 업체별 결제 요청 → 결제일 입력 모달.
   //
   // 마감 확정은 여기서 하지 않는다. 업체에서 마감내역을 받아 우리 숫자와 대조해야
@@ -1579,9 +1594,17 @@ export default function PurchaseDetailPage() {
     const key = payKey(supplierName);
     const prevDue = purchase.paymentRequested?.[key]?.dueDate || '';
     const sup = suppliers.find((x) => x.name === supplierName);
-    const base = receivedAt || new Date(); // 입고 완료일이 기준, 없으면 오늘
+    // 기준일은 결제 조건이 정한다.
+    //   발주시 선결제  돈을 먼저 보내야 물건이 오므로 발주일이 기준
+    //   그 밖             물건이 들어온 날이 기준 (없으면 오늘)
+    // (2026-08-28 대표님 「구매처에서 선결제 선택지를 나눠야할거같은데 발주시, 입고전 두종류로」)
+    const orderDate = toDateOrNull(purchase.orderedAt || purchase.createdAt);
+    const base =
+      prepaidBasisOf(sup?.paymentTermType) === 'order' && isPrepaidTerm(sup?.paymentTermType)
+        ? orderDate || receivedAt || new Date()
+        : receivedAt || new Date();
     const autoDue = prevDue ? '' : calcPaymentDue(sup, base);
-    // 마감 달은 입고 완료일을 따른다 — 물건이 들어온 달의 지출이라는 뜻이다
+    // 마감 달도 같은 기준일을 따른다 — 발주시 선결제는 발주한 달의 지출이다
     const prev = purchase.paymentRequested?.[key]?.closingMonth || '';
     setPayReqModal({
       supplierName,
@@ -3095,14 +3118,19 @@ export default function PurchaseDetailPage() {
                             ) : (
                               <button
                                 type="button"
-                                className="btn btn-sm btn-primary purchase-sup-toggle"
+                                className={`btn btn-sm purchase-sup-toggle ${
+                                  payFirstPending(sup) ? 'po-act-warn' : 'btn-primary'
+                                }`}
                                 onClick={() => handleRequestPayment(sup.name, recv.latest)}
                                 title={
-                                  paidRows.length > 0
-                                    ? `이미 ${paidRows.length}회 결제했습니다. 새로 들어온 ${unpaidLeft.toLocaleString()}원을 요청합니다`
-                                    : '결제를 요청하면 결제 페이지에 결제 대기로 올라갑니다'
+                                  payFirstPending(sup)
+                                    ? '발주시 선결제 업체입니다 — 돈을 먼저 보내야 물건이 옵니다. 아직 결제 요청 전입니다'
+                                    : paidRows.length > 0
+                                      ? `이미 ${paidRows.length}회 결제했습니다. 새로 들어온 ${unpaidLeft.toLocaleString()}원을 요청합니다`
+                                      : '결제를 요청하면 마감 리스트와 결제 페이지에 함께 올라갑니다'
                                 }
                               >
+                                {payFirstPending(sup) && <Icon name="alert" className="btn-ic" />}
                                 {payButtonLabel(paidRaw)}
                               </button>
                             )}

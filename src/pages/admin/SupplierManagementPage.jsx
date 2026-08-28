@@ -590,11 +590,24 @@ export default function SupplierManagementPage() {
                 </>
               )}
             </div>
-            <small className="text-muted">
-              {paymentTermLabel(form)
-                ? `발주 결제 요청 시 마감일이 「${paymentTermLabel(form)}」로 자동 계산됩니다.`
-                : '지정하면 발주 결제 요청 시 마감일이 자동으로 채워집니다.'}
-            </small>
+            {/* 옛 「선결제」는 발주시·입고전 중 어느 쪽인지 알 수 없다. 그대로 두면 기준일이
+                틀리므로 다시 고르게 한다 (2026-08-28 대표님) */}
+            {form.paymentTermType === 'prepaid' ? (
+              <small className="field-warn">
+                선결제가 <strong>발주시</strong>·<strong>입고전</strong> 두 종류로 나뉘었습니다. 어느 쪽인지 다시 골라
+                주세요 — 기준일이 발주일이냐 입고일이냐가 갈립니다.
+              </small>
+            ) : (
+              <small className="text-muted">
+                {form.paymentTermType === 'prepaidOrder'
+                  ? '돈을 먼저 보내야 물건이 오는 업체입니다. 마감일·마감 달이 발주일 기준으로 채워지고, 결제 요청 전이면 발주서에서 알려 줍니다.'
+                  : form.paymentTermType === 'prepaidArrival'
+                    ? '물건 오기 직전에 보내는 업체입니다. 마감일·마감 달이 입고 완료일 기준으로 채워집니다.'
+                    : paymentTermLabel(form)
+                      ? `발주 결제 요청 시 마감일이 「${paymentTermLabel(form)}」로 자동 계산됩니다.`
+                      : '지정하면 발주 결제 요청 시 마감일이 자동으로 채워집니다.'}
+              </small>
+            )}
           </div>
           <div className="form-group">
             <label>메모</label>

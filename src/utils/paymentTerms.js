@@ -5,7 +5,10 @@
 //   nextMonth  익월 N일
 //   nextMonthEnd  익월 말일
 //   nextMonthAfterClose  당월 말 마감 · 익월 N일 (nextMonth 와 결과는 같고 뜻이 다르다)
-//   prepaid  선결제 — 미루지 않는다. 마감일은 기준일 당일.
+//   prepaidOrder    발주시 선결제 — 돈을 먼저 보내야 물건이 온다. 마감일은 발주일 당일.
+//   prepaidArrival  입고전 선결제 — 물건 오기 직전에 보낸다. 마감일은 입고일 당일.
+//   prepaid         (옛 값) 둘 중 어느 쪽인지 알 수 없어 「지정 안 함」처럼 다룬다.
+//                   대표님이 구매처마다 다시 골라 주셔야 한다 (2026-08-28).
 //
 // 날짜는 전부 'YYYY-MM-DD' 문자열로 주고받는다. 앱의 date 입력이 그 형식이다.
 
@@ -15,8 +18,24 @@ export const PAYMENT_TERM_TYPES = [
   { value: 'nextMonth', label: '익월 N일', needsDay: true, unit: '일' },
   { value: 'nextMonthEnd', label: '익월 말일', needsDay: false },
   { value: 'nextMonthAfterClose', label: '당월 말 마감 · 익월 N일', needsDay: true, unit: '일' },
-  { value: 'prepaid', label: '선결제', needsDay: false },
+  { value: 'prepaidOrder', label: '선결제 — 발주시', needsDay: false },
+  { value: 'prepaidArrival', label: '선결제 — 입고전', needsDay: false },
 ];
+
+// 선결제 두 종류. 어느 쪽인지에 따라 기준일이 갈린다 — 발주시는 발주일, 입고전은 입고일.
+export const PREPAID_TYPES = ['prepaidOrder', 'prepaidArrival'];
+
+export function isPrepaidTerm(type) {
+  return PREPAID_TYPES.includes(type);
+}
+
+/**
+ * 그 조건이 무엇을 기준일로 삼는가.
+ * @returns {'order'|'arrival'} 발주일 | 입고일
+ */
+export function prepaidBasisOf(type) {
+  return type === 'prepaidOrder' ? 'order' : 'arrival';
+}
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -50,7 +69,10 @@ export function calcPaymentDue(supplier, baseDate) {
   if (!base) return '';
   const day = Number(supplier?.paymentTermDay) || 0;
 
-  if (type === 'prepaid') return ymd(base); // 미루지 않는다
+  // 선결제는 미루지 않는다. 기준일을 무엇으로 줄지는 부르는 쪽이 정한다 —
+  // 발주시 선결제면 발주일, 입고전 선결제면 입고 완료일.
+  if (isPrepaidTerm(type)) return ymd(base);
+  if (type === 'prepaid') return ymd(base); // 옛 값 — 둘 중 어느 쪽인지 모르니 그대로 둔다
 
   if (type === 'afterDays') {
     if (day <= 0) return '';
