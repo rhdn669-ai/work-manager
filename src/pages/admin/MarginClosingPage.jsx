@@ -26,7 +26,8 @@ import {
   unlockMonth,
 } from '../../services/marginClosingService';
 import {
-  receivedRowsOf,
+  closingRowsOf,
+  unrequestedRowsOf,
   groupByVendor,
   payMonthLabel,
   revenueRows,
@@ -142,10 +143,10 @@ export default function MarginClosingPage() {
   }, [sites, financesBySite, manual, confirms]);
 
   const expense = useMemo(() => {
-    // 그달 입고 확정된 건은 전부 올라온다 — 마감 버튼을 눌렀든 안 눌렀든.
-    // 누르는 걸 잊어 통째로 빠지는 일이 없어야 한다 (2026-08-26 대표님).
+    // 발주서에서 「결제 요청」을 누른 건이 올라온다. 결제 리스트와 같은 문이라
+    // 두 목록이 항상 짝이 맞는다 (2026-08-28 대표님).
     const rows = purchases
-      .flatMap((p) => receivedRowsOf(p, itemMaster, suppliers, year, month))
+      .flatMap((p) => closingRowsOf(p, itemMaster, suppliers, year, month))
       .map((r) => ({ ...r, payMonth: payMonthLabel(r.payDue) }));
     const hand = manual
       .filter((m) => m.kind !== 'revenue')
@@ -168,6 +169,13 @@ export default function MarginClosingPage() {
     ];
     return groupByVendor(all);
   }, [purchases, itemMaster, suppliers, year, month, manual, confirms]);
+
+  // 입고는 됐는데 결제 요청은 안 된 건 — 문을 하나로 합치며 생긴 사각지대.
+  // 아무도 버튼을 안 누르면 그 돈이 통째로 잊힌다. 맨 위에서 세어 알린다 (2026-08-28 대표님).
+  const unrequested = useMemo(
+    () => purchases.flatMap((p) => unrequestedRowsOf(p, itemMaster, suppliers)),
+    [purchases, itemMaster, suppliers],
+  );
 
   const expenseRows = useMemo(() => expense.flatMap((g) => g.lines), [expense]);
   const revSum = useMemo(() => sumRows(revenue), [revenue]);
@@ -503,6 +511,32 @@ export default function MarginClosingPage() {
               sub={leftCount > 0 ? `미확정 ${leftCount}건이 빠진 금액입니다` : '모두 확정되었습니다'}
             />
           </div>
+
+          {/* 그물 — 입고는 됐는데 아무도 결제 요청을 안 누른 건. 여기 안 뜨면 영영 잊힌다 */}
+          {tab !== 'revenue' && unrequested.length > 0 && (
+            <div className="mc-alert">
+              <Icon name="alert" className="mc-alert-ic" />
+              <div className="mc-alert-body">
+                <strong>결제 요청이 안 된 입고분 {unrequested.length}건</strong>
+                <span className="mc-alert-sum">{won(unrequested.reduce((a, r) => a + r.amount, 0))}원</span>
+                <p>발주서에서 「결제 요청」을 눌러야 마감·결제 목록에 올라갑니다.</p>
+              </div>
+              <div className="mc-alert-list">
+                {unrequested.slice(0, 6).map((r) => (
+                  <button
+                    key={`${r.purchaseId}:${r.vendor}`}
+                    type="button"
+                    className="mc-alert-chip"
+                    onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}
+                    title={`${r.title} — 눌러서 발주서로 이동`}
+                  >
+                    {r.vendor} <b>{won(r.amount)}</b>
+                  </button>
+                ))}
+                {unrequested.length > 6 && <span className="mc-alert-more">외 {unrequested.length - 6}건</span>}
+              </div>
+            </div>
+          )}
 
           <div className="sum-prog">
             <div className="sum-prog-text">

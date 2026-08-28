@@ -665,14 +665,20 @@ export async function unmarkSupplierPaid(purchaseId, key) {
   });
 }
 
-// 업체별 결제 요청 — 발주 상세에서 '결제 요청'을 누르면 결제 페이지에 결제 대기로 올라온다.
-// dueDate: 결제 마감일(YYYY-MM-DD) — 결제 페이지에 함께 전달.
-export async function markPaymentRequested(purchaseId, key, by = '', dueDate = '') {
+// 업체별 결제 요청 — 이 버튼 하나로 마감 리스트와 결제 리스트에 동시에 올라간다.
+//
+//   dueDate       결제 마감일(YYYY-MM-DD) — 실제로 돈이 나갈 날. 결제 리스트가 이 날짜로 본다.
+//   closingMonth  마감 달(YYYY-MM) — 어느 달 지출로 잡을지. 마감 리스트가 이 달로 본다.
+//
+// 두 날짜가 따로 있는 이유: 8월에 들어온 물건을 9/30에 결제하는 일이 흔하다.
+// 하나로 묶으면 마감이 늘 한 달씩 밀린다 (2026-08-28 대표님).
+export async function markPaymentRequested(purchaseId, key, by = '', dueDate = '', closingMonth = '') {
   key = String(key ?? '').replace(/\./g, '_'); // 업체명을 그대로 넘겨도 안전하게
   await updateDoc(doc(db, 'purchases', purchaseId), {
     [`paymentRequested.${key}.requestedAt`]: new Date(),
     [`paymentRequested.${key}.requestedBy`]: by,
     [`paymentRequested.${key}.dueDate`]: dueDate || '',
+    [`paymentRequested.${key}.closingMonth`]: closingMonth || '',
     updatedAt: new Date(),
   });
 }

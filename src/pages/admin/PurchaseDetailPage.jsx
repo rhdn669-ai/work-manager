@@ -1581,9 +1581,12 @@ export default function PurchaseDetailPage() {
     const sup = suppliers.find((x) => x.name === supplierName);
     const base = receivedAt || new Date(); // 입고 완료일이 기준, 없으면 오늘
     const autoDue = prevDue ? '' : calcPaymentDue(sup, base);
+    // 마감 달은 입고 완료일을 따른다 — 물건이 들어온 달의 지출이라는 뜻이다
+    const prev = purchase.paymentRequested?.[key]?.closingMonth || '';
     setPayReqModal({
       supplierName,
       due: prevDue || autoDue,
+      closingMonth: prev || `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}`,
       termLabel: paymentTermLabel(sup),
       autoFilled: !!autoDue,
       baseDate: base,
@@ -1593,19 +1596,19 @@ export default function PurchaseDetailPage() {
   // 결제일 입력 후 결제 요청 확정 → 결제 페이지에 결제 대기로 노출
   async function confirmPaymentRequest() {
     if (!payReqModal) return;
-    const { supplierName, due } = payReqModal;
+    const { supplierName, due, closingMonth } = payReqModal;
     setPayReqModal(null);
     try {
       const key = payKey(supplierName);
       const by = userProfile?.name || '';
-      await markPaymentRequested(id, key, by, due || '');
+      await markPaymentRequested(id, key, by, due || '', closingMonth || '');
       const nextReq = {
         ...(purchaseRef.current?.paymentRequested || {}),
-        [key]: { requestedAt: new Date(), requestedBy: by, dueDate: due || '' },
+        [key]: { requestedAt: new Date(), requestedBy: by, dueDate: due || '', closingMonth: closingMonth || '' },
       };
       purchaseRef.current = { ...(purchaseRef.current || {}), paymentRequested: nextReq };
       setPurchase((prev) => ({ ...prev, paymentRequested: nextReq }));
-      toast('결제 요청했습니다. 결제 페이지에서 확인하세요.');
+      toast('결제 요청했습니다. 마감 리스트와 결제 페이지에서 확인하세요.');
     } catch {
       toast('처리 중 오류가 발생했습니다', 'error');
     }
@@ -3993,13 +3996,14 @@ export default function PurchaseDetailPage() {
         )}
       </Modal>
 
-      {/* 결제 요청 — 결제일 입력 */}
-      <Modal isOpen={!!payReqModal} onClose={() => setPayReqModal(null)} title="결제 요청 — 결제일 입력">
+      {/* 결제 요청 — 두 날짜를 함께 정한다. 이 버튼 하나로 마감 리스트와 결제 리스트에
+          동시에 오른다 (2026-08-28 대표님). */}
+      <Modal isOpen={!!payReqModal} onClose={() => setPayReqModal(null)} title="결제 요청">
         {payReqModal && (
           <>
             <p className="field-hint">
-              <strong>{payReqModal.supplierName}</strong> 업체 건의 결제를 요청합니다. 결제일을 입력하면 결제 페이지에
-              함께 전달됩니다.
+              <strong>{payReqModal.supplierName}</strong> 업체 건의 결제를 요청합니다. 누르면{' '}
+              <strong>마감 리스트와 결제 리스트에 함께</strong> 올라갑니다.
             </p>
             {payReqModal.termLabel && (
               <p className="field-hint">
@@ -4010,14 +4014,26 @@ export default function PurchaseDetailPage() {
               </p>
             )}
             <div className="form-group">
+              <label>마감 달</label>
+              <input
+                aria-label="마감 달"
+                type="month"
+                value={payReqModal.closingMonth || ''}
+                onChange={(e) => setPayReqModal((p) => ({ ...p, closingMonth: e.target.value }))}
+                autoFocus
+              />
+              {/* 입고는 8월인데 결제는 9월인 일이 흔하다. 달을 자동으로 정하면 늘 어긋난다 */}
+              <p className="field-hint">이 건이 어느 달 마감에 잡힐지 정합니다. 입고 완료일로 미리 채웠습니다.</p>
+            </div>
+            <div className="form-group">
               <label>결제 마감일</label>
               <input
                 aria-label="결제 마감일"
                 type="date"
                 value={payReqModal.due || ''}
                 onChange={(e) => setPayReqModal((p) => ({ ...p, due: e.target.value }))}
-                autoFocus
               />
+              <p className="field-hint">실제로 돈이 나갈 날입니다. 결제 리스트가 이 날짜로 봅니다.</p>
             </div>
             <div className="modal-actions">
               <button type="button" className="btn btn-outline" onClick={() => setPayReqModal(null)}>

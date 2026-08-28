@@ -16,7 +16,15 @@ import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
 import { splitNeed, allocateReceived, panelReceiveStatus } from '../../src/utils/panelAllocation';
 import { calcPaymentDue, paymentTermLabel } from '../../src/utils/paymentTerms';
-import { receivedRowsOf, payMonthLabel, vatOf, withVat, applyConfirm } from '../../src/domain/marginClosing';
+import {
+  closingRowsOf,
+  unrequestedRowsOf,
+  closingMonthOf,
+  payMonthLabel,
+  vatOf,
+  withVat,
+  applyConfirm,
+} from '../../src/domain/marginClosing';
 import { buildMailHtml, mailSubject, senderLine, setLibraryCards, cardNames, cardFileFor } from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
@@ -711,147 +719,98 @@ describe('품질 — 불량률 기준', () => {
   });
 });
 
-// ── 마감 리스트 — 선결제가 빠지지 않는지 (2026-08-27 대표님 「선결제 된거 마감리스트에 표시가 안되는디」)
+// ── 마감 리스트 — 문은 「결제 요청」 하나 (2026-08-28 대표님)
 //
-// 목록에 오르는 문은 둘이다: 그달 「입고 확정」 또는 그달 「결제 완료」.
-// 선결제는 돈이 먼저 나가고 물건이 나중에 오므로, 입고만 보면 그달에서 통째로 빠진다.
-describe('마감 리스트 — 입고와 결제, 두 문', () => {
+// 한때는 문이 둘이었다(그달 입고 확정 · 그달 결제 완료). 그래서 마감엔 있는데 결제엔
+// 없는 건이 생겼다. 문을 하나로 합쳐 두 목록이 항상 짝이 맞게 했다.
+// 어느 달에 넣을지는 결제 요청 때 정한 「마감 달」이 정한다.
+describe('마감 리스트 — 결제 요청이 유일한 문', () => {
   const suppliers = [{ id: 's1', name: '델타전기' }];
   const itemMaster = [{ id: 'i1', name: 'STEP DRIVER', defaultSupplierId: 's1' }];
-  const D = (s) => new Date(s);
+  const D = (x) => new Date(x);
+  const REQ = (month, due) => ({ 델타전기: { requestedAt: D('2026-08-01'), dueDate: due, closingMonth: month } });
 
-  const prepaidOnly = {
-    id: 'p1',
-    title: '커넥터 선발주',
-    siteName: '메티스',
-    items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 10, unitPrice: 5000, receivedQty: 0 }],
-    supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-14'), amount: 50000 }] },
-  };
-
-  it('8월에 돈만 나간 선결제는 8월에 뜬다', () => {
-    const r = receivedRowsOf(prepaidOnly, itemMaster, suppliers, 2026, 8);
-    expect(r).toHaveLength(1);
-    expect(r[0].amount).toBe(50000); // 나간 돈이 곧 금액
-    expect(r[0].closed).toBe(true); // 돈이 나갔으면 확정
-    expect(r[0].prepaid).toBe(true);
+  it('결제 요청이 없으면 어느 달에도 안 뜬다', () => {
+    const noReq = {
+      id: 'p1',
+      title: '요청 전',
+      siteName: '메티스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
+      ],
+    };
+    expect(closingRowsOf(noReq, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
+    expect(closingRowsOf(noReq, itemMaster, suppliers, 2026, 9)).toHaveLength(0);
   });
 
-  it('같은 달에 입고와 결제가 다 있어도 한 줄만 선다', () => {
-    const both = {
+  it('요청하면 정한 마감 달에 뜬다 — 입고 달이 아니라', () => {
+    const p = {
       id: 'p2',
-      title: '동월 입고·결제',
-      siteName: '한화',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 4, unitPrice: 10000, receivedQty: 4, receivedAt: D('2026-08-05') },
-      ],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-20'), amount: 40000 }] },
-    };
-    expect(receivedRowsOf(both, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
-  });
-
-  it('입고도 결제도 없는 달은 뜨지 않는다', () => {
-    expect(receivedRowsOf(prepaidOnly, itemMaster, suppliers, 2026, 7)).toHaveLength(0);
-  });
-
-  it('금액이 안 적힌 옛 결제 기록도 줄은 세운다', () => {
-    const legacy = {
-      id: 'p3',
-      title: '옛 기록',
-      siteName: '양산',
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 3000, receivedQty: 0 }],
-      supplierPaid: { 델타전기: { paidAt: D('2026-08-09') } },
-    };
-    expect(receivedRowsOf(legacy, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
-  });
-
-  // 「9월」로는 그달 언제 나가는지 모른다. 업체마다 결제일이 정해져 있으니 날짜까지 적는다
-  it('결제일은 「9.10」처럼 날짜까지 적는다', () => {
-    expect(payMonthLabel('2026-09-10')).toBe('9.10');
-    expect(payMonthLabel('2026-08-05')).toBe('8.05'); // 한 자리 날짜도 두 자리로
-    expect(payMonthLabel('')).toBe('');
-  });
-
-  // 돈이 나갔으면 확정이다 — 어느 문으로 들어왔든, 결제가 어느 달이었든
-  it('입고로 들어왔어도 결제가 끝났으면 확정으로 선다', () => {
-    const paidAfterRecv = {
-      id: 'p5',
-      title: '입고 후 결제',
+      title: '8월 입고 · 9월 마감',
       siteName: '메티스',
       items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 9000, receivedQty: 2, receivedAt: D('2026-08-03') },
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
       ],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-25'), amount: 18000 }] },
+      paymentRequested: REQ('2026-09', '2026-09-30'),
     };
-    const r = receivedRowsOf(paidAfterRecv, itemMaster, suppliers, 2026, 8);
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 9);
     expect(r).toHaveLength(1);
-    expect(r[0].closed).toBe(true);
+    expect(r[0].amount).toBe(21000);
+    expect(r[0].payDue).toBe('2026-09-30');
   });
 
-  it('결제가 다음 달이어도 확정으로 선다 — 나갔다는 사실이 근거', () => {
-    const paidNextMonth = {
-      id: 'p6',
-      title: '익월 결제',
-      siteName: '한화',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 5000, receivedQty: 1, receivedAt: D('2026-08-20') },
-      ],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-09-10'), amount: 5000 }] },
-    };
-    expect(receivedRowsOf(paidNextMonth, itemMaster, suppliers, 2026, 8)[0].closed).toBe(true);
-  });
-
-  // 「결제 예정」과 「결제 완료」는 다른 사실이다 — 예정일만 보면 나간 돈인지 알 수 없다
-  it('결제가 끝난 건은 실제 결제일을 들고 온다', () => {
-    const paid = {
-      id: 'p7',
-      title: '결제 완료',
+  it('선결제도 같은 문을 쓴다 — 입고 전이면 발주 수량으로 잡는다', () => {
+    const prepaid = {
+      id: 'p3',
+      title: '커넥터 선발주',
       siteName: '메티스',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 10, unitPrice: 5000, receivedQty: 0 }],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-14'), amount: 50000 }] },
+      paymentRequested: REQ('2026-08', '2026-08-14'),
+    };
+    const r = closingRowsOf(prepaid, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].amount).toBe(50000); // 발주 수량 × 단가
+    expect(r[0].prepaid).toBe(true);
+    expect(r[0].closed).toBe(true); // 나간 돈은 대조할 것이 없다
+  });
+
+  it('돈이 나갔으면 확정으로 선다 — 결제가 다음 달이어도', () => {
+    const paidNextMonth = {
+      id: 'p4',
+      title: '8월 입고 · 9월 결제',
+      siteName: '한화',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 9000, receivedQty: 2, receivedAt: D('2026-08-03') },
       ],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-25'), amount: 18000 }] },
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-09-25'), amount: 18000 }] },
+      paymentRequested: REQ('2026-08', '2026-09-25'),
     };
-    const r = receivedRowsOf(paid, itemMaster, suppliers, 2026, 8)[0];
-    expect(r.paid).toBe(true);
-    expect(payMonthLabel(r.paidAt)).toBe('8.25');
-    expect(r.paidAmount).toBe(18000);
+    const r = closingRowsOf(paidNextMonth, itemMaster, suppliers, 2026, 8)[0];
+    expect(r.closed).toBe(true);
+    expect(payMonthLabel(r.paidAt)).toBe('9.25');
   });
 
   it('결제 전이면 결제일이 없다 — 예정일과 섞이지 않게', () => {
     const unpaid = {
-      id: 'p8',
+      id: 'p5',
       title: '결제 전',
       siteName: '한화',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 4000, receivedQty: 1, receivedAt: D('2026-08-07') },
       ],
+      paymentRequested: REQ('2026-08', '2026-09-30'),
     };
-    const r = receivedRowsOf(unpaid, itemMaster, suppliers, 2026, 8)[0];
+    const r = closingRowsOf(unpaid, itemMaster, suppliers, 2026, 8)[0];
     expect(r.paid).toBe(false);
     expect(r.paidAt).toBe(null);
-  });
-
-  // 금액을 고치면 이유가 따라다녀야 한다 — 몇 달 뒤에 「이 숫자 왜 이렇지」 할 때 답이 된다
-  it('고친 금액과 이유가 줄에 실린다', () => {
-    const rows = [{ key: 'po:p1:델타전기', amount: 100000 }];
-    const [r] = applyConfirm(rows, {
-      'po:p1:델타전기': { confirmed: true, amount: 92000, reason: '반품 2개 차감' },
-    });
-    expect(r.amount).toBe(92000);
-    expect(r.autoAmount).toBe(100000);
-    expect(r.edited).toBe(true);
-    expect(r.reason).toBe('반품 2개 차감');
-  });
-
-  it('안 고친 줄은 이유가 빈 문자열 — undefined 가 화면에 새지 않게', () => {
-    const [r] = applyConfirm([{ key: 'k', amount: 5000 }], { k: { confirmed: true } });
-    expect(r.edited).toBe(false);
-    expect(r.reason).toBe('');
+    expect(r.closed).toBe(false);
   });
 
   it('회차 결제는 마지막 결제일을 쓴다', () => {
     const twice = {
-      id: 'p9',
+      id: 'p6',
       title: '회차 결제',
       siteName: '양산',
       items: [
@@ -863,25 +822,105 @@ describe('마감 리스트 — 입고와 결제, 두 문', () => {
           { seq: 2, paidAt: D('2026-08-28'), amount: 10000 },
         ],
       },
+      paymentRequested: REQ('2026-08', '2026-08-28'),
     };
-    const r = receivedRowsOf(twice, itemMaster, suppliers, 2026, 8)[0];
-    expect(payMonthLabel(r.paidAt)).toBe('8.28'); // 마지막
-    expect(r.paidAmount).toBe(20000); // 합계
+    const r = closingRowsOf(twice, itemMaster, suppliers, 2026, 8)[0];
+    expect(payMonthLabel(r.paidAt)).toBe('8.28');
+    expect(r.paidAmount).toBe(20000);
   });
 
-  it('입고만 있고 결제 전이면 미확정 — 업체 내역과 대조해야 한다', () => {
-    const recvOnly = {
-      id: 'p4',
-      title: '입고만',
-      siteName: '세메스',
+  it('초과 입고는 발주 수량까지만 — 잘못 적힌 숫자가 지출을 부풀리지 않게', () => {
+    const over = {
+      id: 'p7',
+      title: '초과 입고',
+      siteName: '양산',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 5000, receivedQty: 9, receivedAt: D('2026-08-02') },
+      ],
+      paymentRequested: REQ('2026-08', ''),
+    };
+    expect(closingRowsOf(over, itemMaster, suppliers, 2026, 8)[0].amount).toBe(10000);
+  });
+
+  // 마감 달이 없는 옛 기록 — 목록이 통째로 비면 지난 달을 못 본다
+  it('옛 기록은 입고 완료일의 달로 되짚는다', () => {
+    const legacy = {
+      id: 'p8',
+      title: '옛 요청',
+      siteName: '메티스',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 3000, receivedQty: 2, receivedAt: D('2026-07-09') },
+      ],
+      paymentRequested: { 델타전기: { requestedAt: D('2026-07-10'), dueDate: '2026-08-31' } },
+    };
+    expect(closingMonthOf(legacy, '델타전기')).toBe('2026-07');
+    expect(closingRowsOf(legacy, itemMaster, suppliers, 2026, 7)).toHaveLength(1);
+    expect(closingRowsOf(legacy, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
+  });
+
+  it('입고도 없는 옛 기록은 결제일 → 요청일 순으로 되짚는다', () => {
+    const onlyPaid = {
+      id: 'p9',
+      title: '결제만',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 1000, receivedQty: 0 }],
+      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-06-20'), amount: 1000 }] },
+      paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
+    };
+    expect(closingMonthOf(onlyPaid, '델타전기')).toBe('2026-06');
+
+    const onlyReq = {
+      id: 'p10',
+      title: '요청만',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 1000, receivedQty: 0 }],
+      paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
+    };
+    expect(closingMonthOf(onlyReq, '델타전기')).toBe('2026-07');
+  });
+});
+
+// ── 그물 — 입고는 됐는데 결제 요청은 안 된 건
+//
+// 문을 하나로 합치면서 생긴 사각지대다. 담당자가 버튼을 안 누르면 마감에도 결제에도
+// 안 떠서 그 돈이 통째로 잊힌다. 마감 리스트 맨 위에서 세어 알린다.
+describe('마감 리스트 — 요청 안 된 입고분 그물', () => {
+  const suppliers = [{ id: 's1', name: '델타전기' }];
+  const itemMaster = [{ id: 'i1', name: 'STEP DRIVER', defaultSupplierId: 's1' }];
+  const D = (x) => new Date(x);
+
+  it('입고됐는데 요청 안 된 건을 잡아낸다', () => {
+    const p = {
+      id: 'p1',
+      title: '잊힐 뻔한 건',
+      siteName: '메티스',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
       ],
     };
-    const r = receivedRowsOf(recvOnly, itemMaster, suppliers, 2026, 8);
+    const r = unrequestedRowsOf(p, itemMaster, suppliers);
     expect(r).toHaveLength(1);
-    expect(r[0].closed).toBe(false);
     expect(r[0].amount).toBe(21000);
+    expect(r[0].purchaseId).toBe('p1');
+  });
+
+  it('요청된 건은 안 잡는다 — 이미 목록에 있다', () => {
+    const p = {
+      id: 'p2',
+      title: '요청됨',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
+      ],
+      paymentRequested: { 델타전기: { requestedAt: D('2026-08-12'), dueDate: '', closingMonth: '2026-08' } },
+    };
+    expect(unrequestedRowsOf(p, itemMaster, suppliers)).toHaveLength(0);
+  });
+
+  it('입고 전이면 안 잡는다 — 아직 줄 돈이 아니다', () => {
+    const p = {
+      id: 'p3',
+      title: '발주만',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 0 }],
+    };
+    expect(unrequestedRowsOf(p, itemMaster, suppliers)).toHaveLength(0);
   });
 });
 
