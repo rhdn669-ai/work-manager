@@ -1449,19 +1449,37 @@ export default function SiteClosingPage() {
 
   function flushFinance(id) {
     const key = 'fin_' + id;
-    if (!timersRef.current[key]) return;
-    clearTimeout(timersRef.current[key]);
-    delete timersRef.current[key];
     const cur = financeBuf[id];
-    if (cur) {
-      setSavingCount((c) => c + 1);
-      updateFinanceItem(id, { description: cur.description, amount: cur.amount, note: cur.note, date: cur.date || '' })
-        .then(() => {
-          setLastSavedAt(new Date());
-          setSaveError(null);
+
+    // 아직 안 나간 자동 저장이 있으면 앞당겨 보낸다
+    if (timersRef.current[key]) {
+      clearTimeout(timersRef.current[key]);
+      delete timersRef.current[key];
+      if (cur) {
+        setSavingCount((c) => c + 1);
+        updateFinanceItem(id, {
+          description: cur.description,
+          amount: cur.amount,
+          note: cur.note,
+          date: cur.date || '',
         })
-        .catch((err) => setSaveError(err.message))
-        .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
+          .then(() => {
+            setLastSavedAt(new Date());
+            setSaveError(null);
+          })
+          .catch((err) => setSaveError(err.message))
+          .finally(() => setSavingCount((c) => Math.max(0, c - 1)));
+      }
+    }
+
+    // 묶음 다시 가르기 — 칸에서 손을 뗀 지금이 유일하게 안전한 때다.
+    // 자동 저장은 타이핑 도중에도 일어나므로 그때 재배치하면 입력칸이 또 사라진다.
+    // 저장이 이미 끝난 줄도 여기서 제자리를 찾아가야 하므로 타이머 유무와 무관하게 한다.
+    if (cur) {
+      setFinances((prev) => prev.map((f) => (f.id === id ? { ...f, ...cur } : f)));
+      // 옮겨 간 묶음이 접혀 있으면 방금 적은 줄이 사라져 보인다 — 함께 펼쳐 준다
+      const desc = (cur.description || '').trim() || '지출';
+      setOpenExpenseGroups((prev) => new Set([...prev, desc]));
     }
   }
 
@@ -1516,7 +1534,9 @@ export default function SiteClosingPage() {
     const d = (desc || '').trim();
     return d === '잔업' || d.startsWith('잔업 -') || d.startsWith('잔업-');
   };
-  const isOvertimeFinance = (f) => isOvertimeDesc(financeBuf[f.id]?.description ?? f.description);
+  // 잔업 여부도 「저장된 값」으로 가른다. 편집 버퍼로 가르면 항목명에 「잔업」을 치는 순간
+  // 그 줄이 지출 목록에서 잔업 칸으로 옮겨 가 입력칸이 사라진다 — 묶음과 같은 함정이다.
+  const isOvertimeFinance = (f) => isOvertimeDesc(f.description);
   const totalRevenue = revenueItems.reduce((s, f) => s + (Number(financeBuf[f.id]?.amount) || 0), 0);
   const ownExpense = expenseItems
     .filter((f) => canViewSalary || !isOvertimeFinance(f))
@@ -1902,10 +1922,12 @@ export default function SiteClosingPage() {
             {(() => {
               const rows = expenseItems.filter((f) => !isOvertimeFinance(f));
               const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
+              // 묶음은 「저장된 값」으로 가른다. 편집 중인 버퍼로 가르면 한 글자 칠 때마다
+              // 그 줄이 다른 묶음으로 튀어 나가고, 새 묶음은 접힌 채라 입력칸이 사라진다 —
+              // 포커스가 끊겨 두 글자째부터 안 들어갔다 (2026-08-28 대표님 「1 텍스밖에 입력이 안됨」).
               const byDesc = new Map();
               for (const f of rows) {
-                const b = financeBuf[f.id] || f;
-                const desc = (b.description || '').trim() || '지출';
+                const desc = (f.description || '').trim() || '지출';
                 if (!byDesc.has(desc)) byDesc.set(desc, []);
                 byDesc.get(desc).push(f);
               }
@@ -1919,7 +1941,7 @@ export default function SiteClosingPage() {
                 // 안쪽 — 비고가 같은 것끼리 묶고, 한 건뿐이면 낱개로 둔다
                 const byNote = new Map();
                 for (const f of list) {
-                  const note = ((financeBuf[f.id] || f).note || '').trim();
+                  const note = (f.note || '').trim(); // 바깥과 같은 이유로 저장된 값
                   const k = note || `__single__${f.id}`;
                   if (!byNote.has(k)) byNote.set(k, []);
                   byNote.get(k).push(f);
