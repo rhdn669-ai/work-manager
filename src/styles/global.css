@@ -4941,6 +4941,28 @@ table.cards-sm td {
   cursor: pointer;
   text-align: left;
 }
+
+/* 좁아지면 「누구 / 상태 · 얼마」 두 줄로 접는다.
+   한 줄을 고집하면 업체명이 0 까지 눌려 사라지고, 넘친 금액은 카드 밖으로 잘린다
+   (2026-08-28 태블릿 도입 점검). */
+@media (max-width: 820px) {
+  .payment-folder-head {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .fold-id {
+    flex: 1 1 100%;
+    order: 1;
+  }
+  .fold-state {
+    order: 2;
+    flex-wrap: wrap;
+  }
+  .fold-money {
+    order: 3;
+    margin-left: auto; /* 금액은 어느 폭에서도 오른쪽 끝 */
+  }
+}
 .payment-folder-head:hover {
   background: #fafbfc;
 }
@@ -5024,10 +5046,11 @@ table.cards-sm td {
   font-weight: 700;
 }
 .fold-state {
-  flex: 0 0 auto;
+  flex: 0 1 auto; /* 배지가 셋이면 줄바꿈해서라도 자리를 내준다 */
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 .fold-money {
   flex: 0 0 auto;
@@ -5049,9 +5072,25 @@ table.cards-sm td {
   white-space: nowrap;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 520px) {
+  /* 부제를 숨기지 않고 줄인다 — 공급가는 마감 리스트와 대조하는 값이라 필요하다 */
   .fold-money-sub {
-    display: none; /* 좁은 화면에선 큰 금액 하나만 — 펼치면 줄마다 다 보인다 */
+    gap: 8px;
+    font-size: 12px;
+  }
+  .fold-name {
+    font-size: 15px;
+  }
+  .payment-folder-amount {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 380px) {
+  .fold-money-sub {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
   }
 }
 
@@ -20711,6 +20750,14 @@ a.lib-row-name:hover {
 }
 
 /* 좁은 화면 — 이름표와 숫자를 한 줄에 붙이면 숫자가 잘린다. 위아래로 쌓는다 */
+/* 카드가 좁아지면 숫자부터 줄인다. 이름표와 숫자 둘 다 안 줄어드는 탓에
+   10 자리 금액이 카드 밖으로 삐져나왔다 (2026-08-28). */
+@media (max-width: 1200px) {
+  .money-line.is-vat .money-num {
+    font-size: 30px;
+  }
+}
+
 @media (max-width: 560px) {
   .money-line {
     flex-direction: column;
@@ -20721,7 +20768,25 @@ a.lib-row-name:hover {
     font-size: 25px;
   }
   .money-line.is-vat .money-num {
-    font-size: 30px;
+    font-size: 28px;
+  }
+  .sum-card {
+    padding: 15px 16px;
+  }
+  .money-line.is-vat {
+    padding: 7px 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .money-num {
+    font-size: 21px;
+  }
+  .money-line.is-vat .money-num {
+    font-size: 24px;
+  }
+  .sum-card {
+    padding: 13px 13px;
   }
 }
 
@@ -20934,8 +20999,12 @@ a.lib-row-name:hover {
 }
 
 /* 마감 조정 — 대표님이 업체 내역과 대조하며 고친 금액. 발주 계산값과 다르다는 사실이 보여야 한다. */
+/* 「고친 이유」는 대표님이 직접 적는 자유 문장이라 길이를 못 정한다.
+   nowrap 이면 그 길이만큼 공급가 컬럼이 벌어져 표 전체가 옆으로 밀렸다.
+   마감 리스트가 이미 줄바꿈으로 다루고 있어 여기도 맞춘다 (2026-08-28). */
 .pay-adjusted {
   display: inline-block;
+  max-width: 15em;
   margin-left: 6px;
   padding: 2px 8px;
   border-radius: 999px;
@@ -20943,21 +21012,26 @@ a.lib-row-name:hover {
   color: var(--accent-press);
   font-size: 12px;
   font-weight: 700;
-  white-space: nowrap;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: keep-all;
+  vertical-align: middle;
 }
 
 /* 발주시 선결제인데 아직 결제 요청 전 — 돈을 먼저 보내야 물건이 오는 업체다.
    보통의 결제 요청 버튼(네이비)과 갈라 보여야 놓치지 않는다 (2026-08-28 대표님). */
 .po-act-warn {
-  border: 1px solid var(--accent);
-  background: var(--accent);
+  /* --accent(#f05819) 위의 흰 글자는 3.43:1 로 WCAG AA 미달이었다.
+     한 톤 진한 --accent-press 는 6.65:1 (2026-08-28 점검). */
+  border: 1px solid var(--accent-press);
+  background: var(--accent-press);
   color: #fff;
   font-weight: 800;
 }
 
 .po-act-warn:hover {
-  background: var(--accent-press);
-  border-color: var(--accent-press);
+  background: #8f2c07;
+  border-color: #8f2c07;
 }
 
 /* 폼 아래 경고 한 줄 — 그냥 두면 틀린 값이 계속 쓰이는 자리에 쓴다 */
