@@ -31,7 +31,16 @@ import {
   withVat,
   applyConfirm,
 } from '../../src/domain/marginClosing';
-import { buildMailHtml, mailSubject, senderLine, setLibraryCards, cardNames, cardFileFor } from '../../src/utils/mailTemplate';
+import {
+  buildMailHtml,
+  mailSubject,
+  senderLine,
+  setLibraryCards,
+  cardNames,
+  cardFileFor,
+  newMessageId,
+  threadKeyOf,
+} from '../../src/utils/mailTemplate';
 import { nextDocNo } from '../../src/domain/qualityDocNo';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
@@ -941,6 +950,42 @@ describe('마감 리스트 — 결제 요청이 유일한 문', () => {
       paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
     };
     expect(closingMonthOf(onlyReq, '델타전기')).toBe('');
+  });
+});
+
+// ── 답장 추적 번호 (2026-08-28 대표님 「메일 헤더에」)
+//
+// 업체가 답장하면 이 번호가 In-Reply-To 에 담겨 온다. 형식이 어긋나면 메일 서버가
+// 헤더째 거부하고, 그러면 답장이 와도 어느 건인지 알 길이 없다.
+describe('메일 — 답장 추적 번호', () => {
+  it('RFC 형식을 지킨다 — <local@domain>', () => {
+    const id = newMessageId();
+    expect(id).toMatch(/^<[A-Za-z0-9._-]+@[A-Za-z0-9.-]+>$/);
+  });
+
+  it('보내는 도메인과 맞춘다 — 엉뚱한 도메인은 스팸으로 몰린다', () => {
+    expect(newMessageId()).toMatch(/@naver\.com>$/);
+  });
+
+  it('부를 때마다 다른 번호 — 같으면 답장이 엉뚱한 건에 붙는다', () => {
+    const ids = new Set();
+    for (let i = 0; i < 200; i += 1) ids.add(newMessageId());
+    expect(ids.size).toBe(200);
+  });
+
+  it('답장의 In-Reply-To 에서 번호를 골라낸다', () => {
+    const id = newMessageId();
+    const key = threadKeyOf(id);
+    expect(key).toMatch(/^wm-/);
+    // 답장 헤더는 꺾쇠와 함께 오고, 앞뒤에 다른 것이 붙기도 한다
+    expect(threadKeyOf(` ${id} `)).toBe(key);
+  });
+
+  it('우리가 보낸 것이 아니면 빈 값 — 남의 메일을 발주에 붙이지 않는다', () => {
+    expect(threadKeyOf('<CAF=abc123@mail.gmail.com>')).toBe('');
+    expect(threadKeyOf('')).toBe('');
+    expect(threadKeyOf(null)).toBe('');
+    expect(threadKeyOf('<wm-없는형식>')).toBe(''); // @ 가 없으면 우리 것이 아니다
   });
 });
 

@@ -56,7 +56,8 @@ import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
 import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
-import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
+import { ensureAnonymousAuth } from '../../config/firebase';
+import { sendTrackedMail } from '../../services/mailThreadService';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
 import { contactsOf, hasChoice, mailToLine, resolveEmail, supplierKey } from '../../domain/supplierContacts';
@@ -1952,7 +1953,14 @@ export default function PurchaseDetailPage() {
           clearPct();
           return;
         }
-        await withTimeout(callSendEmail({ to, subject, html: sendHtml, attachments }), PDF_TIMEOUT_MS, '메일 발송');
+        await withTimeout(
+          sendTrackedMail(
+            { to, subject, html: sendHtml, attachments },
+            { kind: 'purchase-order', purchaseId: id, vendor: supplierName, by: userProfile?.name || '' },
+          ),
+          PDF_TIMEOUT_MS,
+          '메일 발송',
+        );
         setPct(100);
         toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
         const sentKey = supplierKey(supplierName, contactFilter);

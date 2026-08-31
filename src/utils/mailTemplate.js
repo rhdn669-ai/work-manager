@@ -137,3 +137,26 @@ export async function cardAttachment(cardName) {
     return []; // 명함을 못 읽어도 메일은 나가야 한다
   }
 }
+
+// ── 답장 추적 번호 ─────────────────────────────────────────────
+// 업체가 「답장」을 누르면 이 번호가 그 메일의 In-Reply-To 에 그대로 담겨 온다.
+// 제목을 고쳐도, 본문을 다 지워도 어느 건의 답장인지 알 수 있다
+// (2026-08-28 대표님 「메일 헤더에」).
+//
+// 번호 자체에는 뜻을 담지 않는다 — 업체명이 한글이라 헤더에 그대로 못 넣고,
+// 발주 번호가 겉으로 드러나는 것도 좋지 않다. 무엇에 대한 메일인지는
+// 이 번호로 mailThreads 에서 찾는다.
+//
+// 도메인은 보내는 주소와 맞춘다. 엉뚱한 도메인을 쓰면 스팸으로 몰릴 수 있다.
+const MSGID_DOMAIN = 'naver.com';
+
+export function newMessageId() {
+  const rand = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+  return `<wm-${Date.now().toString(36)}-${rand}@${MSGID_DOMAIN}>`;
+}
+
+// 답장의 In-Reply-To 에서 우리 번호만 골라낸다. 우리가 보낸 것이 아니면 빈 값.
+export function threadKeyOf(messageId) {
+  const m = String(messageId || '').match(/<(wm-[A-Za-z0-9-]+)@/);
+  return m ? m[1] : '';
+}

@@ -11,7 +11,7 @@ import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
 import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
-import { callSendEmail } from '../../config/firebase';
+import { sendTrackedMail } from '../../services/mailThreadService';
 import { addMailLog, getStatementRequests } from '../../services/mailService';
 import { resolveEmail } from '../../domain/supplierContacts';
 import { buildMailHtml, mailSubject, senderLine, cardAttachment } from '../../utils/mailTemplate';
@@ -264,7 +264,10 @@ export default function MarginClosingPage() {
     try {
       // 명함은 첨부로 실어 보낸다 — 상대 경로 이미지는 받는 쪽에서 깨진다
       const attachments = await cardAttachment(cardName);
-      await callSendEmail({ to, subject, html, attachments });
+      await sendTrackedMail(
+        { to, subject, html, attachments },
+        { kind: 'statement-request', vendor, monthKey: `${year}-${String(month).padStart(2, '0')}`, by: me },
+      );
       await addMailLog({
         to,
         supplier: vendor,

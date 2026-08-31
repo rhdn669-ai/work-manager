@@ -6,7 +6,8 @@ import Modal from '../../components/common/Modal';
 import { getSuppliers, getPurchases, subscribePurchaseItems } from '../../services/purchaseService';
 import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
-import { callSendEmail, ensureAnonymousAuth } from '../../config/firebase';
+import { ensureAnonymousAuth } from '../../config/firebase';
+import { sendTrackedMail } from '../../services/mailThreadService';
 import { computeSupplierList } from '../../utils/purchaseOrder';
 import { buildMailHtml, cardAttachment } from '../../utils/mailTemplate';
 import CardPicker from '../../components/common/CardPicker';
@@ -183,7 +184,10 @@ export default function MailSendPage() {
         try {
           // 수신 줄은 업체마다 제 이름이어야 한다 — 미리보기 HTML 을 그대로 돌려쓰지 않는다
           const html = buildMailHtml({ to: r.name, body, cardName });
-          await callSendEmail({ to: r.email, subject: subject.trim(), html, attachments });
+          await sendTrackedMail(
+            { to: r.email, subject: subject.trim(), html, attachments },
+            { kind: 'mail-send', vendor: r.name, by: userProfile?.name || '' },
+          );
           ok += 1;
         } catch (e) {
           fail.push(r.name);

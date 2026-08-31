@@ -8,7 +8,7 @@ const NAVER_PASS = defineSecret('NAVER_PASS');
 exports.sendPurchaseOrderEmail = onCall(
   { secrets: [NAVER_USER, NAVER_PASS], region: 'asia-northeast3' },
   async (request) => {
-    const { to, subject, html, attachments } = request.data;
+    const { to, subject, html, attachments, messageId } = request.data;
 
     // (2026-07-06) 공유 토큰 검증 제거 — 옛 캐시 클라이언트에서 토큰 미전송으로 발송이
     // 전면 차단되는 운영 사고 발생. 외부 남용 방지는 추후 App Check 강제 등 캐시에
@@ -56,14 +56,22 @@ exports.sendPurchaseOrderEmail = onCall(
       })
       .filter((a) => typeof a.content === 'string' && a.content.length > 0);
 
-    await transporter.sendMail({
+    // 답장 추적 번호 — 업체가 답장하면 이 값이 그 메일의 In-Reply-To 로 돌아온다.
+    // 형식이 어긋나면 메일 서버가 통째로 거부할 수 있어 <local@domain> 꼴만 통과시킨다.
+    const safeMessageId = /^<[A-Za-z0-9._-]+@[A-Za-z0-9.-]+>$/.test(String(messageId || ''))
+      ? String(messageId)
+      : undefined;
+
+    const info = await transporter.sendMail({
       from: `"(주)아이오피엔" <${fromAddr}>`,
       to,
       subject,
       html,
       attachments: safeAttachments,
+      ...(safeMessageId ? { messageId: safeMessageId } : {}),
     });
 
-    return { success: true };
+    // 우리가 준 값을 서버가 덮어쓸 수 있다. 실제로 나간 값을 돌려줘야 나중에 답장을 찾는다.
+    return { success: true, messageId: info?.messageId || safeMessageId || '' };
   },
 );
