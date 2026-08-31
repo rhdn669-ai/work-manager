@@ -75,3 +75,6 @@ exports.sendPurchaseOrderEmail = onCall(
     return { success: true, messageId: info?.messageId || safeMessageId || '' };
   },
 );
+
+// 업체 답장 받아오기 — 5분마다 네이버 메일함에서 우리 메일의 답장만 가져온다
+exports.fetchMailReplies = require('./mailReplies').fetchMailReplies;
