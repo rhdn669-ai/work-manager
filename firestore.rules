@@ -4,10 +4,28 @@ rules_version = '2';
 // users를 조회하다 "Missing or insufficient permissions"로 로그인 불가해지는 사고로
 // 개방 규칙으로 되돌림. 재조임은 (1) 전 클라이언트가 익명인증 포함 최신버전이거나
 // (2) 로그인을 서버(커스텀 토큰)로 옮긴 뒤에 안전하게 재적용.
+//
+// 규칙이 겹치면 「하나라도 허용하면 허용」이다 — 구체적인 규칙이 개방 규칙을 덮어쓰지
+// 못한다. 그래서 메일을 닫으려면 개방 규칙 쪽에서 메일을 빼야 한다 (2026-08-28).
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+
+    // ── 메일 (2026-08-28 신설) ─────────────────────────────────
+    // 업체와 주고받은 글이 그대로 들어오는 곳이다. 단가·조건이 문장으로 남아
+    // 숫자만 있는 표보다 읽기 쉬우므로, 처음부터 닫아 둔다.
+    //
+    // 아직 존재하지 않던 새 컬렉션이라 2026-07 로그인 사고와 무관하다 —
+    // 옛 클라이언트는 이 이름을 아예 모른다. 서버(Admin SDK)는 규칙을 통과한다.
+    match /mailThreads/{doc=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /mailReplies/{doc=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 나머지는 지금까지대로 열어 둔다 — 메일 두 곳만 빼고.
+    match /{col}/{doc=**} {
+      allow read, write: if !(col in ['mailThreads', 'mailReplies']);
     }
   }
 }
