@@ -9,10 +9,11 @@ import MoneyCard from '../../components/common/MoneyCard';
 import Icon from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
+import MailReplyList from '../../components/common/MailReplyList';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
 import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
-import { sendTrackedMail } from '../../services/mailThreadService';
 import { addMailLog, getStatementRequests } from '../../services/mailService';
+import { sendTrackedMail, getStatementReplies } from '../../services/mailThreadService';
 import { resolveEmail } from '../../domain/supplierContacts';
 import { buildMailHtml, mailSubject, senderLine, cardAttachment } from '../../utils/mailTemplate';
 import CardPicker from '../../components/common/CardPicker';
@@ -49,6 +50,8 @@ export default function MarginClosingPage() {
   const [askModal, setAskModal] = useState(null); // 내역 요청 모달 { vendor, to, cardName }
   const [reasonModal, setReasonModal] = useState(null); // 금액 고칠 때 이유 { row, amount, reason }
   const [asked, setAsked] = useState({}); // 그달 이미 요청한 업체 { 업체명: 보낸시각 }
+  const [replies, setReplies] = useState({}); // 답장이 온 업체 { 업체명: [답장…] }
+  const [openReply, setOpenReply] = useState(''); // 답장을 펼쳐 둔 업체
   const me = userProfile?.name || '';
   const now = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -82,17 +85,20 @@ export default function MarginClosingPage() {
 
   const loadClosing = useCallback(async () => {
     const mk = `${year}-${String(month).padStart(2, '0')}`;
-    const [mc, mi, req] = await Promise.all([
+    const [mc, mi, req, rep] = await Promise.all([
       getMonthClosing(year, month),
       getManualItems(year, month),
       // 이미 보낸 업체는 버튼이 「요청완료」로 바뀐다 — 두 번 보내면 업체 쪽에서 재촉으로 읽힌다
       getStatementRequests(mk).catch(() => ({})),
+      // 답장이 온 업체는 한 걸음 더 나아가 「내역 도착」이 된다 (2026-09-01 대표님)
+      getStatementReplies(mk).catch(() => ({})),
     ]);
     setConfirms(mc.confirms);
     setLocked(mc.locked);
     setLockedBy(mc.lockedBy);
     setManual(mi);
     setAsked(req);
+    setReplies(rep);
   }, [year, month]);
 
   useEffect(() => {
@@ -666,21 +672,41 @@ export default function MarginClosingPage() {
                             </span>
                           </span>
                         </button>
-                        <button
-                          type="button"
-                          className={`btn btn-sm mc-ask-btn${asked[g.vendor] ? ' po-act-btn--on' : ' btn-outline'}`}
-                          onClick={() => openAskModal(g.vendor)}
-                          disabled={mailing === g.vendor}
-                          title={
-                            asked[g.vendor]
-                              ? `${payMonthLabel(asked[g.vendor])} 에 요청함 — 눌러서 다시 보낼 수 있습니다`
-                              : `${g.vendor}에 ${month}월 마감내역을 요청합니다`
-                          }
-                        >
-                          <Icon name={asked[g.vendor] ? 'check' : 'mail'} className="btn-ic" />
-                          {mailing === g.vendor ? '보내는 중…' : asked[g.vendor] ? '요청완료' : '내역 요청'}
-                        </button>
+                        {/* 세 단계 — 안 보냄 / 보냄 / 답장 옴.
+                            답장이 오면 누를 곳이 「다시 보내기」가 아니라 「읽기」가 된다 */}
+                        {(replies[g.vendor] || []).length > 0 ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm mc-ask-btn mc-ask-btn--got"
+                            onClick={() => setOpenReply((v) => (v === g.vendor ? '' : g.vendor))}
+                            title={`${payMonthLabel(replies[g.vendor].at(-1).receivedAt)} 에 답장이 왔습니다 — 눌러서 읽기`}
+                          >
+                            <Icon name="inbox" className="btn-ic" />
+                            내역 도착 {payMonthLabel(replies[g.vendor].at(-1).receivedAt)}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`btn btn-sm mc-ask-btn${asked[g.vendor] ? ' po-act-btn--on' : ' btn-outline'}`}
+                            onClick={() => openAskModal(g.vendor)}
+                            disabled={mailing === g.vendor}
+                            title={
+                              asked[g.vendor]
+                                ? `${payMonthLabel(asked[g.vendor])} 에 요청함 — 눌러서 다시 보낼 수 있습니다`
+                                : `${g.vendor}에 ${month}월 마감내역을 요청합니다`
+                            }
+                          >
+                            <Icon name={asked[g.vendor] ? 'check' : 'mail'} className="btn-ic" />
+                            {mailing === g.vendor ? '보내는 중…' : asked[g.vendor] ? '요청완료' : '내역 요청'}
+                          </button>
+                        )}
                       </div>
+
+                      {openReply === g.vendor && (
+                        <div className="mc-reply-box">
+                          <MailReplyList replies={replies[g.vendor] || []} />
+                        </div>
+                      )}
 
                       {open && (
                         <div className="payment-folder-body table-scroll-x">

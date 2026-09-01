@@ -7,7 +7,8 @@ import { getSuppliers, getPurchases, subscribePurchaseItems } from '../../servic
 import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
 import { ensureAnonymousAuth } from '../../config/firebase';
-import { sendTrackedMail } from '../../services/mailThreadService';
+import { sendTrackedMail, getRecentReplies } from '../../services/mailThreadService';
+import MailReplyList from '../../components/common/MailReplyList';
 import { computeSupplierList } from '../../utils/purchaseOrder';
 import { buildMailHtml, cardAttachment } from '../../utils/mailTemplate';
 import CardPicker from '../../components/common/CardPicker';
@@ -35,6 +36,8 @@ export default function MailSendPage() {
   const { userProfile } = useAuth();
   const [mode, setMode] = useState('compose'); // 'compose' | 'history'
   const [logs, setLogs] = useState([]);
+  const [replies, setReplies] = useState([]); // 받은 답장 (2026-09-01 대표님)
+  const [openReply, setOpenReply] = useState(''); // 답장을 펼쳐 둔 발송 건
   const [logsLoading, setLogsLoading] = useState(false);
   const [targetType, setTargetType] = useState('supplier'); // 'supplier' | 'vendor'
   const [suppliers, setSuppliers] = useState([]);
@@ -96,6 +99,10 @@ export default function MailSendPage() {
     setLogsLoading(true);
     try {
       setLogs(await getMailLogs());
+      // 업체가 보낸 답장 — 없으면 배지가 안 뜰 뿐이라 화면을 막지 않는다
+      getRecentReplies()
+        .then(setReplies)
+        .catch(() => {});
     } catch {
       setLogs([]);
     } finally {
@@ -295,32 +302,58 @@ export default function MailSendPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((l) => (
-                    <tr key={l.id}>
-                      <td data-label="발송일시">{fmtDateTime(l.createdAt)}</td>
-                      <td data-label="대상">{l.targetType === 'vendor' ? '외주' : '구매처'}</td>
-                      <td data-label="제목">
-                        <strong>{l.subject || '(제목 없음)'}</strong>
-                        <div
-                          className="field-hint"
-                          style={{ margin: '2px 0 0' }}
-                          title={(l.recipients || []).map((r) => r.name).join(', ')}
-                        >
-                          {(l.recipients || []).map((r) => r.name).join(', ')}
-                          {l.fileNames?.length ? ` · 첨부 ${l.fileNames.length}` : ''}
-                        </div>
-                      </td>
-                      <td data-label="수신/성공">
-                        {l.okCount ?? 0}/{l.total ?? 0}
-                        {l.failCount ? (
-                          <span style={{ color: 'var(--danger,#dc2626)' }}> (실패 {l.failCount})</span>
-                        ) : (
-                          ''
-                        )}
-                      </td>
-                      <td data-label="발송자">{l.by || '-'}</td>
-                    </tr>
-                  ))}
+                  {logs.map((l) => {
+                    // 그 발송 건의 수신자에게서 온 답장. 보낸 시각 뒤에 온 것만 센다 —
+                    // 같은 업체에 여러 번 보냈으면 앞 건의 답장이 뒤 건에 붙지 않게.
+                    const sentAt = l.createdAt?.toDate ? l.createdAt.toDate() : new Date(l.createdAt || 0);
+                    const names = (l.recipients || []).map((r) => (r.name || '').trim());
+                    const mine = replies.filter((r) => {
+                      const at = r.receivedAt?.toDate ? r.receivedAt.toDate() : new Date(r.receivedAt || 0);
+                      return names.includes((r.vendor || '').trim()) && at >= sentAt;
+                    });
+                    return (
+                      <tr key={l.id}>
+                        <td data-label="발송일시">{fmtDateTime(l.createdAt)}</td>
+                        <td data-label="대상">{l.targetType === 'vendor' ? '외주' : '구매처'}</td>
+                        <td data-label="제목">
+                          <strong>{l.subject || '(제목 없음)'}</strong>
+                          <div
+                            className="field-hint"
+                            style={{ margin: '2px 0 0' }}
+                            title={(l.recipients || []).map((r) => r.name).join(', ')}
+                          >
+                            {(l.recipients || []).map((r) => r.name).join(', ')}
+                            {l.fileNames?.length ? ` · 첨부 ${l.fileNames.length}` : ''}
+                          </div>
+                          {mine.length > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm po-act-reply mail-reply-btn"
+                              onClick={() => setOpenReply((v) => (v === l.id ? '' : l.id))}
+                              title="업체가 보낸 답장 — 눌러서 읽기"
+                            >
+                              <Icon name="inbox" className="btn-ic" />
+                              답장 {mine.length}
+                            </button>
+                          )}
+                          {openReply === l.id && (
+                            <div className="mail-reply-inline">
+                              <MailReplyList replies={mine} />
+                            </div>
+                          )}
+                        </td>
+                        <td data-label="수신/성공">
+                          {l.okCount ?? 0}/{l.total ?? 0}
+                          {l.failCount ? (
+                            <span style={{ color: 'var(--danger,#dc2626)' }}> (실패 {l.failCount})</span>
+                          ) : (
+                            ''
+                          )}
+                        </td>
+                        <td data-label="발송자">{l.by || '-'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

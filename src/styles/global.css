@@ -21047,3 +21047,138 @@ a.lib-row-name:hover {
   line-height: 1.5;
   color: var(--accent-press);
 }
+
+/* ── 업체 답장 ─────────────────────────────────────────────────
+   지금까지 답장은 네이버 메일함에만 있었다. 「그 업체가 뭐라고 했더라」를 보려면
+   앱을 나가 뒤져야 했고, 그 사이 어느 발주 건이었는지 놓쳤다.
+   이제 그 건 옆에 붙는다 (2026-09-01 대표님). */
+.mail-replies {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mail-reply {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-sm, 10px);
+  background: #fff;
+}
+
+.mail-reply-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mail-reply-ic {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.mail-reply-from {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.mail-reply-at {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mail-reply-subject {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* 업체가 쓴 글 그대로 — 줄바꿈을 살린다 */
+.mail-reply-body {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mail-reply-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* 파일은 네이버에 있다 — 여기서는 「무엇이 왔는지」만 알린다 */
+.mail-reply-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+/* 발주서 표 안 — 한 칸을 통째로 쓴다 */
+.po-reply-row > td {
+  padding: 0 !important;
+  background: var(--bg-subtle, #f1f5f9);
+}
+
+.po-reply-box {
+  padding: 14px 16px;
+}
+
+.po-reply-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.po-reply-head .btn {
+  margin-left: auto; /* 닫기는 우측 끝 */
+}
+
+/* 답장이 온 업체 — 눌러서 읽으라는 뜻으로 네이비 */
+.po-act-reply {
+  border: 1px solid var(--primary);
+  background: var(--primary-softer, #f0f3f8);
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.po-act-reply:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* 메일 발송 목록 안 — 제목 아래에 붙는 작은 답장 버튼 */
+.mail-reply-btn {
+  margin-top: 8px;
+}
+
+.mail-reply-inline {
+  margin-top: 10px;
+}
+
+/* 좁은 표 안이라 한 톤 줄인다 */
+.mail-reply-inline .mail-reply {
+  padding: 11px 13px;
+}

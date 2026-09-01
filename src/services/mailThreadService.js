@@ -76,3 +76,48 @@ export async function sendTrackedMail(data, meta = {}) {
   }).catch((err) => console.error('메일 스레드 기록 실패', err));
   return res;
 }
+
+// ── 받아 온 답장 ───────────────────────────────────────────────
+// 5분마다 도는 수집기(functions/mailReplies.js)가 담아 둔 것을 읽는다.
+// 무엇에 대한 답장인지는 이미 붙어 있어 여기서는 꺼내 오기만 하면 된다.
+
+const repliesRef = collection(db, 'mailReplies');
+
+// 한 발주서에 온 답장 — 발주서 화면에서 업체 줄에 붙인다
+export async function getRepliesByPurchase(purchaseId) {
+  if (!purchaseId) return [];
+  const snap = await getDocs(query(repliesRef, where('purchaseId', '==', purchaseId)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => at(a) - at(b));
+}
+
+// 그달 마감내역 요청에 온 답장 — 「요청완료」를 「내역 도착」으로 바꾸고, 본문도 보여 준다.
+// 반환: { 업체명: [답장…] } — 온 순서대로
+export async function getStatementReplies(monthKey) {
+  if (!monthKey) return {};
+  const snap = await getDocs(
+    query(repliesRef, where('kind', '==', 'statement-request'), where('monthKey', '==', monthKey)),
+  );
+  const out = {};
+  for (const d of snap.docs) {
+    const v = { id: d.id, ...d.data() };
+    if (!v.vendor) continue;
+    if (!out[v.vendor]) out[v.vendor] = [];
+    out[v.vendor].push(v);
+  }
+  for (const list of Object.values(out)) list.sort((a, b) => at(a) - at(b));
+  return out;
+}
+
+// 최근 답장 — 메일 발송 화면에서 「답장 왔음」을 보여 준다
+export async function getRecentReplies(max = 200) {
+  const snap = await getDocs(repliesRef);
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => at(b) - at(a))
+    .slice(0, max);
+}
+
+function at(v) {
+  const d = v?.receivedAt?.toDate ? v.receivedAt.toDate() : v?.receivedAt ? new Date(v.receivedAt) : null;
+  return d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
+}

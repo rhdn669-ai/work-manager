@@ -57,7 +57,8 @@ import Skeleton from '../../components/common/Skeleton';
 import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { ensureAnonymousAuth } from '../../config/firebase';
-import { sendTrackedMail } from '../../services/mailThreadService';
+import { sendTrackedMail, getRepliesByPurchase } from '../../services/mailThreadService';
+import MailReplyList from '../../components/common/MailReplyList';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
 import { contactsOf, hasChoice, mailToLine, resolveEmail, supplierKey } from '../../domain/supplierContacts';
@@ -332,6 +333,9 @@ export default function PurchaseDetailPage() {
   const mailFileInputRef = useRef(null);
   const [replyModal, setReplyModal] = useState(null); // 회신 확인 시 납기 입력 모달 { supplierName, due } | null
   const [payReqModal, setPayReqModal] = useState(null); // 결제 요청 시 마감일 입력 모달 { supplierName, due } | null
+  // 업체가 보낸 답장 — 5분마다 도는 수집기가 담아 둔 것 (2026-09-01 대표님)
+  const [replies, setReplies] = useState([]);
+  const [openReply, setOpenReply] = useState(''); // 답장을 펼쳐 둔 업체
   // 메일 발송 진행 상태 — 업체별 맵 { [업체명]: 진행률% } (동시 발송 각각 추적)
   const [mailSending, setMailSending] = useState({});
   // 백그라운드 PDF 캡처 시 현장명 표시 모드 (null=실제 현장명, 'hidden'=미공개, 'blank'=공백)
@@ -346,6 +350,20 @@ export default function PurchaseDetailPage() {
   const [printShowBox, setPrintShowBox] = useState(false); // 실제 출력 시 BOX 열 렌더 여부 — 전체 PDF 출력에서만 켬
   // 발주 수량 변경 모달 — { idx, name, receivedQty, value } | null (보유자재 반영 감량)
   const [qtyModal, setQtyModal] = useState(null);
+
+  // 답장 읽어오기 — 화면을 막지 않는다. 없으면 배지가 안 뜰 뿐이다
+  useEffect(() => {
+    let dead = false;
+    if (!id) return undefined;
+    getRepliesByPurchase(id)
+      .then((rows) => {
+        if (!dead) setReplies(rows);
+      })
+      .catch(() => {});
+    return () => {
+      dead = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     loadData();
@@ -1577,6 +1595,12 @@ export default function PurchaseDetailPage() {
   // 발송·발주완료·회신은 담당별로 갈리지만, 돈은 업체 앞으로 한 번에 나간다.
   function payKey(supplierName) {
     return supplierKey(supplierName, null);
+  }
+
+  // 그 업체가 보낸 답장만 골라낸다
+  function supReplies(name) {
+    const key = payKey(name);
+    return replies.filter((r) => payKey(r.vendor || '') === key);
   }
 
   // 발주시 선결제 업체인데 아직 결제 요청을 안 눌렀는가.
@@ -3082,6 +3106,19 @@ export default function PurchaseDetailPage() {
                                 발주 완료 표시
                               </button>
                             )}
+                            {/* 업체가 실제로 보낸 답장 — 손으로 누르는 「회신 확인」과 달리
+                                메일함에서 저절로 들어온 것이다 (2026-09-01 대표님) */}
+                            {supReplies(sup.name).length > 0 && (
+                              <button
+                                type="button"
+                                className="btn btn-sm purchase-sup-toggle po-act-reply"
+                                onClick={() => setOpenReply((v) => (v === sup.name ? '' : sup.name))}
+                                title="업체가 보낸 답장 — 눌러서 읽기"
+                              >
+                                <Icon name="inbox" className="btn-ic" />
+                                답장 {supReplies(sup.name).length}
+                              </button>
+                            )}
                             {replied ? (
                               <button
                                 type="button"
@@ -3147,6 +3184,22 @@ export default function PurchaseDetailPage() {
                       </tr>
                     );
                   })}
+                  {/* 답장 본문 — 표 안이라 한 칸을 통째로 쓴다 */}
+                  {openReply && supReplies(openReply).length > 0 && (
+                    <tr className="po-reply-row">
+                      <td colSpan={99}>
+                        <div className="po-reply-box">
+                          <div className="po-reply-head">
+                            <strong>{openReply}</strong> 답장
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => setOpenReply('')}>
+                              닫기
+                            </button>
+                          </div>
+                          <MailReplyList replies={supReplies(openReply)} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

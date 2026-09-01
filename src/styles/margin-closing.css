@@ -380,3 +380,24 @@
   background: none;
   font-size: 13px;
 }
+
+/* 마감내역이 도착한 업체 — 「요청완료」에서 한 걸음 더 간 상태.
+   누를 곳이 「다시 보내기」가 아니라 「읽기」가 된다 (2026-09-01 대표님). */
+.mc-ask-btn--got {
+  border: 1px solid var(--success);
+  background: #edf7f1; /* 초록 글자와 4.58:1 — 대비비 통과 */
+  color: var(--success);
+  font-weight: 800;
+}
+
+.mc-ask-btn--got:hover {
+  background: var(--success);
+  color: #fff;
+}
+
+/* 답장 본문 — 업체 줄 바로 아래에 편다 */
+.mc-reply-box {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle, #f1f5f9);
+}
