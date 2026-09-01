@@ -4000,7 +4000,7 @@ export default function PurchaseDetailPage() {
               >
                 취소
               </button>
-              <button type="button" className="btn btn-primary" onClick={confirmSendMail}>
+              <button type="button" className="btn btn-primary" data-no-enter onClick={confirmSendMail}>
                 발송
               </button>
             </div>

@@ -60,18 +60,27 @@ export default function Modal({ isOpen, onClose, title, children, size }) {
     const opener = document.activeElement;
     const box = boxRef.current;
     const items = box ? [...box.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent !== null) : [];
-    // 닫기(×) 버튼에 먼저 꽂히면 "닫기"부터 읽히므로, 그다음 것이 있으면 그쪽을 고른다
-    const target = items.find((el) => !el.classList.contains('modal-close')) || items[0] || box;
+    // 닫기(×) 버튼에 먼저 꽂히면 "닫기"부터 읽히므로, 그다음 것이 있으면 그쪽을 고른다.
+    // 읽기 전용 칸도 건너뛴다 — 고칠 수 없는 칸에 커서가 놓이면 할 일이 없고,
+    // 거기서 Enter 를 치면 주버튼이 눌려 버린다 (2026-09-01 「마감내역 요청」 오발송).
+    const target =
+      items.find((el) => !el.classList.contains('modal-close') && !el.readOnly) ||
+      items.find((el) => !el.classList.contains('modal-close')) ||
+      items[0] ||
+      box;
     target?.focus?.();
     return () => opener?.focus?.();
   }, [isOpen]);
 
   // Enter → 주버튼(저장) 클릭 — 전 모달 공통. textarea·IME 조합 중·비활성 버튼은 제외.
+  //
+  // 되돌릴 수 없는 버튼(메일 발송 등)은 data-no-enter 를 달아 이 편의에서 뺀다.
+  // 저장은 다시 고치면 되지만, 나간 메일은 되돌릴 수 없다 (2026-09-01 대표님).
   const onEnterSubmit = (e) => {
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
     const t = e.target;
     if (t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'SELECT') return;
-    const primary = boxRef.current?.querySelector('.btn-primary:not([disabled])');
+    const primary = boxRef.current?.querySelector('.btn-primary:not([disabled]):not([data-no-enter])');
     if (primary) {
       e.preventDefault();
       primary.click();

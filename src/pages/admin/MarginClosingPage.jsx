@@ -882,7 +882,11 @@ export default function MarginClosingPage() {
               onChange={(e) => setReasonModal((p) => ({ ...p, reason: e.target.value }))}
               placeholder="예) 단가 인하 반영, 반품 2개 차감"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') confirmAmountChange();
+                if (e.key !== 'Enter' || e.isComposing) return;
+                // 여기서 멈추지 않으면 모달의 Enter 처리까지 이어져 두 번 저장된다
+                e.stopPropagation();
+                e.preventDefault();
+                confirmAmountChange();
               }}
               aria-label="고친 이유"
             />
@@ -956,7 +960,7 @@ export default function MarginClosingPage() {
             <button type="button" className="btn btn-outline" onClick={() => setAskModal(null)}>
               취소
             </button>
-            <button type="button" className="btn btn-primary" onClick={sendStatementRequest}>
+            <button type="button" className="btn btn-primary" data-no-enter onClick={sendStatementRequest}>
               <Icon name="mail" className="btn-ic" />
               보내기
             </button>

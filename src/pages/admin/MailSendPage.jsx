@@ -607,7 +607,7 @@ export default function MailSendPage() {
           )}
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-primary" onClick={confirmSend} disabled={sending}>
+          <button type="button" className="btn btn-primary" data-no-enter onClick={confirmSend} disabled={sending}>
             <Icon name="mail" className="btn-ic" />
             {recipients.length}개 업체에 발송
           </button>
