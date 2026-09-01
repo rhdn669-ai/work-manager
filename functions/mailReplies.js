@@ -58,19 +58,40 @@ exports.fetchMailReplies = onSchedule(
     const lastUid = Number(state.lastUid) || 0;
 
     const userId = clean(NAVER_USER.value());
-    const client = new ImapFlow({
-      host: 'imap.naver.com',
-      port: 993,
-      secure: true,
-      auth: { user: userId.split('@')[0], pass: clean(NAVER_PASS.value()) },
-      logger: false,
-    });
+    const makeClient = () =>
+      new ImapFlow({
+        host: 'imap.naver.com',
+        port: 993,
+        secure: true,
+        auth: { user: userId.split('@')[0], pass: clean(NAVER_PASS.value()) },
+        logger: false,
+        // 네이버가 굼뜰 때 기본값(90초)보다 일찍 포기하지 않게 넉넉히 준다
+        greetingTimeout: 30000,
+        socketTimeout: 120000,
+        connectionTimeout: 30000,
+      });
 
     let found = 0;
     let saved = 0;
     let maxUid = lastUid;
 
-    await client.connect();
+    // 한 번 실패하면 잠깐 쉬고 다시. 동시 접속이 잠깐 몰렸을 때 그냥 넘어가면
+    // 그 사이 온 답장을 다음 차례까지 못 본다.
+    let client = makeClient();
+    try {
+      await client.connect();
+    } catch (first) {
+      console.warn(`IMAP 첫 접속 실패 — 다시 시도합니다: ${describeError(first)}`);
+      await new Promise((r) => setTimeout(r, 5000));
+      client = makeClient();
+      try {
+        await client.connect();
+      } catch (second) {
+        // 여기서 멈추면 lastUid 를 그대로 두므로, 다음 차례에 놓친 메일부터 다시 본다
+        console.error(`IMAP 접속 실패 — ${describeError(second)}`);
+        throw second;
+      }
+    }
     try {
       // readOnly — 대표님 메일함의 읽음 표시를 건드리지 않는다
       const lock = await client.getMailboxLock('INBOX', { readonly: true });
@@ -80,6 +101,10 @@ exports.fetchMailReplies = onSchedule(
         const range = lastUid > 0 ? `${lastUid + 1}:*` : undefined;
         const searchOpts = lastUid > 0 ? { uid: range } : { since };
 
+        // 먼저 훑기만 한다. IMAP 은 한 번에 한 명령만 받으므로, 이 루프 안에서
+        // 본문 받기(download)를 부르면 두 명령이 겹쳐 연결이 끊긴다
+        // (2026-09-01 「Connection not available」의 원인이었다).
+        const 후보 = [];
         for await (const msg of client.fetch(searchOpts, {
           uid: true,
           envelope: true,
@@ -88,25 +113,26 @@ exports.fetchMailReplies = onSchedule(
         })) {
           if (msg.uid > maxUid) maxUid = msg.uid;
           found += 1;
-
           const key = findThreadKey(msg.headers ? parseHeaders(msg.headers) : new Map());
-          if (!key) continue; // 우리가 보낸 메일의 답장이 아니다 — 본문은 열지 않는다
+          if (key) 후보.push({ uid: msg.uid, key }); // 우리 것만 담아 둔다
+        }
 
+        // 훑기가 끝난 뒤에야 본문을 가져온다
+        for (const { uid, key } of 후보) {
           const threadSnap = await db.collection('mailThreads').doc(key).get();
           if (!threadSnap.exists) continue; // 번호는 우리 것인데 기록이 없다(옛 메일 등)
           const thread = threadSnap.data();
 
-          // 여기까지 왔으면 우리 건이다 — 이제 본문을 가져온다
-          const full = await client.download(msg.uid, undefined, { uid: true });
-          const parsed = await simpleParser(full.content);
-
-          const replyId = `${key}_${msg.uid}`;
+          const replyId = `${key}_${uid}`;
           const ref = db.collection('mailReplies').doc(replyId);
           if ((await ref.get()).exists) continue; // 이미 담았다
 
+          const full = await client.download(uid, undefined, { uid: true });
+          const parsed = await simpleParser(full.content);
+
           await ref.set({
             threadKey: key,
-            uid: msg.uid,
+            uid,
             kind: thread.kind || '',
             purchaseId: thread.purchaseId || '',
             vendor: thread.vendor || '',
@@ -128,6 +154,10 @@ exports.fetchMailReplies = onSchedule(
       } finally {
         lock.release();
       }
+    } catch (err) {
+      // 어디서 끊겼는지 남긴다 — 「Connection not available」 한 줄로는 가릴 수 없다
+      console.error(`메일 읽는 중 끊김 (지금까지 ${found}통 확인) — ${describeError(err)}`);
+      throw err;
     } finally {
       await client.logout().catch(() => {});
     }
@@ -139,6 +169,17 @@ exports.fetchMailReplies = onSchedule(
     console.log(`메일 확인 ${found}통 · 답장 ${saved}건 저장 (uid ~${maxUid})`);
   },
 );
+
+// 오류에서 가려낼 수 있는 것을 전부 적는다 — 인증 실패인지, 연결이 끊긴 것인지,
+// 네이버가 거부한 것인지에 따라 손볼 곳이 다르다.
+function describeError(err) {
+  const bits = [err?.message || String(err)];
+  if (err?.code) bits.push(`code=${err.code}`);
+  if (err?.authenticationFailed) bits.push('인증실패');
+  if (err?.responseText) bits.push(`응답="${err.responseText}"`);
+  if (err?.serverResponseCode) bits.push(`서버코드=${err.serverResponseCode}`);
+  return bits.join(' · ');
+}
 
 // imapflow 가 주는 헤더는 Buffer 라 직접 푼다
 function parseHeaders(buf) {
