@@ -16713,6 +16713,59 @@ td.mx-dc {
   width: 13%;
   text-align: center;
 }
+
+/* BOM 출력 옵션 — BOX·금액 열을 켜면 폭을 다시 나눈다 (2026-09-01 대표님).
+   합이 100%를 넘으면 어느 한 열이 0 이 되어 사라진다 — 실제로 메이커가 그렇게 지워졌다.
+   그래서 열마다 폭을 못 박고 합을 100 으로 맞춘다. */
+.iopn-items-table .c-box {
+  text-align: center;
+  word-break: keep-all;
+}
+
+/* 금액 켠 BOM — NO 4 + BOX 7 + 품목 12 + 메이커 9 + 규격 20 + 수량 4 + 단가 10 + 금액 12
+   + 구매처 12 + 비고 10 = 100 */
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-no {
+  width: 4%;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-box {
+  width: 7%;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 12%;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 9%;
+  text-align: center;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 20%;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 4%;
+  text-align: center;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-price {
+  width: 10%;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 12%;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-supplier {
+  width: 12%;
+  text-align: center;
+}
+.iopn-items-table:not(.bom-no-price):not(.po-cols) .c-note {
+  width: 10%;
+  text-align: center;
+}
+
+/* 금액 끄고 BOX 만 켠 BOM — 기존 배분(합 100)에서 BOX 몫만큼 규격이 양보한다 */
+.iopn-items-table.bom-no-price .c-box {
+  width: 9%;
+}
+.iopn-items-table.bom-no-price.has-box .c-spec {
+  width: 24%;
+}
 /* 구매발주서 — 단위 미출력, 구매처 포함 10열 폭 배분 */
 .iopn-items-table.po-cols .c-no {
   width: 5%;

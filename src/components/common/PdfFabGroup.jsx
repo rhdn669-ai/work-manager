@@ -14,10 +14,13 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 //   defaultFileName: string | () => string  — 모달 기본 파일명
 //   onBeforeOutput?: () => void              — 출력/저장 직전 호출(예: 출력 시각 스탬프)
 //   targetSelector?: string                  — 캡처할 인쇄 양식 선택자(기본 .print-form-iopn.print-only)
+//   options?: ReactNode                      — 출력 전에 물을 것(금액·BOX 표시 등). 주면 「PDF 출력」이
+//                                              바로 인쇄하지 않고 이 옵션을 먼저 보여 준다.
 export default function PdfFabGroup({
   defaultFileName,
   onBeforeOutput,
   targetSelector = '.print-form-iopn.print-only',
+  options = null,
 }) {
   const { userProfile } = useAuth();
   const { alert, toast } = useDialog();
@@ -25,6 +28,7 @@ export default function PdfFabGroup({
   const [open, setOpen] = useState(false);
   const [folderId, setFolderId] = useState('');
   const [fileName, setFileName] = useState('');
+  const [optOpen, setOptOpen] = useState(false); // 출력 옵션 모달
 
   useEffect(() => {
     const unsub = subscribeFolders((list) => {
@@ -56,8 +60,10 @@ export default function PdfFabGroup({
   }
 
   function handleOutput() {
+    setOptOpen(false);
     onBeforeOutput?.();
-    setTimeout(() => window.print(), 120);
+    // 옵션을 켜고 끈 것이 화면에 반영된 뒤에 인쇄해야 한다
+    setTimeout(() => window.print(), 160);
   }
 
   // 자료실 저장 — 모달 즉시 닫고 백그라운드로 생성·업로드 (기다리지 않음)
@@ -99,13 +105,28 @@ export default function PdfFabGroup({
         <button
           type="button"
           className="pdf-print-fab"
-          onClick={handleOutput}
+          onClick={() => (options ? setOptOpen(true) : handleOutput())}
           title="브라우저 인쇄로 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
         >
           <Icon name="doc" />
           PDF 출력
         </button>
       </div>
+
+      {options && (
+        <Modal isOpen={optOpen} onClose={() => setOptOpen(false)} title="PDF 출력 옵션">
+          <p className="field-hint">출력 형식을 선택하세요.</p>
+          {options}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setOptOpen(false)}>
+              취소
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleOutput}>
+              PDF 출력
+            </button>
+          </div>
+        </Modal>
+      )}
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title="PDF로 자료실 저장">
         <p className="field-hint">

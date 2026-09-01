@@ -109,6 +109,10 @@ export default function BomDetailPage() {
   const [groupBySupplier, setGroupBySupplier] = useState(false); // 구매처별 묶음 보기
   const [supplierFilter, setSupplierFilter] = useState(''); // 특정 구매처만 (이름)
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
+  // 출력 옵션 — 발주서와 같은 문법 (2026-09-01 대표님 「BOM에서도 출력할때 박스,금액 옵션」).
+  // BOX 는 값이 있는 BOM 에서만 뜻이 있어, 하나라도 적혀 있으면 기본으로 켠다.
+  const [printShowBox, setPrintShowBox] = useState(false);
+  const [printShowAmount, setPrintShowAmount] = useState(false);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -265,6 +269,12 @@ export default function BomDetailPage() {
     }
     return sorted;
   }, [displayItems, search, sortBy, supplierFilter]);
+
+  // BOX 가 하나라도 적혀 있으면 옵션을 기본으로 켠다 — 값이 없는 BOM 에서 빈 열만 늘리지 않게
+  const hasBox = useMemo(() => bomItems.some((b) => (b.box || '').trim()), [bomItems]);
+  useEffect(() => {
+    setPrintShowBox(hasBox);
+  }, [hasBox]);
 
   // ---- 드래그 순서변경 (추가순·전체보기에서만 — 코드순/구매처별/검색/필터 중엔 순서가 화면과 달라 비활성) ----
   const canDragRows = sortBy === 'order' && !groupBySupplier && !supplierFilter && !search.trim();
@@ -731,6 +741,37 @@ export default function BomDetailPage() {
       <PdfFabGroup
         defaultFileName={() => `${project?.name || 'BOM'}_BOM`}
         onBeforeOutput={() => setPrintStamp(fmtDateTime(new Date()))}
+        options={
+          <>
+            <div className="toggle-row" style={{ marginBottom: 10 }}>
+              <div className="toggle-row-text">
+                <span className="toggle-row-title">금액 표기</span>
+                <small className="text-muted">단가·금액·합계를 함께 출력합니다. 끄면 수량·품목만 나갑니다</small>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={printShowAmount}
+                  onChange={(e) => setPrintShowAmount(e.target.checked)}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+            <div className="toggle-row" style={{ marginBottom: 10 }}>
+              <div className="toggle-row-text">
+                <span className="toggle-row-title">BOX 표시</span>
+                <small className="text-muted">
+                  품목표에 BOX 열을 추가합니다
+                  {hasBox ? '' : ' (이 BOM 에는 BOX 가 적힌 품목이 없습니다)'}
+                </small>
+              </div>
+              <label className="toggle-switch">
+                <input type="checkbox" checked={printShowBox} onChange={(e) => setPrintShowBox(e.target.checked)} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </>
+        }
       />
 
       {/* 인쇄 전용 IOPN_v4 양식 (자재 명세서) */}
@@ -863,12 +904,19 @@ export default function BomDetailPage() {
 
                   {supplierName && <div className="bom-print-supplier-band">구매처 : {supplierName}</div>}
 
-                  <table className="iopn-items-table bom-no-price">
+                  <table
+                    className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}`}
+                  >
                     <thead>
                       <tr>
                         <th scope="col" className="c-no">
                           NO
                         </th>
+                        {printShowBox && (
+                          <th scope="col" className="c-box">
+                            BOX
+                          </th>
+                        )}
                         <th scope="col" className="c-name">
                           품목명
                         </th>
@@ -881,6 +929,16 @@ export default function BomDetailPage() {
                         <th scope="col" className="c-qty">
                           수량
                         </th>
+                        {printShowAmount && (
+                          <>
+                            <th scope="col" className="c-price">
+                              단가
+                            </th>
+                            <th scope="col" className="c-amount">
+                              금액
+                            </th>
+                          </>
+                        )}
                         <th scope="col" className="c-supplier">
                           구매처
                         </th>
@@ -895,10 +953,17 @@ export default function BomDetailPage() {
                           return (
                             <tr key={`e-${r}`}>
                               <td className="c-no"></td>
+                              {printShowBox && <td className="c-box"></td>}
                               <td className="c-name"></td>
                               <td className="c-maker"></td>
                               <td className="c-spec"></td>
                               <td className="c-qty"></td>
+                              {printShowAmount && (
+                                <>
+                                  <td className="c-price"></td>
+                                  <td className="c-amount"></td>
+                                </>
+                              )}
                               <td className="c-supplier"></td>
                               <td className="c-note"></td>
                             </tr>
@@ -906,10 +971,23 @@ export default function BomDetailPage() {
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
+                            {printShowBox && <td className={`c-box ${specFontClass(it.box, 10)}`}>{it.box || ''}</td>}
                             <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
                             <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
                             <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
+                            {printShowAmount && (
+                              <>
+                                <td className="c-price">
+                                  {Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}
+                                </td>
+                                <td className="c-amount">
+                                  {Number(it.qty) && Number(it.unitPrice)
+                                    ? (Number(it.qty) * Number(it.unitPrice)).toLocaleString()
+                                    : ''}
+                                </td>
+                              </>
+                            )}
                             <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
                             <td className={`c-note ${specFontClass(it.note, 14)}`}>{it.note || ''}</td>
                           </tr>
