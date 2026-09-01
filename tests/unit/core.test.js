@@ -24,8 +24,6 @@ import {
 } from '../../src/utils/paymentTerms';
 import {
   closingRowsOf,
-  unrequestedRowsOf,
-  closingMonthOf,
   payMonthLabel,
   vatOf,
   withVat,
@@ -734,159 +732,162 @@ describe('품질 — 불량률 기준', () => {
   });
 });
 
-// ── 마감 리스트 — 문은 「결제 요청」 하나 (2026-08-28 대표님)
+// ── 마감 리스트 — 물건이 들어온 달에 오른다 (2026-09-01 대표님)
 //
-// 한때는 문이 둘이었다(그달 입고 확정 · 그달 결제 완료). 그래서 마감엔 있는데 결제엔
-// 없는 건이 생겼다. 문을 하나로 합쳐 두 목록이 항상 짝이 맞게 했다.
-// 어느 달에 넣을지는 결제 요청 때 정한 「마감 달」이 정한다.
-describe('마감 리스트 — 결제 요청이 유일한 문', () => {
+// 한때 「결제 요청」을 유일한 문으로 삼고 달까지 사람이 골랐다. 그러다 8월에 확정한
+// 금액이 9월 입고 때문에 저절로 바뀌는 일이 생겼다. 들어온 달로 가르면 그 달 줄은
+// 그 달 입고분만 세므로 뒤늦은 입고가 지나간 달을 건드릴 수 없다.
+describe('마감 리스트 — 들어온 달에 오른다', () => {
   const suppliers = [{ id: 's1', name: '델타전기' }];
   const itemMaster = [{ id: 'i1', name: 'STEP DRIVER', defaultSupplierId: 's1' }];
   const D = (x) => new Date(x);
-  const REQ = (month, due) => ({ 델타전기: { requestedAt: D('2026-08-01'), dueDate: due, closingMonth: month } });
+  const REQ = (due) => ({ 델타전기: { requestedAt: D('2026-08-01'), dueDate: due } });
 
-  it('결제 요청이 없으면 어느 달에도 안 뜬다', () => {
-    const noReq = {
-      id: 'p1',
-      title: '요청 전',
-      siteName: '메티스',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
-      ],
-    };
-    expect(closingRowsOf(noReq, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
-    expect(closingRowsOf(noReq, itemMaster, suppliers, 2026, 9)).toHaveLength(0);
-  });
-
-  it('요청하면 정한 마감 달에 뜬다 — 입고 달이 아니라', () => {
+  it('8월에 들어오면 8월에 선다 — 결제가 9월이어도', () => {
     const p = {
-      id: 'p2',
-      title: '8월 입고 · 9월 마감',
-      siteName: '메티스',
+      id: 'p1',
+      title: '8월 입고 · 9월 결제',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
       ],
-      paymentRequested: REQ('2026-09', '2026-09-30'),
+      paymentRequested: REQ('2026-09-30'),
     };
-    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
-    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 9);
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8);
     expect(r).toHaveLength(1);
     expect(r[0].amount).toBe(21000);
-    expect(r[0].payDue).toBe('2026-09-30');
+    expect(r[0].payDue).toBe('2026-09-30'); // 결제일은 그대로 따라간다
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 9)).toHaveLength(0);
   });
 
-  it('선결제도 같은 문을 쓴다 — 입고 전이면 발주 수량으로 잡는다', () => {
-    const prepaid = {
-      id: 'p3',
-      title: '커넥터 선발주',
-      siteName: '메티스',
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 10, unitPrice: 5000, receivedQty: 0 }],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-14'), amount: 50000 }] },
-      paymentRequested: REQ('2026-08', '2026-08-14'),
+  // 이것이 이번 변경의 핵심 — 지나간 달의 숫자가 흔들리지 않는다
+  it('나눠 들어오면 각자 제 달에 — 9월 입고가 8월을 건드리지 않는다', () => {
+    const p = {
+      id: 'p2',
+      title: '나눠 입고',
+      items: [
+        { itemId: 'i1', name: 'A', qty: 5, unitPrice: 1000, receivedQty: 5, receivedAt: D('2026-08-10') },
+        { itemId: 'i1', name: 'B', qty: 5, unitPrice: 1000, receivedQty: 5, receivedAt: D('2026-09-10') },
+      ],
+      paymentRequested: REQ(''),
     };
-    const r = closingRowsOf(prepaid, itemMaster, suppliers, 2026, 8);
-    expect(r).toHaveLength(1);
-    expect(r[0].amount).toBe(50000); // 실제로 나간 돈이 곧 금액
-    expect(r[0].prepaid).toBe(true);
-    expect(r[0].closed).toBe(true); // 나간 돈은 대조할 것이 없다
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 8)[0].amount).toBe(5000);
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 9)[0].amount).toBe(5000);
   });
 
-  // 대표님이 가른 두 종류의 선결제 (2026-08-28)
-  it('발주와 동시에 결제하고 물건은 10월에 받는 건 — 돈 나간 8월 마감', () => {
-    const payFirst = {
-      id: 'p3b',
-      title: 'M 10월납품 1차 발주',
-      siteName: '메티스',
+  it('아직 안 들어온 물량은 어느 달에도 안 잡힌다', () => {
+    const p = {
+      id: 'p3',
+      title: '일부만 입고',
+      items: [
+        { itemId: 'i1', name: 'A', qty: 10, unitPrice: 1000, receivedQty: 4, receivedAt: D('2026-08-10') },
+        { itemId: 'i1', name: 'B', qty: 10, unitPrice: 1000, receivedQty: 0 },
+      ],
+      paymentRequested: REQ(''),
+    };
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 8)[0].amount).toBe(4000);
+  });
+
+  it('결제 요청을 안 눌러도 마감에는 오른다 — 배지로 알린다', () => {
+    const p = {
+      id: 'p4',
+      title: '요청 전',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
+      ],
+    };
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].requested).toBe(false); // 화면이 「결제요청 전」 배지를 띄운다
+  });
+
+  it('입고도 결제도 없는 달엔 안 뜬다', () => {
+    const p = {
+      id: 'p5',
+      title: '발주만',
+      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 9, unitPrice: 1000, receivedQty: 0 }],
+      paymentRequested: REQ('2026-10-31'),
+    };
+    for (const m of [8, 9, 10]) expect(closingRowsOf(p, itemMaster, suppliers, 2026, m)).toHaveLength(0);
+  });
+
+  it('초과 입고는 발주 수량까지만', () => {
+    const p = {
+      id: 'p6',
+      title: '초과 입고',
+      items: [
+        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 5000, receivedQty: 9, receivedAt: D('2026-08-02') },
+      ],
+      paymentRequested: REQ(''),
+    };
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 8)[0].amount).toBe(10000);
+  });
+
+  // 선결제 — 물건보다 돈이 먼저 나간 건은 돈 나간 달 (2026-08-28 결정 유지)
+  it('선결제는 돈 나간 달에, 나간 돈이 곧 금액', () => {
+    const p = {
+      id: 'p7',
+      title: 'M 10월납품 선결제',
       items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 99, unitPrice: 1000, receivedQty: 0 }],
       supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-20'), amount: 99000 }] },
-      paymentRequested: { 델타전기: { requestedAt: D('2026-08-20'), dueDate: '2026-08-20' } },
+      paymentRequested: REQ('2026-08-20'),
     };
-    expect(closingRowsOf(payFirst, itemMaster, suppliers, 2026, 8)).toHaveLength(1);
-    expect(closingRowsOf(payFirst, itemMaster, suppliers, 2026, 10)).toHaveLength(0);
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8);
+    expect(r).toHaveLength(1);
+    expect(r[0].amount).toBe(99000);
+    expect(r[0].prepaid).toBe(true);
+    expect(r[0].closed).toBe(true); // 나간 돈은 대조할 것이 없다
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 10)).toHaveLength(0);
   });
 
-  it('입고 직전에 선결제하는 건 — 같은 달이라 결과가 같다', () => {
-    const justBefore = {
-      id: 'p3c',
+  it('입고 직전 선결제는 입고 달 — 물건이 왔으면 입고 기준', () => {
+    const p = {
+      id: 'p8',
       title: '입고 직전 선결제',
-      siteName: '메티스',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 10, unitPrice: 5000, receivedQty: 10, receivedAt: D('2026-08-14') },
       ],
       supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-08-13'), amount: 50000 }] },
-      paymentRequested: { 델타전기: { requestedAt: D('2026-08-13'), dueDate: '2026-08-13' } },
+      paymentRequested: REQ('2026-08-13'),
     };
-    const r = closingRowsOf(justBefore, itemMaster, suppliers, 2026, 8);
-    expect(r).toHaveLength(1);
-    expect(r[0].amount).toBe(50000); // 물건이 들어왔으니 입고분으로 센다
-    expect(r[0].prepaid).toBe(false);
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8);
+    expect(r[0].amount).toBe(50000);
+    expect(r[0].prepaid).toBe(false); // 물건이 왔으니 선결제로 안 본다
   });
 
-  // 결제 요청만 눌러 둔 건 — 10월 납품인데 8월 마감에 서던 문제 (2026-08-28 대표님)
-  it('돈도 안 나가고 물건도 안 왔으면 어느 달에도 안 뜬다', () => {
-    const notYet = {
-      id: 'p3d',
-      title: 'M 10월납품 1차 발주',
-      siteName: '메티스',
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 99, unitPrice: 1000, receivedQty: 0 }],
-      paymentRequested: { 델타전기: { requestedAt: D('2026-08-20'), dueDate: '2026-10-31' } },
-    };
-    for (const m of [8, 9, 10]) {
-      expect(closingRowsOf(notYet, itemMaster, suppliers, 2026, m)).toHaveLength(0);
-    }
-  });
-
-  it('그 건도 물건이 들어오면 그때 그 달 마감에 오른다', () => {
-    const arrived = {
-      id: 'p3e',
-      title: 'M 10월납품 1차 발주',
-      siteName: '메티스',
+  // 대표님이 결제 요청 때 달을 직접 정한 건은 그 달로 몰아준다
+  it('마감 달을 손으로 정하면 그 달로 몰린다', () => {
+    const p = {
+      id: 'p9',
+      title: '손으로 정한 건',
       items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 99, unitPrice: 1000, receivedQty: 99, receivedAt: D('2026-10-05') },
+        { itemId: 'i1', name: 'A', qty: 5, unitPrice: 1000, receivedQty: 5, receivedAt: D('2026-08-10') },
+        { itemId: 'i1', name: 'B', qty: 5, unitPrice: 1000, receivedQty: 5, receivedAt: D('2026-09-10') },
       ],
-      paymentRequested: { 델타전기: { requestedAt: D('2026-08-20'), dueDate: '2026-10-31' } },
+      paymentRequested: { 델타전기: { requestedAt: D('2026-08-01'), dueDate: '', closingMonth: '2026-09' } },
     };
-    expect(closingRowsOf(arrived, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
-    expect(closingRowsOf(arrived, itemMaster, suppliers, 2026, 10)).toHaveLength(1);
-  });
-
-  it('돈이 나갔으면 확정으로 선다 — 결제가 다음 달이어도', () => {
-    const paidNextMonth = {
-      id: 'p4',
-      title: '8월 입고 · 9월 결제',
-      siteName: '한화',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 9000, receivedQty: 2, receivedAt: D('2026-08-03') },
-      ],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-09-25'), amount: 18000 }] },
-      paymentRequested: REQ('2026-08', '2026-09-25'),
-    };
-    const r = closingRowsOf(paidNextMonth, itemMaster, suppliers, 2026, 8)[0];
-    expect(r.closed).toBe(true);
-    expect(payMonthLabel(r.paidAt)).toBe('9.25');
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
+    expect(closingRowsOf(p, itemMaster, suppliers, 2026, 9)[0].amount).toBe(10000); // 나눠 들어온 것이 한 줄로
   });
 
   it('결제 전이면 결제일이 없다 — 예정일과 섞이지 않게', () => {
-    const unpaid = {
-      id: 'p5',
+    const p = {
+      id: 'p10',
       title: '결제 전',
-      siteName: '한화',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 4000, receivedQty: 1, receivedAt: D('2026-08-07') },
       ],
-      paymentRequested: REQ('2026-08', '2026-09-30'),
+      paymentRequested: REQ('2026-09-30'),
     };
-    const r = closingRowsOf(unpaid, itemMaster, suppliers, 2026, 8)[0];
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8)[0];
     expect(r.paid).toBe(false);
     expect(r.paidAt).toBe(null);
     expect(r.closed).toBe(false);
   });
 
   it('회차 결제는 마지막 결제일을 쓴다', () => {
-    const twice = {
-      id: 'p6',
+    const p = {
+      id: 'p11',
       title: '회차 결제',
-      siteName: '양산',
       items: [
         { itemId: 'i1', name: 'STEP DRIVER', qty: 4, unitPrice: 5000, receivedQty: 4, receivedAt: D('2026-08-02') },
       ],
@@ -896,96 +897,11 @@ describe('마감 리스트 — 결제 요청이 유일한 문', () => {
           { seq: 2, paidAt: D('2026-08-28'), amount: 10000 },
         ],
       },
-      paymentRequested: REQ('2026-08', '2026-08-28'),
+      paymentRequested: REQ('2026-08-28'),
     };
-    const r = closingRowsOf(twice, itemMaster, suppliers, 2026, 8)[0];
+    const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8)[0];
     expect(payMonthLabel(r.paidAt)).toBe('8.28');
     expect(r.paidAmount).toBe(20000);
-  });
-
-  it('초과 입고는 발주 수량까지만 — 잘못 적힌 숫자가 지출을 부풀리지 않게', () => {
-    const over = {
-      id: 'p7',
-      title: '초과 입고',
-      siteName: '양산',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 5000, receivedQty: 9, receivedAt: D('2026-08-02') },
-      ],
-      paymentRequested: REQ('2026-08', ''),
-    };
-    expect(closingRowsOf(over, itemMaster, suppliers, 2026, 8)[0].amount).toBe(10000);
-  });
-
-  // 마감 달이 없는 옛 기록 — 목록이 통째로 비면 지난 달을 못 본다
-  it('옛 기록은 입고 완료일의 달로 되짚는다', () => {
-    const legacy = {
-      id: 'p8',
-      title: '옛 요청',
-      siteName: '메티스',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 2, unitPrice: 3000, receivedQty: 2, receivedAt: D('2026-07-09') },
-      ],
-      paymentRequested: { 델타전기: { requestedAt: D('2026-07-10'), dueDate: '2026-08-31' } },
-    };
-    expect(closingMonthOf(legacy, '델타전기', D('2026-07-09'))).toBe('2026-07');
-    expect(closingRowsOf(legacy, itemMaster, suppliers, 2026, 7)).toHaveLength(1);
-    expect(closingRowsOf(legacy, itemMaster, suppliers, 2026, 8)).toHaveLength(0);
-  });
-
-  it('입고가 없으면 결제일의 달로 되짚는다 — 요청일은 쓰지 않는다', () => {
-    const onlyPaid = {
-      id: 'p9',
-      title: '결제만',
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 1000, receivedQty: 0 }],
-      supplierPaid: { 델타전기: [{ seq: 1, paidAt: D('2026-06-20'), amount: 1000 }] },
-      paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
-    };
-    expect(closingMonthOf(onlyPaid, '델타전기')).toBe('2026-06');
-
-    // 요청일로 되짚으면 10월 납품 건이 8월에 선다 — 그래서 걷었다
-    const onlyReq = {
-      id: 'p10',
-      title: '요청만',
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 1, unitPrice: 1000, receivedQty: 0 }],
-      paymentRequested: { 델타전기: { requestedAt: D('2026-07-01'), dueDate: '' } },
-    };
-    expect(closingMonthOf(onlyReq, '델타전기')).toBe('');
-  });
-});
-
-// ── 답장 추적 번호 (2026-08-28 대표님 「메일 헤더에」)
-//
-// 업체가 답장하면 이 번호가 In-Reply-To 에 담겨 온다. 형식이 어긋나면 메일 서버가
-// 헤더째 거부하고, 그러면 답장이 와도 어느 건인지 알 길이 없다.
-describe('메일 — 답장 추적 번호', () => {
-  it('RFC 형식을 지킨다 — <local@domain>', () => {
-    const id = newMessageId();
-    expect(id).toMatch(/^<[A-Za-z0-9._-]+@[A-Za-z0-9.-]+>$/);
-  });
-
-  it('보내는 도메인과 맞춘다 — 엉뚱한 도메인은 스팸으로 몰린다', () => {
-    expect(newMessageId()).toMatch(/@naver\.com>$/);
-  });
-
-  it('부를 때마다 다른 번호 — 같으면 답장이 엉뚱한 건에 붙는다', () => {
-    const ids = new Set();
-    for (let i = 0; i < 200; i += 1) ids.add(newMessageId());
-    expect(ids.size).toBe(200);
-  });
-
-  it('답장의 In-Reply-To 에서 번호를 골라낸다', () => {
-    const id = newMessageId();
-    const key = threadKeyOf(id);
-    expect(key).toMatch(/^wm-/);
-    // 답장 헤더는 꺾쇠와 함께 오고, 앞뒤에 다른 것이 붙기도 한다
-    expect(threadKeyOf(` ${id} `)).toBe(key);
-  });
-
-  it('우리가 보낸 것이 아니면 빈 값 — 남의 메일을 발주에 붙이지 않는다', () => {
-    expect(threadKeyOf('<CAF=abc123@mail.gmail.com>')).toBe('');
-    expect(threadKeyOf('')).toBe('');
-    expect(threadKeyOf(null)).toBe('');
-    expect(threadKeyOf('<wm-없는형식>')).toBe(''); // @ 가 없으면 우리 것이 아니다
   });
 });
 
@@ -1033,64 +949,47 @@ describe('구매처 결제 조건 — 선결제 두 종류', () => {
   });
 });
 
-// ── 그물 — 입고는 됐는데 결제 요청은 안 된 건
+// ── 구매처 결제 조건 — 선결제 두 종류 (2026-08-28 대표님)
 //
-// 문을 하나로 합치면서 생긴 사각지대다. 담당자가 버튼을 안 누르면 마감에도 결제에도
-// 안 떠서 그 돈이 통째로 잊힌다. 마감 리스트 맨 위에서 세어 알린다.
-describe('마감 리스트 — 요청 안 된 입고분 그물', () => {
-  const suppliers = [{ id: 's1', name: '델타전기' }];
-  const itemMaster = [{ id: 'i1', name: 'STEP DRIVER', defaultSupplierId: 's1' }];
-  const D = (x) => new Date(x);
-
-  it('입고됐는데 요청 안 된 건을 잡아낸다', () => {
-    const p = {
-      id: 'p1',
-      title: '잊힐 뻔한 건',
-      siteName: '메티스',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
-      ],
-    };
-    const r = unrequestedRowsOf(p, itemMaster, suppliers);
-    expect(r).toHaveLength(1);
-    expect(r[0].amount).toBe(21000);
-    expect(r[0].purchaseId).toBe('p1');
+// 「돈을 먼저 보내야 물건이 오는 곳」과 「물건 오기 직전에 보내는 곳」은 기준일이 다르다.
+// 한 종류로 두면 발주시 선결제 업체의 마감일이 오지도 않은 입고일로 계산된다.
+describe('구매처 결제 조건 — 선결제 두 종류', () => {
+  it('두 종류가 목록에 있고, 옛 값은 빠져 있다', () => {
+    const values = PAYMENT_TERM_TYPES.map((t) => t.value);
+    expect(values).toContain('prepaidOrder');
+    expect(values).toContain('prepaidArrival');
+    // 옛 「선결제」는 고를 수 없다 — 어느 쪽인지 알 수 없어 다시 골라야 한다
+    expect(values).not.toContain('prepaid');
   });
 
-  it('요청된 건은 안 잡는다 — 이미 목록에 있다', () => {
-    const p = {
-      id: 'p2',
-      title: '요청됨',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
-      ],
-      paymentRequested: { 델타전기: { requestedAt: D('2026-08-12'), dueDate: '', closingMonth: '2026-08' } },
-    };
-    expect(unrequestedRowsOf(p, itemMaster, suppliers)).toHaveLength(0);
+  it('둘 다 미루지 않는다 — 마감일은 준 기준일 당일', () => {
+    expect(calcPaymentDue({ paymentTermType: 'prepaidOrder' }, new Date('2026-08-20'))).toBe('2026-08-20');
+    expect(calcPaymentDue({ paymentTermType: 'prepaidArrival' }, new Date('2026-10-05'))).toBe('2026-10-05');
   });
 
-  it('입고 전이면 안 잡는다 — 아직 줄 돈이 아니다', () => {
-    const p = {
-      id: 'p3',
-      title: '발주만',
-      items: [{ itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 0 }],
-    };
-    expect(unrequestedRowsOf(p, itemMaster, suppliers)).toHaveLength(0);
+  it('기준일이 갈린다 — 발주시는 발주일, 입고전은 입고일', () => {
+    expect(prepaidBasisOf('prepaidOrder')).toBe('order');
+    expect(prepaidBasisOf('prepaidArrival')).toBe('arrival');
   });
 
-  // 종결한 발주는 이미 손을 뗀 건 — 알려 봐야 할 일이 없다 (2026-08-28 대표님)
-  it('종결한 발주는 안 잡는다', () => {
-    const closed = {
-      id: 'p4',
-      title: '종결된 건',
-      status: 'closed',
-      items: [
-        { itemId: 'i1', name: 'STEP DRIVER', qty: 3, unitPrice: 7000, receivedQty: 3, receivedAt: D('2026-08-11') },
-      ],
-    };
-    expect(unrequestedRowsOf(closed, itemMaster, suppliers)).toHaveLength(0);
-    // 종결만 풀면 다시 잡힌다
-    expect(unrequestedRowsOf({ ...closed, status: 'settled' }, itemMaster, suppliers)).toHaveLength(1);
+  it('선결제 여부를 가려낸다', () => {
+    expect(isPrepaidTerm('prepaidOrder')).toBe(true);
+    expect(isPrepaidTerm('prepaidArrival')).toBe(true);
+    expect(isPrepaidTerm('nextMonthEnd')).toBe(false);
+    expect(isPrepaidTerm('')).toBe(false);
+    expect(isPrepaidTerm('prepaid')).toBe(false); // 옛 값은 선결제로 안 친다
+  });
+
+  // 옛 값이 남은 구매처는 계산이 멈추면 안 된다 — 다시 고르기 전까지 하던 대로
+  it('옛 「선결제」도 마감일은 그대로 낸다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'prepaid' }, new Date('2026-08-20'))).toBe('2026-08-20');
+  });
+
+  it('선결제가 아닌 조건은 그대로다', () => {
+    expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, new Date('2026-08-11'))).toBe('2026-09-30');
+    expect(calcPaymentDue({ paymentTermType: 'afterDays', paymentTermDay: 30 }, new Date('2026-08-01'))).toBe(
+      '2026-08-31',
+    );
   });
 });
 

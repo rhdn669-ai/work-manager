@@ -361,88 +361,22 @@
   text-decoration-color: currentColor;
 }
 
-/* ── 그물 ─────────────────────────────────────────────────────
-   입고는 됐는데 아무도 결제 요청을 안 누른 건. 문을 「결제 요청」 하나로 합치면서
-   생긴 사각지대라, 여기 안 뜨면 그 돈이 영영 잊힌다 (2026-08-28 대표님). */
-.mc-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-  padding: 16px 18px;
-  border: 1px solid var(--accent);
-  border-left-width: 5px;
-  border-radius: var(--radius-md, 14px);
-  background: var(--accent-soft, #feefe7);
-}
-
-.mc-alert-ic {
-  width: 22px;
-  height: 22px;
+/* 결제 요청 전 — 입고는 됐는데 아직 결제 목록으로 안 넘어간 건.
+   마감에는 이미 올라와 있으니 「빠졌다」가 아니라 「아직 안 눌렀다」는 뜻이다
+   (2026-09-01 대표님 「올립니다 + 배지로 표시」). */
+.mc-unreq-tag {
   flex: 0 0 auto;
-  margin-top: 2px;
-  color: var(--accent-press);
-}
-
-.mc-alert-body {
-  flex: 1 1 260px;
-  min-width: 0;
-}
-
-.mc-alert-body strong {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--accent-press);
-}
-
-.mc-alert-sum {
-  margin-left: 10px;
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--accent-press);
-  font-variant-numeric: tabular-nums;
-}
-
-.mc-alert-body p {
-  margin: 4px 0 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-light);
-}
-
-.mc-alert-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-/* 누르면 그 발주서로 — 알리기만 하고 갈 곳이 없으면 소용이 없다 */
-.mc-alert-chip {
-  padding: 7px 13px;
-  border: 1px solid var(--accent);
+  padding: 3px 10px;
   border-radius: 999px;
-  background: #fff;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
+  background: var(--accent-soft, #feefe7);
   color: var(--accent-press);
-  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-.mc-alert-chip:hover {
-  background: var(--accent-soft, #feefe7);
-}
-
-.mc-alert-chip b {
-  margin-left: 6px;
-  font-variant-numeric: tabular-nums;
-}
-
-.mc-alert-more {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent-press);
+.fold-meta .mc-unreq-tag {
+  padding: 0;
+  background: none;
+  font-size: 13px;
 }

@@ -27,7 +27,6 @@ import {
 } from '../../services/marginClosingService';
 import {
   closingRowsOf,
-  unrequestedRowsOf,
   groupByVendor,
   payMonthLabel,
   revenueRows,
@@ -169,13 +168,6 @@ export default function MarginClosingPage() {
     ];
     return groupByVendor(all);
   }, [purchases, itemMaster, suppliers, year, month, manual, confirms]);
-
-  // 입고는 됐는데 결제 요청은 안 된 건 — 문을 하나로 합치며 생긴 사각지대.
-  // 아무도 버튼을 안 누르면 그 돈이 통째로 잊힌다. 맨 위에서 세어 알린다 (2026-08-28 대표님).
-  const unrequested = useMemo(
-    () => purchases.flatMap((p) => unrequestedRowsOf(p, itemMaster, suppliers)),
-    [purchases, itemMaster, suppliers],
-  );
 
   const expenseRows = useMemo(() => expense.flatMap((g) => g.lines), [expense]);
   const revSum = useMemo(() => sumRows(revenue), [revenue]);
@@ -515,32 +507,6 @@ export default function MarginClosingPage() {
             />
           </div>
 
-          {/* 그물 — 입고는 됐는데 아무도 결제 요청을 안 누른 건. 여기 안 뜨면 영영 잊힌다 */}
-          {tab !== 'revenue' && unrequested.length > 0 && (
-            <div className="mc-alert">
-              <Icon name="alert" className="mc-alert-ic" />
-              <div className="mc-alert-body">
-                <strong>결제 요청이 안 된 입고분 {unrequested.length}건</strong>
-                <span className="mc-alert-sum">{won(unrequested.reduce((a, r) => a + r.amount, 0))}원</span>
-                <p>발주서에서 「결제 요청」을 눌러야 마감·결제 목록에 올라갑니다.</p>
-              </div>
-              <div className="mc-alert-list">
-                {unrequested.slice(0, 6).map((r) => (
-                  <button
-                    key={`${r.purchaseId}:${r.vendor}`}
-                    type="button"
-                    className="mc-alert-chip"
-                    onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}
-                    title={`${r.title} — 눌러서 발주서로 이동`}
-                  >
-                    {r.vendor} <b>{won(r.amount)}</b>
-                  </button>
-                ))}
-                {unrequested.length > 6 && <span className="mc-alert-more">외 {unrequested.length - 6}건</span>}
-              </div>
-            </div>
-          )}
-
           <div className="sum-prog">
             <div className="sum-prog-text">
               {totalCount}건 중 <b>{doneCount}건</b> 확정
@@ -674,6 +640,13 @@ export default function MarginClosingPage() {
                                 )
                               )}
                               {anyPrepaid && <span className="mc-prepaid-tag">선결제</span>}
+                              {/* 입고는 됐는데 결제 요청 전 — 눌러야 결제 목록으로 넘어간다
+                                  (2026-09-01 대표님). 누르면 그 발주서로 간다. */}
+                              {g.lines.some((l) => l.purchaseId && !l.requested) && (
+                                <span className="mc-unreq-tag" title="결제 요청을 아직 안 눌렀습니다">
+                                  결제요청 전
+                                </span>
+                              )}
                             </span>
                           </span>
                           <span className="fold-state">

@@ -7,15 +7,16 @@
 // 이 파일을 지배하는 세 가지.
 //  ① 마감은 그달에 납품받은 내역이다. 결제가 다음 달이어도 납품이 8월이면 8월 지출이다.
 //     ("마감은 해당 월에 납품 받은 내역" · "마감은 이번달에 결제는 다음달에 되는 경우가 많음")
-//  ② 목록에 오르는 문은 하나다 — 발주서에서 누른 「결제 요청」.
-//     한때는 문이 둘이었다(그달 입고 확정 · 그달 결제 완료). 그러다 보니 마감엔 있는데
-//     결제엔 없고, 결제엔 있는데 마감엔 없는 건이 생겼다. 문을 하나로 합쳐 두 목록이
-//     항상 짝이 맞게 했다 (2026-08-28 대표님 「결제 요청 버튼을 눌러야만 마감리스트
-//     결제리스트에 동시에 생성되게」). 선결제도 예외가 아니다 — 어차피 결제 요청을
-//     해야 돈이 나간다.
-//     어느 달 마감에 넣을지는 결제 요청 모달에서 함께 정한다(마감 달). 입고는 8월인데
-//     결제는 9월인 일이 흔해, 달을 자동으로 정하면 늘 어긋난다.
-//     다만 요청만 눌러 둔 건은 아직 오르지 않는다 — 돈이 나갔거나 물건이 들어와야 지출이다.
+//  ② 마감은 「물건이 들어온 달」에 오른다. 8월에 받은 건 8월, 9월에 받은 건 9월.
+//     한때 「결제 요청」을 유일한 문으로 삼고 달까지 사람이 골랐으나, 그러면 8월에
+//     확정한 금액이 9월 입고 때문에 저절로 바뀌었다 (2026-09-01 대표님 「물건이 실제로
+//     들어온 달에 마감내역으로 올리고 해당 업체 결제일에 맞게 올라가는 게 맞을 것 같다」).
+//     들어온 달로 가르면 그 달 줄은 그 달 입고분만 세므로 뒤늦은 입고가 건드릴 수 없다.
+//     예외 둘 — 물건보다 돈이 먼저 나간 선결제는 「돈 나간 달」, 대표님이 결제 요청 때
+//     달을 직접 정한 건은 그 달.
+//     결제 요청을 안 눌러도 마감에는 오른다. 입고됐으면 그달 지출이기 때문이다.
+//  ③ 확정은 마감 리스트에서만 한다. 업체에서 마감내역을 받아 우리 숫자와 대조해야
+//     확정할 수 있기 때문이다. 예외는 선결제뿐 — 이미 나간 돈은 다툴 여지가 없다.
 //  ④ 지출은 업체에 줄 돈만 담는다. 잔업 수당·고정비는 총 마감에서 따로 본다.
 //     ("마감리스트에는 업체에 결제해줘야하는 금액만 지출로")
 import { mapPrintItems } from '../utils/purchaseOrder';
@@ -32,6 +33,11 @@ function toDate(v) {
   if (!v) return null;
   const d = v.toDate ? v.toDate() : new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function inMonth(v, year, month) {
+  const d = toDate(v);
+  return !!d && d.getFullYear() === year && d.getMonth() + 1 === month;
 }
 
 // 부가세 — 공급가의 10%. 결제 페이지와 같은 규칙(반올림)이라야 두 화면 숫자가 맞는다.
@@ -92,11 +98,11 @@ export function closingMonthOf(purchase, vkey, vendorReceivedAt = null) {
 // 금액은 결제 페이지와 똑같은 식으로 낸다. 한쪽은 그달 입고분만, 다른 쪽은 전체 입고분을
 // 세던 것이 두 화면 숫자가 갈리던 뿌리였다.
 export function closingRowsOf(purchase, itemMaster, suppliers, year, month) {
-  const reqMap = purchase.paymentRequested || {};
-  if (Object.keys(reqMap).length === 0) return [];
   const want = monthKey(year, month);
-
+  const reqMap = purchase.paymentRequested || {};
+  const paidMap = purchase.supplierPaid || {};
   const lines = mapPrintItems(purchase.items || [], itemMaster, suppliers);
+
   const byVendor = new Map();
   for (const ln of lines) {
     const vendor = ln._supplier || purchase.supplierName || MISC_VENDOR;
@@ -108,7 +114,6 @@ export function closingRowsOf(purchase, itemMaster, suppliers, year, month) {
     if (d && (!g.latest || d > g.latest)) g.latest = d;
   }
 
-  const paidMap = purchase.supplierPaid || {};
   const paidInfoOf = (vkey) => {
     const rows = paidList(pickByKey(paidMap, vkey));
     if (rows.length === 0) return { paid: false, paidAt: null, paidAmount: 0 };
@@ -120,33 +125,75 @@ export function closingRowsOf(purchase, itemMaster, suppliers, year, month) {
     return { paid: true, paidAt: at, paidAmount: paidTotal(pickByKey(paidMap, vkey)) };
   };
 
+  // 그달에 실제로 나간 돈 — 물건이 아직 안 온 선결제 건의 금액이 된다
+  const paidInMonth = (vkey) => {
+    let sum = 0;
+    let at = null;
+    for (const pd of paidList(pickByKey(paidMap, vkey))) {
+      if (!inMonth(pd.paidAt, year, month)) continue;
+      sum += Number(pd.amount) || 0;
+      const d = toDate(pd.paidAt);
+      if (d && (!at || d > at)) at = d;
+    }
+    return { sum, at };
+  };
+
+  const money = (l, qty) => qty * (Number(l.unitPrice) || 0);
+
   const out = [];
-  const seen = new Set(); // 담당이 갈린 업체는 목록에 두 번 나온다 — 한 줄로 묶는다
+  const seen = new Set(); // 담당이 갈린 업체는 한 줄로 묶는다
   for (const [vendor, g] of byVendor) {
     const vkey = closeKeyOf(vendor);
     if (seen.has(vkey)) continue;
     seen.add(vkey);
+
     const req = pickByKey(reqMap, vkey);
-    if (!req) continue; // 결제 요청된 업체만
-    if (closingMonthOf(purchase, vkey, g.latest) !== want) continue;
-
-    const anyReceived = g.lines.some((l) => Number(l.receivedQty) > 0);
     const info = paidInfoOf(vkey);
-    // 돈도 안 나가고 물건도 안 왔으면 아직 그달 지출이 아니다. 결제 요청만 눌러 둔
-    // 10월 납품 건이 8월 마감에 서던 문제 (2026-08-28 대표님 「마감에서 빼기」).
-    // 입고되거나 돈이 나가면 그때 그 달 마감에 오른다.
-    if (!anyReceived && !info.paid) continue;
+    const anyReceived = g.lines.some((l) => Number(l.receivedQty) > 0);
 
-    // 들어온 만큼 센다. 초과 입고는 발주 수량까지만 — 잘못 적힌 숫자가 지출을 부풀리지 않게.
-    // 아직 안 들어온 선결제 건은 실제로 나간 돈이 곧 금액이다.
-    const receivedTotal = g.lines.reduce((sum, l) => {
-      const qty = Number(l.qty) || 0;
-      const got = Math.min(Number(l.receivedQty) || 0, qty);
-      return sum + got * (Number(l.unitPrice) || 0);
-    }, 0);
-    const orderedTotal = g.lines.reduce((sum, l) => sum + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
-    // 금액 없는 옛 결제 기록(전액 결제)은 발주 금액으로 본다 — 0 원으로 서면 안 된다
-    const amount = anyReceived ? receivedTotal : info.paidAmount || orderedTotal;
+    // 그달 입고분 — 초과 입고는 발주 수량까지만 (잘못 적힌 숫자가 지출을 부풀리지 않게)
+    let recvThisMonth = 0;
+    let recvAt = null;
+    let lineCount = 0;
+    for (const l of g.lines) {
+      if (!inMonth(l.receivedAt, year, month)) continue;
+      const got = Math.min(Number(l.receivedQty) || 0, Number(l.qty) || 0);
+      if (got <= 0) continue;
+      recvThisMonth += money(l, got);
+      lineCount += 1;
+      const d = toDate(l.receivedAt);
+      if (d && (!recvAt || d > recvAt)) recvAt = d;
+    }
+
+    // 대표님이 결제 요청 때 달을 직접 정했으면 그 달로 몰아준다. 보통은 입고일이
+    // 정하지만, 특별한 건은 손으로 조정할 수 있어야 한다 (2026-09-01 대표님 「남겨 둡니다」).
+    const forced = req?.closingMonth || '';
+    let amount = 0;
+    let prepaid = false;
+
+    if (forced) {
+      if (forced !== want) continue;
+      const receivedTotal = g.lines.reduce(
+        (sum, l) => sum + money(l, Math.min(Number(l.receivedQty) || 0, Number(l.qty) || 0)),
+        0,
+      );
+      const orderedTotal = g.lines.reduce((sum, l) => sum + money(l, Number(l.qty) || 0), 0);
+      amount = anyReceived ? receivedTotal : info.paidAmount || orderedTotal;
+      prepaid = info.paid && !anyReceived;
+      if (!anyReceived && !info.paid) continue; // 돈도 물건도 없으면 아직 지출이 아니다
+    } else if (recvThisMonth > 0) {
+      // 그달에 들어온 만큼만 — 다음 달에 더 들어오면 그건 다음 달 줄이 된다
+      amount = recvThisMonth;
+    } else if (!anyReceived) {
+      // 물건은 아직인데 그달에 돈이 나갔다 — 선결제. 나간 돈이 곧 금액
+      const p = paidInMonth(vkey);
+      if (p.sum <= 0) continue;
+      amount = p.sum;
+      prepaid = true;
+    } else {
+      continue; // 이 달에는 들어온 것도 나간 것도 없다
+    }
+
     out.push({
       key: `po:${purchase.id}:${vkey}`,
       purchaseId: purchase.id,
@@ -154,54 +201,21 @@ export function closingRowsOf(purchase, itemMaster, suppliers, year, month) {
       vendor,
       siteName: purchase.siteName || '',
       title: purchase.title || '(제목 없음)',
-      description: g.names.length > 1 ? `${g.names[0]} 외 ${g.lines.length - 1}건` : g.names[0] || purchase.title || '',
+      description:
+        lineCount > 1 || g.names.length > 1
+          ? `${g.names[0]} 외 ${Math.max(lineCount, g.lines.length) - 1}건`
+          : g.names[0] || purchase.title || '',
       amount, // 업체 내역과 대조해 마감 리스트에서 고친다
       receivedAmount: amount,
-      payDue: req.dueDate || '',
+      payDue: req?.dueDate || '',
+      // 결제 요청을 안 눌러도 마감에는 오른다 — 입고됐으면 그달 지출이기 때문.
+      // 대신 배지로 알려 잊히지 않게 한다 (2026-09-01 대표님 「올립니다」).
+      requested: !!req,
       // 돈이 이미 나갔으면 확정이다 — 우리 통장이 곧 사실이라 대조할 것이 없다
-      // (2026-08-27 대표님 「선결제 된건 기본이 확정인 상태가 낫지않나?」).
       closed: info.paid || hasLegacyPaid(pickByKey(paidMap, vkey)),
       ...info,
-      receivedAt: g.latest,
-      prepaid: info.paid && !anyReceived, // 물건보다 돈이 먼저 나간 건
-    });
-  }
-  return out;
-}
-
-// 입고는 됐는데 결제 요청은 안 된 (발주 × 업체) 건.
-//
-// 문을 「결제 요청」 하나로 합치면서 생긴 사각지대다. 담당자가 버튼을 안 누르면
-// 마감에도 결제에도 안 뜬다 — 그 돈이 통째로 잊힌다. 마감 리스트 맨 위에서 세어 알린다.
-export function unrequestedRowsOf(purchase, itemMaster, suppliers) {
-  // 종결한 발주는 이미 손을 뗀 건이다. 알려 봐야 할 일이 없다
-  // (2026-08-28 대표님 「종결 처리된건은 여기 안올려도됨」).
-  if (purchase.status === 'closed') return [];
-  const reqMap = purchase.paymentRequested || {};
-  const lines = mapPrintItems(purchase.items || [], itemMaster, suppliers);
-  const byVendor = new Map();
-  for (const ln of lines) {
-    const got = Math.min(Number(ln.receivedQty) || 0, Number(ln.qty) || 0);
-    if (got <= 0) continue; // 입고된 것만 — 발주만 해 둔 건은 아직 줄 돈이 아니다
-    const vendor = ln._supplier || purchase.supplierName || MISC_VENDOR;
-    if (!byVendor.has(vendor)) byVendor.set(vendor, { amount: 0, latest: null });
-    const g = byVendor.get(vendor);
-    g.amount += got * (Number(ln.unitPrice) || 0);
-    const d = toDate(ln.receivedAt);
-    if (d && (!g.latest || d > g.latest)) g.latest = d;
-  }
-
-  const out = [];
-  for (const [vendor, g] of byVendor) {
-    const vkey = closeKeyOf(vendor);
-    if (pickByKey(reqMap, vkey)) continue; // 이미 요청된 건
-    out.push({
-      purchaseId: purchase.id,
-      vendor,
-      title: purchase.title || '(제목 없음)',
-      siteName: purchase.siteName || '',
-      amount: g.amount,
-      receivedAt: g.latest,
+      receivedAt: recvAt || g.latest,
+      prepaid,
     });
   }
   return out;
