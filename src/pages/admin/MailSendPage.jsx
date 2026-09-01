@@ -314,7 +314,16 @@ export default function MailSendPage() {
                     return (
                       <tr key={l.id}>
                         <td data-label="발송일시">{fmtDateTime(l.createdAt)}</td>
-                        <td data-label="대상">{l.targetType === 'vendor' ? '외주' : '구매처'}</td>
+                        <td data-label="대상">
+                          {/* 어디서 보낸 메일인지 — 발주서·마감내역 요청·직접 발송이 한 목록에 섞인다 */}
+                          {l.kind === 'purchase-order'
+                            ? '발주서'
+                            : l.kind === 'statement-request'
+                              ? '마감요청'
+                              : l.targetType === 'vendor'
+                                ? '외주'
+                                : '구매처'}
+                        </td>
                         <td data-label="제목">
                           <strong>{l.subject || '(제목 없음)'}</strong>
                           <div

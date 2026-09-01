@@ -8,11 +8,35 @@ export async function addMailLog(data) {
   return addDoc(mailLogsRef, { ...data, createdAt: new Date() });
 }
 
+// 이력 한 줄을 화면이 읽을 수 있는 모양으로.
+//
+// 마감내역 요청은 to·supplier·sentBy 로, 메일 발송은 recipients·total·by 로 적어 왔다.
+// 이미 쌓인 것을 되돌릴 수는 없으니 읽을 때 맞춰 준다 (2026-09-01 대표님).
+export function normalizeMailLog(l) {
+  const recipients =
+    l.recipients?.length > 0
+      ? l.recipients
+      : l.supplier || l.to
+        ? [{ name: l.supplier || l.to, email: l.to || '' }]
+        : [];
+  const total = l.total ?? (recipients.length || 0);
+  const okCount = l.okCount ?? (l.failCount ? Math.max(0, total - l.failCount) : total);
+  return {
+    ...l,
+    recipients,
+    total,
+    okCount,
+    failCount: l.failCount ?? 0,
+    by: l.by || l.sentBy || '',
+    targetType: l.targetType || 'supplier',
+  };
+}
+
 // 최근 발송 이력 조회
 export async function getMailLogs(max = 200) {
   const q = query(mailLogsRef, orderBy('createdAt', 'desc'), limit(max));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => normalizeMailLog({ id: d.id, ...d.data() }));
 }
 
 // 그달 마감내역을 이미 요청한 업체 — 버튼을 「요청완료」로 바꾸는 데 쓴다.

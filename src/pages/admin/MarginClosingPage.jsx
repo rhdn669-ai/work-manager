@@ -267,9 +267,17 @@ export default function MarginClosingPage() {
         { kind: 'statement-request', vendor, monthKey: `${year}-${String(month).padStart(2, '0')}`, by: me },
       );
       await addMailLog({
+        // 메일 발송 화면이 읽는 모양 — 이게 없으면 「0/0 · 발송자 -」로 뜬다
+        by: me,
+        targetType: 'supplier',
+        subject,
+        total: 1,
+        okCount: 1,
+        failCount: 0,
+        recipients: [{ name: vendor, email: to }],
+        // 마감 리스트가 「요청완료」를 가리는 데 쓰는 것들
         to,
         supplier: vendor,
-        subject,
         kind: 'statement-request',
         monthKey: `${year}-${String(month).padStart(2, '0')}`,
         sentBy: me,

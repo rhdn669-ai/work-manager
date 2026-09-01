@@ -58,6 +58,7 @@ import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../serv
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { ensureAnonymousAuth } from '../../config/firebase';
 import { sendTrackedMail, getRepliesByPurchase } from '../../services/mailThreadService';
+import { addMailLog } from '../../services/mailService';
 import MailReplyList from '../../components/common/MailReplyList';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
 import { isStockTracked } from '../../domain/stock';
@@ -1987,6 +1988,21 @@ export default function PurchaseDetailPage() {
         );
         setPct(100);
         toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
+        // 발송 이력에도 남긴다. 지금까지는 발주서 안에만 「발송 완료」 표시가 있어
+        // 「이 업체에 언제 뭘 보냈더라」를 메일 발송 화면에서 볼 수 없었다
+        // (2026-09-01 대표님). 실패해도 메일은 이미 나갔으니 삼킨다.
+        addMailLog({
+          by: userProfile?.name || '',
+          targetType: 'supplier',
+          subject,
+          total: 1,
+          okCount: 1,
+          failCount: 0,
+          recipients: [{ name: supplierName, email: to }],
+          fileNames: attachments.map((a) => a.filename).filter((n) => n && !n.endsWith('.png')),
+          kind: 'purchase-order',
+          purchaseId: id,
+        }).catch((err) => console.error('발송 이력 기록 실패', err));
         const sentKey = supplierKey(supplierName, contactFilter);
         // purchase 는 이 발송이 시작될 때의 값이라 오래됐을 수 있다 — 최신 것으로 본다
         if (!purchaseRef.current?.supplierSent?.[sentKey]) markSent(supplierName, contactFilter);

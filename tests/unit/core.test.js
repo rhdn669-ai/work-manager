@@ -56,6 +56,7 @@ import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/do
 import { splitPasted, toISODate, mapPastedValues } from '../../src/utils/pasteColumn';
 import { contactsOf, primaryEmail, hasChoice, resolveEmail, supplierKey } from '../../src/domain/supplierContacts';
 import { poFingerprint } from '../../src/utils/poFingerprint';
+import { normalizeMailLog } from '../../src/services/mailService';
 
 const suppliers = [
   { id: 'S1', name: '(주)상진미크론', email: 'a@x.com' },
@@ -905,47 +906,48 @@ describe('마감 리스트 — 들어온 달에 오른다', () => {
   });
 });
 
-// ── 구매처 결제 조건 — 선결제 두 종류 (2026-08-28 대표님)
+// ── 메일 발송 이력 — 두 모양을 한 모양으로 (2026-09-01 대표님 「이력으로 안남나?」)
 //
-// 「돈을 먼저 보내야 물건이 오는 곳」과 「물건 오기 직전에 보내는 곳」은 기준일이 다르다.
-// 한 종류로 두면 발주시 선결제 업체의 마감일이 오지도 않은 입고일로 계산된다.
-describe('구매처 결제 조건 — 선결제 두 종류', () => {
-  it('두 종류가 목록에 있고, 옛 값은 빠져 있다', () => {
-    const values = PAYMENT_TERM_TYPES.map((t) => t.value);
-    expect(values).toContain('prepaidOrder');
-    expect(values).toContain('prepaidArrival');
-    // 옛 「선결제」는 고를 수 없다 — 어느 쪽인지 알 수 없어 다시 골라야 한다
-    expect(values).not.toContain('prepaid');
+// 마감내역 요청은 to·supplier·sentBy 로, 메일 발송은 recipients·total·by 로 적어 왔다.
+// 그래서 이력 표에 「0/0 · 발송자 -」로 떴다. 이미 쌓인 것을 되돌릴 수 없으니 읽을 때 맞춘다.
+describe('메일 이력 — 옛 기록도 읽는다', () => {
+  it('마감내역 요청 모양을 알아본다', () => {
+    const l = normalizeMailLog({
+      to: 'jh@sungjoon.co.kr',
+      supplier: '(주)성준전기',
+      sentBy: '손성욱',
+      kind: 'statement-request',
+    });
+    expect(l.recipients).toEqual([{ name: '(주)성준전기', email: 'jh@sungjoon.co.kr' }]);
+    expect(l.total).toBe(1);
+    expect(l.okCount).toBe(1); // 「0/0」으로 뜨던 자리
+    expect(l.by).toBe('손성욱'); // 「-」로 뜨던 자리
   });
 
-  it('둘 다 미루지 않는다 — 마감일은 준 기준일 당일', () => {
-    expect(calcPaymentDue({ paymentTermType: 'prepaidOrder' }, new Date('2026-08-20'))).toBe('2026-08-20');
-    expect(calcPaymentDue({ paymentTermType: 'prepaidArrival' }, new Date('2026-10-05'))).toBe('2026-10-05');
+  it('메일 발송 모양은 그대로 둔다', () => {
+    const l = normalizeMailLog({
+      by: '박정현',
+      total: 5,
+      okCount: 4,
+      failCount: 1,
+      recipients: [{ name: 'A', email: 'a@x.com' }],
+      targetType: 'vendor',
+    });
+    expect(l.total).toBe(5);
+    expect(l.okCount).toBe(4);
+    expect(l.by).toBe('박정현');
+    expect(l.targetType).toBe('vendor');
   });
 
-  it('기준일이 갈린다 — 발주시는 발주일, 입고전은 입고일', () => {
-    expect(prepaidBasisOf('prepaidOrder')).toBe('order');
-    expect(prepaidBasisOf('prepaidArrival')).toBe('arrival');
+  it('받는 곳도 이름도 없으면 빈 목록 — 화면이 깨지지 않게', () => {
+    const l = normalizeMailLog({ subject: '제목만' });
+    expect(l.recipients).toEqual([]);
+    expect(l.total).toBe(0);
+    expect(l.by).toBe('');
   });
 
-  it('선결제 여부를 가려낸다', () => {
-    expect(isPrepaidTerm('prepaidOrder')).toBe(true);
-    expect(isPrepaidTerm('prepaidArrival')).toBe(true);
-    expect(isPrepaidTerm('nextMonthEnd')).toBe(false);
-    expect(isPrepaidTerm('')).toBe(false);
-    expect(isPrepaidTerm('prepaid')).toBe(false); // 옛 값은 선결제로 안 친다
-  });
-
-  // 옛 값이 남은 구매처는 계산이 멈추면 안 된다 — 다시 고르기 전까지 하던 대로
-  it('옛 「선결제」도 마감일은 그대로 낸다', () => {
-    expect(calcPaymentDue({ paymentTermType: 'prepaid' }, new Date('2026-08-20'))).toBe('2026-08-20');
-  });
-
-  it('선결제가 아닌 조건은 그대로다', () => {
-    expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, new Date('2026-08-11'))).toBe('2026-09-30');
-    expect(calcPaymentDue({ paymentTermType: 'afterDays', paymentTermDay: 30 }, new Date('2026-08-01'))).toBe(
-      '2026-08-31',
-    );
+  it('실패 건수가 있으면 성공 수를 되짚는다', () => {
+    expect(normalizeMailLog({ total: 10, failCount: 3 }).okCount).toBe(7);
   });
 });
 
