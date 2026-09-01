@@ -113,6 +113,9 @@ export default function BomDetailPage() {
   // BOX 는 값이 있는 BOM 에서만 뜻이 있어, 하나라도 적혀 있으면 기본으로 켠다.
   const [printShowBox, setPrintShowBox] = useState(false);
   const [printShowAmount, setPrintShowAmount] = useState(false);
+  // 구매처는 기본으로 빼 둔다 — 「구매처별」로 묶어 출력하면 띠로 따로 나오고,
+  // 열까지 있으면 같은 말이 두 번이다 (2026-09-01 대표님)
+  const [printShowSupplier, setPrintShowSupplier] = useState(false);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -759,6 +762,22 @@ export default function BomDetailPage() {
             </div>
             <div className="toggle-row" style={{ marginBottom: 10 }}>
               <div className="toggle-row-text">
+                <span className="toggle-row-title">구매처 표시</span>
+                <small className="text-muted">
+                  구매처 열을 추가합니다. 「구매처별」로 묶어 출력하면 위에 띠로 나오므로 꺼 두는 편이 낫습니다
+                </small>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={printShowSupplier}
+                  onChange={(e) => setPrintShowSupplier(e.target.checked)}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+            <div className="toggle-row" style={{ marginBottom: 10 }}>
+              <div className="toggle-row-text">
                 <span className="toggle-row-title">BOX 표시</span>
                 <small className="text-muted">
                   품목표에 BOX 열을 추가합니다
@@ -905,7 +924,7 @@ export default function BomDetailPage() {
                   {supplierName && <div className="bom-print-supplier-band">구매처 : {supplierName}</div>}
 
                   <table
-                    className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}`}
+                    className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}${printShowSupplier ? ' has-supplier' : ''}`}
                   >
                     <thead>
                       <tr>
@@ -939,9 +958,13 @@ export default function BomDetailPage() {
                             </th>
                           </>
                         )}
-                        <th scope="col" className="c-supplier">
-                          구매처
-                        </th>
+                        {/* 금액을 켜면 열이 열 개라 빡빡하다. 구매처는 「구매처별」로 묶어
+                            출력하면 띠로 따로 나오므로 여기서 뺀다 (2026-09-01 대표님) */}
+                        {printShowSupplier && (
+                          <th scope="col" className="c-supplier">
+                            구매처
+                          </th>
+                        )}
                         <th scope="col" className="c-note">
                           비고
                         </th>
@@ -964,14 +987,14 @@ export default function BomDetailPage() {
                                   <td className="c-amount"></td>
                                 </>
                               )}
-                              <td className="c-supplier"></td>
+                              {printShowSupplier && <td className="c-supplier"></td>}
                               <td className="c-note"></td>
                             </tr>
                           );
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
-                            {printShowBox && <td className={`c-box ${specFontClass(it.box, 10)}`}>{it.box || ''}</td>}
+                            {printShowBox && <td className={`c-box ${specFontClass(it.box, 16)}`}>{it.box || ''}</td>}
                             <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
                             <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
                             <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
@@ -988,7 +1011,9 @@ export default function BomDetailPage() {
                                 </td>
                               </>
                             )}
-                            <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
+                            {printShowSupplier && (
+                              <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
+                            )}
                             <td className={`c-note ${specFontClass(it.note, 14)}`}>{it.note || ''}</td>
                           </tr>
                         );
