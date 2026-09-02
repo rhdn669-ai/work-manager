@@ -338,7 +338,10 @@ export default function QuoteFormPage() {
                             const s = suppliers.find((x) => x.id === v);
                             setForm({ ...form, supplierId: v, supplierName: s?.name || form.supplierName });
                           }}
-                          options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                          options={[
+                            { value: '', label: '선택 안 함' },
+                            ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+                          ]}
                           ariaLabel="거래처 선택"
                           placeholder="거래처 선택"
                         />

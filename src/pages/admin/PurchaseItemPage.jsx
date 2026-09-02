@@ -613,18 +613,24 @@ export default function PurchaseItemPage() {
     }
     const tmpId = `tmp-${Date.now()}`;
     const groupKey = parent.groupKey || parent.id; // 부모가 베어면 own id, 서브면 부모의 groupKey
+    // 코드만 채우고 나머지는 비워 둔다.
+    //
+    // 부모 값을 물려받으면 편할 것 같지만, 하위 품목은 대개 규격·단가가 다른 물건이라
+    // 결국 하나씩 지우고 다시 쳐야 했다. 게다가 안 고친 칸이 부모 값 그대로 남아
+    // 「같은 메이커·같은 구매처」인 척 저장되는 일이 생긴다
+    // (2026-09-02 대표님 「품목 추가할때 코드말고는 공백으로 추가되게해줘」).
     const newItem = {
       id: tmpId,
       code,
-      name: parent.name || '',
+      name: '',
       spec: '',
-      maker: parent.maker || '',
-      drawingNo: parent.drawingNo || '',
-      unit: parent.unit || '',
-      category: parent.category || '',
+      maker: '',
+      drawingNo: '',
+      unit: '',
+      category: '',
       standardPrice: 0,
       unitPrice: 0,
-      defaultSupplierId: parent.defaultSupplierId || '',
+      defaultSupplierId: '',
       note: '',
       priceHistory: [],
       groupKey, // 서브: 부모(베어)의 id를 anchor로
@@ -1062,7 +1068,7 @@ export default function PurchaseItemPage() {
                       </button>
                     </div>
                     {isExpanded && (
-                      <div className="item-group-detail">
+                      <div className="item-group-detail fold-body">
                         <div className="item-group-detail-toolbar">
                           <button
                             type="button"
@@ -1490,7 +1496,10 @@ export default function PurchaseItemPage() {
                                                   );
                                                 }
                                               }}
-                                              options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                                              options={[
+                                                { value: '', label: '선택 안 함' },
+                                                ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+                                              ]}
                                               placeholder="선택"
                                               ariaLabel="기본 구매처 선택"
                                             />
@@ -1781,7 +1790,7 @@ export default function PurchaseItemPage() {
           <Select
             value={groupBulkSupplier}
             onChange={(v) => setGroupBulkSupplier(v)}
-            options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+            options={[{ value: '', label: '선택 안 함' }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
             placeholder="구매처 미지정"
             ariaLabel="구매처 선택"
           />

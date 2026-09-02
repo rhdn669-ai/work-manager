@@ -1033,7 +1033,7 @@ export default function PurchaseListPage() {
             <Select
               value={form.supplierId}
               onChange={(v) => setForm({ ...form, supplierId: v })}
-              options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+              options={[{ value: '', label: '선택 안 함' }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
               placeholder="선택 (미지정 시 첫 품목 기본 구매처 자동 적용)"
               ariaLabel="구매처 선택"
             />
