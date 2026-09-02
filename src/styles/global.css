@@ -7179,7 +7179,10 @@ table.cards-sm td {
 .item-group-detail {
   border-top: 1px solid var(--border);
   background: var(--bg-subtle);
-  padding: 12px;
+  /* 여백 없이 위에 붙인다 — 12px 을 두면 그룹 줄과 표 사이가 떠 보이고 좌우도
+     안으로 들어가, 마감·결제의 펼침과 모양이 어긋난다 (2026-09-02 대표님
+     「첫 사진처럼 위로 붙어야 하는거 아닌가」). 툴바 여백은 툴바가 따로 갖는다. */
+  padding: 0;
   overflow-x: auto; /* 칼럼 합이 넓어 표가 넘칠 때 우측(복사·✕) 잘리지 않게 가로 스크롤 */
 }
 .item-group-detail .table {
@@ -7194,6 +7197,7 @@ table.cards-sm td {
   display: none;
   justify-content: flex-end;
   gap: 6px;
+  padding: 10px 12px 0; /* 껍데기 여백을 걷었으니 여기서 제 몫만 갖는다 */
   margin-bottom: 6px;
 }
 /* 헤더(추가/일괄) 셀과 행(복사/삭제) 셀을 완전히 동일한 패딩·폭·정렬로 강제 — 어긋남 방지 */
