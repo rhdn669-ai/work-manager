@@ -32,7 +32,7 @@ import {
   removeBomVariant,
   isFreeIssue,
 } from '../../services/bomService';
-import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseService';
+import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
@@ -133,6 +133,8 @@ export default function BomDetailPage() {
   // 타입(형번) — 같은 제품의 형번별 차이를 BOM 한 벌로 관리한다
   const [variantModalOpen, setVariantModalOpen] = useState(false);
   const [variantPick, setVariantPick] = useState(null); // 타입을 고르는 중인 BOM 품목
+  // 도번을 치는 중인 줄 — { id, value }. 다 치고 칸을 벗어날 때 품목 마스터에 올린다.
+  const [editingDrawing, setEditingDrawing] = useState(null);
   const [newVariant, setNewVariant] = useState('');
 
   // ---- Ctrl+Z 실행취소 ----
@@ -373,6 +375,31 @@ export default function BomDetailPage() {
       await updateBomItem(id, data);
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  // BOM 에서 친 도번을 품목 마스터에 올린다.
+  //
+  // 도면 번호는 품목마다 정해진 값이라 원본은 품목 마스터다. 그래서 한동안 BOM 에서는
+  // 못 고치게 막아 두었는데, 정작 도번을 확인하는 자리가 BOM 이라 매번 품목 화면으로
+  // 건너가야 했다. 이제 여기서 쳐도 마스터로 올라가고, 그러면 이 프로젝트뿐 아니라
+  // 다른 BOM·발주서에도 함께 바뀐다 — 「BOM 마다 도번이 달라지는」 일은 그대로 막힌다
+  // (2026-09-02 대표님 「BOM 에서 도번 적어도 품목이랑 연동 되게 BOM 입력 풀어줘」).
+  async function saveDrawingNo(row, value) {
+    const next = (value || '').trim();
+    setEditingDrawing(null);
+    if ((row.drawingNo || '') === next) return;
+    try {
+      if (row.itemId) {
+        await updatePurchaseItem(row.itemId, { drawingNo: next });
+        // 마스터를 구독하고 있어 화면은 저절로 따라온다 (subscribePurchaseItems)
+      } else {
+        // 품목에 없는 줄(손으로 적어 넣은 것)은 이 BOM 에만 남긴다
+        updateField(row.id, { drawingNo: next });
+        await flushItem(row.id, { drawingNo: next });
+      }
+    } catch {
+      toast('도번 저장 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1260,20 +1287,20 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              {/* 도번은 품목에서만 고친다. 여기서도 칠 수 있으면 같은 품목의 도번이
-                                  BOM 마다 달라진다 (2026-09-02 대표님 「도번 입력은 품목 에서만」) */}
+                              {/* 여기서 친 도번은 품목 마스터로 올라간다 — 다른 BOM·발주서도 따라 바뀐다 */}
                               <td data-label="도번" title={it.drawingNo || ''}>
                                 <input
                                   type="text"
-                                  className="bom-readonly-input"
-                                  value={it.drawingNo || ''}
+                                  value={editingDrawing?.id === it.id ? editingDrawing.value : it.drawingNo || ''}
                                   title={
-                                    it.drawingNo ? `${it.drawingNo} — 품목에서 고칩니다` : '품목에서 도번을 입력하세요'
+                                    it.itemId
+                                      ? `${it.drawingNo || '도번 없음'} — 여기서 고치면 품목에도 함께 반영됩니다`
+                                      : `${it.drawingNo || '도번 없음'} — 품목에 없는 줄이라 이 BOM 에만 남습니다`
                                   }
                                   placeholder="-"
                                   aria-label="도번"
-                                  readOnly
-                                  tabIndex={-1}
+                                  onChange={(e) => setEditingDrawing({ id: it.id, value: e.target.value })}
+                                  onBlur={(e) => saveDrawingNo(it, e.target.value)}
                                 />
                               </td>
                               <td data-label="BOX" title={it.box || ''}>

@@ -2544,14 +2544,18 @@ export default function PurchaseDetailPage() {
                                 tabIndex={-1}
                               />
                             </td>
-                            {/* 도번 — 품목에 적힌 것을 보여 준다. 고치는 곳은 품목뿐이다
-                                (2026-09-02 대표님 「도번 입력은 품목 에서만」) */}
+                            {/* 도번 — 품목에 적힌 것을 보여 준다. 발주서는 이미 나간 문서라
+                                여기서는 고치지 않는다. 고치는 곳은 품목과 BOM 이다. */}
                             <td data-label="도번" title={master?.drawingNo || ln.drawingNo || ''}>
                               <input
                                 type="text"
                                 className="bom-readonly-input"
                                 value={master?.drawingNo || ln.drawingNo || ''}
-                                title={master?.drawingNo || ln.drawingNo || '품목에서 도번을 입력하세요'}
+                                title={
+                                  master?.drawingNo || ln.drawingNo
+                                    ? `${master?.drawingNo || ln.drawingNo} — 품목·BOM 에서 고칩니다`
+                                    : '품목이나 BOM 에서 도번을 입력하세요'
+                                }
                                 placeholder="-"
                                 aria-label="도번"
                                 readOnly
