@@ -1153,10 +1153,10 @@ export default function BomDetailPage() {
         ))}
         <span className="bom-supply-tabs-hint">
           {supplyTab === 'free'
-            ? '고객사 제공 자재 — 여기서 담은 품목은 사급이 됩니다. 금액 합계와 발주서에서 빠집니다'
+            ? '고객사 제공 자재 — 금액 합계와 발주서에서 빠집니다'
             : supplyTab === 'paid'
-              ? '우리가 사서 넣는 자재 — 여기서 담은 품목은 도급이 됩니다'
-              : '도급과 사급을 함께 봅니다 — 담으려면 도급·사급 탭에서 담으세요'}
+              ? '우리가 사서 넣는 자재'
+              : '도급과 사급을 함께 봅니다'}
         </span>
       </div>
 
