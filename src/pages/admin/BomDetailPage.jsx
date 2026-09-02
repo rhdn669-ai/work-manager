@@ -1031,22 +1031,22 @@ export default function BomDetailPage() {
                             BOX
                           </th>
                         )}
+                        <th scope="col" className="c-name">
+                          품목명
+                        </th>
                         {printShowDrawing && (
                           <th scope="col" className="c-drawing">
                             도번
                           </th>
                         )}
-                        <th scope="col" className="c-name">
-                          품목명
+                        <th scope="col" className="c-qty">
+                          수량
                         </th>
                         <th scope="col" className="c-maker">
                           메이커
                         </th>
                         <th scope="col" className="c-spec">
                           규격
-                        </th>
-                        <th scope="col" className="c-qty">
-                          수량
                         </th>
                         {showAmount && (
                           <>
@@ -1077,11 +1077,11 @@ export default function BomDetailPage() {
                             <tr key={`e-${r}`}>
                               <td className="c-no"></td>
                               {printShowBox && <td className="c-box"></td>}
-                              {printShowDrawing && <td className="c-drawing"></td>}
                               <td className="c-name"></td>
+                              {printShowDrawing && <td className="c-drawing"></td>}
+                              <td className="c-qty"></td>
                               <td className="c-maker"></td>
                               <td className="c-spec"></td>
-                              <td className="c-qty"></td>
                               {showAmount && (
                                 <>
                                   <td className="c-price"></td>
@@ -1096,13 +1096,13 @@ export default function BomDetailPage() {
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
                             {printShowBox && <td className={`c-box ${specFontClass(it.box, 16)}`}>{it.box || ''}</td>}
+                            <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
                             {printShowDrawing && (
                               <td className={`c-drawing ${specFontClass(it.drawingNo, 12)}`}>{it.drawingNo || ''}</td>
                             )}
-                            <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
+                            <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
                             <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
                             <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
-                            <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
                             {showAmount &&
                               (isFreeIssue(it) ? (
                                 /* 사급은 고객사가 대준다 — 숫자 대신 이유를 적는다 (2026-09-02 대표님) */

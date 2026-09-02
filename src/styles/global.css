@@ -16771,16 +16771,16 @@ td.mx-dc {
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
   width: 18.2%;
 }
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 6.1%;
+  text-align: center;
+}
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 13.6%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
   width: 39.4%;
-}
-.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 6.1%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
   width: 16.6%;
@@ -16790,12 +16790,16 @@ td.mx-dc {
   width: 5.0%;
   text-align: center;
 }
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
+  width: 15.0%;
+}
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-drawing {
   width: 17.5%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
-  width: 15.0%;
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 5.0%;
+  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 11.2%;
@@ -16803,10 +16807,6 @@ td.mx-dc {
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
   width: 32.5%;
-}
-.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 5.0%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
   width: 13.8%;
@@ -16819,16 +16819,16 @@ td.mx-dc {
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-name {
   width: 15.2%;
 }
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 5.1%;
+  text-align: center;
+}
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-maker {
   width: 11.4%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-spec {
   width: 32.9%;
-}
-.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 5.1%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-supplier {
   width: 16.5%;
@@ -16842,12 +16842,16 @@ td.mx-dc {
   width: 4.3%;
   text-align: center;
 }
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
+  width: 12.9%;
+}
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-drawing {
   width: 15.1%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
-  width: 12.9%;
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 4.3%;
+  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-maker {
   width: 9.7%;
@@ -16855,10 +16859,6 @@ td.mx-dc {
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-spec {
   width: 28.0%;
-}
-.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 4.3%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-supplier {
   width: 14.0%;
@@ -16879,16 +16879,16 @@ td.mx-dc {
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
   width: 15.0%;
 }
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 5.0%;
+  text-align: center;
+}
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 11.2%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
   width: 32.5%;
-}
-.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 5.0%;
-  text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
   width: 13.8%;
@@ -16902,12 +16902,16 @@ td.mx-dc {
   width: 14.9%;
   text-align: center;
 }
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
+  width: 12.8%;
+}
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-drawing {
   width: 14.9%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
-  width: 12.8%;
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 4.3%;
+  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 9.6%;
@@ -16915,10 +16919,6 @@ td.mx-dc {
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
   width: 27.7%;
-}
-.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 4.3%;
-  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
   width: 11.5%;
@@ -16935,16 +16935,16 @@ td.mx-dc {
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-name {
   width: 12.9%;
 }
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 4.3%;
+  text-align: center;
+}
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-maker {
   width: 9.7%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-spec {
   width: 28.0%;
-}
-.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 4.3%;
-  text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-supplier {
   width: 14.0%;
@@ -16962,12 +16962,16 @@ td.mx-dc {
   width: 13.1%;
   text-align: center;
 }
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
+  width: 11.2%;
+}
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-drawing {
   width: 13.1%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
-  width: 11.2%;
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 3.7%;
+  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-maker {
   width: 8.4%;
@@ -16975,10 +16979,6 @@ td.mx-dc {
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-spec {
   width: 24.3%;
-}
-.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 3.7%;
-  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-supplier {
   width: 12.1%;
@@ -16995,16 +16995,16 @@ td.mx-dc {
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
   width: 13.6%;
 }
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 4.5%;
+  text-align: center;
+}
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
   width: 10.2%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
   width: 29.5%;
-}
-.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 4.5%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
   width: 11.4%;
@@ -17020,12 +17020,16 @@ td.mx-dc {
   width: 3.9%;
   text-align: center;
 }
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
+  width: 11.8%;
+}
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-drawing {
   width: 13.7%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
-  width: 11.8%;
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.9%;
+  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
   width: 8.8%;
@@ -17033,10 +17037,6 @@ td.mx-dc {
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
   width: 25.5%;
-}
-.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.9%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
   width: 9.8%;
@@ -17055,16 +17055,16 @@ td.mx-dc {
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
   width: 11.9%;
 }
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 4.0%;
+  text-align: center;
+}
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
   width: 8.9%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
   width: 25.7%;
-}
-.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 4.0%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
   width: 9.9%;
@@ -17084,12 +17084,16 @@ td.mx-dc {
   width: 3.5%;
   text-align: center;
 }
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 10.4%;
+}
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-drawing {
   width: 12.2%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
-  width: 10.4%;
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.5%;
+  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
   width: 7.8%;
@@ -17097,10 +17101,6 @@ td.mx-dc {
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
   width: 22.6%;
-}
-.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.5%;
-  text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
   width: 8.7%;
@@ -17127,16 +17127,16 @@ td.mx-dc {
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
   width: 11.8%;
 }
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.9%;
+  text-align: center;
+}
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
   width: 8.8%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
   width: 25.5%;
-}
-.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.9%;
-  text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
   width: 9.8%;
@@ -17156,12 +17156,16 @@ td.mx-dc {
   width: 12.1%;
   text-align: center;
 }
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
+  width: 10.3%;
+}
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-drawing {
   width: 12.1%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
-  width: 10.3%;
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.4%;
+  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
   width: 7.8%;
@@ -17169,10 +17173,6 @@ td.mx-dc {
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
   width: 22.4%;
-}
-.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.4%;
-  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
   width: 8.6%;
@@ -17195,16 +17195,16 @@ td.mx-dc {
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
   width: 10.4%;
 }
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.5%;
+  text-align: center;
+}
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
   width: 7.8%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
   width: 22.6%;
-}
-.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.5%;
-  text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
   width: 8.7%;
@@ -17228,12 +17228,16 @@ td.mx-dc {
   width: 10.9%;
   text-align: center;
 }
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 9.3%;
+}
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-drawing {
   width: 10.9%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
-  width: 9.3%;
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.1%;
+  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
   width: 7.0%;
@@ -17241,10 +17245,6 @@ td.mx-dc {
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
   width: 20.2%;
-}
-.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.1%;
-  text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
   width: 7.8%;
