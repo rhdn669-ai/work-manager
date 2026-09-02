@@ -879,7 +879,7 @@ export default function PurchaseDetailPage() {
         alert('해당 BOM에 품목이 없습니다.');
         return;
       }
-      // 사급은 고객사가 대주는 자재다. 발주서로 넘어가면 우리가 사게 되고 그대로
+      // 사급은 고객사 제공 자재다. 발주서로 넘어가면 우리가 사게 되고 그대로
       // 입고·마감·결제까지 흘러간다 — 여기서 막는다 (2026-09-02 대표님 「아예 뺀다」).
       const freeItems = allItems.filter(isFreeIssue);
       const items = allItems.filter((b) => !isFreeIssue(b));

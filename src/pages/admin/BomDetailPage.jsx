@@ -342,7 +342,7 @@ export default function BomDetailPage() {
       .map(([name, items]) => ({
         name,
         items,
-        // 사급은 고객사가 대주는 자재라 우리 돈이 안 나간다 — 합계에서 뺀다 (2026-09-02 대표님)
+        // 사급은 고객사 제공 자재라 우리 돈이 안 나간다 — 합계에서 뺀다 (2026-09-02 대표님)
         subtotal: items.reduce(
           (s, it) => s + (isFreeIssue(it) ? 0 : (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
           0,
@@ -1047,7 +1047,7 @@ export default function BomDetailPage() {
                   {supplierName && (
                     <div className={`bom-print-supplier-band${supplierName === '사급' ? ' is-free' : ''}`}>
                       {supplierName === '사급'
-                        ? '사급 자재 — 고객사 지급 (금액 제외)'
+                        ? '사급 — 고객사 제공 자재 (금액 제외)'
                         : supplierName === '도급'
                           ? '도급 자재 — 당사 구매'
                           : `구매처 : ${supplierName}`}
@@ -1218,7 +1218,7 @@ export default function BomDetailPage() {
         ))}
         <span className="bom-supply-tabs-hint">
           {supplyTab === 'free'
-            ? '고객사가 대주는 자재입니다 — 금액 합계와 발주서에서 빠집니다'
+            ? '고객사 제공 자재 — 금액 합계와 발주서에서 빠집니다'
             : '왼쪽 칸을 골라 도급·사급으로 옮길 수 있습니다'}
         </span>
       </div>
@@ -1288,7 +1288,7 @@ export default function BomDetailPage() {
             예상 합계 <strong>{total.toLocaleString()}원</strong>
           </span>
           {freeCount > 0 && (
-            <span className="bom-free-note" title="사급은 고객사가 대주는 자재라 금액에 안 들어갑니다">
+            <span className="bom-free-note" title="사급은 고객사 제공 자재라 금액에 안 들어갑니다">
               사급 <strong>{freeCount}</strong>건 제외
             </span>
           )}
