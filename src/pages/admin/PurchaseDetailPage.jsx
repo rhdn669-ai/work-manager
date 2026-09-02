@@ -470,6 +470,14 @@ export default function PurchaseDetailPage() {
   // 표에서 같은 '열'을 세로로 드래그하면 그 열의 값들만 클립보드로 복사 (엑셀 붙여넣기용)
   function handleColumnDragCopy(e) {
     if (e.button !== 0) return;
+    // 입력칸을 누른 것이면 커서를 넣어 줘야 한다.
+    //
+    // 여기서 preventDefault 하면 클릭해도 포커스가 들어가지 않아, 바로 이어서 친
+    // Ctrl+V 가 갈 곳이 없어 통째로 씹힌다. Tab 으로 옮겨 간 칸에서는 멀쩡하고
+    // 클릭해서 들어간 칸에서만 안 되니 「간헐적」으로 보였다
+    // (2026-09-02 대표님 「앱에 붙여넣기가 간헐적으로 씹히는데」).
+    // 열 복사는 칸의 «여백»을 끌 때만 시작한다.
+    if (e.target.closest('input, textarea, select, button, a, [contenteditable]')) return;
     const td = e.target.closest('td');
     if (!td) return;
     // 버튼·셀렉트 등 조작 위젯이 있는 칸(작업·입고)은 제외 — 클릭 동작 보존
