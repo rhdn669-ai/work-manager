@@ -1295,12 +1295,7 @@ export default function BomDetailPage() {
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
-                        {/* 도급·사급 탭에서는 온통 같은 값이라 열을 두지 않는다 */}
-                        {supplyTab === 'all' && (
-                          <th scope="col" style={{ minWidth: 72 }}>
-                            구분
-                          </th>
-                        )}
+
                         <th scope="col">수량</th>
                         <th scope="col">단가</th>
                         <th scope="col">합계</th>
@@ -1325,7 +1320,7 @@ export default function BomDetailPage() {
                             {isGroupStart && (
                               <tr className="bom-supplier-header">
                                 <td className="bom-spacer-col" aria-hidden="true"></td>
-                                <td colSpan={15} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
+                                <td colSpan={14} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
                                   <span
                                     className="bom-supplier-header-text"
                                     title={sup}
@@ -1434,13 +1429,6 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              {supplyTab === 'all' && (
-                                <td data-label="구분">
-                                  <span className={`bom-supply-tag${isFreeIssue(it) ? ' is-free' : ''}`}>
-                                    {isFreeIssue(it) ? '사급' : '도급'}
-                                  </span>
-                                </td>
-                              )}
                               <td data-label="수량">
                                 <input
                                   className="num-input"

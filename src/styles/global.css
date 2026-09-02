@@ -21778,22 +21778,6 @@ a.lib-row-name:hover {
   color: var(--text-muted);
 }
 
-/* 지금 어느 쪽인지 — 「전체」로 볼 때만 나온다 */
-.bom-supply-tag {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--bg-subtle, #f2f4f6);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-light);
-  white-space: nowrap;
-}
-
-.bom-supply-tag.is-free {
-  background: var(--accent-soft, #feefe7);
-  color: var(--accent-press);
-}
-
 @media (max-width: 768px) {
   .bom-supply-tabs-hint {
     display: none; /* 좁은 화면에서는 탭만 남긴다 */
