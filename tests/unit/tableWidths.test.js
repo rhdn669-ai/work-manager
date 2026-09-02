@@ -30,9 +30,17 @@ describe('품목 표 칸 폭', () => {
 
   it('규격이 가장 넓다 — 이 표에서 제일 긴 값이 들어간다', () => {
     for (const cols of [BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT, PO_COLS]) {
-      expect(Math.max(...cols)).toBe(cols[cols.indexOf(Math.max(...cols))]);
-      // 규격 자리(최댓값)가 품명보다 넓어야 한다
-      expect(Math.max(...cols)).toBeGreaterThanOrEqual(17);
+      const sorted = [...cols].sort((a, b) => b - a);
+      // 가장 넓은 칸(규격)이 그다음보다 확실히 넓어야 한다
+      expect(sorted[0]).toBeGreaterThan(sorted[1]);
     }
+  });
+
+  it('도번과 BOX 는 같은 폭 — 나란히 놓이는 두 칸이다 (2026-09-02 대표님)', () => {
+    // BOM: 여백·No 다음이 코드·도번·BOX
+    expect(BOM_COLS_WITH_VARIANT[3]).toBe(BOM_COLS_WITH_VARIANT[4]);
+    expect(BOM_COLS_NO_VARIANT[3]).toBe(BOM_COLS_NO_VARIANT[4]);
+    // 발주서: No·코드 다음이 도번·BOX
+    expect(PO_COLS[2]).toBe(PO_COLS[3]);
   });
 });

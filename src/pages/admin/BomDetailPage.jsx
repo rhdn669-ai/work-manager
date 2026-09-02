@@ -94,6 +94,9 @@ function SortableBomRow({ id, canDrag, no, children }) {
 
 // 글자가 길면 PDF 1줄에 맞게 글자 크기 자동 축소
 // 한글·CJK는 라틴보다 폭이 넓으므로 가중치(1.8배)를 줘서 더 일찍·더 작게 축소
+// BOX 가 안 적힌 줄을 고르는 값 — 빈 문자열은 「전체」와 구분되지 않는다
+const NO_BOX = '(BOX 미지정)';
+
 export default function BomDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -117,6 +120,9 @@ export default function BomDetailPage() {
   // (2026-09-02 대표님 「사급에 따로 리스트를 추가 할거임」).
   const addAsFree = supplyTab === 'free';
   const [supplierFilter, setSupplierFilter] = useState(''); // 특정 구매처만 (이름)
+  // BOX 로 거르기 — 한 판넬(P/W BOX·H/T BOX 상 …) 것만 뽑아 보고 그대로 출력한다
+  // (2026-09-02 대표님 「박스 별 필터 걸수있게 하고 출력도 필터 상태의 박스만」)
+  const [boxFilter, setBoxFilter] = useState('');
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
   // 출력 옵션 — 발주서와 같은 문법 (2026-09-01 대표님 「BOM에서도 출력할때 박스,금액 옵션」).
   // BOX 는 값이 있는 BOM 에서만 뜻이 있어, 하나라도 적혀 있으면 기본으로 켠다.
@@ -279,6 +285,9 @@ export default function BomDetailPage() {
     if (supplierFilter) {
       list = list.filter((it) => (it.supplier || '(구매처 미지정)') === supplierFilter);
     }
+    if (boxFilter) {
+      list = list.filter((it) => (it.box || '').trim() === (boxFilter === NO_BOX ? '' : boxFilter));
+    }
     if (supplyTab === 'paid') list = list.filter((it) => !isFreeIssue(it));
     else if (supplyTab === 'free') list = list.filter(isFreeIssue);
     const sorted = [...list];
@@ -288,7 +297,7 @@ export default function BomDetailPage() {
       sorted.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
     }
     return sorted;
-  }, [displayItems, search, sortBy, supplierFilter, supplyTab]);
+  }, [displayItems, search, sortBy, supplierFilter, boxFilter, supplyTab]);
 
   // BOX 가 하나라도 적혀 있으면 옵션을 기본으로 켠다 — 값이 없는 BOM 에서 빈 열만 늘리지 않게
   const hasBox = useMemo(() => bomItems.some((b) => (b.box || '').trim()), [bomItems]);
@@ -302,7 +311,8 @@ export default function BomDetailPage() {
   }, [hasDrawing]);
 
   // ---- 드래그 순서변경 (추가순·전체보기에서만 — 코드순/구매처별/검색/필터 중엔 순서가 화면과 달라 비활성) ----
-  const canDragRows = sortBy === 'order' && !groupBySupplier && !supplierFilter && !search.trim();
+  const canDragRows =
+    sortBy === 'order' && !groupBySupplier && !supplierFilter && !boxFilter && !search.trim();
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -328,6 +338,11 @@ export default function BomDetailPage() {
   }
 
   // 화면에 보이는 구매처 목록 (필터 드롭다운용)
+  const boxOptions = useMemo(() => {
+    const set = new Set(displayItems.map((it) => (it.box || '').trim() || NO_BOX));
+    return [...set].sort((a, b) => (a === NO_BOX ? 1 : b === NO_BOX ? -1 : a.localeCompare(b)));
+  }, [displayItems]);
+
   const supplierOptions = useMemo(() => {
     const set = new Set(displayItems.map((it) => it.supplier || '(구매처 미지정)'));
     return [...set].sort();
@@ -897,6 +912,11 @@ export default function BomDetailPage() {
           <div className="print-form-iopn print-form-paged print-only">
             {pageData.map(({ chunk, startNo, size, supplierName, isSectionLast }, pageIdx) => {
               const isFirst = pageIdx === 0;
+              // 사급 장에는 금액이 없다. 단가·금액 열을 그대로 두면 그 열에 값이 하나도
+              // 없어 폭이 무너지고, 뒤따르는 수량·비고 글자가 칸에서 밀려난다
+              // (2026-09-02 대표님 「사급 출력물 수량 글씨 틀어짐」).
+              const freePage = chunk.length > 0 && chunk.every(isFreeIssue);
+              const showAmount = printShowAmount && !freePage;
               const targetRows = size - (isSectionLast ? NOTES_ROWS : 0);
               const padded = [...chunk];
               while (padded.length < targetRows) padded.push(null);
@@ -993,7 +1013,7 @@ export default function BomDetailPage() {
                   )}
 
                   <table
-                    className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}${printShowSupplier ? ' has-supplier' : ''}${printShowDrawing ? ' has-drawing' : ''}`}
+                    className={`iopn-items-table${showAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}${printShowSupplier ? ' has-supplier' : ''}${printShowDrawing ? ' has-drawing' : ''}`}
                   >
                     <thead>
                       <tr>
@@ -1022,7 +1042,7 @@ export default function BomDetailPage() {
                         <th scope="col" className="c-qty">
                           수량
                         </th>
-                        {printShowAmount && (
+                        {showAmount && (
                           <>
                             <th scope="col" className="c-price">
                               단가
@@ -1056,7 +1076,7 @@ export default function BomDetailPage() {
                               <td className="c-maker"></td>
                               <td className="c-spec"></td>
                               <td className="c-qty"></td>
-                              {printShowAmount && (
+                              {showAmount && (
                                 <>
                                   <td className="c-price"></td>
                                   <td className="c-amount"></td>
@@ -1077,7 +1097,7 @@ export default function BomDetailPage() {
                             <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
                             <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
-                            {printShowAmount &&
+                            {showAmount &&
                               (isFreeIssue(it) ? (
                                 /* 사급은 고객사가 대준다 — 숫자 대신 이유를 적는다 (2026-09-02 대표님) */
                                 <td className="c-amount c-free" colSpan={2}>
@@ -1192,11 +1212,21 @@ export default function BomDetailPage() {
         >
           구매처별 {groupBySupplier ? 'ON' : 'OFF'}
         </button>
+        {boxOptions.length > 1 && (
+          <Select
+            className="bom-supplier-select"
+            value={boxFilter}
+            onChange={(v) => setBoxFilter(v)}
+            options={[{ value: '', label: 'BOX 전체' }, ...boxOptions.map((b) => ({ value: b, label: b }))]}
+            placeholder="BOX 전체"
+            ariaLabel="BOX 필터"
+          />
+        )}
         <Select
           className="bom-supplier-select"
           value={supplierFilter}
           onChange={(v) => setSupplierFilter(v)}
-          options={supplierOptions.map((s) => ({ value: s, label: s }))}
+          options={[{ value: '', label: '구매처 전체' }, ...supplierOptions.map((s) => ({ value: s, label: s }))]}
           placeholder="전체"
           ariaLabel="구매처 필터"
         />
