@@ -53,7 +53,7 @@ function fmtDateTime(d) {
 
 // 드래그 가능한 품목 행 — 핸들을 No 칸 안에 넣어 표 모양(스페이서 0폭)은 원본 그대로 유지
 // canDrag=false면 핸들 없이 번호만 렌더 (코드순·구매처별·검색 중엔 드래그 무의미)
-function SortableBomRow({ id, canDrag, no, children }) {
+function SortableBomRow({ id, canDrag, no, checked, onCheck, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !canDrag,
@@ -68,8 +68,16 @@ function SortableBomRow({ id, canDrag, no, children }) {
     position: isDragging ? 'relative' : undefined,
   };
   return (
-    <tr ref={setNodeRef} style={style}>
-      <td className="bom-spacer-col" aria-hidden="true"></td>
+    <tr ref={setNodeRef} style={style} className={checked ? 'is-checked' : undefined}>
+      <td className="bom-spacer-col">
+        <input
+          type="checkbox"
+          className="bom-del-check"
+          checked={checked}
+          onChange={() => onCheck(id)}
+          aria-label="삭제할 줄 고르기"
+        />
+      </td>
       <td className="bom-no-col" data-label="No">
         <span className="bom-no-wrap">
           {canDrag && (
@@ -112,7 +120,11 @@ export default function BomDetailPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('order'); // 'order'(추가/붙여넣기순) | 'code'(코드순)
-  const [groupBySupplier, setGroupBySupplier] = useState(false); // 구매처별 묶음 보기
+  // 묶어 보기 — 'none' | 'supplier'(구매처별) | 'supply'(도급·사급별).
+  // 둘을 동시에 묶으면 띠가 겹쳐 무엇 기준인지 읽히지 않아 하나만 켜지게 둔다
+  // (2026-09-02 대표님 「전체로 볼때 사 도 분류가 필요하겠네」·「버튼 만들자」).
+  const [groupBy, setGroupBy] = useState('none');
+  const groupBySupplier = groupBy !== 'none'; // 묶어 보는 중인가 (띠·소계·드래그 잠금 공용)
   // 도급 / 사급을 나눠 본다. 한 줄씩 눌러 구분을 바꾸는 대신, 골라서 한꺼번에 옮긴다
   // (2026-09-02 대표님 「도급 사급 구분 버튼으로 두지말고 도급 사급 페이지를 따로」).
   const [supplyTab, setSupplyTab] = useState('all'); // 'all' | 'paid'(도급) | 'free'(사급)
@@ -123,6 +135,8 @@ export default function BomDetailPage() {
   // BOX 로 거르기 — 한 판넬(P/W BOX·H/T BOX 상 …) 것만 뽑아 보고 그대로 출력한다
   // (2026-09-02 대표님 「박스 별 필터 걸수있게 하고 출력도 필터 상태의 박스만」)
   const [boxFilter, setBoxFilter] = useState('');
+  // 지우려고 고른 줄 (2026-09-02 대표님 「전체삭제 버튼도 넣어줘 삭제할 목록 체크 되는 방식으로」)
+  const [delPick, setDelPick] = useState(() => new Set());
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
   // 출력 옵션 — 발주서와 같은 문법 (2026-09-01 대표님 「BOM에서도 출력할때 박스,금액 옵션」).
   // BOX 는 값이 있는 BOM 에서만 뜻이 있어, 하나라도 적혀 있으면 기본으로 켠다.
@@ -311,8 +325,7 @@ export default function BomDetailPage() {
   }, [hasDrawing]);
 
   // ---- 드래그 순서변경 (추가순·전체보기에서만 — 코드순/구매처별/검색/필터 중엔 순서가 화면과 달라 비활성) ----
-  const canDragRows =
-    sortBy === 'order' && !groupBySupplier && !supplierFilter && !boxFilter && !search.trim();
+  const canDragRows = sortBy === 'order' && !groupBySupplier && !supplierFilter && !boxFilter && !search.trim();
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -348,26 +361,31 @@ export default function BomDetailPage() {
     return [...set].sort();
   }, [displayItems]);
 
-  // 구매처별 그룹 [{ name, items, subtotal }]
+  // 묶음 [{ name, items, subtotal }] — 기준은 groupBy 가 정한다
+  const groupNameOf = (it) =>
+    groupBy === 'supply' ? (isFreeIssue(it) ? '사급' : '도급') : it.supplier || '(구매처 미지정)';
   const supplierGroups = useMemo(() => {
     const map = new Map();
     for (const it of rows) {
-      const key = it.supplier || '(구매처 미지정)';
+      const key = groupBy === 'supply' ? (isFreeIssue(it) ? '사급' : '도급') : it.supplier || '(구매처 미지정)';
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(it);
     }
-    return [...map.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([name, items]) => ({
-        name,
-        items,
-        // 사급은 고객사 제공 자재라 우리 돈이 안 나간다 — 합계에서 뺀다 (2026-09-02 대표님)
-        subtotal: items.reduce(
-          (s, it) => s + (isFreeIssue(it) ? 0 : (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
-          0,
-        ),
-      }));
-  }, [rows]);
+    return (
+      [...map.entries()]
+        // 도급을 먼저 — 우리가 사는 것이 본줄기다
+        .sort((a, b) => (groupBy === 'supply' ? (a[0] === '도급' ? -1 : 1) : a[0].localeCompare(b[0])))
+        .map(([name, items]) => ({
+          name,
+          items,
+          // 사급은 고객사 제공 자재라 우리 돈이 안 나간다 — 합계에서 뺀다 (2026-09-02 대표님)
+          subtotal: items.reduce(
+            (s, it) => s + (isFreeIssue(it) ? 0 : (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
+            0,
+          ),
+        }))
+    );
+  }, [rows, groupBy]);
 
   const total = useMemo(
     () =>
@@ -426,6 +444,41 @@ export default function BomDetailPage() {
       }
     } catch {
       toast('도번 저장 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  function toggleDelPick(id) {
+    setDelPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 줄을 한꺼번에 휴지통으로. 영구 삭제가 아니라 되살릴 수 있다.
+  async function removePicked() {
+    const ids = [...delPick].filter((id) => rows.some((r) => r.id === id));
+    if (ids.length === 0) return;
+    if (
+      !(await confirm(`고른 ${ids.length}건을 BOM 에서 삭제하시겠습니까?
+(휴지통에서 되살릴 수 있습니다)`))
+    )
+      return;
+    pushBomUndo();
+    setDelPick(new Set());
+    const targets = bomItems.filter((b) => ids.includes(b.id));
+    setBomItems((prev) => prev.filter((b) => !ids.includes(b.id)));
+    try {
+      for (const b of targets) {
+        const d = displayItems.find((x) => x.id === b.id);
+        const title = [d?.name, d?.spec].filter(Boolean).join(' ') || '(이름 없음)';
+        await trashGeneric('bom', b.id, { title }, userProfile?.name || '');
+      }
+      toast(`${targets.length}건을 삭제했습니다`, 'success');
+    } catch {
+      toast('삭제 중 오류가 발생했습니다 — 화면을 새로 불러옵니다', 'error', 0);
+      setBomItems(bomItems);
     }
   }
 
@@ -1165,7 +1218,10 @@ export default function BomDetailPage() {
             role="tab"
             aria-selected={supplyTab === t.key}
             className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-            onClick={() => setSupplyTab(t.key)}
+            onClick={() => {
+              setSupplyTab(t.key);
+              if (t.key !== 'all') setGroupBy((v) => (v === 'supply' ? 'none' : v));
+            }}
           >
             {t.label}
             <span className="bom-supply-tab-n">{t.n}</span>
@@ -1179,6 +1235,21 @@ export default function BomDetailPage() {
               : '도급과 사급을 함께 봅니다'}
         </span>
       </div>
+
+      {delPick.size > 0 && (
+        <div className="bom-del-bar no-print">
+          <span className="bom-del-count">
+            <strong>{delPick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={removePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setDelPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       <div className="purchase-filters bom-filters no-print">
         <input
@@ -1206,12 +1277,22 @@ export default function BomDetailPage() {
         </div>
         <button
           type="button"
-          className={`btn btn-sm ${groupBySupplier ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setGroupBySupplier((v) => !v)}
+          className={`btn btn-sm ${groupBy === 'supplier' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setGroupBy((v) => (v === 'supplier' ? 'none' : 'supplier'))}
           title="구매처별로 묶어서 보기/출력"
         >
-          구매처별 {groupBySupplier ? 'ON' : 'OFF'}
+          구매처별 {groupBy === 'supplier' ? 'ON' : 'OFF'}
         </button>
+        {supplyTab === 'all' && (
+          <button
+            type="button"
+            className={`btn btn-sm ${groupBy === 'supply' ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setGroupBy((v) => (v === 'supply' ? 'none' : 'supply'))}
+            title="도급·사급으로 묶어서 보기"
+          >
+            구분별 {groupBy === 'supply' ? 'ON' : 'OFF'}
+          </button>
+        )}
         {boxOptions.length > 1 && (
           <Select
             className="bom-supplier-select"
@@ -1267,7 +1348,15 @@ export default function BomDetailPage() {
                     </colgroup>
                     <thead>
                       <tr>
-                        <th scope="col" className="bom-spacer-col" aria-hidden="true"></th>
+                        <th scope="col" className="bom-spacer-col">
+                          <input
+                            type="checkbox"
+                            className="bom-del-check"
+                            checked={rows.length > 0 && rows.every((r) => delPick.has(r.id))}
+                            onChange={(e) => setDelPick(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())}
+                            aria-label="보이는 줄 모두 고르기"
+                          />
+                        </th>
                         <th scope="col" className="bom-no-col">
                           No
                         </th>
@@ -1291,9 +1380,9 @@ export default function BomDetailPage() {
                     <tbody>
                       {(groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows).map((it, idx, arr) => {
                         const amount = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
-                        const sup = it.supplier || '(구매처 미지정)';
-                        const prevSup = idx > 0 ? arr[idx - 1].supplier || '(구매처 미지정)' : null;
-                        const nextSup = idx < arr.length - 1 ? arr[idx + 1].supplier || '(구매처 미지정)' : null;
+                        const sup = groupNameOf(it);
+                        const prevSup = idx > 0 ? groupNameOf(arr[idx - 1]) : null;
+                        const nextSup = idx < arr.length - 1 ? groupNameOf(arr[idx + 1]) : null;
                         const isGroupStart = groupBySupplier && sup !== prevSup;
                         const isGroupEnd = groupBySupplier && sup !== nextSup;
                         const grp = isGroupEnd ? supplierGroups.find((g) => g.name === sup) : null;
@@ -1323,7 +1412,13 @@ export default function BomDetailPage() {
                                 </td>
                               </tr>
                             )}
-                            <SortableBomRow id={it.id} canDrag={canDragRows} no={idx + 1}>
+                            <SortableBomRow
+                              id={it.id}
+                              canDrag={canDragRows}
+                              no={idx + 1}
+                              checked={delPick.has(it.id)}
+                              onCheck={toggleDelPick}
+                            >
                               <td data-label="코드" title={it.code || ''}>
                                 <input
                                   type="text"

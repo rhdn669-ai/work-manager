@@ -15,7 +15,7 @@ import {
   repadItemCodes,
 } from '../../services/purchaseService';
 import { trashGeneric, restoreTrashItem } from '../../services/trashService';
-import { mainCodeOf, moveInLayout } from '../../domain/itemLayout';
+import { mainCodeOf, moveInLayout, isWorthSaving } from '../../domain/itemLayout';
 import { getToday } from '../../utils/dateUtils';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
@@ -552,7 +552,8 @@ export default function PurchaseItemPage() {
     const it = items.find((x) => x.id === id);
     if (!it) return;
     const isNew = String(id).startsWith('tmp-');
-    if (isNew && !(it.name || '').trim()) return; // 빈 행 무시
+    // 코드만 있는 빈 줄이 아니면 보낸다 — 품명을 아직 안 적었어도 규격·도번·단가는 지킨다
+    if (isNew && !isWorthSaving(it)) return;
 
     const payload = { ...it };
 

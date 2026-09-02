@@ -4,7 +4,7 @@
 // 여기가 틀리면 수백 품목의 코드가 한꺼번에 잘못 매겨진다. BOM·발주서는 문서 id 로
 // 붙들려 있어 연결은 안 끊기지만, 사람이 읽는 번호가 어긋나면 현장에서 물건을 못 찾는다.
 import { describe, it, expect } from 'vitest';
-import { mainCodeOf, groupLayoutUpdates, moveInLayout } from '../../src/domain/itemLayout';
+import { mainCodeOf, groupLayoutUpdates, moveInLayout, isWorthSaving } from '../../src/domain/itemLayout';
 
 const item = (id, code, groupKey) => ({ id, code, groupKey });
 
@@ -122,5 +122,41 @@ describe('끌어다 놓기', () => {
     moveInLayout(layout, 'a2', 'b1', keys);
     expect(layout[0].subIds).toEqual(['a1', 'a2', 'a3']);
     expect(layout[1].subIds).toEqual(['b1']);
+  });
+});
+
+describe('새 줄을 언제 저장하는가', () => {
+  const base = { id: 'tmp-1', code: 'IOPN-050' };
+
+  it('품명이 없어도 규격만 적었으면 저장한다 — 여기서 사라졌다', () => {
+    expect(isWorthSaving({ ...base, spec: 'GCP-32ANM 5A 2P' })).toBe(true);
+  });
+
+  it('도번만 적었어도 저장한다', () => {
+    expect(isWorthSaving({ ...base, drawingNo: '3501-001593' })).toBe(true);
+  });
+
+  it('단가만 넣었어도 저장한다', () => {
+    expect(isWorthSaving({ ...base, standardPrice: 12000 })).toBe(true);
+    expect(isWorthSaving({ ...base, unitPrice: 500 })).toBe(true);
+  });
+
+  it('구매처만 골랐어도 저장한다', () => {
+    expect(isWorthSaving({ ...base, defaultSupplierId: 'sup-1' })).toBe(true);
+  });
+
+  it('품명이 있으면 당연히 저장한다', () => {
+    expect(isWorthSaving({ ...base, name: 'CP' })).toBe(true);
+  });
+
+  it('코드만 있는 빈 줄은 보내지 않는다 — 「추가」만 누르고 둔 줄', () => {
+    expect(isWorthSaving(base)).toBe(false);
+    expect(isWorthSaving({ ...base, name: '   ', spec: '' })).toBe(false);
+    expect(isWorthSaving({ ...base, standardPrice: 0, unitPrice: 0 })).toBe(false);
+  });
+
+  it('없는 값에도 흔들리지 않는다', () => {
+    expect(isWorthSaving(null)).toBe(false);
+    expect(isWorthSaving({})).toBe(false);
   });
 });

@@ -97,3 +97,28 @@ export function moveInLayout(layout, activeId, overId, groupKeys) {
   }
   return next;
 }
+
+/**
+ * 아직 저장 안 한 새 줄을 서버로 보낼 때가 됐는가.
+ *
+ * 예전에는 품명이 있어야만 보냈다. 그런데 「코드만 채워 추가」로 바꾼 뒤로 규격·도번·
+ * 단가부터 적고 품명을 나중에 넣는 일이 생겼고, 그동안 아무것도 저장되지 않아 화면을
+ * 다시 열면 적어 둔 것이 통째로 사라졌다 (2026-09-02 대표님 「품목에 넣은게 자꾸
+ * 사라지는 현상이 있는데」).
+ *
+ * 이제 어느 칸이든 값이 하나라도 들어가면 보낸다. 코드만 있는 빈 줄만 넘긴다 —
+ * 「추가」를 눌러 두고 아무것도 안 적은 줄까지 저장되면 목록이 빈 줄로 더러워진다.
+ */
+export function isWorthSaving(item) {
+  if (!item) return false;
+  const filled = ['name', 'spec', 'maker', 'drawingNo', 'unit', 'category', 'note'].some((k) =>
+    String(item[k] || '').trim(),
+  );
+  return (
+    filled ||
+    Number(item.standardPrice) > 0 ||
+    Number(item.unitPrice) > 0 ||
+    Number(item.stock) > 0 ||
+    !!item.defaultSupplierId
+  );
+}

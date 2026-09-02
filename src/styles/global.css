@@ -22069,3 +22069,47 @@ a.lib-row-name:hover {
   height: 15px;
 }
 
+/* ── BOM 줄 골라 지우기 ────────────────────────────────────────
+   맨 앞 여백 칸을 체크 칸으로 쓴다 — 열을 새로 늘리지 않는다
+   (2026-09-02 대표님 「전체삭제 버튼도 넣어줘 삭제할 목록 체크 되는 방식으로」). */
+.bom-del-check {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.inline-edit-table tbody tr.is-checked > td {
+  background: var(--primary-softer, #f0f3f8);
+}
+
+.bom-del-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--danger, #d92d20);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--danger-tint, #fdebec);
+}
+
+.bom-del-count {
+  margin-right: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--danger, #d92d20);
+}
+
+.bom-del-count strong {
+  font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  .bom-del-bar {
+    flex-wrap: wrap;
+  }
+}
+
