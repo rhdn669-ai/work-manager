@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
-import { useCompanyInfo } from '../../contexts/useCompanyInfo';
 import {
   DndContext,
   closestCenter,
@@ -111,7 +110,6 @@ export default function BomDetailPage() {
   const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const { userProfile } = useAuth();
-  const { info: SELF_INFO } = useCompanyInfo();
 
   const [project, setProject] = useState(null);
   const [bomItems, setBomItems] = useState([]);
@@ -907,11 +905,10 @@ export default function BomDetailPage() {
       {(() => {
         const today = new Date();
         const docNo = `BOM${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-        const todayKo = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
         // 페이지 직접 분할 — 페이지를 거의 채우고 하단엔 특이사항 크기(NOTES_ROWS)만큼만 공백을 남김.
         // 1페이지는 상단 정보표 높이(INFO_ROWS)만큼 행을 줄여 다른 페이지와 하단 공백을 동일하게 맞춤.
         const OTHER_PAGE_ROWS = 33; // 일반 페이지(페이지를 거의 채우는 행수)
-        const INFO_ROWS = 9; // 1페이지 상단 제목+정보표가 차지하는 행수
+        const INFO_ROWS = 3; // 1페이지 상단 제목+띠가 차지하는 행수 (정보표를 걷어 줄었다)
         const NOTES_ROWS = 2; // 섹션 마지막 페이지 특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
         const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
         const pageData = [];
@@ -938,10 +935,10 @@ export default function BomDetailPage() {
         if (supplyTab === 'all') {
           const paid = printRows.filter((it) => !isFreeIssue(it));
           const free = printRows.filter(isFreeIssue);
-          if (paid.length > 0 || free.length === 0) pushPages(paid, paid.length > 0 && free.length > 0 ? '도급' : null);
+          if (paid.length > 0 || free.length === 0) pushPages(paid, '도급');
           if (free.length > 0) pushPages(free, '사급');
         } else {
-          pushPages(printRows, supplyTab === 'free' ? '사급' : null);
+          pushPages(printRows, supplyTab === 'free' ? '사급' : '도급');
         }
         if (pageData.length === 0)
           pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true });
@@ -987,81 +984,16 @@ export default function BomDetailPage() {
                         }
                         titleClass="bom-list-title"
                       />
-
-                      <table className="iopn-info-table">
-                        <tbody>
-                          <tr>
-                            <th scope="col" className="lbl">
-                              프로젝트명
-                            </th>
-                            <td className="val">{project.name || ''}</td>
-                            <th scope="col" className="lbl">
-                              사업자등록번호
-                            </th>
-                            <td className="val">{SELF_INFO.businessNumber}</td>
-                          </tr>
-                          <tr>
-                            <th scope="col" className="lbl">
-                              문서번호
-                            </th>
-                            <td className="val">{docNo}</td>
-                            <th scope="col" className="lbl">
-                              회사명/대표
-                            </th>
-                            <td className="val">{SELF_INFO.companyAndCeo}</td>
-                          </tr>
-                          <tr>
-                            <th scope="col" className="lbl">
-                              작 성 일
-                            </th>
-                            <td className="val">{todayKo}</td>
-                            <th scope="col" className="lbl">
-                              주 소
-                            </th>
-                            <td className="val">{SELF_INFO.address}</td>
-                          </tr>
-                          <tr>
-                            <th scope="col" className="lbl">
-                              항목 수
-                            </th>
-                            <td className="val">{bomItems.length}건</td>
-                            <th scope="col" className="lbl">
-                              TEL/FAX
-                            </th>
-                            <td className="val">{SELF_INFO.telFax}</td>
-                          </tr>
-                          <tr>
-                            <th scope="col" className="lbl">
-                              문서 종류
-                            </th>
-                            <td className="val">BOM 리스트</td>
-                            <th scope="col" className="lbl">
-                              E-Mail
-                            </th>
-                            <td className="val">{SELF_INFO.email}</td>
-                          </tr>
-                          <tr>
-                            <th scope="col" className="lbl">
-                              용 도
-                            </th>
-                            <td className="val">자재 산출 / 견적</td>
-                            <th scope="col" className="lbl">
-                              담당/연락처
-                            </th>
-                            <td className="val">{SELF_INFO.contact}</td>
-                          </tr>
-                        </tbody>
-                      </table>
                     </>
                   ) : null}
 
                   {supplierName && (
                     <div className={`bom-print-supplier-band${supplierName === '사급' ? ' is-free' : ''}`}>
-                      {supplierName === '사급'
-                        ? '사급 — 고객사 제공 자재 (금액 제외)'
-                        : supplierName === '도급'
-                          ? '도급 자재 — 당사 구매'
-                          : `구매처 : ${supplierName}`}
+                      {/* 프로젝트명과 도급·사급만. 나머지 정보는 걷었다
+                          (2026-09-02 대표님 「띠에 프로젝트 명만 넣어서 도급,사급만」) */}
+                      {supplierName === '사급' || supplierName === '도급'
+                        ? `${project.name || ''} — ${supplierName}`
+                        : `구매처 : ${supplierName}`}
                     </div>
                   )}
 

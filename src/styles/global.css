@@ -16749,29 +16749,29 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
-  width: 5.1%;
+  width: 5.0%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-drawing {
-  width: 15.4%;
+  width: 17.5%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
-  width: 15.4%;
+  width: 15.0%;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
-  width: 11.5%;
+  width: 11.2%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
-  width: 33.3%;
+  width: 32.5%;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 5.1%;
+  width: 5.0%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
-  width: 14.2%;
+  width: 13.8%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-no {
@@ -16801,59 +16801,59 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-no {
-  width: 4.4%;
+  width: 4.3%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-drawing {
-  width: 13.2%;
+  width: 15.1%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
-  width: 13.2%;
+  width: 12.9%;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-maker {
-  width: 9.9%;
+  width: 9.7%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-spec {
-  width: 28.6%;
+  width: 28.0%;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 4.4%;
+  width: 4.3%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-supplier {
-  width: 14.3%;
+  width: 14.0%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-note {
-  width: 12.0%;
+  width: 11.7%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
-  width: 4.9%;
+  width: 5.0%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-box {
-  width: 19.5%;
+  width: 17.5%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
-  width: 14.6%;
+  width: 15.0%;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
-  width: 11.0%;
+  width: 11.2%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
-  width: 31.7%;
+  width: 32.5%;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 4.9%;
+  width: 5.0%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
-  width: 13.4%;
+  width: 13.8%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
@@ -16861,11 +16861,11 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-box {
-  width: 17.0%;
+  width: 14.9%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-drawing {
-  width: 12.8%;
+  width: 14.9%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
@@ -16887,33 +16887,33 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-no {
-  width: 4.2%;
+  width: 4.3%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-box {
-  width: 16.8%;
+  width: 15.1%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-name {
-  width: 12.6%;
+  width: 12.9%;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-maker {
-  width: 9.5%;
+  width: 9.7%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-spec {
-  width: 27.4%;
+  width: 28.0%;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 4.2%;
+  width: 4.3%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-supplier {
-  width: 13.7%;
+  width: 14.0%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-note {
-  width: 11.6%;
+  width: 11.7%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-no {
@@ -16921,11 +16921,11 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-box {
-  width: 15.0%;
+  width: 13.1%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-drawing {
-  width: 11.2%;
+  width: 13.1%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
@@ -16979,35 +16979,35 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
-  width: 4.0%;
+  width: 3.9%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-drawing {
-  width: 12.0%;
+  width: 13.7%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
-  width: 12.0%;
+  width: 11.8%;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 9.0%;
+  width: 8.8%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 26.0%;
+  width: 25.5%;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 4.0%;
+  width: 3.9%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
-  width: 10.0%;
+  width: 9.8%;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
-  width: 12.0%;
+  width: 11.8%;
 }
 .iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
-  width: 11.0%;
+  width: 10.8%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
@@ -17047,67 +17047,67 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-drawing {
-  width: 10.6%;
+  width: 12.2%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
-  width: 10.6%;
+  width: 10.4%;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 8.0%;
+  width: 7.8%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 23.0%;
+  width: 22.6%;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
   width: 3.5%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
-  width: 8.8%;
+  width: 8.7%;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
-  width: 10.6%;
+  width: 10.4%;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
-  width: 11.5%;
+  width: 11.3%;
   text-align: center;
 }
 .iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
-  width: 9.9%;
+  width: 9.6%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
-  width: 3.8%;
+  width: 3.9%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-box {
-  width: 15.4%;
+  width: 13.7%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
-  width: 11.5%;
+  width: 11.8%;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 8.7%;
+  width: 8.8%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 25.0%;
+  width: 25.5%;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.8%;
+  width: 3.9%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
-  width: 9.6%;
+  width: 9.8%;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
-  width: 11.5%;
+  width: 11.8%;
 }
 .iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
-  width: 10.7%;
+  width: 10.8%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
@@ -17115,11 +17115,11 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-box {
-  width: 13.8%;
+  width: 12.1%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-drawing {
-  width: 10.3%;
+  width: 12.1%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
@@ -17143,43 +17143,43 @@ td.mx-dc {
   width: 10.3%;
 }
 .iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
-  width: 9.7%;
+  width: 9.6%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
-  width: 3.4%;
+  width: 3.5%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-box {
-  width: 13.7%;
+  width: 12.2%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
-  width: 10.3%;
+  width: 10.4%;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 7.7%;
+  width: 7.8%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 22.2%;
+  width: 22.6%;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.4%;
+  width: 3.5%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
-  width: 8.5%;
+  width: 8.7%;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
-  width: 10.3%;
+  width: 10.4%;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
-  width: 11.1%;
+  width: 11.3%;
   text-align: center;
 }
 .iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
-  width: 9.4%;
+  width: 9.6%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
@@ -17187,11 +17187,11 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-box {
-  width: 12.4%;
+  width: 10.9%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-drawing {
-  width: 9.3%;
+  width: 10.9%;
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
@@ -17219,7 +17219,7 @@ td.mx-dc {
   text-align: center;
 }
 .iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
-  width: 8.4%;
+  width: 8.3%;
   text-align: center;
 }
 
@@ -17236,27 +17236,30 @@ td.mx-dc {
 .iopn-items-table.po-cols .c-spec {
   width: 30%;
 }
-/* BOX 열 표시 옵션(전체 PDF 출력) — "H/T BOX 상/하"가 한 줄에 들어가는 폭. 규격이 양보 */
+/* BOX 열 표시 옵션(전체 PDF 출력) — "H/T BOX 상/하"가 한 줄에 들어가는 폭. 규격이 양보.
+   BOX 와 도번은 나란히 놓이는 두 칸이라 폭을 같게 둔다 (2026-09-02 대표님
+   「출력물에 박스 도번 사이즈 동일하게」). 값 길이도 비슷하다 — 「H/T BOX 상」과
+   「3603-002683」. */
 .iopn-items-table.po-cols.has-box .c-box {
-  width: 15%;
+  width: 12%;
 }
 .iopn-items-table.po-cols.has-box .c-spec {
-  width: 15%;
+  width: 22%;
 }
 /* 도번 열(발주서) — 값이 있는 발주서에서만 선다. 규격이 그만큼 양보한다.
    도번은 「PWC-SB-4Fa-001」처럼 길어 마디 단위로 접는다 (2026-09-02 대표님). */
 .iopn-items-table.po-cols.has-drawing .c-drawing {
-  width: 12%;
+  width: 12%; /* BOX 와 같은 폭 */
   text-align: center;
   white-space: normal;
   word-break: break-word;
   line-height: 1.25;
 }
 .iopn-items-table.po-cols.has-drawing .c-spec {
-  width: 18%;
+  width: 22%;
 }
 .iopn-items-table.po-cols.has-drawing.has-box .c-spec {
-  width: 10%;
+  width: 16%;
 }
 
 /* 품목명 — 글자를 극소로 줄이는 대신 규격처럼 줄바꿈으로 다 보이게 */
