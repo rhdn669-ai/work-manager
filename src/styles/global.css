@@ -5633,8 +5633,18 @@ table.cards-sm td {
   padding: 0 !important;
   border-right: none;
 }
+/* 맨 앞 칸은 표 «바깥» 여백이다 — 표 머리의 네이비가 여기까지 칠해지면 카드 라운드
+   밖으로 선이 삐져나온다 (2026-09-02 대표님 「선 튀어나옴」). 배경과 테두리를 지운다. */
 .bom-flat-table th.bom-spacer-col {
-  border-bottom: 1px solid var(--border);
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.bom-flat-table td.bom-spacer-col {
+  background: transparent !important;
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
 }
 /* 드래그 핸들(v84.8~)은 No 칸 안에 — 별도 칸을 만들지 않아 표 모양이 원본과 동일 */
 .bom-flat-table .bom-no-wrap {
