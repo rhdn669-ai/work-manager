@@ -359,9 +359,15 @@ export default function BomDetailPage() {
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
 
-  async function flushItem(id) {
-    const item = bomItems.find((b) => b.id === id);
-    if (!item) return;
+  // 저장할 값을 함께 받을 수 있게 한다.
+  //
+  // 입력칸은 onChange 로 고치고 onBlur 로 저장하니 그 사이에 상태가 이미 갱신돼 있다.
+  // 그런데 버튼처럼 「누르는 즉시 저장」인 것은 setState 가 비동기라 flushItem 이
+  // 바뀌기 전 값을 집는다 — 눌러도 저장이 안 되던 이유다 (2026-09-02 대표님).
+  async function flushItem(id, patch = null) {
+    const cur = bomItems.find((b) => b.id === id);
+    if (!cur) return;
+    const item = patch ? { ...cur, ...patch } : cur;
     try {
       const { id: _, createdAt: __, updatedAt: ___, ...data } = item;
       await updateBomItem(id, data);
@@ -1333,8 +1339,9 @@ export default function BomDetailPage() {
                                   type="button"
                                   className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}`}
                                   onClick={() => {
-                                    updateField(it.id, { supplyType: isFreeIssue(it) ? '' : 'free' });
-                                    flushItem(it.id);
+                                    const next = { supplyType: isFreeIssue(it) ? '' : 'free' };
+                                    updateField(it.id, next);
+                                    flushItem(it.id, next); // 바뀔 값을 함께 넘긴다 — 상태 갱신을 기다리지 않게
                                   }}
                                   title={
                                     isFreeIssue(it)

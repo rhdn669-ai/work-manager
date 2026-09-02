@@ -1102,11 +1102,11 @@ export default function PurchaseItemPage() {
                                     <th scope="col" style={{ width: 110 }}>
                                       코드
                                     </th>
-                                    <th scope="col" style={{ width: 150 }}>
-                                      품명
-                                    </th>
                                     <th scope="col" style={{ width: 110 }}>
                                       도번
+                                    </th>
+                                    <th scope="col" style={{ width: 150 }}>
+                                      품명
                                     </th>
                                     <th scope="col" style={{ width: 110 }}>
                                       메이커
@@ -1218,26 +1218,6 @@ export default function PurchaseItemPage() {
                                             />
                                           </td>
                                           <td
-                                            data-label="품명"
-                                            className={fillCol('name')}
-                                            title={it.name || ''}
-                                            style={{ minWidth: 0, overflowWrap: 'break-word' }}
-                                          >
-                                            <input
-                                              type="text"
-                                              value={it.name || ''}
-                                              title={it.name || ''}
-                                              placeholder="품명"
-                                              onChange={(e) => updateField(it.id, { name: e.target.value })}
-                                              onBlur={() => flushItem(it.id)}
-                                            />
-                                            <span
-                                              className="cell-fill"
-                                              title="드래그하여 아래로 채우기"
-                                              onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)}
-                                            />
-                                          </td>
-                                          <td
                                             data-label="도번"
                                             className={fillCol('drawingNo')}
                                             title={it.drawingNo || ''}
@@ -1257,6 +1237,26 @@ export default function PurchaseItemPage() {
                                               onMouseDown={(e) =>
                                                 startFill(e, 'drawingNo', it.drawingNo || '', subIds, rowIdx)
                                               }
+                                            />
+                                          </td>
+                                          <td
+                                            data-label="품명"
+                                            className={fillCol('name')}
+                                            title={it.name || ''}
+                                            style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                          >
+                                            <input
+                                              type="text"
+                                              value={it.name || ''}
+                                              title={it.name || ''}
+                                              placeholder="품명"
+                                              onChange={(e) => updateField(it.id, { name: e.target.value })}
+                                              onBlur={() => flushItem(it.id)}
+                                            />
+                                            <span
+                                              className="cell-fill"
+                                              title="드래그하여 아래로 채우기"
+                                              onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)}
                                             />
                                           </td>
                                           <td
