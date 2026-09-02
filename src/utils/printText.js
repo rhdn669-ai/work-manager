@@ -21,8 +21,8 @@ export function specFontClass(s, maxChars) {
   const pt = 9 * (maxChars / len); // 넘치는 비율로 축소 (기본 9pt 기준)
   if (pt >= 8) return 'fs-8';
   if (pt >= 7) return 'fs-7';
-  if (pt >= 6) return 'fs-6';
-  if (pt >= 5.5) return 'fs-55';
-  if (pt >= 5) return 'fs-5';
-  return 'fs-45';
+  // 7pt 아래로는 줄이지 않는다 — 종이에서 읽히지 않으면 표가 아니다.
+  // 더 긴 값은 글자를 더 줄이는 대신 두 줄로 접는다
+  // (2026-09-02 대표님 「글이 너무 작네」 — 「헤어 스캐너 통신 케이블」이 5.5pt 였다).
+  return 'fs-7 is-wrapped';
 }

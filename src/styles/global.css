@@ -16525,7 +16525,9 @@ td.mx-dc {
 /* 3종 공용 상단 브랜드 밴드 (로고 + 회사명 + 문서제목) */
 .iopn-brand-band {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* 가운데 칸을 「남는 만큼」으로 둔다 — auto 로 두면 제목이 길어질 때 좌우 칸을
+     밀어내고 로고 위로 올라탔다 (2026-09-02 대표님 「글 겹침」). */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: 0 2px 8px;
@@ -16544,6 +16546,7 @@ td.mx-dc {
   flex: none;
 }
 .iopn-brand-title {
+  min-width: 0;
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 0.5em;
@@ -16551,6 +16554,24 @@ td.mx-dc {
   padding-left: 0.5em;
   color: #000;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 걸러 뽑으면 제목에 범위가 붙어 길어진다 — 그만큼 글자를 줄여 로고를 침범하지 않게 */
+.iopn-brand-title.is-long {
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  padding-left: 0.02em;
+}
+
+.iopn-brand-title.is-longer {
+  font-size: 15px;
+  letter-spacing: 0;
+  padding-left: 0;
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.2;
 }
 .iopn-brand-title.po-form-title {
   letter-spacing: 0.18em;
@@ -17405,6 +17426,15 @@ td.mx-dc {
 }
 .iopn-items-table .fs-45 {
   font-size: 4.5pt !important;
+}
+
+/* 7pt 로도 한 줄에 안 들어가는 값은 접어서 넣는다 — 더 줄이면 읽히지 않는다
+   (2026-09-02 대표님 「글이 너무 작네」) */
+.iopn-items-table .is-wrapped {
+  white-space: normal !important;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
 }
 
 /* 특이사항 */

@@ -41,7 +41,7 @@ import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { trashGeneric } from '../../services/trashService';
-import { specFontClass } from '../../utils/printText';
+import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
@@ -136,6 +136,20 @@ export default function BomDetailPage() {
   // 지우려고 고른 줄 (2026-09-02 대표님 「전체삭제 버튼도 넣어줘 삭제할 목록 체크 되는 방식으로」)
   const [delPick, setDelPick] = useState(() => new Set());
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
+  // 값을 넣는 곳이 없어 종이에 시각이 비어 있었다 (2026-09-02 대표님 「출력물 시간 미표기」).
+  // 화면에 들어올 때 한 번 찍고, 인쇄를 누르는 순간 다시 찍는다 — 종이에 남는 건 뽑은 시각이다.
+  useEffect(() => {
+    const stamp = () => {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      setPrintStamp(
+        `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,
+      );
+    };
+    stamp();
+    window.addEventListener('beforeprint', stamp);
+    return () => window.removeEventListener('beforeprint', stamp);
+  }, []);
   // 출력 옵션 — 발주서와 같은 문법 (2026-09-01 대표님 「BOM에서도 출력할때 박스,금액 옵션」).
   // BOX 는 값이 있는 BOM 에서만 뜻이 있어, 하나라도 적혀 있으면 기본으로 켠다.
   const [printShowBox, setPrintShowBox] = useState(false);
@@ -984,7 +998,12 @@ export default function BomDetailPage() {
                 <div className="bom-print-page" key={pageIdx}>
                   {isFirst ? (
                     <>
-                      <IopnDocBrand title={printTitle} titleClass="bom-list-title" />
+                      <IopnDocBrand
+                        title={printTitle}
+                        // 걸러 뽑으면 제목에 범위가 붙어 길어진다 — 그만큼 줄여 로고를
+                        // 침범하지 않게 (2026-09-02 대표님 「글 겹침」)
+                        titleClass={`bom-list-title ${effLen(printTitle) > 32 ? 'is-longer' : effLen(printTitle) > 20 ? 'is-long' : ''}`}
+                      />
                     </>
                   ) : null}
 
