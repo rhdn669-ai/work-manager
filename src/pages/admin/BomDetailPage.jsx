@@ -1663,61 +1663,52 @@ export default function BomDetailPage() {
 
       {/* 타입 관리 — 형번마다 자재가 조금씩 다를 때 BOM을 한 벌로 유지한다 */}
       <Modal isOpen={variantModalOpen} onClose={() => setVariantModalOpen(false)} title="타입 관리">
-        <p className="field-hint" style={{ marginBottom: 12 }}>
-          같은 제품인데 형번마다 자재가 다를 때 씁니다. BOM을 여러 벌로 나눠 두면 자재가 바뀔 때마다 양쪽을 다 고쳐야
-          해서 한쪽을 빠뜨리기 쉽습니다. 여기에 타입을 만들어 두고, 품목마다 어느 타입에 들어가는지 정해 두면 발주서로
-          가져올 때 타입 하나만 고르면 됩니다.
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          같은 제품인데 형번마다 자재가 다를 때 씁니다. 타입을 만들어 두면 발주서로 가져올 때 하나만 고르면 됩니다.
         </p>
 
         {variants.length === 0 ? (
-          <p className="purchase-empty" style={{ padding: '16px 0' }}>
-            아직 타입이 없습니다. 아래에서 추가하세요.
-          </p>
+          /* 처음 쓰는 사람에게만 자세히 — 이미 만들어 둔 사람에게는 자리만 차지한다 */
+          <div className="variant-empty">
+            <Icon name="folder" className="variant-empty-ic" />
+            <p>
+              아직 타입이 없습니다.
+              <br />
+              BOM 을 여러 벌로 나눠 두면 자재가 바뀔 때마다 양쪽을 다 고쳐야 해서 한쪽을 빠뜨리기 쉽습니다. 한 벌로 두고
+              타입만 갈라 두세요.
+            </p>
+          </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th scope="col">타입 이름</th>
-                <th scope="col">품목 수</th>
-                <th scope="col" className="col-action">
-                  작업
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {variants.map((v) => {
-                const n = bomItems.filter((b) => {
-                  const ks = variantKeysOf(b);
-                  return ks.length === 0 || ks.includes(v.key);
-                }).length;
-                return (
-                  <tr key={v.key}>
-                    <td data-label="타입 이름">
-                      <input
-                        type="text"
-                        value={v.label}
-                        onChange={(e) => renameVariant(v.key, e.target.value)}
-                        maxLength={40}
-                      />
-                    </td>
-                    <td data-label="품목 수" className="bom-variant-count">
-                      {n}개
-                    </td>
-                    <td data-label="작업" className="col-action">
-                      <div className="row-actions">
-                        <button type="button" className="btn btn-sm btn-danger" onClick={() => deleteVariant(v)}>
-                          삭제
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="variant-list">
+            {variants.map((v) => {
+              const n = bomItems.filter((b) => {
+                const ks = variantKeysOf(b);
+                return ks.length === 0 || ks.includes(v.key);
+              }).length;
+              return (
+                <div className="variant-row" key={v.key}>
+                  <input
+                    className="variant-name"
+                    type="text"
+                    value={v.label}
+                    onChange={(e) => renameVariant(v.key, e.target.value)}
+                    maxLength={40}
+                    aria-label="타입 이름"
+                  />
+                  <span className="variant-count" title="이 타입으로 발주하면 들어가는 품목 수 (공통 포함)">
+                    {n}개
+                  </span>
+                  <button type="button" className="btn btn-sm btn-danger" onClick={() => deleteVariant(v)}>
+                    <Icon name="trash" className="btn-ic" />
+                    삭제
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
 
-        <div className="form-group" style={{ marginTop: 12 }}>
+        <div className="form-group variant-add-group">
           <label>타입 추가</label>
           <div className="bom-variant-add">
             <input
@@ -1729,6 +1720,7 @@ export default function BomDetailPage() {
               }}
               placeholder="예) T5391 / MT8311"
               maxLength={40}
+              aria-label="새 타입 이름"
             />
             <button type="button" className="btn btn-primary" disabled={!newVariant.trim()} onClick={addVariant}>
               <Icon name="plus" className="btn-ic" />
