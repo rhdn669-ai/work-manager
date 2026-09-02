@@ -17245,6 +17245,22 @@ td.mx-dc {
 .iopn-items-table.po-cols.has-box .c-spec {
   width: 15%;
 }
+/* 도번 열(발주서) — 값이 있는 발주서에서만 선다. 규격이 그만큼 양보한다.
+   도번은 「PWC-SB-4Fa-001」처럼 길어 마디 단위로 접는다 (2026-09-02 대표님). */
+.iopn-items-table.po-cols.has-drawing .c-drawing {
+  width: 12%;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
+}
+.iopn-items-table.po-cols.has-drawing .c-spec {
+  width: 18%;
+}
+.iopn-items-table.po-cols.has-drawing.has-box .c-spec {
+  width: 10%;
+}
+
 /* 품목명 — 글자를 극소로 줄이는 대신 규격처럼 줄바꿈으로 다 보이게 */
 .iopn-items-table.po-cols .c-name {
   white-space: normal;

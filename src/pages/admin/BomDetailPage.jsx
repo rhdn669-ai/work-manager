@@ -235,6 +235,9 @@ export default function BomDetailPage() {
           unit: m?.unit || b.unit || '',
           maker: m?.maker || '',
           category: m?.category || '',
+          // 도번은 품목에 적힌 것을 먼저 본다 — 품목에서 고치면 BOM 도 따라 바뀐다.
+          // BOM 에서 따로 친 값이 있으면 그것을 쓴다(품목에 없는 일회성 도번) (2026-09-02 대표님)
+          drawingNo: m?.drawingNo || b.drawingNo || '',
           supplier: m?.defaultSupplierId ? supplierMap[m.defaultSupplierId] || '' : '',
           // 단가는 마스터의 표준단가를 우선 표시 (마스터 변경 시 BOM도 자동 반영)
           unitPrice: m?.standardPrice ?? b.unitPrice ?? 0,
@@ -408,6 +411,7 @@ export default function BomDetailPage() {
       name: m.name || '',
       spec: m.spec || '',
       unit: m.unit || '',
+      drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
       unitPrice: Number(m.standardPrice) || 0,
       code: m.code || '',
     };
@@ -500,6 +504,7 @@ export default function BomDetailPage() {
         name: m.name || '',
         spec: m.spec || '',
         unit: m.unit || '',
+        drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
         qty,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -568,6 +573,7 @@ export default function BomDetailPage() {
         name: m.name || '',
         spec: m.spec || '',
         unit: m.unit || '',
+        drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
         qty: Number(qtyInput) || 0,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',

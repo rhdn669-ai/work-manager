@@ -68,6 +68,9 @@ export function mapPrintItems(items, itemMaster, suppliers) {
       _contact: resolveEmail(sup, mst?.contactEmail),
       _name: mst?.name || ln.name,
       _spec: mst?.spec || ln.spec,
+      // 도번은 품목에 적힌 것이 먼저 — 품목에서 고치면 발주서도 따라 바뀐다.
+      // 발주 줄에 따로 적힌 값(BOM 에서 온 일회성 도번)이 있으면 그것을 쓴다 (2026-09-02 대표님)
+      drawingNo: mst?.drawingNo || ln.drawingNo || '',
     };
   });
 }

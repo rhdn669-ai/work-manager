@@ -356,7 +356,12 @@ export default function PurchaseItemPage() {
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     const result = items.filter((it) => {
-      if (kw && ![it.code, it.name, it.spec, it.maker, it.category].some((v) => (v || '').toLowerCase().includes(kw)))
+      if (
+        kw &&
+        ![it.code, it.name, it.spec, it.maker, it.category, it.drawingNo].some((v) =>
+          (v || '').toLowerCase().includes(kw),
+        )
+      )
         return false;
       if (filterCategory && it.category !== filterCategory) return false;
       if (filterSupplier && it.defaultSupplierId !== filterSupplier) return false;
@@ -581,6 +586,7 @@ export default function PurchaseItemPage() {
         name: '',
         spec: '',
         maker: '',
+        drawingNo: '',
         unit: '',
         category: '',
         standardPrice: 0,
@@ -613,6 +619,7 @@ export default function PurchaseItemPage() {
       name: parent.name || '',
       spec: '',
       maker: parent.maker || '',
+      drawingNo: parent.drawingNo || '',
       unit: parent.unit || '',
       category: parent.category || '',
       standardPrice: 0,
@@ -806,6 +813,7 @@ export default function PurchaseItemPage() {
           name: repItem.name || '', // 품명은 대표 품목명 유지
           spec: r.name, // 붙여넣은 첫 칸 = 규격
           maker: repItem.maker || '',
+          drawingNo: repItem.drawingNo || '',
           unit: repItem.unit || '',
           category: repItem.category || '',
           unitPrice: Number(r.unitPrice) || 0,
@@ -937,7 +945,7 @@ export default function PurchaseItemPage() {
             <input
               type="text"
               className="purchase-filter-search"
-              placeholder="코드 · 품명 · 규격 · 메이커 검색"
+              placeholder="코드 · 품명 · 규격 · 메이커 · 도번 검색"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -1098,6 +1106,9 @@ export default function PurchaseItemPage() {
                                       품명
                                     </th>
                                     <th scope="col" style={{ width: 110 }}>
+                                      도번
+                                    </th>
+                                    <th scope="col" style={{ width: 110 }}>
                                       메이커
                                     </th>
                                     <th scope="col" style={{ width: 240 }}>
@@ -1224,6 +1235,28 @@ export default function PurchaseItemPage() {
                                               className="cell-fill"
                                               title="드래그하여 아래로 채우기"
                                               onMouseDown={(e) => startFill(e, 'name', it.name || '', subIds, rowIdx)}
+                                            />
+                                          </td>
+                                          <td
+                                            data-label="도번"
+                                            className={fillCol('drawingNo')}
+                                            title={it.drawingNo || ''}
+                                            style={{ minWidth: 0, overflowWrap: 'break-word' }}
+                                          >
+                                            <input
+                                              type="text"
+                                              value={it.drawingNo || ''}
+                                              title={it.drawingNo || ''}
+                                              aria-label="도번"
+                                              onChange={(e) => updateField(it.id, { drawingNo: e.target.value })}
+                                              onBlur={() => flushItem(it.id)}
+                                            />
+                                            <span
+                                              className="cell-fill"
+                                              title="드래그하여 아래로 채우기"
+                                              onMouseDown={(e) =>
+                                                startFill(e, 'drawingNo', it.drawingNo || '', subIds, rowIdx)
+                                              }
                                             />
                                           </td>
                                           <td

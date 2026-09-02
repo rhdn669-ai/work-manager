@@ -164,6 +164,9 @@ export async function addPurchaseItem(data) {
     name: data.name || '',
     spec: data.spec || '',
     maker: data.maker || '', // 제조사/메이커
+    // 도번 — 도면 번호. 품목에 적어 두면 BOM·발주서로 그대로 따라간다.
+    // 품목마다 정해진 값이라 여기가 원본이다 (2026-09-02 대표님 「품목에서 도번 입력이 되어야 할듯」).
+    drawingNo: data.drawingNo || '',
     unit: data.unit || '',
     category: data.category || '',
     standardPrice: Number(data.standardPrice) || 0,

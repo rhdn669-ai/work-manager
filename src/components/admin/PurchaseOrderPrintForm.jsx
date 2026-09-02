@@ -34,7 +34,11 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
   if (!purchase || !form) return <div ref={ref} className="print-form-iopn print-form-paged print-only" />;
 
   // 도번이 적힌 품목이 하나라도 있으면 열을 세운다 — 없는 발주서에 빈 열만 늘리지 않게
-  const hasDrawing = (form.items || []).some((ln) => (ln.drawingNo || '').trim());
+  // 도번이 적힌 품목이 하나라도 있으면 열을 세운다. 품목 마스터에 적힌 것도 본다 —
+  // 발주 줄에는 없어도 품목에 있으면 인쇄물에 나가야 한다 (2026-09-02 대표님).
+  const hasDrawing = (form.items || []).some(
+    (ln) => (ln.drawingNo || '').trim() || (itemMaster.find((m) => m.id === ln.itemId)?.drawingNo || '').trim(),
+  );
 
   const supplier = suppliers.find((s) => s.id === purchase.supplierId);
   const site = sites.find((s) => s.id === purchase.siteId);
