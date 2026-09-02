@@ -26,11 +26,15 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
     printSiteNameMode = null,
     hideAmount = false,
     showBox = false, // BOX 열 표시 — 「PDF 출력」(전체) 옵션에서만 켬. 업체별·메일·자료실 저장엔 미표시
+    // 도번 — BOM 에서 따라온 도면 번호. 값이 있는 발주서에서만 열이 선다 (2026-09-02 대표님)
   },
   ref,
 ) {
   const { info: SELF_INFO } = useCompanyInfo();
   if (!purchase || !form) return <div ref={ref} className="print-form-iopn print-form-paged print-only" />;
+
+  // 도번이 적힌 품목이 하나라도 있으면 열을 세운다 — 없는 발주서에 빈 열만 늘리지 않게
+  const hasDrawing = (form.items || []).some((ln) => (ln.drawingNo || '').trim());
 
   const supplier = suppliers.find((s) => s.id === purchase.supplierId);
   const site = sites.find((s) => s.id === purchase.siteId);
@@ -237,7 +241,9 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
             </table>
           )}
 
-          <table className={`iopn-items-table po-cols${showBox ? ' has-box' : ''}${showItemNo ? '' : ' no-itemno'}`}>
+          <table
+            className={`iopn-items-table po-cols${showBox ? ' has-box' : ''}${showItemNo ? '' : ' no-itemno'}${hasDrawing ? ' has-drawing' : ''}`}
+          >
             <thead>
               <tr>
                 <th scope="col" className="c-no">
@@ -251,6 +257,11 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                 {showBox && (
                   <th scope="col" className="c-box">
                     BOX
+                  </th>
+                )}
+                {hasDrawing && (
+                  <th scope="col" className="c-drawing">
+                    도번
                   </th>
                 )}
                 <th scope="col" className="c-name">
@@ -284,6 +295,7 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                       <td className="c-no"></td>
                       {showItemNo && <td className="c-itemno"></td>}
                       {showBox && <td className="c-box"></td>}
+                      {hasDrawing && <td className="c-drawing"></td>}
                       <td className="c-name"></td>
                       <td className="c-spec"></td>
                       <td className="c-qty"></td>
@@ -311,6 +323,11 @@ const PurchaseOrderPrintForm = forwardRef(function PurchaseOrderPrintForm(
                     {showBox && (
                       <td className="c-box" title={ln.box || ''}>
                         {ln.box || ''}
+                      </td>
+                    )}
+                    {hasDrawing && (
+                      <td className="c-drawing" title={ln.drawingNo || ''}>
+                        {ln.drawingNo || ''}
                       </td>
                     )}
                     <td className="c-name" title={ln._name || ''}>

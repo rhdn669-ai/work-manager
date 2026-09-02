@@ -30,6 +30,7 @@ import {
   saveBomItemsOrder,
   setBomVariants,
   removeBomVariant,
+  isFreeIssue,
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
@@ -116,6 +117,7 @@ export default function BomDetailPage() {
   // 구매처는 기본으로 빼 둔다 — 「구매처별」로 묶어 출력하면 띠로 따로 나오고,
   // 열까지 있으면 같은 말이 두 번이다 (2026-09-01 대표님)
   const [printShowSupplier, setPrintShowSupplier] = useState(false);
+  const [printShowDrawing, setPrintShowDrawing] = useState(false); // 도번 열
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -279,6 +281,11 @@ export default function BomDetailPage() {
     setPrintShowBox(hasBox);
   }, [hasBox]);
 
+  const hasDrawing = useMemo(() => bomItems.some((b) => (b.drawingNo || '').trim()), [bomItems]);
+  useEffect(() => {
+    setPrintShowDrawing(hasDrawing);
+  }, [hasDrawing]);
+
   // ---- 드래그 순서변경 (추가순·전체보기에서만 — 코드순/구매처별/검색/필터 중엔 순서가 화면과 달라 비활성) ----
   const canDragRows = sortBy === 'order' && !groupBySupplier && !supplierFilter && !search.trim();
   const dndSensors = useSensors(
@@ -324,14 +331,26 @@ export default function BomDetailPage() {
       .map(([name, items]) => ({
         name,
         items,
-        subtotal: items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
+        // 사급은 고객사가 대주는 자재라 우리 돈이 안 나간다 — 합계에서 뺀다 (2026-09-02 대표님)
+        subtotal: items.reduce(
+          (s, it) => s + (isFreeIssue(it) ? 0 : (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
+          0,
+        ),
       }));
   }, [rows]);
 
   const total = useMemo(
-    () => displayItems.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0),
+    () =>
+      displayItems.reduce(
+        (s, it) => s + (isFreeIssue(it) ? 0 : (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
+        0,
+      ),
     [displayItems],
   );
+
+  // 수량은 사급도 센다 — 실제로 쓰는 자재라 「몇 개 필요한가」는 그대로 유효하다.
+  // 다만 갈라 보여 준다 (2026-09-02 대표님 「놓고 따로 센다」).
+  const freeCount = useMemo(() => displayItems.filter(isFreeIssue).length, [displayItems]);
 
   function updateField(id, patch) {
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -762,6 +781,20 @@ export default function BomDetailPage() {
             </div>
             <div className="toggle-row" style={{ marginBottom: 10 }}>
               <div className="toggle-row-text">
+                <span className="toggle-row-title">도번 표시</span>
+                <small className="text-muted">도면 번호 열을 추가합니다</small>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={printShowDrawing}
+                  onChange={(e) => setPrintShowDrawing(e.target.checked)}
+                />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+            <div className="toggle-row" style={{ marginBottom: 10 }}>
+              <div className="toggle-row-text">
                 <span className="toggle-row-title">구매처 표시</span>
                 <small className="text-muted">
                   구매처 열을 추가합니다. 「구매처별」로 묶어 출력하면 위에 띠로 나오므로 꺼 두는 편이 낫습니다
@@ -924,7 +957,7 @@ export default function BomDetailPage() {
                   {supplierName && <div className="bom-print-supplier-band">구매처 : {supplierName}</div>}
 
                   <table
-                    className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}${printShowSupplier ? ' has-supplier' : ''}`}
+                    className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}${printShowSupplier ? ' has-supplier' : ''}${printShowDrawing ? ' has-drawing' : ''}`}
                   >
                     <thead>
                       <tr>
@@ -934,6 +967,11 @@ export default function BomDetailPage() {
                         {printShowBox && (
                           <th scope="col" className="c-box">
                             BOX
+                          </th>
+                        )}
+                        {printShowDrawing && (
+                          <th scope="col" className="c-drawing">
+                            도번
                           </th>
                         )}
                         <th scope="col" className="c-name">
@@ -977,6 +1015,7 @@ export default function BomDetailPage() {
                             <tr key={`e-${r}`}>
                               <td className="c-no"></td>
                               {printShowBox && <td className="c-box"></td>}
+                              {printShowDrawing && <td className="c-drawing"></td>}
                               <td className="c-name"></td>
                               <td className="c-maker"></td>
                               <td className="c-spec"></td>
@@ -995,22 +1034,31 @@ export default function BomDetailPage() {
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
                             {printShowBox && <td className={`c-box ${specFontClass(it.box, 16)}`}>{it.box || ''}</td>}
+                            {printShowDrawing && (
+                              <td className={`c-drawing ${specFontClass(it.drawingNo, 12)}`}>{it.drawingNo || ''}</td>
+                            )}
                             <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
                             <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
                             <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
-                            {printShowAmount && (
-                              <>
-                                <td className="c-price">
-                                  {Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}
+                            {printShowAmount &&
+                              (isFreeIssue(it) ? (
+                                /* 사급은 고객사가 대준다 — 숫자 대신 이유를 적는다 (2026-09-02 대표님) */
+                                <td className="c-amount c-free" colSpan={2}>
+                                  사급
                                 </td>
-                                <td className="c-amount">
-                                  {Number(it.qty) && Number(it.unitPrice)
-                                    ? (Number(it.qty) * Number(it.unitPrice)).toLocaleString()
-                                    : ''}
-                                </td>
-                              </>
-                            )}
+                              ) : (
+                                <>
+                                  <td className="c-price">
+                                    {Number(it.unitPrice) ? Number(it.unitPrice).toLocaleString() : ''}
+                                  </td>
+                                  <td className="c-amount">
+                                    {Number(it.qty) && Number(it.unitPrice)
+                                      ? (Number(it.qty) * Number(it.unitPrice)).toLocaleString()
+                                      : ''}
+                                  </td>
+                                </>
+                              ))}
                             {printShowSupplier && (
                               <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
                             )}
@@ -1095,6 +1143,11 @@ export default function BomDetailPage() {
           <span>
             예상 합계 <strong>{total.toLocaleString()}원</strong>
           </span>
+          {freeCount > 0 && (
+            <span className="bom-free-note" title="사급은 고객사가 대주는 자재라 금액에 안 들어갑니다">
+              사급 <strong>{freeCount}</strong>건 제외
+            </span>
+          )}
         </div>
       </div>
 
@@ -1121,6 +1174,9 @@ export default function BomDetailPage() {
                           코드
                         </th>
                         <th scope="col" style={{ minWidth: 90 }}>
+                          도번
+                        </th>
+                        <th scope="col" style={{ minWidth: 90 }}>
                           BOX
                         </th>
                         {variants.length > 0 && (
@@ -1134,6 +1190,9 @@ export default function BomDetailPage() {
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
+                        <th scope="col" style={{ minWidth: 84 }}>
+                          구분
+                        </th>
                         <th scope="col">수량</th>
                         <th scope="col">단가</th>
                         <th scope="col">합계</th>
@@ -1158,7 +1217,7 @@ export default function BomDetailPage() {
                             {isGroupStart && (
                               <tr className="bom-supplier-header">
                                 <td className="bom-spacer-col" aria-hidden="true"></td>
-                                <td colSpan={13} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
+                                <td colSpan={15} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
                                   <span
                                     className="bom-supplier-header-text"
                                     title={sup}
@@ -1187,6 +1246,17 @@ export default function BomDetailPage() {
                                   value={it.code || ''}
                                   readOnly
                                   tabIndex={-1}
+                                />
+                              </td>
+                              <td data-label="도번" title={it.drawingNo || ''}>
+                                <input
+                                  type="text"
+                                  value={it.drawingNo || ''}
+                                  title={it.drawingNo || ''}
+                                  placeholder="-"
+                                  aria-label="도번"
+                                  onChange={(e) => updateField(it.id, { drawingNo: e.target.value })}
+                                  onBlur={() => flushItem(it.id)}
                                 />
                               </td>
                               <td data-label="BOX" title={it.box || ''}>
@@ -1250,6 +1320,24 @@ export default function BomDetailPage() {
                                   readOnly
                                   tabIndex={-1}
                                 />
+                              </td>
+                              {/* 구분 — 사급은 고객사가 대주므로 우리 금액에 안 들어간다 */}
+                              <td data-label="구분">
+                                <button
+                                  type="button"
+                                  className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}`}
+                                  onClick={() => {
+                                    updateField(it.id, { supplyType: isFreeIssue(it) ? '' : 'free' });
+                                    flushItem(it.id);
+                                  }}
+                                  title={
+                                    isFreeIssue(it)
+                                      ? '사급 — 고객사가 대주는 자재. 금액 합계에서 빠집니다. 눌러서 도급으로'
+                                      : '도급 — 우리가 사서 넣는 자재. 눌러서 사급으로'
+                                  }
+                                >
+                                  {isFreeIssue(it) ? '사급' : '도급'}
+                                </button>
                               </td>
                               <td data-label="수량">
                                 <input

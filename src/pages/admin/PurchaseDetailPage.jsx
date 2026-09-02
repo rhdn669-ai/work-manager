@@ -43,7 +43,7 @@ import {
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
-import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { getBomProjects, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePanels } from '../../services/productionService';
 import { panelReceiveStatus } from '../../utils/panelAllocation';
 import { useAuth } from '../../contexts/useAuth';
@@ -874,9 +874,17 @@ export default function PurchaseDetailPage() {
     setBomImporting(true);
     try {
       const all = await getBomBySite(bp.id);
-      const items = bomItemsForVariant(all, variantKey);
-      if (!items || items.length === 0) {
+      const allItems = bomItemsForVariant(all, variantKey);
+      if (!allItems || allItems.length === 0) {
         alert('해당 BOM에 품목이 없습니다.');
+        return;
+      }
+      // 사급은 고객사가 대주는 자재다. 발주서로 넘어가면 우리가 사게 되고 그대로
+      // 입고·마감·결제까지 흘러간다 — 여기서 막는다 (2026-09-02 대표님 「아예 뺀다」).
+      const freeItems = allItems.filter(isFreeIssue);
+      const items = allItems.filter((b) => !isFreeIssue(b));
+      if (items.length === 0) {
+        alert('해당 BOM은 전부 사급이라 발주할 품목이 없습니다.');
         return;
       }
       const newLines = [...items]
@@ -892,6 +900,7 @@ export default function PurchaseDetailPage() {
             ...deductStock((Number(b.qty) || 1) * setCount, m), // 세트 수량(배수) 반영
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             box: b.box || '', // 품목별 소속 BOX (BOM에서 그대로 복사, PDF 품목표에 출력)
+            drawingNo: b.drawingNo || '', // 도번도 그대로 따라간다 (2026-09-02 대표님)
             note: b.note || '',
           };
         });
@@ -911,7 +920,9 @@ export default function PurchaseDetailPage() {
         report?.mergedCount > 0
           ? `품목 ${report.addedCount}개 추가 · 이미 있던 ${report.mergedCount}개는 수량을 더했습니다.`
           : `품목 ${newLines.length}개를 가져왔습니다.`;
-      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 ${tail}`);
+      // 말없이 빠지면 「왜 몇 개가 없지?」 하게 된다 — 몇 건이 왜 빠졌는지 함께 알린다
+      const skipped = freeItems.length > 0 ? ` (사급 ${freeItems.length}개는 제외)` : '';
+      toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 ${tail}${skipped}`);
     } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {

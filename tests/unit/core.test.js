@@ -56,6 +56,7 @@ import { cutoffMonth, monthlyCounts, basisField, monthLabel } from '../../src/do
 import { splitPasted, toISODate, mapPastedValues } from '../../src/utils/pasteColumn';
 import { contactsOf, primaryEmail, hasChoice, resolveEmail, supplierKey } from '../../src/domain/supplierContacts';
 import { poFingerprint } from '../../src/utils/poFingerprint';
+import { isFreeIssue } from '../../src/services/bomService';
 import { normalizeMailLog } from '../../src/services/mailService';
 
 const suppliers = [
@@ -903,6 +904,49 @@ describe('마감 리스트 — 들어온 달에 오른다', () => {
     const r = closingRowsOf(p, itemMaster, suppliers, 2026, 8)[0];
     expect(payMonthLabel(r.paidAt)).toBe('8.28');
     expect(r.paidAmount).toBe(20000);
+  });
+});
+
+// ── BOM 사급·도급 (2026-09-02 대표님)
+//
+// 사급 = 고객사가 대주는 자재. 우리 돈이 안 나가므로 금액 합계에서 빠지고,
+// 발주서로도 넘어가지 않는다 — 넘어가면 우리가 사게 되고 입고·마감·결제까지 흘러간다.
+describe('BOM — 사급은 우리 돈이 아니다', () => {
+  it('사급만 가려낸다', () => {
+    expect(isFreeIssue({ supplyType: 'free' })).toBe(true);
+    expect(isFreeIssue({ supplyType: '' })).toBe(false);
+    expect(isFreeIssue({})).toBe(false); // 필드가 없던 옛 품목은 전부 도급
+    expect(isFreeIssue(null)).toBe(false);
+    expect(isFreeIssue({ supplyType: '사급' })).toBe(false); // 정해진 값만 인정한다
+  });
+
+  it('금액 합계에서 사급이 빠진다', () => {
+    const items = [
+      { qty: 2, unitPrice: 1000 }, // 도급 2,000
+      { qty: 3, unitPrice: 5000, supplyType: 'free' }, // 사급 15,000 — 빠져야 한다
+      { qty: 1, unitPrice: 500 }, // 도급 500
+    ];
+    const total = items.reduce(
+      (sum, it) => sum + (isFreeIssue(it) ? 0 : (Number(it.qty) || 0) * (Number(it.unitPrice) || 0)),
+      0,
+    );
+    expect(total).toBe(2500);
+  });
+
+  it('수량은 사급도 센다 — 실제로 쓰는 자재다', () => {
+    const items = [{ qty: 2 }, { qty: 3, supplyType: 'free' }];
+    expect(items.reduce((s, it) => s + it.qty, 0)).toBe(5);
+    expect(items.filter(isFreeIssue).length).toBe(1); // 갈라 세는 것도 된다
+  });
+
+  it('발주로 넘길 목록에서 사급이 빠진다', () => {
+    const bom = [
+      { name: 'A', supplyType: '' },
+      { name: 'B', supplyType: 'free' },
+      { name: 'C' },
+    ];
+    const toOrder = bom.filter((b) => !isFreeIssue(b));
+    expect(toOrder.map((b) => b.name)).toEqual(['A', 'C']);
   });
 });
 

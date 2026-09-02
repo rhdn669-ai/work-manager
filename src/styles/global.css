@@ -16724,240 +16724,504 @@ td.mx-dc {
 }
 
 /* ── BOM 인쇄 표 열 폭 ─────────────────────────────────────────
-   옵션 셋(금액·BOX·구매처)이 켜고 꺼져 조합이 여덟이다. 조합마다 합이 정확히
+   옵션 넷(금액·BOX·도번·구매처)이 켜고 꺼져 조합이 열여섯이다. 조합마다 합이 정확히
    100%여야 한다 — 넘치면 어느 한 열이 0 이 되어 통째로 사라진다(메이커가 그랬다).
    scripts 로 만들어 낸 표다. 손으로 고치지 말고 폭을 바꾸려면 가중치를 고칠 것.
    (2026-09-01 대표님 「글짤림」·「구매처를 빼자」·「출력할 때 포함할 항목 선택」) */
-.iopn-items-table:not(.has-box):not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
   width: 6.1%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box):not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
   width: 18.2%;
 }
-.iopn-items-table:not(.has-box):not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 13.6%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box):not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
   width: 39.4%;
 }
-.iopn-items-table:not(.has-box):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
   width: 6.1%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box):not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
   width: 16.6%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-no {
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
   width: 5.1%;
   text-align: center;
 }
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-name {
-  width: 15.2%;
-}
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-maker {
-  width: 11.4%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-spec {
-  width: 32.9%;
-}
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 5.1%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-supplier {
-  width: 16.5%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier.bom-no-price:not(.po-cols) .c-note {
-  width: 13.8%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
-  width: 4.9%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-box {
-  width: 19.5%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
-  width: 14.6%;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
-  width: 11.0%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
-  width: 31.7%;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
-  width: 4.9%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
-  width: 13.4%;
-  text-align: center;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-no {
-  width: 4.2%;
-  text-align: center;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-box {
-  width: 16.8%;
-  text-align: center;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-name {
-  width: 12.6%;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-maker {
-  width: 9.5%;
-  text-align: center;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-spec {
-  width: 27.4%;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-qty {
-  width: 4.2%;
-  text-align: center;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-supplier {
-  width: 13.7%;
-  text-align: center;
-}
-.iopn-items-table.has-box.has-supplier.bom-no-price:not(.po-cols) .c-note {
-  width: 11.6%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
-  width: 4.5%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
-  width: 13.6%;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 10.2%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 29.5%;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 4.5%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
-  width: 11.4%;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
-  width: 13.6%;
-}
-.iopn-items-table:not(.has-box):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
-  width: 12.7%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
-  width: 4.0%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
-  width: 11.9%;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 8.9%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 25.7%;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 4.0%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
-  width: 9.9%;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
-  width: 11.9%;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
-  width: 12.9%;
-  text-align: center;
-}
-.iopn-items-table:not(.has-box).has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
-  width: 10.8%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
-  width: 3.8%;
-  text-align: center;
-}
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-box {
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-drawing {
   width: 15.4%;
   text-align: center;
 }
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
+  width: 15.4%;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 11.5%;
-}
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 8.7%;
   text-align: center;
 }
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 25.0%;
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
+  width: 33.3%;
 }
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
-  width: 3.8%;
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 5.1%;
   text-align: center;
 }
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
+  width: 14.2%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-no {
+  width: 5.1%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-name {
+  width: 15.2%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-maker {
+  width: 11.4%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-spec {
+  width: 32.9%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 5.1%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-supplier {
+  width: 16.5%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-note {
+  width: 13.8%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-no {
+  width: 4.4%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-drawing {
+  width: 13.2%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
+  width: 13.2%;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-maker {
+  width: 9.9%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-spec {
+  width: 28.6%;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 4.4%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-supplier {
+  width: 14.3%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-note {
+  width: 12.0%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
+  width: 4.9%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-box {
+  width: 19.5%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
+  width: 14.6%;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
+  width: 11.0%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
+  width: 31.7%;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 4.9%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
+  width: 13.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-no {
+  width: 4.3%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-box {
+  width: 17.0%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-drawing {
+  width: 12.8%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-name {
+  width: 12.8%;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-maker {
   width: 9.6%;
+  text-align: center;
 }
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-spec {
+  width: 27.7%;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-qty {
+  width: 4.3%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier).bom-no-price:not(.po-cols) .c-note {
   width: 11.5%;
-}
-.iopn-items-table.has-box:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
-  width: 10.7%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
-  width: 3.4%;
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-no {
+  width: 4.2%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-box {
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-box {
+  width: 16.8%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-name {
+  width: 12.6%;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-maker {
+  width: 9.5%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-spec {
+  width: 27.4%;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 4.2%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-supplier {
   width: 13.7%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
-  width: 10.3%;
-}
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
-  width: 7.7%;
+.iopn-items-table.has-box:not(.has-drawing).has-supplier.bom-no-price:not(.po-cols) .c-note {
+  width: 11.6%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
-  width: 22.2%;
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-no {
+  width: 3.7%;
+  text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-box {
+  width: 15.0%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-drawing {
+  width: 11.2%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-name {
+  width: 11.2%;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-maker {
+  width: 8.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-spec {
+  width: 24.3%;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-qty {
+  width: 3.7%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-supplier {
+  width: 12.1%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier.bom-no-price:not(.po-cols) .c-note {
+  width: 10.4%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
+  width: 4.5%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
+  width: 13.6%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 10.2%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 29.5%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 4.5%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
+  width: 11.4%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 13.6%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
+  width: 12.7%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
+  width: 4.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-drawing {
+  width: 12.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
+  width: 12.0%;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 9.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 26.0%;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 4.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
+  width: 10.0%;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 12.0%;
+}
+.iopn-items-table:not(.has-box).has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
+  width: 11.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
+  width: 4.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 11.9%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 8.9%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 25.7%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 4.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
+  width: 9.9%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 11.9%;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
+  width: 12.9%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box):not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
+  width: 10.8%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
+  width: 3.5%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-drawing {
+  width: 10.6%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 10.6%;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 8.0%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 23.0%;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.5%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
+  width: 8.8%;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 10.6%;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
+  width: 11.5%;
+  text-align: center;
+}
+.iopn-items-table:not(.has-box).has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
+  width: 9.9%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
+  width: 3.8%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-box {
+  width: 15.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
+  width: 11.5%;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 8.7%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 25.0%;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.8%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
+  width: 9.6%;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 11.5%;
+}
+.iopn-items-table.has-box:not(.has-drawing):not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
+  width: 10.7%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-no {
   width: 3.4%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
-  width: 8.5%;
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-box {
+  width: 13.8%;
+  text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-drawing {
+  width: 10.3%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-name {
   width: 10.3%;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 7.8%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 22.4%;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-price {
+  width: 8.6%;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 10.3%;
+}
+.iopn-items-table.has-box.has-drawing:not(.has-supplier):not(.bom-no-price):not(.po-cols) .c-note {
+  width: 9.7%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
+  width: 3.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-box {
+  width: 13.7%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 10.3%;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 7.7%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 22.2%;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
+  width: 8.5%;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 10.3%;
+}
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
   width: 11.1%;
   text-align: center;
 }
-.iopn-items-table.has-box.has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
+.iopn-items-table.has-box:not(.has-drawing).has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
   width: 9.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-no {
+  width: 3.1%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-box {
+  width: 12.4%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-drawing {
+  width: 9.3%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-name {
+  width: 9.3%;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-maker {
+  width: 7.0%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-spec {
+  width: 20.2%;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-qty {
+  width: 3.1%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-price {
+  width: 7.8%;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-amount {
+  width: 9.3%;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-supplier {
+  width: 10.1%;
+  text-align: center;
+}
+.iopn-items-table.has-box.has-drawing.has-supplier:not(.bom-no-price):not(.po-cols) .c-note {
+  width: 8.4%;
   text-align: center;
 }
 
@@ -21429,4 +21693,52 @@ a.lib-row-name:hover {
 /* 좁은 표 안이라 한 톤 줄인다 */
 .mail-reply-inline .mail-reply {
   padding: 11px 13px;
+}
+
+/* ── 사급·도급 ────────────────────────────────────────────────
+   사급 = 고객사가 대주는 자재. 우리 돈이 안 나가므로 금액 합계에서 빠진다.
+   눌러서 바꾸는 칸이라 버튼으로 두되, 표 안에서 튀지 않게 (2026-09-02 대표님). */
+.bom-supply-btn {
+  min-width: 52px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bom-supply-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 사급은 눈에 띄어야 한다 — 금액에 안 잡히는 줄이라는 뜻이다 */
+.bom-supply-btn.is-free {
+  border-color: var(--accent);
+  background: var(--accent-soft, #feefe7);
+  color: var(--accent-press);
+}
+
+.bom-supply-btn.is-free:hover {
+  background: var(--accent-press);
+  border-color: var(--accent-press);
+  color: #fff;
+}
+
+/* 합계 옆 안내 — 「사급 3건 제외」 */
+.bom-free-note {
+  color: var(--accent-press);
+  font-weight: 700;
+}
+
+/* 인쇄물 — 단가·금액 자리에 「사급」. 돈이 안 드는 이유가 그 자리에서 보인다 */
+.iopn-items-table .c-free {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }

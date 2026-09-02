@@ -162,6 +162,12 @@ export async function addBomItem(siteId, data) {
     unitPrice: Number(data.unitPrice) || 0,
     box: data.box || '',
     note: data.note || '',
+    // 사급 = 고객사가 대주는 자재. 우리 돈이 안 나가므로 금액 합계에서 뺀다.
+    // 빈 값이 도급(우리가 사서 넣는 것) — 지금까지의 모든 품목이 그렇다 (2026-09-02 대표님).
+    supplyType: data.supplyType || '',
+    // 도번 — 도면 번호. 품목 코드와 나란히 다니며 현장에서 도면을 찾는 열쇠가 된다
+    // (2026-09-02 대표님). 발주서로도 그대로 따라간다.
+    drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [], // 비어 있으면 공통
     order: Number(data.order) || 0,
     createdAt: new Date(),
@@ -187,6 +193,12 @@ export async function deleteBomItem(id) {
   await deleteDoc(doc(db, 'bom', id));
 }
 
+// 사급인가 — 고객사가 대주는 자재. 값이 'free' 인 것만 사급이고 나머지는 다 도급이다.
+// 한 곳에서 가려야 화면·합계·발주 불러오기가 어긋나지 않는다 (2026-09-02 대표님).
+export function isFreeIssue(item) {
+  return (item?.supplyType || '') === 'free';
+}
+
 // 실행취소용 — 원래 id 그대로 복원
 export async function restoreBomItem(id, siteId, data) {
   await setDoc(doc(db, 'bom', id), {
@@ -199,6 +211,8 @@ export async function restoreBomItem(id, siteId, data) {
     unitPrice: Number(data.unitPrice) || 0,
     box: data.box || '',
     note: data.note || '',
+    supplyType: data.supplyType || '',
+    drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [],
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),
