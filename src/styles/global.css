@@ -5891,6 +5891,12 @@ table.cards-sm td {
   border: 1px solid #000;
 }
 
+/* 사급 장은 한눈에 갈리게 — 금액이 빠진 표라는 표시다 */
+.bom-print-supplier-band.is-free {
+  background: #e6e6e6;
+  border-width: 2px;
+}
+
 /* BOM 프로젝트명 + 수정 버튼 */
 .bom-title-wrap {
   display: inline-flex;
@@ -21703,39 +21709,142 @@ a.lib-row-name:hover {
   padding: 11px 13px;
 }
 
-/* ── 사급·도급 ────────────────────────────────────────────────
-   사급 = 고객사가 대주는 자재. 우리 돈이 안 나가므로 금액 합계에서 빠진다.
-   눌러서 바꾸는 칸이라 버튼으로 두되, 표 안에서 튀지 않게 (2026-09-02 대표님). */
-.bom-supply-btn {
-  min-width: 52px;
-  padding: 4px 10px;
+/* ── 도급 · 사급 ──────────────────────────────────────────────
+   사급 = 고객사가 대주는 자재. 우리 돈이 안 나가므로 금액 합계와 발주서에서 빠진다.
+   예전에는 줄마다 버튼을 눌러 바꿨는데, 이제 탭으로 갈라 보고 골라서 한꺼번에 옮긴다
+   (2026-09-02 대표님 「구분 버튼으로 두지말고 도급 사급 페이지를 따로」). */
+.bom-supply-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bom-supply-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: #fff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: var(--text-light);
   cursor: pointer;
-  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
-.bom-supply-btn:hover {
+.bom-supply-tab:hover {
   border-color: var(--primary);
   color: var(--primary);
 }
 
-/* 사급은 눈에 띄어야 한다 — 금액에 안 잡히는 줄이라는 뜻이다 */
-.bom-supply-btn.is-free {
-  border-color: var(--accent);
+.bom-supply-tab.on {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.bom-supply-tab-n {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-subtle, #f2f4f6);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+
+.bom-supply-tab.on .bom-supply-tab-n {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.bom-supply-tabs-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* 고른 줄이 있을 때만 뜨는 띠 */
+.bom-pick-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--primary-soft, #eef2f8);
+}
+
+.bom-pick-count {
+  margin-right: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.bom-pick-count strong {
+  font-weight: 800;
+}
+
+/* 표 안 고르기 칸 */
+.bom-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.bom-pick input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.bom-pick-all {
+  justify-content: center;
+  color: inherit;
+}
+
+/* 지금 어느 쪽인지 — 「전체」로 볼 때만 나온다 */
+.bom-supply-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle, #f2f4f6);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+.bom-supply-tag.is-free {
   background: var(--accent-soft, #feefe7);
   color: var(--accent-press);
 }
 
-.bom-supply-btn.is-free:hover {
-  background: var(--accent-press);
-  border-color: var(--accent-press);
-  color: #fff;
+@media (max-width: 768px) {
+  .bom-supply-tabs-hint {
+    display: none; /* 좁은 화면에서는 탭만 남긴다 */
+  }
+  .bom-pick-bar {
+    flex-wrap: wrap;
+  }
 }
 
 /* 합계 옆 안내 — 「사급 3건 제외」 */

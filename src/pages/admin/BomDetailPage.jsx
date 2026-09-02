@@ -108,6 +108,10 @@ export default function BomDetailPage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('order'); // 'order'(추가/붙여넣기순) | 'code'(코드순)
   const [groupBySupplier, setGroupBySupplier] = useState(false); // 구매처별 묶음 보기
+  // 도급 / 사급을 나눠 본다. 한 줄씩 눌러 구분을 바꾸는 대신, 골라서 한꺼번에 옮긴다
+  // (2026-09-02 대표님 「도급 사급 구분 버튼으로 두지말고 도급 사급 페이지를 따로」).
+  const [supplyTab, setSupplyTab] = useState('all'); // 'all' | 'paid'(도급) | 'free'(사급)
+  const [picked2, setPicked2] = useState(() => new Set()); // 옮기려고 고른 줄
   const [supplierFilter, setSupplierFilter] = useState(''); // 특정 구매처만 (이름)
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
   // 출력 옵션 — 발주서와 같은 문법 (2026-09-01 대표님 「BOM에서도 출력할때 박스,금액 옵션」).
@@ -271,6 +275,8 @@ export default function BomDetailPage() {
     if (supplierFilter) {
       list = list.filter((it) => (it.supplier || '(구매처 미지정)') === supplierFilter);
     }
+    if (supplyTab === 'paid') list = list.filter((it) => !isFreeIssue(it));
+    else if (supplyTab === 'free') list = list.filter(isFreeIssue);
     const sorted = [...list];
     if (sortBy === 'code') {
       sorted.sort((a, b) => collator.compare(a.code || '', b.code || ''));
@@ -278,7 +284,7 @@ export default function BomDetailPage() {
       sorted.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
     }
     return sorted;
-  }, [displayItems, search, sortBy, supplierFilter]);
+  }, [displayItems, search, sortBy, supplierFilter, supplyTab]);
 
   // BOX 가 하나라도 적혀 있으면 옵션을 기본으로 켠다 — 값이 없는 BOM 에서 빈 열만 늘리지 않게
   const hasBox = useMemo(() => bomItems.some((b) => (b.box || '').trim()), [bomItems]);
@@ -356,6 +362,7 @@ export default function BomDetailPage() {
   // 수량은 사급도 센다 — 실제로 쓰는 자재라 「몇 개 필요한가」는 그대로 유효하다.
   // 다만 갈라 보여 준다 (2026-09-02 대표님 「놓고 따로 센다」).
   const freeCount = useMemo(() => displayItems.filter(isFreeIssue).length, [displayItems]);
+  const paidCount = displayItems.length - freeCount;
 
   function updateField(id, patch) {
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -376,6 +383,37 @@ export default function BomDetailPage() {
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
+  }
+
+  // 고른 줄을 도급↔사급으로 한꺼번에 옮긴다.
+  //
+  // 예전에는 줄마다 「구분」 버튼을 눌러 바꿨는데, 사급이 여러 줄이면 그만큼 눌러야 했다.
+  // 이제 골라서 한 번에 옮긴다 (2026-09-02 대표님).
+  async function moveSupply(toFree) {
+    const ids = [...picked2];
+    if (ids.length === 0) return;
+    const next = toFree ? 'free' : '';
+    const targets = bomItems.filter((b) => ids.includes(b.id) && (b.supplyType || '') !== next);
+    setPicked2(new Set());
+    if (targets.length === 0) return;
+    const before = new Map(targets.map((b) => [b.id, b.supplyType || '']));
+    setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: next } : b)));
+    try {
+      await Promise.all(targets.map((b) => updateBomItem(b.id, { supplyType: next })));
+      toast(`${targets.length}건을 ${toFree ? '사급' : '도급'}으로 옮겼습니다`, 'success');
+    } catch {
+      toast('구분을 바꾸는 중 오류가 발생했습니다', 'error');
+      setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: before.get(b.id) } : b)));
+    }
+  }
+
+  function togglePick2(id) {
+    setPicked2((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   // BOM 에서 친 도번을 품목 마스터에 올린다.
@@ -894,7 +932,17 @@ export default function BomDetailPage() {
         };
         // 구매처별이면 구매처 순서대로 정렬해 연속 출력 (페이지 분할 X)
         const printRows = groupBySupplier ? supplierGroups.flatMap((g) => g.items) : rows;
-        pushPages(printRows, null);
+        // 도급과 사급은 성격이 다른 표다 — 「전체」로 뽑을 때도 장을 갈라 찍는다
+        // (2026-09-02 대표님 「도급 사급 페이지를 따로」·「인쇄물 따로」).
+        // 탭으로 한쪽만 보고 있으면 그것만 나온다.
+        if (supplyTab === 'all') {
+          const paid = printRows.filter((it) => !isFreeIssue(it));
+          const free = printRows.filter(isFreeIssue);
+          if (paid.length > 0 || free.length === 0) pushPages(paid, paid.length > 0 && free.length > 0 ? '도급' : null);
+          if (free.length > 0) pushPages(free, '사급');
+        } else {
+          pushPages(printRows, supplyTab === 'free' ? '사급' : null);
+        }
         if (pageData.length === 0)
           pageData.push({ chunk: [], startNo: 0, size: FIRST_PAGE_ROWS, supplierName: null, isSectionLast: true });
         // 특이사항은 마지막 내용 페이지의 남는 공간에 그대로 출력. 물리적으로 꽉 찼을 때만 전용 페이지 추가.
@@ -924,7 +972,10 @@ export default function BomDetailPage() {
                 <div className="bom-print-page" key={pageIdx}>
                   {isFirst ? (
                     <>
-                      <IopnDocBrand title="BOM 리스트" titleClass="bom-list-title" />
+                      <IopnDocBrand
+                        title={supplyTab === 'free' ? 'BOM 리스트 (사급)' : supplyTab === 'paid' ? 'BOM 리스트 (도급)' : 'BOM 리스트'}
+                        titleClass="bom-list-title"
+                      />
 
                       <table className="iopn-info-table">
                         <tbody>
@@ -993,7 +1044,15 @@ export default function BomDetailPage() {
                     </>
                   ) : null}
 
-                  {supplierName && <div className="bom-print-supplier-band">구매처 : {supplierName}</div>}
+                  {supplierName && (
+                    <div className={`bom-print-supplier-band${supplierName === '사급' ? ' is-free' : ''}`}>
+                      {supplierName === '사급'
+                        ? '사급 자재 — 고객사 지급 (금액 제외)'
+                        : supplierName === '도급'
+                          ? '도급 자재 — 당사 구매'
+                          : `구매처 : ${supplierName}`}
+                    </div>
+                  )}
 
                   <table
                     className={`iopn-items-table${printShowAmount ? '' : ' bom-no-price'}${printShowBox ? ' has-box' : ''}${printShowSupplier ? ' has-supplier' : ''}${printShowDrawing ? ' has-drawing' : ''}`}
@@ -1135,6 +1194,52 @@ export default function BomDetailPage() {
         );
       })()}
 
+      {/* 도급 / 사급 — 무엇을 보고 무엇을 인쇄할지 가르는 자리 */}
+      <div className="bom-supply-tabs no-print" role="tablist" aria-label="도급 사급 구분">
+        {[
+          { key: 'all', label: '전체', n: displayItems.length },
+          { key: 'paid', label: '도급', n: paidCount },
+          { key: 'free', label: '사급', n: freeCount },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={supplyTab === t.key}
+            className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
+            onClick={() => {
+              setSupplyTab(t.key);
+              setPicked2(new Set());
+            }}
+          >
+            {t.label}
+            <span className="bom-supply-tab-n">{t.n}</span>
+          </button>
+        ))}
+        <span className="bom-supply-tabs-hint">
+          {supplyTab === 'free'
+            ? '고객사가 대주는 자재입니다 — 금액 합계와 발주서에서 빠집니다'
+            : '왼쪽 칸을 골라 도급·사급으로 옮길 수 있습니다'}
+        </span>
+      </div>
+
+      {picked2.size > 0 && (
+        <div className="bom-pick-bar no-print">
+          <span className="bom-pick-count">
+            <strong>{picked2.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(true)}>
+            사급으로 보내기
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(false)}>
+            도급으로 되돌리기
+          </button>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPicked2(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
+
       <div className="purchase-filters bom-filters no-print">
         <input
           type="text"
@@ -1229,8 +1334,19 @@ export default function BomDetailPage() {
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
-                        <th scope="col" style={{ minWidth: 84 }}>
-                          구분
+                        <th scope="col" style={{ minWidth: supplyTab === 'all' ? 84 : 40 }}>
+                          {/* 머리의 네모로 보이는 줄을 통째로 고른다 */}
+                          <label className="bom-pick bom-pick-all">
+                            <input
+                              type="checkbox"
+                              checked={rows.length > 0 && rows.every((r) => picked2.has(r.id))}
+                              onChange={(e) =>
+                                setPicked2(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())
+                              }
+                              aria-label="보이는 줄 모두 고르기"
+                            />
+                            {supplyTab === 'all' && <span>구분</span>}
+                          </label>
                         </th>
                         <th scope="col">수량</th>
                         <th scope="col">단가</th>
@@ -1365,24 +1481,21 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              {/* 구분 — 사급은 고객사가 대주므로 우리 금액에 안 들어간다 */}
-                              <td data-label="구분">
-                                <button
-                                  type="button"
-                                  className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}`}
-                                  onClick={() => {
-                                    const next = { supplyType: isFreeIssue(it) ? '' : 'free' };
-                                    updateField(it.id, next);
-                                    flushItem(it.id, next); // 바뀔 값을 함께 넘긴다 — 상태 갱신을 기다리지 않게
-                                  }}
-                                  title={
-                                    isFreeIssue(it)
-                                      ? '사급 — 고객사가 대주는 자재. 금액 합계에서 빠집니다. 눌러서 도급으로'
-                                      : '도급 — 우리가 사서 넣는 자재. 눌러서 사급으로'
-                                  }
-                                >
-                                  {isFreeIssue(it) ? '사급' : '도급'}
-                                </button>
+                              {/* 골라서 도급·사급으로 옮긴다. 「전체」에서는 지금 어느 쪽인지도 함께 보인다 */}
+                              <td data-label="구분" className="bom-pick-cell">
+                                <label className="bom-pick">
+                                  <input
+                                    type="checkbox"
+                                    checked={picked2.has(it.id)}
+                                    onChange={() => togglePick2(it.id)}
+                                    aria-label={`${it.name || '이 품목'} 고르기`}
+                                  />
+                                  {supplyTab === 'all' && (
+                                    <span className={`bom-supply-tag${isFreeIssue(it) ? ' is-free' : ''}`}>
+                                      {isFreeIssue(it) ? '사급' : '도급'}
+                                    </span>
+                                  )}
+                                </label>
                               </td>
                               <td data-label="수량">
                                 <input
