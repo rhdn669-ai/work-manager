@@ -20,6 +20,7 @@ import {
 import { db } from '../config/firebase';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
 import { getToday } from '../utils/dateUtils';
+import { groupLayoutUpdates } from '../domain/itemLayout';
 
 const suppliersRef = collection(db, 'suppliers');
 const itemsRef = collection(db, 'purchaseItems');
@@ -389,6 +390,32 @@ export async function reorderGroupCodes(orderedIds, currentItems, mainCode) {
     batch.update(doc(db, 'purchaseItems', u.id), { code: u.code, updatedAt: new Date() });
   }
   await batch.commit();
+  return updates;
+}
+
+// 화면에 보이는 대분류 배치를 그대로 코드에 새긴다 — 순서 바꾸기·다른 대분류로 옮기기 (2026-09-02 대표님).
+//
+// 대분류 번호는 «보이는 차례»가 곧 번호다: 첫 번째가 IOPN-000, 그다음이 IOPN-001…
+// 그래서 대분류 하나를 위로 올리면 그 사이에 낀 대분류와 그 아래 하위 품목 코드가
+// 한꺼번에 밀린다. 대표님이 그 방식을 고르셨다 (「코드도 다시 매긴다」).
+//
+// BOM·발주서는 품목을 코드가 아니라 문서 id 로 붙들고 코드는 그릴 때마다 마스터에서
+// 읽어 가므로, 코드가 바뀌어도 연결은 그대로다 — 이미 발송된 메일·PDF 만 옛 코드로 남는다.
+//
+// groups: [{ repId, subIds: [...] }] — 화면 순서 그대로. 하위의 groupKey 도 함께 맞춘다.
+export async function applyGroupLayout(groups, currentItems) {
+  const updates = groupLayoutUpdates(groups, currentItems);
+  if (updates.length === 0) return [];
+
+  // 한 배치에 500 건까지다. 대분류 하나를 옮기면 수백 줄이 밀리므로 나눠 커밋한다.
+  const CHUNK = 400;
+  for (let i = 0; i < updates.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    for (const u of updates.slice(i, i + CHUNK)) {
+      batch.update(doc(db, 'purchaseItems', u.id), { ...u.patch, updatedAt: new Date() });
+    }
+    await batch.commit();
+  }
   return updates;
 }
 

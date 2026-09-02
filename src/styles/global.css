@@ -21994,3 +21994,32 @@ a.lib-row-name:hover {
   color: var(--text-light);
 }
 
+/* 대분류를 끌어 옮기는 손잡이 — 하위 품목 손잡이와 같은 모양으로 (2026-09-02 대표님) */
+.item-group-drag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: -4px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+.item-group-drag:hover {
+  background: var(--bg-subtle, #f2f4f6);
+  color: var(--text);
+}
+.item-group-drag:active {
+  cursor: grabbing;
+}
+.item-group-drag svg {
+  width: 15px;
+  height: 15px;
+}
+
