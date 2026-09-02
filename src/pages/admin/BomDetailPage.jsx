@@ -349,6 +349,16 @@ export default function BomDetailPage() {
   }
 
   // 화면에 보이는 구매처 목록 (필터 드롭다운용)
+  // 인쇄물 제목 — 무엇을 걸러 뽑았는지 종이에 그대로 남는다
+  // (2026-09-02 대표님 「필터 걸어서 뽑을때 제목 옆에 박스명 적어줘」)
+  const printTitle = [
+    'BOM 리스트',
+    supplyTab === 'free' ? '(사급)' : supplyTab === 'paid' ? '(도급)' : '',
+    boxFilter ? `— ${boxFilter}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   const boxOptions = useMemo(() => {
     const set = new Set(displayItems.map((it) => (it.box || '').trim() || NO_BOX));
     return [...set].sort((a, b) => (a === NO_BOX ? 1 : b === NO_BOX ? -1 : a.localeCompare(b)));
@@ -974,27 +984,14 @@ export default function BomDetailPage() {
                 <div className="bom-print-page" key={pageIdx}>
                   {isFirst ? (
                     <>
-                      <IopnDocBrand
-                        title={
-                          supplyTab === 'free'
-                            ? 'BOM 리스트 (사급)'
-                            : supplyTab === 'paid'
-                              ? 'BOM 리스트 (도급)'
-                              : 'BOM 리스트'
-                        }
-                        titleClass="bom-list-title"
-                      />
+                      <IopnDocBrand title={printTitle} titleClass="bom-list-title" />
                     </>
                   ) : null}
 
-                  {supplierName && (
-                    <div className={`bom-print-supplier-band${supplierName === '사급' ? ' is-free' : ''}`}>
-                      {/* 프로젝트명과 도급·사급만. 나머지 정보는 걷었다
-                          (2026-09-02 대표님 「띠에 프로젝트 명만 넣어서 도급,사급만」) */}
-                      {supplierName === '사급' || supplierName === '도급'
-                        ? `${project.name || ''} — ${supplierName}`
-                        : `구매처 : ${supplierName}`}
-                    </div>
+                  {/* 도급·사급은 제목이 말해 준다 — 띠는 구매처별로 묶어 뽑을 때만
+                      남긴다 (2026-09-02 대표님 「이거 없애고」) */}
+                  {supplierName && supplierName !== '도급' && supplierName !== '사급' && (
+                    <div className="bom-print-supplier-band">구매처 : {supplierName}</div>
                   )}
 
                   <table

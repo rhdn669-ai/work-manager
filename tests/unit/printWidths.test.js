@@ -81,3 +81,55 @@ describe('발주서 인쇄표 칸 폭', () => {
     expect(grab('.iopn-items-table.po-cols.has-drawing.has-box', 'c-spec')).toBeGreaterThanOrEqual(15);
   });
 });
+
+describe('인쇄표 칸 정렬', () => {
+  const rule = (col) => {
+    const key = `.iopn-items-table .${col} {`;
+    const i = css.indexOf(key);
+    if (i < 0) return null;
+    return css.slice(i + key.length, css.indexOf('}', i));
+  };
+  const val = (col, prop) => {
+    const body = rule(col);
+    if (!body) return null;
+    const i = body.indexOf(`${prop}:`);
+    if (i < 0) return null;
+    return body
+      .slice(i + prop.length + 1, body.indexOf(';', i))
+      .trim();
+  };
+
+
+  it('수량은 가운데 — 어디서나', () => {
+    expect(val('c-qty', 'text-align')).toBe('center');
+  });
+
+  it('가운데 정렬 칸은 좌우 패딩이 같다 — 한쪽만 남으면 글자가 밀린다', () => {
+    // 조합 규칙이 이 칸들을 가운데로 덮는다. 예전에 수량이 오른쪽 패딩만 남아 밀렸다.
+    for (const col of ['c-qty', 'c-supplier', 'c-note']) {
+      expect(val(col, 'padding-left')).toBe(val(col, 'padding-right'));
+    }
+  });
+
+  it('돈은 오른쪽 — 자릿수를 맞춘다', () => {
+    expect(val('c-price', 'text-align')).toBe('right');
+    expect(val('c-amount', 'text-align')).toBe('right');
+  });
+
+  it('규격은 왼쪽 — 긴 글이 들어간다', () => {
+    expect(val('c-spec', 'text-align')).toBe('left');
+  });
+
+  it('생성된 조합에서도 수량은 가운데', () => {
+    const bad = [];
+    for (const [sel] of bomBlocks) {
+      const key = `${sel} .c-qty {`;
+      const i = css.indexOf(key);
+      if (i < 0) continue;
+      const body = css.slice(i + key.length, css.indexOf('}', i));
+      if (!/text-align:\s*center/.test(body)) bad.push(sel);
+    }
+    expect(bad).toEqual([]);
+  });
+});
+

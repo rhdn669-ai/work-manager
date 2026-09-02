@@ -16656,11 +16656,15 @@ td.mx-dc {
 .iopn-items-table .c-recv.recv-none {
   color: var(--text-muted);
 }
+/* 수량은 어디서나 가운데. 돈(단가·금액)만 오른쪽으로 자릿수를 맞춘다.
+   예전에는 오른쪽 정렬이면서 조합 규칙이 가운데로 덮어써, 오른쪽 패딩 8px 만 남아
+   숫자가 왼쪽으로 밀려 있었다 (2026-09-02 대표님 「수량 중정렬」). */
 .iopn-items-table .c-qty {
   width: 5%;
-  text-align: right;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-  padding-right: 8px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .iopn-items-table .c-price {
   width: 11%;
@@ -16674,17 +16678,20 @@ td.mx-dc {
   font-variant-numeric: tabular-nums;
   padding-right: 8px;
 }
+/* 조합 규칙이 가운데로 덮으므로 좌우 패딩을 같게 둔다 — 한쪽만 남으면 글자가 밀린다 */
 .iopn-items-table .c-supplier {
   width: 14%;
   text-align: left;
-  padding-left: 8px;
+  padding-left: 4px;
+  padding-right: 4px;
   white-space: nowrap;
   overflow: hidden;
 }
 .iopn-items-table .c-note {
   width: 11%;
   text-align: left;
-  padding-left: 8px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
 .iopn-items-table.bom-no-price .c-name {
