@@ -21778,50 +21778,6 @@ a.lib-row-name:hover {
   color: var(--text-muted);
 }
 
-/* 고른 줄이 있을 때만 뜨는 띠 */
-.bom-pick-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 10px;
-  padding: 9px 14px;
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-sm, 10px);
-  background: var(--primary-soft, #eef2f8);
-}
-
-.bom-pick-count {
-  margin-right: 2px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--primary);
-}
-
-.bom-pick-count strong {
-  font-weight: 800;
-}
-
-/* 표 안 고르기 칸 */
-.bom-pick {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  cursor: pointer;
-}
-
-.bom-pick input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  accent-color: var(--primary);
-  cursor: pointer;
-}
-
-.bom-pick-all {
-  justify-content: center;
-  color: inherit;
-}
-
 /* 지금 어느 쪽인지 — 「전체」로 볼 때만 나온다 */
 .bom-supply-tag {
   padding: 2px 8px;
@@ -21841,9 +21797,6 @@ a.lib-row-name:hover {
 @media (max-width: 768px) {
   .bom-supply-tabs-hint {
     display: none; /* 좁은 화면에서는 탭만 남긴다 */
-  }
-  .bom-pick-bar {
-    flex-wrap: wrap;
   }
 }
 

@@ -111,7 +111,9 @@ export default function BomDetailPage() {
   // 도급 / 사급을 나눠 본다. 한 줄씩 눌러 구분을 바꾸는 대신, 골라서 한꺼번에 옮긴다
   // (2026-09-02 대표님 「도급 사급 구분 버튼으로 두지말고 도급 사급 페이지를 따로」).
   const [supplyTab, setSupplyTab] = useState('all'); // 'all' | 'paid'(도급) | 'free'(사급)
-  const [picked2, setPicked2] = useState(() => new Set()); // 옮기려고 고른 줄
+  // 사급 탭에서 담으면 사급으로 들어간다 — 「도급 사급 페이지를 따로」의 뜻이다
+  // (2026-09-02 대표님 「사급에 따로 리스트를 추가 할거임」).
+  const addAsFree = supplyTab === 'free';
   const [supplierFilter, setSupplierFilter] = useState(''); // 특정 구매처만 (이름)
   const [printStamp, setPrintStamp] = useState(''); // 출력물 하단 출력 시각
   // 출력 옵션 — 발주서와 같은 문법 (2026-09-01 대표님 「BOM에서도 출력할때 박스,금액 옵션」).
@@ -385,37 +387,6 @@ export default function BomDetailPage() {
     }
   }
 
-  // 고른 줄을 도급↔사급으로 한꺼번에 옮긴다.
-  //
-  // 예전에는 줄마다 「구분」 버튼을 눌러 바꿨는데, 사급이 여러 줄이면 그만큼 눌러야 했다.
-  // 이제 골라서 한 번에 옮긴다 (2026-09-02 대표님).
-  async function moveSupply(toFree) {
-    const ids = [...picked2];
-    if (ids.length === 0) return;
-    const next = toFree ? 'free' : '';
-    const targets = bomItems.filter((b) => ids.includes(b.id) && (b.supplyType || '') !== next);
-    setPicked2(new Set());
-    if (targets.length === 0) return;
-    const before = new Map(targets.map((b) => [b.id, b.supplyType || '']));
-    setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: next } : b)));
-    try {
-      await Promise.all(targets.map((b) => updateBomItem(b.id, { supplyType: next })));
-      toast(`${targets.length}건을 ${toFree ? '사급' : '도급'}으로 옮겼습니다`, 'success');
-    } catch {
-      toast('구분을 바꾸는 중 오류가 발생했습니다', 'error');
-      setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: before.get(b.id) } : b)));
-    }
-  }
-
-  function togglePick2(id) {
-    setPicked2((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   // BOM 에서 친 도번을 품목 마스터에 올린다.
   //
   // 도면 번호는 품목마다 정해진 값이라 원본은 품목 마스터다. 그래서 한동안 BOM 에서는
@@ -576,6 +547,7 @@ export default function BomDetailPage() {
         spec: m.spec || '',
         unit: m.unit || '',
         drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
+        supplyType: addAsFree ? 'free' : '', // 담는 자리가 곧 구분이다 (2026-09-02 대표님)
         qty,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -645,6 +617,7 @@ export default function BomDetailPage() {
         spec: m.spec || '',
         unit: m.unit || '',
         drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
+        supplyType: addAsFree ? 'free' : '', // 담는 자리가 곧 구분이다 (2026-09-02 대표님)
         qty: Number(qtyInput) || 0,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -973,7 +946,13 @@ export default function BomDetailPage() {
                   {isFirst ? (
                     <>
                       <IopnDocBrand
-                        title={supplyTab === 'free' ? 'BOM 리스트 (사급)' : supplyTab === 'paid' ? 'BOM 리스트 (도급)' : 'BOM 리스트'}
+                        title={
+                          supplyTab === 'free'
+                            ? 'BOM 리스트 (사급)'
+                            : supplyTab === 'paid'
+                              ? 'BOM 리스트 (도급)'
+                              : 'BOM 리스트'
+                        }
                         titleClass="bom-list-title"
                       />
 
@@ -1207,10 +1186,7 @@ export default function BomDetailPage() {
             role="tab"
             aria-selected={supplyTab === t.key}
             className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-            onClick={() => {
-              setSupplyTab(t.key);
-              setPicked2(new Set());
-            }}
+            onClick={() => setSupplyTab(t.key)}
           >
             {t.label}
             <span className="bom-supply-tab-n">{t.n}</span>
@@ -1218,27 +1194,12 @@ export default function BomDetailPage() {
         ))}
         <span className="bom-supply-tabs-hint">
           {supplyTab === 'free'
-            ? '고객사 제공 자재 — 금액 합계와 발주서에서 빠집니다'
-            : '왼쪽 칸을 골라 도급·사급으로 옮길 수 있습니다'}
+            ? '고객사 제공 자재 — 여기서 담은 품목은 사급이 됩니다. 금액 합계와 발주서에서 빠집니다'
+            : supplyTab === 'paid'
+              ? '우리가 사서 넣는 자재 — 여기서 담은 품목은 도급이 됩니다'
+              : '도급과 사급을 함께 봅니다 — 담으려면 도급·사급 탭에서 담으세요'}
         </span>
       </div>
-
-      {picked2.size > 0 && (
-        <div className="bom-pick-bar no-print">
-          <span className="bom-pick-count">
-            <strong>{picked2.size}</strong>건 골랐습니다
-          </span>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(true)}>
-            사급으로 보내기
-          </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(false)}>
-            도급으로 되돌리기
-          </button>
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPicked2(new Set())}>
-            선택 해제
-          </button>
-        </div>
-      )}
 
       <div className="purchase-filters bom-filters no-print">
         <input
@@ -1334,20 +1295,12 @@ export default function BomDetailPage() {
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
-                        <th scope="col" style={{ minWidth: supplyTab === 'all' ? 84 : 40 }}>
-                          {/* 머리의 네모로 보이는 줄을 통째로 고른다 */}
-                          <label className="bom-pick bom-pick-all">
-                            <input
-                              type="checkbox"
-                              checked={rows.length > 0 && rows.every((r) => picked2.has(r.id))}
-                              onChange={(e) =>
-                                setPicked2(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())
-                              }
-                              aria-label="보이는 줄 모두 고르기"
-                            />
-                            {supplyTab === 'all' && <span>구분</span>}
-                          </label>
-                        </th>
+                        {/* 도급·사급 탭에서는 온통 같은 값이라 열을 두지 않는다 */}
+                        {supplyTab === 'all' && (
+                          <th scope="col" style={{ minWidth: 72 }}>
+                            구분
+                          </th>
+                        )}
                         <th scope="col">수량</th>
                         <th scope="col">단가</th>
                         <th scope="col">합계</th>
@@ -1481,22 +1434,13 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              {/* 골라서 도급·사급으로 옮긴다. 「전체」에서는 지금 어느 쪽인지도 함께 보인다 */}
-                              <td data-label="구분" className="bom-pick-cell">
-                                <label className="bom-pick">
-                                  <input
-                                    type="checkbox"
-                                    checked={picked2.has(it.id)}
-                                    onChange={() => togglePick2(it.id)}
-                                    aria-label={`${it.name || '이 품목'} 고르기`}
-                                  />
-                                  {supplyTab === 'all' && (
-                                    <span className={`bom-supply-tag${isFreeIssue(it) ? ' is-free' : ''}`}>
-                                      {isFreeIssue(it) ? '사급' : '도급'}
-                                    </span>
-                                  )}
-                                </label>
-                              </td>
+                              {supplyTab === 'all' && (
+                                <td data-label="구분">
+                                  <span className={`bom-supply-tag${isFreeIssue(it) ? ' is-free' : ''}`}>
+                                    {isFreeIssue(it) ? '사급' : '도급'}
+                                  </span>
+                                </td>
+                              )}
                               <td data-label="수량">
                                 <input
                                   className="num-input"
