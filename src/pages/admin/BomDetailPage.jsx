@@ -1260,15 +1260,20 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
+                              {/* 도번은 품목에서만 고친다. 여기서도 칠 수 있으면 같은 품목의 도번이
+                                  BOM 마다 달라진다 (2026-09-02 대표님 「도번 입력은 품목 에서만」) */}
                               <td data-label="도번" title={it.drawingNo || ''}>
                                 <input
                                   type="text"
+                                  className="bom-readonly-input"
                                   value={it.drawingNo || ''}
-                                  title={it.drawingNo || ''}
+                                  title={
+                                    it.drawingNo ? `${it.drawingNo} — 품목에서 고칩니다` : '품목에서 도번을 입력하세요'
+                                  }
                                   placeholder="-"
                                   aria-label="도번"
-                                  onChange={(e) => updateField(it.id, { drawingNo: e.target.value })}
-                                  onBlur={() => flushItem(it.id)}
+                                  readOnly
+                                  tabIndex={-1}
                                 />
                               </td>
                               <td data-label="BOX" title={it.box || ''}>

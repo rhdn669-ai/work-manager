@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  memoryLocalCache,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -32,8 +37,16 @@ if (appCheckKey) {
 
 // 오프라인 지속 캐시 — 재방문·새로고침 시 서버 재조회 대신 로컬 캐시 사용 (읽기 비용·속도 개선).
 // 여러 탭 동시 사용도 지원.
+//
+// 다만 개발 화면에서는 쓰지 않는다. React StrictMode 가 컴포넌트를 두 번 붙였다 떼는데,
+// 그때 지속 캐시의 다중 탭 관리자가 엉켜 「FIRESTORE INTERNAL ASSERTION FAILED」로
+// 앱이 통째로 죽는다. 확인 작업이 계속 막혔고 그때마다 StrictMode 를 임시로 꺼야 했다.
+// StrictMode 는 실수를 잡아 주는 도구라 끌 수 없으니, 캐시 쪽을 개발에서만 메모리로 둔다.
+// 배포본은 지금까지대로 지속 캐시를 쓴다 (2026-09-02).
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  localCache: import.meta.env.DEV
+    ? memoryLocalCache()
+    : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
 export const storage = getStorage(app);
 export const auth = getAuth(app);
