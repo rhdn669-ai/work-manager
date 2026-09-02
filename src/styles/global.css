@@ -5971,8 +5971,9 @@ table.cards-sm td {
 }
 
 /* 평면 BOM 그룹 카드 — 그룹 헤더가 없으므로 detail만 표시 */
-.bom-flat-group .item-group-detail {
-  border-top: none;
+.bom-flat-group.item-group.is-expanded {
+  /* 머리가 없는 평면 그룹이라 「펴짐」을 알릴 상대가 없다 — 보통 테두리로 */
+  border-color: var(--border, #e5e7eb);
 }
 /* 품명 검색 드롭다운이 잘리지 않도록 — 발주/BOM 평면 그룹은 overflow 해제 */
 .bom-flat-group.item-group {
@@ -6981,47 +6982,30 @@ table.cards-sm td {
 }
 
 /* 구매 품목 — 대분류 그룹 카드 (펼치면 내부 항목 표시) */
+/* 품목 그룹 — 「접었다 펴는 목록」 단일 표준(fold-card)을 그대로 따른다.
+   여태 그룹 전부를 한 카드 안에 쌓고 펼침에 아무 표시가 없어, 어디까지가 이 그룹
+   소속인지 읽히지 않았다 (2026-09-02 대표님 「하위 드롭다운과 대분류 리스트 구분이
+   어려움」). 이제 그룹 하나가 카드 하나이고, 펴진 카드는 테두리가 네이비로 선다. */
 .item-group-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
+  gap: 10px;
 }
 .item-group {
   position: relative;
-  background: var(--bg-card);
-  border: none;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  transition: background 0.15s ease;
-}
-.item-group:last-child {
-  border-bottom: none;
-}
-.item-group::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background 0.18s ease;
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-md, 13px);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(16, 24, 40, 0.05));
+  overflow: hidden;
+  transition: border-color 0.15s ease;
 }
 .item-group:hover {
-  background: var(--bg-subtle);
+  border-color: var(--border-strong, #d0d5dd);
 }
-.item-group:hover::before {
-  background: transparent;
-}
+/* 펴진 카드 — 결제·마감 폴더와 같은 신호 */
 .item-group.is-expanded {
-  background: var(--bg-card);
-}
-.item-group.is-expanded::before {
-  background: transparent;
+  border-color: var(--primary, #002050);
 }
 
 .item-group-header {
@@ -7041,7 +7025,8 @@ table.cards-sm td {
   outline-offset: -2px;
 }
 .item-group.is-expanded .item-group-header {
-  background: transparent;
+  background: var(--bg-subtle, #f8fafc);
+  border-bottom: 1px solid var(--border, #e5e7eb);
 }
 
 .item-group-delete-btn {
@@ -7177,7 +7162,6 @@ table.cards-sm td {
   transform: rotate(180deg);
 }
 .item-group-detail {
-  border-top: 1px solid var(--border);
   background: var(--bg-subtle);
   /* 여백 없이 위에 붙인다 — 12px 을 두면 그룹 줄과 표 사이가 떠 보이고 좌우도
      안으로 들어가, 마감·결제의 펼침과 모양이 어긋난다 (2026-09-02 대표님
