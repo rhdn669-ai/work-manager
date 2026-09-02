@@ -43,6 +43,8 @@ import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { trashGeneric } from '../../services/trashService';
 import { specFontClass } from '../../utils/printText';
+import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
+import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
 function fmtDateTime(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -471,46 +473,6 @@ export default function BomDetailPage() {
     setPickerTargetId(null);
   }
 
-  // 붙여넣은 코드 한 줄을 마스터 품목과 매칭 (코드/품명/규격 순, 괄호 메모·따옴표 무시)
-  // ※ 다른 품목이 잘못 붙지 않도록 "부분 포함" 매칭은 하지 않음.
-  //    띄어쓰기·하이픈(-) 차이 정도만 무시한 "완전 일치"까지만 허용.
-  function findMasterByToken(token) {
-    const norm = (v) =>
-      String(v || '')
-        .trim()
-        .toLowerCase()
-        .replace(/^["']+|["']+$/g, '');
-    // 느슨한 정규화: 공백·하이픈·쉼표·괄호만 제거 (그 외 문자는 보존 → 다른 품목과 섞이지 않음)
-    const loose = (v) => norm(v).replace(/[\s,()-]+/g, '');
-    const t = norm(token);
-    if (!t) return null;
-    // 1차: 정확 일치 (코드 → 품명 → 규격)
-    let hit =
-      itemMaster.find((m) => norm(m.code) === t) ||
-      itemMaster.find((m) => norm(m.name) === t) ||
-      itemMaster.find((m) => norm(m.spec) === t);
-    if (hit) return hit;
-    // 2차: 괄호/뒤 메모 제거한 핵심 토큰으로 재시도
-    const base = t.split('(')[0].trim();
-    if (base && base !== t) {
-      hit =
-        itemMaster.find((m) => norm(m.code) === base) ||
-        itemMaster.find((m) => norm(m.name) === base) ||
-        itemMaster.find((m) => norm(m.spec) === base);
-      if (hit) return hit;
-    }
-    // 3차: 띄어쓰기/하이픈 차이만 무시한 완전 일치 (부분 일치 아님)
-    const lt = loose(base || t);
-    if (lt) {
-      hit =
-        itemMaster.find((m) => loose(m.code) === lt) ||
-        itemMaster.find((m) => loose(m.name) === lt) ||
-        itemMaster.find((m) => loose(m.spec) === lt);
-      if (hit) return hit;
-    }
-    return null;
-  }
-
   // 붙여넣은 코드 목록을 "입력 순서 그대로" BOM에 바로 추가 (중복도 그대로 추가)
   async function applyPaste() {
     const lines = pasteText
@@ -520,13 +482,10 @@ export default function BomDetailPage() {
     const notFound = [];
     const matched = []; // { m, qty } — 입력 순서 유지, 중복 허용
     for (const line of lines) {
-      // 줄 끝의 "공백/탭 + 숫자"를 수량으로 인식 (엑셀 2열 복사 = 탭 구분 포함).
-      // 코드 끝 숫자(예: SS-130, 4797.0015)는 앞에 공백이 없어 수량으로 오인식되지 않음.
-      const qm = line.match(/\s+(\d+(?:\.\d+)?)\s*$/);
-      const qty = qm ? Number(qm[1]) : 0;
-      const codeToken = qm ? line.slice(0, qm.index).trim() : line;
-      if (!codeToken) continue; // 모델명 없이 숫자만 있는 빈 줄은 건너뜀
-      const m = findMasterByToken(codeToken);
+      // 「도번 <탭> 1EA」처럼 엑셀에서 그대로 긁어 온 줄을 가른다 (domain/pasteMatch)
+      const { token, qty } = splitQty(line);
+      if (!token) continue; // 모델명 없이 숫자만 있는 빈 줄은 건너뜀
+      const m = findMasterByToken(itemMaster, token);
       if (!m) {
         notFound.push(line);
         continue;
@@ -1269,29 +1228,24 @@ export default function BomDetailPage() {
               <SortableContext items={rows.map((it) => it.id)} strategy={verticalListSortingStrategy}>
                 <div className="table-scroll-x">
                   <table className="table inline-edit-table cards-sm bom-flat-table">
+                    {/* 칸 폭 배분(%) — 규격이 가장 넓다. 합이 100 인지는 테스트가 붙든다
+                        (2026-09-02 대표님 「BOM 규격 칸 좀더 확장」). */}
+                    <colgroup>
+                      {(variants.length > 0 ? BOM_COLS_WITH_VARIANT : BOM_COLS_NO_VARIANT).map((pct, i) => (
+                        <col key={i} style={{ width: `${pct}%` }} />
+                      ))}
+                    </colgroup>
                     <thead>
                       <tr>
                         <th scope="col" className="bom-spacer-col" aria-hidden="true"></th>
                         <th scope="col" className="bom-no-col">
                           No
                         </th>
-                        <th scope="col" style={{ minWidth: 90 }}>
-                          코드
-                        </th>
-                        <th scope="col" style={{ minWidth: 90 }}>
-                          도번
-                        </th>
-                        <th scope="col" style={{ minWidth: 90 }}>
-                          BOX
-                        </th>
-                        {variants.length > 0 && (
-                          <th scope="col" style={{ minWidth: 96 }}>
-                            타입
-                          </th>
-                        )}
-                        <th scope="col" style={{ minWidth: 120 }}>
-                          품명
-                        </th>
+                        <th scope="col">코드</th>
+                        <th scope="col">도번</th>
+                        <th scope="col">BOX</th>
+                        {variants.length > 0 && <th scope="col">타입</th>}
+                        <th scope="col">품명</th>
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
@@ -1300,9 +1254,7 @@ export default function BomDetailPage() {
                         <th scope="col">단가</th>
                         <th scope="col">합계</th>
                         <th scope="col">구매처</th>
-                        <th scope="col" style={{ minWidth: 120 }}>
-                          비고
-                        </th>
+                        <th scope="col">비고</th>
                         <th scope="col" className="bom-action-col no-print" aria-hidden="true"></th>
                       </tr>
                     </thead>

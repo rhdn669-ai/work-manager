@@ -66,6 +66,7 @@ import { contactsOf, hasChoice, mailToLine, resolveEmail, supplierKey } from '..
 import { paidList, payButtonLabel, unpaidAmount } from '../../domain/payment';
 import { poFingerprint } from '../../utils/poFingerprint';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
+import { PO_COLS } from '../../domain/tableWidths';
 import {
   PO_DEFAULTS,
   poDateStr,
@@ -2459,9 +2460,11 @@ export default function PurchaseDetailPage() {
                     className="table inline-edit-table cards-sm bom-flat-table po-item-table"
                     onMouseDown={handleColumnDragCopy}
                   >
-                    {/* 칸 폭 배분(%) — 대표님 지정 1~4번, 나머지는 내용 길이에 맞춰 나눔 */}
+                    {/* 칸 폭 배분(%) — domain/tableWidths 에 모아 두고 합을 테스트로 붙든다.
+                        도번 열을 늘리며 여기를 안 늘려, 규격이 받을 몫을 메이커가 가져가고
+                        규격이 눌려 있었다 (2026-09-02). */}
                     <colgroup>
-                      {[2, 5, 6, 12, 7, 17, 5, 3, 4, 7, 7, 6, 6, 6, 8].map((pct, i) => (
+                      {PO_COLS.map((pct, i) => (
                         <col key={i} style={{ width: `${pct}%` }} />
                       ))}
                     </colgroup>
