@@ -68,17 +68,19 @@ function SortableBomRow({ id, canDrag, no, checked, onCheck, children }) {
   };
   return (
     <tr ref={setNodeRef} style={style} className={checked ? 'is-checked' : undefined}>
-      <td className="bom-spacer-col">
-        <input
-          type="checkbox"
-          className="bom-del-check"
-          checked={checked}
-          onChange={() => onCheck(id)}
-          aria-label="삭제할 줄 고르기"
-        />
-      </td>
+      {/* 맨 앞 칸은 표 바깥 여백이다 — 배경도 테두리도 없어 여기에 무언가를 두면
+          네이비 머리가 왼쪽으로 삐져나온 것처럼 보인다. 그래서 드래그 핸들과 마찬가지로
+          체크박스도 No 칸 안에 둔다 (2026-09-02 대표님 「파란줄 튀어나옴」). */}
+      <td className="bom-spacer-col" aria-hidden="true"></td>
       <td className="bom-no-col" data-label="No">
         <span className="bom-no-wrap">
+          <input
+            type="checkbox"
+            className="bom-del-check"
+            checked={checked}
+            onChange={() => onCheck(id)}
+            aria-label="삭제할 줄 고르기"
+          />
           {canDrag && (
             <button
               type="button"
@@ -932,7 +934,10 @@ export default function BomDetailPage() {
         // 페이지 직접 분할 — 페이지를 거의 채우고 하단엔 특이사항 크기(NOTES_ROWS)만큼만 공백을 남김.
         // 1페이지는 상단 정보표 높이(INFO_ROWS)만큼 행을 줄여 다른 페이지와 하단 공백을 동일하게 맞춤.
         const OTHER_PAGE_ROWS = 33; // 일반 페이지(페이지를 거의 채우는 행수)
-        const INFO_ROWS = 3; // 1페이지 상단 제목+띠가 차지하는 행수 (정보표를 걷어 줄었다)
+        // 정보표(열두 칸짜리)를 걷어 첫 장에 남은 것은 제목 밴드뿐이다. 밴드를 납작하게
+        // 줄여 다른 장과 같은 줄 수를 담는다 — 31 줄과 특이사항이 한 장에 들어간다
+        // (2026-09-02 대표님 「31번 과 특이사항 까지 첫페이지에」).
+        const INFO_ROWS = 0;
         const NOTES_ROWS = 2; // 섹션 마지막 페이지 특이사항이 차지하는 행수(= 모든 페이지 하단 공백 크기)
         const FIRST_PAGE_ROWS = OTHER_PAGE_ROWS - INFO_ROWS;
         const pageData = [];
@@ -1296,17 +1301,20 @@ export default function BomDetailPage() {
                     </colgroup>
                     <thead>
                       <tr>
-                        <th scope="col" className="bom-spacer-col">
-                          <input
-                            type="checkbox"
-                            className="bom-del-check"
-                            checked={rows.length > 0 && rows.every((r) => delPick.has(r.id))}
-                            onChange={(e) => setDelPick(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())}
-                            aria-label="보이는 줄 모두 고르기"
-                          />
-                        </th>
+                        <th scope="col" className="bom-spacer-col" aria-hidden="true"></th>
                         <th scope="col" className="bom-no-col">
-                          No
+                          <span className="bom-no-wrap">
+                            <input
+                              type="checkbox"
+                              className="bom-del-check"
+                              checked={rows.length > 0 && rows.every((r) => delPick.has(r.id))}
+                              onChange={(e) =>
+                                setDelPick(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())
+                              }
+                              aria-label="보이는 줄 모두 고르기"
+                            />
+                            No
+                          </span>
                         </th>
                         <th scope="col">코드</th>
                         <th scope="col">도번</th>

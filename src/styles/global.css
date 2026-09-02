@@ -16530,8 +16530,8 @@ td.mx-dc {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 0 2px 8px;
-  margin: 0 0 10px;
+  padding: 0 2px 5px;
+  margin: 0 0 6px;
   border-bottom: 2.2px solid var(--primary);
 }
 .iopn-brand-l {
@@ -16541,13 +16541,13 @@ td.mx-dc {
   min-width: 0;
 }
 .iopn-brand-logo {
-  height: 48px;
+  height: 34px; /* 정보표를 걷은 자리에 품목을 더 넣으려고 밴드를 낮췄다 (2026-09-02 대표님) */
   width: auto;
   flex: none;
 }
 .iopn-brand-title {
   min-width: 0;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.5em;
   text-align: center;
@@ -18258,11 +18258,15 @@ td.mx-dc {
   .iopn-items-table .c-recv.recv-none {
     color: var(--text-muted) !important;
   }
+  /* 수량은 종이에서도 가운데. 조합 규칙이 가운데로 덮는데 오른쪽 패딩만 남으면
+     숫자가 왼쪽으로 밀린다 — 화면만 고치고 이 규칙을 빠뜨려 종이가 그대로였다
+     (2026-09-02 대표님 「출력물 수량 아직도 중앙 위치 안맞음」). */
   .iopn-items-table .c-qty {
     width: 5%;
-    text-align: right;
+    text-align: center;
     font-variant-numeric: tabular-nums;
-    padding-right: 2.5mm;
+    padding-left: 1.2mm;
+    padding-right: 1.2mm;
   }
   .iopn-items-table .c-price {
     width: 11%;
@@ -18279,14 +18283,16 @@ td.mx-dc {
   .iopn-items-table .c-supplier {
     width: 14%;
     text-align: left;
-    padding-left: 2.5mm;
+    padding-left: 1.2mm;
+    padding-right: 1.2mm;
     white-space: nowrap;
     overflow: hidden;
   }
   .iopn-items-table .c-note {
     width: 11%;
     text-align: left;
-    padding-left: 2.5mm;
+    padding-left: 1.2mm;
+    padding-right: 1.2mm;
   }
   /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
   .iopn-items-table.bom-no-price .c-name {
@@ -22113,9 +22119,10 @@ a.lib-row-name:hover {
    맨 앞 여백 칸을 체크 칸으로 쓴다 — 열을 새로 늘리지 않는다
    (2026-09-02 대표님 「전체삭제 버튼도 넣어줘 삭제할 목록 체크 되는 방식으로」). */
 .bom-del-check {
-  width: 15px;
-  height: 15px;
-  margin: 0;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0 2px 0 0;
   accent-color: var(--primary);
   cursor: pointer;
   vertical-align: middle;
