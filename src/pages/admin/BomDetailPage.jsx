@@ -1249,9 +1249,11 @@ export default function BomDetailPage() {
             type="button"
             className={`btn btn-sm ${groupBy === 'supply' ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setGroupBy((v) => (v === 'supply' ? 'none' : 'supply'))}
-            title="도급·사급으로 묶어서 보기"
+            title="도급과 사급을 띠로 갈라서 보기 (전체 탭에서만)"
           >
-            구분별 {groupBy === 'supply' ? 'ON' : 'OFF'}
+            {/* 「구분별」이라고만 적어 두니 무엇을 가르는 버튼인지 못 알아보셨다
+                (2026-09-03 대표님 「사급 도급 버튼 만들어주기로 했잖아」) */}
+            도급·사급별 {groupBy === 'supply' ? 'ON' : 'OFF'}
           </button>
         )}
         {boxOptions.length > 1 && (

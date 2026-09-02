@@ -2227,6 +2227,18 @@ body {
   font-weight: 700;
 }
 
+/* BOM 표만 예외 — 맨 앞 칸(bom-spacer-col)은 표 «바깥» 여백이다.
+   머리줄 전체를 칠하면 그 여백까지 네이비가 깔리고, 카드는 라운드가 있는데 그룹은
+   overflow: visible 이라(드롭다운이 잘리지 않게 그렇게 뒀다) 네모난 끝이 모서리
+   아래로 삐져나온다. 머리줄 배경을 걷고 칸에만 칠한다
+   (2026-09-03 대표님 「아직도 네이비 선이 아래로 튀어나오는데」). */
+.table.bom-flat-table thead {
+  background: transparent;
+}
+.table.bom-flat-table thead th.bom-spacer-col {
+  background: transparent;
+}
+
 /* 발주 카드 — 베이스 배경/보더 명시(grey 기본값 누락 방지) */
 .po-card {
   background: var(--bg-card);
