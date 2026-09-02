@@ -5220,7 +5220,7 @@ table.cards-sm td {
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--accent-soft, #fef0e9);
-  color: var(--accent-press, #c2410c);
+  color: var(--accent-press, #a83409);
   font-size: 13px;
   font-weight: 600;
 }
@@ -5300,7 +5300,7 @@ table.cards-sm td {
   gap: 6px;
   padding: 8px 12px;
   background: var(--accent-soft, #fef0e9);
-  color: var(--accent-press, #c2410c);
+  color: var(--accent-press, #a83409);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -6147,7 +6147,7 @@ table.cards-sm td {
   margin-left: auto;
   flex: 0 0 auto;
   font-weight: 700;
-  color: var(--accent-press, #c2410c);
+  color: var(--accent-press, #a83409);
   background: var(--accent-soft, #fef0e9);
   border-radius: 999px;
   padding: 3px 12px;
@@ -21855,3 +21855,142 @@ a.lib-row-name:hover {
     margin-left: auto; /* 삭제는 어느 폭에서도 우측 끝 */
   }
 }
+
+/* ── 겹치는 도번 알림 ─────────────────────────────────────────
+   품목 화면 맨 위. 「접었다 펴는 목록」 표준(fold-card)을 그대로 쓰되, 알림이므로
+   테두리와 아이콘만 주황으로 세운다 (2026-09-02 대표님 「품목에 겹치는 도번은
+   상단에 따로 표시해줘」). 겹친 것이 없으면 이 카드는 아예 그려지지 않는다. */
+.dup-dn-card {
+  margin-bottom: 12px;
+  border-color: var(--accent-tint, #fbddd0);
+  background: var(--accent-soft, #feefe7);
+}
+.dup-dn-card.is-open {
+  border-color: var(--accent, #f05819);
+}
+.dup-dn-card .fold-head {
+  background: transparent;
+}
+.dup-dn-card .fold-head:hover {
+  background: rgba(240, 88, 24, 0.05);
+}
+.dup-dn-caret {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--accent-press, #a83409);
+}
+.dup-dn-ic {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  color: var(--accent, #f05819);
+}
+.dup-dn-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-press, #a83409);
+  white-space: nowrap;
+}
+.dup-dn-sub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.dup-dn-body {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--accent-tint, #fbddd0);
+}
+/* 한 줄 = 도번 하나 + 그 번호를 달고 있는 품목들 */
+.dup-dn-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+}
+.dup-dn-row + .dup-dn-row {
+  border-top: 1px solid var(--accent-tint, #fbddd0);
+}
+.dup-dn-no {
+  flex: 0 0 auto;
+  min-width: 116px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+.dup-dn-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+/* 누르면 그 품목으로 데려간다 */
+.dup-dn-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-light);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.dup-dn-chip b {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.dup-dn-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dup-dn-chip:hover {
+  border-color: var(--accent, #f05819);
+  color: var(--accent-press, #a83409);
+}
+.dup-dn-chip:focus-visible {
+  outline: 2px solid var(--accent, #f05819);
+  outline-offset: 1px;
+}
+
+@media (max-width: 768px) {
+  /* 좁은 화면에서는 도번을 제목처럼 위에 세운다 */
+  .dup-dn-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dup-dn-sub {
+    display: none; /* 제목과 건수만 남긴다 */
+  }
+}
+
+/* 검색어가 너무 넓을 때 — 대분류만 보여주는 이유를 그 자리에서 말한다 */
+.item-toomany {
+  margin: 0 0 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--border, #e5e8eb);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--bg-subtle, #f2f4f6);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-light);
+}
+

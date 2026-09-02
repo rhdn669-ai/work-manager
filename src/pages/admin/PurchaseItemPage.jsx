@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, useDeferredValue, Fragment } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   getPurchaseItems,
@@ -56,6 +56,7 @@ function SortableItemRow({ id, isHighlight, isFillTarget, onActivate, onMouseEnt
   return (
     <tr
       ref={setNodeRef}
+      data-row-id={id}
       style={style}
       className={`${isHighlight ? 'is-newly-added' : ''} ${isFillTarget ? 'is-fill-target' : ''}`.trim() || undefined}
       onPointerDown={isHighlight ? onActivate : undefined}
@@ -296,6 +297,15 @@ export default function PurchaseItemPage() {
 
   // 복사/동일품명으로 추가된 행 강조 (사용자가 클릭하면 해제) — 스크롤은 따라가지 않음
   const [highlightIds, setHighlightIds] = useState(() => new Set());
+  const [dupDnOpen, setDupDnOpen] = useState(false); // 겹치는 도번 알림 펼침
+  // 새로 만든 행의 코드 칸에 «한 번만» 커서를 준다.
+  //
+  // 예전에는 코드 칸에 autoFocus 를 걸어 두었는데, autoFocus 는 그 행이 마운트될
+  // 때마다 발동한다. 저장 안 한 새 행이 남아 있는 채로 품명을 검색하면 글자를 칠
+  // 때마다 그 행이 걸러졌다 돌아오기를 되풀이하고, 돌아올 때마다 커서를 코드 칸으로
+  // 끌어가 검색어가 코드에 박혔다 (2026-09-02 대표님 「품명 검색하는 도중에 코드로
+  // 갑자기 입력칸이 넘어가서 코드를 자꾸 건들여짐」).
+  const focusOnceRef = useRef(null);
   function markHighlight(id) {
     setHighlightIds((prev) => {
       const next = new Set(prev);
@@ -350,10 +360,14 @@ export default function PurchaseItemPage() {
     }
   }
 
-  const hasActiveFilter = !!(search.trim() || filterCategory || filterSupplier);
+  // 검색창 글자는 곧바로 보이고, 무거운 목록은 한 박자 뒤에 따라온다.
+  // 품목이 천 줄에 가까워 한 글자마다 전부 다시 그리면 타자가 막힌다
+  // (2026-09-02 대표님 「품명 검색하는 도중에 …」).
+  const deferredSearch = useDeferredValue(search);
+  const hasActiveFilter = !!(deferredSearch.trim() || filterCategory || filterSupplier);
 
   const filtered = useMemo(() => {
-    const kw = search.trim().toLowerCase();
+    const kw = deferredSearch.trim().toLowerCase();
     const result = items.filter((it) => {
       if (
         kw &&
@@ -370,7 +384,45 @@ export default function PurchaseItemPage() {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     result.sort((a, b) => collator.compare(a.code || '', b.code || ''));
     return result;
-  }, [items, search, filterCategory, filterSupplier]);
+  }, [items, deferredSearch, filterCategory, filterSupplier]);
+
+  // 겹치는 도번 — 도면 번호는 품목 하나를 가리킨다. 둘 이상에 같은 번호가 붙었다면
+  // 옮겨 적다 틀렸거나 같은 물건이 두 코드로 앉은 것이라, 발주서가 엉뚱한 도면을 달고 나간다.
+  // 검색·필터와 무관하게 «전체»를 본다 — 걸러 놓은 화면에서만 조용해지면 알림이 아니다.
+  // (2026-09-02 대표님 「품목에 겹치는 도번은 상단에 따로 표시해줘」)
+  const dupDrawings = useMemo(() => {
+    const map = new Map();
+    for (const it of items) {
+      const dn = (it.drawingNo || '').trim();
+      if (!dn) continue;
+      if (!map.has(dn)) map.set(dn, []);
+      map.get(dn).push(it);
+    }
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return [...map.entries()]
+      .filter(([, list]) => list.length > 1)
+      .sort((a, b) => b[1].length - a[1].length || collator.compare(a[0], b[0]));
+  }, [items]);
+
+  // 겹친 품목을 누르면 그 그룹을 펼치고 그리로 데려간다.
+  // 강조는 「새로 추가된 행」과 같은 깜빡임을 쓴다 — 눈이 이미 아는 신호다.
+  function goToItem(it) {
+    setExpandedGroups((prev) => {
+      const key = it.groupKey || it.id;
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    markHighlight(it.id);
+    // 펼침이 그려진 다음에 자리를 잡는다
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-row-id="${it.id}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  }
 
   // 그룹화 — groupKey 기준 (베어 메인은 own id가 anchor, 소분류는 groupKey가 anchor의 id)
   // 코드 변경에 영향 받지 않음 → 충돌 없음
@@ -383,6 +435,12 @@ export default function PurchaseItemPage() {
     }
     return [...map.entries()];
   }, [filtered]);
+
+  // 검색어 한 글자에는 거의 모든 품목이 걸린다. 그걸 다 펼치면 수백 줄이 한꺼번에
+  // 그려져 화면이 멈춘다 — 좁혀지기 전까지는 대분류만 보여주고 건수로 알린다.
+  const AUTO_EXPAND_MAX = 200;
+  const tooManyToExpand = hasActiveFilter && filtered.length > AUTO_EXPAND_MAX;
+  const autoExpand = hasActiveFilter && !tooManyToExpand;
 
   function repItemForGroup(groupItems) {
     // 베어 메인 = groupKey가 없는(또는 자신을 가리키는) 항목
@@ -601,6 +659,7 @@ export default function PurchaseItemPage() {
     setSearch('');
     setFilterCategory('');
     setFilterSupplier('');
+    focusOnceRef.current = tmpId; // 갓 만든 행의 코드 칸으로 — 이번 한 번만
     expandGroup(tmpId); // groupKey = own id (베어의 tmp id, flushItem에서 real id로 교체됨)
   }
 
@@ -946,6 +1005,40 @@ export default function PurchaseItemPage() {
       {activeTab === 'history' && <PriceHistoryView items={items} onDelete={handleDeletePriceChange} />}
       {activeTab === 'items' && (
         <>
+          {dupDrawings.length > 0 && (
+            <div className={`fold-card dup-dn-card${dupDnOpen ? ' is-open' : ''}`}>
+              <button type="button" className="fold-head" onClick={() => setDupDnOpen((v) => !v)}>
+                <Icon name={dupDnOpen ? 'chevronDown' : 'chevronRight'} className="dup-dn-caret" />
+                <Icon name="alert" className="dup-dn-ic" />
+                <span className="dup-dn-title">겹치는 도번 {dupDrawings.length}건</span>
+                <span className="dup-dn-sub">같은 도번이 품목 여럿에 붙어 있습니다</span>
+              </button>
+              {dupDnOpen && (
+                <div className="fold-body dup-dn-body">
+                  {dupDrawings.map(([dn, list]) => (
+                    <div className="dup-dn-row" key={dn}>
+                      <span className="dup-dn-no">{dn}</span>
+                      <div className="dup-dn-items">
+                        {list.map((it) => (
+                          <button
+                            key={it.id}
+                            type="button"
+                            className="dup-dn-chip"
+                            onClick={() => goToItem(it)}
+                            title="이 품목으로 이동"
+                          >
+                            <b>{it.code || '(코드 없음)'}</b>
+                            {it.name ? <span>{it.name}</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="purchase-filters">
             <input
               type="text"
@@ -962,6 +1055,13 @@ export default function PurchaseItemPage() {
             />
           </div>
 
+          {tooManyToExpand && (
+            <p className="item-toomany">
+              «{deferredSearch.trim()}» 에 {filtered.length}개가 걸립니다 — 대분류만 보여드립니다. 조금 더 입력하시면
+              품목이 펼쳐집니다.
+            </p>
+          )}
+
           {groups.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '20px 0', textAlign: 'center' }}>
               {items.length === 0
@@ -972,7 +1072,7 @@ export default function PurchaseItemPage() {
             <div className="item-group-list">
               {groups.map(([groupKey, groupItems]) => {
                 // 필터(검색·분류·구매처) 활성화 시 매칭된 그룹은 자동 펼침
-                const isExpanded = hasActiveFilter || expandedGroups.has(groupKey);
+                const isExpanded = autoExpand || expandedGroups.has(groupKey);
                 const repItem = repItemForGroup(groupItems);
                 const repName = repItem?.name || '';
                 const repCode = repItem?.code || '';
@@ -1216,7 +1316,12 @@ export default function PurchaseItemPage() {
                                               placeholder="코드"
                                               onChange={(e) => updateField(it.id, { code: e.target.value })}
                                               onBlur={() => flushItem(it.id)}
-                                              autoFocus={String(it.id).startsWith('tmp-') && !highlightIds.has(it.id)}
+                                              ref={(el) => {
+                                                if (el && focusOnceRef.current === it.id) {
+                                                  focusOnceRef.current = null; // 두 번은 없다
+                                                  el.focus();
+                                                }
+                                              }}
                                             />
                                           </td>
                                           <td
