@@ -16559,6 +16559,14 @@ td.mx-dc {
   width: auto;
   flex: none;
 }
+/* 오른쪽 균형용 — 자리만 차지하고 보이지 않는다 */
+.iopn-brand-ghost {
+  visibility: hidden;
+}
+.iopn-brand-r {
+  display: flex;
+  justify-content: flex-end;
+}
 .iopn-brand-title {
   min-width: 0;
   font-size: 22px;
