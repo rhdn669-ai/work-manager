@@ -35,6 +35,55 @@ import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 const mmdd = (d) => (d ? String(d).slice(5) : '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
+// 글자 칸 — 표 «밖»에 둔다.
+//
+// 컴포넌트 함수 안에서 정의하면 부모가 다시 그릴 때마다 새 타입이 되고, React 는
+// 그것을 다른 컴포넌트로 보아 입력칸을 통째로 새로 만든다. 그 순간 커서가 날아가
+// 한 번 눌러서는 글을 못 쓰고 두 번 눌러야 했다
+// (2026-09-03 대표님 「한번 클릭에 바로 입력칸이 안뜸」).
+function TextCell({ saved, className, placeholder, onCommit, onPaste }) {
+  const [v, setV] = useState(saved);
+  // 저장된 값이 밖에서 바뀌면 편집 버퍼를 맞춘다. effect 로 하면 한 번 더 그려지므로
+  // 렌더 도중 견주어 바로 맞춘다 (React 가 권하는 방식).
+  const [seen, setSeen] = useState(saved);
+  if (saved !== seen) {
+    setSeen(saved);
+    setV(saved);
+  }
+  return (
+    <input
+      className={className}
+      value={v}
+      placeholder={placeholder}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => {
+        if (v !== saved) onCommit(v);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Escape') setV(saved);
+      }}
+      onPaste={onPaste}
+    />
+  );
+}
+
+// 날짜 칸 — 같은 이유로 밖에 둔다. 안에 있으면 달력을 열자마자 다시 그려져 닫힌다.
+function DateCell({ value, cellCls, canEdit, onEnter, onChange, onPaste, onFillStart, display }) {
+  return (
+    <td className={cellCls} onMouseEnter={onEnter}>
+      {canEdit ? (
+        <>
+          <input type="date" className="mx-date-input" value={value} onChange={onChange} onPaste={onPaste} />
+          <span className="cell-fill" title="드래그하여 아래로 채우기" onMouseDown={onFillStart} />
+        </>
+      ) : (
+        display
+      )}
+    </td>
+  );
+}
+
 export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit, onOpen, onRemove, company }) {
   const { toast } = useDialog();
   const setField = (p, patch) => {
@@ -241,87 +290,57 @@ export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit,
 
   // 글자 칸 — 치는 동안은 화면만 바꾸고, 칸을 벗어날 때 한 번만 저장한다.
   // 글자마다 저장하면 「YS-TEPS1026033」 한 번 치는 데 저장 14번·표 다시 그리기 14번이다.
-  const TextCell = ({ p, field, rowIndex, className }) => {
-    const saved = p[field] || '';
-    const [v, setV] = useState(saved);
-    useEffect(() => setV(saved), [saved]);
+  // 아래 셋은 위(파일 최상위)의 칸 컴포넌트에 필요한 값을 채워 넣는 감싸개다.
+  // 감싸개는 매 렌더 새로 만들어져도 괜찮다 — 실제로 그려지는 것은 고정된 컴포넌트다.
+  const Txt = ({ p, field, rowIndex, className }) => (
+    <TextCell
+      saved={p[field] || ''}
+      className={className}
+      placeholder={field === '프로젝트' ? '프로젝트' : undefined}
+      onCommit={(v) => setField(p, { [field]: v })}
+      onPaste={(e) => pasteColumn(e, field, rowIndex)}
+    />
+  );
+
+  const Dt = ({ p, field }) => {
+    const row = panels.findIndex((x) => x.id === p.id);
     return (
-      <input
-        className={className}
-        value={v}
-        placeholder={field === '프로젝트' ? '프로젝트' : undefined}
-        onChange={(e) => setV(e.target.value)}
-        onBlur={() => {
-          if (v !== saved) setField(p, { [field]: v });
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') setV(saved);
-        }}
-        onPaste={(e) => pasteColumn(e, field, rowIndex)}
+      <DateCell
+        value={p[field] || ''}
+        cellCls={`mx-cell mx-date${fillCls(field, row)}`}
+        canEdit={canEdit}
+        onEnter={() => fillEnter(row)}
+        onChange={(e) => setField(p, { [field]: e.target.value })}
+        onPaste={(e) => pasteColumn(e, field, row)}
+        onFillStart={(e) => startFill(e, field, p[field] || '', row)}
+        display={mmdd(p[field])}
       />
     );
   };
 
-  const DateCell = ({ p, field }) => {
-    const row = panels.findIndex((x) => x.id === p.id);
-    return (
-      <td className={`mx-cell mx-date${fillCls(field, row)}`} onMouseEnter={() => fillEnter(row)}>
-        {canEdit ? (
-          <>
-            <input
-              type="date"
-              className="mx-date-input"
-              value={p[field] || ''}
-              onChange={(e) => setField(p, { [field]: e.target.value })}
-              onPaste={(e) => pasteColumn(e, field, row)}
-            />
-            <span
-              className="cell-fill"
-              title="드래그하여 아래로 채우기"
-              onMouseDown={(e) => startFill(e, field, p[field] || '', row)}
-            />
-          </>
-        ) : (
-          mmdd(p[field])
-        )}
-      </td>
-    );
-  };
-
-  // 일정 항목별 입고일 셀 — p.자재입고일[itemKey] 에 개별 저장.
+  // 일정 항목별 입고일 — p.자재입고일[itemKey] 에 개별 저장.
   // 날짜 기준 D-day로 색상: 미도달(미래)·도달(당일)·초과(지남)
-  const IpgoDateCell = ({ p, itemKey }) => {
+  const Ipgo = ({ p, itemKey }) => {
     const cur = (p.자재입고일 || {})[itemKey] || '';
     const dd = cur ? getDday(cur) : null;
     const statusCls = dd === null ? '' : dd < 0 ? ' ipgo-over' : dd === 0 ? ' ipgo-due' : ' ipgo-before';
     const field = `자재입고일:${itemKey}`;
     const row = panels.findIndex((x) => x.id === p.id);
     return (
-      <td className={`mx-cell mx-date${statusCls}${fillCls(field, row)}`} onMouseEnter={() => fillEnter(row)}>
-        {canEdit ? (
-          <>
-            <input
-              type="date"
-              className="mx-date-input"
-              value={cur}
-              onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
-              onPaste={(e) =>
-                pasteColumn(e, field, row, (target, value) => ({
-                  자재입고일: { ...(target.자재입고일 || {}), [itemKey]: value },
-                }))
-              }
-            />
-            <span
-              className="cell-fill"
-              title="드래그하여 아래로 채우기"
-              onMouseDown={(e) => startFill(e, field, cur, row)}
-            />
-          </>
-        ) : (
-          mmdd(cur)
-        )}
-      </td>
+      <DateCell
+        value={cur}
+        cellCls={`mx-cell mx-date${statusCls}${fillCls(field, row)}`}
+        canEdit={canEdit}
+        onEnter={() => fillEnter(row)}
+        onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
+        onPaste={(e) =>
+          pasteColumn(e, field, row, (target, value) => ({
+            자재입고일: { ...(target.자재입고일 || {}), [itemKey]: value },
+          }))
+        }
+        onFillStart={(e) => startFill(e, field, cur, row)}
+        display={mmdd(cur)}
+      />
     );
   };
 
@@ -499,7 +518,7 @@ export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit,
                     프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
                 <td className="mx-sticky mx-c1 mx-proj">
                   {canEdit ? (
-                    <TextCell p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
+                    <Txt p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
                   ) : (
                     <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
                   )}
@@ -520,10 +539,10 @@ export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit,
                   }
                 />
                 <td className="mx-cell mx-jaje">
-                  {canEdit ? <TextCell p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
+                  {canEdit ? <Txt p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
                 </td>
                 <td className="mx-cell mx-chuck">
-                  {canEdit ? <TextCell p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
+                  {canEdit ? <Txt p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
                 </td>
                 <CycleCell
                   p={p}
@@ -577,12 +596,12 @@ export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit,
                   );
                 })}
                 {IPGO_ITEMS.map((it) => (
-                  <IpgoDateCell key={it.key} p={p} itemKey={it.key} />
+                  <Ipgo key={it.key} p={p} itemKey={it.key} />
                 ))}
-                <DateCell p={p} field="납기" />
-                <DateCell p={p} field="턴온" />
+                <Dt p={p} field="납기" />
+                <Dt p={p} field="턴온" />
                 {AFTER_TURNON.map((f) => (
-                  <DateCell key={f.key} p={p} field={f.key} />
+                  <Dt key={f.key} p={p} field={f.key} />
                 ))}
                 <td className="mx-cell mx-prog">
                   <div className="mx-prog-wrap">
