@@ -11,6 +11,12 @@ export function receivedQty(received, bomItemId) {
   return Math.max(0, Number(r && r.qty) || 0);
 }
 
+/** 이 호기에서만 일시 제외한 줄인가 — 기본 BOM 은 그대로 두고 그 호기에서만 뺀다
+ *  (2026-09-03 대표님 「기본 틀이 되는 리스트에는 제외하면 안 되고 일시적으로만」) */
+export function isSkipped(received, bomItemId) {
+  return !!(received && received[bomItemId] && received[bomItemId].skip);
+}
+
 /** BOM 수량 - 들어온 개수. 넘치게 들어와도 부족은 0 */
 export function shortageOf(bomQty, got) {
   return Math.max(0, (Number(bomQty) || 0) - (Number(got) || 0));
@@ -20,6 +26,7 @@ export function shortageOf(bomQty, got) {
 export function rowDone(row, received) {
   const need = Number(row.qty) || 0;
   if (need <= 0) return true;
+  if (isSkipped(received, row.id)) return true;
   return receivedQty(received, row.id) >= need;
 }
 
@@ -57,6 +64,7 @@ export function aggregateShortage(entries) {
     for (const r of rows || []) {
       const need = Number(r.qty) || 0;
       if (need <= 0) continue;
+      if (isSkipped(received, r.id)) continue; // 그 호기에서 일시 제외한 줄은 부족이 아니다
       const got = receivedQty(received, r.id);
       const short = shortageOf(need, got);
       const key = r.itemId || `row:${r.id}`;

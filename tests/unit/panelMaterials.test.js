@@ -23,6 +23,12 @@ describe('한 줄', () => {
     expect(receivedQty(null, 'x')).toBe(0);
     expect(receivedQty({ x: { qty: '3' } }, 'x')).toBe(3);
   });
+  it('그 호기에서 일시 제외한 줄은 찬 것으로 보고 집계에서도 빠진다', () => {
+    expect(rowDone(paid('a', 2), { a: { qty: 0, skip: true } })).toBe(true);
+    expect(boxKindComplete([paid('a', 2), paid('b', 1)], { a: { qty: 0, skip: true }, b: { qty: 1 } }, 'paid')).toBe(true);
+    const out = aggregateShortage([{ panelLabel: '1호기', rows: [paid('a', 2)], received: { a: { qty: 0, skip: true } } }]);
+    expect(out).toEqual([]);
+  });
   it('BOM 수량이 0 인 줄은 찬 것으로 본다 — 수량 미정을 부족으로 몰지 않는다', () => {
     expect(rowDone(paid('a', 0), {})).toBe(true);
     expect(rowDone(paid('a', 2), { a: { qty: 1 } })).toBe(false);

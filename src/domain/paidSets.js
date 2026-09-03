@@ -130,16 +130,23 @@ export function consumedByItem(rows, materialsList) {
  *   rows        BOM 줄(타입 걸러진 것; 사급은 건너뜀)
  *   spareByItem { itemId: 지금 여유 }  제외한 품목은 여유와 무관하게 BOM 수량대로
  *   current     { rowId: 이미 들어온 개수 } (부족분 채우기 때)
+ *   skipRows    이 호기에서 일시 제외한 줄 id 들 — 채우지도, 부족으로 세지도 않는다
  * → { lines: [{ id, box, itemId, need, have, add, total, short }], short: 부족 줄 수, boxes: { [box]: full } }
  */
-export function fillPlan({ rows, spareByItem = {}, exclude = [], current = {} }) {
+export function fillPlan({ rows, spareByItem = {}, exclude = [], current = {}, skipRows = [] }) {
   const skip = new Set(exclude || []);
+  const skippedRow = new Set(skipRows || []);
   const left = { ...spareByItem };
   const lines = [];
   const boxes = {};
   let shortCount = 0;
   for (const r of rows || []) {
     if (isFreeIssue(r)) continue;
+    if (skippedRow.has(r.id)) {
+      const box = r.box || '';
+      boxes[box] = boxes[box] ?? true;
+      continue;
+    }
     const need = Number(r.qty) || 0;
     const have = Math.min(need, Number(current[r.id]) || 0);
     const want = Math.max(0, need - have);
@@ -165,8 +172,10 @@ export function panelShortage(rows, materials) {
   for (const r of rows || []) {
     // 세트가 채우는 줄과 같은 범위 — BOX 가 없거나 MP 인 줄은 체크 대상이 아니다
     if (isFreeIssue(r) || !CHECKABLE_BOXES.includes(String(r.box || '').trim())) continue;
+    const rec = materials?.[r.box || '']?.[r.id];
+    if (rec?.skip) continue; // 이 호기에서 일시 제외
     const need = Number(r.qty) || 0;
-    const got = Number(materials?.[r.box || '']?.[r.id]?.qty) || 0;
+    const got = Number(rec?.qty) || 0;
     if (got < need) out.push({ id: r.id, itemId: r.itemId || '', box: r.box || '', need, got, short: need - got });
   }
   return { short: out.length, lines: out };

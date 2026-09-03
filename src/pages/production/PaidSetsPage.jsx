@@ -15,7 +15,6 @@ import {
   assignPaidSet,
   unassignPaidSet,
   topUpPaidSet,
-  setPaidSetExcluded,
 } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { computeSets, eligiblePanels, groupKey, panelSeq, consumedByItem, panelShortage } from '../../domain/paidSets';
@@ -61,7 +60,8 @@ export default function PaidSetsPage() {
   const startProject = settings?.[company]?.startProject || '';
   // 발주서를 셀 현장 — BOM 프로젝트와는 다른 목록이라 여기서 한 번 고른다
   const siteId = settings?.[company]?.siteId || '';
-  const excluded = useMemo(() => Object.keys(settings?.[company]?.excluded || {}), [settings, company]);
+  // 전역 제외는 두지 않는다 — 기본 BOM 은 그대로, 뺄 것은 호기의 자재 체크 페이지에서 그 호기만 (2026-09-03 대표님)
+  const excluded = useMemo(() => [], []);
   useEffect(() => {
     getAllSites()
       .then((rows) => setSites(rows || []))
@@ -174,13 +174,6 @@ export default function PaidSetsPage() {
     }
   };
 
-  const toggleExclude = async (itemId, on) => {
-    try {
-      await setPaidSetExcluded(company, itemId, on);
-    } catch {
-      toast('저장에 실패했습니다', 'error');
-    }
-  };
   const assign = async (p) => {
     if (!canAssign) {
       toast('남은 세트가 없습니다 — 발주서 입고를 먼저 확인하세요', 'error');
@@ -505,7 +498,7 @@ export default function PaidSetsPage() {
             <div className="table-scroll-x">
               <table className="table pmat-table sht-table pset-items">
                 <colgroup>
-                  {[48, 130, null, null, 90, 90, 90, 90, 100, 96].map((w, i) => (
+                  {[48, 130, null, null, 90, 90, 90, 90, 100].map((w, i) => (
                     <col key={i} style={w ? { width: w } : undefined} />
                   ))}
                 </colgroup>
@@ -532,9 +525,6 @@ export default function PaidSetsPage() {
                     <th scope="col" className="pmat-num">
                       세트분
                     </th>
-                    <th scope="col" className="col-action">
-                      세트 셈
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -559,17 +549,6 @@ export default function PaidSetsPage() {
                         >
                           {it.setsFrom}
                         </span>
-                      </td>
-                      <td className="col-action">
-                        {/* 세트로 안 사는 품목(통신케이블처럼 따로 사는 것)은 셈에서 뺀다 */}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          onClick={() => toggleExclude(it.itemId, !it.excluded)}
-                          title={it.excluded ? '세트 셈에 다시 넣기' : '세트 셈에서 빼기 (따로 사는 품목)'}
-                        >
-                          {it.excluded ? '포함' : '제외'}
-                        </button>
                       </td>
                     </tr>
                   ))}

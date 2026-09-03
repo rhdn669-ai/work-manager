@@ -22724,3 +22724,12 @@ a.lib-row-name:hover {
 .pset-panels .col-action .btn + .btn {
   margin-left: 6px;
 }
+/* 이 호기에서 일시 제외한 줄 */
+.pmat-table tr.is-skipped > td {
+  color: var(--text-muted);
+  background: var(--bg-subtle, #f7f8fa);
+}
+.pmat-table tr.is-skipped .pmat-code {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}

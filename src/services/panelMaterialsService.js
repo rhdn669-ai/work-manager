@@ -43,6 +43,21 @@ export async function setReceived(panelId, box, bomItemId, qty, by) {
   );
 }
 
+/** 이 호기에서만 그 줄을 일시 제외/복귀 — 개수는 그대로 두고 skip 표시만 */
+export async function setSkipped(panelId, box, bomItemId, skip, by) {
+  const today = new Date().toISOString().slice(0, 10);
+  await setDoc(
+    doc(ref, materialsDocId(panelId, box)),
+    {
+      panelId,
+      box,
+      items: { [bomItemId]: { skip: !!skip, skipAt: today, skipBy: by || '' } },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
 /** 호기 하나의 기록을 한 번만 — { [box]: items } (부족분 채우기 전에 현재 값을 볼 때) */
 export async function getPanelMaterials(panelId) {
   const snap = await getDocs(query(ref, where('panelId', '==', panelId)));

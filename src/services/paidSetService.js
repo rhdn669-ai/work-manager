@@ -99,6 +99,11 @@ function matPatch(panel, onByBox) {
   return { 박스입고, 박스입고일자, 부품상태 };
 }
 
+// 이 호기에서 일시 제외한 줄 id 들
+function skippedRows(rows, mats) {
+  return rows.filter((r) => mats?.[r.box || '']?.[r.id]?.skip).map((r) => r.id);
+}
+
 // 계획대로 BOX 별 기록을 쓴다 — 줄의 total 을 그대로
 async function writePlan(panelId, plan, by) {
   const byBox = {};
@@ -112,10 +117,12 @@ async function writePlan(panelId, plan, by) {
  */
 export async function assignPaidSet(panel, variantRows, { by = '', seq = 0, spareByItem = null, exclude = [] } = {}) {
   const rows = Object.values(paidRowsByBox(variantRows)).flat();
+  const mats = await getPanelMaterials(panel.id);
   const plan = fillPlan({
     rows,
     spareByItem: spareByItem || Object.fromEntries(rows.map((r) => [r.itemId, Infinity])),
     exclude,
+    skipRows: skippedRows(rows, mats),
   });
   await writePlan(panel.id, plan, by);
   await updatePanel(panel.id, {
@@ -131,7 +138,7 @@ export async function topUpPaidSet(panel, variantRows, { by = '', spareByItem = 
   const mats = await getPanelMaterials(panel.id);
   const current = {};
   for (const r of rows) current[r.id] = Number(mats?.[r.box || '']?.[r.id]?.qty) || 0;
-  const plan = fillPlan({ rows, spareByItem, exclude, current });
+  const plan = fillPlan({ rows, spareByItem, exclude, current, skipRows: skippedRows(rows, mats) });
   const changed = plan.lines.filter((l) => l.add > 0);
   if (changed.length === 0) return { added: 0, short: plan.short };
   await writePlan(panel.id, { lines: changed }, by);

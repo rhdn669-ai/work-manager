@@ -7,9 +7,9 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { subscribePanelMaterials, setReceived } from '../../services/panelMaterialsService';
+import { subscribePanelMaterials, setReceived, setSkipped } from '../../services/panelMaterialsService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
-import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary } from '../../domain/panelMaterials';
+import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -102,6 +102,9 @@ export default function PanelMaterialsPage() {
   // ── ④ 연동: 이 BOX 의 도급/사급이 전부 차면 생산현황 자재 칸을 켠다, 하나라도 빠지면 끈다 ──
   useEffect(() => {
     if (!panel || rows.length === 0) return;
+    // 기록이 하나도 없는 BOX 는 건드리지 않는다 — BOM 만 연결하고 페이지를 연 것만으로
+    // 손으로 켜 둔 자재 칸이 「0개 입고」로 꺼지던 문제 (2026-09-03 대표님 「자재 칸 보호」)
+    if (Object.keys(rec).length === 0) return;
     const cur = (panel.박스입고 || {})[box] || {};
     const nextPaid = boxKindComplete(rows, rec, 'paid');
     const nextFree = boxKindComplete(rows, rec, 'free');
@@ -157,6 +160,14 @@ export default function PanelMaterialsPage() {
       );
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
+    }
+  };
+  // 이 호기에서만 줄을 일시 제외/복귀 — 기본 BOM 은 그대로 (세트 배정 호기의 도급 탭에서)
+  const toggleSkip = async (r, on) => {
+    try {
+      await setSkipped(panelId, box, r.id, on, userProfile?.name || '');
+    } catch {
+      toast('저장에 실패했습니다', 'error');
     }
   };
   const fillAll = () => fillAllTo(true);
@@ -321,17 +332,26 @@ export default function PanelMaterialsPage() {
                 <th scope="col" className="pmat-ok">
                   확인
                 </th>
+                {locked && (
+                  <th scope="col" className="col-action">
+                    이 호기
+                  </th>
+                )}
                 <th scope="col">기록</th>
               </tr>
             </thead>
             <tbody>
               {shown.map((r, i) => {
                 const got = receivedQty(rec, r.id);
-                const short = shortageOf(r.qty, got);
+                const skipped = isSkipped(rec, r.id);
+                const short = skipped ? 0 : shortageOf(r.qty, got);
                 const done = rowDone(r, rec);
                 const meta = rec[r.id];
                 return (
-                  <tr key={r.id} className={done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}>
+                  <tr
+                    key={r.id}
+                    className={skipped ? 'is-skipped' : done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}
+                  >
                     <td className="pmat-no">{i + 1}</td>
                     <td className="pmat-code">{r.code}</td>
                     <td>{r.drawingNo}</td>
@@ -363,7 +383,27 @@ export default function PanelMaterialsPage() {
                       )}
                     </td>
                     <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>
-                    <td className="pmat-ok">{done ? <Icon name="check" className="pmat-check" /> : ''}</td>
+                    <td className="pmat-ok">
+                      {skipped ? (
+                        <span className="status-badge status-badge--wait">제외</span>
+                      ) : done ? (
+                        <Icon name="check" className="pmat-check" />
+                      ) : (
+                        ''
+                      )}
+                    </td>
+                    {locked && (
+                      <td className="col-action">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => toggleSkip(r, !skipped)}
+                          title={skipped ? '이 호기에서 다시 넣기' : '이 호기에서만 빼기 — 기본 BOM 은 그대로'}
+                        >
+                          {skipped ? '포함' : '제외'}
+                        </button>
+                      </td>
+                    )}
                     <td className="pmat-meta">{meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}</td>
                   </tr>
                 );

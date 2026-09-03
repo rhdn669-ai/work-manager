@@ -114,6 +114,14 @@ describe('있는 만큼만 채우기', () => {
     const p = fillPlan({ rows, spareByItem: { A: 0 }, exclude: ['A', 'B'] });
     expect(p.short).toBe(0);
   });
+  it('호기에서 일시 제외한 줄은 채우지도 부족으로 세지도 않는다 — BOX 는 완료', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 10, B: 0 }, skipRows: ['r3'] });
+    expect(p.short).toBe(0);
+    expect(p.boxes['P/W BOX']).toBe(true);
+    expect(p.lines.find((l) => l.id === 'r3')).toBeUndefined();
+    const s = panelShortage(rows, { 'P/W BOX': { r1: { qty: 2 }, r3: { qty: 0, skip: true } }, 'L/D BOX': { r2: { qty: 1 } } });
+    expect(s.short).toBe(0);
+  });
   it('부족분 채우기 — 이미 들어온 것은 두고 모자란 만큼만 더한다', () => {
     const p = fillPlan({ rows, spareByItem: { A: 1, B: 1 }, current: { r1: 2, r2: 0, r3: 0 } });
     const r2 = p.lines.find((l) => l.id === 'r2');
