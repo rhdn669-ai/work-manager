@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef, useMemo } from 'react';
+import { Fragment, memo, useState, useEffect, useRef, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -50,6 +50,11 @@ import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 // 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
 // BOX 상태는 하위(자재입고4·불량)에서 자동 산출. 셀 직접 입력. MP 하위 상세는 상세모달.
 const mmdd = (d) => (d ? String(d).slice(5) : '');
+// 정/역 인라인 토글 순서 (빈값 → 정 → 역 → 빈값)
+const DIR_CYCLE = ['', '정', '역'];
+const POINTER_OPTS = { activationConstraint: { distance: 6 } };
+const TOUCH_OPTS = { activationConstraint: { delay: 250, tolerance: 6 } };
+const KEY_OPTS = { coordinateGetter: sortableKeyboardCoordinates };
 // 이 폭 이하(태블릿 가로·세로, 폰)는 표를 자르지 않고 페이지 스크롤 — CSS 의 같은 값과 맞춘다
 const PAGE_SCROLL_MQ = '(max-width: 1180px)';
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -83,6 +88,91 @@ function TextCell({ saved, className, placeholder, onCommit, onPaste }) {
         if (e.key === 'Escape') setV(saved);
       }}
       onPaste={onPaste}
+    />
+  );
+}
+
+// ── 아래 넷은 표 컴포넌트 밖에 둔 칸들. 최신 핸들러는 api(고정 객체)로 받는다 ──
+
+// 눌러서 값을 돌리는 칸(정역·기구제작). 화면을 먼저 바꾸고 저장은 뒤에서.
+function CycleCell({ api, p, field, options, rowIndex, className, title, render }) {
+  const saved = p[field] || '';
+  const [v, setV] = useState(saved);
+  const [seen, setSeen] = useState(saved);
+  if (saved !== seen) {
+    setSeen(saved);
+    setV(saved);
+  }
+  const canEdit = api.canEdit;
+  const next = () => {
+    if (!canEdit) return;
+    const nv = options[(options.indexOf(v) + 1) % options.length];
+    setV(nv);
+    api.setField(p, { [field]: nv });
+  };
+  return (
+    <td
+      className={className}
+      style={{ cursor: canEdit ? 'pointer' : 'default' }}
+      onClick={next}
+      tabIndex={canEdit ? 0 : -1}
+      onPaste={(e) => api.pasteColumn(e, field, rowIndex)}
+      title={title}
+    >
+      {render(v)}
+    </td>
+  );
+}
+
+// 글자 칸 — 치는 동안은 화면만, 칸을 벗어날 때 한 번 저장
+function Txt({ api, p, field, rowIndex, className }) {
+  return (
+    <TextCell
+      saved={p[field] || ''}
+      className={className}
+      placeholder={field === '프로젝트' ? '프로젝트' : undefined}
+      onCommit={(v) => api.setField(p, { [field]: v })}
+      onPaste={(e) => api.pasteColumn(e, field, rowIndex)}
+    />
+  );
+}
+
+// 날짜 칸 (납기·턴온·후속 일정)
+function Dt({ api, p, field, row }) {
+  return (
+    <DateCell
+      value={p[field] || ''}
+      cellCls={`mx-cell mx-date${api.fillCls(field, row)}`}
+      canEdit={api.canEdit}
+      onEnter={() => api.fillEnter(row)}
+      onChange={(e) => api.setField(p, { [field]: e.target.value })}
+      onPaste={(e) => api.pasteColumn(e, field, row)}
+      onFillStart={(e) => api.startFill(e, field, p[field] || '', row)}
+      display={mmdd(p[field])}
+    />
+  );
+}
+
+// 일정 항목별 입고일 — p.자재입고일[itemKey]. D-day 로 색: 미도달·도달·초과
+function Ipgo({ api, p, itemKey, row }) {
+  const cur = (p.자재입고일 || {})[itemKey] || '';
+  const dd = cur ? getDday(cur) : null;
+  const statusCls = dd === null ? '' : dd < 0 ? ' ipgo-over' : dd === 0 ? ' ipgo-due' : ' ipgo-before';
+  const field = `자재입고일:${itemKey}`;
+  return (
+    <DateCell
+      value={cur}
+      cellCls={`mx-cell mx-date${statusCls}${api.fillCls(field, row)}`}
+      canEdit={api.canEdit}
+      onEnter={() => api.fillEnter(row)}
+      onChange={(e) => api.setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
+      onPaste={(e) =>
+        api.pasteColumn(e, field, row, (target, value) => ({
+          자재입고일: { ...(target.자재입고일 || {}), [itemKey]: value },
+        }))
+      }
+      onFillStart={(e) => api.startFill(e, field, cur, row)}
+      display={mmdd(cur)}
     />
   );
 }
@@ -140,12 +230,16 @@ export default function ProductionMatrix({
 
   // ── 끌어서 순서 이동 ──
   const canDrag = canEdit && Array.isArray(orderPool);
+  // 센서 옵션은 파일 최상위 상수 — 렌더마다 새 객체를 주면 dnd-kit 이 줄 전체를 다시 그린다
   const dndSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(PointerSensor, POINTER_OPTS),
+    useSensor(TouchSensor, TOUCH_OPTS),
+    useSensor(KeyboardSensor, KEY_OPTS),
   );
-  const rowIds = useMemo(() => panels.map((p) => p.id), [panels]);
+  // 줄 id 목록 — 순서가 그대로면 같은 배열을 유지한다. 스냅샷마다 새 배열을 주면 dnd-kit 이
+  // 모든 줄을 다시 그려 memo 가 무의미해진다.
+  const idsKey = panels.map((p) => p.id).join('|');
+  const rowIds = useMemo(() => idsKey.split('|').filter(Boolean), [idsKey]);
   // 납기 날짜 차례와 어긋난 줄 — 잠그지 않고 색으로만 알린다
   const misordered = useMemo(() => misorderedIds(panels), [panels]);
   async function handleDragEnd({ active, over }) {
@@ -180,8 +274,14 @@ export default function ProductionMatrix({
   // 위아래로 여유 몇 줄을 더 그려 두어 스크롤 중에 빈 칸이 보이지 않게 한다.
   const ROW_H = 53; // 행 높이(고정) — 이 값이 어긋나면 스크롤이 튄다
   const OVERSCAN = 6;
+  const HEAD_H = 104; // 머리 3줄(36+36+32)이 sticky 로 덮는 높이
   const wrapRef = useRef(null);
-  const [view, setView] = useState({ top: 0, height: 900 });
+  const measureRef = useRef(null);
+  // 보이는 줄 범위만 상태로 둔다 — 스크롤마다 top 을 저장하면 범위가 그대로여도 표 전체가 다시 그려졌다
+  const [win, setWin] = useState({ first: 0, last: OVERSCAN * 2 });
+  const winRef = useRef(win);
+  const lenRef = useRef(panels.length);
+  lenRef.current = panels.length;
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
@@ -201,13 +301,23 @@ export default function ProductionMatrix({
     const measure = () => {
       raf = 0;
       fit();
+      let top;
+      let height;
       if (pageMode()) {
-        const top = el.getBoundingClientRect().top;
-        setView({ top: Math.max(0, -top), height: window.innerHeight || 900 });
+        top = Math.max(0, -el.getBoundingClientRect().top);
+        height = window.innerHeight || 900;
       } else {
-        setView({ top: el.scrollTop, height: el.clientHeight || 900 });
+        top = el.scrollTop;
+        height = el.clientHeight || 900;
+      }
+      const first = Math.max(0, Math.floor((top - HEAD_H) / ROW_H) - OVERSCAN);
+      const last = Math.min(lenRef.current, Math.ceil((top + height) / ROW_H) + OVERSCAN);
+      if (first !== winRef.current.first || last !== winRef.current.last) {
+        winRef.current = { first, last };
+        setWin(winRef.current);
       }
     };
+    measureRef.current = measure;
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(measure);
     };
@@ -226,12 +336,10 @@ export default function ProductionMatrix({
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
-  const HEAD_H = 104; // 머리 3줄(36+36+32)이 sticky 로 덮는 높이
-  const win = useMemo(() => {
-    const first = Math.max(0, Math.floor((view.top - HEAD_H) / ROW_H) - OVERSCAN);
-    const last = Math.min(panels.length, Math.ceil((view.top + view.height) / ROW_H) + OVERSCAN);
-    return { first, last };
-  }, [view, panels.length]);
+  // 줄 수가 바뀌면(검색·필터) 범위를 다시 잰다
+  useEffect(() => {
+    measureRef.current?.();
+  }, [panels.length]);
 
   function startFill(e, field, value, startIndex) {
     e.preventDefault();
@@ -268,9 +376,6 @@ export default function ProductionMatrix({
     return () => window.removeEventListener('mouseup', done);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill, panels]);
-
-  // 정/역 인라인 토글 (빈값 → 정 → 역 → 빈값)
-  const DIR_CYCLE = ['', '정', '역'];
 
   // 「자재」 칸 = BOM 타입(형번) 고르기 — 모달이 아니라 표에서 (2026-09-03 대표님 「해당 위치 자재에서」).
   // 누르면 빈값 → 타입1 → 타입2 → 빈값 으로 돈다. 고르면 자재 글자와 BOM 연결(타입)이 같이 저장되고,
@@ -392,87 +497,56 @@ export default function ProductionMatrix({
     }
   };
 
-  // 눌러서 값을 돌리는 칸(정역·기구제작).
-  // 저장이 끝나기를 기다렸다가 다시 그리면 누른 뒤 한 박자 늦게 바뀌는 것처럼 보인다.
-  // 화면을 먼저 바꿔 두고 저장은 뒤에서 시킨다 — 실패하면 원래 값으로 되돌아온다.
-  const CycleCell = ({ p, field, options, rowIndex, className, title, render }) => {
-    const saved = p[field] || '';
-    const [v, setV] = useState(saved);
-    useEffect(() => setV(saved), [saved]);
-    const next = () => {
-      if (!canEdit) return;
-      const nv = options[(options.indexOf(v) + 1) % options.length];
-      setV(nv);
-      setField(p, { [field]: nv });
+  // 칸 컴포넌트는 전부 파일 최상위에 있다(아래). 여기서는 최신 핸들러를 담은 «고정된» api 객체만 넘긴다.
+  // 표 안에서 컴포넌트를 만들면 저장(스냅샷) 한 번마다 칸 1,700개가 전부 새로 만들어져
+  // 태블릿에서 클릭 한 번에 1.2~1.7초가 걸렸다 (2026-09-03 실측).
+  const apiRef = useRef(null);
+  apiRef.current = {
+    setField,
+    pasteColumn,
+    fillEnter,
+    startFill,
+    fillCls,
+    toggleBoxMat,
+    cycleMpSub,
+    forceClose,
+    pickVariant,
+    gigusOf,
+    onOpen,
+    onRemove,
+    onMaterials,
+    canEdit,
+  };
+  const api = useMemo(() => {
+    const call =
+      (k) =>
+      (...args) =>
+        apiRef.current[k] && apiRef.current[k](...args);
+    return {
+      setField: call('setField'),
+      pasteColumn: call('pasteColumn'),
+      fillEnter: call('fillEnter'),
+      startFill: call('startFill'),
+      fillCls: call('fillCls'),
+      toggleBoxMat: call('toggleBoxMat'),
+      cycleMpSub: call('cycleMpSub'),
+      forceClose: call('forceClose'),
+      pickVariant: call('pickVariant'),
+      gigusOf: call('gigusOf'),
+      onOpen: call('onOpen'),
+      onRemove: call('onRemove'),
+      onMaterials: call('onMaterials'),
+      get canEdit() {
+        return apiRef.current.canEdit;
+      },
     };
-    return (
-      <td
-        className={className}
-        style={{ cursor: canEdit ? 'pointer' : 'default' }}
-        onClick={next}
-        tabIndex={canEdit ? 0 : -1}
-        onPaste={(e) => pasteColumn(e, field, rowIndex)}
-        title={title}
-      >
-        {render(v)}
-      </td>
-    );
-  };
-
-  // 글자 칸 — 치는 동안은 화면만 바꾸고, 칸을 벗어날 때 한 번만 저장한다.
-  // 글자마다 저장하면 「YS-TEPS1026033」 한 번 치는 데 저장 14번·표 다시 그리기 14번이다.
-  // 아래 셋은 위(파일 최상위)의 칸 컴포넌트에 필요한 값을 채워 넣는 감싸개다.
-  // 감싸개는 매 렌더 새로 만들어져도 괜찮다 — 실제로 그려지는 것은 고정된 컴포넌트다.
-  const Txt = ({ p, field, rowIndex, className }) => (
-    <TextCell
-      saved={p[field] || ''}
-      className={className}
-      placeholder={field === '프로젝트' ? '프로젝트' : undefined}
-      onCommit={(v) => setField(p, { [field]: v })}
-      onPaste={(e) => pasteColumn(e, field, rowIndex)}
-    />
-  );
-
-  const Dt = ({ p, field }) => {
-    const row = panels.findIndex((x) => x.id === p.id);
-    return (
-      <DateCell
-        value={p[field] || ''}
-        cellCls={`mx-cell mx-date${fillCls(field, row)}`}
-        canEdit={canEdit}
-        onEnter={() => fillEnter(row)}
-        onChange={(e) => setField(p, { [field]: e.target.value })}
-        onPaste={(e) => pasteColumn(e, field, row)}
-        onFillStart={(e) => startFill(e, field, p[field] || '', row)}
-        display={mmdd(p[field])}
-      />
-    );
-  };
-
-  // 일정 항목별 입고일 — p.자재입고일[itemKey] 에 개별 저장.
-  // 날짜 기준 D-day로 색상: 미도달(미래)·도달(당일)·초과(지남)
-  const Ipgo = ({ p, itemKey }) => {
-    const cur = (p.자재입고일 || {})[itemKey] || '';
-    const dd = cur ? getDday(cur) : null;
-    const statusCls = dd === null ? '' : dd < 0 ? ' ipgo-over' : dd === 0 ? ' ipgo-due' : ' ipgo-before';
-    const field = `자재입고일:${itemKey}`;
-    const row = panels.findIndex((x) => x.id === p.id);
-    return (
-      <DateCell
-        value={cur}
-        cellCls={`mx-cell mx-date${statusCls}${fillCls(field, row)}`}
-        canEdit={canEdit}
-        onEnter={() => fillEnter(row)}
-        onChange={(e) => setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
-        onPaste={(e) =>
-          pasteColumn(e, field, row, (target, value) => ({
-            자재입고일: { ...(target.자재입고일 || {}), [itemKey]: value },
-          }))
-        }
-        onFillStart={(e) => startFill(e, field, cur, row)}
-        display={mmdd(cur)}
-      />
-    );
+  }, []);
+  // 날짜 채우기 드래그 — 범위에 든 줄만 다시 그리게 줄마다 「지금 채우는 열」을 넘긴다
+  const fillFieldFor = (idx) => {
+    if (!fill) return '';
+    const lo = Math.min(fill.start, fill.end);
+    const hi = Math.max(fill.start, fill.end);
+    return idx >= lo && idx <= hi ? fill.field : '';
   };
 
   return (
@@ -639,210 +713,21 @@ export default function ProductionMatrix({
               {win.first > 0 && <tr style={{ height: win.first * ROW_H }} aria-hidden="true" />}
               {panels.slice(win.first, win.last).map((p, i) => {
                 const idx = win.first + i;
-                const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
-                const dd = getDday(p.납기);
-                const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
-                const urg = dd >= 0 && dd <= 3 && !isDone;
-                const od = dd < 0 && !isDone;
-                const mis = misordered.has(p.id);
                 return (
-                  <SortableTr
+                  <MatrixRow
                     key={p.id}
-                    id={p.id}
-                    disabled={!canDrag}
-                    className={`${od ? 'mx-od' : urg ? 'mx-urg' : ''}${mis ? ' mx-misorder' : ''}`}
-                  >
-                    {({ handleProps }) => (
-                      <>
-                        <td className="mx-sticky mx-c0 mx-no" title={mis ? '납기 날짜 차례와 다릅니다' : undefined}>
-                          <span className="mx-no-wrap">
-                            {canDrag && (
-                              <button
-                                type="button"
-                                className="mx-drag"
-                                title="끌어서 순서 이동"
-                                aria-label="끌어서 순서 이동"
-                                {...handleProps}
-                              />
-                            )}
-                            {idx + 1}
-                          </span>
-                        </td>
-                        {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
-                    프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
-                        <td className="mx-sticky mx-c1 mx-proj">
-                          <div className="mx-proj-wrap">
-                            {canEdit ? (
-                              <Txt p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
-                            ) : (
-                              <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
-                            )}
-                            {/* 구성품 입고 체크 — BOX 마다 두지 않고 호기당 하나 (2026-09-03 대표님
-                        「개별로 두지말고 프로젝트 명 칸 옆에」). BOM 을 연결한 호기만 */}
-                            {onMaterials && p.bomLink?.projectId && (
-                              <button
-                                type="button"
-                                className="mx-mat-btn"
-                                title="구성품 입고 체크 (BOM)"
-                                aria-label="구성품 입고 체크"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onMaterials(p.id);
-                                }}
-                              >
-                                <Icon name="list" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <CycleCell
-                          p={p}
-                          field="정역"
-                          options={DIR_CYCLE}
-                          rowIndex={idx}
-                          className="mx-cell mx-dir"
-                          title="클릭: 정 / 역 전환 · 붙여넣기 가능"
-                          render={(v) =>
-                            v ? (
-                              <span className={`dir-badge ${v === '정' ? 'jung' : 'yeok'}`}>{v}</span>
-                            ) : (
-                              <span className="mx-cell-empty">·</span>
-                            )
-                          }
-                        />
-                        {(() => {
-                          const { options } = variantOptionsFor(p, bomProjects, defaultProjectId);
-                          const label = variantLabelOf(p);
-                          const linked = !!p.bomLink?.variantKey;
-                          // 타입 목록이 없는 회사(BOM 미등록)는 예전처럼 글자로 적는다
-                          if (options.length === 0)
-                            return (
-                              <td className="mx-cell mx-jaje">
-                                {canEdit ? (
-                                  <Txt p={p} field="자재" rowIndex={idx} className="mx-text-input" />
-                                ) : (
-                                  p.자재 || ''
-                                )}
-                              </td>
-                            );
-                          return (
-                            <td
-                              className="mx-cell mx-jaje mx-variant"
-                              style={{ cursor: canEdit ? 'pointer' : 'default' }}
-                              onClick={() => pickVariant(p)}
-                              tabIndex={canEdit ? 0 : -1}
-                              title={`클릭: 타입 전환 (${options.map((o) => o.label).join(' → ')} → 빈값)`}
-                            >
-                              {label ? (
-                                <span className={`mx-variant-badge${linked ? '' : ' is-text'}`}>{label}</span>
-                              ) : (
-                                <span className="mx-cell-empty">·</span>
-                              )}
-                            </td>
-                          );
-                        })()}
-                        <td className="mx-cell mx-chuck">
-                          {canEdit ? (
-                            <Txt p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" />
-                          ) : (
-                            p.CHUCK || ''
-                          )}
-                        </td>
-                        <CycleCell
-                          p={p}
-                          field="기구제작"
-                          options={['', ...gigusOf(p)]}
-                          rowIndex={idx}
-                          className="mx-cell mx-gigu"
-                          title="클릭: 기구제작 선택 · 붙여넣기 가능"
-                          render={(v) =>
-                            v ? <span className="mx-gigu-badge">{v}</span> : <span className="mx-cell-empty">·</span>
-                          }
-                        />
-                        {BUPMOK.map((b) => {
-                          if (b === 'MP') {
-                            const st = deriveMpState(p.mp하위상태 || {});
-                            return (
-                              <MpGroup key={b} p={p} st={st} canEdit={canEdit} onToggle={(k) => cycleMpSub(p, k)} />
-                            );
-                          }
-                          const mat = boxMat(p, b);
-                          const matDate = boxMatDate(p, b);
-                          const defect = boxHasDefect(p.검수, b);
-                          const defectDone = !defect && boxDefectResolved(p.검수, b);
-                          const st = deriveBoxStatus(p, b);
-
-                          return (
-                            <BoxGroup
-                              key={b}
-                              mat={mat}
-                              matDate={matDate}
-                              defect={defect}
-                              defectDone={defectDone}
-                              defectDate={boxDefectDate(p.검수, b)}
-                              doneDate={boxDoneDate(p, b)}
-                              st={st}
-                              canEdit={canEdit}
-                              onMat={(k) => toggleBoxMat(p, b, k)}
-                              canDefect={canDefect}
-                              onDefect={() => onOpen(p.id, 'defect', b)}
-                              shipCount={shipPhotoCount(p, b)}
-                              onShip={() => onOpen(p.id, 'ship', b)}
-                            />
-                          );
-                        })}
-                        {IPGO_ITEMS.map((it) => (
-                          <Ipgo key={it.key} p={p} itemKey={it.key} />
-                        ))}
-                        <Dt p={p} field="납기" />
-                        <Dt p={p} field="턴온" />
-                        {AFTER_TURNON.map((f) => (
-                          <Dt key={f.key} p={p} field={f.key} />
-                        ))}
-                        <td className="mx-cell mx-prog">
-                          <div className="mx-prog-wrap">
-                            <div className="mx-prog-track">
-                              <div
-                                className={`mx-prog-fill${p.progress >= 100 ? ' is-done' : ''}`}
-                                style={{ width: `${Math.min(100, Number(p.progress) || 0)}%` }}
-                              />
-                            </div>
-                            <span className="mx-prog-num">{p.progress}%</span>
-                          </div>
-                        </td>
-                        <td className="mx-cell">
-                          <span className="badge badge-sm" style={{ background: oc.bg, color: oc.fg }}>
-                            {p.overallStatus}
-                          </span>
-                        </td>
-                        {canEdit && (
-                          <td className="mx-cell mx-actions">
-                            {/* PC 표에는 기본정보(BOM 연결·비고·일정)를 여는 길이 불량·출고 칸뿐이었다.
-                        상세를 바로 여는 버튼을 둔다 (2026-09-03 대표님 「호기별 자재」 ②) */}
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${p.출고완료 ? 'btn-outline' : 'btn-outline mx-close-btn'}`}
-                              onClick={() => forceClose(p)}
-                              title={p.출고완료 ? '종결(출고완료)을 해제' : '앞 공정과 무관하게 종결(출고완료)'}
-                            >
-                              {p.출고완료 ? '종결 해제' : '종결'}
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={() => onOpen(p.id, 'info')}
-                              title="기본정보 · BOM 연결"
-                            >
-                              상세
-                            </button>
-                            <button className="btn btn-sm btn-danger" onClick={(e) => onRemove(e, p)}>
-                              <Icon name="trash" className="btn-ic" />
-                            </button>
-                          </td>
-                        )}
-                      </>
-                    )}
-                  </SortableTr>
+                    p={p}
+                    idx={idx}
+                    mis={misordered.has(p.id)}
+                    canDrag={canDrag}
+                    canEdit={canEdit}
+                    canDefect={canDefect}
+                    hasMaterials={!!onMaterials}
+                    bomProjects={bomProjects}
+                    defaultProjectId={defaultProjectId}
+                    fillField={fillFieldFor(idx)}
+                    api={api}
+                  />
                 );
               })}
               {win.last < panels.length && (
@@ -855,6 +740,222 @@ export default function ProductionMatrix({
     </DndContext>
   );
 }
+
+// 한 줄 — 바뀐 줄만 다시 그린다(memo). 판넬 객체는 구독 쪽에서 바뀐 문서만 새로 만들어 주므로
+// 다른 줄은 같은 객체가 그대로 와서 건너뛴다.
+const MatrixRow = memo(function MatrixRow({
+  p,
+  idx,
+  mis,
+  canDrag,
+  canEdit,
+  canDefect,
+  hasMaterials,
+  bomProjects,
+  defaultProjectId,
+  fillField, // 날짜 채우기 드래그 범위에 든 줄이면 그 열 이름 — 아니면 ''
+  api,
+}) {
+  void fillField; // 값 자체는 안 쓰고, 바뀔 때 다시 그리게 하는 신호
+  const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
+  const dd = getDday(p.납기);
+  const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
+  const urg = dd >= 0 && dd <= 3 && !isDone;
+  const od = dd < 0 && !isDone;
+  return (
+    <SortableTr
+      key={p.id}
+      id={p.id}
+      disabled={!canDrag}
+      className={`${od ? 'mx-od' : urg ? 'mx-urg' : ''}${mis ? ' mx-misorder' : ''}`}
+    >
+      {({ handleProps }) => (
+        <>
+          <td className="mx-sticky mx-c0 mx-no" title={mis ? '납기 날짜 차례와 다릅니다' : undefined}>
+            <span className="mx-no-wrap">
+              {canDrag && (
+                <button
+                  type="button"
+                  className="mx-drag"
+                  title="끌어서 순서 이동"
+                  aria-label="끌어서 순서 이동"
+                  {...handleProps}
+                />
+              )}
+              {idx + 1}
+            </span>
+          </td>
+          {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
+        프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
+          <td className="mx-sticky mx-c1 mx-proj">
+            <div className="mx-proj-wrap">
+              {canEdit ? (
+                <Txt api={api} p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
+              ) : (
+                <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
+              )}
+              {/* 구성품 입고 체크 — BOX 마다 두지 않고 호기당 하나 (2026-09-03 대표님
+            「개별로 두지말고 프로젝트 명 칸 옆에」). BOM 을 연결한 호기만 */}
+              {hasMaterials && p.bomLink?.projectId && (
+                <button
+                  type="button"
+                  className="mx-mat-btn"
+                  title="구성품 입고 체크 (BOM)"
+                  aria-label="구성품 입고 체크"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    api.onMaterials(p.id);
+                  }}
+                >
+                  <Icon name="list" />
+                </button>
+              )}
+            </div>
+          </td>
+          <CycleCell
+            api={api}
+            p={p}
+            field="정역"
+            options={DIR_CYCLE}
+            rowIndex={idx}
+            className="mx-cell mx-dir"
+            title="클릭: 정 / 역 전환 · 붙여넣기 가능"
+            render={(v) =>
+              v ? (
+                <span className={`dir-badge ${v === '정' ? 'jung' : 'yeok'}`}>{v}</span>
+              ) : (
+                <span className="mx-cell-empty">·</span>
+              )
+            }
+          />
+          {(() => {
+            const { options } = variantOptionsFor(p, bomProjects, defaultProjectId);
+            const label = variantLabelOf(p);
+            const linked = !!p.bomLink?.variantKey;
+            // 타입 목록이 없는 회사(BOM 미등록)는 예전처럼 글자로 적는다
+            if (options.length === 0)
+              return (
+                <td className="mx-cell mx-jaje">
+                  {canEdit ? (
+                    <Txt api={api} p={p} field="자재" rowIndex={idx} className="mx-text-input" />
+                  ) : (
+                    p.자재 || ''
+                  )}
+                </td>
+              );
+            return (
+              <td
+                className="mx-cell mx-jaje mx-variant"
+                style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                onClick={() => api.pickVariant(p)}
+                tabIndex={canEdit ? 0 : -1}
+                title={`클릭: 타입 전환 (${options.map((o) => o.label).join(' → ')} → 빈값)`}
+              >
+                {label ? (
+                  <span className={`mx-variant-badge${linked ? '' : ' is-text'}`}>{label}</span>
+                ) : (
+                  <span className="mx-cell-empty">·</span>
+                )}
+              </td>
+            );
+          })()}
+          <td className="mx-cell mx-chuck">
+            {canEdit ? <Txt api={api} p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
+          </td>
+          <CycleCell
+            api={api}
+            p={p}
+            field="기구제작"
+            options={['', ...api.gigusOf(p)]}
+            rowIndex={idx}
+            className="mx-cell mx-gigu"
+            title="클릭: 기구제작 선택 · 붙여넣기 가능"
+            render={(v) => (v ? <span className="mx-gigu-badge">{v}</span> : <span className="mx-cell-empty">·</span>)}
+          />
+          {BUPMOK.map((b) => {
+            if (b === 'MP') {
+              const st = deriveMpState(p.mp하위상태 || {});
+              return <MpGroup key={b} p={p} st={st} canEdit={canEdit} onToggle={(k) => api.cycleMpSub(p, k)} />;
+            }
+            const mat = boxMat(p, b);
+            const matDate = boxMatDate(p, b);
+            const defect = boxHasDefect(p.검수, b);
+            const defectDone = !defect && boxDefectResolved(p.검수, b);
+            const st = deriveBoxStatus(p, b);
+
+            return (
+              <BoxGroup
+                key={b}
+                mat={mat}
+                matDate={matDate}
+                defect={defect}
+                defectDone={defectDone}
+                defectDate={boxDefectDate(p.검수, b)}
+                doneDate={boxDoneDate(p, b)}
+                st={st}
+                canEdit={canEdit}
+                onMat={(k) => api.toggleBoxMat(p, b, k)}
+                canDefect={canDefect}
+                onDefect={() => api.onOpen(p.id, 'defect', b)}
+                shipCount={shipPhotoCount(p, b)}
+                onShip={() => api.onOpen(p.id, 'ship', b)}
+              />
+            );
+          })}
+          {IPGO_ITEMS.map((it) => (
+            <Ipgo api={api} row={idx} key={it.key} p={p} itemKey={it.key} />
+          ))}
+          <Dt api={api} row={idx} p={p} field="납기" />
+          <Dt api={api} row={idx} p={p} field="턴온" />
+          {AFTER_TURNON.map((f) => (
+            <Dt api={api} row={idx} key={f.key} p={p} field={f.key} />
+          ))}
+          <td className="mx-cell mx-prog">
+            <div className="mx-prog-wrap">
+              <div className="mx-prog-track">
+                <div
+                  className={`mx-prog-fill${p.progress >= 100 ? ' is-done' : ''}`}
+                  style={{ width: `${Math.min(100, Number(p.progress) || 0)}%` }}
+                />
+              </div>
+              <span className="mx-prog-num">{p.progress}%</span>
+            </div>
+          </td>
+          <td className="mx-cell">
+            <span className="badge badge-sm" style={{ background: oc.bg, color: oc.fg }}>
+              {p.overallStatus}
+            </span>
+          </td>
+          {canEdit && (
+            <td className="mx-cell mx-actions">
+              {/* PC 표에는 기본정보(BOM 연결·비고·일정)를 여는 길이 불량·출고 칸뿐이었다.
+            상세를 바로 여는 버튼을 둔다 (2026-09-03 대표님 「호기별 자재」 ②) */}
+              <button
+                type="button"
+                className={`btn btn-sm ${p.출고완료 ? 'btn-outline' : 'btn-outline mx-close-btn'}`}
+                onClick={() => api.forceClose(p)}
+                title={p.출고완료 ? '종결(출고완료)을 해제' : '앞 공정과 무관하게 종결(출고완료)'}
+              >
+                {p.출고완료 ? '종결 해제' : '종결'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => api.onOpen(p.id, 'info')}
+                title="기본정보 · BOM 연결"
+              >
+                상세
+              </button>
+              <button className="btn btn-sm btn-danger" onClick={(e) => api.onRemove(e, p)}>
+                <Icon name="trash" className="btn-ic" />
+              </button>
+            </td>
+          )}
+        </>
+      )}
+    </SortableTr>
+  );
+});
 
 // MP 하위: 전장 9종 각 셀(대기→완료→불량 순환) + 종합상태(자동)
 function MpGroup({ p, st, canEdit, onToggle }) {

@@ -22,14 +22,21 @@ const panelsRef = collection(db, 'productionPanels');
 
 // 실시간 구독 — recompute(진행률·종합상태) 적용해 콜백
 export function subscribePanels(cb) {
+  // 바뀐 문서만 다시 계산한다. 매번 전부 새 객체로 만들면 표의 줄 memo 가 전혀 안 먹어
+  // 저장 한 번에 줄 전체가 다시 그려진다 (2026-09-03 태블릿 렉 실측).
+  const cache = new Map();
   return onSnapshot(panelsRef, (snap) => {
+    for (const ch of snap.docChanges()) {
+      if (ch.type === 'removed') cache.delete(ch.doc.id);
+      else cache.set(ch.doc.id, recompute({ id: ch.doc.id, ...ch.doc.data() }));
+    }
     // 납기 → 호기 순. 둘 다 비어 있으면(갓 추가한 판넬) 만든 순서대로 아래에 쌓이게 한다.
     // 이 기준이 없으면 새로 추가한 행이 목록 가운데로 끼어든다.
     const ms = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : 0);
     // 손으로 끌어 정한 순서(order)가 있으면 그것이 먼저다 (2026-09-03 대표님 「순서 이동」).
     // 순서가 없는 줄은 뒤에 납기순으로 이어진다.
     const rows = snap.docs
-      .map((d) => recompute({ id: d.id, ...d.data() }))
+      .map((d) => cache.get(d.id) || recompute({ id: d.id, ...d.data() }))
       .sort(
         (a, b) =>
           orderOf(a) - orderOf(b) ||
