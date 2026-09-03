@@ -1283,7 +1283,7 @@ export default function BomDetailPage() {
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
               <SortableContext items={rows.map((it) => it.id)} strategy={verticalListSortingStrategy}>
                 <div className="table-scroll-x">
-                  <table className="table inline-edit-table cards-sm bom-flat-table">
+                  <table className="table inline-edit-table bom-flat-table">
                     {/* 칸 폭 배분(%) — 규격이 가장 넓다. 합이 100 인지는 테스트가 붙든다
                         (2026-09-02 대표님 「BOM 규격 칸 좀더 확장」). */}
                     <colgroup>

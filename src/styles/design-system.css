@@ -2264,3 +2264,45 @@ body {
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   padding: 6px 8px 10px;
 }
+
+/* ── 태블릿·폴더블 펼침(769~1200px): 표는 잘리지 말고 가로 스크롤 ──
+   .table 은 폭 100%·최소폭 없음·셀 말줄임이 기본이라 이 구간에선 글자가 잘렸다
+   (2026-09-03 대표님 「태블릿에서 구매 리스트 글이 잘림 — 가로 스크롤」).
+   내용 폭만큼 넓히고(최소는 컨테이너 폭) 넘치는 만큼 래퍼가 스크롤한다. PC(>1200)는 그대로. */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .table-scroll-x > .table {
+    width: max-content;
+    min-width: 100%;
+  }
+  .table-scroll-x > .table td,
+  .table-scroll-x > .table th {
+    max-width: 360px; /* 비고처럼 아주 긴 글은 여기서 말줄임 */
+  }
+  /* 구매처·외주 표는 ≥769px 에서 폭 100%·table-layout:fixed·열마다 % 폭이 박혀 있어
+     좁은 화면에서 글자를 눌러 버린다 — 이 구간에선 내용 폭대로 (global.css 의 규칙보다 뒤·같은 특성성) */
+  .supplier-management-page table.cards-sm,
+  .outsource-management-page table.cards-sm {
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
+  }
+  .supplier-management-page table.cards-sm th:nth-child(n),
+  .supplier-management-page table.cards-sm.supplier-table th:nth-child(n),
+  .outsource-management-page table.cards-sm th:nth-child(n),
+  .outsource-management-page table.cards-sm:not(.vendor-table) th:nth-child(n) {
+    width: auto;
+  }
+  /* 작업 열(수정·삭제)은 버튼 두 개가 한 줄에 들어갈 폭을 보장 */
+  .table-scroll-x > .table th.bom-project-action-col,
+  .table-scroll-x > .table td.bom-project-action-col {
+    width: auto;
+    min-width: 120px;
+  }
+}
+/* 폰(≤768)에서도 카드로 안 바꾸는 대량 편집표(BOM 등)는 같은 방식으로 가로 스크롤 */
+@media (max-width: 768px) {
+  .table-scroll-x > .table:not(.cards-sm) {
+    width: max-content;
+    min-width: 100%;
+  }
+}
