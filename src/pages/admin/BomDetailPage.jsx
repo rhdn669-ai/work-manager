@@ -480,6 +480,29 @@ export default function BomDetailPage() {
     });
   }
 
+  // 고른 줄을 도급↔사급으로 한꺼번에 옮긴다.
+  //
+  // v121.5 에서 「사급 탭에서 담으면 사급이 된다」로 바꾸며 이 버튼을 걷었는데,
+  // 이미 담아 둔 줄의 구분을 고칠 길이 사라졌다. 담는 자리로 정하는 것과 나중에
+  // 고치는 것은 다른 일이다 (2026-09-03 대표님 「사급 도급 버튼 부활」).
+  async function moveSupply(toFree) {
+    const ids = [...delPick].filter((id) => rows.some((r) => r.id === id));
+    if (ids.length === 0) return;
+    const next = toFree ? 'free' : '';
+    const targets = bomItems.filter((b) => ids.includes(b.id) && (b.supplyType || '') !== next);
+    setDelPick(new Set());
+    if (targets.length === 0) return;
+    const before = new Map(targets.map((b) => [b.id, b.supplyType || '']));
+    setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: next } : b)));
+    try {
+      await Promise.all(targets.map((b) => updateBomItem(b.id, { supplyType: next })));
+      toast(`${targets.length}건을 ${toFree ? '사급' : '도급'}으로 옮겼습니다`, 'success');
+    } catch {
+      toast('구분을 바꾸는 중 오류가 발생했습니다', 'error');
+      setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: before.get(b.id) } : b)));
+    }
+  }
+
   // 고른 줄을 한꺼번에 휴지통으로. 영구 삭제가 아니라 되살릴 수 있다.
   async function removePicked() {
     const ids = [...delPick].filter((id) => rows.some((r) => r.id === id));
@@ -1198,10 +1221,16 @@ export default function BomDetailPage() {
       </div>
 
       {delPick.size > 0 && (
-        <div className="bom-del-bar no-print">
-          <span className="bom-del-count">
+        <div className="bom-pick-bar no-print">
+          <span className="bom-pick-count">
             <strong>{delPick.size}</strong>건 골랐습니다
           </span>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(true)}>
+            사급으로 보내기
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(false)}>
+            도급으로 되돌리기
+          </button>
           <button type="button" className="btn btn-sm btn-danger" onClick={removePicked}>
             <Icon name="trash" className="btn-ic" />
             선택 삭제

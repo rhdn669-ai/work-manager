@@ -5997,6 +5997,10 @@ table.cards-sm td {
 }
 .bom-flat-group .item-group-detail {
   overflow: visible;
+  /* 카드와 같은 라운드를 준다 — 안 그러면 몸통 배경이 모서리 밖으로 나가 카드
+     테두리를 덮어 왼쪽 선이 끊겨 보인다. 카드에 overflow: hidden 을 걸 수는 없다
+     (품명 검색 드롭다운이 잘린다) (2026-09-03 대표님 「왼쪽은 테두리가 짤렸노」). */
+  border-radius: var(--radius-md, 13px);
 }
 .bom-flat-group .item-group-detail .table {
   overflow: visible;
@@ -22223,30 +22227,32 @@ a.lib-row-name:hover {
   background: var(--primary-softer, #f0f3f8);
 }
 
-.bom-del-bar {
+/* 고른 줄이 있을 때 뜨는 띠 — 옮기기와 삭제를 함께 담는다.
+   삭제 전용이 아니므로 붉은색을 걷었다 (2026-09-03 대표님 「사급 도급 버튼 부활」). */
+.bom-pick-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0 0 10px;
   padding: 9px 14px;
-  border: 1px solid var(--danger, #d92d20);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-sm, 10px);
-  background: var(--danger-tint, #fdebec);
+  background: var(--primary-softer, #f0f3f8);
 }
 
-.bom-del-count {
+.bom-pick-count {
   margin-right: 2px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--danger, #d92d20);
+  color: var(--primary);
 }
 
-.bom-del-count strong {
+.bom-pick-count strong {
   font-weight: 800;
 }
 
 @media (max-width: 768px) {
-  .bom-del-bar {
+  .bom-pick-bar {
     flex-wrap: wrap;
   }
 }
