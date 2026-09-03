@@ -22733,21 +22733,3 @@ a.lib-row-name:hover {
   color: var(--text-muted);
   text-decoration: line-through;
 }
-/* 모달의 읽기 전용 값 (타입은 표에서 고른다) */
-.pm-static {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md, 10px);
-  background: var(--bg-subtle, #f7f8fa);
-  font-weight: 600;
-  color: var(--text);
-}
-.pm-static small {
-  font-weight: 400;
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-}

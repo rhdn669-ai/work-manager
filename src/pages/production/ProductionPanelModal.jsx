@@ -474,7 +474,7 @@ export default function ProductionPanelModal({
                 </span>
               )}
             </div>
-            <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+            <div className="pm-grid" style={{ gridTemplateColumns: '1fr auto' }}>
               <div className="pm-field">
                 <label>BOM 프로젝트</label>
                 <Select
@@ -489,14 +489,6 @@ export default function ProductionPanelModal({
                   disabled={!canEdit}
                   native
                 />
-              </div>
-              <div className="pm-field">
-                <label>타입(형번)</label>
-                {/* 타입은 표의 「자재」 칸에서 고른다 (2026-09-03 대표님) — 여기서는 보여 주기만 */}
-                <div className="pm-static" title="생산현황 표의 「자재」 칸을 눌러 바꿉니다">
-                  {link?.variantLabel || (link ? '공통만' : '—')}
-                  <small>표의 자재 칸에서 선택</small>
-                </div>
               </div>
               <div className="pm-field">
                 <label>&nbsp;</label>
