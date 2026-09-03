@@ -120,9 +120,8 @@ export default function BomDetailPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('order'); // 'order'(추가/붙여넣기순) | 'code'(코드순)
-  // 묶어 보기 — 'none' | 'supplier'(구매처별) | 'supply'(도급·사급별).
-  // 둘을 동시에 묶으면 띠가 겹쳐 무엇 기준인지 읽히지 않아 하나만 켜지게 둔다
-  // (2026-09-02 대표님 「전체로 볼때 사 도 분류가 필요하겠네」·「버튼 만들자」).
+  // 묶어 보기 — 'none' | 'supplier'(구매처별).
+  // 도급·사급별 묶기는 줄마다 버튼이 돌아오며 걷었다 (2026-09-03 대표님 「이 버튼 삭제」).
   const [groupBy, setGroupBy] = useState('none');
   const groupBySupplier = groupBy !== 'none'; // 묶어 보는 중인가 (띠·소계·드래그 잠금 공용)
   // 도급 / 사급을 나눠 본다. 한 줄씩 눌러 구분을 바꾸는 대신, 골라서 한꺼번에 옮긴다
@@ -386,12 +385,11 @@ export default function BomDetailPage() {
   }, [displayItems]);
 
   // 묶음 [{ name, items, subtotal }] — 기준은 groupBy 가 정한다
-  const groupNameOf = (it) =>
-    groupBy === 'supply' ? (isFreeIssue(it) ? '사급' : '도급') : it.supplier || '(구매처 미지정)';
+  const groupNameOf = (it) => it.supplier || '(구매처 미지정)';
   const supplierGroups = useMemo(() => {
     const map = new Map();
     for (const it of rows) {
-      const key = groupBy === 'supply' ? (isFreeIssue(it) ? '사급' : '도급') : it.supplier || '(구매처 미지정)';
+      const key = it.supplier || '(구매처 미지정)';
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(it);
     }
@@ -478,29 +476,6 @@ export default function BomDetailPage() {
       else next.add(id);
       return next;
     });
-  }
-
-  // 고른 줄을 도급↔사급으로 한꺼번에 옮긴다.
-  //
-  // v121.5 에서 「사급 탭에서 담으면 사급이 된다」로 바꾸며 이 버튼을 걷었는데,
-  // 이미 담아 둔 줄의 구분을 고칠 길이 사라졌다. 담는 자리로 정하는 것과 나중에
-  // 고치는 것은 다른 일이다 (2026-09-03 대표님 「사급 도급 버튼 부활」).
-  async function moveSupply(toFree) {
-    const ids = [...delPick].filter((id) => rows.some((r) => r.id === id));
-    if (ids.length === 0) return;
-    const next = toFree ? 'free' : '';
-    const targets = bomItems.filter((b) => ids.includes(b.id) && (b.supplyType || '') !== next);
-    setDelPick(new Set());
-    if (targets.length === 0) return;
-    const before = new Map(targets.map((b) => [b.id, b.supplyType || '']));
-    setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: next } : b)));
-    try {
-      await Promise.all(targets.map((b) => updateBomItem(b.id, { supplyType: next })));
-      toast(`${targets.length}건을 ${toFree ? '사급' : '도급'}으로 옮겼습니다`, 'success');
-    } catch {
-      toast('구분을 바꾸는 중 오류가 발생했습니다', 'error');
-      setBomItems((prev) => prev.map((b) => (before.has(b.id) ? { ...b, supplyType: before.get(b.id) } : b)));
-    }
   }
 
   // 고른 줄을 한꺼번에 휴지통으로. 영구 삭제가 아니라 되살릴 수 있다.
@@ -1202,10 +1177,7 @@ export default function BomDetailPage() {
             role="tab"
             aria-selected={supplyTab === t.key}
             className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-            onClick={() => {
-              setSupplyTab(t.key);
-              if (t.key !== 'all') setGroupBy((v) => (v === 'supply' ? 'none' : v));
-            }}
+            onClick={() => setSupplyTab(t.key)}
           >
             {t.label}
             <span className="bom-supply-tab-n">{t.n}</span>
@@ -1265,18 +1237,6 @@ export default function BomDetailPage() {
         >
           구매처별 {groupBy === 'supplier' ? 'ON' : 'OFF'}
         </button>
-        {supplyTab === 'all' && (
-          <button
-            type="button"
-            className={`btn btn-sm ${groupBy === 'supply' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setGroupBy((v) => (v === 'supply' ? 'none' : 'supply'))}
-            title="도급과 사급을 띠로 갈라서 보기 (전체 탭에서만)"
-          >
-            {/* 「구분별」이라고만 적어 두니 무엇을 가르는 버튼인지 못 알아보셨다
-                (2026-09-03 대표님 「사급 도급 버튼 만들어주기로 했잖아」) */}
-            도급·사급별 {groupBy === 'supply' ? 'ON' : 'OFF'}
-          </button>
-        )}
         {boxOptions.length > 1 && (
           <Select
             className="bom-supplier-select"
