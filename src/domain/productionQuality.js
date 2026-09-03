@@ -1,4 +1,5 @@
 import { BUPMOK } from './production';
+import { normalizeBoxKeys } from './boxes';
 import { DEFECT_TYPES, countByType, countUnclassified } from './defectTypes';
 
 // 생산현황 판넬 → 품질보증 「출하·부적합 > 부적합 실적」 연동 규칙 (2026-07-31 대표님 확정)
@@ -73,7 +74,9 @@ function defectUnits(defects) {
 const zeroTypes = () => ({ ...Object.fromEntries(DEFECT_TYPES.map((t) => [t.key, 0])), defectUnclassified: 0 });
 
 // 판넬 → 부적합 실적의 "생산 유래 필드"만. 불량이 없으면 null.
-export function panelToNcrFacts(panel) {
+export function panelToNcrFacts(raw) {
+  // 옛 BOX 이름(LODER …)으로 남은 불량도 세야 한다 — 품질 통계에서 빠지면 안 된다
+  const panel = normalizeBoxKeys(raw);
   const defects = collectPanelDefects(panel);
   if (!defects.length) return null;
   const open = defects.filter((d) => !d.완료).length;

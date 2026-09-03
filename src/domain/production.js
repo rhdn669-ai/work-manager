@@ -1,9 +1,11 @@
+import { PANEL_BOXES, normalizeBoxKeys } from './boxes';
 // 판넬 생산현황 도메인 모델 — 기존 index.html의 검증된 로직을 이식.
 // 화면/DB와 독립. 상태 파생·상수는 전부 여기 한곳에서 관리.
 
 /* ── 부품/공정 상수 ── */
 // 부품(BOX·판넬) 6종 — 명판(P/W BOX·S/D·H/T·ROBOT 등)과 동일 도메인
-export const BUPMOK = ['P/W BOX', 'LODER', 'S/D', 'H/T상', 'H/T하', 'ROBOT', 'MP'];
+// BOX 이름은 domain/boxes.js 에서 BOM 과 함께 쓴다 (2026-09-03 대표님 「1대1 매칭」)
+export const BUPMOK = PANEL_BOXES;
 // 자재 입고 항목 — 2단 구조: 판금(단일) · 하네스{사급·제작} · 자재{사급·도급}
 export const JAIP_GROUPS = [
   { key: '판금', label: '판금', leaves: [{ key: '판금', label: '판금' }] },
@@ -236,7 +238,8 @@ export function boxFraction(p, box) {
   return normState((p.부품상태 || {})[box]) === '완료' ? 1 : 0;
 }
 
-export function recompute(p) {
+export function recompute(raw) {
+  const p = normalizeBoxKeys(raw); // 옛 BOX 키(H/T상 …)를 새 이름으로 읽는다
   const mpS = deriveMpState(p.mp하위상태 || {});
   const all = BUPMOK.map((b) => normState((p.부품상태 || {})[b]));
   const done = all.filter((s) => s === '완료').length;

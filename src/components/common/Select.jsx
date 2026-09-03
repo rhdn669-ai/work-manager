@@ -14,6 +14,9 @@ export default function Select({
   className = '',
   ariaLabel,
   disabled,
+  // 표 안처럼 수백 개가 한 화면에 놓이는 자리는 PC 에서도 OS 기본 드롭다운을 쓴다 —
+  // 커스텀 패널 수백 개는 무겁고, 표 안에서는 OS 것이 더 자연스럽다 (2026-09-03)
+  native = false,
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
@@ -22,7 +25,9 @@ export default function Select({
   const selected = options.find((o) => String(o.value) === String(value));
   // 모바일에서는 OS 기본 드롭다운(네이티브 select)을 쓴다 — 운영체제가 화면에 맞춰
   // 띄우므로 절대 잘리지 않는다. (커스텀 위치계산이 폰마다 어긋나던 문제 근본 해결)
-  const [isNative] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
+  const [isNative] = useState(
+    () => native || (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches),
+  );
 
   const reposition = useCallback(() => {
     const el = triggerRef.current;

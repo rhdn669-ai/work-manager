@@ -43,6 +43,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { trashGeneric } from '../../services/trashService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
+import { BOX_OPTIONS } from '../../domain/boxes';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
 function fmtDateTime(d) {
@@ -1393,14 +1394,26 @@ export default function BomDetailPage() {
                                   onBlur={(e) => saveDrawingNo(it, e.target.value)}
                                 />
                               </td>
+                              {/* BOX 는 목록에서 고른다 — 손으로 치면 띄어쓰기 하나로 생산현황과
+                                  이어지지 않는다 (2026-09-03 대표님 「1대1 매칭을 완벽하게」).
+                                  목록에 없는 옛 값이 들어 있으면 그 값도 보여 줘 잃지 않게 한다. */}
                               <td data-label="BOX" title={it.box || ''}>
-                                <input
-                                  type="text"
+                                <Select
+                                  className="po-supplier-select"
                                   value={it.box || ''}
-                                  title={it.box || ''}
-                                  placeholder="-"
-                                  onChange={(e) => updateField(it.id, { box: e.target.value })}
-                                  onBlur={() => flushItem(it.id)}
+                                  onChange={(v) => {
+                                    updateField(it.id, { box: v });
+                                    flushItem(it.id, { box: v });
+                                  }}
+                                  options={[
+                                    { value: '', label: '-' },
+                                    ...BOX_OPTIONS.map((bx) => ({ value: bx, label: bx })),
+                                    ...(it.box && !BOX_OPTIONS.includes(it.box)
+                                      ? [{ value: it.box, label: `${it.box} (목록에 없음)` }]
+                                      : []),
+                                  ]}
+                                  ariaLabel="BOX"
+                                  native
                                 />
                               </td>
                               {variants.length > 0 && (
