@@ -1228,9 +1228,9 @@
 }
 .mx-c1 {
   left: 34px;
-  /* YS-TEPS1026033(14자)이 여유 있게 들어가도록 */
-  min-width: 144px;
-  width: 144px;
+  /* YS-TEPS1026033(14자) + 구성품 버튼(20px)이 여유 있게 들어가도록 */
+  min-width: 168px;
+  width: 168px;
   text-align: left;
   box-shadow: 2px 0 0 var(--border, #e5e8eb);
 }
@@ -1815,4 +1815,12 @@ body:has(.pr-page) .main-content {
 }
 .pr-worker-ask .btn {
   height: 46px;
+}
+
+/* 모바일은 글자가 16px 이라 같은 이름(14자)+구성품 버튼에 폭이 더 든다 */
+@media (max-width: 768px) {
+  .mx-c1 {
+    min-width: 196px;
+    width: 196px;
+  }
 }

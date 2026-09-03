@@ -22330,15 +22330,24 @@ a.lib-row-name:hover {
 }
 
 /* ── 호기 자재 체크 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」) ── */
-.mx-table td.mx-boxmat {
-  position: relative;
+/* 프로젝트명 칸 = 이름 + 구성품 버튼 한 줄 (버튼은 우측 끝) */
+.mx-proj-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.mx-proj-wrap > .mx-proj-input,
+.mx-proj-wrap > .mx-proj-name {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .mx-mat-btn {
-  position: absolute;
-  right: 2px;
-  bottom: 2px;
-  width: 16px;
-  height: 16px;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  vertical-align: middle;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -22356,8 +22365,12 @@ a.lib-row-name:hover {
   opacity: 1;
 }
 .mx-mat-btn svg {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
+}
+.pcard .mx-mat-btn {
+  width: 28px;
+  height: 28px;
 }
 .pmat-title-sub {
   font-weight: 500;

@@ -404,7 +404,7 @@ export default function ProductionPage() {
                 checkerName={workerName}
                 onOpen={openModal}
                 onRemove={handleRemove}
-                onMaterials={(id, box) => navigate(`/production/${id}/materials?box=${encodeURIComponent(box)}`)}
+                onMaterials={(id) => navigate(`/production/${id}/materials`)}
               />
 
               {/* 모바일 카드 */}
@@ -422,7 +422,23 @@ export default function ProductionPage() {
                     >
                       <div className="pcard-top">
                         <div className="grow">
-                          <div className="proj-name">{p.프로젝트 || '—'}</div>
+                          <div className="proj-name">
+                            {p.프로젝트 || '—'}
+                            {p.bomLink?.projectId && (
+                              <button
+                                type="button"
+                                className="mx-mat-btn"
+                                title="구성품 입고 체크 (BOM)"
+                                aria-label="구성품 입고 체크"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/production/${p.id}/materials`);
+                                }}
+                              >
+                                <Icon name="list" />
+                              </button>
+                            )}
+                          </div>
                           <div className="proj-sub">
                             {p.호기 || '호기 미정'} · {p.정역 || '-'} · {p.기구제작 || '-'} · {p.자재 || '-'}
                           </div>

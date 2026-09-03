@@ -525,11 +525,29 @@ export default function ProductionMatrix({
                 {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
                     프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
                 <td className="mx-sticky mx-c1 mx-proj">
-                  {canEdit ? (
-                    <Txt p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
-                  ) : (
-                    <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
-                  )}
+                  <div className="mx-proj-wrap">
+                    {canEdit ? (
+                      <Txt p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
+                    ) : (
+                      <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
+                    )}
+                    {/* 구성품 입고 체크 — BOX 마다 두지 않고 호기당 하나 (2026-09-03 대표님
+                        「개별로 두지말고 프로젝트 명 칸 옆에」). BOM 을 연결한 호기만 */}
+                    {onMaterials && p.bomLink?.projectId && (
+                      <button
+                        type="button"
+                        className="mx-mat-btn"
+                        title="구성품 입고 체크 (BOM)"
+                        aria-label="구성품 입고 체크"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMaterials(p.id);
+                        }}
+                      >
+                        <Icon name="list" />
+                      </button>
+                    )}
+                  </div>
                 </td>
                 <CycleCell
                   p={p}
@@ -600,7 +618,6 @@ export default function ProductionMatrix({
                       onDefect={() => onOpen(p.id, 'defect', b)}
                       shipCount={shipPhotoCount(p, b)}
                       onShip={() => onOpen(p.id, 'ship', b)}
-                      onMaterials={onMaterials && p.bomLink?.projectId ? () => onMaterials(p.id, b) : null}
                     />
                   );
                 })}
@@ -704,7 +721,6 @@ function BoxGroup({
   onDefect,
   shipCount,
   onShip,
-  onMaterials, // BOM 이 연결된 호기만 — 구성품 체크 페이지로 (2026-09-03 대표님)
 }) {
   return (
     <>
@@ -720,20 +736,6 @@ function BoxGroup({
             title={k}
           >
             {on ? mmdd(matDate[k]) || <Icon name="check" /> : ''}
-            {onMaterials && k === '자재_도급' && (
-              <button
-                type="button"
-                className="mx-mat-btn"
-                title="구성품 입고 체크 (BOM)"
-                aria-label="구성품 입고 체크"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMaterials();
-                }}
-              >
-                <Icon name="list" />
-              </button>
-            )}
           </td>
         );
       })}
