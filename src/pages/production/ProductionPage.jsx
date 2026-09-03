@@ -610,6 +610,7 @@ export default function ProductionPage() {
       {openPanel && openMode !== 'ship' && (
         <ProductionPanelModal
           panel={openPanel}
+          panels={panels}
           mode={openMode}
           part={openPart}
           canEdit={canEdit}

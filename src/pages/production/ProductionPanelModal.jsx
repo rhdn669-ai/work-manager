@@ -1,10 +1,13 @@
-import { Fragment, useRef, useState, useMemo } from 'react';
+import { Fragment, useRef, useState, useMemo, useEffect } from 'react';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto, attachDefectPhoto } from '../../services/productionService';
 import { useUploads } from '../../contexts/useUploads';
 import ImageLightbox from '../../components/common/ImageLightbox';
+import Select from '../../components/common/Select';
+import { getBomProjects } from '../../services/bomService';
+import { makeBomLink, siblingsForCopy } from '../../domain/panelBom';
 import { GIGU_MAKERS, OVERALL_CFG, deriveBoxStatus, AFTER_TURNON } from '../../domain/production';
 import { DEFECT_TYPE_LABELS } from '../../domain/defectTypes';
 
@@ -31,6 +34,7 @@ function getInsp(p) {
 // 판넬 상세/편집 — 변경 즉시 저장. canEdit=false(일반직원)면 조회 전용.
 export default function ProductionPanelModal({
   panel: p,
+  panels = [], // 같은 프로젝트의 다른 호기에 BOM 연결을 복사할 때 쓴다
   canEdit,
   canDefect = canEdit,
   checkerName = '',
@@ -39,7 +43,7 @@ export default function ProductionPanelModal({
   part = null,
 }) {
   const insp = getInsp(p);
-  const { toast } = useDialog();
+  const { toast, confirm } = useDialog();
   const { runUpload } = useUploads();
   // 불량 사진 촬영/첨부 — 하나의 숨은 input을 공유, 대상(부품·차수·행)을 ref에 보관
   const photoInputRef = useRef(null);
@@ -143,6 +147,57 @@ export default function ProductionPanelModal({
   }
 
   const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
+
+  // ── BOM 연결 — 이 호기가 어느 BOM(프로젝트·타입)을 쓰는지 (2026-09-03 대표님) ──
+  // 한 번 정해 두면 BOX 마다 버튼 한 번에 맞는 구성품이 열린다. BOX 는 판넬과 BOM 이
+  // 같은 이름을 써서 대응표가 필요 없다.
+  const [bomProjects, setBomProjects] = useState([]);
+  useEffect(() => {
+    getBomProjects()
+      .then((list) => setBomProjects(list || []))
+      .catch(() => setBomProjects([]));
+  }, []);
+  const link = p.bomLink || null;
+  const linkedProject = useMemo(() => bomProjects.find((x) => x.id === link?.projectId) || null, [bomProjects, link]);
+  const variantOptions = useMemo(
+    () =>
+      (Array.isArray(linkedProject?.variants) ? linkedProject.variants : []).map((v) => ({
+        value: v.key,
+        label: v.label,
+      })),
+    [linkedProject],
+  );
+  const copyTargets = useMemo(() => (link ? siblingsForCopy(panels, p) : []), [panels, p, link]);
+
+  const setLink = (projectId, variantKey) => {
+    const proj = bomProjects.find((x) => x.id === projectId);
+    if (!proj) {
+      save({ bomLink: null });
+      return;
+    }
+    const v = (proj.variants || []).find((x) => x.key === variantKey);
+    save({
+      bomLink: makeBomLink({
+        projectId: proj.id,
+        projectName: proj.name,
+        variantKey: v ? v.key : '',
+        variantLabel: v ? v.label : '',
+      }),
+    });
+  };
+
+  // 같은 프로젝트의 다른 호기에 같은 연결을 — 호기 여덟 개면 여덟 번 고르지 않게
+  const copyLinkToSiblings = async () => {
+    if (!link || copyTargets.length === 0) return;
+    // 여러 호기를 한꺼번에 바꾸는 일이라 한 번 되묻는다
+    if (!(await confirm(`같은 회사의 다른 호기 ${copyTargets.length}개에 이 BOM 연결을 복사하시겠습니까?`))) return;
+    try {
+      await Promise.all(copyTargets.map((q) => updatePanel(q.id, { bomLink: link })));
+      toast(`${copyTargets.length}개 호기에 연결을 복사했습니다`, 'success');
+    } catch {
+      toast('연결 복사 중 오류가 발생했습니다', 'error');
+    }
+  };
 
   const field = (label, key, type = 'text') => (
     <div className="pm-field" key={key}>
@@ -414,6 +469,69 @@ export default function ProductionPanelModal({
               >
                 조회 전용
               </span>
+            )}
+          </div>
+
+          {/* BOM 연결 — 호기 자재 체크의 출발점. 여기서 정한 BOM 의 구성품이 BOX 마다 열린다 */}
+          <div className="pm-section pm-bomlink">
+            <div className="pm-section-title">
+              BOM 연결
+              {link && (
+                <span className="pm-bomlink-badge">
+                  {link.projectName}
+                  {link.variantLabel ? ` · ${link.variantLabel}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="pm-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+              <div className="pm-field">
+                <label>BOM 프로젝트</label>
+                <Select
+                  value={link?.projectId || ''}
+                  onChange={(v) => setLink(v, '')}
+                  options={[
+                    { value: '', label: '연결 안 함' },
+                    ...bomProjects.map((x) => ({ value: x.id, label: x.name })),
+                  ]}
+                  placeholder="연결 안 함"
+                  ariaLabel="BOM 프로젝트"
+                  disabled={!canEdit}
+                  native
+                />
+              </div>
+              <div className="pm-field">
+                <label>타입(형번)</label>
+                <Select
+                  value={link?.variantKey || ''}
+                  onChange={(v) => setLink(link?.projectId, v)}
+                  options={[{ value: '', label: variantOptions.length ? '공통만' : '타입 없음' }, ...variantOptions]}
+                  placeholder="공통만"
+                  ariaLabel="BOM 타입"
+                  disabled={!canEdit || !link}
+                  native
+                />
+              </div>
+              <div className="pm-field">
+                <label>&nbsp;</label>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  disabled={!canEdit || !link || copyTargets.length === 0}
+                  onClick={copyLinkToSiblings}
+                  title={
+                    copyTargets.length
+                      ? `같은 회사의 다른 호기 ${copyTargets.length}개에 이 연결을 복사합니다`
+                      : '복사할 다른 호기가 없거나 이미 같은 연결입니다'
+                  }
+                >
+                  다른 호기에 복사{copyTargets.length ? ` (${copyTargets.length})` : ''}
+                </button>
+              </div>
+            </div>
+            {!link && (
+              <p className="pm-bomlink-hint">
+                BOM 을 연결하면 생산현황 표의 BOX 칸에서 구성품 입고를 하나씩 체크할 수 있습니다.
+              </p>
             )}
           </div>
 

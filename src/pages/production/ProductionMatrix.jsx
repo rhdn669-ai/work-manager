@@ -620,7 +620,17 @@ export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit,
                   </span>
                 </td>
                 {canEdit && (
-                  <td className="mx-cell">
+                  <td className="mx-cell mx-actions">
+                    {/* PC 표에는 기본정보(BOM 연결·비고·일정)를 여는 길이 불량·출고 칸뿐이었다.
+                        상세를 바로 여는 버튼을 둔다 (2026-09-03 대표님 「호기별 자재」 ②) */}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => onOpen(p.id, 'info')}
+                      title="기본정보 · BOM 연결"
+                    >
+                      상세
+                    </button>
                     <button className="btn btn-sm btn-danger" onClick={(e) => onRemove(e, p)}>
                       <Icon name="trash" className="btn-ic" />
                     </button>

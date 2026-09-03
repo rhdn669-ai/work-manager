@@ -22301,3 +22301,31 @@ a.lib-row-name:hover {
   color: #fff;
 }
 
+/* ── 판넬 상세 · BOM 연결 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」) ── */
+.pm-bomlink .pm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pm-bomlink-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--primary-softer, #f0f3f8);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.pm-bomlink-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 생산현황 표 맨 오른쪽 — 상세 · 삭제 나란히 (2026-09-03) */
+.mx-table td.mx-actions {
+  white-space: nowrap;
+}
+.mx-table td.mx-actions .btn + .btn {
+  margin-left: 4px;
+}
+
