@@ -337,9 +337,15 @@ export default function ProductionPage() {
             <b>{panels.filter((p) => (p.회사 || '') === c).length}</b>
           </button>
         ))}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
+        <div className="pr-views" role="tablist" aria-label="보기">
           {VIEWS.map((v) => (
-            <button key={v} className={`pr-chip ${view === v ? 'on' : ''}`} onClick={() => setView(v)}>
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              className={`pr-chip ${view === v ? 'on' : ''}`}
+              onClick={() => setView(v)}
+            >
               {v}
             </button>
           ))}
@@ -376,13 +382,15 @@ export default function ProductionPage() {
               출고 숨김
             </button>
             {/* 호기 범위를 골라 무엇이 얼마나 모자란지 — BOM 을 연결한 호기만 잡힌다
-                (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」) */}
+                (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」).
+                필터 칩이 아니라 다른 화면으로 가는 버튼이라 오른쪽 끝에 둔다. */}
             <button
               type="button"
-              className="pr-chip"
+              className="btn btn-sm btn-outline board-toolbar-right"
               onClick={() => navigate(`/production/shortage?company=${encodeURIComponent(company)}`)}
               title="호기 범위의 부족 자재를 품목별로 합산"
             >
+              <Icon name="list" className="btn-ic" />
               부족 집계
             </button>
           </div>
@@ -405,6 +413,7 @@ export default function ProductionPage() {
                 onOpen={openModal}
                 onRemove={handleRemove}
                 onMaterials={(id) => navigate(`/production/${id}/materials`)}
+                orderPool={panels.filter((p) => !p.회사 || p.회사 === company)}
               />
 
               {/* 모바일 카드 */}

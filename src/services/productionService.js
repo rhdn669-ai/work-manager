@@ -1,3 +1,4 @@
+import { orderOf } from '../domain/panelOrder';
 import {
   collection,
   doc,
@@ -25,10 +26,13 @@ export function subscribePanels(cb) {
     // 납기 → 호기 순. 둘 다 비어 있으면(갓 추가한 판넬) 만든 순서대로 아래에 쌓이게 한다.
     // 이 기준이 없으면 새로 추가한 행이 목록 가운데로 끼어든다.
     const ms = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : 0);
+    // 손으로 끌어 정한 순서(order)가 있으면 그것이 먼저다 (2026-09-03 대표님 「순서 이동」).
+    // 순서가 없는 줄은 뒤에 납기순으로 이어진다.
     const rows = snap.docs
       .map((d) => recompute({ id: d.id, ...d.data() }))
       .sort(
         (a, b) =>
+          orderOf(a) - orderOf(b) ||
           (a.납기 || '9999').localeCompare(b.납기 || '9999') ||
           (a.호기 || '').localeCompare(b.호기 || '', undefined, { numeric: true }) ||
           ms(a.createdAt) - ms(b.createdAt),
@@ -65,6 +69,11 @@ export async function updatePanel(id, patch) {
 // 74칸짜리 표가 통째로 다시 그려진다. 8줄이면 8번. 그래서 눈에 띄게 굼떴다.
 //
 // 새로 만드는 판넬은 id 를 미리 뽑아 같은 묶음에 넣는다 — 만들고 나서 다시 채우지 않는다.
+/** 끌어서 정한 차례를 저장 — ids 순서대로 0,1,2… (회사 전체 목록 기준) */
+export async function savePanelOrder(ids) {
+  await bulkWritePanels({ updates: ids.map((id, i) => ({ id, patch: { order: i } })) });
+}
+
 export async function bulkWritePanels({ creates = [], updates = [] }) {
   if (creates.length === 0 && updates.length === 0) return [];
   const batch = writeBatch(db);

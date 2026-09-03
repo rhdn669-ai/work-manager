@@ -1,7 +1,24 @@
 import { Fragment, useState, useEffect, useRef, useMemo } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
-import { bulkWritePanels, updatePanel } from '../../services/productionService';
+import { bulkWritePanels, updatePanel, savePanelOrder } from '../../services/productionService';
+import { misorderedIds, mergeMove } from '../../domain/panelOrder';
 import {
   BUPMOK,
   JAIP,
@@ -11,7 +28,6 @@ import {
   GIGU_MAKERS,
   MP_SUBS,
   UI_TASK_STATES,
-  TASK_CFG,
   OVERALL_CFG,
   getDday,
   boxMat,
@@ -68,6 +84,27 @@ function TextCell({ saved, className, placeholder, onCommit, onPaste }) {
   );
 }
 
+// 끌 수 있는 행 — 손잡이(# 칸)만 잡힌다. 칸 안의 입력·클릭은 그대로 둔다.
+// 납기가 바뀔 예정이라 줄을 미리 옮겨 두는 용도 (2026-09-03 대표님 「순서 이동」).
+function SortableTr({ id, disabled, className, children }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : undefined,
+    position: isDragging ? 'relative' : undefined,
+    zIndex: isDragging ? 5 : undefined,
+  };
+  return (
+    <tr ref={setNodeRef} style={style} className={className}>
+      {children({ handleProps: { ...attributes, ...listeners, ref: setActivatorNodeRef } })}
+    </tr>
+  );
+}
+
 // 날짜 칸 — 같은 이유로 밖에 둔다. 안에 있으면 달력을 열자마자 다시 그려져 닫힌다.
 function DateCell({ value, cellCls, canEdit, onEnter, onChange, onPaste, onFillStart, display }) {
   return (
@@ -92,8 +129,35 @@ export default function ProductionMatrix({
   onRemove,
   onMaterials,
   company,
+  orderPool = null, // 회사 전체 목록(정렬된) — 검색 중 옮겨도 숨은 줄 자리를 지키려고
 }) {
   const { toast } = useDialog();
+
+  // ── 끌어서 순서 이동 ──
+  const canDrag = canEdit && Array.isArray(orderPool);
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const rowIds = useMemo(() => panels.map((p) => p.id), [panels]);
+  // 납기 날짜 차례와 어긋난 줄 — 잠그지 않고 색으로만 알린다
+  const misordered = useMemo(() => misorderedIds(panels), [panels]);
+  async function handleDragEnd({ active, over }) {
+    if (!canDrag || !over || active.id === over.id) return;
+    const next = mergeMove(
+      orderPool.map((p) => p.id),
+      rowIds,
+      active.id,
+      over.id,
+    );
+    try {
+      await savePanelOrder(next);
+    } catch (err) {
+      console.error(err);
+      toast('순서 저장에 실패했습니다', 'error', 0);
+    }
+  }
   const setField = (p, patch) => {
     if (!canEdit) return;
     updatePanel(p.id, patch).catch((e) => {
@@ -145,7 +209,7 @@ export default function ProductionMatrix({
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
-  const HEAD_H = 126; // 머리 3줄이 sticky 로 덮는 높이
+  const HEAD_H = 104; // 머리 3줄(36+36+32)이 sticky 로 덮는 높이
   const win = useMemo(() => {
     const first = Math.max(0, Math.floor((view.top - HEAD_H) / ROW_H) - OVERSCAN);
     const last = Math.min(panels.length, Math.ceil((view.top + view.height) / ROW_H) + OVERSCAN);
@@ -353,350 +417,391 @@ export default function ProductionMatrix({
   };
 
   return (
-    <div className="mx-wrap card" ref={wrapRef}>
-      <table className="mx-table">
-        <thead>
-          {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
-          <tr className="mx-group-row">
-            <th scope="col" className="mx-sticky" colSpan={6}>
-              기본
-            </th>
-            {BUPMOK.map((b) => (
-              <th scope="col" key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 3}>
-                {b}
+    <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="mx-wrap card" ref={wrapRef}>
+        <table className="mx-table">
+          <thead>
+            {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
+            <tr className="mx-group-row">
+              <th scope="col" className="mx-sticky" colSpan={6}>
+                기본
               </th>
-            ))}
-            <th scope="col" colSpan={IPGO_ITEMS.length}>
-              입고 예정일
-            </th>
-            <th scope="col" colSpan={2 + AFTER_TURNON.length}>
-              일정
-            </th>
-            <th scope="col" colSpan={canEdit ? 3 : 2}>
-              판정
-            </th>
-          </tr>
-          {/* 2행: 자재 그룹(판금·하네스·자재) + 불량·상태 — 하위 없는 칸은 rowSpan 2 */}
-          <tr className="mx-sub-row">
-            <th scope="col" className="mx-sticky mx-c0" rowSpan={2}>
-              #
-            </th>
-            <th scope="col" className="mx-sticky mx-c1" rowSpan={2}>
-              프로젝트
-            </th>
-            <th scope="col" rowSpan={2}>
-              정역
-            </th>
-            <th scope="col" rowSpan={2}>
-              자재
-            </th>
-            <th scope="col" rowSpan={2}>
-              CHUCK
-            </th>
-            <th scope="col" rowSpan={2}>
-              기구
-            </th>
-            {BUPMOK.map((b) =>
-              b === 'MP' ? (
-                <Fragment key={b}>
-                  {MP_SUBS.map((s, si) => (
-                    <th scope="col" key={s} className={`mx-sub-th${si === 0 ? ' mx-box-start' : ''}`} rowSpan={2}>
-                      {s}
-                    </th>
-                  ))}
-                  <th scope="col" className="mx-sub-th" rowSpan={2}>
-                    상태
-                  </th>
-                </Fragment>
-              ) : (
-                <Fragment key={b}>
-                  {JAIP_GROUPS.map((g, gi) =>
-                    g.leaves.length === 1 ? (
-                      <th
-                        scope="col"
-                        key={g.key}
-                        className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
-                        rowSpan={2}
-                      >
-                        {g.label}
-                      </th>
-                    ) : (
-                      <th
-                        scope="col"
-                        key={g.key}
-                        className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
-                        colSpan={g.leaves.length}
-                      >
-                        {g.label}
-                      </th>
-                    ),
-                  )}
-                  <th scope="col" className="mx-sub-th mx-grp-start" rowSpan={2}>
-                    불량
-                  </th>
-                  <th scope="col" className="mx-sub-th" rowSpan={2}>
-                    상태
-                  </th>
-                  {/* 내보내기 전 다섯 면을 찍어 남긴다 (2026-08-22 대표님).
-                      「출고사진」 네 글자가 54px 을 넘어 옆 칸과 겹쳐 이 칸만 넓게 잡는다. */}
-                  <th scope="col" className="mx-sub-th mx-ship-th" rowSpan={2}>
-                    출고사진
-                  </th>
-                </Fragment>
-              ),
-            )}
-            {IPGO_GROUPS.map((g) =>
-              g.leaves.length === 1 ? (
-                <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
-                  {g.label}
+              {BUPMOK.map((b) => (
+                <th scope="col" key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 3}>
+                  {b}
                 </th>
-              ) : (
-                <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
-                  {g.label}
-                </th>
-              ),
-            )}
-            {/* 자재 납기(발주)와 헷갈려 「판넬납기」로 부른다 — 저장 필드명은 납기 그대로 */}
-            <th scope="col" rowSpan={2}>
-              판넬납기
-            </th>
-            <th scope="col" rowSpan={2}>
-              턴온
-            </th>
-            {/* 턴온 뒤 마무리 일정 — 조정부터 출하까지 현장 흐름 순서 (2026-08-12 대표님) */}
-            {AFTER_TURNON.map((f) => (
-              <th scope="col" key={f.key} rowSpan={2}>
-                {f.label}
+              ))}
+              <th scope="col" colSpan={IPGO_ITEMS.length}>
+                입고 예정일
               </th>
-            ))}
-            <th scope="col" rowSpan={2}>
-              진행
-            </th>
-            <th scope="col" rowSpan={2}>
-              상태
-            </th>
-            {canEdit && (
+              <th scope="col" colSpan={2 + AFTER_TURNON.length}>
+                일정
+              </th>
+              <th scope="col" colSpan={canEdit ? 3 : 2}>
+                판정
+              </th>
+            </tr>
+            {/* 2행: 자재 그룹(판금·하네스·자재) + 불량·상태 — 하위 없는 칸은 rowSpan 2 */}
+            <tr className="mx-sub-row">
+              <th scope="col" className="mx-sticky mx-c0" rowSpan={2}>
+                #
+              </th>
+              <th scope="col" className="mx-sticky mx-c1" rowSpan={2}>
+                프로젝트
+              </th>
               <th scope="col" rowSpan={2}>
-                작업
+                정역
               </th>
-            )}
-          </tr>
-          {/* 3행: 하네스·자재 하위 leaf (non-MP만) */}
-          <tr className="mx-sub-row mx-leaf-row">
-            {BUPMOK.map((b) => (
-              <Fragment key={b}>
-                {b === 'MP'
-                  ? null
-                  : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g, gi) =>
-                      g.leaves.map((l, li) => (
+              <th scope="col" rowSpan={2}>
+                자재
+              </th>
+              <th scope="col" rowSpan={2}>
+                CHUCK
+              </th>
+              <th scope="col" rowSpan={2}>
+                기구
+              </th>
+              {BUPMOK.map((b) =>
+                b === 'MP' ? (
+                  <Fragment key={b}>
+                    {MP_SUBS.map((s, si) => (
+                      <th scope="col" key={s} className={`mx-sub-th${si === 0 ? ' mx-box-start' : ''}`} rowSpan={2}>
+                        {s}
+                      </th>
+                    ))}
+                    <th scope="col" className="mx-sub-th" rowSpan={2}>
+                      상태
+                    </th>
+                  </Fragment>
+                ) : (
+                  <Fragment key={b}>
+                    {JAIP_GROUPS.map((g, gi) =>
+                      g.leaves.length === 1 ? (
                         <th
                           scope="col"
-                          key={`${b}-${l.key}`}
-                          className={`mx-sub-th${gi === 0 && li === 0 ? ' mx-grp-start' : ''}`}
+                          key={g.key}
+                          className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
+                          rowSpan={2}
                         >
-                          {l.label}
+                          {g.label}
                         </th>
-                      )),
+                      ) : (
+                        <th
+                          scope="col"
+                          key={g.key}
+                          className={`mx-sub-th ${gi === 0 ? 'mx-box-start' : 'mx-grp-start'}`}
+                          colSpan={g.leaves.length}
+                        >
+                          {g.label}
+                        </th>
+                      ),
                     )}
-              </Fragment>
-            ))}
-            {/* 일정 입고일 — 하네스·자재 묶음 하위(사급·도급·제작 / 사급·도급) */}
-            {IPGO_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
-              g.leaves.map((l) => (
-                <th scope="col" key={`ipgo-${l.key}`} className="mx-sub-th">
-                  {l.label}
+                    <th scope="col" className="mx-sub-th mx-grp-start" rowSpan={2}>
+                      불량
+                    </th>
+                    <th scope="col" className="mx-sub-th" rowSpan={2}>
+                      상태
+                    </th>
+                    {/* 내보내기 전 다섯 면을 찍어 남긴다 (2026-08-22 대표님).
+                      「출고사진」 네 글자가 54px 을 넘어 옆 칸과 겹쳐 이 칸만 넓게 잡는다. */}
+                    <th scope="col" className="mx-sub-th mx-ship-th" rowSpan={2}>
+                      출고사진
+                    </th>
+                  </Fragment>
+                ),
+              )}
+              {IPGO_GROUPS.map((g) =>
+                g.leaves.length === 1 ? (
+                  <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
+                    {g.label}
+                  </th>
+                ) : (
+                  <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
+                    {g.label}
+                  </th>
+                ),
+              )}
+              {/* 자재 납기(발주)와 헷갈려 「판넬납기」로 부른다 — 저장 필드명은 납기 그대로 */}
+              <th scope="col" rowSpan={2}>
+                판넬납기
+              </th>
+              <th scope="col" rowSpan={2}>
+                턴온
+              </th>
+              {/* 턴온 뒤 마무리 일정 — 조정부터 출하까지 현장 흐름 순서 (2026-08-12 대표님) */}
+              {AFTER_TURNON.map((f) => (
+                <th scope="col" key={f.key} rowSpan={2}>
+                  {f.label}
                 </th>
-              )),
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {win.first > 0 && <tr style={{ height: win.first * ROW_H }} aria-hidden="true" />}
-          {panels.slice(win.first, win.last).map((p, i) => {
-            const idx = win.first + i;
-            const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
-            const dd = getDday(p.납기);
-            const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
-            const urg = dd >= 0 && dd <= 3 && !isDone;
-            const od = dd < 0 && !isDone;
-            return (
-              <tr key={p.id} className={od ? 'mx-od' : urg ? 'mx-urg' : ''}>
-                <td className="mx-sticky mx-c0 mx-no">{idx + 1}</td>
-                {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
+              ))}
+              <th scope="col" rowSpan={2}>
+                진행
+              </th>
+              <th scope="col" rowSpan={2}>
+                상태
+              </th>
+              {canEdit && (
+                <th scope="col" rowSpan={2}>
+                  작업
+                </th>
+              )}
+            </tr>
+            {/* 3행: 하네스·자재 하위 leaf (non-MP만) */}
+            <tr className="mx-sub-row mx-leaf-row">
+              {BUPMOK.map((b) => (
+                <Fragment key={b}>
+                  {b === 'MP'
+                    ? null
+                    : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g, gi) =>
+                        g.leaves.map((l, li) => (
+                          <th
+                            scope="col"
+                            key={`${b}-${l.key}`}
+                            className={`mx-sub-th${gi === 0 && li === 0 ? ' mx-grp-start' : ''}`}
+                          >
+                            {l.label}
+                          </th>
+                        )),
+                      )}
+                </Fragment>
+              ))}
+              {/* 일정 입고일 — 하네스·자재 묶음 하위(사급·도급·제작 / 사급·도급) */}
+              {IPGO_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
+                g.leaves.map((l) => (
+                  <th scope="col" key={`ipgo-${l.key}`} className="mx-sub-th">
+                    {l.label}
+                  </th>
+                )),
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+              {win.first > 0 && <tr style={{ height: win.first * ROW_H }} aria-hidden="true" />}
+              {panels.slice(win.first, win.last).map((p, i) => {
+                const idx = win.first + i;
+                const oc = OVERALL_CFG[p.overallStatus] || OVERALL_CFG['대기중'];
+                const dd = getDday(p.납기);
+                const isDone = p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
+                const urg = dd >= 0 && dd <= 3 && !isDone;
+                const od = dd < 0 && !isDone;
+                const mis = misordered.has(p.id);
+                return (
+                  <SortableTr
+                    key={p.id}
+                    id={p.id}
+                    disabled={!canDrag}
+                    className={`${od ? 'mx-od' : urg ? 'mx-urg' : ''}${mis ? ' mx-misorder' : ''}`}
+                  >
+                    {({ handleProps }) => (
+                      <>
+                        <td className="mx-sticky mx-c0 mx-no" title={mis ? '납기 날짜 차례와 다릅니다' : undefined}>
+                          <span className="mx-no-wrap">
+                            {canDrag && (
+                              <button
+                                type="button"
+                                className="mx-drag"
+                                title="끌어서 순서 이동"
+                                aria-label="끌어서 순서 이동"
+                                {...handleProps}
+                              />
+                            )}
+                            {idx + 1}
+                          </span>
+                        </td>
+                        {/* 엑셀처럼 표에서 바로 고친다 — 모달을 거치지 않는다 (2026-08-12 대표님).
                     프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
-                <td className="mx-sticky mx-c1 mx-proj">
-                  <div className="mx-proj-wrap">
-                    {canEdit ? (
-                      <Txt p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
-                    ) : (
-                      <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
-                    )}
-                    {/* 구성품 입고 체크 — BOX 마다 두지 않고 호기당 하나 (2026-09-03 대표님
+                        <td className="mx-sticky mx-c1 mx-proj">
+                          <div className="mx-proj-wrap">
+                            {canEdit ? (
+                              <Txt p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
+                            ) : (
+                              <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
+                            )}
+                            {/* 구성품 입고 체크 — BOX 마다 두지 않고 호기당 하나 (2026-09-03 대표님
                         「개별로 두지말고 프로젝트 명 칸 옆에」). BOM 을 연결한 호기만 */}
-                    {onMaterials && p.bomLink?.projectId && (
-                      <button
-                        type="button"
-                        className="mx-mat-btn"
-                        title="구성품 입고 체크 (BOM)"
-                        aria-label="구성품 입고 체크"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMaterials(p.id);
-                        }}
-                      >
-                        <Icon name="list" />
-                      </button>
-                    )}
-                  </div>
-                </td>
-                <CycleCell
-                  p={p}
-                  field="정역"
-                  options={DIR_CYCLE}
-                  rowIndex={idx}
-                  className="mx-cell mx-dir"
-                  title="클릭: 정 / 역 전환 · 붙여넣기 가능"
-                  render={(v) =>
-                    v ? (
-                      <span className={`dir-badge ${v === '정' ? 'jung' : 'yeok'}`}>{v}</span>
-                    ) : (
-                      <span className="mx-cell-empty">·</span>
-                    )
-                  }
-                />
-                <td className="mx-cell mx-jaje">
-                  {canEdit ? <Txt p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
-                </td>
-                <td className="mx-cell mx-chuck">
-                  {canEdit ? <Txt p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
-                </td>
-                <CycleCell
-                  p={p}
-                  field="기구제작"
-                  options={['', ...gigusOf(p)]}
-                  rowIndex={idx}
-                  className="mx-cell mx-gigu"
-                  title="클릭: 기구제작 선택 · 붙여넣기 가능"
-                  render={(v) =>
-                    v ? <span className="mx-gigu-badge">{v}</span> : <span className="mx-cell-empty">·</span>
-                  }
-                />
-                {BUPMOK.map((b) => {
-                  if (b === 'MP') {
-                    const st = deriveMpState(p.mp하위상태 || {});
-                    return (
-                      <MpGroup
-                        key={b}
-                        p={p}
-                        st={st}
-                        sc={TASK_CFG[st] || TASK_CFG['대기']}
-                        canEdit={canEdit}
-                        onToggle={(k) => cycleMpSub(p, k)}
-                      />
-                    );
-                  }
-                  const mat = boxMat(p, b);
-                  const matDate = boxMatDate(p, b);
-                  const defect = boxHasDefect(p.검수, b);
-                  const defectDone = !defect && boxDefectResolved(p.검수, b);
-                  const st = deriveBoxStatus(p, b);
-                  const sc = TASK_CFG[st] || TASK_CFG['대기'];
-                  return (
-                    <BoxGroup
-                      key={b}
-                      mat={mat}
-                      matDate={matDate}
-                      defect={defect}
-                      defectDone={defectDone}
-                      defectDate={boxDefectDate(p.검수, b)}
-                      doneDate={boxDoneDate(p, b)}
-                      st={st}
-                      sc={sc}
-                      canEdit={canEdit}
-                      onMat={(k) => toggleBoxMat(p, b, k)}
-                      canDefect={canDefect}
-                      onDefect={() => onOpen(p.id, 'defect', b)}
-                      shipCount={shipPhotoCount(p, b)}
-                      onShip={() => onOpen(p.id, 'ship', b)}
-                    />
-                  );
-                })}
-                {IPGO_ITEMS.map((it) => (
-                  <Ipgo key={it.key} p={p} itemKey={it.key} />
-                ))}
-                <Dt p={p} field="납기" />
-                <Dt p={p} field="턴온" />
-                {AFTER_TURNON.map((f) => (
-                  <Dt key={f.key} p={p} field={f.key} />
-                ))}
-                <td className="mx-cell mx-prog">
-                  <div className="mx-prog-wrap">
-                    <div className="mx-prog-track">
-                      <div
-                        className={`mx-prog-fill${p.progress >= 100 ? ' is-done' : ''}`}
-                        style={{ width: `${Math.min(100, Number(p.progress) || 0)}%` }}
-                      />
-                    </div>
-                    <span className="mx-prog-num">{p.progress}%</span>
-                  </div>
-                </td>
-                <td className="mx-cell">
-                  <span className="badge badge-sm" style={{ background: oc.bg, color: oc.fg }}>
-                    {p.overallStatus}
-                  </span>
-                </td>
-                {canEdit && (
-                  <td className="mx-cell mx-actions">
-                    {/* PC 표에는 기본정보(BOM 연결·비고·일정)를 여는 길이 불량·출고 칸뿐이었다.
+                            {onMaterials && p.bomLink?.projectId && (
+                              <button
+                                type="button"
+                                className="mx-mat-btn"
+                                title="구성품 입고 체크 (BOM)"
+                                aria-label="구성품 입고 체크"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onMaterials(p.id);
+                                }}
+                              >
+                                <Icon name="list" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <CycleCell
+                          p={p}
+                          field="정역"
+                          options={DIR_CYCLE}
+                          rowIndex={idx}
+                          className="mx-cell mx-dir"
+                          title="클릭: 정 / 역 전환 · 붙여넣기 가능"
+                          render={(v) =>
+                            v ? (
+                              <span className={`dir-badge ${v === '정' ? 'jung' : 'yeok'}`}>{v}</span>
+                            ) : (
+                              <span className="mx-cell-empty">·</span>
+                            )
+                          }
+                        />
+                        <td className="mx-cell mx-jaje">
+                          {canEdit ? <Txt p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
+                        </td>
+                        <td className="mx-cell mx-chuck">
+                          {canEdit ? (
+                            <Txt p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" />
+                          ) : (
+                            p.CHUCK || ''
+                          )}
+                        </td>
+                        <CycleCell
+                          p={p}
+                          field="기구제작"
+                          options={['', ...gigusOf(p)]}
+                          rowIndex={idx}
+                          className="mx-cell mx-gigu"
+                          title="클릭: 기구제작 선택 · 붙여넣기 가능"
+                          render={(v) =>
+                            v ? <span className="mx-gigu-badge">{v}</span> : <span className="mx-cell-empty">·</span>
+                          }
+                        />
+                        {BUPMOK.map((b) => {
+                          if (b === 'MP') {
+                            const st = deriveMpState(p.mp하위상태 || {});
+                            return (
+                              <MpGroup key={b} p={p} st={st} canEdit={canEdit} onToggle={(k) => cycleMpSub(p, k)} />
+                            );
+                          }
+                          const mat = boxMat(p, b);
+                          const matDate = boxMatDate(p, b);
+                          const defect = boxHasDefect(p.검수, b);
+                          const defectDone = !defect && boxDefectResolved(p.검수, b);
+                          const st = deriveBoxStatus(p, b);
+
+                          return (
+                            <BoxGroup
+                              key={b}
+                              mat={mat}
+                              matDate={matDate}
+                              defect={defect}
+                              defectDone={defectDone}
+                              defectDate={boxDefectDate(p.검수, b)}
+                              doneDate={boxDoneDate(p, b)}
+                              st={st}
+                              canEdit={canEdit}
+                              onMat={(k) => toggleBoxMat(p, b, k)}
+                              canDefect={canDefect}
+                              onDefect={() => onOpen(p.id, 'defect', b)}
+                              shipCount={shipPhotoCount(p, b)}
+                              onShip={() => onOpen(p.id, 'ship', b)}
+                            />
+                          );
+                        })}
+                        {IPGO_ITEMS.map((it) => (
+                          <Ipgo key={it.key} p={p} itemKey={it.key} />
+                        ))}
+                        <Dt p={p} field="납기" />
+                        <Dt p={p} field="턴온" />
+                        {AFTER_TURNON.map((f) => (
+                          <Dt key={f.key} p={p} field={f.key} />
+                        ))}
+                        <td className="mx-cell mx-prog">
+                          <div className="mx-prog-wrap">
+                            <div className="mx-prog-track">
+                              <div
+                                className={`mx-prog-fill${p.progress >= 100 ? ' is-done' : ''}`}
+                                style={{ width: `${Math.min(100, Number(p.progress) || 0)}%` }}
+                              />
+                            </div>
+                            <span className="mx-prog-num">{p.progress}%</span>
+                          </div>
+                        </td>
+                        <td className="mx-cell">
+                          <span className="badge badge-sm" style={{ background: oc.bg, color: oc.fg }}>
+                            {p.overallStatus}
+                          </span>
+                        </td>
+                        {canEdit && (
+                          <td className="mx-cell mx-actions">
+                            {/* PC 표에는 기본정보(BOM 연결·비고·일정)를 여는 길이 불량·출고 칸뿐이었다.
                         상세를 바로 여는 버튼을 둔다 (2026-09-03 대표님 「호기별 자재」 ②) */}
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={() => onOpen(p.id, 'info')}
-                      title="기본정보 · BOM 연결"
-                    >
-                      상세
-                    </button>
-                    <button className="btn btn-sm btn-danger" onClick={(e) => onRemove(e, p)}>
-                      <Icon name="trash" className="btn-ic" />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-          {win.last < panels.length && <tr style={{ height: (panels.length - win.last) * ROW_H }} aria-hidden="true" />}
-        </tbody>
-      </table>
-    </div>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => onOpen(p.id, 'info')}
+                              title="기본정보 · BOM 연결"
+                            >
+                              상세
+                            </button>
+                            <button className="btn btn-sm btn-danger" onClick={(e) => onRemove(e, p)}>
+                              <Icon name="trash" className="btn-ic" />
+                            </button>
+                          </td>
+                        )}
+                      </>
+                    )}
+                  </SortableTr>
+                );
+              })}
+              {win.last < panels.length && (
+                <tr style={{ height: (panels.length - win.last) * ROW_H }} aria-hidden="true" />
+              )}
+            </SortableContext>
+          </tbody>
+        </table>
+      </div>
+    </DndContext>
   );
 }
 
 // MP 하위: 전장 9종 각 셀(대기→완료→불량 순환) + 종합상태(자동)
-function MpGroup({ p, st, sc, canEdit, onToggle }) {
+function MpGroup({ p, st, canEdit, onToggle }) {
   return (
     <>
       {MP_SUBS.map((k, ki) => {
         const s = normState((p.mp하위상태 || {})[k]);
-        const c = TASK_CFG[s] || TASK_CFG['대기'];
+
         return (
           <td
             key={k}
             className={`mx-cell mx-boxmat${ki === 0 ? ' mx-box-start' : ''}`}
-            style={{
-              background: s === '완료' ? 'var(--mx-done-bg)' : s === '문제' ? 'var(--mx-defect-bg)' : undefined,
-              color: c.dot,
-              cursor: canEdit ? 'pointer' : 'default',
-            }}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onToggle(k)}
             title={`${k} — ${s === '문제' ? '불량' : s}`}
           >
-            {s === '완료' ? <Icon name="check" /> : s === '문제' ? <Icon name="close" /> : ''}
+            {s === '완료' ? (
+              <span className="mx-tag is-done">
+                <Icon name="check" />
+              </span>
+            ) : s === '문제' ? (
+              <span className="mx-tag is-defect">
+                <Icon name="close" />
+              </span>
+            ) : (
+              ''
+            )}
           </td>
         );
       })}
-      <td className="mx-cell mx-boxstate" style={{ background: sc.bg, color: sc.fg }} title={st}>
-        {st === '완료' ? <Icon name="check" /> : st === '문제' ? <Icon name="close" /> : ''}
+      <td className="mx-cell mx-boxstate" title={st}>
+        {st === '완료' ? (
+          <span className="mx-tag is-done">
+            <Icon name="check" />
+          </span>
+        ) : st === '문제' ? (
+          <span className="mx-tag is-defect">
+            <Icon name="close" />
+          </span>
+        ) : (
+          ''
+        )}
       </td>
     </>
   );
@@ -715,7 +820,6 @@ function BoxGroup({
   defectDate,
   doneDate,
   st,
-  sc,
   canEdit,
   onMat,
   onDefect,
@@ -731,21 +835,17 @@ function BoxGroup({
             key={k}
             // BOX가 바뀌는 첫 칸은 굵게, BOX 안의 자재 그룹 경계는 얇게 — 두 단계로 구분한다
             className={`mx-cell mx-boxmat mx-dcell${ki === 0 ? ' mx-box-start' : GRP_START.has(k) ? ' mx-grp-start' : ''}`}
-            style={{ background: on ? 'var(--mx-done-bg)' : undefined, cursor: canEdit ? 'pointer' : 'default' }}
+            style={{ cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onMat(k)}
             title={k}
           >
-            {on ? mmdd(matDate[k]) || <Icon name="check" /> : ''}
+            {on ? <span className="mx-tag is-done">{mmdd(matDate[k]) || <Icon name="check" />}</span> : ''}
           </td>
         );
       })}
       <td
         className="mx-cell mx-boxdefect mx-dcell mx-grp-start"
-        style={{
-          cursor: 'pointer',
-          color: defectDone ? 'var(--mx-done-fg)' : 'var(--mx-defect-fg)',
-          background: defect ? 'var(--mx-defect-bg)' : defectDone ? 'var(--mx-done-bg)' : undefined,
-        }}
+        style={{ cursor: 'pointer' }}
         onClick={canDefect ? onDefect : undefined}
         title={
           defect
@@ -755,23 +855,35 @@ function BoxGroup({
               : '불량 기록/사진 (클릭: 상세)'
         }
       >
-        {defect ? mmdd(defectDate) || <Icon name="close" /> : defectDone ? <Icon name="check" /> : ''}
+        {defect ? (
+          <span className="mx-tag is-defect">{mmdd(defectDate) || <Icon name="close" />}</span>
+        ) : defectDone ? (
+          <span className="mx-tag is-done">
+            <Icon name="check" />
+          </span>
+        ) : (
+          ''
+        )}
       </td>
-      <td className="mx-cell mx-boxstate mx-dcell" style={{ background: sc.bg, color: sc.fg }} title={st}>
-        {st === '완료'
-          ? mmdd(doneDate) || <Icon name="check" />
-          : st === '문제'
-            ? mmdd(defectDate) || <Icon name="close" />
-            : ''}
+      <td className="mx-cell mx-boxstate mx-dcell" title={st}>
+        {st === '완료' ? (
+          <span className="mx-tag is-done">{mmdd(doneDate) || <Icon name="check" />}</span>
+        ) : st === '문제' ? (
+          <span className="mx-tag is-defect">{mmdd(defectDate) || <Icon name="close" />}</span>
+        ) : st === '진행중' ? (
+          <span className="mx-tag is-progress">진행</span>
+        ) : (
+          ''
+        )}
       </td>
       <td
         className="mx-cell mx-boxship mx-dcell"
-        style={{ cursor: 'pointer', background: shipCount > 0 ? 'var(--mx-done-bg)' : undefined }}
+        style={{ cursor: 'pointer' }}
         onClick={onShip}
         title={shipCount > 0 ? `출고사진 ${shipCount}/5 (클릭: 보기·등록)` : '출고사진 등록 (전면·후면·좌측·우측·상부)'}
       >
         {shipCount > 0 ? (
-          <span className="mx-ship-count">{shipCount}/5</span>
+          <span className="mx-tag is-done mx-ship-count">{shipCount}/5</span>
         ) : (
           <Icon name="image" className="mx-ship-empty" />
         )}
