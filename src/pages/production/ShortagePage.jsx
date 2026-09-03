@@ -19,6 +19,8 @@ import { specFontClass, localStamp } from '../../utils/printText';
 // 발주로 바로 넘기도록 붙여넣기 형식(코드 <탭> 수량)으로 복사할 수 있다.
 // 출력 열 폭(%) — NO·품목명·도번·규격·BOM·입고·부족·호기, 합 100
 const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
+// 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
+const SHT_SCREEN_COLS = [48, 130, 124, null, null, 76, 76, 76, 240];
 
 const hogiOf = (p) =>
   [p.프로젝트, p.호기]
@@ -158,21 +160,19 @@ export default function ShortagePage() {
 
   return (
     <div className="page pmat-page sht-page">
-      <div className="page-head no-print">
+      {/* 머리: 제목(좌) · 주행동 1개(발주용 복사)+출력(우측 끝). 범위는 아래 카드로 — 제목이 길어지지 않게 */}
+      <div className="page-header no-print">
         <div>
           <button type="button" className="btn btn-sm btn-outline" onClick={back}>
             <Icon name="chevronLeft" className="btn-ic" />
             생산현황
           </button>
-          <h1 className="page-title">
-            부족 자재 집계{' '}
-            <span className="pmat-title-sub">
-              · {company || '전체'} · {rangeLabel}
-            </span>
-          </h1>
+          <h2 className="page-title pmat-title">
+            부족 자재 집계 <span className="pmat-title-sub">· {company || '전체'}</span>
+          </h2>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-outline" disabled={list.length === 0} onClick={copyForOrder}>
+          <button type="button" className="btn btn-primary" disabled={list.length === 0} onClick={copyForOrder}>
             <Icon name="copy" className="btn-ic" />
             발주용 복사
           </button>
@@ -183,66 +183,91 @@ export default function ShortagePage() {
         </div>
       </div>
 
-      {/* 호기 범위 */}
-      <div className="sht-range no-print">
-        <label className="sht-range-label">호기 범위</label>
-        <Select
-          value={from}
-          onChange={(v) => setRange(v, to)}
-          options={hogiList.map((h) => ({ value: h, label: h }))}
-          placeholder="시작"
-          ariaLabel="시작 호기"
-          native
-        />
-        <span className="sht-range-tilde">~</span>
-        <Select
-          value={to}
-          onChange={(v) => setRange(from, v)}
-          options={hogiList.map((h) => ({ value: h, label: h }))}
-          placeholder="끝"
-          ariaLabel="끝 호기"
-          native
-        />
-        <span className="sht-range-sum">
-          호기 <strong>{inRange.length}</strong>개
-          {unlinked > 0 && (
-            <span className="sht-unlinked" title="BOM 을 연결하지 않은 호기는 집계에 안 들어갑니다">
-              · BOM 미연결 {unlinked}개
-            </span>
-          )}
-        </span>
+      {/* 조건 카드: 호기 범위(좌) · 도급/사급(우) */}
+      <div className="card sht-controls no-print">
+        <div className="sht-range">
+          <span className="sht-range-label">호기 범위</span>
+          <Select
+            value={from}
+            onChange={(v) => setRange(v, to)}
+            options={hogiList.map((h) => ({ value: h, label: h }))}
+            placeholder="시작"
+            ariaLabel="시작 호기"
+            native
+          />
+          <span className="sht-range-tilde">~</span>
+          <Select
+            value={to}
+            onChange={(v) => setRange(from, v)}
+            options={hogiList.map((h) => ({ value: h, label: h }))}
+            placeholder="끝"
+            ariaLabel="끝 호기"
+            native
+          />
+        </div>
+        <div className="sht-kinds" role="tablist" aria-label="도급 사급 구분">
+          {[
+            { key: 'paid', label: '도급' },
+            { key: 'free', label: '사급' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={supplyTab === t.key}
+              className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
+              onClick={() => setSupplyTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="pmat-kinds no-print">
-        {[
-          { key: 'paid', label: '도급' },
-          { key: 'free', label: '사급' },
-        ].map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={supplyTab === t.key}
-            className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-            onClick={() => setSupplyTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-        <span className="pmat-hint">
-          {list.length > 0 ? (
-            <>
-              품목 <strong>{list.length}</strong>종 · 총 <strong>{totalShort}</strong>개 부족
-            </>
-          ) : (
-            '모자란 구성품이 없습니다'
-          )}
-        </span>
+      {/* 요약 카드 — 발주 판단에 쓰는 숫자 4개 */}
+      <div className="admin-stats sht-stats no-print">
+        <div className="admin-stat">
+          <div className="admin-stat-label">부족 품목</div>
+          <div className="admin-stat-value">
+            {list.length}
+            <span>종</span>
+          </div>
+          <div className="admin-stat-sub">{supplyTab === 'free' ? '사급 (고객사 제공)' : '도급'} 기준</div>
+        </div>
+        <div className={`admin-stat${totalShort > 0 ? ' is-warning' : ''}`}>
+          <div className="admin-stat-label">총 부족 수량</div>
+          <div className="admin-stat-value">
+            {totalShort.toLocaleString()}
+            <span>개</span>
+          </div>
+          <div className="admin-stat-sub">{totalShort > 0 ? '발주 필요' : '모자란 구성품 없음'}</div>
+        </div>
+        <div className="admin-stat">
+          <div className="admin-stat-label">집계 호기</div>
+          <div className="admin-stat-value">
+            {linked.length}
+            <span>개</span>
+          </div>
+          <div className="admin-stat-sub">범위 {rangeLabel}</div>
+        </div>
+        <div className={`admin-stat${unlinked > 0 ? ' is-warning' : ''}`}>
+          <div className="admin-stat-label">BOM 미연결</div>
+          <div className="admin-stat-value">
+            {unlinked}
+            <span>개</span>
+          </div>
+          <div className="admin-stat-sub">{unlinked > 0 ? '집계에서 빠짐 — 상세에서 연결' : '전부 연결됨'}</div>
+        </div>
       </div>
 
-      {list.length > 0 && (
+      {list.length > 0 ? (
         <div className="table-scroll-x no-print">
           <table className="table pmat-table sht-table">
+            <colgroup>
+              {SHT_SCREEN_COLS.map((w, i) => (
+                <col key={i} style={w ? { width: w } : undefined} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col" className="pmat-no">
@@ -269,19 +294,42 @@ export default function ShortagePage() {
                 <tr key={a.itemId || `${a.code}-${i}`}>
                   <td className="pmat-no">{i + 1}</td>
                   <td className="pmat-code">{a.code}</td>
-                  <td>{masterMap[a.itemId]?.drawingNo || ''}</td>
-                  <td>{a.name}</td>
-                  <td className="pmat-spec" title={a.spec}>
+                  <td className="sht-drawing">{masterMap[a.itemId]?.drawingNo || ''}</td>
+                  <td className="sht-name">{a.name}</td>
+                  <td className="sht-spec" title={a.spec}>
                     {a.spec}
                   </td>
                   <td className="pmat-num">{a.need}</td>
                   <td className="pmat-num">{a.got}</td>
-                  <td className="pmat-num is-short">{a.short}</td>
-                  <td className="sht-panels">{a.panels.join(' · ')}</td>
+                  <td className="pmat-num">
+                    <span className="status-badge status-badge--cancel sht-short">{a.short}</span>
+                  </td>
+                  <td className="sht-panels">
+                    {a.panels.slice(0, 3).map((h) => (
+                      <span key={h} className="status-badge status-badge--wait">
+                        {h}
+                      </span>
+                    ))}
+                    {a.panels.length > 3 && (
+                      <span className="sht-more" title={a.panels.slice(3).join(', ')}>
+                        +{a.panels.length - 3}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="card sht-empty no-print">
+          <Icon name="check" className="sht-empty-ic" />
+          <strong>모자란 구성품이 없습니다</strong>
+          <span>
+            {linked.length === 0
+              ? '범위 안에 BOM 을 연결한 호기가 없습니다'
+              : `${rangeLabel} · ${supplyTab === 'free' ? '사급' : '도급'} 구성품이 전부 들어왔습니다`}
+          </span>
         </div>
       )}
 

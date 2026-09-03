@@ -22372,6 +22372,10 @@ a.lib-row-name:hover {
   width: 28px;
   height: 28px;
 }
+/* 자재 체크·부족 집계 머리 — 왼쪽은 돌아가기+제목 묶음, 액션은 page-header 가 우측 끝으로 민다 */
+.page-header .pmat-title {
+  margin: 6px 0 0;
+}
 .pmat-title-sub {
   font-weight: 500;
   color: var(--text-light);
@@ -22487,53 +22491,157 @@ a.lib-row-name:hover {
   .pmat-hint {
     display: none;
   }
+  /* 탭 글자가 세로로 갈라지지 않게 — 채우기 버튼은 다음 줄로 */
+  .pmat-kinds {
+    flex-wrap: wrap;
+  }
+  .pmat-kinds .bom-supply-tab {
+    white-space: nowrap;
+  }
+  .pmat-fill {
+    flex-basis: 100%;
+    display: flex;
+    gap: 6px;
+    margin-left: 0;
+  }
+  .pmat-fill .btn {
+    flex: 1;
+  }
 }
 
-/* ── 부족 자재 집계 (2026-09-03 대표님 「호기수 범위 선택해서 …」) ── */
+/* ── 부족 자재 집계 (2026-09-03 대표님 「호기수 범위 선택해서 …」 · 「디자인 개선」) ── */
+.sht-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 0 0 12px;
+}
 .sht-range {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 12px 0 10px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .sht-range-label {
   flex: none;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--font-base);
+  font-weight: 600;
   color: var(--text-light);
 }
 /* 호기 이름 길이(YS-TEPS0926165)에 맞춘 고정 폭 — 줄 전체를 차지하지 않게 */
 .sht-range .ds-select {
-  flex: 0 1 260px;
-  min-width: 180px;
+  flex: 0 0 220px;
+  width: 220px;
 }
 .sht-range-tilde {
   color: var(--text-muted);
 }
-.sht-range-sum {
-  margin-left: 6px;
-  white-space: nowrap;
-  font-size: 13px;
+.sht-kinds {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.sht-stats {
+  margin-bottom: 14px;
+}
+.sht-stats .admin-stat-value span {
+  margin-left: 3px;
+  font-size: var(--font-md);
+  font-weight: 600;
   color: var(--text-light);
 }
-.sht-unlinked {
-  margin-left: 4px;
-  color: var(--accent-press);
+/* 표 — 코드 강조, 규격은 보조 톤, 부족은 배지, 호기는 칩 */
+.sht-table .pmat-code {
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+}
+.sht-table .sht-drawing {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+.sht-table .sht-name {
+  font-weight: 600;
+  color: var(--text);
+}
+.sht-table .sht-spec {
+  color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sht-table .pmat-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sht-table .sht-short {
+  min-width: 34px;
+  justify-content: center;
+  font-size: var(--font-base);
   font-weight: 700;
 }
-.sht-table .sht-panels {
-  font-size: 13px;
+.sht-table td.sht-panels {
+  white-space: normal;
+}
+.sht-table .sht-panels .status-badge {
+  margin: 1px 4px 1px 0;
+}
+.sht-more {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.sht-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 16px;
+  text-align: center;
   color: var(--text-light);
 }
+.sht-empty strong {
+  font-size: var(--font-lg);
+  color: var(--text);
+}
+.sht-empty-ic {
+  width: 28px;
+  height: 28px;
+  color: var(--success, #16a34a);
+}
 @media (max-width: 768px) {
+  .sht-controls {
+    padding: 12px;
+  }
+  .sht-range-label {
+    flex-basis: 100%;
+  }
   .sht-range .ds-select {
-    flex: 1 1 130px;
+    flex: 1 1 0;
+    width: auto;
     min-width: 0;
   }
-  .sht-range-sum {
-    flex-basis: 100%;
+  .sht-kinds {
     margin-left: 0;
+  }
+}
+/* 폰(≤480px): 16px 글자로는 호기 이름이 반 칸에 안 들어가 한 줄에 하나씩 */
+@media (max-width: 480px) {
+  .sht-range .ds-select {
+    flex-basis: 100%;
+  }
+  .sht-range-tilde {
+    display: none;
   }
 }

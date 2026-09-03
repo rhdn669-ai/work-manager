@@ -180,7 +180,7 @@ export default function PanelMaterialsPage() {
   if (!hasBomLink(panel))
     return (
       <div className="page">
-        <h1 className="page-title">{title}</h1>
+        <h2 className="page-title pmat-title">{title}</h2>
         <p className="text-muted">
           이 호기에 연결된 BOM 이 없습니다. 생산현황 표의 「상세」에서 BOM 프로젝트와 타입을 먼저 골라 주세요.
         </p>
@@ -196,15 +196,15 @@ export default function PanelMaterialsPage() {
   return (
     <div className="page pmat-page">
       {/* ── 화면 ── */}
-      <div className="page-head no-print">
+      <div className="page-header no-print">
         <div>
           <button type="button" className="btn btn-sm btn-outline" onClick={back}>
             <Icon name="chevronLeft" className="btn-ic" />
             생산현황
           </button>
-          <h1 className="page-title">
+          <h2 className="page-title pmat-title">
             {title} <span className="pmat-title-sub">· {box} 자재 체크</span>
-          </h1>
+          </h2>
           <div className="pmat-link">
             BOM <strong>{link.projectName || project?.name || ''}</strong>
             {link.variantLabel ? (
