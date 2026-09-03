@@ -43,6 +43,21 @@ export async function setReceived(panelId, box, bomItemId, qty, by) {
   );
 }
 
+/** 한 BOX 의 여러 줄을 한 번에 — entries [{ id, qty }] (도급 세트 배정용) */
+export async function setReceivedMany(panelId, box, entries, by) {
+  const today = new Date().toISOString().slice(0, 10);
+  const items = {};
+  for (const e of entries || []) {
+    if (!e?.id) continue;
+    items[e.id] = { qty: Math.max(0, Number(e.qty) || 0), at: today, by: by || '' };
+  }
+  await setDoc(
+    doc(ref, materialsDocId(panelId, box)),
+    { panelId, box, items, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
 /** 모든 호기의 기록을 한 번에 — cb({ [panelId]: { [box]: items } }). 구간 부족 집계용 */
 export function subscribeAllMaterials(cb) {
   return onSnapshot(ref, (snap) => {

@@ -22645,3 +22645,46 @@ a.lib-row-name:hover {
     display: none;
   }
 }
+
+/* ── 도급 세트 (2026-09-03 대표님 「몇 세트 입고·어느 호기 배정」) ── */
+.pset-h {
+  margin: 18px 0 8px;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text);
+}
+.pset-meta {
+  margin-left: 6px;
+  color: var(--text-muted);
+}
+.pset-warn {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--accent-press);
+}
+.pset-limiter {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pset-panels tr.is-done > td {
+  background: var(--mx-done-bg, #eef7f0);
+}
+.sht-kinds .bom-supply-tab b {
+  margin-left: 4px;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: var(--grey-100, #f2f4f6);
+  color: var(--text-muted);
+}
+.sht-kinds .bom-supply-tab.on b {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.sht-empty-ic.is-warn {
+  color: var(--accent-press);
+}

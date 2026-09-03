@@ -393,6 +393,16 @@ export default function ProductionPage() {
               <Icon name="list" className="btn-ic" />
               부족 집계
             </button>
+            {/* 우리가 사서 넣는 도급 자재 — 몇 세트 들어왔고 어느 호기에 줄지 (2026-09-03 대표님) */}
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => navigate(`/production/paid-sets?company=${encodeURIComponent(company)}`)}
+              title="도급 세트 입고 현황 · 호기 배정"
+            >
+              <Icon name="archive" className="btn-ic" />
+              도급 세트
+            </button>
           </div>
 
           {loading ? (
