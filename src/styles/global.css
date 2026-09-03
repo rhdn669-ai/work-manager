@@ -22419,6 +22419,8 @@ a.lib-row-name:hover {
 }
 .pmat-fill {
   margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
 }
 .pmat-table .pmat-no {
   width: 44px;

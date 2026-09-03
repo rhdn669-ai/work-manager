@@ -22,7 +22,7 @@ export default function PanelMaterialsPage() {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { toast } = useDialog();
+  const { toast, confirm } = useDialog();
 
   const [panel, setPanel] = useState(null);
   const [loadedPanels, setLoadedPanels] = useState(false);
@@ -135,15 +135,29 @@ export default function PanelMaterialsPage() {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   };
-  const fillAll = async () => {
-    // 이 탭의 줄을 BOM 수량대로 한 번에 — 통째로 들어온 날 쓴다
+  // 이 탭의 줄을 한 번에 — 통째로 들어온 날은 BOM 수량대로, 잘못 채웠을 땐 0 으로
+  const fillAllTo = async (toBom) => {
+    if (
+      !toBom &&
+      !(await confirm(
+        `${supplyTab === 'free' ? '사급' : '도급'} ${shown.length}건의 들어온 개수를 모두 0 으로 되돌리시겠습니까?`,
+      ))
+    )
+      return;
     try {
-      await Promise.all(shown.map((r) => setReceived(panelId, box, r.id, Number(r.qty) || 0, userProfile?.name || '')));
-      toast(`${shown.length}건을 BOM 수량대로 채웠습니다`, 'success');
+      await Promise.all(
+        shown.map((r) => setReceived(panelId, box, r.id, toBom ? Number(r.qty) || 0 : 0, userProfile?.name || '')),
+      );
+      toast(
+        toBom ? `${shown.length}건을 BOM 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
+        'success',
+      );
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   };
+  const fillAll = () => fillAllTo(true);
+  const clearAll = () => fillAllTo(false);
 
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
   const title = `${panel?.프로젝트 || ''}${panel?.호기 ? ` ${panel.호기}` : ''}`.trim() || '호기';
@@ -246,14 +260,24 @@ export default function PanelMaterialsPage() {
         ))}
         <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>
         {shown.length > 0 && (
-          <button
-            type="button"
-            className="btn btn-sm btn-outline pmat-fill"
-            onClick={fillAll}
-            title="이 탭의 줄을 전부 BOM 수량대로"
-          >
-            전부 들어옴
-          </button>
+          <span className="pmat-fill">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={clearAll}
+              title="이 탭의 들어온 개수를 전부 0 으로"
+            >
+              전부 비움
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={fillAll}
+              title="이 탭의 줄을 전부 BOM 수량대로"
+            >
+              전부 들어옴
+            </button>
+          </span>
         )}
       </div>
 
