@@ -158,15 +158,6 @@ export default function ProductionPanelModal({
       .catch(() => setBomProjects([]));
   }, []);
   const link = p.bomLink || null;
-  const linkedProject = useMemo(() => bomProjects.find((x) => x.id === link?.projectId) || null, [bomProjects, link]);
-  const variantOptions = useMemo(
-    () =>
-      (Array.isArray(linkedProject?.variants) ? linkedProject.variants : []).map((v) => ({
-        value: v.key,
-        label: v.label,
-      })),
-    [linkedProject],
-  );
   const copyTargets = useMemo(() => (link ? siblingsForCopy(panels, p) : []), [panels, p, link]);
 
   const setLink = (projectId, variantKey) => {
@@ -501,15 +492,11 @@ export default function ProductionPanelModal({
               </div>
               <div className="pm-field">
                 <label>타입(형번)</label>
-                <Select
-                  value={link?.variantKey || ''}
-                  onChange={(v) => setLink(link?.projectId, v)}
-                  options={[{ value: '', label: variantOptions.length ? '공통만' : '타입 없음' }, ...variantOptions]}
-                  placeholder="공통만"
-                  ariaLabel="BOM 타입"
-                  disabled={!canEdit || !link}
-                  native
-                />
+                {/* 타입은 표의 「자재」 칸에서 고른다 (2026-09-03 대표님) — 여기서는 보여 주기만 */}
+                <div className="pm-static" title="생산현황 표의 「자재」 칸을 눌러 바꿉니다">
+                  {link?.variantLabel || (link ? '공통만' : '—')}
+                  <small>표의 자재 칸에서 선택</small>
+                </div>
               </div>
               <div className="pm-field">
                 <label>&nbsp;</label>

@@ -19,6 +19,7 @@ import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { bulkWritePanels, updatePanel, savePanelOrder } from '../../services/productionService';
 import { misorderedIds, mergeMove } from '../../domain/panelOrder';
+import { makeBomLink, defaultBomProjectId, variantOptionsFor, variantLabelOf } from '../../domain/panelBom';
 import {
   BUPMOK,
   JAIP,
@@ -132,8 +133,10 @@ export default function ProductionMatrix({
   onMaterials,
   company,
   orderPool = null, // 회사 전체 목록(정렬된) — 검색 중 옮겨도 숨은 줄 자리를 지키려고
+  bomProjects = [], // BOM 프로젝트(타입 목록) — 「자재」 칸에서 타입을 고른다
+  checkerName = '', // 종결 등 기록에 남길 이름
 }) {
-  const { toast } = useDialog();
+  const { toast, confirm } = useDialog();
 
   // ── 끌어서 순서 이동 ──
   const canDrag = canEdit && Array.isArray(orderPool);
@@ -268,6 +271,48 @@ export default function ProductionMatrix({
 
   // 정/역 인라인 토글 (빈값 → 정 → 역 → 빈값)
   const DIR_CYCLE = ['', '정', '역'];
+
+  // 「자재」 칸 = BOM 타입(형번) 고르기 — 모달이 아니라 표에서 (2026-09-03 대표님 「해당 위치 자재에서」).
+  // 누르면 빈값 → 타입1 → 타입2 → 빈값 으로 돈다. 고르면 자재 글자와 BOM 연결(타입)이 같이 저장되고,
+  // 아직 BOM 을 안 붙인 호기는 회사 기본 프로젝트(가장 많이 쓰는 것)로 붙는다.
+  const defaultProjectId = useMemo(() => defaultBomProjectId(orderPool || panels), [orderPool, panels]);
+  const pickVariant = (p) => {
+    if (!canEdit) return;
+    const { project, options } = variantOptionsFor(p, bomProjects, defaultProjectId);
+    if (!project || options.length === 0) return;
+    const curKey = p.bomLink?.variantKey || '';
+    const keys = ['', ...options.map((o) => o.key)];
+    const nextKey = keys[(keys.indexOf(curKey) + 1) % keys.length];
+    const v = options.find((o) => o.key === nextKey) || null;
+    setField(p, {
+      자재: v ? v.label : '',
+      bomLink: makeBomLink({
+        projectId: project.id,
+        projectName: project.name,
+        variantKey: v ? v.key : '',
+        variantLabel: v ? v.label : '',
+      }),
+    });
+  };
+
+  // 강제 종결 — 앞 공정이 안 끝났어도 출고완료로 닫는다 (2026-09-03 대표님). 다시 누르면 해제.
+  const forceClose = async (p) => {
+    if (!canEdit) return;
+    const closing = !p.출고완료;
+    if (
+      closing &&
+      !(await confirm(
+        `${p.프로젝트 || '이 호기'} 를 진행과 무관하게 종결(출고완료)하시겠습니까? 목록에서 「출고 숨김」 대상이 됩니다.`,
+      ))
+    )
+      return;
+    setField(p, {
+      출고완료: closing,
+      출고완료일: closing ? todayStr() : '',
+      출고완료자: closing ? checkerName : '',
+      강제종결: closing ? { at: todayStr(), by: checkerName } : null,
+    });
+  };
   // 기구제작 인라인 토글 (회사별 선택지 순환, 빈값 포함)
   const gigusOf = (p) => GIGU_MAKERS[p.회사] || [...GIGU_MAKERS['메티스'], ...GIGU_MAKERS['디에이치']];
 
@@ -665,9 +710,37 @@ export default function ProductionMatrix({
                             )
                           }
                         />
-                        <td className="mx-cell mx-jaje">
-                          {canEdit ? <Txt p={p} field="자재" rowIndex={idx} className="mx-text-input" /> : p.자재 || ''}
-                        </td>
+                        {(() => {
+                          const { options } = variantOptionsFor(p, bomProjects, defaultProjectId);
+                          const label = variantLabelOf(p);
+                          const linked = !!p.bomLink?.variantKey;
+                          // 타입 목록이 없는 회사(BOM 미등록)는 예전처럼 글자로 적는다
+                          if (options.length === 0)
+                            return (
+                              <td className="mx-cell mx-jaje">
+                                {canEdit ? (
+                                  <Txt p={p} field="자재" rowIndex={idx} className="mx-text-input" />
+                                ) : (
+                                  p.자재 || ''
+                                )}
+                              </td>
+                            );
+                          return (
+                            <td
+                              className="mx-cell mx-jaje mx-variant"
+                              style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                              onClick={() => pickVariant(p)}
+                              tabIndex={canEdit ? 0 : -1}
+                              title={`클릭: 타입 전환 (${options.map((o) => o.label).join(' → ')} → 빈값)`}
+                            >
+                              {label ? (
+                                <span className={`mx-variant-badge${linked ? '' : ' is-text'}`}>{label}</span>
+                              ) : (
+                                <span className="mx-cell-empty">·</span>
+                              )}
+                            </td>
+                          );
+                        })()}
                         <td className="mx-cell mx-chuck">
                           {canEdit ? (
                             <Txt p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" />
@@ -746,6 +819,14 @@ export default function ProductionMatrix({
                           <td className="mx-cell mx-actions">
                             {/* PC 표에는 기본정보(BOM 연결·비고·일정)를 여는 길이 불량·출고 칸뿐이었다.
                         상세를 바로 여는 버튼을 둔다 (2026-09-03 대표님 「호기별 자재」 ②) */}
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${p.출고완료 ? 'btn-outline' : 'btn-outline mx-close-btn'}`}
+                              onClick={() => forceClose(p)}
+                              title={p.출고완료 ? '종결(출고완료)을 해제' : '앞 공정과 무관하게 종결(출고완료)'}
+                            >
+                              {p.출고완료 ? '종결 해제' : '종결'}
+                            </button>
                             <button
                               type="button"
                               className="btn btn-sm btn-outline"

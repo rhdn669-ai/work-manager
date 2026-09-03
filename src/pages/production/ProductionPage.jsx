@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { getBomProjects } from '../../services/bomService';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
@@ -125,6 +126,13 @@ export default function ProductionPage() {
   const { confirm } = useDialog();
   const navigate = useNavigate();
   const [panels, setPanels] = useState([]);
+  // BOM 프로젝트(타입 목록) — 표의 「자재」 칸에서 타입을 고른다 (2026-09-03 대표님)
+  const [bomProjects, setBomProjects] = useState([]);
+  useEffect(() => {
+    getBomProjects()
+      .then((list) => setBomProjects(list || []))
+      .catch(() => setBomProjects([]));
+  }, []);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('현황');
   const [q, setQ] = useState('');
@@ -424,6 +432,7 @@ export default function ProductionPage() {
                 onRemove={handleRemove}
                 onMaterials={(id) => navigate(`/production/${id}/materials`)}
                 orderPool={panels.filter((p) => !p.회사 || p.회사 === company)}
+                bomProjects={bomProjects}
               />
 
               {/* 모바일 카드 */}

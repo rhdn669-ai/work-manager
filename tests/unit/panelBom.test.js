@@ -1,6 +1,15 @@
 // 판넬 ↔ BOM 연결 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」).
 import { describe, it, expect } from 'vitest';
-import { CHECKABLE_BOXES, hasBomLink, makeBomLink, siblingsForCopy, bomRowsForBox } from '../../src/domain/panelBom';
+import {
+  CHECKABLE_BOXES,
+  hasBomLink,
+  makeBomLink,
+  siblingsForCopy,
+  bomRowsForBox,
+  defaultBomProjectId,
+  variantOptionsFor,
+  variantLabelOf,
+} from '../../src/domain/panelBom';
 
 describe('연결 값', () => {
   it('MP 는 체크 대상에서 뺀다 — 하위 9종을 따로 관리한다', () => {
@@ -54,5 +63,25 @@ describe('BOX 로 BOM 줄 고르기', () => {
   it('BOX 가 빈 줄은 어느 BOX 에도 안 잡힌다', () => {
     expect(bomRowsForBox(rows, '').map((r) => r.id)).toEqual([4]);
     expect(bomRowsForBox(rows, 'ROBOT')).toEqual([]);
+  });
+});
+
+describe('자재 칸의 타입 선택', () => {
+  const projects = [
+    { id: 'P', name: '프로버', variants: [{ key: 'vT', label: 'T5391 / MT8311' }, { key: 'vM', label: 'M7H' }] },
+    { id: 'Q', name: '다른', variants: [] },
+  ];
+  it('회사 기본 프로젝트 = 가장 많이 연결한 것', () => {
+    expect(defaultBomProjectId([{ bomLink: { projectId: 'P' } }, { bomLink: { projectId: 'P' } }, { bomLink: { projectId: 'Q' } }])).toBe('P');
+    expect(defaultBomProjectId([{}, {}])).toBe('');
+  });
+  it('연결된 프로젝트의 타입, 없으면 기본 프로젝트의 타입', () => {
+    expect(variantOptionsFor({ bomLink: { projectId: 'P' } }, projects, '').options.map((o) => o.label)).toEqual(['T5391 / MT8311', 'M7H']);
+    expect(variantOptionsFor({}, projects, 'P').options).toHaveLength(2);
+    expect(variantOptionsFor({}, projects, '').options).toEqual([]);
+  });
+  it('칸 글자는 연결된 타입이 우선, 없으면 손으로 적은 자재', () => {
+    expect(variantLabelOf({ 자재: 'T5391', bomLink: { variantLabel: 'M7H' } })).toBe('M7H');
+    expect(variantLabelOf({ 자재: 'T5391' })).toBe('T5391');
   });
 });

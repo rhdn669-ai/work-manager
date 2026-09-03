@@ -1963,3 +1963,33 @@ body:has(.pr-page) .main-content {
     margin-bottom: var(--space-3);
   }
 }
+
+/* 「자재」 칸 = BOM 타입 배지 (기구 배지와 같은 꼴). 연결 없이 글자만 있는 것은 회색 */
+.mx-jaje.mx-variant {
+  width: 124px;
+  min-width: 124px;
+  max-width: 124px;
+}
+.mx-variant-badge {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft, #e7ebf2);
+  color: var(--primary, #002050);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.mx-variant-badge.is-text {
+  background: var(--grey-100, #f2f4f6);
+  color: var(--text-light);
+}
+/* 강제 종결 — 위험 동작이라 글자만 빨강 */
+.mx-close-btn {
+  color: var(--danger, #d6303f);
+  border-color: rgba(214, 48, 63, 0.35);
+}

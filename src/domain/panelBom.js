@@ -55,3 +55,35 @@ export function bomRowsForBox(rows, box) {
   const b = String(box || '').trim();
   return (rows || []).filter((r) => String(r.box || '').trim() === b);
 }
+
+/**
+ * 회사의 기본 BOM 프로젝트 — 그 회사 호기들이 가장 많이 연결한 프로젝트.
+ * 표의 「자재」 칸에서 타입을 고르면 연결이 없는 호기는 이 프로젝트로 붙는다.
+ */
+export function defaultBomProjectId(panels) {
+  const count = new Map();
+  for (const p of panels || []) {
+    const id = p?.bomLink?.projectId;
+    if (id) count.set(id, (count.get(id) || 0) + 1);
+  }
+  let best = '';
+  let n = 0;
+  for (const [id, c] of count) if (c > n) [best, n] = [id, c];
+  return best;
+}
+
+/** 호기의 「자재」 칸에 보일 타입 목록 — 연결된 프로젝트의 타입, 없으면 기본 프로젝트의 타입 */
+export function variantOptionsFor(panel, bomProjects, defaultProjectId) {
+  const pid = panel?.bomLink?.projectId || defaultProjectId || '';
+  const proj = (bomProjects || []).find((x) => x.id === pid);
+  if (!proj) return { project: null, options: [] };
+  return {
+    project: proj,
+    options: (Array.isArray(proj.variants) ? proj.variants : []).map((v) => ({ key: v.key, label: v.label })),
+  };
+}
+
+/** 「자재」 칸에 보일 글자 — 연결된 타입이 우선, 없으면 손으로 적은 자재 */
+export function variantLabelOf(panel) {
+  return panel?.bomLink?.variantLabel || panel?.자재 || '';
+}
