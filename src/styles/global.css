@@ -22701,3 +22701,26 @@ a.lib-row-name:hover {
   color: var(--text-muted);
   text-decoration: line-through;
 }
+/* 세트 배정된 호기의 도급 탭 — 읽기 전용 */
+.pmat-locked-badge {
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--font-base);
+}
+.pmat-locked-badge svg {
+  width: 13px;
+  height: 13px;
+}
+.pmat-locked-qty {
+  display: inline-block;
+  min-width: 72px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.pset-short-badge {
+  margin-left: 6px;
+}
+.pset-panels .col-action .btn + .btn {
+  margin-left: 6px;
+}

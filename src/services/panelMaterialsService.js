@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDocs, onSnapshot, query, where, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // 호기 × BOX 의 구성품 입고 기록 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」).
@@ -41,6 +41,17 @@ export async function setReceived(panelId, box, bomItemId, qty, by) {
     },
     { merge: true },
   );
+}
+
+/** 호기 하나의 기록을 한 번만 — { [box]: items } (부족분 채우기 전에 현재 값을 볼 때) */
+export async function getPanelMaterials(panelId) {
+  const snap = await getDocs(query(ref, where('panelId', '==', panelId)));
+  const out = {};
+  snap.docs.forEach((d) => {
+    const v = d.data();
+    out[v.box] = v.items || {};
+  });
+  return out;
 }
 
 /** 한 BOX 의 여러 줄을 한 번에 — entries [{ id, qty }] (도급 세트 배정용) */

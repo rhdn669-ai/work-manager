@@ -14,9 +14,11 @@ import {
   subscribeReceivedBySite,
   assignPaidSet,
   unassignPaidSet,
+  topUpPaidSet,
   setPaidSetExcluded,
 } from '../../services/paidSetService';
-import { computeSets, eligiblePanels, groupKey, panelSeq } from '../../domain/paidSets';
+import { subscribeAllMaterials } from '../../services/panelMaterialsService';
+import { computeSets, eligiblePanels, groupKey, panelSeq, consumedByItem, panelShortage } from '../../domain/paidSets';
 
 // 도급 세트 (2026-09-03 대표님 「메티스 도급 자재를 273호기부터 우리가 구매 — 몇 세트 입고됐고
 // 어느 호기에 배정할지」).
@@ -39,6 +41,8 @@ export default function PaidSetsPage() {
   const [bomByProject, setBomByProject] = useState({}); // { projectId: rows[] }
   const [received, setReceived] = useState({ byItem: {}, meta: null }); // 설정한 발주 현장의 입고
   const [sites, setSites] = useState([]);
+  const [materials, setMaterials] = useState({}); // { panelId: { box: items } } — 배정 호기가 실제 가져간 양
+  useEffect(() => subscribeAllMaterials(setMaterials), []);
   const [groupSel, setGroupSel] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -120,6 +124,15 @@ export default function PaidSetsPage() {
     [group, bomByProject],
   );
   const assignedPanels = useMemo(() => (group ? group.panels.filter((p) => p.paidSet) : []), [group]);
+  // 배정 호기들이 실제로 가져간 양 — 「있는 만큼만」 채워 부족이 남았으면 그만큼만 소진으로 센다
+  const consumed = useMemo(
+    () =>
+      consumedByItem(
+        variantRows,
+        assignedPanels.map((p) => materials[p.id] || {}),
+      ),
+    [variantRows, assignedPanels, materials],
+  );
   const calc = useMemo(
     () =>
       computeSets({
@@ -128,9 +141,15 @@ export default function PaidSetsPage() {
         assigned: assignedPanels.length,
         master: masterMap,
         exclude: excluded,
+        consumedByItem: consumed,
       }),
-    [variantRows, siteId, received, assignedPanels.length, masterMap, excluded],
+    [variantRows, siteId, received, assignedPanels.length, masterMap, excluded, consumed],
   );
+  const spareByItem = useMemo(() => Object.fromEntries(calc.items.map((it) => [it.itemId, it.spare])), [calc]);
+  // 배정 호기별 부족 — 부족분 채우기 버튼은 모자란 품목에 여유가 생겼을 때만
+  const shortageOf = (p) => panelShortage(variantRows, materials[p.id] || {});
+  const canTopUp = (p) =>
+    shortageOf(p).lines.some((l) => (excluded.includes(l.itemId) ? true : (spareByItem[l.itemId] || 0) > 0));
   const meta = siteId ? received.meta : null;
   // 배정 기준은 발주서에 적힌 세트 수다 — 현장에서 「N세트 발주」로 사 온 것이 그 수.
   // 품목 기준 셈은 「그 세트가 품목까지 다 갖춰졌나」를 보는 보조 숫자.
@@ -170,11 +189,31 @@ export default function PaidSetsPage() {
     setBusy(p.id);
     try {
       const seq = assignedPanels.length + 1;
-      await assignPaidSet(p, variantRows, { by, seq });
-      toast(`${p.프로젝트} 에 ${seq}번째 세트를 배정했습니다 — 자재 도급 칸이 켜졌습니다`, 'success');
+      const short = await assignPaidSet(p, variantRows, { by, seq, spareByItem, exclude: excluded });
+      if (short > 0)
+        toast(
+          `${p.프로젝트} 에 ${seq}번째 세트를 배정했습니다 — 품목 ${short}줄이 모자라 그 BOX 는 아직 안 켜졌습니다 (부족 집계 확인)`,
+          'error',
+          0,
+        );
+      else toast(`${p.프로젝트} 에 ${seq}번째 세트를 배정했습니다 — 자재 도급 칸이 켜졌습니다`, 'success');
     } catch (err) {
       console.error(err);
       toast('배정에 실패했습니다', 'error', 0);
+    } finally {
+      setBusy('');
+    }
+  };
+  const topUp = async (p) => {
+    setBusy(p.id);
+    try {
+      const r = await topUpPaidSet(p, variantRows, { by, spareByItem, exclude: excluded });
+      if (r.added === 0) toast('채울 수 있는 여유가 없습니다', 'error');
+      else if (r.short > 0) toast(`${r.added}줄을 채웠습니다 — 아직 ${r.short}줄 부족`, 'success');
+      else toast(`${r.added}줄을 채웠습니다 — 도급 자재가 다 찼습니다`, 'success');
+    } catch (err) {
+      console.error(err);
+      toast('부족분 채우기에 실패했습니다', 'error', 0);
     } finally {
       setBusy('');
     }
@@ -392,10 +431,19 @@ export default function PaidSetsPage() {
                     <td className="sht-drawing">{p.납기 || ''}</td>
                     <td>
                       {p.paidSet ? (
-                        <span className="status-badge status-badge--done">
-                          배정 {p.paidSet.at}
-                          {p.paidSet.by ? ` · ${p.paidSet.by}` : ''}
-                        </span>
+                        <>
+                          <span
+                            className={`status-badge ${shortageOf(p).short > 0 ? 'status-badge--progress' : 'status-badge--done'}`}
+                          >
+                            배정 {p.paidSet.at}
+                            {p.paidSet.by ? ` · ${p.paidSet.by}` : ''}
+                          </span>
+                          {shortageOf(p).short > 0 && (
+                            <span className="status-badge status-badge--cancel pset-short-badge">
+                              부족 {shortageOf(p).short}줄
+                            </span>
+                          )}
+                        </>
                       ) : (
                         <span className="status-badge status-badge--wait">미배정</span>
                       )}
@@ -403,14 +451,31 @@ export default function PaidSetsPage() {
                     <td className="pmat-num">{p.paidSet ? `${p.paidSet.seq}번째` : ''}</td>
                     <td className="col-action">
                       {p.paidSet ? (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          disabled={busy === p.id}
-                          onClick={() => unassign(p)}
-                        >
-                          배정 취소
-                        </button>
+                        <>
+                          {shortageOf(p).short > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary"
+                              disabled={busy === p.id || !canTopUp(p)}
+                              title={
+                                canTopUp(p)
+                                  ? '새로 들어온 여유로 모자란 줄을 채움'
+                                  : '모자란 품목에 아직 여유가 없습니다'
+                              }
+                              onClick={() => topUp(p)}
+                            >
+                              부족분 채우기
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            disabled={busy === p.id}
+                            onClick={() => unassign(p)}
+                          >
+                            배정 취소
+                          </button>
+                        </>
                       ) : (
                         <button
                           type="button"

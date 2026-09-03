@@ -1,10 +1,11 @@
 import { collection, doc, onSnapshot, query, where, setDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { updatePanel } from './productionService';
-import { setReceivedMany } from './panelMaterialsService';
+import { setReceivedMany, getPanelMaterials } from './panelMaterialsService';
 import { isFreeIssue } from './bomService';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
+import { fillPlan } from '../domain/paidSets';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
 //
@@ -82,13 +83,15 @@ function paidRowsByBox(variantRows) {
 }
 
 // 자재 도급 칸을 켜거나 끄는 patch — 박스입고·박스입고일자·부품상태 (표의 toggleBoxMat 와 같은 모양)
-function matPatch(panel, boxes, on) {
+// onByBox: { [box]: true|false } — 도급 줄이 전부 찬 BOX 만 켠다
+function matPatch(panel, onByBox) {
   const today = new Date().toISOString().slice(0, 10);
   const 박스입고 = { ...(panel.박스입고 || {}) };
   const 박스입고일자 = { ...(panel.박스입고일자 || {}) };
   const 부품상태 = { ...(panel.부품상태 || {}) };
-  for (const box of boxes) {
-    const mat = { ...boxMat(panel, box), 자재_도급: on };
+  for (const [box, on] of Object.entries(onByBox)) {
+    if (!CHECKABLE_BOXES.includes(box)) continue;
+    const mat = { ...boxMat(panel, box), 자재_도급: !!on };
     박스입고[box] = mat;
     박스입고일자[box] = { ...boxMatDate(panel, box), 자재_도급: on ? today : '' };
     부품상태[box] = deriveBoxStatus(panel, box, panel.검수, mat);
@@ -96,24 +99,47 @@ function matPatch(panel, boxes, on) {
   return { 박스입고, 박스입고일자, 부품상태 };
 }
 
-/** 세트 하나를 이 호기에 — 도급 줄 수량 채움 + 자재 도급 칸 켬 + 배정 기록 */
-export async function assignPaidSet(panel, variantRows, { by = '', seq = 0 } = {}) {
-  const byBox = paidRowsByBox(variantRows);
-  const boxes = Object.keys(byBox);
-  await Promise.all(
-    boxes.map((box) =>
-      setReceivedMany(
-        panel.id,
-        box,
-        byBox[box].map((r) => ({ id: r.id, qty: Number(r.qty) || 0 })),
-        by,
-      ),
-    ),
-  );
-  await updatePanel(panel.id, {
-    ...matPatch(panel, boxes, true),
-    paidSet: { seq, at: new Date().toISOString().slice(0, 10), by },
+// 계획대로 BOX 별 기록을 쓴다 — 줄의 total 을 그대로
+async function writePlan(panelId, plan, by) {
+  const byBox = {};
+  for (const l of plan.lines) (byBox[l.box] ||= []).push({ id: l.id, qty: l.total });
+  await Promise.all(Object.entries(byBox).map(([box, entries]) => setReceivedMany(panelId, box, entries, by)));
+}
+
+/**
+ * 세트 하나를 이 호기에 — 도급 줄을 「있는 만큼만」 채우고, 다 찬 BOX 만 자재 도급 칸을 켠다.
+ * spareByItem 이 없으면(예전 호출) 전부 BOM 수량대로. → 부족 줄 수를 돌려준다.
+ */
+export async function assignPaidSet(panel, variantRows, { by = '', seq = 0, spareByItem = null, exclude = [] } = {}) {
+  const rows = Object.values(paidRowsByBox(variantRows)).flat();
+  const plan = fillPlan({
+    rows,
+    spareByItem: spareByItem || Object.fromEntries(rows.map((r) => [r.itemId, Infinity])),
+    exclude,
   });
+  await writePlan(panel.id, plan, by);
+  await updatePanel(panel.id, {
+    ...matPatch(panel, plan.boxes),
+    paidSet: { seq, at: new Date().toISOString().slice(0, 10), by, short: plan.short },
+  });
+  return plan.short;
+}
+
+/** 나중에 들어온 부족분을 채운다 — 이미 있는 것은 두고 모자란 줄만, 있는 만큼만 */
+export async function topUpPaidSet(panel, variantRows, { by = '', spareByItem = {}, exclude = [] } = {}) {
+  const rows = Object.values(paidRowsByBox(variantRows)).flat();
+  const mats = await getPanelMaterials(panel.id);
+  const current = {};
+  for (const r of rows) current[r.id] = Number(mats?.[r.box || '']?.[r.id]?.qty) || 0;
+  const plan = fillPlan({ rows, spareByItem, exclude, current });
+  const changed = plan.lines.filter((l) => l.add > 0);
+  if (changed.length === 0) return { added: 0, short: plan.short };
+  await writePlan(panel.id, { lines: changed }, by);
+  await updatePanel(panel.id, {
+    ...matPatch(panel, plan.boxes),
+    paidSet: { ...(panel.paidSet || {}), short: plan.short, toppedAt: new Date().toISOString().slice(0, 10) },
+  });
+  return { added: changed.length, short: plan.short };
 }
 
 /** 배정 취소 — 도급 줄 수량 0 + 자재 도급 칸 끔 + 배정 기록 지움 */
@@ -130,5 +156,8 @@ export async function unassignPaidSet(panel, variantRows, { by = '' } = {}) {
       ),
     ),
   );
-  await updatePanel(panel.id, { ...matPatch(panel, boxes, false), paidSet: deleteField() });
+  await updatePanel(panel.id, {
+    ...matPatch(panel, Object.fromEntries(boxes.map((b) => [b, false]))),
+    paidSet: deleteField(),
+  });
 }

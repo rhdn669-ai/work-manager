@@ -93,6 +93,9 @@ export default function PanelMaterialsPage() {
     });
   }, [bomRows, link?.variantKey, box, masterMap]);
   const rec = received[box] || {};
+  // 세트를 배정한 호기의 도급 수량은 세트가 정한다 — 손으로 못 고친다 (2026-09-03 대표님
+  // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
+  const locked = supplyTab === 'paid' && !!panel?.paidSet;
   const shown = rows.filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
 
@@ -258,8 +261,19 @@ export default function PanelMaterialsPage() {
             </span>
           </button>
         ))}
-        <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>
-        {shown.length > 0 && (
+        {locked ? (
+          <span
+            className="status-badge status-badge--done pmat-locked-badge"
+            title="도급 세트 화면에서 배정·취소·부족분 채우기"
+          >
+            <Icon name="lock" />
+            세트 배정 · {panel.paidSet.seq}번째 · {panel.paidSet.at}
+            {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
+          </span>
+        ) : (
+          <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>
+        )}
+        {shown.length > 0 && !locked && (
           <span className="pmat-fill">
             <button
               type="button"
@@ -327,20 +341,26 @@ export default function PanelMaterialsPage() {
                     </td>
                     <td className="pmat-num">{Number(r.qty) || 0}</td>
                     <td className="pmat-num">
-                      <input
-                        className="num-input pmat-input"
-                        type="number"
-                        min="0"
-                        inputMode="numeric"
-                        value={draft[r.id] !== undefined ? draft[r.id] : got || ''}
-                        placeholder="0"
-                        onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
-                        onBlur={() => commit(r)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                        }}
-                        aria-label={`${r.name} 들어온 개수`}
-                      />
+                      {locked ? (
+                        <span className="pmat-locked-qty" title="세트 배정 — 도급 세트 화면에서만 바뀝니다">
+                          {got || 0}
+                        </span>
+                      ) : (
+                        <input
+                          className="num-input pmat-input"
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          value={draft[r.id] !== undefined ? draft[r.id] : got || ''}
+                          placeholder="0"
+                          onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
+                          onBlur={() => commit(r)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                          }}
+                          aria-label={`${r.name} 들어온 개수`}
+                        />
+                      )}
                     </td>
                     <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>
                     <td className="pmat-ok">{done ? <Icon name="check" className="pmat-check" /> : ''}</td>

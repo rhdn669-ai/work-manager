@@ -1,6 +1,15 @@
 // 도급 세트 셈 (2026-09-03 대표님).
 import { describe, it, expect } from 'vitest';
-import { computeSets, eligiblePanels, panelSeq, perSetByItem, groupKey } from '../../src/domain/paidSets';
+import {
+  computeSets,
+  eligiblePanels,
+  panelSeq,
+  perSetByItem,
+  groupKey,
+  fillPlan,
+  consumedByItem,
+  panelShortage,
+} from '../../src/domain/paidSets';
 
 const paid = (itemId, qty, extra = {}) => ({ id: `r-${itemId}-${qty}`, itemId, qty, supplyType: '', ...extra });
 const free = (itemId, qty) => ({ id: `f-${itemId}`, itemId, qty, supplyType: 'free' });
@@ -76,5 +85,48 @@ describe('배정 대상 호기', () => {
   });
   it('묶음 키 = 프로젝트|타입', () => {
     expect(groupKey(panels[0])).toBe('P|vT');
+  });
+});
+
+describe('있는 만큼만 채우기', () => {
+  const rows = [
+    { id: 'r1', itemId: 'A', qty: 2, box: 'P/W BOX' },
+    { id: 'r2', itemId: 'A', qty: 1, box: 'L/D BOX' },
+    { id: 'r3', itemId: 'B', qty: 1, box: 'P/W BOX' },
+    { id: 'f1', itemId: 'C', qty: 9, box: 'P/W BOX', supplyType: 'free' },
+  ];
+  it('여유가 모자라면 앞줄부터 채우고 나머지는 부족으로 남긴다 — BOX 완료 여부도 준다', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 2, B: 0 } });
+    expect(p.lines.map((l) => [l.id, l.total, l.short])).toEqual([
+      ['r1', 2, 0],
+      ['r2', 0, 1],
+      ['r3', 0, 1],
+    ]);
+    expect(p.short).toBe(2);
+    expect(p.boxes).toEqual({ 'P/W BOX': false, 'L/D BOX': false });
+  });
+  it('여유가 넉넉하면 전부 채우고 BOX 는 완료', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 10, B: 10 } });
+    expect(p.short).toBe(0);
+    expect(p.boxes).toEqual({ 'P/W BOX': true, 'L/D BOX': true });
+  });
+  it('제외한 품목은 여유와 무관하게 BOM 수량대로', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 0 }, exclude: ['A', 'B'] });
+    expect(p.short).toBe(0);
+  });
+  it('부족분 채우기 — 이미 들어온 것은 두고 모자란 만큼만 더한다', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 1, B: 1 }, current: { r1: 2, r2: 0, r3: 0 } });
+    const r2 = p.lines.find((l) => l.id === 'r2');
+    expect(r2).toMatchObject({ have: 0, add: 1, total: 1, short: 0 });
+    expect(p.lines.find((l) => l.id === 'r1').add).toBe(0);
+  });
+  it('배정 호기들이 실제로 가져간 양을 품목별로 합친다', () => {
+    const c = consumedByItem(rows, [{ 'P/W BOX': { r1: { qty: 2 }, r3: { qty: 1 }, f1: { qty: 9 } } }, { 'L/D BOX': { r2: { qty: 1 } } }]);
+    expect(c).toEqual({ A: 3, B: 1 });
+  });
+  it('호기의 부족 줄', () => {
+    const s = panelShortage(rows, { 'P/W BOX': { r1: { qty: 1 } } });
+    expect(s.short).toBe(3);
+    expect(s.lines[0]).toMatchObject({ id: 'r1', got: 1, short: 1 });
   });
 });
