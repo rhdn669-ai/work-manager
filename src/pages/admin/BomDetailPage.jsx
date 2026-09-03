@@ -30,6 +30,11 @@ import {
   setBomVariants,
   removeBomVariant,
   isFreeIssue,
+  snapshotBomRows,
+  addBomHistory,
+  bumpBomHistory,
+  listBomHistory,
+  pruneBomHistory,
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
@@ -45,6 +50,21 @@ import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
 import { BOX_OPTIONS } from '../../domain/boxes';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
+
+// 되돌리기가 맞추는 칸 — 수량·단가·비고·순서·품목·BOX·도급/사급·도번
+const HIST_KEYS = [
+  'qty',
+  'unitPrice',
+  'note',
+  'order',
+  'name',
+  'spec',
+  'unit',
+  'itemId',
+  'box',
+  'supplyType',
+  'drawingNo',
+];
 
 function fmtDateTime(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -187,17 +207,94 @@ export default function BomDetailPage() {
     bomItemsRef.current = bomItems;
   }, [bomItems]);
 
-  function pushBomUndo() {
+  // ── 잠금: 기본은 잠금 — 실수로 고쳐지는 일이 잦았다 (2026-09-03 대표님). 오른쪽 위 버튼으로 푼다 ──
+  const [locked, setLocked] = useState(true);
+  const lockedRef = useRef(true);
+  lockedRef.current = locked;
+  const guard = () => {
+    if (!lockedRef.current) return true;
+    toast('잠금 상태입니다 — 오른쪽 위 「잠금 해제」를 먼저 누르세요', 'error');
+    return false;
+  };
+
+  // ── 수정 이력: 수정 «직전» 스냅샷을 남긴다. 몇 분 안의 같은 종류 수정은 한 건으로 묶는다 ──
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState(null); // null = 아직 안 읽음
+  const [historyBusy, setHistoryBusy] = useState('');
+  const lastHistRef = useRef(null); // { id, label, startedAt, count }
+  const HIST_MERGE_MS = 3 * 60 * 1000;
+  // bump=false 는 「값이 바뀌기 직전」 신호(입력칸 onChange) — 스냅샷만 잡고 횟수는 안 센다.
+  // 화면 상태가 먼저 바뀌고 나서 저장(flushItem)되므로, 저장 시점에 찍으면 이미 바뀐 값이 남는다.
+  function recordHistory(label, { bump = true } = {}) {
+    const by = userProfile?.name || '';
+    const last = lastHistRef.current;
+    if (last && last.label === label && Date.now() - last.startedAt < HIST_MERGE_MS) {
+      if (!bump) return;
+      last.count += 1;
+      if (last.id) bumpBomHistory(last.id, last.count).catch(() => {});
+      return;
+    }
+    const entry = { id: '', label, startedAt: Date.now(), count: 1 };
+    lastHistRef.current = entry;
+    addBomHistory(projectId, { label, by, snapshot: snapshotBomRows(bomItemsRef.current) })
+      .then((id) => {
+        entry.id = id;
+        pruneBomHistory(projectId).catch(() => {});
+      })
+      .catch((e) => console.error('[BOM 이력] 저장 실패', e));
+  }
+  async function openHistory() {
+    setHistoryOpen(true);
+    try {
+      setHistory(await listBomHistory(projectId));
+    } catch {
+      toast('이력을 불러오지 못했습니다', 'error');
+      setHistory([]);
+    }
+  }
+
+  function pushBomUndo(label = 'BOM 변경') {
     const clone = JSON.parse(JSON.stringify(bomItemsRef.current));
     bomUndoStackRef.current.push(clone);
     if (bomUndoStackRef.current.length > 30) bomUndoStackRef.current.shift();
     pushUndo('BOM 변경', () => handleBomUndoRef.current?.());
+    recordHistory(label);
   }
 
   async function handleBomUndo() {
     const s = bomUndoStackRef.current;
     if (s.length === 0) return;
     const prev = s.pop();
+    await applySnapshot(prev);
+  }
+
+  // 이력의 그 시점으로 되돌리기 — 되돌리기 자체도 이력에 남겨 다시 되돌릴 수 있다
+  async function revertTo(entry) {
+    if (
+      !(await confirm(`${entry.atLocal} (${entry.label}) 직전 상태로 BOM 을 되돌리시겠습니까?
+지금 상태는 이력에 남아 다시 되돌릴 수 있습니다.`))
+    )
+      return;
+    setHistoryBusy(entry.id);
+    try {
+      lastHistRef.current = null; // 되돌리기는 항상 새 이력으로
+      await addBomHistory(projectId, {
+        label: '되돌리기 전 상태',
+        by: userProfile?.name || '',
+        snapshot: snapshotBomRows(bomItemsRef.current),
+      });
+      await applySnapshot(entry.snapshot || []);
+      toast(`${entry.atLocal} 시점으로 되돌렸습니다`, 'success');
+      setHistory(await listBomHistory(projectId));
+    } catch (e) {
+      console.error(e);
+      toast('되돌리기에 실패했습니다', 'error', 0);
+    } finally {
+      setHistoryBusy('');
+    }
+  }
+
+  async function applySnapshot(prev) {
     const cur = bomItemsRef.current;
     const curMap = new Map(cur.map((b) => [b.id, b]));
     const prevMap = new Map(prev.map((b) => [b.id, b]));
@@ -206,14 +303,20 @@ export default function BomDetailPage() {
     const toUpdate = prev.filter((b) => {
       const c = curMap.get(b.id);
       if (!c) return false;
-      return ['qty', 'unitPrice', 'note', 'order', 'name', 'spec', 'unit', 'itemId'].some((k) => b[k] !== c[k]);
+      const same = (k) => (b[k] ?? '') === (c[k] ?? '');
+      return !HIST_KEYS.every(same) || JSON.stringify(b.variantKeys || []) !== JSON.stringify(c.variantKeys || []);
     });
     try {
       await Promise.all([
         ...toRestore.map((b) => restoreBomItem(b.id, projectId, b)),
         ...toDelete.map((b) => deleteBomItem(b.id)),
         ...toUpdate.map((b) =>
-          updateBomItem(b.id, { qty: b.qty, unitPrice: b.unitPrice, note: b.note, order: b.order }),
+          updateBomItem(b.id, {
+            ...Object.fromEntries(
+              HIST_KEYS.map((k) => [k, b[k] ?? (k === 'qty' || k === 'unitPrice' || k === 'order' ? 0 : '')]),
+            ),
+            variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
+          }),
         ),
       ]);
       setBomItems(prev);
@@ -348,11 +451,12 @@ export default function BomDetailPage() {
   async function handleRowDragEnd(event) {
     const { active, over } = event;
     if (!canDragRows || !over || active.id === over.id) return;
+    if (!guard()) return;
     const orderedIds = rows.map((it) => it.id);
     const oldIndex = orderedIds.indexOf(active.id);
     const newIndex = orderedIds.indexOf(over.id);
     if (oldIndex < 0 || newIndex < 0) return;
-    pushBomUndo(); // Ctrl+Z로 되돌리기 가능
+    pushBomUndo('순서 이동'); // Ctrl+Z로 되돌리기 가능
     const newIds = arrayMove(orderedIds, oldIndex, newIndex);
     const orderById = new Map(newIds.map((id, idx) => [id, idx]));
     // 낙관적 로컬 반영 → 실패 시 토스트 (기존 발주서는 복사본이라 영향 없음)
@@ -425,6 +529,8 @@ export default function BomDetailPage() {
   const paidCount = displayItems.length - freeCount;
 
   function updateField(id, patch) {
+    if (lockedRef.current) return; // 잠금 중엔 화면 값도 안 바꾼다
+    recordHistory('칸 수정', { bump: false }); // 바뀌기 «전» 상태를 이력에
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
 
@@ -434,9 +540,11 @@ export default function BomDetailPage() {
   // 그런데 버튼처럼 「누르는 즉시 저장」인 것은 setState 가 비동기라 flushItem 이
   // 바뀌기 전 값을 집는다 — 눌러도 저장이 안 되던 이유다 (2026-09-02 대표님).
   async function flushItem(id, patch = null) {
+    if (!guard()) return;
     const cur = bomItems.find((b) => b.id === id);
     if (!cur) return;
     const item = patch ? { ...cur, ...patch } : cur;
+    recordHistory('칸 수정');
     try {
       const { id: _, createdAt: __, updatedAt: ___, ...data } = item;
       await updateBomItem(id, data);
@@ -481,6 +589,7 @@ export default function BomDetailPage() {
 
   // 고른 줄을 한꺼번에 휴지통으로. 영구 삭제가 아니라 되살릴 수 있다.
   async function removePicked() {
+    if (!guard()) return;
     const ids = [...delPick].filter((id) => rows.some((r) => r.id === id));
     if (ids.length === 0) return;
     if (
@@ -488,7 +597,7 @@ export default function BomDetailPage() {
 (휴지통에서 되살릴 수 있습니다)`))
     )
       return;
-    pushBomUndo();
+    pushBomUndo('선택 삭제');
     setDelPick(new Set());
     const targets = bomItems.filter((b) => ids.includes(b.id));
     setBomItems((prev) => prev.filter((b) => !ids.includes(b.id)));
@@ -506,9 +615,10 @@ export default function BomDetailPage() {
   }
 
   async function removeRow(id) {
+    if (!guard()) return;
     const item = displayItems.find((b) => b.id === id);
     if (!(await confirm(`"${item?.name || '이 항목'}"을(를) BOM에서 삭제하시겠습니까?`))) return;
-    pushBomUndo();
+    pushBomUndo('줄 삭제');
     try {
       const title = [item?.name, item?.spec].filter(Boolean).join(' ') || '(이름 없음)';
       await trashGeneric('bom', id, { title }, userProfile?.name || '');
@@ -539,8 +649,9 @@ export default function BomDetailPage() {
   }
   // 선택한 마스터 품목으로 해당 행 교체 (수량·비고 유지, 단가는 표준단가로)
   async function replaceBomItemWithMaster(targetId, m) {
+    if (!guard()) return;
     if (!targetId || !m) return;
-    pushBomUndo();
+    pushBomUndo('품목 교체');
     const patch = {
       itemId: m.id,
       name: m.name || '',
@@ -587,7 +698,7 @@ export default function BomDetailPage() {
       setPasteResult({ added: 0, notFound });
       return;
     }
-    pushBomUndo();
+    pushBomUndo('붙여넣기 추가');
     let nextOrder = bomItems.length === 0 ? 1 : Math.max(...bomItems.map((b) => Number(b.order) || 0)) + 1;
     const added = [];
     for (const { m, qty } of matched) {
@@ -651,11 +762,12 @@ export default function BomDetailPage() {
   }, [itemMaster, pickerSearch]);
 
   async function addPickedToBom() {
+    if (!guard()) return;
     if (picked.size === 0) {
       setPickerOpen(false);
       return;
     }
-    pushBomUndo();
+    pushBomUndo('품목 추가');
     let nextOrder = bomItems.length === 0 ? 1 : Math.max(...bomItems.map((b) => Number(b.order) || 0)) + 1;
     const added = [];
     for (const [itemId, qtyInput] of picked) {
@@ -785,7 +897,7 @@ export default function BomDetailPage() {
   if (loading || !project) return <Skeleton.Rows count={6} />;
 
   return (
-    <div className="bom-page printable-page">
+    <div className={`bom-page printable-page${locked ? ' bom-locked' : ''}`}>
       <style>{`
         .bom-readonly-input { word-break: break-word; overflow-wrap: break-word; white-space: normal; min-width: 0; }
         .bom-detail-table td, .bom-flat-table td { min-width: 0; }
@@ -856,6 +968,25 @@ export default function BomDetailPage() {
           </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/bom')}>
             목록
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={openHistory}
+            title="누가 언제 무엇을 고쳤는지 · 그 시점으로 되돌리기"
+          >
+            <Icon name="clock" className="btn-ic" />
+            수정 이력
+          </button>
+          {/* 기본 잠금 — 실수로 고쳐지는 일을 막는다. 열어야 칸·순서·추가·삭제가 된다 */}
+          <button
+            type="button"
+            className={`btn btn-sm ${locked ? 'btn-primary' : 'btn-outline bom-lock-open'}`}
+            onClick={() => setLocked((v) => !v)}
+            title={locked ? '지금은 잠금 상태 — 누르면 수정할 수 있습니다' : '수정 가능 상태 — 누르면 다시 잠급니다'}
+          >
+            <Icon name={locked ? 'lock' : 'unlock'} className="btn-ic" />
+            {locked ? '잠금 해제' : '잠금'}
           </button>
         </div>
       </div>
@@ -1793,6 +1924,66 @@ export default function BomDetailPage() {
       </Modal>
 
       {/* 타입 관리 — 형번마다 자재가 조금씩 다를 때 BOM을 한 벌로 유지한다 */}
+      <Modal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} title="수정 이력" size="lg">
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          수정 «직전»의 BOM 전체가 시점마다 남습니다. 「되돌리기」를 누르면 그 시점의 목록으로 돌아가고, 지금 상태도
+          이력에 남아 다시 되돌릴 수 있습니다. 몇 분 안에 이어진 같은 종류의 수정은 한 건으로 묶입니다. 최근 30건 보관.
+        </p>
+        {history === null ? (
+          <p className="text-muted">불러오는 중…</p>
+        ) : history.length === 0 ? (
+          <p className="text-muted">아직 남은 이력이 없습니다 — 이제부터 고치는 내용이 여기 쌓입니다.</p>
+        ) : (
+          <div className="table-scroll-x">
+            <table className="table bom-hist-table">
+              <thead>
+                <tr>
+                  <th scope="col">시각</th>
+                  <th scope="col">담당</th>
+                  <th scope="col">내용</th>
+                  <th scope="col" className="u-num">
+                    당시 줄 수
+                  </th>
+                  <th scope="col" className="col-action">
+                    작업
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.id}>
+                    <td className="u-nowrap">
+                      {h.atLocal}
+                      {h.count > 1 && h.until && h.until !== h.atLocal ? (
+                        <small className="text-muted"> ~ {h.until.slice(11)}</small>
+                      ) : null}
+                    </td>
+                    <td>{h.by || '—'}</td>
+                    <td>
+                      {h.label}
+                      {h.count > 1 && <span className="status-badge status-badge--wait bom-hist-n">{h.count}회</span>}
+                    </td>
+                    <td className="u-num">{h.rows ?? (h.snapshot || []).length}</td>
+                    <td className="col-action">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        disabled={historyBusy === h.id}
+                        onClick={() => revertTo(h)}
+                        title="이 수정 직전 상태로"
+                      >
+                        <Icon name="restore" className="btn-ic" />
+                        되돌리기
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
+
       <Modal isOpen={variantModalOpen} onClose={() => setVariantModalOpen(false)} title="타입 관리">
         <p className="field-hint" style={{ marginTop: 0 }}>
           같은 제품인데 형번마다 자재가 다를 때 씁니다. 타입을 만들어 두면 발주서로 가져올 때 하나만 고르면 됩니다.

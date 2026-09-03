@@ -22750,3 +22750,47 @@ a.lib-row-name:hover {
   color: var(--accent-press);
   white-space: nowrap;
 }
+
+/* ── BOM 상세 잠금 (2026-09-03 대표님 「기본은 잠금」) — 표 안 입력·버튼·손잡이를 막고 흐리게 ── */
+.bom-locked .bom-flat-table input,
+.bom-locked .bom-flat-table select,
+.bom-locked .bom-flat-table .ds-select,
+.bom-locked .bom-flat-table .bom-supply-btn,
+.bom-locked .bom-flat-table .bom-del-check,
+.bom-locked .bom-flat-table .drag-handle-btn,
+.bom-locked .bom-flat-table .btn,
+.bom-locked .bom-pick-bar {
+  pointer-events: none;
+  opacity: 0.55;
+}
+.bom-locked .bom-flat-table input {
+  background: transparent;
+  border-color: transparent;
+}
+.bom-lock-open {
+  color: var(--accent-press);
+  border-color: rgba(240, 88, 24, 0.4);
+}
+.bom-hist-table .u-nowrap {
+  white-space: nowrap;
+}
+.bom-hist-n {
+  margin-left: 6px;
+}
+/* 도급 탭 안내 — 손 입력 없음, 도급 세트로 가는 버튼 */
+.pmat-hint-paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pmat-hint-paid svg {
+  width: 13px;
+  height: 13px;
+}
+@media (max-width: 768px) {
+  .pmat-hint.pmat-hint-paid {
+    display: inline-flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+}

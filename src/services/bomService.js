@@ -219,3 +219,75 @@ export async function restoreBomItem(id, siteId, data) {
     updatedAt: new Date(),
   });
 }
+
+// ── 수정 이력 (2026-09-03 대표님 「자꾸 수정이 돼 버려서 … 이력 확인·되돌리기」) ──
+// 문서 하나 = 어떤 수정 «직전»의 BOM 전체 스냅샷. 되돌리기는 그 스냅샷으로 되쓰기.
+//   { siteId, label, by, at(서버시각), atLocal 'YYYY-MM-DD HH:mm', count(묶인 수정 수), until, snapshot: [줄…] }
+// 같은 사람이 같은 종류의 수정을 몇 분 안에 잇달아 하면 한 건으로 묶는다(칸 하나 고칠 때마다 쌓이지 않게).
+const bomHistoryRef = collection(db, 'bomHistory');
+const HISTORY_KEEP = 30;
+
+export function snapshotBomRows(items) {
+  return (items || []).map((b) => ({
+    id: b.id,
+    itemId: b.itemId || '',
+    name: b.name || '',
+    spec: b.spec || '',
+    unit: b.unit || '',
+    qty: Number(b.qty) || 0,
+    unitPrice: Number(b.unitPrice) || 0,
+    box: b.box || '',
+    note: b.note || '',
+    supplyType: b.supplyType || '',
+    drawingNo: b.drawingNo || '',
+    order: Number(b.order) || 0,
+    variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
+  }));
+}
+
+export async function addBomHistory(siteId, { label, by, snapshot }) {
+  const now = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const atLocal = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`;
+  const ref = await addDoc(bomHistoryRef, {
+    siteId,
+    label: label || '수정',
+    by: by || '',
+    at: now,
+    atLocal,
+    until: atLocal,
+    count: 1,
+    rows: snapshot.length,
+    snapshot,
+  });
+  return ref.id;
+}
+
+export async function bumpBomHistory(id, count) {
+  const now = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  await updateDoc(doc(db, 'bomHistory', id), {
+    count,
+    until: `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`,
+  });
+}
+
+/** 최근 것부터. 색인 없이 쓰려고 정렬은 여기서 */
+export async function listBomHistory(siteId) {
+  const snap = await getDocs(query(bomHistoryRef, where('siteId', '==', siteId)));
+  const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const ms = (v) => (v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : new Date(v).getTime() || 0);
+  rows.sort((a, b) => ms(b.at) - ms(a.at));
+  return rows;
+}
+
+/** 오래된 것은 지운다 — 프로젝트마다 최근 30건만 */
+export async function pruneBomHistory(siteId) {
+  const rows = await listBomHistory(siteId);
+  const extra = rows.slice(HISTORY_KEEP);
+  if (extra.length === 0) return 0;
+  const batch = writeBatch(db);
+  extra.forEach((r) => batch.delete(doc(db, 'bomHistory', r.id)));
+  await batch.commit();
+  return extra.length;
+}

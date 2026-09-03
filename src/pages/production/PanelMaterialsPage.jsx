@@ -95,7 +95,10 @@ export default function PanelMaterialsPage() {
   const rec = received[box] || {};
   // 세트를 배정한 호기의 도급 수량은 세트가 정한다 — 손으로 못 고친다 (2026-09-03 대표님
   // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
-  const locked = supplyTab === 'paid' && !!panel?.paidSet;
+  // 도급은 «항상» 읽기 전용 — 우리가 사서 넣는 자재라 「도급 세트」 배정으로만 채운다
+  // (2026-09-03 대표님 「도급은 발주서에 체크하는 방식 … 개별로 체크하게 되어 있는데?」). 사급만 손 체크.
+  const locked = supplyTab === 'paid';
+  const assigned = !!panel?.paidSet;
   const shown = rows.filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
 
@@ -272,7 +275,7 @@ export default function PanelMaterialsPage() {
             </span>
           </button>
         ))}
-        {locked ? (
+        {locked && assigned ? (
           <span
             className="status-badge status-badge--done pmat-locked-badge"
             title="도급 세트 화면에서 배정·취소·부족분 채우기"
@@ -280,6 +283,18 @@ export default function PanelMaterialsPage() {
             <Icon name="lock" />
             세트 배정 · {panel.paidSet.seq}번째 · {panel.paidSet.at}
             {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
+          </span>
+        ) : locked ? (
+          <span className="pmat-hint pmat-hint-paid">
+            <Icon name="lock" />
+            도급 자재는 손으로 적지 않습니다 — 「도급 세트」에서 배정하면 채워집니다
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => navigate(`/production/paid-sets?company=${encodeURIComponent(panel.회사 || '')}`)}
+            >
+              도급 세트로
+            </button>
           </span>
         ) : (
           <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>
@@ -332,7 +347,7 @@ export default function PanelMaterialsPage() {
                 <th scope="col" className="pmat-ok">
                   확인
                 </th>
-                {locked && (
+                {locked && assigned && (
                   <th scope="col" className="col-action">
                     이 호기
                   </th>
@@ -392,7 +407,7 @@ export default function PanelMaterialsPage() {
                         ''
                       )}
                     </td>
-                    {locked && (
+                    {locked && assigned && (
                       <td className="col-action">
                         <button
                           type="button"
