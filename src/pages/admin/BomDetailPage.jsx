@@ -1212,11 +1212,9 @@ export default function BomDetailPage() {
           </button>
         ))}
         <span className="bom-supply-tabs-hint">
-          {supplyTab === 'free'
-            ? '고객사 제공 자재 — 금액 합계와 발주서에서 빠집니다'
-            : supplyTab === 'paid'
-              ? '우리가 사서 넣는 자재'
-              : '도급과 사급을 함께 봅니다'}
+          {/* 탭 이름이 이미 말해 준다. 사급만은 「왜 금액이 안 잡히지」에서 멈추지
+              않게 한 줄 남긴다 (2026-09-03 대표님 「제거」) */}
+          {supplyTab === 'free' ? '고객사 제공 자재 — 금액 합계와 발주서에서 빠집니다' : ''}
         </span>
       </div>
 
@@ -1225,12 +1223,6 @@ export default function BomDetailPage() {
           <span className="bom-pick-count">
             <strong>{delPick.size}</strong>건 골랐습니다
           </span>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(true)}>
-            사급으로 보내기
-          </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => moveSupply(false)}>
-            도급으로 되돌리기
-          </button>
           <button type="button" className="btn btn-sm btn-danger" onClick={removePicked}>
             <Icon name="trash" className="btn-ic" />
             선택 삭제
@@ -1363,7 +1355,9 @@ export default function BomDetailPage() {
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
                         <th scope="col">분류</th>
-
+                        <th scope="col" style={{ minWidth: 66 }}>
+                          구분
+                        </th>
                         <th scope="col">수량</th>
                         <th scope="col">단가</th>
                         <th scope="col">합계</th>
@@ -1386,7 +1380,7 @@ export default function BomDetailPage() {
                             {isGroupStart && (
                               <tr className="bom-supplier-header">
                                 <td className="bom-spacer-col" aria-hidden="true"></td>
-                                <td colSpan={14} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
+                                <td colSpan={15} title={sup} style={{ minHeight: 40, verticalAlign: 'middle' }}>
                                   <span
                                     className="bom-supplier-header-text"
                                     title={sup}
@@ -1501,6 +1495,26 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
+                              {/* 줄마다 눌러서 도급↔사급을 바꾼다 — 대표님이 쓰시던 방식
+                                  (2026-09-03 「이전 버튼으로 리스트마다 사급 도급 있던거」) */}
+                              <td data-label="구분">
+                                <button
+                                  type="button"
+                                  className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}`}
+                                  onClick={() => {
+                                    const next = { supplyType: isFreeIssue(it) ? '' : 'free' };
+                                    updateField(it.id, next);
+                                    flushItem(it.id, next); // 바뀔 값을 함께 넘긴다 — 상태 갱신을 기다리지 않게
+                                  }}
+                                  title={
+                                    isFreeIssue(it)
+                                      ? '사급 — 고객사 제공 자재. 금액 합계에서 빠집니다. 눌러서 도급으로'
+                                      : '도급 — 우리가 사서 넣는 자재. 눌러서 사급으로'
+                                  }
+                                >
+                                  {isFreeIssue(it) ? '사급' : '도급'}
+                                </button>
+                              </td>
                               <td data-label="수량">
                                 <input
                                   className="num-input"
@@ -1589,7 +1603,7 @@ export default function BomDetailPage() {
                               <tr className="bom-supplier-subtotal">
                                 <td className="bom-spacer-col" aria-hidden="true"></td>
                                 <td
-                                  colSpan={8}
+                                  colSpan={9}
                                   className="u-wrap"
                                   style={{ textAlign: 'right', overflowWrap: 'break-word', wordBreak: 'break-word' }}
                                   title={`${sup} 소계`}

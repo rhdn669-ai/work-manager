@@ -22256,3 +22256,10 @@ a.lib-row-name:hover {
     flex-wrap: wrap;
   }
 }
+
+/* 도급·사급 옮기기 — 두 버튼을 붙여 한 덩어리로 보이게 */
+.bom-move-group {
+  display: inline-flex;
+  gap: 4px;
+}
+

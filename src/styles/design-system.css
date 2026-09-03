@@ -2227,16 +2227,21 @@ body {
   font-weight: 700;
 }
 
-/* BOM 표만 예외 — 맨 앞 칸(bom-spacer-col)은 표 «바깥» 여백이다.
-   머리줄 전체를 칠하면 그 여백까지 네이비가 깔리고, 카드는 라운드가 있는데 그룹은
-   overflow: visible 이라(드롭다운이 잘리지 않게 그렇게 뒀다) 네모난 끝이 모서리
-   아래로 삐져나온다. 머리줄 배경을 걷고 칸에만 칠한다
-   (2026-09-03 대표님 「아직도 네이비 선이 아래로 튀어나오는데」). */
+/* BOM 표 — 머리줄은 왼쪽 끝까지 이어지되 카드 모서리 밖으로는 나가지 않아야 한다.
+   배경을 지우면 왼쪽이 잘려 보이고(대표님 「왼쪽은 테두리가 짤렸노」), 그대로 두면
+   네모난 끝이 라운드 밖으로 새어 나온다(「네이비 선이 아래로 튀어나오는데」).
+   카드에 overflow: hidden 을 걸 수는 없다 — 품명 검색 드롭다운이 잘린다.
+   그래서 맨 앞·맨 뒤 칸에 카드와 같은 모서리 라운드를 줘 스스로 둥글게 끝나게 한다
+   (2026-09-03). */
 .table.bom-flat-table thead {
   background: transparent;
 }
 .table.bom-flat-table thead th.bom-spacer-col {
-  background: transparent;
+  background: var(--navy, #002050);
+  border-top-left-radius: var(--radius-md, 13px);
+}
+.table.bom-flat-table thead th:last-child {
+  border-top-right-radius: var(--radius-md, 13px);
 }
 
 /* 발주 카드 — 베이스 배경/보더 명시(grey 기본값 누락 방지) */
