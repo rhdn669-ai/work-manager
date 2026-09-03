@@ -84,7 +84,15 @@ function DateCell({ value, cellCls, canEdit, onEnter, onChange, onPaste, onFillS
   );
 }
 
-export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit, onOpen, onRemove, company }) {
+export default function ProductionMatrix({
+  panels,
+  canEdit,
+  canDefect = canEdit,
+  onOpen,
+  onRemove,
+  onMaterials,
+  company,
+}) {
   const { toast } = useDialog();
   const setField = (p, patch) => {
     if (!canEdit) return;
@@ -592,6 +600,7 @@ export default function ProductionMatrix({ panels, canEdit, canDefect = canEdit,
                       onDefect={() => onOpen(p.id, 'defect', b)}
                       shipCount={shipPhotoCount(p, b)}
                       onShip={() => onOpen(p.id, 'ship', b)}
+                      onMaterials={onMaterials && p.bomLink?.projectId ? () => onMaterials(p.id, b) : null}
                     />
                   );
                 })}
@@ -695,6 +704,7 @@ function BoxGroup({
   onDefect,
   shipCount,
   onShip,
+  onMaterials, // BOM 이 연결된 호기만 — 구성품 체크 페이지로 (2026-09-03 대표님)
 }) {
   return (
     <>
@@ -710,6 +720,20 @@ function BoxGroup({
             title={k}
           >
             {on ? mmdd(matDate[k]) || <Icon name="check" /> : ''}
+            {onMaterials && k === '자재_도급' && (
+              <button
+                type="button"
+                className="mx-mat-btn"
+                title="구성품 입고 체크 (BOM)"
+                aria-label="구성품 입고 체크"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMaterials();
+                }}
+              >
+                <Icon name="list" />
+              </button>
+            )}
           </td>
         );
       })}

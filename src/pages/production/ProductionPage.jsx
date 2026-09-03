@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import { useAuth } from '../../contexts/useAuth';
@@ -123,6 +123,7 @@ const VIEWS = ['현황', '불량현황', '통계'];
 export default function ProductionPage() {
   const { userProfile, isAdmin } = useAuth();
   const { confirm } = useDialog();
+  const navigate = useNavigate();
   const [panels, setPanels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('현황');
@@ -393,6 +394,7 @@ export default function ProductionPage() {
                 checkerName={workerName}
                 onOpen={openModal}
                 onRemove={handleRemove}
+                onMaterials={(id, box) => navigate(`/production/${id}/materials?box=${encodeURIComponent(box)}`)}
               />
 
               {/* 모바일 카드 */}

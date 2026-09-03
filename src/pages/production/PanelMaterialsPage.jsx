@@ -1,0 +1,397 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import Icon from '../../components/common/Icon';
+import IopnDocBrand from '../../components/admin/IopnDocBrand';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from '../../components/common/useDialog';
+import { subscribePanels, updatePanel } from '../../services/productionService';
+import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
+import { subscribePurchaseItems } from '../../services/purchaseService';
+import { subscribePanelMaterials, setReceived } from '../../services/panelMaterialsService';
+import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
+import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary } from '../../domain/panelMaterials';
+import { specFontClass } from '../../utils/printText';
+
+// 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
+// (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트 … 구성품 체크 수량」).
+//
+// 기록은 호기마다 따로(panelMaterials). 같은 BOM 을 여러 호기가 쓰므로 BOM 에 적으면
+// 섞인다. 구성품이 전부 차면 생산현황의 「자재 도급 / 자재 사급」 칸이 저절로 켜진다.
+export default function PanelMaterialsPage() {
+  const { panelId } = useParams();
+  const [sp, setSp] = useSearchParams();
+  const navigate = useNavigate();
+  const { userProfile } = useAuth();
+  const { toast } = useDialog();
+
+  const [panel, setPanel] = useState(null);
+  const [loadedPanels, setLoadedPanels] = useState(false);
+  const [project, setProject] = useState(null);
+  const [bomRows, setBomRows] = useState([]);
+  const [master, setMaster] = useState([]);
+  const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
+  const [supplyTab, setSupplyTab] = useState('paid'); // 'paid' | 'free'
+  const [draft, setDraft] = useState({}); // 입력 중인 개수 { [bomItemId]: '3' }
+
+  // ── 판넬 ──
+  useEffect(() => {
+    const unsub = subscribePanels((rows) => {
+      setPanel(rows.find((p) => p.id === panelId) || null);
+      setLoadedPanels(true);
+    });
+    return unsub;
+  }, [panelId]);
+
+  const link = panel?.bomLink || null;
+
+  // ── BOM (연결된 프로젝트) ──
+  useEffect(() => {
+    // 연결이 없으면 아래 「연결 없음」 화면이 나가므로 여기서 상태를 비울 일이 없다
+    if (!link?.projectId) return undefined;
+    let alive = true;
+    Promise.all([getBomProjectById(link.projectId), getBomBySite(link.projectId)])
+      .then(([p, rows]) => {
+        if (!alive) return;
+        setProject(p || null);
+        setBomRows(rows || []);
+      })
+      .catch(() => {
+        if (alive) toast('BOM 을 불러오지 못했습니다', 'error');
+      });
+    return () => {
+      alive = false;
+    };
+  }, [link?.projectId, toast]);
+
+  // ── 품목 마스터 (코드·품명·규격·도번은 여기서 읽는다) ──
+  useEffect(() => subscribePurchaseItems(setMaster), []);
+  const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
+
+  // ── 이 호기의 입고 기록 ──
+  useEffect(() => subscribePanelMaterials(panelId, setReceivedMap), [panelId]);
+
+  // ── BOX ──
+  const boxesWithRows = useMemo(() => {
+    const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
+    return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).length > 0);
+  }, [bomRows, link?.variantKey]);
+  const box = sp.get('box') || boxesWithRows[0] || CHECKABLE_BOXES[0];
+  const setBox = (b) => setSp({ box: b }, { replace: true });
+
+  // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
+  const rows = useMemo(() => {
+    const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
+    return bomRowsForBox(forVariant, box).map((r) => {
+      const m = r.itemId ? masterMap[r.itemId] : null;
+      return {
+        ...r,
+        code: m?.code || r.code || '',
+        name: m?.name || r.name || '',
+        spec: m?.spec || r.spec || '',
+        drawingNo: m?.drawingNo || r.drawingNo || '',
+      };
+    });
+  }, [bomRows, link?.variantKey, box, masterMap]);
+  const rec = received[box] || {};
+  const shown = rows.filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
+  const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
+
+  // ── ④ 연동: 이 BOX 의 도급/사급이 전부 차면 생산현황 자재 칸을 켠다, 하나라도 빠지면 끈다 ──
+  useEffect(() => {
+    if (!panel || rows.length === 0) return;
+    const cur = (panel.박스입고 || {})[box] || {};
+    const nextPaid = boxKindComplete(rows, rec, 'paid');
+    const nextFree = boxKindComplete(rows, rec, 'free');
+    if (!!cur.자재_도급 === nextPaid && !!cur.자재_사급 === nextFree) return; // 그대로면 쓰지 않는다
+    const today = new Date().toISOString().slice(0, 10);
+    const curDate = (panel.박스입고일자 || {})[box] || {};
+    updatePanel(panel.id, {
+      박스입고: { ...(panel.박스입고 || {}), [box]: { ...cur, 자재_도급: nextPaid, 자재_사급: nextFree } },
+      박스입고일자: {
+        ...(panel.박스입고일자 || {}),
+        [box]: {
+          ...curDate,
+          자재_도급: nextPaid ? curDate.자재_도급 || today : '',
+          자재_사급: nextFree ? curDate.자재_사급 || today : '',
+        },
+      },
+    }).catch(() => toast('자재 칸 갱신에 실패했습니다', 'error'));
+  }, [panel, rows, rec, box, toast]);
+
+  // ── 개수 저장 ──
+  const commit = async (r) => {
+    const raw = draft[r.id];
+    if (raw === undefined) return;
+    const n = Math.max(0, Number(raw) || 0);
+    setDraft((d) => {
+      const nd = { ...d };
+      delete nd[r.id];
+      return nd;
+    });
+    if (n === receivedQty(rec, r.id)) return;
+    try {
+      await setReceived(panelId, box, r.id, n, userProfile?.name || '');
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
+    }
+  };
+  const fillAll = async () => {
+    // 이 탭의 줄을 BOM 수량대로 한 번에 — 통째로 들어온 날 쓴다
+    try {
+      await Promise.all(shown.map((r) => setReceived(panelId, box, r.id, Number(r.qty) || 0, userProfile?.name || '')));
+      toast(`${shown.length}건을 BOM 수량대로 채웠습니다`, 'success');
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
+    }
+  };
+
+  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
+  const title = `${panel?.프로젝트 || ''}${panel?.호기 ? ` ${panel.호기}` : ''}`.trim() || '호기';
+
+  if (!loadedPanels)
+    return (
+      <div className="page">
+        <p className="text-muted">불러오는 중…</p>
+      </div>
+    );
+  if (!panel)
+    return (
+      <div className="page">
+        <p className="text-muted">판넬을 찾을 수 없습니다.</p>
+        <button type="button" className="btn btn-outline" onClick={back}>
+          목록으로
+        </button>
+      </div>
+    );
+  if (!hasBomLink(panel))
+    return (
+      <div className="page">
+        <h1 className="page-title">{title}</h1>
+        <p className="text-muted">
+          이 호기에 연결된 BOM 이 없습니다. 생산현황 표의 「상세」에서 BOM 프로젝트와 타입을 먼저 골라 주세요.
+        </p>
+        <button type="button" className="btn btn-outline" onClick={back}>
+          생산현황으로
+        </button>
+      </div>
+    );
+
+  const docNo = `MAT${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+  return (
+    <div className="page pmat-page">
+      {/* ── 화면 ── */}
+      <div className="page-head no-print">
+        <div>
+          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+            <Icon name="chevronLeft" className="btn-ic" />
+            생산현황
+          </button>
+          <h1 className="page-title">
+            {title} <span className="pmat-title-sub">· {box} 자재 체크</span>
+          </h1>
+          <div className="pmat-link">
+            BOM <strong>{link.projectName || project?.name || ''}</strong>
+            {link.variantLabel ? (
+              <span className="pmat-variant">{link.variantLabel}</span>
+            ) : (
+              <span className="pmat-variant is-common">공통</span>
+            )}
+          </div>
+        </div>
+        <div className="page-actions">
+          <button type="button" className="btn btn-outline" onClick={() => window.print()}>
+            <Icon name="doc" className="btn-ic" />
+            체크리스트 출력
+          </button>
+        </div>
+      </div>
+
+      {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만 */}
+      <div className="pmat-boxes no-print" role="tablist" aria-label="BOX">
+        {(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => (
+          <button
+            key={b}
+            type="button"
+            role="tab"
+            aria-selected={b === box}
+            className={`pmat-box-tab${b === box ? ' on' : ''}`}
+            onClick={() => setBox(b)}
+          >
+            {b}
+          </button>
+        ))}
+      </div>
+
+      {/* 도급 / 사급 탭 + 진행 */}
+      <div className="pmat-kinds no-print">
+        {[
+          { key: 'paid', label: '도급', s: summary.paid },
+          { key: 'free', label: '사급', s: summary.free },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={supplyTab === t.key}
+            className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
+            onClick={() => setSupplyTab(t.key)}
+          >
+            {t.label}
+            <span className="bom-supply-tab-n">
+              {t.s.done}/{t.s.total}
+            </span>
+          </button>
+        ))}
+        <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>
+        {shown.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline pmat-fill"
+            onClick={fillAll}
+            title="이 탭의 줄을 전부 BOM 수량대로"
+          >
+            전부 들어옴
+          </button>
+        )}
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="purchase-empty no-print">이 BOX 에 {supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.</p>
+      ) : (
+        <div className="table-scroll-x no-print">
+          <table className="table pmat-table">
+            <thead>
+              <tr>
+                <th scope="col" className="pmat-no">
+                  No
+                </th>
+                <th scope="col">코드</th>
+                <th scope="col">도번</th>
+                <th scope="col">품명</th>
+                <th scope="col">규격</th>
+                <th scope="col" className="pmat-num">
+                  BOM 수량
+                </th>
+                <th scope="col" className="pmat-num">
+                  들어온 개수
+                </th>
+                <th scope="col" className="pmat-num">
+                  부족
+                </th>
+                <th scope="col" className="pmat-ok">
+                  확인
+                </th>
+                <th scope="col">기록</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r, i) => {
+                const got = receivedQty(rec, r.id);
+                const short = shortageOf(r.qty, got);
+                const done = rowDone(r, rec);
+                const meta = rec[r.id];
+                return (
+                  <tr key={r.id} className={done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}>
+                    <td className="pmat-no">{i + 1}</td>
+                    <td className="pmat-code">{r.code}</td>
+                    <td>{r.drawingNo}</td>
+                    <td>{r.name}</td>
+                    <td className="pmat-spec" title={r.spec}>
+                      {r.spec}
+                    </td>
+                    <td className="pmat-num">{Number(r.qty) || 0}</td>
+                    <td className="pmat-num">
+                      <input
+                        className="num-input pmat-input"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        value={draft[r.id] !== undefined ? draft[r.id] : got || ''}
+                        placeholder="0"
+                        onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
+                        onBlur={() => commit(r)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                        }}
+                        aria-label={`${r.name} 들어온 개수`}
+                      />
+                    </td>
+                    <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>
+                    <td className="pmat-ok">{done ? <Icon name="check" className="pmat-check" /> : ''}</td>
+                    <td className="pmat-meta">{meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── 출력 — 종이로 대조하고 나중에 옮겨 적는 체크리스트 (대표님 「출력도 가능해야함」) ── */}
+      <div className="print-form-iopn print-form-paged print-only">
+        <div className="bom-print-page">
+          <IopnDocBrand title={`${title} · ${box} 자재 체크`} titleClass="bom-list-title is-long" />
+          <div className="bom-print-supplier-band">
+            {link.projectName || ''}
+            {link.variantLabel ? ` · ${link.variantLabel}` : ''} —{' '}
+            {supplyTab === 'free' ? '사급 (고객사 제공)' : '도급'}
+          </div>
+          <table className="iopn-items-table pmat-print-table">
+            <thead>
+              <tr>
+                <th scope="col" className="c-no">
+                  NO
+                </th>
+                <th scope="col" className="c-name">
+                  품목명
+                </th>
+                <th scope="col" className="c-drawing">
+                  도번
+                </th>
+                <th scope="col" className="c-spec">
+                  규격
+                </th>
+                <th scope="col" className="c-qty">
+                  BOM
+                </th>
+                <th scope="col" className="c-qty">
+                  입고
+                </th>
+                <th scope="col" className="c-qty">
+                  부족
+                </th>
+                <th scope="col" className="c-from">
+                  확인
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r, i) => {
+                const got = receivedQty(rec, r.id);
+                return (
+                  <tr key={r.id}>
+                    <td className="c-no">{i + 1}</td>
+                    <td className={`c-name ${specFontClass(r.name, 13)}`}>{r.name}</td>
+                    <td className={`c-drawing ${specFontClass(r.drawingNo, 12)}`}>{r.drawingNo}</td>
+                    <td className={`c-spec ${specFontClass(r.spec, 36)}`}>{r.spec}</td>
+                    <td className="c-qty">{Number(r.qty) || 0}</td>
+                    <td className="c-qty">{got || ''}</td>
+                    <td className="c-qty">{shortageOf(r.qty, got) || ''}</td>
+                    <td className="c-from"></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="bom-print-footer">
+            <span>(주)아이오피엔 · 호기 자재 체크 · {docNo}</span>
+            <span>출력 {stamp}</span>
+            <span>페이지 1 / 1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

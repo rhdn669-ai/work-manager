@@ -22329,3 +22329,148 @@ a.lib-row-name:hover {
   margin-left: 4px;
 }
 
+/* ── 호기 자재 체크 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」) ── */
+.mx-table td.mx-boxmat {
+  position: relative;
+}
+.mx-mat-btn {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  opacity: 0.85;
+}
+.mx-mat-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  opacity: 1;
+}
+.mx-mat-btn svg {
+  width: 10px;
+  height: 10px;
+}
+.pmat-title-sub {
+  font-weight: 500;
+  color: var(--text-light);
+}
+.pmat-link {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-light);
+}
+.pmat-link strong {
+  color: var(--text);
+}
+.pmat-variant {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--primary-softer, #f0f3f8);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.pmat-variant.is-common {
+  background: var(--bg-subtle, #f2f4f6);
+  color: var(--text-muted);
+}
+.pmat-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 10px;
+}
+.pmat-box-tab {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 10px);
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+}
+.pmat-box-tab.on {
+  border-color: var(--navy, #002050);
+  background: var(--navy, #002050);
+  color: #fff;
+}
+.pmat-kinds {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.pmat-hint {
+  margin-left: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.pmat-fill {
+  margin-left: auto;
+}
+.pmat-table .pmat-no {
+  width: 44px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.pmat-table .pmat-num {
+  width: 92px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pmat-table .pmat-ok {
+  width: 56px;
+  text-align: center;
+}
+.pmat-table .pmat-code {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pmat-table .pmat-spec {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pmat-table .pmat-input {
+  width: 72px;
+  text-align: center;
+}
+.pmat-table .pmat-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.pmat-table .is-short {
+  color: var(--danger);
+  font-weight: 700;
+}
+.pmat-table tr.is-done > td {
+  background: var(--mx-done-bg, #eef7f0);
+}
+.pmat-table tr.is-partial > td {
+  background: var(--accent-soft, #feefe7);
+}
+.pmat-check {
+  width: 16px;
+  height: 16px;
+  color: var(--success, #16a34a);
+}
+@media (max-width: 768px) {
+  .pmat-hint {
+    display: none;
+  }
+}
+
