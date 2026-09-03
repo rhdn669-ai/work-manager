@@ -12,6 +12,7 @@ import {
   getBomBySite,
 } from '../../services/bomService';
 import { getPurchaseItems } from '../../services/purchaseService';
+import { bomStats } from '../../domain/bomStats';
 // getBomProjects는 undo 복원 후 목록 갱신에도 사용
 import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
@@ -60,7 +61,18 @@ function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
         {stat ? `${stat.qty.toLocaleString()}개` : '—'}
       </td>
       <td data-label="예상 총액" className="u-num">
-        {stat ? <strong>{won(stat.amount)}</strong> : '—'}
+        {stat ? (
+          <>
+            <strong>{won(stat.amount)}</strong>
+            {stat.freeCount > 0 && (
+              <span className="bom-card-free" title="고객사 제공 자재는 금액에서 뺀다">
+                사급 {stat.freeCount}건 제외
+              </span>
+            )}
+          </>
+        ) : (
+          '—'
+        )}
       </td>
       <td className="bom-project-action-col action-cell">
         <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onCopy(e, p)}>
@@ -124,23 +136,16 @@ export default function BomPage() {
     })();
   }, []);
 
-  // 프로젝트별 품목 수·개별수량 합·예상 총액 — BomDetailPage와 동일 기준(마스터 표준단가 우선)
+  // 프로젝트별 품목 수·개별수량 합·예상 총액 — 상세 화면의 「예상 합계」와 같은 셈(domain/bomStats):
+  // 마스터 표준단가 우선, 사급은 금액에서 제외 (2026-09-03 대표님 「카드와 안의 금액이 다름」)
   async function loadStats(ps) {
     try {
       const master = await getPurchaseItems();
-      const priceById = new Map(master.map((m) => [m.id, Number(m.standardPrice) || 0]));
+      const priceById = new Map(master.map((m) => [m.id, m.standardPrice]));
       const entries = await Promise.all(
         ps.map(async (p) => {
           const items = await getBomBySite(p.id);
-          let qty = 0;
-          let amount = 0;
-          for (const b of items) {
-            const q = Number(b.qty) || 0;
-            const unit = b.itemId && priceById.has(b.itemId) ? priceById.get(b.itemId) : Number(b.unitPrice) || 0;
-            qty += q;
-            amount += q * unit;
-          }
-          return [p.id, { count: items.length, qty, amount }];
+          return [p.id, bomStats(items, priceById)];
         }),
       );
       setStats(Object.fromEntries(entries));

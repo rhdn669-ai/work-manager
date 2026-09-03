@@ -22733,3 +22733,12 @@ a.lib-row-name:hover {
   color: var(--text-muted);
   text-decoration: line-through;
 }
+/* BOM 목록 카드 — 예상 총액 옆 사급 제외 표시 (상세 화면과 같은 문구) */
+.bom-card-free {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--accent-press);
+  white-space: nowrap;
+}
