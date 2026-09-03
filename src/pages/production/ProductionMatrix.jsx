@@ -17,7 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
-import { bulkWritePanels, updatePanel, savePanelOrder } from '../../services/productionService';
+import { bulkWritePanels, updatePanel, savePanelOrder, trashPanel } from '../../services/productionService';
 import { misorderedIds, mergeMove } from '../../domain/panelOrder';
 import { makeBomLink, defaultBomProjectId, variantOptionsFor, variantLabelOf } from '../../domain/panelBom';
 import {
@@ -225,11 +225,51 @@ export default function ProductionMatrix({
   orderPool = null, // 회사 전체 목록(정렬된) — 검색 중 옮겨도 숨은 줄 자리를 지키려고
   bomProjects = [], // BOM 프로젝트(타입 목록) — 「자재」 칸에서 타입을 고른다
   checkerName = '', // 종결 등 기록에 남길 이름
+  editMode = false, // 「순서·삭제」 토글 — 켜야만 끌기 손잡이·고르기 체크박스가 나온다
 }) {
   const { toast, confirm } = useDialog();
 
   // ── 끌어서 순서 이동 ──
-  const canDrag = canEdit && Array.isArray(orderPool);
+  // 실수로 줄을 옮기는 일이 잦아, 토글을 켠 동안만 끌 수 있다 (2026-09-03 대표님).
+  const canDrag = canEdit && Array.isArray(orderPool) && editMode;
+  // 줄 고르기 — 토글을 켠 동안만. 끄면 고른 것도 비운다.
+  const selectable = canEdit && editMode;
+  const [sel, setSel] = useState(() => new Set());
+  useEffect(() => {
+    if (!editMode) setSel(new Set());
+  }, [editMode]);
+  const toggleCheck = (id) => {
+    setSel((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  };
+  // 고른 줄 — 지금 표에 보이는 것만 (검색·필터로 사라진 줄은 세지 않는다)
+  const picked = useMemo(() => panels.filter((p) => sel.has(p.id)), [panels, sel]);
+  const [removing, setRemoving] = useState(false);
+  async function removePicked() {
+    if (picked.length === 0 || removing) return;
+    if (
+      !(await confirm({
+        title: '판넬 삭제',
+        message: `고른 판넬 ${picked.length}대를 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
+      }))
+    )
+      return;
+    setRemoving(true);
+    try {
+      for (const p of picked) await trashPanel(p, checkerName);
+      setSel(new Set());
+      toast(`판넬 ${picked.length}대를 휴지통으로 보냈습니다`);
+    } catch (err) {
+      console.error(err);
+      toast('삭제 중 오류가 발생했습니다', 'error', 0);
+    } finally {
+      setRemoving(false);
+    }
+  }
   // 센서 옵션은 파일 최상위 상수 — 렌더마다 새 객체를 주면 dnd-kit 이 줄 전체를 다시 그린다
   const dndSensors = useSensors(
     useSensor(PointerSensor, POINTER_OPTS),
@@ -515,6 +555,7 @@ export default function ProductionMatrix({
     onOpen,
     onRemove,
     onMaterials,
+    toggleCheck,
     canEdit,
   };
   const api = useMemo(() => {
@@ -536,6 +577,7 @@ export default function ProductionMatrix({
       onOpen: call('onOpen'),
       onRemove: call('onRemove'),
       onMaterials: call('onMaterials'),
+      toggleCheck: call('toggleCheck'),
       get canEdit() {
         return apiRef.current.canEdit;
       },
@@ -551,7 +593,22 @@ export default function ProductionMatrix({
 
   return (
     <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <div className="mx-wrap card" ref={wrapRef}>
+      {/* 고른 것 처리 바 — 켜져 있고 고른 줄이 있을 때만 표 위에 나온다 */}
+      {selectable && picked.length > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{picked.length}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={removePicked} disabled={removing}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setSel(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
+      <div className={`mx-wrap card${editMode ? '' : ' editmode-off'}`} ref={wrapRef}>
         <table className="mx-table">
           <thead>
             {/* 1행: BOX 그룹 (non-MP는 leaf 5 + 불량 + 상태 = 7칸) */}
@@ -720,6 +777,8 @@ export default function ProductionMatrix({
                     idx={idx}
                     mis={misordered.has(p.id)}
                     canDrag={canDrag}
+                    selectable={selectable}
+                    checked={sel.has(p.id)}
                     canEdit={canEdit}
                     canDefect={canDefect}
                     hasMaterials={!!onMaterials}
@@ -748,6 +807,8 @@ const MatrixRow = memo(function MatrixRow({
   idx,
   mis,
   canDrag,
+  selectable, // 줄 고르기 체크박스를 보일지
+  checked, // 이 줄을 골랐는지 (Set 이 아니라 참·거짓만 넘겨 memo 를 지킨다)
   canEdit,
   canDefect,
   hasMaterials,
@@ -767,7 +828,7 @@ const MatrixRow = memo(function MatrixRow({
       key={p.id}
       id={p.id}
       disabled={!canDrag}
-      className={`${od ? 'mx-od' : urg ? 'mx-urg' : ''}${mis ? ' mx-misorder' : ''}`}
+      className={`${od ? 'mx-od' : urg ? 'mx-urg' : ''}${mis ? ' mx-misorder' : ''}${checked ? ' is-checked' : ''}`}
     >
       {({ handleProps }) => (
         <>
@@ -780,6 +841,16 @@ const MatrixRow = memo(function MatrixRow({
                   title="끌어서 순서 이동"
                   aria-label="끌어서 순서 이동"
                   {...handleProps}
+                />
+              )}
+              {/* 골라서 한 번에 지우기 — 「순서·삭제」를 켠 동안만 */}
+              {selectable && (
+                <input
+                  type="checkbox"
+                  className="sel-check"
+                  checked={checked}
+                  onChange={() => api.toggleCheck(p.id)}
+                  aria-label={`${p.프로젝트 || '이 판넬'} 고르기`}
                 />
               )}
               {idx + 1}

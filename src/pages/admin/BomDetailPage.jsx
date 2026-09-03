@@ -40,6 +40,7 @@ import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/useDialog';
@@ -73,7 +74,7 @@ function fmtDateTime(d) {
 
 // 드래그 가능한 품목 행 — 핸들을 No 칸 안에 넣어 표 모양(스페이서 0폭)은 원본 그대로 유지
 // canDrag=false면 핸들 없이 번호만 렌더 (코드순·구매처별·검색 중엔 드래그 무의미)
-function SortableBomRow({ id, canDrag, no, checked, onCheck, children }) {
+function SortableBomRow({ id, canDrag, showCheck, no, checked, onCheck, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !canDrag,
@@ -95,13 +96,16 @@ function SortableBomRow({ id, canDrag, no, checked, onCheck, children }) {
       <td className="bom-spacer-col" aria-hidden="true"></td>
       <td className="bom-no-col" data-label="No">
         <span className="bom-no-wrap">
-          <input
-            type="checkbox"
-            className="bom-del-check"
-            checked={checked}
-            onChange={() => onCheck(id)}
-            aria-label="삭제할 줄 고르기"
-          />
+          {/* 잠금 중에는 아예 안 보인다 — 흐릿하게 남겨 두면 눌러도 되는 줄 안다 */}
+          {showCheck && (
+            <input
+              type="checkbox"
+              className="bom-del-check"
+              checked={checked}
+              onChange={() => onCheck(id)}
+              aria-label="삭제할 줄 고르기"
+            />
+          )}
           {canDrag && (
             <button
               type="button"
@@ -211,9 +215,11 @@ export default function BomDetailPage() {
   const [locked, setLocked] = useState(true);
   const lockedRef = useRef(true);
   lockedRef.current = locked;
+  // 잠금이 막는 것은 «순서 이동·삭제·선택 삭제» 뿐 — 칸 수정(수량·BOX·타입·비고·도급/사급)은 언제나 된다
+  // (2026-09-03 대표님 「잠금이 활성화될 때 원하는 기능은 전체삭제, 삭제 및 위치 이동」)
   const guard = () => {
     if (!lockedRef.current) return true;
-    toast('잠금 상태입니다 — 오른쪽 위 「잠금 해제」를 먼저 누르세요', 'error');
+    toast('순서 이동·삭제는 오른쪽 위 「순서·삭제」를 켠 뒤에', 'error');
     return false;
   };
 
@@ -529,7 +535,6 @@ export default function BomDetailPage() {
   const paidCount = displayItems.length - freeCount;
 
   function updateField(id, patch) {
-    if (lockedRef.current) return; // 잠금 중엔 화면 값도 안 바꾼다
     recordHistory('칸 수정', { bump: false }); // 바뀌기 «전» 상태를 이력에
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
@@ -540,7 +545,6 @@ export default function BomDetailPage() {
   // 그런데 버튼처럼 「누르는 즉시 저장」인 것은 setState 가 비동기라 flushItem 이
   // 바뀌기 전 값을 집는다 — 눌러도 저장이 안 되던 이유다 (2026-09-02 대표님).
   async function flushItem(id, patch = null) {
-    if (!guard()) return;
     const cur = bomItems.find((b) => b.id === id);
     if (!cur) return;
     const item = patch ? { ...cur, ...patch } : cur;
@@ -649,7 +653,6 @@ export default function BomDetailPage() {
   }
   // 선택한 마스터 품목으로 해당 행 교체 (수량·비고 유지, 단가는 표준단가로)
   async function replaceBomItemWithMaster(targetId, m) {
-    if (!guard()) return;
     if (!targetId || !m) return;
     pushBomUndo('품목 교체');
     const patch = {
@@ -762,7 +765,6 @@ export default function BomDetailPage() {
   }, [itemMaster, pickerSearch]);
 
   async function addPickedToBom() {
-    if (!guard()) return;
     if (picked.size === 0) {
       setPickerOpen(false);
       return;
@@ -879,6 +881,19 @@ export default function BomDetailPage() {
     }
   }
 
+  // 드롭다운에서 타입 하나 고르기 — 빈값이면 공통
+  async function setItemVariant(itemId, key) {
+    const next = key ? [key] : [];
+    recordHistory('칸 수정', { bump: false });
+    setBomItems((list) => list.map((b) => (b.id === itemId ? { ...b, variantKeys: next } : b)));
+    try {
+      await updateBomItem(itemId, { variantKeys: next });
+      recordHistory('칸 수정');
+    } catch {
+      toast('타입 저장 중 오류가 발생했습니다', 'error');
+    }
+  }
+
   // 품목이 들어갈 타입 켜고 끄기 — 전부 끄면 공통(모든 타입에 포함)
   async function toggleItemVariant(itemId, key) {
     const cur = bomItems.find((b) => b.id === itemId);
@@ -897,7 +912,7 @@ export default function BomDetailPage() {
   if (loading || !project) return <Skeleton.Rows count={6} />;
 
   return (
-    <div className={`bom-page printable-page${locked ? ' bom-locked' : ''}`}>
+    <div className={`bom-page printable-page${locked ? ' bom-locked editmode-off' : ''}`}>
       <style>{`
         .bom-readonly-input { word-break: break-word; overflow-wrap: break-word; white-space: normal; min-width: 0; }
         .bom-detail-table td, .bom-flat-table td { min-width: 0; }
@@ -978,16 +993,21 @@ export default function BomDetailPage() {
             <Icon name="clock" className="btn-ic" />
             수정 이력
           </button>
-          {/* 기본 잠금 — 실수로 고쳐지는 일을 막는다. 열어야 칸·순서·추가·삭제가 된다 */}
-          <button
-            type="button"
-            className={`btn btn-sm ${locked ? 'btn-primary' : 'btn-outline bom-lock-open'}`}
-            onClick={() => setLocked((v) => !v)}
-            title={locked ? '지금은 잠금 상태 — 누르면 수정할 수 있습니다' : '수정 가능 상태 — 누르면 다시 잠급니다'}
-          >
-            <Icon name={locked ? 'lock' : 'unlock'} className="btn-ic" />
-            {locked ? '잠금 해제' : '잠금'}
-          </button>
+          {/* 기본 잠금 — 실수로 고쳐지는 일을 막는다. 열어야 칸·순서·추가·삭제가 된다.
+              버튼은 다른 구매 화면과 같은 「순서·삭제」 토글로 통일 (2026-09-03 대표님) */}
+          <EditModeButton
+            on={!locked}
+            onToggle={() => {
+              setLocked((v) => !v);
+              setDelPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
+            }}
+            label="순서·삭제"
+            title={
+              locked
+                ? '지금은 잠금 상태 — 켜면 순서 이동·삭제 가능 — 칸 수정은 언제나'
+                : '켜짐 — 칸 수정·순서·삭제 가능. 누르면 다시 잠깁니다'
+            }
+          />
         </div>
       </div>
 
@@ -1322,7 +1342,7 @@ export default function BomDetailPage() {
         </span>
       </div>
 
-      {delPick.size > 0 && (
+      {!locked && delPick.size > 0 && (
         <div className="bom-pick-bar no-print">
           <span className="bom-pick-count">
             <strong>{delPick.size}</strong>건 골랐습니다
@@ -1427,15 +1447,17 @@ export default function BomDetailPage() {
                         <th scope="col" className="bom-spacer-col" aria-hidden="true"></th>
                         <th scope="col" className="bom-no-col">
                           <span className="bom-no-wrap">
-                            <input
-                              type="checkbox"
-                              className="bom-del-check"
-                              checked={rows.length > 0 && rows.every((r) => delPick.has(r.id))}
-                              onChange={(e) =>
-                                setDelPick(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())
-                              }
-                              aria-label="보이는 줄 모두 고르기"
-                            />
+                            {!locked && (
+                              <input
+                                type="checkbox"
+                                className="bom-del-check"
+                                checked={rows.length > 0 && rows.every((r) => delPick.has(r.id))}
+                                onChange={(e) =>
+                                  setDelPick(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())
+                                }
+                                aria-label="보이는 줄 모두 고르기"
+                              />
+                            )}
                             No
                           </span>
                         </th>
@@ -1495,7 +1517,8 @@ export default function BomDetailPage() {
                             )}
                             <SortableBomRow
                               id={it.id}
-                              canDrag={canDragRows}
+                              canDrag={canDragRows && !locked}
+                              showCheck={!locked}
                               no={idx + 1}
                               checked={delPick.has(it.id)}
                               onCheck={toggleDelPick}
@@ -1549,14 +1572,31 @@ export default function BomDetailPage() {
                               </td>
                               {variants.length > 0 && (
                                 <td data-label="타입">
-                                  <button
-                                    type="button"
-                                    className={`bom-variant-cell${variantKeysOf(it).length ? '' : ' is-common'}`}
-                                    onClick={() => setVariantPick(it)}
-                                    title="눌러서 이 품목이 들어갈 타입 고르기"
-                                  >
-                                    {variantLabelOf(it)}
-                                  </button>
+                                  {/* BOX 처럼 드롭다운으로 (2026-09-03 대표님). 여러 타입에 든 줄은 그 묶음이
+                                      항목으로 보이고, 「여러 타입…」을 고르면 예전 창에서 낱개로 켜고 끈다 */}
+                                  <Select
+                                    value={
+                                      variantKeysOf(it).length === 0
+                                        ? ''
+                                        : variantKeysOf(it).length === 1
+                                          ? variantKeysOf(it)[0]
+                                          : '__multi'
+                                    }
+                                    onChange={(v) => {
+                                      if (v === '__pick') setVariantPick(it);
+                                      else if (v !== '__multi') setItemVariant(it.id, v);
+                                    }}
+                                    options={[
+                                      { value: '', label: '공통' },
+                                      ...variants.map((v) => ({ value: v.key, label: v.label })),
+                                      ...(variantKeysOf(it).length > 1
+                                        ? [{ value: '__multi', label: variantLabelOf(it) }]
+                                        : []),
+                                      { value: '__pick', label: '여러 타입…' },
+                                    ]}
+                                    ariaLabel="타입"
+                                    native
+                                  />
                                 </td>
                               )}
                               <td data-label="품명" title={it.name || ''}>
@@ -1692,10 +1732,11 @@ export default function BomDetailPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    className="btn btn-sm btn-danger"
+                                    className="btn btn-sm btn-danger bom-row-del"
                                     onClick={() => removeRow(it.id)}
                                     aria-label="삭제"
                                     title="삭제"
+                                    tabIndex={locked ? -1 : 0}
                                   >
                                     <Icon name="trash" className="btn-ic" />
                                     삭제

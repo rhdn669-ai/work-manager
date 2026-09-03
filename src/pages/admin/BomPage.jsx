@@ -18,6 +18,7 @@ import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
@@ -26,9 +27,12 @@ import { restoreTrashItem } from '../../services/trashService';
 
 const won = (n) => `${Math.round(n || 0).toLocaleString()}원`;
 
-// 드래그 가능한 프로젝트 행
-function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+// 드래그 가능한 프로젝트 행 — 「순서·삭제」가 꺼져 있으면 끌 수도 고를 수도 없다
+function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCopy, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: p.id,
+    disabled: !editMode,
+  });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -36,8 +40,22 @@ function SortableProjectRow({ p, stat, onOpen, onCopy, onDelete }) {
     background: isDragging ? 'var(--bg-card)' : undefined,
   };
   return (
-    <tr ref={setNodeRef} style={style} className="table-clickable-row" onClick={() => onOpen(p)}>
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`table-clickable-row${checked ? ' is-checked' : ''}`}
+      onClick={() => onOpen(p)}
+    >
       <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+        {editMode && (
+          <input
+            type="checkbox"
+            className="sel-check"
+            checked={checked}
+            onChange={() => onCheck(p.id)}
+            aria-label="삭제할 프로젝트 고르기"
+          />
+        )}
         <button
           type="button"
           className="drag-handle-btn"
@@ -110,6 +128,9 @@ export default function BomPage() {
     }
   }
   const [trashOpen, setTrashOpen] = useState(false);
+  // 순서·삭제 토글 — 기본 꺼짐. 화면을 나가면 저절로 꺼진다(여기 state 뿐)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set()); // 골라 둔 프로젝트 id
   const [projects, setProjects] = useState([]);
   const [stats, setStats] = useState({}); // projectId → { count, qty, amount }
   const [loading, setLoading] = useState(true);
@@ -233,10 +254,50 @@ export default function BomPage() {
     }
   }
 
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set()); // 끄면 골라 둔 것도 함께 푼다
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 프로젝트를 한꺼번에 — 행별 「삭제」와 같은 길(휴지통)로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = projects.filter((p) => pick.has(p.id));
+    if (targets.length === 0) return;
+    if (
+      !(await confirm(
+        `고른 프로젝트 ${targets.length}건과 등록된 BOM을 모두 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`,
+      ))
+    )
+      return;
+    try {
+      for (const p of targets) {
+        await trashBomProject(p.id, userProfile?.name || '');
+        await deleteBomProject(p.id);
+      }
+      const ids = new Set(targets.map((p) => p.id));
+      setProjects((prev) => prev.filter((p) => !ids.has(p.id)));
+      setPick(new Set());
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
+    }
+  }
+
   if (loading) return <Skeleton.Rows count={6} />;
 
   return (
-    <div className="bom-page">
+    <div className={`bom-page${editMode ? '' : ' editmode-off'}`}>
       <style>{`
         .bom-page .table tbody tr { min-height: 44px; }
         .bom-page .table thead tr { height: 44px; }
@@ -252,8 +313,24 @@ export default function BomPage() {
             <Icon name="plus" className="btn-ic" />
             프로젝트 추가
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} label="순서·삭제" />
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       {projects.length === 0 ? (
         <p className="purchase-empty">등록된 프로젝트가 없습니다 — 우측 상단 "프로젝트 추가"로 시작하세요.</p>
@@ -263,7 +340,7 @@ export default function BomPage() {
             <table className="table cards-sm sortable-rows">
               <thead>
                 <tr>
-                  <th scope="col" style={{ width: 36 }} aria-label="순서 변경"></th>
+                  <th scope="col" style={{ width: editMode ? 62 : 36 }} aria-label="순서 변경"></th>
                   <th scope="col">프로젝트명</th>
                   <th scope="col" style={{ width: 90 }} className="u-num">
                     품목 수
@@ -286,6 +363,9 @@ export default function BomPage() {
                       key={p.id}
                       p={p}
                       stat={stats[p.id]}
+                      editMode={editMode}
+                      checked={pick.has(p.id)}
+                      onCheck={togglePick}
                       onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
                       onCopy={openCopyProject}
                       onDelete={handleDeleteProject}

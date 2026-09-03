@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { getBomProjects } from '../../services/bomService';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
+import EditModeButton from '../../components/common/EditModeButton';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction, isDefectOnly, canEnterProduction } from '../../utils/workspace';
@@ -139,6 +140,9 @@ export default function ProductionPage() {
   const [company, setCompany] = useState(COMPANIES[0]); // 메티스 · 디에이치 (전체 탭 없음 — 대표님 지시)
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [hideShipped, setHideShipped] = useState(true);
+  // 순서 이동·선택 삭제 잠금 — 기본은 잠김, 화면을 나가면 다시 잠긴다 (2026-09-03 대표님
+  // 「실수로 옮겨버리는 경우가 많아서」)
+  const [editMode, setEditMode] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openMode, setOpenMode] = useState('info'); // 'info'(기본정보) | 'defect'(부품 불량) | 'ship'(출고사진)
   const [openPart, setOpenPart] = useState(null); // defect 모드일 때 대상 BOX
@@ -392,9 +396,12 @@ export default function ProductionPage() {
             {/* 호기 범위를 골라 무엇이 얼마나 모자란지 — BOM 을 연결한 호기만 잡힌다
                 (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」).
                 필터 칩이 아니라 다른 화면으로 가는 버튼이라 오른쪽 끝에 둔다. */}
+            {canEdit && (
+              <EditModeButton className="board-toolbar-right" on={editMode} onToggle={() => setEditMode((v) => !v)} />
+            )}
             <button
               type="button"
-              className="btn btn-sm btn-outline board-toolbar-right"
+              className={`btn btn-sm btn-outline${canEdit ? '' : ' board-toolbar-right'}`}
               onClick={() => navigate(`/production/shortage?company=${encodeURIComponent(company)}`)}
               title="호기 범위의 부족 자재를 품목별로 합산"
             >
@@ -433,6 +440,7 @@ export default function ProductionPage() {
                 onMaterials={(id) => navigate(`/production/${id}/materials`)}
                 orderPool={panels.filter((p) => !p.회사 || p.회사 === company)}
                 bomProjects={bomProjects}
+                editMode={editMode}
               />
 
               {/* 모바일 카드 */}

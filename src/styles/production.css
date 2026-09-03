@@ -1994,3 +1994,23 @@ body:has(.pr-page) .main-content {
   color: var(--danger, #d6303f);
   border-color: rgba(214, 48, 63, 0.35);
 }
+
+/* ── 「순서·삭제」를 켠 동안만 # 칸에 체크박스가 하나 더 들어간다 ──
+   44px 그대로면 손잡이·체크박스·번호가 겹쳐 눌리므로 칸을 넓히고,
+   그 옆에 붙어 고정되는 프로젝트 칸(.mx-c1)의 왼쪽 위치도 같이 옮긴다. */
+.mx-wrap:not(.editmode-off) .mx-c0 {
+  min-width: 66px;
+  width: 66px;
+}
+.mx-wrap:not(.editmode-off) .mx-c1 {
+  left: 66px;
+}
+/* 켜져 있는 동안은 손잡이를 늘 보이게 — 잠금을 푼 것이 눈에 보여야 한다 */
+.mx-wrap:not(.editmode-off) .mx-drag {
+  opacity: 1;
+}
+/* 고른 줄 — 공통 규칙(.table)이 매트릭스 표에는 닿지 않아 여기서 같은 색으로 */
+.mx-table tbody tr.is-checked > td,
+.mx-table tbody tr.is-checked > td.mx-sticky {
+  background: var(--primary-softer, #f0f3f8);
+}

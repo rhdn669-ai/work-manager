@@ -17,6 +17,7 @@ import { useDialog } from './useDialog';
 import Modal from './Modal';
 import Select from './Select';
 import Icon from './Icon';
+import EditModeButton from './EditModeButton';
 import { isRealStaff } from '../../utils/workspace';
 
 const COLS = [
@@ -67,11 +68,17 @@ function fmtCreated(ts) {
   return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function TaskCard({ t, onEdit, onDelete, onMove }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: t.id });
+function TaskCard({ t, editMode, onEdit, onDelete, onMove }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: t.id,
+    disabled: !editMode,
+  });
   const style = {
     transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
     opacity: isDragging ? 0.4 : undefined,
+    // 「순서 변경」이 꺼져 있으면 잡히는 카드가 아니다 — 커서도 세로 스크롤도 평소대로
+    cursor: editMode ? undefined : 'default',
+    touchAction: editMode ? undefined : 'auto',
   };
   const pr = PRIORITY[t.priority] || PRIORITY.normal;
   const colIdx = COLS.findIndex((c) => c.key === (t.status || 'todo'));
@@ -79,7 +86,13 @@ function TaskCard({ t, onEdit, onDelete, onMove }) {
     e.stopPropagation();
   };
   return (
-    <div ref={setNodeRef} style={style} className="kb-card task-card" {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="kb-card task-card"
+      {...(editMode ? attributes : {})}
+      {...(editMode ? listeners : {})}
+    >
       <div className="task-card__top">
         <span className={`task-prio task-prio--${pr.cls}`}>{pr.label}</span>
         <div
@@ -165,7 +178,7 @@ function TaskCard({ t, onEdit, onDelete, onMove }) {
   );
 }
 
-function TaskColumn({ col, cards, onAdd, onEdit, onDelete, onMove }) {
+function TaskColumn({ col, cards, editMode, onAdd, onEdit, onDelete, onMove }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
     <div ref={setNodeRef} className={`kb-col task-col--${col.key} ${isOver ? 'is-over' : ''}`}>
@@ -175,7 +188,7 @@ function TaskColumn({ col, cards, onAdd, onEdit, onDelete, onMove }) {
       </div>
       <div className="kb-col__body">
         {cards.map((t) => (
-          <TaskCard key={t.id} t={t} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
+          <TaskCard key={t.id} t={t} editMode={editMode} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
         ))}
         <button type="button" className="task-add-btn" onClick={() => onAdd(col.key)}>
           <Icon name="plus" className="btn-ic" />
@@ -196,6 +209,8 @@ export default function HomeTaskBoard() {
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
   );
+  // 「순서 변경」 토글 — 기본 꺼짐. 켜야만 카드를 끌어 단계를 옮길 수 있다(실수로 옮기는 것 방지).
+  const [editMode, setEditMode] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -284,7 +299,7 @@ export default function HomeTaskBoard() {
 
   async function handleBoardDrag(event) {
     const { active, over } = event;
-    if (!over) return;
+    if (!editMode || !over) return;
     const id = active.id;
     const newStatus = over.id;
     const card = tasks.find((t) => t.id === id);
@@ -306,10 +321,13 @@ export default function HomeTaskBoard() {
     <section className="home-task-board">
       <div className="home-task-board__head">
         <h3>회사 주요업무 진행상황</h3>
-        <button type="button" className="btn btn-sm btn-primary" onClick={() => openAdd('todo')}>
-          <Icon name="plus" className="btn-ic" />
-          업무 추가
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => openAdd('todo')}>
+            <Icon name="plus" className="btn-ic" />
+            업무 추가
+          </button>
+          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} label="순서 변경" />
+        </div>
       </div>
 
       {loading ? (
@@ -323,6 +341,7 @@ export default function HomeTaskBoard() {
                   key={col.key}
                   col={col}
                   cards={cards}
+                  editMode={editMode}
                   onAdd={openAdd}
                   onEdit={openEdit}
                   onDelete={remove}

@@ -52,6 +52,7 @@ import { useUndo } from '../../contexts/useUndo';
 import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
 import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
@@ -205,7 +206,7 @@ function fmtDateTime(ts) {
 
 // 드래그로 순서를 바꾸는 품목 행 — BOM 상세와 같은 모양(핸들을 No 칸 안에 둔다).
 // 검색·업체 필터로 일부만 보일 때는 끌어봐야 어디에 놓이는지 알 수 없어 핸들을 숨긴다.
-function SortableItemRow({ id, canDrag, no, children }) {
+function SortableItemRow({ id, canDrag, editMode, checked, onCheck, no, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: !canDrag,
@@ -220,9 +221,18 @@ function SortableItemRow({ id, canDrag, no, children }) {
     position: isDragging ? 'relative' : undefined,
   };
   return (
-    <tr ref={setNodeRef} style={style}>
-      <td className="bom-no-col" data-label="No">
+    <tr ref={setNodeRef} style={style} className={checked ? 'is-checked' : undefined}>
+      <td className="bom-no-col" data-label="No" style={editMode ? { width: 76 } : undefined}>
         <span className="bom-no-wrap">
+          {editMode && (
+            <input
+              type="checkbox"
+              className="sel-check"
+              checked={!!checked}
+              onChange={onCheck}
+              aria-label={`${no}번 품목 줄 고르기`}
+            />
+          )}
           {canDrag && (
             <button
               type="button"
@@ -273,6 +283,10 @@ export default function PurchaseDetailPage() {
   });
   const [lineTrashOpen, setLineTrashOpen] = useState(false);
   const [saveState, setSaveState] = useState('saved'); // 'saving' | 'saved' | 'error'
+  // 「순서·삭제」 토글 — 기본 꺼짐(화면을 나가면 다시 꺼진다).
+  // 켜야만 품목 줄을 끌어 옮기거나 골라서 지울 수 있다(실수로 옮기는 것 방지).
+  const [editMode, setEditMode] = useState(false);
+  const [pickLines, setPickLines] = useState(() => new Set()); // 골라 둔 품목 줄 번호(인덱스)
 
   const [receiveModal, setReceiveModal] = useState(null); // { lineIdx, line } | null
   const [receiveForm, setReceiveForm] = useState({ qty: '', date: todayStr(), note: '' });
@@ -540,6 +554,7 @@ export default function PurchaseDetailPage() {
     const newIndex = Number(over.id);
     if (Number.isNaN(oldIndex) || Number.isNaN(newIndex)) return;
     setForm((f) => ({ ...f, items: arrayMove(f.items, oldIndex, newIndex) }));
+    setPickLines(new Set()); // 순서가 바뀌면 줄 번호가 달라지므로 골라 둔 것은 푼다
     scheduleAutoSave();
   }
 
@@ -809,8 +824,9 @@ export default function PurchaseDetailPage() {
     );
   }
 
-  async function removeLine(idx) {
-    if (!(await confirm('이 품목 행을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.'))) return;
+  // skipConfirm — 「선택 삭제」에서 여러 줄을 한 번의 확인으로 지울 때 쓴다(확인은 호출한 쪽에서 이미 받았다)
+  async function removeLine(idx, { skipConfirm = false } = {}) {
+    if (!skipConfirm && !(await confirm('이 품목 행을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.'))) return;
     const gone = formRef.current.items[idx];
     if (gone) applyStockUse([gone], -1, '발주 품목 삭제로 되돌림'); // 안 사게 됐으니 창고로 반환
     setForm((f) => {
@@ -847,6 +863,31 @@ export default function PurchaseDetailPage() {
   function purgeDeletedItem(i) {
     setForm((f) => ({ ...f, deletedItems: (f.deletedItems || []).filter((_, k) => k !== i) }));
     scheduleAutoSave();
+  }
+
+  // 「순서·삭제」 토글 — 끄면 골라 둔 것도 함께 푼다
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPickLines(new Set());
+      return !v;
+    });
+  }
+  function togglePickLine(idx) {
+    setPickLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+  // 골라 둔 줄만 삭제 — 확인은 한 번, 지우는 일은 기존 removeLine 이 그대로 한다(재고 반환·품목 휴지통 포함).
+  // 뒤 줄부터 지워야 앞 줄의 번호가 밀리지 않는다.
+  async function deletePickedLines() {
+    const idxs = Array.from(pickLines).sort((a, b) => b - a);
+    if (idxs.length === 0) return;
+    if (!(await confirm(`고른 품목 ${idxs.length}줄을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.`))) return;
+    for (const i of idxs) removeLine(i, { skipConfirm: true });
+    setPickLines(new Set());
   }
 
   // 품목 전체 삭제 — 모든 행 제거 후 빈 행 1개로 초기화
@@ -968,8 +1009,9 @@ export default function PurchaseDetailPage() {
   // 회신·입고 처리도 그 수량을 기준으로 하므로 정합성이 깨진다.
   const canUseStock = !isReadOnly && purchase?.status === 'draft';
 
-  // 검색·업체 필터가 걸리면 일부만 보여 순서를 옮길 수 없다
-  const canDragItems = !isReadOnly && !itemSearch.trim() && itemSupplierFilter === 'all';
+  // 검색·업체 필터가 걸리면 일부만 보여 순서를 옮길 수 없다.
+  // 「순서·삭제」를 켠 동안에만 끌 수 있다.
+  const canDragItems = editMode && !isReadOnly && !itemSearch.trim() && itemSupplierFilter === 'all';
 
   // 발주 종결 — 보드에서 내려 종결 목록으로 옮긴다. 삭제가 아니라 이동이다.
   async function handleClosePurchase() {
@@ -2431,6 +2473,17 @@ export default function PurchaseDetailPage() {
                 전체 삭제
               </button>
             )}
+            {/* 정산완료·종결 발주서는 줄을 지우지도 옮기지도 못한다(기존 규칙) — 토글도 눌리지 않게 잠근다 */}
+            {isReadOnly ? (
+              <span
+                style={{ opacity: 0.45, cursor: 'not-allowed' }}
+                title="정산완료·종결 발주서는 품목 줄을 바꿀 수 없습니다"
+              >
+                <EditModeButton on={false} onToggle={() => {}} label="순서·삭제" />
+              </span>
+            ) : (
+              <EditModeButton on={editMode} onToggle={toggleEditMode} label="순서·삭제" />
+            )}
           </div>
         </div>
         <p className="field-hint">
@@ -2459,7 +2512,21 @@ export default function PurchaseDetailPage() {
             )}
           </div>
         )}
-        <div className="item-group is-expanded bom-flat-group">
+        {editMode && pickLines.size > 0 && (
+          <div className="sel-bar">
+            <span className="sel-count">
+              <strong>{pickLines.size}</strong>줄 골랐습니다
+            </span>
+            <button type="button" className="btn btn-sm btn-danger" onClick={deletePickedLines}>
+              <Icon name="trash" className="btn-ic" />
+              선택 삭제
+            </button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickLines(new Set())}>
+              선택 해제
+            </button>
+          </div>
+        )}
+        <div className={`item-group is-expanded bom-flat-group${editMode ? '' : ' editmode-off'}`}>
           <div className="item-group-detail">
             <DndContext sensors={itemDndSensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
               <SortableContext items={form.items.map((_, i) => String(i))} strategy={verticalListSortingStrategy}>
@@ -2473,12 +2540,13 @@ export default function PurchaseDetailPage() {
                         규격이 눌려 있었다 (2026-09-02). */}
                     <colgroup>
                       {PO_COLS.map((pct, i) => (
-                        <col key={i} style={{ width: `${pct}%` }} />
+                        // No 칸(i=0)은 「순서·삭제」를 켜면 체크박스+손잡이+번호가 함께 들어가 2%로는 좁다 — 그때만 넓힌다
+                        <col key={i} style={{ width: i === 0 && editMode ? '76px' : `${pct}%` }} />
                       ))}
                     </colgroup>
                     <thead>
                       <tr>
-                        <th scope="col" className="bom-no-col">
+                        <th scope="col" className="bom-no-col" style={editMode ? { width: 76 } : undefined}>
                           No
                         </th>
                         <th scope="col">코드</th>
@@ -2545,7 +2613,15 @@ export default function PurchaseDetailPage() {
                         const isLineSaved = (ln.name || '').trim().length > 0;
                         const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
                         return (
-                          <SortableItemRow key={idx} id={String(idx)} canDrag={canDragItems} no={idx + 1}>
+                          <SortableItemRow
+                            key={idx}
+                            id={String(idx)}
+                            canDrag={canDragItems}
+                            editMode={editMode && !isReadOnly}
+                            checked={pickLines.has(idx)}
+                            onCheck={() => togglePickLine(idx)}
+                            no={idx + 1}
+                          >
                             <td data-label="코드">
                               <input
                                 type="text"

@@ -36,6 +36,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import { setLotsLabel, setLotsOf } from '../../utils/setLots';
 import Skeleton from '../../components/common/Skeleton';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
@@ -178,8 +179,11 @@ const BOARD_COLS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-function KanbanCard({ p, onOpen, onEdit, onDelete, onClose }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: p.id });
+function KanbanCard({ p, dragEnabled, onOpen, onEdit, onDelete, onClose }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: p.id,
+    disabled: !dragEnabled,
+  });
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : undefined,
@@ -187,11 +191,18 @@ function KanbanCard({ p, onOpen, onEdit, onDelete, onClose }) {
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, minWidth: 0, overflow: 'hidden' }}
+      style={{
+        ...style,
+        minWidth: 0,
+        overflow: 'hidden',
+        // 「순서 변경」이 꺼져 있으면 카드는 열기만 하는 링크다 — 끌리지 않게 커서·터치를 되돌린다
+        cursor: dragEnabled ? undefined : 'pointer',
+        touchAction: dragEnabled ? undefined : 'auto',
+      }}
       className="kb-card"
       onClick={() => onOpen(p)}
-      {...attributes}
-      {...listeners}
+      {...(dragEnabled ? attributes : {})}
+      {...(dragEnabled ? listeners : {})}
     >
       <div className="kb-card__title u-ellipsis-1" title={p.title || ''}>
         {p.title}
@@ -255,7 +266,7 @@ function KanbanCard({ p, onOpen, onEdit, onDelete, onClose }) {
   );
 }
 
-function KanbanColumn({ col, cards, onOpen, onEdit, onDelete, onClose }) {
+function KanbanColumn({ col, cards, dragEnabled, onOpen, onEdit, onDelete, onClose }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
     <div ref={setNodeRef} className={`kb-col ${isOver ? 'is-over' : ''}`}>
@@ -265,9 +276,21 @@ function KanbanColumn({ col, cards, onOpen, onEdit, onDelete, onClose }) {
       </div>
       <div className="kb-col__body">
         {cards.map((p) => (
-          <KanbanCard key={p.id} p={p} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} onClose={onClose} />
+          <KanbanCard
+            key={p.id}
+            p={p}
+            dragEnabled={dragEnabled}
+            onOpen={onOpen}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onClose={onClose}
+          />
         ))}
-        {cards.length === 0 && <div className="kb-col__empty">여기로 카드를 끌어다 놓으세요</div>}
+        {cards.length === 0 && (
+          <div className="kb-col__empty">
+            {dragEnabled ? '여기로 카드를 끌어다 놓으세요' : '해당 상태의 발주가 없습니다'}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -280,6 +303,9 @@ export default function PurchaseListPage() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const navigate = useNavigate();
 
+  // 「순서 변경」 토글 — 기본 꺼짐(화면을 나가면 다시 꺼진다).
+  // 켜야만 카드 순서 변경·칸반 상태 이동이 되고, 꺼져 있으면 카드는 열기만 한다.
+  const [editMode, setEditMode] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [regenTask, setRegenTask] = useState(null); // 백그라운드 재생성 잡 { jobs, suppliers, sites, itemMaster }
@@ -593,12 +619,12 @@ export default function PurchaseListPage() {
     }
   }
 
-  const dragEnabled = tab === 'all' && !search.trim();
+  const dragEnabled = editMode && tab === 'all' && !search.trim();
 
   // 칸반: 상태 열로 드래그 → 확인 후 상태 변경 (실수/오배치 방지)
   async function handleBoardDrag(e) {
     const { active, over } = e;
-    if (!over) return;
+    if (!editMode || !over) return;
     const cardId = active.id;
     const newStatus = over.id;
     const card = purchases.find((p) => p.id === cardId);
@@ -654,7 +680,7 @@ export default function PurchaseListPage() {
   if (loading) return <Skeleton.Rows count={6} />;
 
   return (
-    <div className="purchase-list-page printable-page">
+    <div className={`purchase-list-page printable-page${editMode ? '' : ' editmode-off'}`}>
       <div className="page-header">
         <h2>구매 · 발주 현황</h2>
         <div className="page-actions no-print">
@@ -678,6 +704,7 @@ export default function PurchaseListPage() {
             <Icon name="plus" className="btn-ic" />
             구매 등록
           </button>
+          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} label="순서 변경" />
         </div>
       </div>
 
@@ -843,6 +870,7 @@ export default function PurchaseListPage() {
                   key={col.key}
                   col={col}
                   cards={cards}
+                  dragEnabled={editMode}
                   onOpen={(pp) => navigate(`/admin/purchase/${pp.id}`)}
                   onEdit={openEdit}
                   onDelete={handleDelete}

@@ -22752,20 +22752,21 @@ a.lib-row-name:hover {
 }
 
 /* ── BOM 상세 잠금 (2026-09-03 대표님 「기본은 잠금」) — 표 안 입력·버튼·손잡이를 막고 흐리게 ── */
-.bom-locked .bom-flat-table input,
-.bom-locked .bom-flat-table select,
-.bom-locked .bom-flat-table .ds-select,
-.bom-locked .bom-flat-table .bom-supply-btn,
-.bom-locked .bom-flat-table .bom-del-check,
-.bom-locked .bom-flat-table .drag-handle-btn,
-.bom-locked .bom-flat-table .btn,
-.bom-locked .bom-pick-bar {
-  pointer-events: none;
-  opacity: 0.55;
+/* 잠금은 «순서 이동·삭제»만 막는다 — 손잡이·체크박스·행 삭제 버튼만 사라지고(모션),
+   입력칸은 그대로 검정 글자로 수정 가능 (2026-09-03 대표님) */
+.bom-flat-table .drag-handle-btn,
+.bom-flat-table .bom-del-check,
+.bom-flat-table .bom-row-del {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
-.bom-locked .bom-flat-table input {
-  background: transparent;
-  border-color: transparent;
+.bom-locked .bom-flat-table .drag-handle-btn,
+.bom-locked .bom-flat-table .bom-del-check,
+.bom-locked .bom-flat-table .bom-row-del {
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
 }
 .bom-lock-open {
   color: var(--accent-press);
@@ -22793,4 +22794,54 @@ a.lib-row-name:hover {
     flex-basis: 100%;
     flex-wrap: wrap;
   }
+}
+
+/* ── 순서·삭제 토글 (앱 공통, 2026-09-03 대표님) — 켜진 동안만 손잡이·체크박스가 보인다 ── */
+.editmode-btn {
+  white-space: nowrap;
+}
+/* 행·카드 고르기 체크박스 (BOM 의 .bom-del-check 와 같은 꼴).
+   표 안 input 에 44px 높이·100% 폭을 주는 페이지 규칙보다 세게 잡는다 */
+.sel-check,
+.table td input[type='checkbox'].sel-check,
+.table th input[type='checkbox'].sel-check {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin: 0 4px 0 0;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.table tbody tr.is-checked > td,
+.card.is-checked,
+.kb-card.is-checked {
+  background: var(--primary-softer, #f0f3f8);
+}
+/* 고른 것 처리 바 (BOM 의 .bom-pick-bar 와 같은 꼴) */
+.sel-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm, 10px);
+  background: var(--primary-softer, #f0f3f8);
+}
+.sel-count {
+  margin-right: 2px;
+  font-size: var(--font-base);
+  color: var(--text);
+}
+.sel-count strong {
+  color: var(--primary);
+}
+/* 꺼져 있을 때 손잡이 자리는 남기되 보이지 않게 — 켜고 끌 때 표가 들썩이지 않도록 */
+.editmode-off .drag-handle-btn,
+.editmode-off .mx-drag {
+  visibility: hidden;
+  pointer-events: none;
 }

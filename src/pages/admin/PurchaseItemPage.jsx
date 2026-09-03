@@ -21,6 +21,7 @@ import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
@@ -63,9 +64,22 @@ function SortableGroup({ groupKey, className, canDrag, children }) {
   );
 }
 
-// 드래그 가능한 행 — useSortable 훅을 적용한 <tr>
-function SortableItemRow({ id, isHighlight, isFillTarget, onActivate, onMouseEnter, children }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+// 드래그 가능한 행 — useSortable 훅을 적용한 <tr>. 「순서·삭제」가 꺼져 있으면 끌 수 없다
+function SortableItemRow({
+  id,
+  canDrag,
+  checked,
+  onCheck,
+  isHighlight,
+  isFillTarget,
+  onActivate,
+  onMouseEnter,
+  children,
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !canDrag,
+  });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -80,12 +94,24 @@ function SortableItemRow({ id, isHighlight, isFillTarget, onActivate, onMouseEnt
       ref={setNodeRef}
       data-row-id={id}
       style={style}
-      className={`${isHighlight ? 'is-newly-added' : ''} ${isFillTarget ? 'is-fill-target' : ''}`.trim() || undefined}
+      className={
+        `${isHighlight ? 'is-newly-added' : ''} ${isFillTarget ? 'is-fill-target' : ''} ${checked ? 'is-checked' : ''}`.trim() ||
+        undefined
+      }
       onPointerDown={isHighlight ? onActivate : undefined}
       onFocusCapture={isHighlight ? onActivate : undefined}
       onMouseEnter={onMouseEnter}
     >
       <td className="drag-handle-cell" data-label="">
+        {onCheck && (
+          <input
+            type="checkbox"
+            className="sel-check"
+            checked={!!checked}
+            onChange={() => onCheck(id)}
+            aria-label="삭제할 품목 고르기"
+          />
+        )}
         <button
           type="button"
           className="drag-handle-btn"
@@ -302,6 +328,9 @@ export default function PurchaseItemPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
+  // 순서·삭제 토글 — 기본 꺼짐. 켠 동안만 대분류·품목을 끌고 골라 지울 수 있다
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set()); // 골라 둔 품목 id (대분류는 대상 아님 — 순서만)
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
   const [filterCategory, setFilterCategory] = useState('');
@@ -820,6 +849,54 @@ export default function PurchaseItemPage() {
     }
   }
 
+  // ---- 순서·삭제 토글 ----
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set()); // 끄면 골라 둔 것도 함께 푼다
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 품목을 한꺼번에 휴지통으로 — 행별 「삭제」와 같은 길(trashGeneric)
+  async function deletePicked() {
+    const targets = items.filter((it) => pick.has(it.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 품목 ${targets.length}건을 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
+    try {
+      await Promise.all(
+        targets
+          .filter((it) => !String(it.id).startsWith('tmp-')) // 아직 저장 안 된 줄은 화면에서만 지운다
+          .map((it) =>
+            trashGeneric(
+              'purchaseItems',
+              it.id,
+              {
+                title: it.name || '(품명 없음)',
+                summary: [it.code, it.spec].filter(Boolean).join(' · '),
+              },
+              userProfile?.name || '',
+            ),
+          ),
+      );
+      const ids = new Set(targets.map((it) => it.id));
+      setItems((prev) => prev.filter((it) => !ids.has(it.id)));
+      setPick(new Set());
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
+      await loadData();
+    }
+  }
+
   // ---- 엑셀식 셀 채우기 (드래그) ----
   function startFill(e, field, value, rowIds, startIndex) {
     e.preventDefault();
@@ -938,7 +1015,7 @@ export default function PurchaseItemPage() {
   if (loading) return <Skeleton.Rows count={6} />;
 
   return (
-    <div className="purchase-item-page">
+    <div className={`purchase-item-page${editMode ? '' : ' editmode-off'}`}>
       <style>{`
         @media (max-width: 480px) {
           .inline-edit-table th, .inline-edit-table td { padding: 8px 6px; font-size: 12px; }
@@ -1016,6 +1093,7 @@ export default function PurchaseItemPage() {
             <Icon name="plus" className="btn-ic" />
             품목 추가
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} label="순서·삭제" />
         </div>
       </div>
 
@@ -1097,6 +1175,21 @@ export default function PurchaseItemPage() {
             </p>
           )}
 
+          {editMode && pick.size > 0 && (
+            <div className="sel-bar">
+              <span className="sel-count">
+                <strong>{pick.size}</strong>건 골랐습니다
+              </span>
+              <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+                <Icon name="trash" className="btn-ic" />
+                선택 삭제
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                선택 해제
+              </button>
+            </div>
+          )}
+
           {groups.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '20px 0', textAlign: 'center' }}>
               {items.length === 0
@@ -1130,7 +1223,7 @@ export default function PurchaseItemPage() {
                         key={groupKey}
                         groupKey={groupKey}
                         className={`item-group ${isExpanded ? 'is-expanded' : ''}`}
-                        canDrag={!hasActiveFilter}
+                        canDrag={!hasActiveFilter && editMode}
                       >
                         {({ attributes: gAttrs, listeners: gListeners }) => (
                           <>
@@ -1156,6 +1249,8 @@ export default function PurchaseItemPage() {
                                   className="item-group-drag"
                                   aria-label="대분류 순서 변경"
                                   title="끌어서 대분류 차례를 바꿉니다"
+                                  // 「순서·삭제」가 꺼져 있으면 자리는 남기고 감춘다 — 켤 때 머리줄이 들썩이지 않게
+                                  style={editMode ? undefined : { visibility: 'hidden', pointerEvents: 'none' }}
                                   onClick={(e) => e.stopPropagation()}
                                   {...gAttrs}
                                   {...gListeners}
@@ -1258,7 +1353,11 @@ export default function PurchaseItemPage() {
                                     <table className="table inline-edit-table cards-sm sortable-rows">
                                       <thead>
                                         <tr>
-                                          <th scope="col" style={{ width: 32 }} aria-label="순서 변경"></th>
+                                          <th
+                                            scope="col"
+                                            style={{ width: editMode ? 58 : 32 }}
+                                            aria-label="순서 변경"
+                                          ></th>
                                           <th scope="col" style={{ width: 110 }}>
                                             코드
                                           </th>
@@ -1349,6 +1448,9 @@ export default function PurchaseItemPage() {
                                             <Fragment key={it.id}>
                                               <SortableItemRow
                                                 id={it.id}
+                                                canDrag={editMode}
+                                                checked={pick.has(it.id)}
+                                                onCheck={editMode ? togglePick : undefined}
                                                 isHighlight={highlightIds.has(it.id)}
                                                 onActivate={() => clearHighlight(it.id)}
                                                 onMouseEnter={
