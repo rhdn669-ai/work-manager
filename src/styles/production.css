@@ -1966,9 +1966,10 @@ body:has(.pr-page) .main-content {
 
 /* 「자재」 칸 = BOM 타입 배지 (기구 배지와 같은 꼴). 연결 없이 글자만 있는 것은 회색 */
 .mx-jaje.mx-variant {
-  width: 124px;
-  min-width: 124px;
-  max-width: 124px;
+  /* 「T5391 / MT8311」(14자)이 잘리지 않게 */
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
 }
 .mx-variant-badge {
   display: inline-block;
