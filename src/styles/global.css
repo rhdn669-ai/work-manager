@@ -22476,3 +22476,51 @@ a.lib-row-name:hover {
   }
 }
 
+/* ── 부족 자재 집계 (2026-09-03 대표님 「호기수 범위 선택해서 …」) ── */
+.sht-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+.sht-range-label {
+  flex: none;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+/* 호기 이름 길이(YS-TEPS0926165)에 맞춘 고정 폭 — 줄 전체를 차지하지 않게 */
+.sht-range .ds-select {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+.sht-range-tilde {
+  color: var(--text-muted);
+}
+.sht-range-sum {
+  margin-left: 6px;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-light);
+}
+.sht-unlinked {
+  margin-left: 4px;
+  color: var(--accent-press);
+  font-weight: 700;
+}
+.sht-table .sht-panels {
+  font-size: 13px;
+  color: var(--text-light);
+}
+@media (max-width: 768px) {
+  .sht-range .ds-select {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+  .sht-range-sum {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}

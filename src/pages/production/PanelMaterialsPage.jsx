@@ -10,7 +10,7 @@ import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanelMaterials, setReceived } from '../../services/panelMaterialsService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary } from '../../domain/panelMaterials';
-import { specFontClass } from '../../utils/printText';
+import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
 // (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트 … 구성품 체크 수량」).
@@ -191,7 +191,7 @@ export default function PanelMaterialsPage() {
     );
 
   const docNo = `MAT${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
-  const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const stamp = localStamp();
 
   return (
     <div className="page pmat-page">

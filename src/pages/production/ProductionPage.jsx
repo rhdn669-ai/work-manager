@@ -375,6 +375,16 @@ export default function ProductionPage() {
             <button className={`pr-chip ${hideShipped ? 'on' : ''}`} onClick={() => setHideShipped((v) => !v)}>
               출고 숨김
             </button>
+            {/* 호기 범위를 골라 무엇이 얼마나 모자란지 — BOM 을 연결한 호기만 잡힌다
+                (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」) */}
+            <button
+              type="button"
+              className="pr-chip"
+              onClick={() => navigate(`/production/shortage?company=${encodeURIComponent(company)}`)}
+              title="호기 범위의 부족 자재를 품목별로 합산"
+            >
+              부족 집계
+            </button>
           </div>
 
           {loading ? (

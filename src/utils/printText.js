@@ -26,3 +26,9 @@ export function specFontClass(s, maxChars) {
   // (2026-09-02 대표님 「글이 너무 작네」 — 「헤어 스캐너 통신 케이블」이 5.5pt 였다).
   return 'fs-7 is-wrapped';
 }
+
+/** 출력물 하단 「출력 YYYY-MM-DD HH:mm」 — toISOString 은 UTC 라 9시간 어긋난다 */
+export function localStamp(d = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}

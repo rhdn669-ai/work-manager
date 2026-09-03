@@ -42,3 +42,17 @@ export async function setReceived(panelId, box, bomItemId, qty, by) {
     { merge: true },
   );
 }
+
+/** 모든 호기의 기록을 한 번에 — cb({ [panelId]: { [box]: items } }). 구간 부족 집계용 */
+export function subscribeAllMaterials(cb) {
+  return onSnapshot(ref, (snap) => {
+    const out = {};
+    snap.docs.forEach((d) => {
+      const v = d.data();
+      if (!v.panelId) return;
+      if (!out[v.panelId]) out[v.panelId] = {};
+      out[v.panelId][v.box] = v.items || {};
+    });
+    cb(out);
+  });
+}
