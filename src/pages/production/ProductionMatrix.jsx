@@ -49,6 +49,8 @@ import { splitPasted, mapPastedValues } from '../../utils/pasteColumn';
 // 엑셀식 가로 매트릭스 — 호기(행) × BOX(그룹: 판금·하네스·사급·도급·불량·상태).
 // BOX 상태는 하위(자재입고4·불량)에서 자동 산출. 셀 직접 입력. MP 하위 상세는 상세모달.
 const mmdd = (d) => (d ? String(d).slice(5) : '');
+// 이 폭 이하(태블릿 가로·세로, 폰)는 표를 자르지 않고 페이지 스크롤 — CSS 의 같은 값과 맞춘다
+const PAGE_SCROLL_MQ = '(max-width: 1180px)';
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // 글자 칸 — 표 «밖»에 둔다.
@@ -181,29 +183,41 @@ export default function ProductionMatrix({
     const el = wrapRef.current;
     if (!el) return undefined;
     let raf = 0;
-    // 표 높이를 화면 남는 만큼으로 맞춘다. 고정값으로 잡으면 상단 알림 배너가
-    // 있고 없고에 따라 표 아래가 화면 밖으로 밀려, 가로 스크롤바를 쓰려면
-    // 페이지를 한 번 더 내려야 했다.
+    // PC: 표 높이를 화면 남는 만큼으로 맞춰 표 안에서 스크롤한다(머리 3줄 고정·스크롤바가 늘 손 닿는 곳).
+    // 태블릿·폰: 상단이 화면의 반을 먹어 표가 반 토막 나므로(2026-09-03 대표님) 자르지 않고
+    // 다 펼쳐 페이지 전체를 스크롤한다. 보이는 줄만 그리는 계산도 페이지 스크롤 기준으로 바꾼다.
+    const pageMode = () => window.matchMedia(PAGE_SCROLL_MQ).matches;
     const fit = () => {
+      if (pageMode()) {
+        el.style.maxHeight = 'none';
+        return;
+      }
       const top = el.getBoundingClientRect().top;
       el.style.maxHeight = `${Math.max(280, Math.round(window.innerHeight - top - 16))}px`;
     };
     const measure = () => {
       raf = 0;
       fit();
-      setView({ top: el.scrollTop, height: el.clientHeight || 900 });
+      if (pageMode()) {
+        const top = el.getBoundingClientRect().top;
+        setView({ top: Math.max(0, -top), height: window.innerHeight || 900 });
+      } else {
+        setView({ top: el.scrollTop, height: el.clientHeight || 900 });
+      }
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(measure);
     };
     measure();
     el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     // 배너가 닫히는 등 위쪽 높이가 바뀌면 다시 맞춘다
     const ro = new ResizeObserver(onScroll);
     ro.observe(document.body);
     return () => {
       el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       ro.disconnect();
       if (raf) cancelAnimationFrame(raf);

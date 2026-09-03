@@ -22688,3 +22688,16 @@ a.lib-row-name:hover {
 .sht-empty-ic.is-warn {
   color: var(--accent-press);
 }
+.pset-none {
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.pset-items tr.is-excluded > td {
+  color: var(--text-muted);
+  background: var(--bg-subtle, #f7f8fa);
+}
+.pset-items tr.is-excluded .pmat-code {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}

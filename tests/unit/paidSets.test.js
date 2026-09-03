@@ -39,6 +39,12 @@ describe('세트 수', () => {
     expect(r.sets).toBe(0);
     expect(r.items.every((x) => x.setsFrom === 0)).toBe(true);
   });
+  it('제외한 품목은 세트 수를 정하지 못하고 맨 아래로 간다', () => {
+    const r = computeSets({ rows: [paid('A', 1), paid('B', 1)], receivedByItem: { A: 5, B: 0 }, exclude: ['B'] });
+    expect(r.sets).toBe(5);
+    expect(r.limiter).toBe('A');
+    expect(r.items[r.items.length - 1]).toMatchObject({ itemId: 'B', excluded: true });
+  });
   it('도급 줄이 하나도 없으면 0 세트', () => {
     expect(computeSets({ rows: [free('B', 1)], receivedByItem: { B: 100 } }).sets).toBe(0);
   });

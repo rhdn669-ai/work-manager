@@ -1943,3 +1943,23 @@ body:has(.pr-page) .main-content {
     width: 196px;
   }
 }
+
+/* ── 태블릿·폰: 표를 자르지 않고 페이지 전체 스크롤 (2026-09-03 대표님 「화면이 반만 보여서」)
+   JS 의 PAGE_SCROLL_MQ(1180px)와 같은 값. 가로 스크롤은 여전히 표 안에서. ── */
+@media (max-width: 1180px) {
+  .mx-wrap {
+    max-height: none;
+    min-height: 0;
+    overscroll-behavior: auto;
+  }
+  /* 상단을 한 단 줄여 표가 더 위에서 시작하게 */
+  .pr-month-load {
+    margin-bottom: 6px;
+  }
+  .pr-month-load-title em {
+    display: none;
+  }
+  .board-toolbar {
+    margin-bottom: var(--space-3);
+  }
+}

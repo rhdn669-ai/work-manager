@@ -7,12 +7,14 @@ import { useAuth } from '../../contexts/useAuth';
 import { subscribePanels } from '../../services/productionService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
+import { getAllSites } from '../../services/siteService';
 import {
   subscribePaidSetSettings,
   savePaidSetSettings,
   subscribeReceivedBySite,
   assignPaidSet,
   unassignPaidSet,
+  setPaidSetExcluded,
 } from '../../services/paidSetService';
 import { computeSets, eligiblePanels, groupKey, panelSeq } from '../../domain/paidSets';
 
@@ -35,7 +37,8 @@ export default function PaidSetsPage() {
   const [settings, setSettings] = useState({});
   const [master, setMaster] = useState([]);
   const [bomByProject, setBomByProject] = useState({}); // { projectId: rows[] }
-  const [receivedBySite, setReceivedBySite] = useState({}); // { projectId: { byItem, meta } }
+  const [received, setReceived] = useState({ byItem: {}, meta: null }); // 설정한 발주 현장의 입고
+  const [sites, setSites] = useState([]);
   const [groupSel, setGroupSel] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -52,6 +55,14 @@ export default function PaidSetsPage() {
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
   const startProject = settings?.[company]?.startProject || '';
+  // 발주서를 셀 현장 — BOM 프로젝트와는 다른 목록이라 여기서 한 번 고른다
+  const siteId = settings?.[company]?.siteId || '';
+  const excluded = useMemo(() => Object.keys(settings?.[company]?.excluded || {}), [settings, company]);
+  useEffect(() => {
+    getAllSites()
+      .then((rows) => setSites(rows || []))
+      .catch(() => setSites([]));
+  }, []);
   // 시작 호기 후보 — 이 회사 호기 이름(번호순)
   const projectNames = useMemo(() => {
     const seen = new Set();
@@ -63,10 +74,13 @@ export default function PaidSetsPage() {
 
   const eligible = useMemo(() => eligiblePanels(panels, { company, startProject }), [panels, company, startProject]);
 
-  // 같은 BOM(프로젝트·타입)끼리 묶는다 — 세트는 타입마다 따로
+  // 같은 BOM(프로젝트·타입)끼리 묶는다 — 세트는 타입마다 따로.
+  // 타입 목록은 이 회사에서 BOM 을 연결한 호기 전부에서 뽑는다(시작 호기 앞 것 포함) —
+  // 아직 273 이후 호기에 BOM 을 안 붙였어도 「몇 세트 들어왔나」는 보여야 한다.
   const groups = useMemo(() => {
     const map = new Map();
-    for (const p of eligible) {
+    const eligibleIds = new Set(eligible.map((p) => p.id));
+    for (const p of eligiblePanels(panels, { company, startProject: '' })) {
       const k = groupKey(p);
       if (!map.has(k))
         map.set(k, {
@@ -77,10 +91,10 @@ export default function PaidSetsPage() {
           variantLabel: p.bomLink.variantLabel || '공통',
           panels: [],
         });
-      map.get(k).panels.push(p);
+      if (eligibleIds.has(p.id)) map.get(k).panels.push(p);
     }
     return [...map.values()];
-  }, [eligible]);
+  }, [panels, company, eligible]);
   const group = groups.find((g) => g.key === groupSel) || groups[0] || null;
 
   // 묶음마다 BOM 한 번, 발주 입고 구독 한 번
@@ -95,14 +109,10 @@ export default function PaidSetsPage() {
       alive = false;
     };
   }, [groups, bomByProject]);
-  const projectIds = useMemo(() => [...new Set(groups.map((g) => g.projectId))].join(','), [groups]);
   useEffect(() => {
-    const ids = projectIds ? projectIds.split(',') : [];
-    const unsubs = ids.map((id) =>
-      subscribeReceivedBySite(id, (byItem, meta) => setReceivedBySite((prev) => ({ ...prev, [id]: { byItem, meta } }))),
-    );
-    return () => unsubs.forEach((u) => u());
-  }, [projectIds]);
+    if (!siteId) return undefined;
+    return subscribeReceivedBySite(siteId, (byItem, meta) => setReceived({ byItem, meta }));
+  }, [siteId]);
 
   // ── 이 묶음의 셈 ──
   const variantRows = useMemo(
@@ -114,13 +124,18 @@ export default function PaidSetsPage() {
     () =>
       computeSets({
         rows: variantRows,
-        receivedByItem: group ? receivedBySite[group.projectId]?.byItem || {} : {},
+        receivedByItem: siteId ? received.byItem : {},
         assigned: assignedPanels.length,
         master: masterMap,
+        exclude: excluded,
       }),
-    [variantRows, group, receivedBySite, assignedPanels.length, masterMap],
+    [variantRows, siteId, received, assignedPanels.length, masterMap, excluded],
   );
-  const meta = group ? receivedBySite[group.projectId]?.meta : null;
+  const meta = siteId ? received.meta : null;
+  // 배정 기준은 발주서에 적힌 세트 수다 — 현장에서 「N세트 발주」로 사 온 것이 그 수.
+  // 품목 기준 셈은 「그 세트가 품목까지 다 갖춰졌나」를 보는 보조 숫자.
+  const setsByDoc = Math.max(0, (Number(meta?.setCount) || 0) - assignedPanels.length);
+  const canAssign = setsByDoc > 0;
   const limiterItem = calc.items.find((x) => x.itemId === calc.limiter);
   const bomLoaded = group ? group.projectId in bomByProject : false;
 
@@ -131,10 +146,25 @@ export default function PaidSetsPage() {
       toast('시작 호기 저장에 실패했습니다', 'error');
     }
   };
+  const setSite = async (v) => {
+    const site = sites.find((x) => x.id === v);
+    try {
+      await savePaidSetSettings(company, { siteId: v, siteName: site?.name || '' });
+    } catch {
+      toast('발주서 프로젝트 저장에 실패했습니다', 'error');
+    }
+  };
 
+  const toggleExclude = async (itemId, on) => {
+    try {
+      await setPaidSetExcluded(company, itemId, on);
+    } catch {
+      toast('저장에 실패했습니다', 'error');
+    }
+  };
   const assign = async (p) => {
-    if (calc.sets <= 0) {
-      toast('남은 세트가 없습니다 — 입고를 먼저 확인하세요', 'error');
+    if (!canAssign) {
+      toast('남은 세트가 없습니다 — 발주서 입고를 먼저 확인하세요', 'error');
       return;
     }
     setBusy(p.id);
@@ -201,10 +231,22 @@ export default function PaidSetsPage() {
         </div>
       </div>
 
-      {/* 조건 카드: 시작 호기(좌) · 타입 묶음(우) */}
+      {/* 조건 카드: 발주서 프로젝트 · 시작 호기(좌) · 타입 묶음(우) */}
       <div className="card sht-controls">
         <div className="sht-range">
-          <span className="sht-range-label">우리가 구매 시작한 호기</span>
+          <span className="sht-range-label">발주서 프로젝트</span>
+          <Select
+            value={siteId}
+            onChange={setSite}
+            options={[
+              { value: '', label: '선택 안 함' },
+              ...sites.map((x) => ({ value: x.id, label: x.name || x.id })),
+            ]}
+            placeholder="발주서 프로젝트"
+            ariaLabel="발주서를 셀 프로젝트"
+            native
+          />
+          <span className="sht-range-label">구매 시작 호기</span>
           <Select
             value={startProject}
             onChange={setStart}
@@ -236,46 +278,54 @@ export default function PaidSetsPage() {
       {!group ? (
         <div className="card sht-empty">
           <Icon name="alert" className="sht-empty-ic is-warn" />
-          <strong>배정할 호기가 없습니다</strong>
-          <span>
-            {startProject ? `${startProject} 이후` : '이 회사'} 호기 중 BOM 을 연결한 것이 없습니다 — 생산현황
-            「상세」에서 BOM 을 연결하세요
-          </span>
+          <strong>BOM 을 연결한 호기가 없습니다</strong>
+          <span>세트는 호기의 BOM(프로젝트·타입)으로 셉니다 — 생산현황 「상세」에서 BOM 을 연결하세요</span>
         </div>
       ) : (
         <>
           <div className="pmat-link">
             BOM <strong>{group.projectName}</strong>
             <span className={`pmat-variant${group.variantKey ? '' : ' is-common'}`}>{group.variantLabel}</span>
-            {meta && (
-              <span className="pset-meta">
-                · 발주서 {meta.purchases}건 · 입고 줄 {meta.lines}건
-                {meta.noItem > 0 && <em className="pset-warn"> · 품목 코드 없는 입고 {meta.noItem}줄은 못 셈</em>}
-              </span>
+            {!siteId ? (
+              <em className="pset-warn"> · 발주서 프로젝트를 고르지 않아 입고를 셀 수 없습니다</em>
+            ) : (
+              meta && (
+                <span className="pset-meta">
+                  · 발주서 {meta.purchases}건 · 입고 줄 {meta.lines}건
+                  {meta.setCount > 0 && <> · 발주서에 적힌 세트 합 {meta.setCount}</>}
+                  {meta.noItem > 0 && <em className="pset-warn"> · 품목 코드 없는 입고 {meta.noItem}줄은 못 셈</em>}
+                </span>
+              )
             )}
             {calc.unlinked > 0 && <em className="pset-warn"> · BOM 에 품목 미연결 도급 줄 {calc.unlinked}개</em>}
           </div>
 
-          {/* 요약 카드 */}
+          {/* 요약 카드 — 배정 기준은 발주서 세트 수, 품목 기준은 보조 */}
           <div className="admin-stats sht-stats">
             <div className="admin-stat">
               <div className="admin-stat-label">남은 세트</div>
               <div className="admin-stat-value">
+                {setsByDoc}
+                <span>세트</span>
+              </div>
+              <div className="admin-stat-sub">
+                발주서 기준 {meta?.setCount || 0}세트 입고 − 배정 {assignedPanels.length}
+              </div>
+            </div>
+            <div className={`admin-stat${bomLoaded && calc.sets < setsByDoc ? ' is-warning' : ''}`}>
+              <div className="admin-stat-label">품목까지 갖춘 세트</div>
+              <div className="admin-stat-value">
                 {bomLoaded ? calc.sets : '…'}
                 <span>세트</span>
               </div>
-              <div className="admin-stat-sub">지금 배정할 수 있는 수</div>
-            </div>
-            <div className="admin-stat">
-              <div className="admin-stat-label">배정한 세트</div>
-              <div className="admin-stat-value">
-                {assignedPanels.length}
-                <span>세트</span>
+              <div className="admin-stat-sub">
+                {bomLoaded && calc.sets < setsByDoc
+                  ? '일부 품목이 세트 수만큼 안 들어옴'
+                  : '모든 품목이 세트 수만큼 있음'}
               </div>
-              <div className="admin-stat-sub">호기 {group.panels.length}개 중</div>
             </div>
             <div
-              className={`admin-stat${group.panels.length - assignedPanels.length > calc.sets ? ' is-warning' : ''}`}
+              className={`admin-stat${group.panels.length - assignedPanels.length > setsByDoc ? ' is-warning' : ''}`}
             >
               <div className="admin-stat-label">미배정 호기</div>
               <div className="admin-stat-value">
@@ -283,21 +333,19 @@ export default function PaidSetsPage() {
                 <span>개</span>
               </div>
               <div className="admin-stat-sub">
-                {group.panels.length - assignedPanels.length > calc.sets
-                  ? `${group.panels.length - assignedPanels.length - calc.sets}세트분 더 사야 함`
-                  : '세트가 충분함'}
+                {group.panels.length - assignedPanels.length > setsByDoc
+                  ? `${group.panels.length - assignedPanels.length - setsByDoc}세트분 더 사야 함`
+                  : `호기 ${group.panels.length}개 중 배정 ${assignedPanels.length}`}
               </div>
             </div>
-            <div
-              className={`admin-stat${limiterItem && calc.sets < group.panels.length - assignedPanels.length ? ' is-warning' : ''}`}
-            >
+            <div className={`admin-stat${limiterItem && calc.sets < setsByDoc ? ' is-warning' : ''}`}>
               <div className="admin-stat-label">세트를 막는 품목</div>
               <div className="admin-stat-value pset-limiter">
                 {limiterItem ? limiterItem.code || limiterItem.name : '—'}
               </div>
               <div className="admin-stat-sub">
                 {limiterItem
-                  ? `${limiterItem.name} · 여유 ${limiterItem.spare} / 세트당 ${limiterItem.perSet}`
+                  ? `${limiterItem.name} · 여유 ${limiterItem.spare} / 세트당 ${limiterItem.perSet} → ${limiterItem.setsFrom}세트분`
                   : '도급 품목 없음'}
               </div>
             </div>
@@ -329,6 +377,14 @@ export default function PaidSetsPage() {
                 </tr>
               </thead>
               <tbody>
+                {group.panels.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="pset-none">
+                      {startProject ? `${startProject} 이후` : '이 회사'} 호기 중 이 BOM 타입을 연결한 것이 없습니다 —
+                      생산현황 「상세」에서 BOM 을 연결하면 여기 나옵니다
+                    </td>
+                  </tr>
+                )}
                 {group.panels.map((p, i) => (
                   <tr key={p.id} className={p.paidSet ? 'is-done' : ''}>
                     <td className="pmat-no">{i + 1}</td>
@@ -359,8 +415,8 @@ export default function PaidSetsPage() {
                         <button
                           type="button"
                           className="btn btn-sm btn-primary"
-                          disabled={busy === p.id || calc.sets <= 0 || !bomLoaded}
-                          title={calc.sets <= 0 ? '남은 세트가 없습니다' : '세트 하나를 이 호기에'}
+                          disabled={busy === p.id || !canAssign || !bomLoaded}
+                          title={!canAssign ? '남은 세트가 없습니다' : '세트 하나를 이 호기에'}
                           onClick={() => assign(p)}
                         >
                           세트 배정
@@ -384,7 +440,7 @@ export default function PaidSetsPage() {
             <div className="table-scroll-x">
               <table className="table pmat-table sht-table pset-items">
                 <colgroup>
-                  {[48, 130, null, null, 90, 90, 90, 90, 100].map((w, i) => (
+                  {[48, 130, null, null, 90, 90, 90, 90, 100, 96].map((w, i) => (
                     <col key={i} style={w ? { width: w } : undefined} />
                   ))}
                 </colgroup>
@@ -411,11 +467,17 @@ export default function PaidSetsPage() {
                     <th scope="col" className="pmat-num">
                       세트분
                     </th>
+                    <th scope="col" className="col-action">
+                      세트 셈
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {calc.items.map((it, i) => (
-                    <tr key={it.itemId} className={it.itemId === calc.limiter ? 'is-partial' : ''}>
+                    <tr
+                      key={it.itemId}
+                      className={it.excluded ? 'is-excluded' : it.itemId === calc.limiter ? 'is-partial' : ''}
+                    >
                       <td className="pmat-no">{i + 1}</td>
                       <td className="pmat-code">{it.code}</td>
                       <td className="sht-name">{it.name}</td>
@@ -428,10 +490,21 @@ export default function PaidSetsPage() {
                       <td className={`pmat-num${it.spare < 0 ? ' is-short' : ''}`}>{it.spare}</td>
                       <td className="pmat-num">
                         <span
-                          className={`status-badge ${it.setsFrom === calc.sets ? 'status-badge--cancel' : 'status-badge--done'} sht-short`}
+                          className={`status-badge ${it.excluded ? 'status-badge--wait' : it.setsFrom === calc.sets ? 'status-badge--cancel' : 'status-badge--done'} sht-short`}
                         >
                           {it.setsFrom}
                         </span>
+                      </td>
+                      <td className="col-action">
+                        {/* 세트로 안 사는 품목(통신케이블처럼 따로 사는 것)은 셈에서 뺀다 */}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => toggleExclude(it.itemId, !it.excluded)}
+                          title={it.excluded ? '세트 셈에 다시 넣기' : '세트 셈에서 빼기 (따로 사는 품목)'}
+                        >
+                          {it.excluded ? '포함' : '제외'}
+                        </button>
                       </td>
                     </tr>
                   ))}

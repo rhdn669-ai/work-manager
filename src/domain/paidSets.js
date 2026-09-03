@@ -39,10 +39,12 @@ export function perSetByItem(rows) {
  *   receivedByItem { itemId: 발주서 입고 합 }
  *   assigned       이미 배정한 세트 수
  *   master         { itemId: 품목 마스터 } (코드·품명·규격 표시용, 없어도 됨)
+ *   exclude        세트 셈에서 뺀 품목 id 들 (세트로 안 사는 것 — 통신케이블처럼 따로 사는 품목)
  * → { sets, assigned, items:[…], limiter, unlinked }
  */
-export function computeSets({ rows, receivedByItem = {}, assigned = 0, master = {} }) {
+export function computeSets({ rows, receivedByItem = {}, assigned = 0, master = {}, exclude = [] }) {
   const { byItem, unlinked } = perSetByItem(rows);
+  const skip = new Set(exclude || []);
   const items = [];
   let sets = Infinity;
   let limiter = null;
@@ -51,6 +53,7 @@ export function computeSets({ rows, receivedByItem = {}, assigned = 0, master = 
     const consumed = perSet * assigned;
     const spare = received - consumed;
     const setsFrom = Math.max(0, Math.floor(spare / perSet));
+    const excluded = skip.has(itemId);
     const m = master[itemId] || {};
     items.push({
       itemId,
@@ -62,18 +65,21 @@ export function computeSets({ rows, receivedByItem = {}, assigned = 0, master = 
       consumed,
       spare,
       setsFrom,
+      excluded,
     });
-    if (setsFrom < sets) {
+    if (!excluded && setsFrom < sets) {
       sets = setsFrom;
       limiter = itemId;
     }
   }
-  if (items.length === 0) {
+  if (!Number.isFinite(sets)) {
     sets = 0;
     limiter = null;
   }
-  // 세트를 막는 것부터 — 같은 세트 수면 코드순
-  items.sort((a, b) => a.setsFrom - b.setsFrom || a.code.localeCompare(b.code));
+  // 세트를 막는 것부터(제외한 것은 맨 아래) — 같은 세트 수면 코드순
+  items.sort(
+    (a, b) => Number(a.excluded) - Number(b.excluded) || a.setsFrom - b.setsFrom || a.code.localeCompare(b.code),
+  );
   return { sets, assigned, items, limiter, unlinked };
 }
 
