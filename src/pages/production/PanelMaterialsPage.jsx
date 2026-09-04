@@ -278,7 +278,7 @@ export default function PanelMaterialsPage() {
         {locked && assigned ? (
           <span
             className="status-badge status-badge--done pmat-locked-badge"
-            title="도급 세트 화면에서 배정·취소·부족분 채우기"
+            title="도급 배정 화면에서 배정·취소·부족분 채우기"
           >
             <Icon name="lock" />
             세트 배정 · {panel.paidSet.seq}번째 · {panel.paidSet.at}
@@ -287,13 +287,13 @@ export default function PanelMaterialsPage() {
         ) : locked ? (
           <span className="pmat-hint pmat-hint-paid">
             <Icon name="lock" />
-            도급 자재는 손으로 적지 않습니다 — 「도급 세트」에서 배정하면 채워집니다
+            도급 자재는 손으로 적지 않습니다 — 「도급 배정」에서 배정하면 채워집니다
             <button
               type="button"
               className="btn btn-sm btn-outline"
               onClick={() => navigate(`/production/paid-sets?company=${encodeURIComponent(panel.회사 || '')}`)}
             >
-              도급 세트로
+              도급 배정으로
             </button>
           </span>
         ) : (
@@ -377,7 +377,7 @@ export default function PanelMaterialsPage() {
                     <td className="pmat-num">{Number(r.qty) || 0}</td>
                     <td className="pmat-num">
                       {locked ? (
-                        <span className="pmat-locked-qty" title="세트 배정 — 도급 세트 화면에서만 바뀝니다">
+                        <span className="pmat-locked-qty" title="세트 배정 — 도급 배정 화면에서만 바뀝니다">
                           {got || 0}
                         </span>
                       ) : (

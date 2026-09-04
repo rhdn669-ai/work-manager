@@ -248,7 +248,7 @@ export default function PaidSetsPage() {
             생산현황
           </button>
           <h2 className="page-title pmat-title">
-            도급 세트 <span className="pmat-title-sub">· {company}</span>
+            도급 배정 <span className="pmat-title-sub">· {company}</span>
           </h2>
         </div>
         <div className="page-actions">

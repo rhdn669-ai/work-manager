@@ -413,10 +413,10 @@ export default function ProductionPage() {
               type="button"
               className="btn btn-sm btn-outline"
               onClick={() => navigate(`/production/paid-sets?company=${encodeURIComponent(company)}`)}
-              title="도급 세트 입고 현황 · 호기 배정"
+              title="도급 배정 — 세트 입고 현황 · 호기 배정"
             >
               <Icon name="archive" className="btn-ic" />
-              도급 세트
+              도급 배정
             </button>
           </div>
 
