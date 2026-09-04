@@ -1,33 +1,134 @@
-// 긴 표의 상자 높이를 «화면 남는 만큼»으로 맞춘다 — 가로 스크롤바가 표 맨 아래가 아니라 늘 손 닿는 곳에
-// (2026-09-04 대표님 「가로 스크롤이 밑에 있어서 화면 제일 아래로 내려야 이동이 가능해짐」).
-// CSS 의 calc(100dvh - N) 은 위쪽에 배너·제목·필터가 얼마나 있는지 몰라 어긋난다. 실제 위치로 잰다.
+// 긴 표를 다루는 두 가지 (2026-09-04 대표님)
+//
+// ① 높이 — 상자를 «화면 남는 만큼»으로 잘라 가로 스크롤바가 표 맨 아래가 아니라 늘 손 닿는 곳에
+//    (「가로 스크롤이 밑에 있어서 화면 제일 아래로 내려야」). 머리줄은 상자 안에서 고정(CSS).
+// ② 폭 — 원래 배치(폭 100%·열 %)에서 글자가 잘리는 표만 «실제 글자 폭»만큼 펼쳐 가로 스크롤.
+//    브라우저의 max-content 는 입력칸을 내용과 무관하게 ≈180px 로 잡아 표를 부풀렸고(BOM 2,888px),
+//    화면이 넓어도 그 폭에 고정돼 「우측이 비었는데 스크롤」이 생겼다. 잘리지 않는 표는 원래 배치 그대로
+//    (「여기도 비율이 이상하네」 — 구매처 표가 넓은 화면에서 비고 칸으로 몰리던 것).
 // 생산현황 표(.mx-wrap)는 자기 스크립트가 있어 건드리지 않는다.
 const MIN_H = 320;
 const BOTTOM_GAP = 16;
-// 내용 폭으로 펼친 표가 너무 넓어 보여 20% 줄인다 (2026-09-04 대표님 「전체 폭을 일정한 비율로 20%」).
-// 화면 폭보다 좁아지진 않는다. 줄여서 잘리는 칸은 말줄임(title 로 전체 확인).
-const SHRINK = 0.82; // 84% 에서 2% 내림 (2026-09-04 대표님 「2프로 축소」)
+const CELL_SLACK = 6; // 칸마다 여유(px) — 글자 폭에 딱 맞추면 마지막 글자가 붙는다
 
-function shrinkWide(el, table) {
+const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+
+// 칸 하나에 «실제로» 필요한 폭 — 글자는 잘려 있어도 원래 폭을 재고, 입력칸은 값의 글자 폭으로
+function cellNeed(td) {
+  const cs = getComputedStyle(td);
+  const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  let need = 0;
+  const controls = td.querySelectorAll(
+    ':scope > input, :scope > select, :scope > button, :scope > .ds-select, :scope > span, :scope > div',
+  );
+  if (controls.length === 0) {
+    const r = document.createRange();
+    r.selectNodeContents(td);
+    need = r.getBoundingClientRect().width;
+  } else {
+    let sum = 0;
+    controls.forEach((c) => {
+      // 드롭다운은 칸 폭을 100% 차지해 scrollWidth 가 «지금 칸 폭»으로 되돌아온다(순환) — 고른 글자 폭으로 잰다
+      const sel = c.tagName === 'SELECT' ? c : c.querySelector && c.querySelector('select');
+      if (sel) {
+        const f = getComputedStyle(sel);
+        if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
+        const txt = sel.selectedOptions[0]?.text || '';
+        sum += (ctx ? ctx.measureText(txt).width : 60) + 44; // 화살표·안쪽 여백
+        return;
+      }
+      if (c.tagName === 'INPUT' && (c.type === 'text' || c.type === 'number')) {
+        const f = getComputedStyle(c);
+        if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
+        const w = ctx ? ctx.measureText(String(c.value || c.placeholder || '')).width : c.clientWidth;
+        sum += w + parseFloat(f.paddingLeft) + parseFloat(f.paddingRight) + 8;
+      } else if (c.tagName === 'SPAN' || c.tagName === 'DIV') {
+        const inner = c.querySelector('input[type="text"], input[type="number"]');
+        if (inner) {
+          const f = getComputedStyle(inner);
+          if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
+          const w = ctx ? ctx.measureText(String(inner.value || inner.placeholder || '')).width : inner.clientWidth;
+          sum += w + parseFloat(f.paddingLeft) + parseFloat(f.paddingRight) + 8 + (c.scrollWidth - inner.clientWidth);
+        } else {
+          const r = document.createRange();
+          r.selectNodeContents(c);
+          sum += Math.max(r.getBoundingClientRect().width, c.querySelector('button, select') ? c.scrollWidth : 0);
+        }
+      } else {
+        sum += c.scrollWidth + 6;
+      }
+    });
+    need = sum;
+  }
+  return need + pad + CELL_SLACK;
+}
+
+// 열마다 필요한 폭 = 그 열에서 가장 긴 칸 (colspan 칸은 건너뛴다)
+function columnNeeds(table) {
+  const cols = [];
+  for (const tr of table.querySelectorAll('thead tr, tbody tr')) {
+    let ci = 0;
+    for (const cell of tr.children) {
+      const span = Number(cell.colSpan) || 1;
+      if (span === 1) cols[ci] = Math.max(cols[ci] || 0, cellNeed(cell));
+      ci += span;
+    }
+  }
+  return cols.map((w) => Math.ceil(w || 0));
+}
+
+// 펼친 표는 열 폭을 «필요한 만큼»으로 직접 준다 — 원래 % 비율로 나누면 BOX·타입 같은 짧은 칸이
+// 내용보다 훨씬 넓어져 자리를 먹는다 (2026-09-04 대표님 「태블릿에서 쓸데없이 길어서 공간을 먹는 것들」).
+// colgroup 이 있으면 col 에, 없으면 머리줄 th 에. 원래 값은 data 에 두었다가 되돌린다.
+function applyColumnWidths(table, needs) {
+  const cols = [...table.querySelectorAll(':scope > colgroup > col')];
+  const targets = cols.length ? cols : [...(table.tHead?.rows[table.tHead.rows.length - 1]?.cells || [])];
+  targets.forEach((el, i) => {
+    if (el.dataset.origW === undefined) el.dataset.origW = el.style.width || '';
+    if (needs[i] !== undefined) el.style.width = `${needs[i]}px`;
+  });
+}
+function restoreColumnWidths(table) {
+  table.querySelectorAll('[data-orig-w]').forEach((el) => {
+    el.style.width = el.dataset.origW;
+  });
+}
+
+function anyCut(table) {
+  for (const c of table.querySelectorAll('td')) {
+    if (c.scrollWidth > c.clientWidth + 1) return true;
+  }
+  for (const i of table.querySelectorAll('input[type="text"]')) {
+    if (i.scrollWidth > i.clientWidth + 1) return true;
+  }
+  return false;
+}
+
+function fitWidth(el, table) {
   const box = el.clientWidth;
-  table.style.width = ''; // 자연 폭(max-content)을 재려고 잠시 푼다
-  const natural = table.scrollWidth;
-  if (natural <= box + 1) return; // 화면 안에 다 들어오면 그대로
-  table.style.width = `${Math.max(box, Math.round(natural * SHRINK))}px`;
+  // 1) 원래 배치로 돌려 잘리는지 본다 — 안 잘리면 그대로(폭 100%·열 % 유지)
+  el.classList.remove('is-wide');
+  restoreColumnWidths(table);
+  table.style.width = '';
+  if (!anyCut(table)) return;
+  // 2) 잘리면 열마다 «실제 글자 폭»을 주고 그 합만큼 펼친다 — 화면보다 좁으면 화면 폭(스크롤 없음)
+  el.classList.add('is-wide');
+  const needs = columnNeeds(table);
+  applyColumnWidths(table, needs);
+  const need = needs.reduce((a, b) => a + b, 0);
+  table.style.width = `${Math.max(box, need)}px`;
 }
 
 export function fitTables() {
   if (typeof window === 'undefined') return;
   if (window.innerWidth < 769) return; // 폰은 카드형·페이지 스크롤
-  const boxes = document.querySelectorAll('.table-scroll-x');
-  boxes.forEach((el) => {
+  document.querySelectorAll('.table-scroll-x').forEach((el) => {
     if (el.classList.contains('mx-wrap')) return;
     const table = el.querySelector(':scope > table');
-    if (!table) return;
-    shrinkWide(el, table);
-    const top = el.getBoundingClientRect().top + window.scrollY; // 문서 기준 위치
-    // 상자가 화면 위쪽 한 화면 안에서 시작할 때만 자른다 — 아래쪽 어딘가의 작은 표는 그대로
-    const avail = Math.round(window.innerHeight - (top - window.scrollY) - BOTTOM_GAP);
+    if (!table || !table.tBodies[0] || table.tBodies[0].rows.length === 0) return;
+    fitWidth(el, table);
+    const top = el.getBoundingClientRect().top;
+    const avail = Math.round(window.innerHeight - top - BOTTOM_GAP);
     if (table.offsetHeight <= avail || avail < MIN_H) {
       el.style.maxHeight = '';
       return;

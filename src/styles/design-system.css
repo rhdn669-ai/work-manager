@@ -2270,12 +2270,15 @@ body {
    (2026-09-03 대표님 「태블릿에서 구매 리스트 글이 잘림 — 가로 스크롤」).
    내용 폭만큼 넓히고(최소는 컨테이너 폭) 넘치는 만큼 래퍼가 스크롤한다. PC(>1200)는 그대로. */
 @media (min-width: 769px) {
-  .table-scroll-x > .table {
+  /* .is-wide 는 utils/fitTables.js 가 «원래 배치에서 글자가 잘리는 표»에만 붙인다.
+     안 잘리는 표는 예전 배치(폭 100%·열 %)를 그대로 쓴다 (2026-09-04 대표님 「비율이 이상하네」) */
+  .table-scroll-x.is-wide > .table {
     width: max-content;
     min-width: 100%;
+    table-layout: auto;
   }
-  .table-scroll-x > .table td,
-  .table-scroll-x > .table th {
+  .table-scroll-x.is-wide > .table td,
+  .table-scroll-x.is-wide > .table th {
     max-width: 360px; /* 비고처럼 아주 긴 글은 여기서 말줄임 */
   }
   /* 긴 표는 상자를 화면 높이에 맞춰 잘라, 가로 스크롤바가 표 «맨 아래»가 아니라 늘 손 닿는 곳에 오게
@@ -2293,21 +2296,21 @@ body {
   }
   /* 구매처·외주 표는 ≥769px 에서 폭 100%·table-layout:fixed·열마다 % 폭이 박혀 있어
      좁은 화면에서 글자를 눌러 버린다 — 이 구간에선 내용 폭대로 (global.css 의 규칙보다 뒤·같은 특성성) */
-  .supplier-management-page table.cards-sm,
-  .outsource-management-page table.cards-sm {
+  .supplier-management-page .table-scroll-x.is-wide > table.cards-sm,
+  .outsource-management-page .table-scroll-x.is-wide > table.cards-sm {
     width: max-content;
     min-width: 100%;
     table-layout: auto;
   }
-  .supplier-management-page table.cards-sm th:nth-child(n),
-  .supplier-management-page table.cards-sm.supplier-table th:nth-child(n),
-  .outsource-management-page table.cards-sm th:nth-child(n),
-  .outsource-management-page table.cards-sm:not(.vendor-table) th:nth-child(n) {
+  .supplier-management-page .is-wide > table.cards-sm th:nth-child(n),
+  .supplier-management-page .is-wide > table.cards-sm.supplier-table th:nth-child(n),
+  .outsource-management-page .is-wide > table.cards-sm th:nth-child(n),
+  .outsource-management-page .is-wide > table.cards-sm:not(.vendor-table) th:nth-child(n) {
     width: auto;
   }
   /* 작업 열(수정·삭제)은 버튼 두 개가 한 줄에 들어갈 폭을 보장 */
-  .table-scroll-x > .table th.bom-project-action-col,
-  .table-scroll-x > .table td.bom-project-action-col {
+  .table-scroll-x.is-wide > .table th.bom-project-action-col,
+  .table-scroll-x.is-wide > .table td.bom-project-action-col {
     width: auto;
     min-width: 120px;
   }
