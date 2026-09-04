@@ -9,6 +9,7 @@ import MoneyCard from '../../components/common/MoneyCard';
 import Icon from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
+import EditModeButton from '../../components/common/EditModeButton';
 import MailReplyList from '../../components/common/MailReplyList';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
 import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
@@ -82,6 +83,9 @@ export default function MarginClosingPage() {
   const [tab, setTab] = useState('expense'); // 'expense' | 'revenue' | 'all' — 지출을 먼저 본다(업체에 줄 돈)
   const [trashOpen, setTrashOpen] = useState(false);
   const [busy, setBusy] = useState('');
+  // 잠금 토글 — 기본 잠김. 풀면 수기 입력 항목에 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set()); // 골라 둔 수기 입력 항목 id(manualId)
 
   const loadClosing = useCallback(async () => {
     const mk = `${year}-${String(month).padStart(2, '0')}`;
@@ -325,12 +329,32 @@ export default function MarginClosingPage() {
     }
   }
 
-  async function onTrash(row) {
-    if (!(await confirm('이 항목을 휴지통으로 보낼까요?'))) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 수기 입력 항목을 한꺼번에 — 기존 onTrash와 같은 길(휴지통)로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = manual.filter((m) => pick.has(m.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 항목 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     try {
-      await trashManualItem(row.manualId, me);
+      for (const m of targets) await trashManualItem(m.id, me);
+      setPick(new Set());
       await loadClosing();
-      toast('휴지통으로 보냈습니다', 'success');
+      toast(`${targets.length}건을 휴지통으로 보냈습니다`, 'success');
     } catch (err) {
       console.error(err);
       toast('삭제에 실패했습니다', 'error');
@@ -379,11 +403,16 @@ export default function MarginClosingPage() {
   const confirmCell = (row) => (
     <td className="col-action">
       <div className="row-actions">
-        {row.manual && (
-          <button type="button" className="btn btn-sm btn-danger" onClick={() => onTrash(row)} disabled={locked}>
-            <Icon name="trash" className="btn-ic" />
-            삭제
-          </button>
+        {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
+        {editMode && row.manual && (
+          <input
+            type="checkbox"
+            className="sel-check"
+            checked={pick.has(row.manualId)}
+            onChange={() => togglePick(row.manualId)}
+            disabled={locked}
+            aria-label="삭제할 항목 고르기"
+          />
         )}
         <button
           type="button"
@@ -447,6 +476,7 @@ export default function MarginClosingPage() {
             <Icon name={locked ? 'unlock' : 'check'} className="btn-ic" />
             {locked ? `${month}월 마감 풀기` : `${month}월 마감 완료`}
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 
@@ -530,6 +560,21 @@ export default function MarginClosingPage() {
             </div>
             <div className="sum-prog-left">남은 {leftCount}건</div>
           </div>
+
+          {editMode && pick.size > 0 && (
+            <div className="sel-bar">
+              <span className="sel-count">
+                <strong>{pick.size}</strong>건 골랐습니다
+              </span>
+              <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+                <Icon name="trash" className="btn-ic" />
+                선택 삭제
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                선택 해제
+              </button>
+            </div>
+          )}
 
           {/* 매출 — 현장이 곧 고객사라 현장별로 본다 */}
           <section className="mc-sec" hidden={tab === 'expense'}>

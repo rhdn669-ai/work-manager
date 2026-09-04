@@ -2892,17 +2892,7 @@ export default function PurchaseDetailPage() {
                                   <Icon name="edit" className="btn-ic" />
                                   변경
                                 </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => removeLine(idx)}
-                                  aria-label="행 삭제"
-                                  disabled={isReadOnly}
-                                  title="삭제"
-                                >
-                                  <Icon name="trash" className="btn-ic" />
-                                  삭제
-                                </button>
+                                {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                               </div>
                             </td>
                           </SortableItemRow>

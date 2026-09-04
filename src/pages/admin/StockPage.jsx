@@ -13,6 +13,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import { isStockTracked } from '../../domain/stock';
 
 // 재고 — 품목별로 창고에 몇 개 남았는지 손으로 적어 두는 곳.
@@ -48,6 +49,9 @@ export default function StockPage() {
   const [adding, setAdding] = useState(false);
   const [addSearch, setAddSearch] = useState('');
   const [newMode, setNewMode] = useState(false); // 검색으로 못 찾아 새로 만드는 중
+  // 「잠금」 — 풀었을 때만 체크박스 + 선택 빼기 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   useEffect(
     () =>
@@ -182,15 +186,40 @@ export default function StockPage() {
     }
   }
 
-  // 재고 목록에서만 내린다 — 품목 자체는 그대로 남는다
-  async function removeFromList(it) {
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllPick() {
+    setPick((prev) => (prev.size === shown.length ? new Set() : new Set(shown.map((it) => it.id))));
+  }
+
+  // 고른 항목을 한꺼번에 재고 목록에서 내린다 — 품목 자체는 그대로 남는다 (기존 removeFromList와 같은 로직)
+  async function deletePicked() {
+    const targets = shown.filter((it) => pick.has(it.id));
+    if (targets.length === 0) return;
     const ok = await confirm({
       title: '재고 목록에서 빼기',
-      message: `"${it.name}"을(를) 재고 목록에서 뺍니다.\n\n품목 자체는 지워지지 않고, 발주할 때 재고가 빠지지 않게 됩니다.`,
+      message: `고른 ${targets.length}건을 재고 목록에서 뺍니다.\n\n품목 자체는 지워지지 않고, 발주할 때 재고가 빠지지 않게 됩니다.`,
     });
     if (!ok) return;
     try {
-      await clearItemStock(it.id);
+      for (const it of targets) {
+        await clearItemStock(it.id);
+      }
+      setPick(new Set());
     } catch {
       toast('목록에서 빼는 중 오류가 발생했습니다', 'error');
     }
@@ -207,8 +236,24 @@ export default function StockPage() {
             <Icon name="plus" className="btn-ic" />
             항목 추가
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 빼기
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       <p className="field-hint" style={{ marginBottom: 12 }}>
         창고에 남은 수량을 직접 적어 둡니다. 발주서를 작성하면 여기 적힌 만큼 발주 수량에서 빠집니다. 자재를 꺼내 쓴
@@ -256,6 +301,7 @@ export default function StockPage() {
         <div className="table-scroll-x">
           <table className="table cards-sm stock-table">
             <colgroup>
+              {editMode && <col style={{ width: 36 }} />}
               <col style={{ width: '13%' }} />
               <col style={{ width: '24%' }} />
               <col style={{ width: '29%' }} />
@@ -265,6 +311,17 @@ export default function StockPage() {
             </colgroup>
             <thead>
               <tr>
+                {editMode && (
+                  <th scope="col" className="drag-handle-cell">
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={shown.length > 0 && pick.size === shown.length}
+                      onChange={toggleAllPick}
+                      aria-label="전체 선택"
+                    />
+                  </th>
+                )}
                 <th scope="col">코드</th>
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
@@ -285,7 +342,24 @@ export default function StockPage() {
                 const value = edit[it.id] !== undefined ? edit[it.id] : String(stock);
                 const hist = Array.isArray(it.stockHistory) ? it.stockHistory : [];
                 return (
-                  <tr key={it.id} className={stock > 0 ? 'stock-row-has' : undefined}>
+                  <tr
+                    key={it.id}
+                    className={
+                      `${stock > 0 ? 'stock-row-has' : ''}${editMode && pick.has(it.id) ? ' is-checked' : ''}`.trim() ||
+                      undefined
+                    }
+                  >
+                    {editMode && (
+                      <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="sel-check"
+                          checked={pick.has(it.id)}
+                          onChange={() => togglePick(it.id)}
+                          aria-label="뺄 항목 고르기"
+                        />
+                      </td>
+                    )}
                     <td data-label="코드" className="u-ellipsis-1" title={it.code || ''}>
                       {it.code || '-'}
                     </td>
@@ -323,14 +397,7 @@ export default function StockPage() {
                             </button>
                           </>
                         )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => removeFromList(it)}
-                          title="재고 목록에서만 뺍니다 (품목은 그대로)"
-                        >
-                          빼기
-                        </button>
+                        {/* 행별 빼기는 뺐다 — 「잠금」 풀고 체크 → 선택 빼기 (2026-09-04 대표님 「잠금」 통일) */}
                       </div>
                     </td>
                   </tr>

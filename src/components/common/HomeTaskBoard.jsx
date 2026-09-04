@@ -68,7 +68,7 @@ function fmtCreated(ts) {
   return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function TaskCard({ t, editMode, onEdit, onDelete, onMove }) {
+function TaskCard({ t, editMode, checked, onCheck, onEdit, onMove }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: t.id,
     disabled: !editMode,
@@ -89,11 +89,23 @@ function TaskCard({ t, editMode, onEdit, onDelete, onMove }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="kb-card task-card"
+      className={`kb-card task-card${checked ? ' is-checked' : ''}`}
       {...(editMode ? attributes : {})}
       {...(editMode ? listeners : {})}
     >
       <div className="task-card__top">
+        {/* 잠금 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
+        {editMode && (
+          <input
+            type="checkbox"
+            className="sel-check"
+            checked={!!checked}
+            onChange={() => onCheck(t.id)}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label="삭제할 업무 고르기"
+          />
+        )}
         <span className={`task-prio task-prio--${pr.cls}`}>{pr.label}</span>
         <div
           className="task-card__actions"
@@ -102,15 +114,6 @@ function TaskCard({ t, editMode, onEdit, onDelete, onMove }) {
         >
           <button type="button" className="btn btn-sm btn-outline" onClick={() => onEdit(t)}>
             수정
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-danger"
-            onClick={() => onDelete(t)}
-            aria-label="삭제"
-            title="삭제"
-          >
-            <Icon name="trash" className="btn-ic" />
           </button>
         </div>
       </div>
@@ -178,7 +181,7 @@ function TaskCard({ t, editMode, onEdit, onDelete, onMove }) {
   );
 }
 
-function TaskColumn({ col, cards, editMode, onAdd, onEdit, onDelete, onMove }) {
+function TaskColumn({ col, cards, editMode, pick, onCheck, onAdd, onEdit, onMove }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
     <div ref={setNodeRef} className={`kb-col task-col--${col.key} ${isOver ? 'is-over' : ''}`}>
@@ -188,7 +191,15 @@ function TaskColumn({ col, cards, editMode, onAdd, onEdit, onDelete, onMove }) {
       </div>
       <div className="kb-col__body">
         {cards.map((t) => (
-          <TaskCard key={t.id} t={t} editMode={editMode} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
+          <TaskCard
+            key={t.id}
+            t={t}
+            editMode={editMode}
+            checked={pick.has(t.id)}
+            onCheck={onCheck}
+            onEdit={onEdit}
+            onMove={onMove}
+          />
         ))}
         <button type="button" className="task-add-btn" onClick={() => onAdd(col.key)}>
           <Icon name="plus" className="btn-ic" />
@@ -209,8 +220,10 @@ export default function HomeTaskBoard() {
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
   );
-  // 「순서 변경」 토글 — 기본 꺼짐. 켜야만 카드를 끌어 단계를 옮길 수 있다(실수로 옮기는 것 방지).
+  // 「잠금」 — 풀었을 때만 카드를 끌어 단계를 옮기거나 체크박스로 골라 지울 수 있다
+  // (실수로 옮기거나 지우는 것 방지, 2026-09-04 대표님 「잠금」 통일)
   const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -270,11 +283,35 @@ export default function HomeTaskBoard() {
     }
   }
 
-  async function remove(t) {
-    if (!(await confirm({ title: '업무 삭제', message: `"${t.title}" 업무를 삭제할까요?` }))) return;
-    setTasks((prev) => prev.filter((x) => x.id !== t.id));
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 업무를 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 카드별 삭제 버튼 폐지)
+  async function deletePicked() {
+    const targets = tasks.filter((t) => pick.has(t.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 업무 ${targets.length}건을 삭제하시겠습니까?`))) return;
     try {
-      await trashGeneric('tasks', t.id, { title: t.title || '업무' }, userProfile?.name || '');
+      for (const t of targets) {
+        await trashGeneric('tasks', t.id, { title: t.title || '업무' }, userProfile?.name || '');
+      }
+      const ids = new Set(targets.map((t) => t.id));
+      setTasks((prev) => prev.filter((t) => !ids.has(t.id)));
+      setPick(new Set());
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
       load();
@@ -326,9 +363,24 @@ export default function HomeTaskBoard() {
             <Icon name="plus" className="btn-ic" />
             업무 추가
           </button>
-          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-muted">불러오는 중...</p>
@@ -342,9 +394,10 @@ export default function HomeTaskBoard() {
                   col={col}
                   cards={cards}
                   editMode={editMode}
+                  pick={pick}
+                  onCheck={togglePick}
                   onAdd={openAdd}
                   onEdit={openEdit}
-                  onDelete={remove}
                   onMove={moveStatus}
                 />
               ))}

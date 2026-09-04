@@ -8,6 +8,7 @@ import LeaveTabs from '../../components/common/LeaveTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
 
 const STATUS_STYLES = {
@@ -39,6 +40,9 @@ export default function LeaveHistoryPage() {
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
   const [holidayEvents, setHolidayEvents] = useState([]);
+  // 잠금 — 풀었을 때만 체크박스 + 「선택 취소」 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   useEffect(() => {
     getEvents()
@@ -89,11 +93,33 @@ export default function LeaveHistoryPage() {
     }));
   }
 
-  async function handleCancel(l) {
-    if (!(await confirm('이 연차를 취소하시겠습니까?'))) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 연차를 한꺼번에 — 행별 「취소」와 같은 처리(cancelLeave)를 반복
+  async function cancelPicked() {
+    const targets = leaves.filter((l) => pick.has(l.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 연차 ${targets.length}건을 취소하시겠습니까?`))) return;
     setBusy(true);
     try {
-      await cancelLeave(l.id);
+      for (const l of targets) {
+        await cancelLeave(l.id);
+      }
+      setPick(new Set());
       await loadLeaves();
     } catch {
       toast('취소 중 오류가 발생했습니다', 'error');
@@ -138,7 +164,12 @@ export default function LeaveHistoryPage() {
   return (
     <div className="leave-history-page">
       <LeaveTabs />
-      <h2>연차 사용 이력</h2>
+      <div className="page-header">
+        <h2>연차 사용 이력</h2>
+        <div className="page-actions">
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
+        </div>
+      </div>
 
       <div className="filters">
         <Select
@@ -148,6 +179,21 @@ export default function LeaveHistoryPage() {
           ariaLabel="연도 선택"
         />
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" disabled={busy} onClick={cancelPicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 취소
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <Skeleton.Rows count={6} />
@@ -159,6 +205,7 @@ export default function LeaveHistoryPage() {
             const isEditing = editingId === l.id;
             // 시작일이 오늘이거나 미래면 수정/취소 가능 (지난 연차는 잠금)
             const isToday = l.startDate >= today;
+            const canPick = isToday && l.status !== 'cancelled';
             const statusStyle = STATUS_STYLES[l.status] || {};
             const period = l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`;
             const previewDays = calcDays(
@@ -169,167 +216,170 @@ export default function LeaveHistoryPage() {
             );
 
             return (
-              <div key={l.id} className="card" style={{ marginBottom: 4 }}>
-                <div className="card-body" style={{ padding: '9px 11px' }}>
-                  {isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label style={{ fontSize: 12 }}>휴가 종류</label>
-                        <Select
-                          value={editForm.type}
-                          onChange={(v) => handleTypeChange(v)}
-                          options={Object.entries(LEAVE_TYPE_LABELS).map(([key, label]) => ({ value: key, label }))}
-                          ariaLabel="휴가 종류 선택"
-                        />
-                      </div>
-                      <div className="form-row" style={{ gap: 8 }}>
+              <div key={l.id} className={`card${pick.has(l.id) ? ' is-checked' : ''}`} style={{ marginBottom: 4 }}>
+                <div className="card-body" style={{ padding: '9px 11px', display: 'flex', gap: 8 }}>
+                  {editMode && !isEditing && canPick && (
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={pick.has(l.id)}
+                      onChange={() => togglePick(l.id)}
+                      aria-label="취소할 연차 고르기"
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label style={{ fontSize: 12 }}>시작일</label>
-                          <input
-                            aria-label="시작일"
-                            type="date"
-                            value={editForm.startDate}
-                            onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                          <label style={{ fontSize: 12 }}>휴가 종류</label>
+                          <Select
+                            value={editForm.type}
+                            onChange={(v) => handleTypeChange(v)}
+                            options={Object.entries(LEAVE_TYPE_LABELS).map(([key, label]) => ({ value: key, label }))}
+                            ariaLabel="휴가 종류 선택"
                           />
                         </div>
-                        {!isSingleDayType(editForm.type) && (
+                        <div className="form-row" style={{ gap: 8 }}>
                           <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: 12 }}>종료일</label>
+                            <label style={{ fontSize: 12 }}>시작일</label>
                             <input
-                              aria-label="종료일"
+                              aria-label="시작일"
                               type="date"
-                              value={editForm.endDate}
-                              min={editForm.startDate}
-                              onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                              value={editForm.startDate}
+                              onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
                             />
                           </div>
+                          {!isSingleDayType(editForm.type) && (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: 12 }}>종료일</label>
+                              <input
+                                aria-label="종료일"
+                                type="date"
+                                value={editForm.endDate}
+                                min={editForm.startDate}
+                                onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        {previewDays > 0 && (
+                          <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
+                            차감일수: <strong style={{ color: 'var(--primary)' }}>{previewDays}일</strong>
+                            {previewDays !== l.days && (
+                              <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
+                                (기존 {l.days}일 → {previewDays > l.days ? '+' : ''}
+                                {(previewDays - l.days).toFixed(2).replace(/\.?0+$/, '')}일)
+                              </span>
+                            )}
+                          </div>
                         )}
-                      </div>
-                      {previewDays > 0 && (
-                        <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
-                          차감일수: <strong style={{ color: 'var(--primary)' }}>{previewDays}일</strong>
-                          {previewDays !== l.days && (
-                            <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
-                              (기존 {l.days}일 → {previewDays > l.days ? '+' : ''}
-                              {(previewDays - l.days).toFixed(2).replace(/\.?0+$/, '')}일)
-                            </span>
-                          )}
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: 12 }}>사유</label>
+                          <input
+                            aria-label="사유"
+                            type="text"
+                            value={editForm.reason}
+                            onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                            placeholder="사유 (선택)"
+                          />
                         </div>
-                      )}
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label style={{ fontSize: 12 }}>사유</label>
-                        <input
-                          aria-label="사유"
-                          type="text"
-                          value={editForm.reason}
-                          onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
-                          placeholder="사유 (선택)"
-                        />
-                      </div>
-                      <div className="btn-group" style={{ alignItems: 'stretch' }}>
-                        <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>
-                          저장
-                        </button>
-                        <button className="btn btn-sm btn-outline" disabled={busy} onClick={cancelEdit}>
-                          취소
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            fontSize: 14,
-                            marginBottom: 3,
-                            minWidth: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                          title={period}
-                        >
-                          {period}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: 'var(--text-light)',
-                            display: 'flex',
-                            gap: 4,
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
-                            minWidth: 0,
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>{l.days}일</span>
-                          <span style={{ flexShrink: 0 }} title={LEAVE_TYPE_LABELS[l.type] || l.type}>
-                            {LEAVE_TYPE_LABELS[l.type] || l.type}
-                          </span>
-                          {l.reason && (
-                            <span
-                              style={{
-                                color: 'var(--text-muted)',
-                                minWidth: 0,
-                                flex: 1,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              title={l.reason}
-                            >
-                              {l.reason}
-                            </span>
-                          )}
-                          <span style={{ color: statusStyle.color, fontWeight: 600 }}>{statusStyle.label}</span>
-                          {l.status === 'cancelled' && l.cancelReason && (
-                            <span
-                              style={{
-                                color: 'var(--danger)',
-                                fontWeight: 600,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                wordBreak: 'break-word',
-                                minWidth: 0,
-                              }}
-                              title={l.cancelReason}
-                            >
-                              · 취소 사유: {l.cancelReason}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {isToday && l.status !== 'cancelled' && (
-                        <div
-                          className="btn-group"
-                          style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}
-                        >
-                          <button
-                            className="btn btn-sm btn-outline"
-                            style={{ whiteSpace: 'nowrap', minWidth: 50, padding: '0 14px' }}
-                            disabled={busy}
-                            onClick={() => startEdit(l)}
-                          >
-                            수정
+                        <div className="btn-group" style={{ alignItems: 'stretch' }}>
+                          <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>
+                            저장
                           </button>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            style={{ whiteSpace: 'nowrap', minWidth: 50, padding: '0 14px' }}
-                            disabled={busy}
-                            onClick={() => handleCancel(l)}
-                          >
-                            <Icon name="trash" className="btn-ic" />
+                          <button className="btn btn-sm btn-outline" disabled={busy} onClick={cancelEdit}>
                             취소
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: 14,
+                              marginBottom: 3,
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={period}
+                          >
+                            {period}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--text-light)',
+                              display: 'flex',
+                              gap: 4,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              minWidth: 0,
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>{l.days}일</span>
+                            <span style={{ flexShrink: 0 }} title={LEAVE_TYPE_LABELS[l.type] || l.type}>
+                              {LEAVE_TYPE_LABELS[l.type] || l.type}
+                            </span>
+                            {l.reason && (
+                              <span
+                                style={{
+                                  color: 'var(--text-muted)',
+                                  minWidth: 0,
+                                  flex: 1,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={l.reason}
+                              >
+                                {l.reason}
+                              </span>
+                            )}
+                            <span style={{ color: statusStyle.color, fontWeight: 600 }}>{statusStyle.label}</span>
+                            {l.status === 'cancelled' && l.cancelReason && (
+                              <span
+                                style={{
+                                  color: 'var(--danger)',
+                                  fontWeight: 600,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  wordBreak: 'break-word',
+                                  minWidth: 0,
+                                }}
+                                title={l.cancelReason}
+                              >
+                                · 취소 사유: {l.cancelReason}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isToday && l.status !== 'cancelled' && (
+                          <div
+                            className="btn-group"
+                            style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}
+                          >
+                            <button
+                              className="btn btn-sm btn-outline"
+                              style={{ whiteSpace: 'nowrap', minWidth: 50, padding: '0 14px' }}
+                              disabled={busy}
+                              onClick={() => startEdit(l)}
+                            >
+                              수정
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

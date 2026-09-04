@@ -18,8 +18,9 @@ import {
   moveFolder,
   setFolderOrder,
 } from '../../services/fileLibraryService';
-import { trashGeneric, subscribeTrashByType, restoreTrashItem } from '../../services/trashService';
+import { trashGeneric, subscribeTrashByType } from '../../services/trashService';
 import TrashModal from '../../components/common/TrashModal';
+import EditModeButton from '../../components/common/EditModeButton';
 
 function formatSize(bytes) {
   if (!bytes) return '0 B';
@@ -252,6 +253,8 @@ export default function FileLibraryPage() {
   const [folderDropMode, setFolderDropMode] = useState('inside');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
+  // 잠금 — 풀었을 때만 체크박스 + 선택 삭제 바 노출 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
 
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
@@ -360,8 +363,10 @@ export default function FileLibraryPage() {
     setViewerIndex(null);
   }, [selectedFolderId]);
 
-  // ── 다중 선택 ──
-  const allSelected = currentFiles.length > 0 && currentFiles.every((f) => selected.has(f.id));
+  // ── 다중 선택 (파일 + 폴더, 잠금 풀렸을 때만) ──
+  const selectableFolders = currentSubFolders.filter((f) => !f.protected || isFolderUnlocked(f));
+  const selectableIds = [...selectableFolders.map((f) => f.id), ...currentFiles.map((f) => f.id)];
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   function toggleSelect(id, e) {
     e?.stopPropagation();
     setSelected((s) => {
@@ -372,13 +377,46 @@ export default function FileLibraryPage() {
     });
   }
   function toggleSelectAll() {
-    setSelected(() => (allSelected ? new Set() : new Set(currentFiles.map((f) => f.id))));
+    setSelected(() => (allSelected ? new Set() : new Set(selectableIds)));
   }
 
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setSelected(new Set());
+      return !v;
+    });
+  }
+
+  // 고른 폴더·파일을 한꺼번에 — 기존 폴더/파일 삭제와 같은 길(trashGeneric 소프트 삭제)로 반복
   async function bulkDelete() {
-    if (selected.size === 0) return;
-    if (!(await confirm({ title: '파일 삭제', message: `선택한 ${selected.size}개 파일을 삭제할까요?` }))) return;
-    for (const f of files.filter((x) => selected.has(x.id))) {
+    const pickedFolders = selectableFolders.filter((f) => selected.has(f.id));
+    const pickedFiles = files.filter((f) => selected.has(f.id));
+    const total = pickedFolders.length + pickedFiles.length;
+    if (total === 0) return;
+    if (
+      !(await confirm({
+        title: '삭제',
+        message: `고른 ${total}개(폴더 ${pickedFolders.length} · 파일 ${pickedFiles.length})를 휴지통으로 보내시겠습니까?`,
+      }))
+    )
+      return;
+    for (const folder of pickedFolders) {
+      const filesIn = files.filter((f) => (f.folderId || null) === folder.id);
+      const subsIn = folders.filter((f) => (f.parentId || null) === folder.id);
+      try {
+        for (const f of filesIn) {
+          await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || '');
+        }
+        for (const s of subsIn) {
+          await trashGeneric('libraryFolders', s.id, { title: s.name }, userProfile?.name || '');
+        }
+        await trashGeneric('libraryFolders', folder.id, { title: folder.name }, userProfile?.name || '');
+        if (selectedFolderId === folder.id) setSelectedFolderId(null);
+      } catch {
+        /* skip */
+      }
+    }
+    for (const f of pickedFiles) {
       try {
         await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || '');
       } catch {
@@ -437,9 +475,10 @@ export default function FileLibraryPage() {
   async function bulkMove(v) {
     if (!v || selected.size === 0) return;
     const folderId = v === '__root' ? null : v;
-    for (const id of [...selected]) {
+    // 이동은 파일만 대상 — 선택엔 폴더 id도 섞여 있을 수 있어 파일만 걸러낸다
+    for (const f of files.filter((x) => selected.has(x.id))) {
       try {
-        await moveFile(id, folderId);
+        await moveFile(f.id, folderId);
       } catch {
         /* skip */
       }
@@ -544,59 +583,6 @@ export default function FileLibraryPage() {
       toast(`파일 이름을 "${newName}"(으)로 변경했습니다.`);
     } catch {
       toast('이름 변경 중 오류가 발생했습니다', 'error');
-    }
-  }
-
-  // ── 폴더 삭제 ──
-  async function handleDeleteFolder(folder, e) {
-    e?.stopPropagation();
-    if (folder.protected && !isFolderUnlocked(folder)) {
-      alert('자동 생성된 폴더는 삭제할 수 없습니다. (관리자는 자물쇠를 눌러 일시 해제)');
-      return;
-    }
-    const filesIn = files.filter((f) => (f.folderId || null) === folder.id);
-    const subsIn = folders.filter((f) => (f.parentId || null) === folder.id);
-    const msg =
-      filesIn.length || subsIn.length
-        ? `"${folder.name}" 폴더와 안의 파일·하위폴더를 모두 휴지통으로 이동할까요?`
-        : `"${folder.name}" 폴더를 휴지통으로 이동할까요?`;
-    if (!(await confirm(msg))) return;
-    try {
-      const fileTrashIds = [];
-      const subTrashIds = [];
-      for (const f of filesIn) {
-        const tid = await trashGeneric('libraryFiles', f.id, { title: f.name }, userProfile?.name || '');
-        if (tid) fileTrashIds.push({ tid, name: f.name });
-      }
-      for (const s of subsIn) {
-        const tid = await trashGeneric('libraryFolders', s.id, { title: s.name }, userProfile?.name || '');
-        if (tid) subTrashIds.push({ tid, name: s.name });
-      }
-      const folderTid = await trashGeneric(
-        'libraryFolders',
-        folder.id,
-        { title: folder.name },
-        userProfile?.name || '',
-      );
-      if (selectedFolderId === folder.id) setSelectedFolderId(null);
-      pushUndo(`폴더 "${folder.name}" 삭제`, async () => {
-        const allIds = [folderTid, ...subTrashIds.map((x) => x.tid), ...fileTrashIds.map((x) => x.tid)].filter(Boolean);
-        await Promise.all(allIds.map((tid) => restoreTrashItem(tid)));
-      });
-    } catch {
-      toast('폴더 삭제 중 오류가 발생했습니다', 'error');
-    }
-  }
-
-  // ── 파일 삭제 ──
-  async function handleDeleteFile(file) {
-    if (!(await confirm(`"${file.name}" 파일을 삭제할까요?\n휴지통에서 복원할 수 있습니다.`))) return;
-    try {
-      const tid = await trashGeneric('libraryFiles', file.id, { title: file.name }, userProfile?.name || '');
-      toast('휴지통으로 이동했습니다.');
-      if (tid) pushUndo(`파일 "${file.name}" 삭제`, () => restoreTrashItem(tid));
-    } catch {
-      toast('파일 삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -758,6 +744,7 @@ export default function FileLibraryPage() {
             <Icon name="plus" className="btn-ic" />
             파일 올리기
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 
@@ -805,56 +792,50 @@ export default function FileLibraryPage() {
           </div>
 
           {/* 툴바 */}
-          <div className="lib-toolbar">
-            {selected.size > 0 ? (
-              <>
-                <span className="lib-sel-count">{selected.size}개 선택</span>
-                <div className="lib-bulk">
-                  <Select
-                    value=""
-                    onChange={bulkMove}
-                    options={moveOptions}
-                    placeholder="이동"
-                    ariaLabel="폴더로 이동"
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={bulkDownload}
-                    disabled={merging}
-                    title="선택한 PDF를 하나로 합쳐 출력(인쇄·저장)"
-                  >
-                    <Icon name={merging ? 'clock' : 'download'} className="btn-ic" />
-                    {merging ? '합치는 중…' : '출력'}
-                  </button>
-                  <button type="button" className="btn btn-sm btn-danger" onClick={bulkDelete}>
-                    <Icon name="trash" className="btn-ic" />
-                    삭제
-                  </button>
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setSelected(new Set())}>
-                    해제
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="library-main-title">{selectedFolderName}</h3>
-                <span className="library-main-count">{currentSubFolders.length + currentFiles.length}개 항목</span>
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => setFolderModalOpen(true)}>
-                  <Icon name="plus" className="btn-ic" />새 폴더
+          {editMode && selected.size > 0 ? (
+            <div className="lib-toolbar sel-bar">
+              <span className="sel-count">
+                <strong>{selected.size}</strong>개 골랐습니다
+              </span>
+              <div className="lib-bulk">
+                <Select value="" onChange={bulkMove} options={moveOptions} placeholder="이동" ariaLabel="폴더로 이동" />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={bulkDownload}
+                  disabled={merging}
+                  title="선택한 PDF를 하나로 합쳐 출력(인쇄·저장)"
+                >
+                  <Icon name={merging ? 'clock' : 'download'} className="btn-ic" />
+                  {merging ? '합치는 중…' : '출력'}
                 </button>
-                <div className="lib-search-inline">
-                  <input
-                    type="search"
-                    placeholder="이 폴더에서 검색"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    aria-label="파일 검색"
-                  />
-                </div>
-              </>
-            )}
-          </div>
+                <button type="button" className="btn btn-sm btn-danger" onClick={bulkDelete}>
+                  <Icon name="trash" className="btn-ic" />
+                  선택 삭제
+                </button>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setSelected(new Set())}>
+                  선택 해제
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="lib-toolbar">
+              <h3 className="library-main-title">{selectedFolderName}</h3>
+              <span className="library-main-count">{currentSubFolders.length + currentFiles.length}개 항목</span>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setFolderModalOpen(true)}>
+                <Icon name="plus" className="btn-ic" />새 폴더
+              </button>
+              <div className="lib-search-inline">
+                <input
+                  type="search"
+                  placeholder="이 폴더에서 검색"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="파일 검색"
+                />
+              </div>
+            </div>
+          )}
 
           {/* 탐색기 상세 보기: 폴더 + 파일 한 표 */}
           <div
@@ -896,15 +877,18 @@ export default function FileLibraryPage() {
                 <table className="table lib-detail-table">
                   <thead>
                     <tr>
-                      <th scope="col" className="lib-col-check">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          onChange={toggleSelectAll}
-                          disabled={currentFiles.length === 0}
-                          aria-label="전체 선택"
-                        />
-                      </th>
+                      {editMode && (
+                        <th scope="col" className="lib-col-check">
+                          <input
+                            type="checkbox"
+                            className="sel-check"
+                            checked={allSelected}
+                            onChange={toggleSelectAll}
+                            disabled={selectableIds.length === 0}
+                            aria-label="전체 선택"
+                          />
+                        </th>
+                      )}
                       <th scope="col" className="lib-col-name">
                         이름
                       </th>
@@ -940,11 +924,23 @@ export default function FileLibraryPage() {
                       return (
                         <tr
                           key={folder.id}
-                          className={`lib-row lib-row--folder${isFileTarget ? ' drag-over' : ''}${dropCls}`}
+                          className={`lib-row lib-row--folder${isFileTarget ? ' drag-over' : ''}${dropCls}${selected.has(folder.id) ? ' is-checked' : ''}`}
                           onClick={() => selectFolder(folder.id)}
                           {...treeDndProps(folder)}
                         >
-                          <td className="lib-col-check" onClick={(e) => e.stopPropagation()}></td>
+                          {editMode && (
+                            <td className="lib-col-check" onClick={(e) => e.stopPropagation()}>
+                              {(!folder.protected || isFolderUnlocked(folder)) && (
+                                <input
+                                  type="checkbox"
+                                  className="sel-check"
+                                  checked={selected.has(folder.id)}
+                                  onChange={(e) => toggleSelect(folder.id, e)}
+                                  aria-label="삭제할 폴더 고르기"
+                                />
+                              )}
+                            </td>
+                          )}
                           <td className="lib-col-name" data-label="이름" title={folder.name}>
                             <span className="lib-row-ic">
                               <Icon name="folder" />
@@ -1015,16 +1011,6 @@ export default function FileLibraryPage() {
                                   <Icon name="edit" className="btn-ic" />
                                   수정
                                 </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-danger"
-                                  title="삭제"
-                                  aria-label="삭제"
-                                  onClick={(e) => handleDeleteFolder(folder, e)}
-                                >
-                                  <Icon name="trash" className="btn-ic" />
-                                  삭제
-                                </button>
                               </div>
                             )}
                           </td>
@@ -1049,14 +1035,17 @@ export default function FileLibraryPage() {
                             setDragOverId(undefined);
                           }}
                         >
-                          <td className="lib-col-check" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(file.id)}
-                              onChange={(e) => toggleSelect(file.id, e)}
-                              aria-label="파일 선택"
-                            />
-                          </td>
+                          {editMode && (
+                            <td className="lib-col-check" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                className="sel-check"
+                                checked={selected.has(file.id)}
+                                onChange={(e) => toggleSelect(file.id, e)}
+                                aria-label="삭제할 파일 고르기"
+                              />
+                            </td>
+                          )}
                           <td className="lib-col-name" data-label="이름" title={file.name}>
                             <span className="lib-row-ic">
                               <Icon name={getFileIconName(file.name, file.contentType)} />
@@ -1104,16 +1093,6 @@ export default function FileLibraryPage() {
                                   수정
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger"
-                                title="삭제"
-                                aria-label="삭제"
-                                onClick={() => handleDeleteFile(file)}
-                              >
-                                <Icon name="trash" className="btn-ic" />
-                                삭제
-                              </button>
                             </div>
                           </td>
                         </tr>

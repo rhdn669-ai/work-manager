@@ -10,6 +10,7 @@ import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 
 const INFO_FIELDS = [
   { key: 'companyAndCeo', label: '회사명/대표' },
@@ -38,6 +39,9 @@ export default function QuotePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsForm, setSettingsForm] = useState(companyInfo);
   const [savingSettings, setSavingSettings] = useState(false);
+  // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   function openSettings() {
     setSettingsForm(companyInfo);
@@ -81,17 +85,46 @@ export default function QuotePage() {
     );
   }, [quotes, search]);
 
-  async function handleDelete(e, q) {
-    e.stopPropagation();
-    if (!(await confirm(`"${q.title}" 견적서를 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
+  // 확인창 없이 휴지통으로 — 선택 삭제에서 항목마다 호출 (2026-09-04 대표님 「잠금」 통일)
+  async function trashQuoteNoConfirm(q) {
+    await trashGeneric(
+      'quotes',
+      q.id,
+      { title: q.title, summary: [q.supplierName, q.siteName].filter(Boolean).join(' · ') },
+      userProfile?.name || '',
+    );
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllPick() {
+    setPick((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((q) => q.id))));
+  }
+
+  async function deletePicked() {
+    const targets = quotes.filter((q) => pick.has(q.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 견적서 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     try {
-      await trashGeneric(
-        'quotes',
-        q.id,
-        { title: q.title, summary: [q.supplierName, q.siteName].filter(Boolean).join(' · ') },
-        userProfile?.name || '',
-      );
-      toast('휴지통으로 이동했습니다.');
+      for (const q of targets) {
+        await trashQuoteNoConfirm(q);
+      }
+      setPick(new Set());
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
       await loadAll();
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -131,8 +164,24 @@ export default function QuotePage() {
             <Icon name="plus" className="btn-ic" />
             견적서 작성
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       <TrashModal
         isOpen={trashOpen}
@@ -202,6 +251,17 @@ export default function QuotePage() {
           <table className="table cards-sm" style={{ '--row-min-h': '36px' }}>
             <thead>
               <tr style={{ height: 36 }}>
+                {editMode && (
+                  <th scope="col" className="drag-handle-cell">
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={filtered.length > 0 && pick.size === filtered.length}
+                      onChange={toggleAllPick}
+                      aria-label="전체 선택"
+                    />
+                  </th>
+                )}
                 <th scope="col">제목</th>
                 <th scope="col">거래처</th>
                 <th scope="col">현장</th>
@@ -212,19 +272,27 @@ export default function QuotePage() {
                   합계
                 </th>
                 <th scope="col">작성일</th>
-                <th scope="col" className="bom-project-action-col">
-                  작업
-                </th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((q) => (
                 <tr
                   key={q.id}
-                  className="table-clickable-row"
+                  className={`table-clickable-row${editMode && pick.has(q.id) ? ' is-checked' : ''}`}
                   style={{ minHeight: 36 }}
                   onClick={() => navigate(`/admin/purchase/quotes/${q.id}`)}
                 >
+                  {editMode && (
+                    <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={pick.has(q.id)}
+                        onChange={() => togglePick(q.id)}
+                        aria-label="삭제할 견적서 고르기"
+                      />
+                    </td>
+                  )}
                   <td data-label="제목" title={q.title || ''}>
                     <strong>{q.title}</strong>
                   </td>
@@ -245,12 +313,6 @@ export default function QuotePage() {
                     <strong>{Number(q.grandTotal || 0).toLocaleString()}원</strong>
                   </td>
                   <td data-label="작성일">{fmtDateKo(q.createdAt)}</td>
-                  <td className="bom-project-action-col action-cell" onClick={(e) => e.stopPropagation()}>
-                    <button type="button" className="btn btn-sm btn-danger" onClick={(e) => handleDelete(e, q)}>
-                      <Icon name="trash" className="btn-ic" />
-                      삭제
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>

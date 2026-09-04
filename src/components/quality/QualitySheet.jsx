@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Modal from '../common/Modal';
 import Icon from '../common/Icon';
+import { useDialog } from '../common/useDialog';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
 import { factorsOf } from '../../domain/changeFactors';
 
@@ -47,14 +48,33 @@ function Cell({ f, value, onChange, readOnly, options }) {
 
 export default function QualitySheet({ formKey, docNo, record, onSave, onClose, canEdit = true, page = false }) {
   const def = FORM_FIELDS[formKey];
+  const { confirm } = useDialog();
   const [draft, setDraft] = useState(record);
   const [editing, setEditing] = useState(!record?.id); // 신규는 바로 편집 상태
+  // 줄 선택 삭제 — 아직 저장 전 배열이라 서버 삭제 없이 배열에서만 뺀다 (2026-09-04 대표님 「잠금」 통일)
+  const [pick, setPick] = useState(() => new Set());
   const ro = !editing;
 
   if (!def) return null;
 
   const set = (k, v) => setDraft((d) => computeCalcFields(formKey, { ...d, [k]: v }));
   const setLines = (v) => setDraft((d) => computeCalcFields(formKey, { ...d, lines: v }));
+
+  function togglePick(idx) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  async function deletePickedLines() {
+    if (pick.size === 0) return;
+    if (!(await confirm(`고른 ${pick.size}줄을 지우시겠습니까?`))) return;
+    setLines((draft.lines || []).filter((_, idx) => !pick.has(idx)));
+    setPick(new Set());
+  }
 
   const verdictField = def.fields.find((f) => VERDICT_KEYS.includes(f.key));
   const verdictVal = verdictField ? draft[verdictField.key] : '';
@@ -133,74 +153,105 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
 
             {/* 라인아이템 — 검사항목·배점표 */}
             {def.lines && (
-              <table className="q-paper-table q-sheet-table">
-                <thead>
-                  <tr>
-                    <th scope="col" style={{ width: '8%' }}>
-                      번호
-                    </th>
-                    {def.lines.columns.map((c) => (
-                      <th scope="col" key={c.key} style={{ width: c.w }}>
-                        {c.label}
+              <>
+                {editing && pick.size > 0 && (
+                  <div className="sel-bar q-noprint">
+                    <span className="sel-count">
+                      <strong>{pick.size}</strong>줄 골랐습니다
+                    </span>
+                    <button type="button" className="btn btn-sm btn-danger" onClick={deletePickedLines}>
+                      <Icon name="trash" className="btn-ic" />
+                      선택 삭제
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                      선택 해제
+                    </button>
+                  </div>
+                )}
+                <table className="q-paper-table q-sheet-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ width: '8%' }}>
+                        번호
                       </th>
-                    ))}
-                    {editing && <th scope="col" style={{ width: '8%' }} className="q-noprint" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(draft.lines || []).map((r, i) => (
-                    <tr key={i}>
-                      <td>{i + 1}</td>
                       {def.lines.columns.map((c) => (
-                        <td key={c.key}>
-                          {c.key === 'result' && (ro || !editing) ? (
-                            r[c.key] ? (
-                              <span className={`q-p-badge ${VERDICT_CLS[r[c.key]] || ''}`}>{r[c.key]}</span>
-                            ) : (
-                              '—'
-                            )
-                          ) : (
-                            <Cell
-                              f={c}
-                              value={r[c.key]}
-                              readOnly={ro || c.calc}
-                              onChange={(k, v) => {
-                                const next = (draft.lines || []).map((row, idx) =>
-                                  idx === i ? { ...row, [k]: v } : row,
-                                );
-                                setLines(def.lines.rowCalc ? next.map(def.lines.rowCalc) : next);
-                              }}
-                            />
-                          )}
-                        </td>
+                        <th scope="col" key={c.key} style={{ width: c.w }}>
+                          {c.label}
+                        </th>
                       ))}
                       {editing && (
-                        <td className="q-noprint">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-danger"
-                            onClick={() => setLines((draft.lines || []).filter((_, idx) => idx !== i))}
-                          >
-                            <Icon name="trash" className="btn-ic" />
-                            삭제
-                          </button>
-                        </td>
+                        <th scope="col" style={{ width: '8%' }} className="q-noprint drag-handle-cell">
+                          <input
+                            type="checkbox"
+                            className="sel-check"
+                            checked={(draft.lines || []).length > 0 && pick.size === (draft.lines || []).length}
+                            onChange={() =>
+                              setPick((prev) =>
+                                prev.size === (draft.lines || []).length
+                                  ? new Set()
+                                  : new Set((draft.lines || []).map((_, idx) => idx)),
+                              )
+                            }
+                            aria-label="전체 선택"
+                          />
+                        </th>
                       )}
                     </tr>
-                  ))}
-                  {/* 엑셀 서식처럼 빈 행에도 테두리를 그려 표를 끝까지 채운다.
+                  </thead>
+                  <tbody>
+                    {(draft.lines || []).map((r, i) => (
+                      <tr key={i} className={editing && pick.has(i) ? 'is-checked' : undefined}>
+                        <td>{i + 1}</td>
+                        {def.lines.columns.map((c) => (
+                          <td key={c.key}>
+                            {c.key === 'result' && (ro || !editing) ? (
+                              r[c.key] ? (
+                                <span className={`q-p-badge ${VERDICT_CLS[r[c.key]] || ''}`}>{r[c.key]}</span>
+                              ) : (
+                                '—'
+                              )
+                            ) : (
+                              <Cell
+                                f={c}
+                                value={r[c.key]}
+                                readOnly={ro || c.calc}
+                                onChange={(k, v) => {
+                                  const next = (draft.lines || []).map((row, idx) =>
+                                    idx === i ? { ...row, [k]: v } : row,
+                                  );
+                                  setLines(def.lines.rowCalc ? next.map(def.lines.rowCalc) : next);
+                                }}
+                              />
+                            )}
+                          </td>
+                        ))}
+                        {editing && (
+                          <td className="q-noprint drag-handle-cell" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              className="sel-check"
+                              checked={pick.has(i)}
+                              onChange={() => togglePick(i)}
+                              aria-label={`${i + 1}번 줄 고르기`}
+                            />
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    {/* 엑셀 서식처럼 빈 행에도 테두리를 그려 표를 끝까지 채운다.
                     손으로 적어 넣을 자리도 되고, 표가 도중에 끊겨 보이지 않는다. */}
-                  {Array.from({ length: Math.max(0, MIN_LINE_ROWS - (draft.lines || []).length) }).map((_, i) => (
-                    <tr key={`blank-${i}`} className="q-blank-row">
-                      <td>{(draft.lines || []).length + i + 1}</td>
-                      {def.lines.columns.map((c) => (
-                        <td key={c.key} />
-                      ))}
-                      {editing && <td className="q-noprint" />}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    {Array.from({ length: Math.max(0, MIN_LINE_ROWS - (draft.lines || []).length) }).map((_, i) => (
+                      <tr key={`blank-${i}`} className="q-blank-row">
+                        <td>{(draft.lines || []).length + i + 1}</td>
+                        {def.lines.columns.map((c) => (
+                          <td key={c.key} />
+                        ))}
+                        {editing && <td className="q-noprint" />}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
             {def.lines && editing && (
               <button

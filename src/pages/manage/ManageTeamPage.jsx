@@ -17,6 +17,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
 
@@ -29,6 +30,9 @@ export default function ManageTeamPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  // 잠금 토글 — 기본 잠김. 풀면 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
   const [editTeam, setEditTeam] = useState(null);
   const [form, setForm] = useState({ name: '', managerId: '', subManagerId: '', memberIds: [] });
   const [memberListOpen, setMemberListOpen] = useState(false);
@@ -279,20 +283,46 @@ export default function ManageTeamPage() {
     }
   }
 
-  async function handleDelete(team) {
+  // 팀 하나를 휴지통으로 — deletePicked가 항목마다 호출한다
+  async function trashTeam(team) {
+    const members = users.filter((u) => u.departmentId === team.id);
+    for (const u of members) {
+      await updateUser(u.uid, { departmentId: '', isTeamLeader: false, isSubTeamLeader: false });
+    }
+    await trashGeneric('departments', team.id, { title: team.name }, userProfile?.name || '');
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 팀을 한꺼번에 — 확인 한 번 후 trashTeam으로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = teams.filter((t) => pick.has(t.id));
+    if (targets.length === 0) return;
     if (
       !(await confirm(
-        `"${team.name}" 팀을 삭제하시겠습니까?\n소속 팀원의 부서가 초기화됩니다.\n(휴지통에서 복원할 수 있습니다)`,
+        `고른 팀 ${targets.length}건을 삭제하시겠습니까?\n소속 팀원의 부서가 초기화됩니다.\n(휴지통에서 복원할 수 있습니다)`,
       ))
     )
       return;
     try {
-      const members = users.filter((u) => u.departmentId === team.id);
-      for (const u of members) {
-        await updateUser(u.uid, { departmentId: '', isTeamLeader: false, isSubTeamLeader: false });
-      }
-      await trashGeneric('departments', team.id, { title: team.name }, userProfile?.name || '');
+      for (const t of targets) await trashTeam(t);
+      setPick(new Set());
       await loadData();
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -664,6 +694,10 @@ export default function ManageTeamPage() {
   }
 
   // === 관리자 뷰: 팀 설정 ===
+  const allPicked = teams.length > 0 && teams.every((t) => pick.has(t.id));
+  function toggleAllPick() {
+    setPick(allPicked ? new Set() : new Set(teams.map((t) => t.id)));
+  }
   return (
     <div className="manage-team-page">
       <div className="page-header">
@@ -676,11 +710,27 @@ export default function ManageTeamPage() {
           <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
             <Icon name="plus" className="btn-ic" />팀 추가
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
       <p className="field-hint">
         팀을 구성하고 팀장을 지정하면, 팀원이 연차 신청 시 해당 팀장에게 승인 대기가 표시됩니다.
       </p>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       {teams.length === 0 ? (
         <div className="card">
@@ -690,6 +740,11 @@ export default function ManageTeamPage() {
         <table className="table cards-sm">
           <thead>
             <tr>
+              {editMode && (
+                <th scope="col" className="drag-handle-cell">
+                  <input type="checkbox" className="sel-check" checked={allPicked} onChange={toggleAllPick} />
+                </th>
+              )}
               <th scope="col">팀 이름</th>
               <th scope="col">팀장</th>
               <th scope="col">부팀장</th>
@@ -704,8 +759,20 @@ export default function ManageTeamPage() {
               const leader = userMap[t.managerId];
               const subLeader = userMap[t.subManagerId];
               const members = getTeamMembers(t.id);
+              const checked = pick.has(t.id);
               return (
-                <tr key={t.id}>
+                <tr key={t.id} className={checked ? 'is-checked' : ''}>
+                  {editMode && (
+                    <td className="drag-handle-cell" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={checked}
+                        onChange={() => togglePick(t.id)}
+                        aria-label="삭제할 팀 고르기"
+                      />
+                    </td>
+                  )}
                   <td data-label="팀 이름" title={t.name || ''}>
                     <strong>{t.name}</strong>
                   </td>
@@ -721,10 +788,7 @@ export default function ManageTeamPage() {
                       <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>
                         수정
                       </button>
-                      <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDelete(t)}>
-                        <Icon name="trash" className="btn-ic" />
-                        삭제
-                      </button>
+                      {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                     </div>
                   </td>
                 </tr>

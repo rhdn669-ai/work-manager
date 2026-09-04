@@ -8,6 +8,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
 
 // 관리자 운행일지 — 차량 운행자 지정자의 월별 누적 키로수 / 운행 km 모니터링
@@ -50,7 +51,7 @@ function useViewportWidth() {
 }
 
 export default function VehicleLogPage() {
-  const { toast } = useDialog();
+  const { confirm, toast } = useDialog();
   const { userProfile } = useAuth();
   const now = new Date();
   const vw = useViewportWidth();
@@ -67,9 +68,11 @@ export default function VehicleLogPage() {
   const [editForm, setEditForm] = useState({ odometer: '', prevOdometer: '' });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   async function reloadRecords() {
     const prevY = month === 1 ? year - 1 : year;
@@ -118,29 +121,51 @@ export default function VehicleLogPage() {
     }
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(uid) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  }
+
+  // 고른 기록을 한꺼번에 — 행별 「삭제」와 같은 길(휴지통)로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = filteredRows.filter((r) => pick.has(r.uid) && r.hasInput);
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     setDeleting(true);
     try {
-      // recordId(Firestore 문서 id)가 있는 경우만 trashGeneric 사용
-      // deterministic docId(`uid_YYYY-MM`)도 Firestore 문서 id이므로 recordId로 처리
-      const targetId = deleteTarget.recordId || `${deleteTarget.uid}_${String(year)}-${String(month).padStart(2, '0')}`;
-      await trashGeneric(
-        'vehicleMileages',
-        targetId,
-        {
-          title: `${deleteTarget.name} ${year}년 ${month}월`,
-          summary: `누적 ${deleteTarget.odometer ?? '-'} km · 운행 ${deleteTarget.drivenKm ?? '-'} km`,
-        },
-        userProfile?.name || '',
-      );
+      for (const r of targets) {
+        // recordId(Firestore 문서 id)가 있는 경우만 trashGeneric 사용
+        // deterministic docId(`uid_YYYY-MM`)도 Firestore 문서 id이므로 recordId로 처리
+        const targetId = r.recordId || `${r.uid}_${String(year)}-${String(month).padStart(2, '0')}`;
+        await trashGeneric(
+          'vehicleMileages',
+          targetId,
+          {
+            title: `${r.name} ${year}년 ${month}월`,
+            summary: `누적 ${r.odometer ?? '-'} km · 운행 ${r.drivenKm ?? '-'} km`,
+          },
+          userProfile?.name || '',
+        );
+      }
+      const ids = new Set(targets.map((r) => r.uid));
       // 즉시 로컬에서 제거 — 사용자에게 빠른 피드백
-      setRecords((prev) => prev.filter((r) => r.uid !== deleteTarget.uid));
+      setRecords((prev) => prev.filter((r) => !ids.has(r.uid)));
+      setPick(new Set());
       // 백그라운드에서 서버 상태로 동기화 (다른 기기 변경 반영용)
       reloadRecords().catch(() => {
         /* 다음 새로고침 때 재동기화 */
       });
-      setDeleteTarget(null);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     } finally {
@@ -239,6 +264,7 @@ export default function VehicleLogPage() {
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 
@@ -326,10 +352,39 @@ export default function VehicleLogPage() {
         </div>
       ) : (
         <>
+          {editMode && pick.size > 0 && (
+            <div className="sel-bar">
+              <span className="sel-count">
+                <strong>{pick.size}</strong>건 골랐습니다
+              </span>
+              <button type="button" className="btn btn-sm btn-danger" disabled={deleting} onClick={deletePicked}>
+                <Icon name="trash" className="btn-ic" />
+                선택 삭제
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                선택 해제
+              </button>
+            </div>
+          )}
           <div className="vehicle-log-table-wrap table-scroll-x">
             <table className="table vehicle-log-table">
               <thead>
                 <tr>
+                  {editMode && (
+                    <th scope="col" className="drag-handle-cell" style={{ width: 36, padding: '7px 6px', height: 36 }}>
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={filteredRows.length > 0 && filteredRows.every((r) => !r.hasInput || pick.has(r.uid))}
+                        onChange={() => {
+                          const pickable = filteredRows.filter((r) => r.hasInput);
+                          const allPicked = pickable.length > 0 && pickable.every((r) => pick.has(r.uid));
+                          setPick(allPicked ? new Set() : new Set(pickable.map((r) => r.uid)));
+                        }}
+                        aria-label="전체 선택"
+                      />
+                    </th>
+                  )}
                   <th scope="col" style={{ padding: '7px 6px', height: 36 }}>
                     운행자
                   </th>
@@ -380,7 +435,24 @@ export default function VehicleLogPage() {
                           ? 'var(--success)'
                           : 'var(--text-muted)';
                   return (
-                    <tr key={r.uid} className={r.hasInput ? '' : 'is-missing'} style={{ height: 36 }}>
+                    <tr
+                      key={r.uid}
+                      className={`${r.hasInput ? '' : 'is-missing'}${pick.has(r.uid) ? ' is-checked' : ''}`}
+                      style={{ height: 36 }}
+                    >
+                      {editMode && (
+                        <td className="drag-handle-cell" style={{ padding: '6px 6px', height: 36 }}>
+                          {r.hasInput && (
+                            <input
+                              type="checkbox"
+                              className="sel-check"
+                              checked={pick.has(r.uid)}
+                              onChange={() => togglePick(r.uid)}
+                              aria-label="삭제할 운행 기록 고르기"
+                            />
+                          )}
+                        </td>
+                      )}
                       <td
                         title={r.name}
                         style={{
@@ -471,12 +543,6 @@ export default function VehicleLogPage() {
                           <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(r)}>
                             {r.hasInput ? '수정' : '입력'}
                           </button>
-                          {r.hasInput && (
-                            <button type="button" className="btn btn-sm btn-danger" onClick={() => setDeleteTarget(r)}>
-                              <Icon name="trash" className="btn-ic" />
-                              삭제
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -489,8 +555,20 @@ export default function VehicleLogPage() {
           {/* 모바일 카드 뷰 */}
           <div className="vehicle-log-cards">
             {filteredRows.map((r) => (
-              <div key={r.uid} className={`vehicle-log-card ${r.hasInput ? '' : 'is-missing'}`}>
+              <div
+                key={r.uid}
+                className={`vehicle-log-card ${r.hasInput ? '' : 'is-missing'}${pick.has(r.uid) ? ' is-checked' : ''}`}
+              >
                 <div className="vlc-head">
+                  {editMode && r.hasInput && (
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={pick.has(r.uid)}
+                      onChange={() => togglePick(r.uid)}
+                      aria-label="삭제할 운행 기록 고르기"
+                    />
+                  )}
                   <div className="vlc-name" title={`${r.name}${r.plate ? ` · ${r.plate}` : ''}`}>
                     <strong>{r.name}</strong>
                     {r.plate && (
@@ -557,17 +635,6 @@ export default function VehicleLogPage() {
                   >
                     {r.hasInput ? '수정' : '입력'}
                   </button>
-                  {r.hasInput && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-danger"
-                      style={{ flex: 1, minWidth: 80 }}
-                      onClick={() => setDeleteTarget(r)}
-                    >
-                      <Icon name="trash" className="btn-ic" />
-                      삭제
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
@@ -667,40 +734,6 @@ export default function VehicleLogPage() {
         title="운행기록 휴지통"
         onChange={reloadRecords}
       />
-
-      {/* 삭제 확인 모달 */}
-      <Modal isOpen={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)} title="운행 기록 삭제">
-        {deleteTarget && (
-          <div>
-            <p>
-              <strong>{deleteTarget.name}</strong>님의{' '}
-              <strong>
-                {year}년 {month}월
-              </strong>{' '}
-              운행 기록을 삭제합니다.
-            </p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              누적 {fmt(deleteTarget.odometer)} km · 운행 {fmt(deleteTarget.drivenKm)} km
-            </p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-              삭제 후 휴지통에서 복원할 수 있습니다. 복원하지 않으면 다음 달 "이전월 누적"에도 영향을 줄 수 있어요.
-            </p>
-            <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-              >
-                취소
-              </button>
-              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
-                {deleting ? '삭제 중…' : '삭제'}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

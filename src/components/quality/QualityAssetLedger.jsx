@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '../common/Icon';
 import TrashModal from '../common/TrashModal';
+import EditModeButton from '../common/EditModeButton';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import { ASSET_STATUS, assetStatusOf } from '../../domain/qualityForms';
@@ -25,6 +26,9 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   const [printing, setPrinting] = useState(null);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   useEffect(() => subscribeAssets(setAll), []);
   useEffect(() => subscribeTrashByType('qualityAssets', (t) => setTrashCount(t.length)), []);
@@ -77,10 +81,36 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   }, [all, assetType]);
   const total = counts.normal + counts.due + counts.over;
 
-  const remove = async (a) => {
-    if (!(await confirm(`${a.assetNo} ${a.name}을(를) 휴지통으로 옮길까요?`))) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllPick() {
+    setPick((prev) => (prev.size === view.length ? new Set() : new Set(view.map((a) => a.id))));
+  }
+
+  // 고른 자산을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 행별 삭제 버튼 폐지)
+  const deletePicked = async () => {
+    const targets = view.filter((a) => pick.has(a.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     try {
-      await trashAsset(a, userProfile?.name || '');
+      for (const a of targets) {
+        await trashAsset(a, userProfile?.name || '');
+      }
+      setPick(new Set());
       toast('휴지통으로 이동했습니다.', 'success', 0);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error', 0);
@@ -114,8 +144,25 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
           <button type="button" className="btn btn-primary btn-sm" onClick={addBlankRow}>
             <Icon name="plus" className="btn-ic" />행 추가
           </button>
+          {/* 지우는 것은 관리자만 (2026-08-12 대표님) — 잠금도 같이 관리자 전용 (2026-09-04 「잠금」 통일) */}
+          {isAdmin && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       <div className="q-summary">
         {hasCycle &&
@@ -150,6 +197,7 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
         <div className="table-scroll-x">
           <table className="table cards-sm q-grid-table">
             <colgroup>
+              {editMode && <col className="w-no" />}
               <col className="w-no" />
               {cols.map((c) => (
                 <col key={c.key} className={colWidthOf(c)} />
@@ -160,6 +208,17 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
             </colgroup>
             <thead>
               <tr>
+                {editMode && (
+                  <th scope="col" className="drag-handle-cell">
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={view.length > 0 && pick.size === view.length}
+                      onChange={toggleAllPick}
+                      aria-label="전체 선택"
+                    />
+                  </th>
+                )}
                 <th scope="col">관리번호</th>
                 {cols.map((c) => (
                   <th scope="col" key={c.key}>
@@ -175,7 +234,18 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
             </thead>
             <tbody>
               {view.map((a) => (
-                <tr key={a.id}>
+                <tr key={a.id} className={editMode && pick.has(a.id) ? 'is-checked' : undefined}>
+                  {editMode && (
+                    <td className="drag-handle-cell" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={pick.has(a.id)}
+                        onChange={() => togglePick(a.id)}
+                        aria-label={`${a.assetNo || ''} 선택`}
+                      />
+                    </td>
+                  )}
                   <td className="q-num">
                     <LedgerCell f={{ key: 'assetNo', type: 'text' }} row={a} onCommit={editCell} />
                   </td>
@@ -203,19 +273,14 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
                       <span className={`badge ${ASSET_STATUS[a.st.key].cls}`}>{ASSET_STATUS[a.st.key].label}</span>
                     </td>
                   )}
-                  <td className="col-action">
-                    {isAdmin && (
-                      <button type="button" className="btn btn-sm btn-danger" onClick={() => remove(a)}>
-                        <Icon name="trash" className="btn-ic" />
-                        삭제
-                      </button>
-                    )}
-                  </td>
+                  {/* 개별 삭제 버튼 폐지 — 지우는 것은 관리자만, 잠금 풀고 체크 → 선택 삭제
+                      (2026-08-12 대표님 권한 구분 · 2026-09-04 대표님 「잠금」 통일) */}
+                  <td className="col-action" />
                 </tr>
               ))}
               {view.length === 0 && (
                 <tr>
-                  <td colSpan={cols.length + (hasCycle ? 4 : 2)}>
+                  <td colSpan={cols.length + (hasCycle ? 4 : 2) + (editMode ? 1 : 0)}>
                     <div className="q-todo">
                       <Icon name="doc" style={{ width: 34, height: 34 }} />
                       <b>등록된 항목이 없습니다</b>

@@ -1245,19 +1245,22 @@ export default function PurchaseItemPage() {
                               <span className="item-group-arrow" aria-hidden="true">
                                 <Icon name="chevronDown" />
                               </span>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteGroup(repCode || '(코드 없음)', groupItems);
-                                }}
-                                aria-label="대분류 삭제"
-                                title="대분류와 모든 하위 항목 삭제"
-                              >
-                                <Icon name="trash" className="btn-ic" />
-                                삭제
-                              </button>
+                              {/* 「잠금」 풀었을 때만 노출 (2026-09-04 대표님 「잠금」 통일) */}
+                              {editMode && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteGroup(repCode || '(코드 없음)', groupItems);
+                                  }}
+                                  aria-label="대분류 삭제"
+                                  title="대분류와 모든 하위 항목 삭제"
+                                >
+                                  <Icon name="trash" className="btn-ic" />
+                                  삭제
+                                </button>
+                              )}
                             </div>
                             {isExpanded && (
                               <div className="item-group-detail fold-body">

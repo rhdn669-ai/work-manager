@@ -9,6 +9,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
 
 function useViewportWidth() {
@@ -57,6 +58,9 @@ export default function EventManagementPage() {
     endDate: todayISO(),
   });
   const [syncing, setSyncing] = useState(false);
+  // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -145,24 +149,46 @@ export default function EventManagementPage() {
     }
   }
 
-  async function handleDelete(ev) {
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 이벤트/공지를 한꺼번에 — 행별 「삭제」와 같은 길(휴지통)로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = events.filter((ev) => pick.has(ev.id));
+    if (targets.length === 0) return;
     if (
       !(await confirm({
         title: '이벤트/공지 삭제',
-        message: `"${ev.title}"을(를) 삭제할까요?\n휴지통에서 복원할 수 있습니다.`,
+        message: `고른 ${targets.length}건을 휴지통으로 보내시겠습니까?`,
       }))
     )
       return;
     try {
-      await trashGeneric(
-        'events',
-        ev.id,
-        {
-          title: ev.title,
-          summary: [TYPE_LABEL[ev.type] || '이벤트', ev.startDate].filter(Boolean).join(' · '),
-        },
-        userProfile?.name || '',
-      );
+      for (const ev of targets) {
+        await trashGeneric(
+          'events',
+          ev.id,
+          {
+            title: ev.title,
+            summary: [TYPE_LABEL[ev.type] || '이벤트', ev.startDate].filter(Boolean).join(' · '),
+          },
+          userProfile?.name || '',
+        );
+      }
+      setPick(new Set());
       toast('휴지통으로 이동했습니다.');
       await loadData();
     } catch {
@@ -269,6 +295,7 @@ export default function EventManagementPage() {
           >
             <Icon name="plus" className="btn-ic" />새 이벤트/공지
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 
@@ -300,6 +327,21 @@ export default function EventManagementPage() {
         </div>
       )}
 
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
+
       {events.length === 0 ? (
         <div className="empty-state card">
           <div className="card-body">등록된 이벤트/공지가 없습니다.</div>
@@ -308,7 +350,7 @@ export default function EventManagementPage() {
         <div className="event-list">
           {events.map((ev) => (
             <div
-              className={`event-row event-type-${ev.type || 'event'}`}
+              className={`event-row event-type-${ev.type || 'event'}${pick.has(ev.id) ? ' is-checked' : ''}`}
               key={ev.id}
               style={{
                 padding: isXSmall ? '6px 8px' : '8px 10px',
@@ -317,6 +359,16 @@ export default function EventManagementPage() {
                 gap: isNarrow ? 6 : undefined,
               }}
             >
+              {editMode && (
+                <input
+                  type="checkbox"
+                  className="sel-check"
+                  checked={pick.has(ev.id)}
+                  onChange={() => togglePick(ev.id)}
+                  aria-label="삭제할 이벤트/공지 고르기"
+                  style={{ flexShrink: 0 }}
+                />
+              )}
               <span className="event-type-badge">{TYPE_LABEL[ev.type] || '이벤트'}</span>
               <div className="event-info" style={{ minWidth: 0 }}>
                 <div
@@ -369,10 +421,6 @@ export default function EventManagementPage() {
               >
                 <button className="btn btn-sm btn-outline" onClick={() => openEdit(ev)}>
                   수정
-                </button>
-                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(ev)}>
-                  <Icon name="trash" className="btn-ic" />
-                  삭제
                 </button>
               </div>
             </div>

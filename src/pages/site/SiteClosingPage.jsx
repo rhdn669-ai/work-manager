@@ -30,6 +30,7 @@ import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 import TrashModal from '../../components/common/TrashModal';
+import EditModeButton from '../../components/common/EditModeButton';
 import { trashGeneric } from '../../services/trashService';
 
 // 공수표 항목 유형 라벨 (휴지통 요약용)
@@ -217,6 +218,45 @@ export default function SiteClosingPage() {
   );
   // 공수표 휴지통 모달
   const [trashOpen, setTrashOpen] = useState(false);
+  // 잠금 토글 — 이 화면 전체가 하나를 공유. 목록마다 고른 것은 따로 둔다 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pickExpense, setPickExpense] = useState(() => new Set());
+  const [pickRevenue, setPickRevenue] = useState(() => new Set());
+  const [pickClosing, setPickClosing] = useState(() => new Set());
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) {
+        setPickExpense(new Set());
+        setPickRevenue(new Set());
+        setPickClosing(new Set());
+      }
+      return !v;
+    });
+  }
+  function toggleExpensePick(id) {
+    setPickExpense((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleRevenuePick(id) {
+    setPickRevenue((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleClosingPick(id) {
+    setPickClosing((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   // 공수표 항목 1건을 휴지통으로 소프트 삭제 (영구삭제 금지 규칙)
   function trashClosingItem(item) {
     const b = editBuf[item.id] || item || {};
@@ -996,22 +1036,31 @@ export default function SiteClosingPage() {
     }
   }
 
-  async function handleDeleteRow(itemId) {
-    if (!(await confirm('이 항목을 휴지통으로 보낼까요? (휴지통에서 복원할 수 있습니다)'))) return;
+  // 공수표 항목 하나를 휴지통으로 — deletePickedClosing이 항목마다 호출한다
+  async function trashRow(itemId) {
     if (timersRef.current[itemId]) {
       clearTimeout(timersRef.current[itemId]);
       delete timersRef.current[itemId];
     }
+    const item = items.find((x) => x.id === itemId) || { id: itemId };
+    await trashClosingItem(item);
+    // 낙관적 업데이트 — 전체 reload 대신 로컬 상태에서만 제거해 스크롤 위치 유지
+    setItems((prev) => prev.filter((x) => x.id !== itemId));
+    setEditBuf((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }
+
+  // 고른 공수표 항목을 한꺼번에 — 확인 한 번 후 trashRow로 하나씩 보낸다
+  async function deletePickedClosing() {
+    const ids = [...pickClosing];
+    if (ids.length === 0) return;
+    if (!(await confirm(`고른 항목 ${ids.length}건을 휴지통으로 보낼까요? (휴지통에서 복원할 수 있습니다)`))) return;
     try {
-      const item = items.find((x) => x.id === itemId) || { id: itemId };
-      await trashClosingItem(item);
-      // 낙관적 업데이트 — 전체 reload 대신 로컬 상태에서만 제거해 스크롤 위치 유지
-      setItems((prev) => prev.filter((x) => x.id !== itemId));
-      setEditBuf((prev) => {
-        const next = { ...prev };
-        delete next[itemId];
-        return next;
-      });
+      for (const id of ids) await trashRow(id);
+      setPickClosing(new Set());
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -1304,7 +1353,19 @@ export default function SiteClosingPage() {
     const chipMap = { 식대: 'meal', 교통비: 'transport', 자재비: 'material', 운송비: 'shipping' };
     const chipKey = chipMap[desc];
     return (
-      <div className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}`} key={f.id}>
+      <div
+        className={`expense-card ${chipKey ? `expense-card-${chipKey}` : ''}${pickExpense.has(f.id) ? ' is-checked' : ''}`}
+        key={f.id}
+      >
+        {canEdit && editMode && (
+          <input
+            type="checkbox"
+            className="sel-check"
+            checked={pickExpense.has(f.id)}
+            onChange={() => toggleExpensePick(f.id)}
+            aria-label="삭제할 지출 항목 고르기"
+          />
+        )}
         <span className={`expense-tag ${chipKey ? `expense-chip-${chipKey}` : 'expense-chip-default'}`}>
           {chipKey ? desc : '지출'}
         </span>
@@ -1341,17 +1402,7 @@ export default function SiteClosingPage() {
           disabled={!canEdit}
         />
         <span className="expense-won">원</span>
-        {canEdit && (
-          <button
-            type="button"
-            className="btn btn-sm btn-danger"
-            onClick={() => handleDeleteFinance(f.id, false)}
-            aria-label="항목 삭제"
-          >
-            <Icon name="trash" className="btn-ic" />
-            항목 삭제
-          </button>
-        )}
+        {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
       </div>
     );
   }
@@ -1483,20 +1534,40 @@ export default function SiteClosingPage() {
     }
   }
 
-  async function handleDeleteFinance(id, isOvertime = false) {
-    const msg = isOvertime
-      ? '잔업 지출 항목을 삭제합니다.\n(원본 잔업 기록은 남아있을 수 있으니, 필요 시 잔업 관리에서도 정리하세요.)\n\n계속하시겠습니까?'
-      : '이 항목을 삭제하시겠습니까?';
-    if (!(await confirm(msg))) return;
+  // 지출/매출 항목 하나를 휴지통으로 — deletePickedExpense·deletePickedRevenue가 항목마다 호출한다
+  async function trashFinance(id) {
     const key = 'fin_' + id;
     if (timersRef.current[key]) {
       clearTimeout(timersRef.current[key]);
       delete timersRef.current[key];
     }
+    const cur = financeBuf[id] || {};
+    // 휴지통 경유 소프트 삭제 (복원 가능) — 기존 즉시 영구삭제 대체
+    await trashGeneric('siteFinances', id, { title: cur.description || '지출/매출 항목' }, userProfile?.name || '');
+  }
+
+  // 고른 지출 항목을 한꺼번에
+  async function deletePickedExpense() {
+    const ids = [...pickExpense];
+    if (ids.length === 0) return;
+    if (!(await confirm(`고른 지출 항목 ${ids.length}건을 삭제하시겠습니까?`))) return;
     try {
-      const cur = financeBuf[id] || {};
-      // 휴지통 경유 소프트 삭제 (복원 가능) — 기존 즉시 영구삭제 대체
-      await trashGeneric('siteFinances', id, { title: cur.description || '지출/매출 항목' }, userProfile?.name || '');
+      for (const id of ids) await trashFinance(id);
+      setPickExpense(new Set());
+      await loadAll({ silent: true });
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error');
+    }
+  }
+
+  // 고른 매출 항목을 한꺼번에
+  async function deletePickedRevenue() {
+    const ids = [...pickRevenue];
+    if (ids.length === 0) return;
+    if (!(await confirm(`고른 매출 항목 ${ids.length}건을 삭제하시겠습니까?`))) return;
+    try {
+      for (const id of ids) await trashFinance(id);
+      setPickRevenue(new Set());
       await loadAll({ silent: true });
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -1642,6 +1713,7 @@ export default function SiteClosingPage() {
           <button className="btn btn-outline btn-sm" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
             목록
           </button>
+          {canEdit && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
         </div>
       </div>
 
@@ -1748,6 +1820,20 @@ export default function SiteClosingPage() {
               </div>
             )}
           </div>
+          {editMode && pickRevenue.size > 0 && (
+            <div className="sel-bar">
+              <span className="sel-count">
+                <strong>{pickRevenue.size}</strong>건 골랐습니다
+              </span>
+              <button type="button" className="btn btn-sm btn-danger" onClick={deletePickedRevenue}>
+                <Icon name="trash" className="btn-ic" />
+                선택 삭제
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickRevenue(new Set())}>
+                선택 해제
+              </button>
+            </div>
+          )}
           {revenueItems.length === 0 ? (
             <p className="text-muted text-sm" style={{ padding: '8px 0' }}>
               등록된 매출 항목이 없습니다.
@@ -1762,8 +1848,17 @@ export default function SiteClosingPage() {
                 const totalQty = closings.reduce((s, c) => s + countUnits(c.units), 0);
                 const totalAmount = isOnceProject ? Number(buf.amount) || 0 : (Number(buf.unitPrice) || 0) * totalQty;
                 return (
-                  <div className="revenue-card" key={f.id}>
+                  <div className={`revenue-card${pickRevenue.has(f.id) ? ' is-checked' : ''}`} key={f.id}>
                     <div className="revenue-card-head revenue-card-head-responsive">
+                      {canEdit && editMode && (
+                        <input
+                          type="checkbox"
+                          className="sel-check"
+                          checked={pickRevenue.has(f.id)}
+                          onChange={() => toggleRevenuePick(f.id)}
+                          aria-label="삭제할 매출 항목 고르기"
+                        />
+                      )}
                       <input
                         className="revenue-desc"
                         value={buf.description || ''}
@@ -1788,16 +1883,7 @@ export default function SiteClosingPage() {
                         />
                         <span className="label">원</span>
                       </div>
-                      {canEdit && (
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDeleteFinance(f.id)}
-                          aria-label="항목 삭제"
-                        >
-                          <Icon name="trash" className="btn-ic" />
-                          항목 삭제
-                        </button>
-                      )}
+                      {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                     </div>
 
                     {!isOnceProject && (
@@ -1825,7 +1911,8 @@ export default function SiteClosingPage() {
                               disabled={!canEdit}
                               placeholder="예: 1호기, 2호기 (콤마로 구분 → 자동 카운트)"
                             />
-                            {canEdit && (
+                            {/* 이 줄 삭제는 「잠금」 풀렸을 때만 — 실수로 누르는 일이 많았다 (2026-09-04 대표님) */}
+                            {canEdit && editMode && (
                               <button
                                 type="button"
                                 className="icon-btn icon-btn--sm icon-btn--danger"
@@ -1907,6 +1994,20 @@ export default function SiteClosingPage() {
             </div>
           )}
         </div>
+        {editMode && pickExpense.size > 0 && (
+          <div className="sel-bar">
+            <span className="sel-count">
+              <strong>{pickExpense.size}</strong>건 골랐습니다
+            </span>
+            <button type="button" className="btn btn-sm btn-danger" onClick={deletePickedExpense}>
+              <Icon name="trash" className="btn-ic" />
+              선택 삭제
+            </button>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickExpense(new Set())}>
+              선택 해제
+            </button>
+          </div>
+        )}
         {expenseItems.length === 0 &&
         mirroredFinances.length === 0 &&
         mirroredLaborSum === 0 &&
@@ -2348,9 +2449,18 @@ export default function SiteClosingPage() {
           // 모달에서 선택해 저장된 이름은 수정 불가 — 카드 뷰와 동일 잠금 (업체명은 읽기전용 텍스트)
           const detailLocked = isEmployee || (isVendor && !!(buf.detail || '').trim());
           return (
-            <tr key={it.id} className={`mx-row mx-row-${cardType}`}>
+            <tr key={it.id} className={`mx-row mx-row-${cardType}${pickClosing.has(it.id) ? ' is-checked' : ''}`}>
               <td className="mx-name">
                 <div className="mx-name-inner">
+                  {canEdit && editMode && (
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={pickClosing.has(it.id)}
+                      onChange={() => toggleClosingPick(it.id)}
+                      aria-label="삭제할 항목 고르기"
+                    />
+                  )}
                   <span className={`mx-type mx-type-${cardType}`}>{TYPE_SHORT[cardType] || ''}</span>
                   <input
                     className="mx-name-input"
@@ -2377,17 +2487,7 @@ export default function SiteClosingPage() {
                       {buf.autofillDisabled ? 'OFF' : 'ON'}
                     </button>
                   )}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      className="mx-del"
-                      style={{ color: 'var(--btn-danger-fg)' }}
-                      onClick={() => handleDeleteRow(it.id)}
-                      aria-label="삭제"
-                    >
-                      <Icon name="trash" size={13} />
-                    </button>
-                  )}
+                  {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                 </div>
               </td>
               <td className="mx-qty">{Number(buf.quantity || 0)}</td>
@@ -2408,6 +2508,20 @@ export default function SiteClosingPage() {
         };
         return (
           <>
+            {editMode && pickClosing.size > 0 && (
+              <div className="sel-bar">
+                <span className="sel-count">
+                  <strong>{pickClosing.size}</strong>건 골랐습니다
+                </span>
+                <button type="button" className="btn btn-sm btn-danger" onClick={deletePickedClosing}>
+                  <Icon name="trash" className="btn-ic" />
+                  선택 삭제
+                </button>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickClosing(new Set())}>
+                  선택 해제
+                </button>
+              </div>
+            )}
             <div className="closing-cards-toolbar">
               <div className="closing-viewtog">
                 <button
@@ -2570,8 +2684,20 @@ export default function SiteClosingPage() {
                   }
                 }
                 return (
-                  <div className={`closing-card closing-card-${cardType}`} key={it.id}>
+                  <div
+                    className={`closing-card closing-card-${cardType}${pickClosing.has(it.id) ? ' is-checked' : ''}`}
+                    key={it.id}
+                  >
                     <div className="closing-card-head">
+                      {canEdit && editMode && (
+                        <input
+                          type="checkbox"
+                          className="sel-check"
+                          checked={pickClosing.has(it.id)}
+                          onChange={() => toggleClosingPick(it.id)}
+                          aria-label="삭제할 항목 고르기"
+                        />
+                      )}
                       <span className="closing-no">#{buf.no || '-'}</span>
                       {/* 업체(공수)는 업체명을 앞이 아니라 우측 토글로 — 이름을 다른 항목과 같은 첫 칸에 */}
                       {!isVendor && (
@@ -2643,17 +2769,7 @@ export default function SiteClosingPage() {
                           <Icon name="chevronDown" size={16} />
                         </button>
                       )}
-                      {canEdit && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDeleteRow(it.id)}
-                          aria-label="삭제"
-                        >
-                          <Icon name="trash" className="btn-ic" />
-                          삭제
-                        </button>
-                      )}
+                      {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                     </div>
 
                     {!rowExpanded && (
@@ -2723,7 +2839,8 @@ export default function SiteClosingPage() {
                                       placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
                                     />
                                     <span className="vendor-case-count">{Number(c.count) || 0}대</span>
-                                    {canEdit && (
+                                    {/* 이 줄 삭제는 「잠금」 풀렸을 때만 — 실수로 누르는 일이 많았다 (2026-09-04 대표님) */}
+                                    {canEdit && editMode && (
                                       <button
                                         type="button"
                                         className="icon-btn icon-btn--sm icon-btn--danger"

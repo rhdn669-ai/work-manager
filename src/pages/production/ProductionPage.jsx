@@ -143,6 +143,9 @@ export default function ProductionPage() {
   // 순서 이동·선택 삭제 잠금 — 기본은 잠김, 화면을 나가면 다시 잠긴다 (2026-09-03 대표님
   // 「실수로 옮겨버리는 경우가 많아서」)
   const [editMode, setEditMode] = useState(false);
+  // 모바일 카드용 선택 삭제 — 데스크탑 표(ProductionMatrix)는 자체 선택을 갖고 있어 별개로 둔다
+  // (2026-09-04 대표님 「잠금」 통일)
+  const [pick, setPick] = useState(() => new Set());
   const [openId, setOpenId] = useState(null);
   const [openMode, setOpenMode] = useState('info'); // 'info'(기본정보) | 'defect'(부품 불량) | 'ship'(출고사진)
   const [openPart, setOpenPart] = useState(null); // defect 모드일 때 대상 BOX
@@ -226,6 +229,39 @@ export default function ProductionPage() {
       return;
     await trashPanel(p, userProfile?.name || '');
     if (openId === p.id) setOpenId(null);
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 모바일 카드에서 고른 판넬을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 카드별 삭제 버튼 폐지)
+  async function deletePickedMobile() {
+    const targets = filtered.filter((p) => pick.has(p.id));
+    if (targets.length === 0) return;
+    if (
+      !(await confirm({
+        title: '판넬 삭제',
+        message: `고른 판넬 ${targets.length}대를 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
+      }))
+    )
+      return;
+    for (const p of targets) {
+      await trashPanel(p, userProfile?.name || '');
+    }
+    setPick(new Set());
   }
 
   /* ── 통계 파생 ── */
@@ -396,9 +432,7 @@ export default function ProductionPage() {
             {/* 호기 범위를 골라 무엇이 얼마나 모자란지 — BOM 을 연결한 호기만 잡힌다
                 (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」).
                 필터 칩이 아니라 다른 화면으로 가는 버튼이라 오른쪽 끝에 둔다. */}
-            {canEdit && (
-              <EditModeButton className="board-toolbar-right" on={editMode} onToggle={() => setEditMode((v) => !v)} />
-            )}
+            {canEdit && <EditModeButton className="board-toolbar-right" on={editMode} onToggle={toggleEditMode} />}
             <button
               type="button"
               className={`btn btn-sm btn-outline${canEdit ? '' : ' board-toolbar-right'}`}
@@ -444,6 +478,20 @@ export default function ProductionPage() {
               />
 
               {/* 모바일 카드 */}
+              {isAdmin && editMode && pick.size > 0 && (
+                <div className="sel-bar">
+                  <span className="sel-count">
+                    <strong>{pick.size}</strong>대 골랐습니다
+                  </span>
+                  <button type="button" className="btn btn-sm btn-danger" onClick={deletePickedMobile}>
+                    <Icon name="trash" className="btn-ic" />
+                    선택 삭제
+                  </button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                    선택 해제
+                  </button>
+                </div>
+              )}
               <div className="board-cards">
                 {filtered.map((p) => {
                   const nc = napgiColorOf(allNapgi, p.납기 || '');
@@ -452,11 +500,23 @@ export default function ProductionPage() {
                   return (
                     <div
                       key={p.id}
-                      className="card pcard"
+                      className={`card pcard${editMode && pick.has(p.id) ? ' is-checked' : ''}`}
                       style={{ borderLeft: `4px solid ${d1.length || d2.length ? 'var(--danger)' : nc}` }}
                       onClick={() => openModal(p.id, 'info')}
                     >
                       <div className="pcard-top">
+                        {/* 잠금 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
+                        {isAdmin && editMode && (
+                          <input
+                            type="checkbox"
+                            className="sel-check"
+                            checked={pick.has(p.id)}
+                            onChange={() => togglePick(p.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="삭제할 판넬 고르기"
+                            style={{ flexShrink: 0, marginTop: 2 }}
+                          />
+                        )}
                         <div className="grow">
                           <div className="proj-name">
                             {p.프로젝트 || '—'}
@@ -507,11 +567,7 @@ export default function ProductionPage() {
                           납기 <b style={{ color: nc }}>{mmdd(p.납기)}</b>
                         </span>
                         <DdayBadge date={p.납기} os={p.overallStatus} />
-                        {isAdmin && (
-                          <button className="btn btn-sm btn-danger" onClick={(e) => handleRemove(e, p)}>
-                            <Icon name="trash" className="btn-ic" />
-                          </button>
-                        )}
+                        {/* 카드별 삭제 버튼 폐지 — 잠금 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                       </div>
                     </div>
                   );

@@ -90,7 +90,7 @@ function itemStats(p) {
 }
 
 // 드래그 가능한 발주 카드 (전체 탭에서만 순서변경 활성)
-function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
+function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: p.id,
     disabled: !dragEnabled,
@@ -159,10 +159,7 @@ function SortablePurchaseCard({ p, dragEnabled, onOpen, onEdit, onDelete }) {
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정
           </button>
-          <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
-            <Icon name="trash" className="btn-ic" />
-            삭제
-          </button>
+          {/* 카드별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
         </div>
       </div>
     </div>
@@ -179,7 +176,7 @@ const BOARD_COLS = [
   { key: 'settled', label: '정산완료' },
 ];
 
-function KanbanCard({ p, dragEnabled, onOpen, onEdit, onDelete, onClose }) {
+function KanbanCard({ p, dragEnabled, editMode, checked, onCheck, onOpen, onEdit, onClose }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: p.id,
     disabled: !dragEnabled,
@@ -199,12 +196,24 @@ function KanbanCard({ p, dragEnabled, onOpen, onEdit, onDelete, onClose }) {
         cursor: dragEnabled ? undefined : 'pointer',
         touchAction: dragEnabled ? undefined : 'auto',
       }}
-      className="kb-card"
+      className={`kb-card${editMode && checked ? ' is-checked' : ''}`}
       onClick={() => onOpen(p)}
       {...(dragEnabled ? attributes : {})}
       {...(dragEnabled ? listeners : {})}
     >
       <div className="kb-card__title u-ellipsis-1" title={p.title || ''}>
+        {editMode && (
+          <input
+            type="checkbox"
+            className="sel-check"
+            style={{ marginRight: 6 }}
+            checked={checked}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onChange={() => onCheck(p.id)}
+            aria-label="삭제할 발주 고르기"
+          />
+        )}
         {p.title}
       </div>
       {p.subtitle && (
@@ -256,17 +265,14 @@ function KanbanCard({ p, dragEnabled, onOpen, onEdit, onDelete, onClose }) {
           <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
             수정
           </button>
-          <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
-            <Icon name="trash" className="btn-ic" />
-            삭제
-          </button>
+          {/* 카드별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
         </div>
       </div>
     </div>
   );
 }
 
-function KanbanColumn({ col, cards, dragEnabled, onOpen, onEdit, onDelete, onClose }) {
+function KanbanColumn({ col, cards, dragEnabled, editMode, pick, onCheck, onOpen, onEdit, onClose }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key });
   return (
     <div ref={setNodeRef} className={`kb-col ${isOver ? 'is-over' : ''}`}>
@@ -280,9 +286,11 @@ function KanbanColumn({ col, cards, dragEnabled, onOpen, onEdit, onDelete, onClo
             key={p.id}
             p={p}
             dragEnabled={dragEnabled}
+            editMode={editMode}
+            checked={pick.has(p.id)}
+            onCheck={onCheck}
             onOpen={onOpen}
             onEdit={onEdit}
-            onDelete={onDelete}
             onClose={onClose}
           />
         ))}
@@ -306,6 +314,8 @@ export default function PurchaseListPage() {
   // 「순서 변경」 토글 — 기본 꺼짐(화면을 나가면 다시 꺼진다).
   // 켜야만 카드 순서 변경·칸반 상태 이동이 되고, 꺼져 있으면 카드는 열기만 한다.
   const [editMode, setEditMode] = useState(false);
+  // 카드별 삭제 대신 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일) — 같은 editMode를 그대로 쓴다
+  const [pick, setPick] = useState(() => new Set());
   const [trashOpen, setTrashOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [regenTask, setRegenTask] = useState(null); // 백그라운드 재생성 잡 { jobs, suppliers, sites, itemMaster }
@@ -591,29 +601,59 @@ export default function PurchaseListPage() {
     }
   }
 
-  async function handleDelete(e, p) {
-    e.stopPropagation();
-    if (!(await confirm(`"${p.title}" 구매 건을 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`))) return;
-    try {
-      const tid = await trashPurchase(p.id, userProfile?.name || '');
-      await deletePurchase(p.id);
-      // 발주서가 쥐고 있던 재고를 창고로 돌려준다
-      await releasePurchaseStock(p.items || [], {
-        byName: userProfile?.name || '',
-        note: `발주 삭제로 되돌림 · ${p.title || ''}`,
-      });
-      setPurchases((prev) => prev.filter((x) => x.id !== p.id));
-      if (tid)
-        pushUndo(`구매 "${p.title}" 삭제`, async () => {
-          await restoreTrashItem(tid);
-          await releasePurchaseStock(p.items || [], {
-            byName: userProfile?.name || '',
-            note: `발주 복원 · ${p.title || ''}`,
-            back: false,
-          });
-          const ps = await getPurchases();
-          setPurchases(ps);
+  // 확인창 없이 휴지통으로 — 선택 삭제에서 항목마다 호출 (기존 handleDelete와 같은 로직, 재고 반환 포함)
+  async function deletePurchaseNoConfirm(p) {
+    const tid = await trashPurchase(p.id, userProfile?.name || '');
+    await deletePurchase(p.id);
+    // 발주서가 쥐고 있던 재고를 창고로 돌려준다
+    await releasePurchaseStock(p.items || [], {
+      byName: userProfile?.name || '',
+      note: `발주 삭제로 되돌림 · ${p.title || ''}`,
+    });
+    if (tid)
+      pushUndo(`구매 "${p.title}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        await releasePurchaseStock(p.items || [], {
+          byName: userProfile?.name || '',
+          note: `발주 복원 · ${p.title || ''}`,
+          back: false,
         });
+        const ps = await getPurchases();
+        setPurchases(ps);
+      });
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllPick(ids) {
+    setPick((prev) => (prev.size === ids.length ? new Set() : new Set(ids)));
+  }
+
+  async function deletePicked() {
+    const targets = purchases.filter((p) => pick.has(p.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 발주 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
+    try {
+      for (const p of targets) {
+        await deletePurchaseNoConfirm(p);
+      }
+      setPurchases((prev) => prev.filter((x) => !pick.has(x.id)));
+      setPick(new Set());
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -704,9 +744,24 @@ export default function PurchaseListPage() {
             <Icon name="plus" className="btn-ic" />
             구매 등록
           </button>
-          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar no-print">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       {viewMode === 'list' && (
         <div className="tab-nav closing-tab-nav no-print">
@@ -871,9 +926,11 @@ export default function PurchaseListPage() {
                   col={col}
                   cards={cards}
                   dragEnabled={editMode}
+                  editMode={editMode}
+                  pick={pick}
+                  onCheck={togglePick}
                   onOpen={(pp) => navigate(`/admin/purchase/${pp.id}`)}
                   onEdit={openEdit}
-                  onDelete={handleDelete}
                   onClose={handleClose}
                 />
               ))}
@@ -889,6 +946,17 @@ export default function PurchaseListPage() {
           <table className="table pur-table">
             <thead>
               <tr>
+                {editMode && (
+                  <th scope="col" className="drag-handle-cell">
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={filtered.length > 0 && pick.size === filtered.length}
+                      onChange={() => toggleAllPick(filtered.map((p) => p.id))}
+                      aria-label="전체 선택"
+                    />
+                  </th>
+                )}
                 <th scope="col" className="pur-c-status">
                   상태
                 </th>
@@ -928,7 +996,7 @@ export default function PurchaseListPage() {
                 return (
                   <Fragment key={col.key}>
                     <tr className="pur-group-row">
-                      <td className="pur-group-cell" colSpan={10}>
+                      <td className="pur-group-cell" colSpan={editMode ? 11 : 10}>
                         {col.label}
                         <span className="pur-group-count">{rows.length}</span>
                       </td>
@@ -937,7 +1005,22 @@ export default function PurchaseListPage() {
                       const st = STATUS[p.status] || { label: p.status, cls: 'ordered' };
                       const amt = Number(p.totalAmount || 0);
                       return (
-                        <tr key={p.id} className="pur-row" onClick={() => navigate(`/admin/purchase/${p.id}`)}>
+                        <tr
+                          key={p.id}
+                          className={`pur-row${editMode && pick.has(p.id) ? ' is-checked' : ''}`}
+                          onClick={() => navigate(`/admin/purchase/${p.id}`)}
+                        >
+                          {editMode && (
+                            <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                className="sel-check"
+                                checked={pick.has(p.id)}
+                                onChange={() => togglePick(p.id)}
+                                aria-label="삭제할 발주 고르기"
+                              />
+                            </td>
+                          )}
                           <td data-label="상태">
                             <span className={`purchase-badge purchase-badge-${st.cls}`}>{st.label}</span>
                           </td>
@@ -991,14 +1074,7 @@ export default function PurchaseListPage() {
                               <button type="button" className="btn btn-sm btn-outline" onClick={(e) => openEdit(e, p)}>
                                 수정
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger"
-                                onClick={(e) => handleDelete(e, p)}
-                              >
-                                <Icon name="trash" className="btn-ic" />
-                                삭제
-                              </button>
+                              {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                             </div>
                           </td>
                         </tr>

@@ -11,6 +11,7 @@ import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { getKoreanHolidaysAsEvents } from '../../utils/koreanHolidays';
 import Modal from './Modal';
 import Icon from './Icon';
+import EditModeButton from './EditModeButton';
 import { useDialog } from './useDialog';
 
 const TYPE_LABEL = {
@@ -54,6 +55,9 @@ export default function HomeCalendar() {
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [personalForm, setPersonalForm] = useState({ title: '', startDate: '', endDate: '', note: '' });
   const [personalBusy, setPersonalBusy] = useState(false);
+  // 「내 일정」 선택 삭제 — 잠금 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   useEffect(() => {
     let active = true;
@@ -177,12 +181,33 @@ export default function HomeCalendar() {
     }
   }
 
-  async function handleDeletePersonal(id) {
-    if (!(await confirm('이 일정을 삭제하시겠습니까?'))) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 「내 일정」을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 개별 삭제 버튼 폐지)
+  async function deletePicked() {
+    const targets = personalEvents.filter((p) => pick.has(p.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 일정 ${targets.length}건을 삭제하시겠습니까?`))) return;
     try {
-      const ev = personalEvents.find((p) => p.id === id);
-      const title = [ev?.title || '내 일정', ev?.startDate].filter(Boolean).join(' ');
-      await trashGeneric('personalEvents', id, { title }, userProfile?.name || '');
+      for (const ev of targets) {
+        const title = [ev.title || '내 일정', ev.startDate].filter(Boolean).join(' ');
+        await trashGeneric('personalEvents', ev.id, { title }, userProfile?.name || '');
+      }
+      setPick(new Set());
       await reloadPersonal();
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -468,24 +493,52 @@ export default function HomeCalendar() {
                 >
                   <span>{selectedDate}</span>
                   {userProfile?.uid && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={() => openAddPersonal(selectedDate)}
-                    >
-                      내 일정 추가
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => openAddPersonal(selectedDate)}
+                      >
+                        내 일정 추가
+                      </button>
+                      <EditModeButton on={editMode} onToggle={toggleEditMode} />
+                    </div>
                   )}
                 </div>
+                {editMode && pick.size > 0 && (
+                  <div className="sel-bar">
+                    <span className="sel-count">
+                      <strong>{pick.size}</strong>건 골랐습니다
+                    </span>
+                    <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+                      <Icon name="trash" className="btn-ic" />
+                      선택 삭제
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                      선택 해제
+                    </button>
+                  </div>
+                )}
                 {selectedEvents.length === 0 ? (
                   <div className="home-cal-list-empty">이 날짜의 일정이 없습니다.</div>
                 ) : (
                   selectedEvents.map((e) => (
                     <div
-                      className={`home-cal-item type-${e.type}`}
+                      className={`home-cal-item type-${e.type}${e._kind === 'personal' && pick.has(e.id) ? ' is-checked' : ''}`}
                       key={`${e._kind}-${e.id}`}
                       style={{ alignItems: 'flex-start' }}
                     >
+                      {/* 잠금 풀고 체크 → 선택 삭제 — 「내 일정」만 지울 수 있다 (2026-09-04 대표님 「잠금」 통일) */}
+                      {editMode && e._kind === 'personal' && (
+                        <input
+                          type="checkbox"
+                          className="sel-check"
+                          checked={pick.has(e.id)}
+                          onChange={() => togglePick(e.id)}
+                          aria-label="삭제할 일정 고르기"
+                          style={{ flexShrink: 0, marginTop: 2 }}
+                        />
+                      )}
                       <span className="home-cal-badge">{TYPE_LABEL[e.type] || '일정'}</span>
                       <div className="home-cal-item-body" style={{ flex: 1, minWidth: 0 }}>
                         <div
@@ -561,17 +614,6 @@ export default function HomeCalendar() {
                           </>
                         )}
                       </div>
-                      {e._kind === 'personal' && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDeletePersonal(e.id)}
-                          style={{ flexShrink: 0 }}
-                        >
-                          <Icon name="trash" className="btn-ic" />
-                          삭제
-                        </button>
-                      )}
                     </div>
                   ))
                 )}

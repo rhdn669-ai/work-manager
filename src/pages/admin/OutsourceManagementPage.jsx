@@ -26,6 +26,7 @@ import Select from '../../components/common/Select';
 import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 
 export default function OutsourceManagementPage() {
@@ -34,6 +35,9 @@ export default function OutsourceManagementPage() {
   const { push: pushUndo } = useUndo();
   const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
   const [trashOpen, setTrashOpen] = useState(false);
+  // 잠금 토글 — 기본 잠김. 풀면 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [closingItems, setClosingItems] = useState([]);
@@ -198,6 +202,11 @@ export default function OutsourceManagementPage() {
     if (isAdmin) loadAll();
   }, [isAdmin]);
 
+  // 탭을 바꾸면 고른 것도 함께 비운다 — 다른 목록으로 넘어가서도 체크가 남아 있으면 헷갈린다
+  useEffect(() => {
+    setPick(new Set());
+  }, [tab]);
+
   async function loadAll() {
     setLoading(true);
     try {
@@ -359,31 +368,59 @@ export default function OutsourceManagementPage() {
     }
   }
 
-  async function handleDelete(item) {
+  // 항목 하나를 휴지통으로 — deletePicked가 항목마다 호출한다
+  async function trashItem(item) {
     const label = tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서';
-    if (!(await confirm(`"${item.name}" ${label}를 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
+    const collectionName = tab === 'vendor' ? 'vendors' : 'freelancers';
+    const summary =
+      tab === 'vendor'
+        ? [item.representative, item.businessNumber].filter(Boolean).join(' · ')
+        : [label, item.contact].filter(Boolean).join(' · ');
+    const tid = await trashGeneric(
+      collectionName,
+      item.id,
+      {
+        title: item.name,
+        summary,
+      },
+      userProfile?.name || '',
+    );
+    if (tid)
+      pushUndo(`${label} "${item.name}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        await loadAll();
+      });
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 항목을 한꺼번에 — 확인 한 번 후 trashItem으로 하나씩 보낸다
+  async function deletePicked() {
+    const label = tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서';
+    const list = tab === 'vendor' ? vendors : tab === 'freelancer' ? soloFreelancers : soloDailies;
+    const targets = list.filter((it) => pick.has(it.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 ${label} ${targets.length}건을 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`)))
+      return;
     try {
-      const collectionName = tab === 'vendor' ? 'vendors' : 'freelancers';
-      const summary =
-        tab === 'vendor'
-          ? [item.representative, item.businessNumber].filter(Boolean).join(' · ')
-          : [label, item.contact].filter(Boolean).join(' · ');
-      const tid = await trashGeneric(
-        collectionName,
-        item.id,
-        {
-          title: item.name,
-          summary,
-        },
-        userProfile?.name || '',
-      );
-      toast('휴지통으로 이동했습니다.');
+      for (const it of targets) await trashItem(it);
+      setPick(new Set());
       await loadAll();
-      if (tid)
-        pushUndo(`${label} "${item.name}" 삭제`, async () => {
-          await restoreTrashItem(tid);
-          await loadAll();
-        });
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -495,6 +532,7 @@ export default function OutsourceManagementPage() {
             <Icon name="plus" className="btn-ic" />
             {tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서'} 추가
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 
@@ -584,6 +622,21 @@ export default function OutsourceManagementPage() {
         </div>
       )}
 
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <Skeleton.Rows count={6} />
       ) : tab === 'freelancer' || tab === 'daily' ? (
@@ -600,6 +653,7 @@ export default function OutsourceManagementPage() {
             <table className="table table-clickable cards-sm">
               <thead>
                 <tr>
+                  {editMode && <th scope="col" className="drag-handle-cell" aria-label="고르기"></th>}
                   <th scope="col">이름</th>
                   <th scope="col">{tab === 'daily' ? '시급' : '일당'}</th>
                   <th scope="col">연락처</th>
@@ -613,10 +667,22 @@ export default function OutsourceManagementPage() {
                 {(tab === 'freelancer' ? soloFreelancers : soloDailies).map((f) => (
                   <tr
                     key={f.id}
+                    className={pick.has(f.id) ? 'is-checked' : ''}
                     style={{ cursor: 'pointer' }}
                     onClick={() => setDetailFor({ kind: tab, name: f.name })}
                     title={`${f.name} 공수표 상세 내역 보기`}
                   >
+                    {editMode && (
+                      <td className="drag-handle-cell" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="sel-check"
+                          checked={pick.has(f.id)}
+                          onChange={() => togglePick(f.id)}
+                          aria-label="삭제할 항목 고르기"
+                        />
+                      </td>
+                    )}
                     <td data-label="이름" title={f.name || ''}>
                       <strong>{f.name}</strong>
                     </td>
@@ -641,17 +707,7 @@ export default function OutsourceManagementPage() {
                         >
                           수정
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(f)}
-                          title="삭제"
-                          aria-label="삭제"
-                          style={{ minHeight: 36 }}
-                        >
-                          <Icon name="trash" className="btn-ic" />
-                          삭제
-                        </button>
+                        {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                       </div>
                     </td>
                   </tr>
@@ -669,6 +725,7 @@ export default function OutsourceManagementPage() {
           <table className="table cards-sm vendor-table">
             <thead>
               <tr>
+                {editMode && <th scope="col" className="drag-handle-cell" aria-label="고르기"></th>}
                 <th scope="col">상호</th>
                 <th scope="col">대표</th>
                 <th scope="col">연락처</th>
@@ -693,10 +750,22 @@ export default function OutsourceManagementPage() {
               {vendors.map((v) => (
                 <tr
                   key={v.id}
+                  className={pick.has(v.id) ? 'is-checked' : ''}
                   style={{ cursor: 'pointer' }}
                   onClick={() => openVendorDetail(v)}
                   title={`${v.name} 소속·프로젝트 보기`}
                 >
+                  {editMode && (
+                    <td className="drag-handle-cell" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={pick.has(v.id)}
+                        onChange={() => togglePick(v.id)}
+                        aria-label="삭제할 업체 고르기"
+                      />
+                    </td>
+                  )}
                   <td data-label="상호" title={v.name || ''}>
                     <strong>{v.name}</strong>
                   </td>
@@ -738,17 +807,7 @@ export default function OutsourceManagementPage() {
                       >
                         수정
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(v)}
-                        title="삭제"
-                        aria-label="삭제"
-                        style={{ minHeight: 36 }}
-                      >
-                        <Icon name="trash" className="btn-ic" />
-                        삭제
-                      </button>
+                      {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                     </div>
                   </td>
                 </tr>

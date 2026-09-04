@@ -18,6 +18,7 @@ import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 import LeaveManagementPage from './LeaveManagementPage';
 
 export default function ReportsPage() {
@@ -436,6 +437,9 @@ export function EmployeeDetailModal({
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
+  // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   function startEdit(row) {
     setEditingId(row.id);
@@ -491,17 +495,41 @@ export function EmployeeDetailModal({
     }
   }
 
-  async function removeRow(row) {
-    const msg =
-      tab === 'overtime' ? '이 잔업 기록을 삭제할까요?' : '이 연차 기록을 삭제할까요?\n(사용일수가 자동 복원됩니다)';
-    if (!(await confirm(msg))) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const overtimesSorted = [...overtimes].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const leavesSorted = [...leaves].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+
+  // 고른 기록을 한꺼번에 — 행별 「삭제」와 같은 길(휴지통)로 하나씩 보낸다
+  async function deletePicked() {
+    const list = tab === 'overtime' ? overtimesSorted : leavesSorted;
+    const targets = list.filter((r) => pick.has(r.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     setBusy(true);
     try {
-      if (tab === 'overtime') {
-        await deleteOvertimeRecord(row.id, userProfile?.name || '');
-      } else {
-        await deleteLeaveById(row.id, userProfile?.name || '');
+      for (const row of targets) {
+        if (tab === 'overtime') {
+          await deleteOvertimeRecord(row.id, userProfile?.name || '');
+        } else {
+          await deleteLeaveById(row.id, userProfile?.name || '');
+        }
       }
+      setPick(new Set());
       await onChanged();
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -510,9 +538,6 @@ export function EmployeeDetailModal({
     }
   }
 
-  const overtimesSorted = [...overtimes].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  const leavesSorted = [...leaves].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
@@ -520,11 +545,28 @@ export function EmployeeDetailModal({
           <h3>
             {user.name} · {year}년 {month}월 {tab === 'overtime' ? '잔업' : '연차'}
           </h3>
-          <button className="modal-close" onClick={onClose}>
-            ×
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {canEdit && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
+            <button className="modal-close" onClick={onClose}>
+              ×
+            </button>
+          </div>
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {editMode && pick.size > 0 && (
+            <div className="sel-bar">
+              <span className="sel-count">
+                <strong>{pick.size}</strong>건 골랐습니다
+              </span>
+              <button type="button" className="btn btn-sm btn-danger" disabled={busy} onClick={deletePicked}>
+                <Icon name="trash" className="btn-ic" />
+                선택 삭제
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                선택 해제
+              </button>
+            </div>
+          )}
           {tab === 'overtime' ? (
             overtimesSorted.length === 0 ? (
               <p className="text-muted text-center">등록된 잔업이 없습니다.</p>
@@ -532,101 +574,113 @@ export function EmployeeDetailModal({
               overtimesSorted.map((r) => {
                 const isEditing = editingId === r.id;
                 return (
-                  <div key={r.id} className={`card ${isEditing ? 'card-warning' : ''}`} style={{ marginBottom: 0 }}>
-                    <div className="card-body" style={{ padding: '12px 14px' }}>
-                      {isEditing ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          <div className="form-row">
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label>날짜</label>
-                              <input
-                                aria-label="날짜"
-                                type="date"
-                                value={editForm.date}
-                                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                              />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                              <label>시간 (분)</label>
-                              <input
-                                aria-label="시간 (분)"
-                                type="number"
-                                min={0}
-                                value={editForm.minutes}
-                                onChange={(e) => setEditForm({ ...editForm, minutes: e.target.value })}
-                              />
-                            </div>
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>프로젝트</label>
-                            <Select
-                              value={editForm.siteId}
-                              onChange={(v) => setEditForm({ ...editForm, siteId: v })}
-                              options={[
-                                { value: 'etc', label: '기타' },
-                                ...Object.entries(siteMap)
-                                  .filter(([k]) => k !== 'etc')
-                                  .map(([id, name]) => ({ value: id, label: name })),
-                              ]}
-                              placeholder="-"
-                              ariaLabel="프로젝트 선택"
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>사유</label>
-                            <input
-                              aria-label="사유"
-                              type="text"
-                              value={editForm.reason}
-                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
-                            />
-                          </div>
-                          <div className="btn-group">
-                            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>
-                              저장
-                            </button>
-                            <button
-                              className="btn btn-sm btn-outline"
-                              disabled={busy}
-                              onClick={() => setEditingId(null)}
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{r.date}</div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: 'var(--text-light)',
-                                display: 'flex',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <span>{siteMap[r.siteId] || '프로젝트 미지정'}</span>
-                              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
-                                {formatMinutes(r.minutes || 0)}
-                              </span>
-                              {r.reason && <span>{r.reason}</span>}
-                            </div>
-                          </div>
-                          {canEdit && (
-                            <div className="btn-group" style={{ flexShrink: 0 }}>
-                              <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>
-                                수정
-                              </button>
-                              <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => removeRow(r)}>
-                                <Icon name="trash" className="btn-ic" />
-                                삭제
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                  <div
+                    key={r.id}
+                    className={`card ${isEditing ? 'card-warning' : ''}${pick.has(r.id) ? ' is-checked' : ''}`}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <div className="card-body" style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
+                      {editMode && !isEditing && (
+                        <input
+                          type="checkbox"
+                          className="sel-check"
+                          checked={pick.has(r.id)}
+                          onChange={() => togglePick(r.id)}
+                          aria-label="삭제할 잔업 기록 고르기"
+                          style={{ marginTop: 3, flexShrink: 0 }}
+                        />
                       )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div className="form-row">
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label>날짜</label>
+                                <input
+                                  aria-label="날짜"
+                                  type="date"
+                                  value={editForm.date}
+                                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label>시간 (분)</label>
+                                <input
+                                  aria-label="시간 (분)"
+                                  type="number"
+                                  min={0}
+                                  value={editForm.minutes}
+                                  onChange={(e) => setEditForm({ ...editForm, minutes: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>프로젝트</label>
+                              <Select
+                                value={editForm.siteId}
+                                onChange={(v) => setEditForm({ ...editForm, siteId: v })}
+                                options={[
+                                  { value: 'etc', label: '기타' },
+                                  ...Object.entries(siteMap)
+                                    .filter(([k]) => k !== 'etc')
+                                    .map(([id, name]) => ({ value: id, label: name })),
+                                ]}
+                                placeholder="-"
+                                ariaLabel="프로젝트 선택"
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>사유</label>
+                              <input
+                                aria-label="사유"
+                                type="text"
+                                value={editForm.reason}
+                                onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                              />
+                            </div>
+                            <div className="btn-group">
+                              <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>
+                                저장
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline"
+                                disabled={busy}
+                                onClick={() => setEditingId(null)}
+                              >
+                                취소
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{r.date}</div>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: 'var(--text-light)',
+                                  display: 'flex',
+                                  gap: 8,
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                <span>{siteMap[r.siteId] || '프로젝트 미지정'}</span>
+                                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                                  {formatMinutes(r.minutes || 0)}
+                                </span>
+                                {r.reason && <span>{r.reason}</span>}
+                              </div>
+                            </div>
+                            {canEdit && (
+                              <div className="btn-group" style={{ flexShrink: 0 }}>
+                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>
+                                  수정
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -639,107 +693,123 @@ export function EmployeeDetailModal({
               const isEditing = editingId === l.id;
               const period = l.startDate === l.endDate ? l.startDate : `${l.startDate} ~ ${l.endDate}`;
               return (
-                <div key={l.id} className={`card ${isEditing ? 'card-warning' : ''}`} style={{ marginBottom: 0 }}>
-                  <div className="card-body" style={{ padding: '12px 14px' }}>
-                    {isEditing ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div className="form-row">
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>시작일</label>
-                            <input
-                              aria-label="시작일"
-                              type="date"
-                              value={editForm.startDate}
-                              onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>종료일</label>
-                            <input
-                              aria-label="종료일"
-                              type="date"
-                              value={editForm.endDate}
-                              onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="form-row">
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>일수</label>
-                            <input
-                              aria-label="일수"
-                              type="number"
-                              min={0}
-                              step={0.5}
-                              value={editForm.days}
-                              onChange={(e) => setEditForm({ ...editForm, days: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label>종류</label>
-                            <Select
-                              value={editForm.type}
-                              onChange={(v) => setEditForm({ ...editForm, type: v })}
-                              options={[
-                                { value: 'annual', label: '연차' },
-                                { value: 'half_am', label: '오전반차' },
-                                { value: 'half_pm', label: '오후반차' },
-                                { value: 'sick', label: '병가' },
-                                { value: 'special', label: '특별휴가' },
-                              ]}
-                              ariaLabel="휴가 종류 선택"
-                            />
-                          </div>
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label>사유</label>
-                          <input
-                            aria-label="사유"
-                            type="text"
-                            value={editForm.reason}
-                            onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
-                          />
-                        </div>
-                        <div className="btn-group">
-                          <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>
-                            저장
-                          </button>
-                          <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => setEditingId(null)}>
-                            취소
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{period}</div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: 'var(--text-light)',
-                              display: 'flex',
-                              gap: 8,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <span className="badge badge-leave">{leaveTypeLabel(l.type)}</span>
-                            <span style={{ color: 'var(--success)', fontWeight: 700 }}>{l.days}일</span>
-                            {l.reason && <span>{l.reason}</span>}
-                          </div>
-                        </div>
-                        {canEdit && (
-                          <div className="btn-group" style={{ flexShrink: 0 }}>
-                            <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>
-                              수정
-                            </button>
-                            <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => removeRow(l)}>
-                              <Icon name="trash" className="btn-ic" />
-                              삭제
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                <div
+                  key={l.id}
+                  className={`card ${isEditing ? 'card-warning' : ''}${pick.has(l.id) ? ' is-checked' : ''}`}
+                  style={{ marginBottom: 0 }}
+                >
+                  <div className="card-body" style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
+                    {editMode && !isEditing && (
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={pick.has(l.id)}
+                        onChange={() => togglePick(l.id)}
+                        aria-label="삭제할 연차 기록 고르기"
+                        style={{ marginTop: 3, flexShrink: 0 }}
+                      />
                     )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {isEditing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div className="form-row">
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>시작일</label>
+                              <input
+                                aria-label="시작일"
+                                type="date"
+                                value={editForm.startDate}
+                                onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>종료일</label>
+                              <input
+                                aria-label="종료일"
+                                type="date"
+                                value={editForm.endDate}
+                                onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>일수</label>
+                              <input
+                                aria-label="일수"
+                                type="number"
+                                min={0}
+                                step={0.5}
+                                value={editForm.days}
+                                onChange={(e) => setEditForm({ ...editForm, days: e.target.value })}
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label>종류</label>
+                              <Select
+                                value={editForm.type}
+                                onChange={(v) => setEditForm({ ...editForm, type: v })}
+                                options={[
+                                  { value: 'annual', label: '연차' },
+                                  { value: 'half_am', label: '오전반차' },
+                                  { value: 'half_pm', label: '오후반차' },
+                                  { value: 'sick', label: '병가' },
+                                  { value: 'special', label: '특별휴가' },
+                                ]}
+                                ariaLabel="휴가 종류 선택"
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>사유</label>
+                            <input
+                              aria-label="사유"
+                              type="text"
+                              value={editForm.reason}
+                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                            />
+                          </div>
+                          <div className="btn-group">
+                            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>
+                              저장
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              disabled={busy}
+                              onClick={() => setEditingId(null)}
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{period}</div>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: 'var(--text-light)',
+                                display: 'flex',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <span className="badge badge-leave">{leaveTypeLabel(l.type)}</span>
+                              <span style={{ color: 'var(--success)', fontWeight: 700 }}>{l.days}일</span>
+                              {l.reason && <span>{l.reason}</span>}
+                            </div>
+                          </div>
+                          {canEdit && (
+                            <div className="btn-group" style={{ flexShrink: 0 }}>
+                              <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>
+                                수정
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

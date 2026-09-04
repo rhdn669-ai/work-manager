@@ -9,6 +9,7 @@ import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 
 import { PAYMENT_TERM_TYPES, paymentTermLabel } from '../../utils/paymentTerms';
 
@@ -35,6 +36,9 @@ export default function SupplierManagementPage() {
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
   const [search, setSearch] = useState('');
+  // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -206,25 +210,49 @@ export default function SupplierManagementPage() {
     }
   }
 
-  async function handleDelete(s) {
-    if (
-      !(await confirm({
-        title: '구매처 삭제',
-        message: `"${s.name}" 구매처를 삭제할까요?\n휴지통에서 복원할 수 있습니다.`,
-      }))
-    )
-      return;
+  // 확인창 없이 휴지통으로 — 선택 삭제에서 항목마다 호출 (2026-09-04 대표님 「잠금」 통일)
+  async function trashSupplierNoConfirm(s) {
+    await trashGeneric(
+      'suppliers',
+      s.id,
+      {
+        title: s.name,
+        summary: [s.representative, s.businessNumber].filter(Boolean).join(' · '),
+      },
+      userProfile?.name || '',
+    );
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllPick() {
+    setPick((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((s) => s.id))));
+  }
+
+  async function deletePicked() {
+    const targets = suppliers.filter((s) => pick.has(s.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 구매처 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     try {
-      await trashGeneric(
-        'suppliers',
-        s.id,
-        {
-          title: s.name,
-          summary: [s.representative, s.businessNumber].filter(Boolean).join(' · '),
-        },
-        userProfile?.name || '',
-      );
-      toast('휴지통으로 이동했습니다.');
+      for (const s of targets) {
+        await trashSupplierNoConfirm(s);
+      }
+      setPick(new Set());
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
       await loadData();
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -246,8 +274,24 @@ export default function SupplierManagementPage() {
             <Icon name="plus" className="btn-ic" />
             구매처 추가
           </button>
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
+
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
 
       <TrashModal
         isOpen={trashOpen}
@@ -276,6 +320,17 @@ export default function SupplierManagementPage() {
           <table className="table cards-sm supplier-table">
             <thead>
               <tr>
+                {editMode && (
+                  <th scope="col" className="drag-handle-cell">
+                    <input
+                      type="checkbox"
+                      className="sel-check"
+                      checked={filtered.length > 0 && pick.size === filtered.length}
+                      onChange={toggleAllPick}
+                      aria-label="전체 선택"
+                    />
+                  </th>
+                )}
                 <th scope="col" style={{ width: 172 }}>
                   상호
                 </th>
@@ -313,7 +368,18 @@ export default function SupplierManagementPage() {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.id}>
+                <tr key={s.id} className={editMode && pick.has(s.id) ? 'is-checked' : undefined}>
+                  {editMode && (
+                    <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={pick.has(s.id)}
+                        onChange={() => togglePick(s.id)}
+                        aria-label="삭제할 구매처 고르기"
+                      />
+                    </td>
+                  )}
                   <td data-label="상호" title={s.name || ''}>
                     <strong>{s.name}</strong>
                   </td>
@@ -356,17 +422,7 @@ export default function SupplierManagementPage() {
                       >
                         수정
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(s)}
-                        title="삭제"
-                        aria-label="삭제"
-                        style={{ minHeight: 36 }}
-                      >
-                        <Icon name="trash" className="btn-ic" />
-                        삭제
-                      </button>
+                      {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                     </div>
                   </td>
                 </tr>

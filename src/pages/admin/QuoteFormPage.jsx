@@ -8,6 +8,7 @@ import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import IopnDocSeal from '../../components/admin/IopnDocSeal';
@@ -41,6 +42,9 @@ export default function QuoteFormPage() {
   const [isEditing, setIsEditing] = useState(isNew);
   const [form, setForm] = useState({ ...EMPTY_FORM, items: [{ ...EMPTY_LINE }] });
   const [saving, setSaving] = useState(false);
+  // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제(저장 전 폼 배열이라 휴지통 아님, 2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   useEffect(() => {
     getSuppliers().then(setSuppliers).catch(console.error);
@@ -125,8 +129,35 @@ export default function QuoteFormPage() {
   function addLine() {
     setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] }));
   }
-  function removeLine(idx) {
-    setForm((f) => ({ ...f, items: f.items.length > 1 ? f.items.filter((_, i) => i !== idx) : f.items }));
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(idx) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  function toggleAllPick() {
+    setPick((prev) => (prev.size === form.items.length ? new Set() : new Set(form.items.map((_, i) => i))));
+  }
+
+  // 저장 전 폼 배열에서 골라 지우기 — 휴지통이 아니라 배열에서 바로 제거
+  async function deletePicked() {
+    if (pick.size === 0) return;
+    if (!(await confirm(`고른 ${pick.size}줄을 지우시겠습니까?`))) return;
+    setForm((f) => {
+      const kept = f.items.filter((_, i) => !pick.has(i));
+      return { ...f, items: kept.length ? kept : [{ ...EMPTY_LINE }] };
+    });
+    setPick(new Set());
   }
 
   async function handleSubmit(e) {
@@ -172,6 +203,8 @@ export default function QuoteFormPage() {
         const updated = { ...quote, ...payload };
         setQuote(updated);
         setIsEditing(false);
+        setEditMode(false);
+        setPick(new Set());
         toast('저장되었습니다.');
       }
     } catch {
@@ -200,6 +233,8 @@ export default function QuoteFormPage() {
   function handleCancel() {
     if (isNew) navigate('/admin/purchase/quotes');
     else setIsEditing(false);
+    setEditMode(false);
+    setPick(new Set());
   }
 
   const printQuote = isEditing
@@ -260,15 +295,10 @@ export default function QuoteFormPage() {
         .quote-edit-table input::placeholder { color: var(--text-muted); }
         .quote-edit-table input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--bg-card); }
         .quote-edit-table td.c-qty input, .quote-edit-table td.c-price input { text-align: right; }
-        /* 삭제 버튼은 별도 열 없이 NO 칸에 겹쳐 표시 — 출력물과 컬럼 폭을 동일하게 유지 */
-        .quote-edit-table td.c-no { position: relative; }
-        .quote-row-del {
-          position: absolute; left: 1px; top: 50%; transform: translateY(-50%);
-          border: none; background: var(--bg-card); color: var(--danger); cursor: pointer;
-          padding: 2px; line-height: 0; border-radius: 50%; opacity: 0; transition: opacity 0.12s;
-        }
-        .quote-edit-row:hover .quote-row-del { opacity: 1; }
-        .quote-row-del:focus-visible { opacity: 1; }
+        /* 선택 체크박스는 별도 열 없이 NO 칸에 겹쳐 표시 — 출력물과 컬럼 폭을 동일하게 유지 (2026-09-04 대표님 「잠금」 통일) */
+        .quote-edit-table td.c-no, .quote-edit-table th.c-no { position: relative; }
+        .quote-row-check { position: absolute; left: 3px; top: 50%; transform: translateY(-50%); }
+        .quote-edit-row.is-checked td { background: var(--bg-hover, rgba(0, 32, 80, 0.05)); }
         /* 빈 행 — 클릭하면 품목 행 추가 */
         .quote-empty-row { cursor: pointer; }
         .quote-empty-row:hover td { background: var(--bg-hover, rgba(0, 32, 80, 0.03)); }
@@ -283,10 +313,13 @@ export default function QuoteFormPage() {
         <h2>{isNew ? '새 견적서' : isEditing ? '견적서 수정' : quote?.title || '견적서'}</h2>
         <div className="page-actions">
           {isEditing ? (
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={saving}>
-              <Icon name="check" className="btn-ic" />
-              {saving ? '저장 중...' : '저장'}
-            </button>
+            <>
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={saving}>
+                <Icon name="check" className="btn-ic" />
+                {saving ? '저장 중...' : '저장'}
+              </button>
+              <EditModeButton on={editMode} onToggle={toggleEditMode} />
+            </>
           ) : (
             <>
               <button type="button" className="btn btn-sm btn-outline" onClick={() => setIsEditing(true)}>
@@ -447,12 +480,36 @@ export default function QuoteFormPage() {
                   </tbody>
                 </table>
 
+                {editMode && pick.size > 0 && (
+                  <div className="sel-bar">
+                    <span className="sel-count">
+                      <strong>{pick.size}</strong>줄 골랐습니다
+                    </span>
+                    <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+                      <Icon name="trash" className="btn-ic" />
+                      선택 삭제
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                      선택 해제
+                    </button>
+                  </div>
+                )}
+
                 <div className="quote-edit-wrap">
                   <table className="iopn-items-table quote-cols quote-edit-table">
                     <thead>
                       <tr>
                         <th scope="col" className="c-no">
                           NO
+                          {editMode && (
+                            <input
+                              type="checkbox"
+                              className="sel-check quote-row-check"
+                              checked={form.items.length > 0 && pick.size === form.items.length}
+                              onChange={toggleAllPick}
+                              aria-label="전체 선택"
+                            />
+                          )}
                         </th>
                         <th scope="col" className="c-name">
                           품목명
@@ -480,18 +537,18 @@ export default function QuoteFormPage() {
                     <tbody>
                       {editRows.map((ln, idx) =>
                         ln ? (
-                          <tr key={idx} className="quote-edit-row">
+                          <tr key={idx} className={`quote-edit-row${editMode && pick.has(idx) ? ' is-checked' : ''}`}>
                             <td className="c-no">
                               {idx + 1}
-                              <button
-                                type="button"
-                                className="quote-row-del"
-                                onClick={() => removeLine(idx)}
-                                aria-label="행 삭제"
-                                title="행 삭제"
-                              >
-                                <Icon name="close" />
-                              </button>
+                              {editMode && (
+                                <input
+                                  type="checkbox"
+                                  className="sel-check quote-row-check"
+                                  checked={pick.has(idx)}
+                                  onChange={() => togglePick(idx)}
+                                  aria-label="지울 줄 고르기"
+                                />
+                              )}
                             </td>
                             <td className="c-name">
                               <input

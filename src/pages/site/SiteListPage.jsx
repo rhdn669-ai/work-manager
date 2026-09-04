@@ -15,6 +15,7 @@ import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
@@ -97,6 +98,9 @@ export default function SiteListPage() {
   const [mirrorListOpen, setMirrorListOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  // 잠금 토글 — 기본 잠김. 풀면 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   useEffect(() => {
     if (!userProfile) return;
@@ -369,19 +373,47 @@ export default function SiteListPage() {
     }
   }
 
-  async function handleDelete(site, e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!(await confirm(`"${site.name}" 프로젝트를 휴지통으로 이동하시겠습니까?\n(기존 마감 데이터는 남습니다)`)))
+  // 프로젝트 하나를 휴지통으로 — deletePicked가 항목마다 호출한다
+  async function trashSite(site) {
+    const tid = await trashGeneric('sites', site.id, { title: site.name }, userProfile?.name || '');
+    if (tid)
+      pushUndo(`프로젝트 "${site.name}" 삭제`, async () => {
+        await restoreTrashItem(tid);
+        await loadData();
+      });
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 프로젝트를 한꺼번에 — 확인 한 번 후 trashSite로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = sites.filter((s) => pick.has(s.id));
+    if (targets.length === 0) return;
+    if (
+      !(await confirm(
+        `고른 프로젝트 ${targets.length}건을 휴지통으로 이동하시겠습니까?\n(기존 마감 데이터는 남습니다)`,
+      ))
+    )
       return;
     try {
-      const tid = await trashGeneric('sites', site.id, { title: site.name }, userProfile?.name || '');
+      for (const s of targets) await trashSite(s);
+      setPick(new Set());
       await loadData();
-      if (tid)
-        pushUndo(`프로젝트 "${site.name}" 삭제`, async () => {
-          await restoreTrashItem(tid);
-          await loadData();
-        });
+      toast(`${targets.length}건을 휴지통으로 옮겼습니다.`);
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
     }
@@ -471,6 +503,7 @@ export default function SiteListPage() {
               <Icon name="plus" className="btn-ic" />
               프로젝트 추가
             </button>
+            {isAdmin && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
           </div>
         )}
       </div>
@@ -548,6 +581,21 @@ export default function SiteListPage() {
           );
         })()}
 
+      {editMode && pick.size > 0 && (
+        <div className="sel-bar">
+          <span className="sel-count">
+            <strong>{pick.size}</strong>건 골랐습니다
+          </span>
+          <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+            <Icon name="trash" className="btn-ic" />
+            선택 삭제
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+            선택 해제
+          </button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="card">
           <div className="card-body empty-state">
@@ -590,11 +638,27 @@ export default function SiteListPage() {
               const fullBalance =
                 (hideRev ? 0 : raw.revenue || 0) - ((raw.expense || 0) + (raw.overtime || 0) + (raw.labor || 0));
 
+              const checked = pick.has(s.id);
               return (
-                <div key={s.id} className="site-row-wrapper">
+                <div key={s.id} className={`site-row-wrapper${checked ? ' is-checked' : ''}`}>
+                  {isAdmin && editMode && (
+                    <div
+                      style={{ position: 'absolute', top: 6, left: 6, zIndex: 3 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={checked}
+                        onChange={() => togglePick(s.id)}
+                        aria-label="삭제할 프로젝트 고르기"
+                      />
+                    </div>
+                  )}
                   <Link
                     to={`/sites/${s.id}/${year}/${month}`}
                     className={`site-row ${st === 'completed' ? 'site-row-completed' : ''} ${!hideRev ? (fullBalance >= 0 ? 'site-row-balance-pos' : 'site-row-balance-neg') : ''}`}
+                    style={checked ? { background: 'var(--primary-softer, #f0f3f8)' } : undefined}
                   >
                     <div
                       className="site-row-icon site-row-icon-responsive"
@@ -836,26 +900,7 @@ export default function SiteListPage() {
                               재활성
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="site-row-menu-item site-row-menu-danger"
-                            style={{
-                              minHeight: 36,
-                              padding: '8px 12px',
-                              fontSize: 13,
-                              lineHeight: 1.2,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                            }}
-                            onClick={(e) => {
-                              setOpenMenuId(null);
-                              handleDelete(s, e);
-                            }}
-                          >
-                            <Icon name="trash" className="btn-ic" />
-                            삭제
-                          </button>
+                          {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
                         </div>
                       )}
                     </div>

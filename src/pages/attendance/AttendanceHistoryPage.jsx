@@ -19,6 +19,7 @@ import AttendanceTabs from '../../components/common/AttendanceTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
+import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
 
 export default function AttendanceHistoryPage() {
@@ -33,6 +34,9 @@ export default function AttendanceHistoryPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
+  // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
+  const [editMode, setEditMode] = useState(false);
+  const [pick, setPick] = useState(() => new Set());
 
   const today = getToday();
 
@@ -66,10 +70,32 @@ export default function AttendanceHistoryPage() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!(await confirm('이 잔업 기록을 삭제하시겠습니까?'))) return;
+  function toggleEditMode() {
+    setEditMode((v) => {
+      if (v) setPick(new Set());
+      return !v;
+    });
+  }
+
+  function togglePick(id) {
+    setPick((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // 고른 기록을 한꺼번에 — 행별 「삭제」와 같은 길(휴지통)로 하나씩 보낸다
+  async function deletePicked() {
+    const targets = records.filter((r) => pick.has(r.id));
+    if (targets.length === 0) return;
+    if (!(await confirm(`고른 ${targets.length}건을 휴지통으로 보내시겠습니까?`))) return;
     try {
-      await deleteOvertimeRecord(id, userProfile?.name || '');
+      for (const r of targets) {
+        await deleteOvertimeRecord(r.id, userProfile?.name || '');
+      }
+      setPick(new Set());
       await loadRecords();
     } catch {
       toast('삭제 중 오류가 발생했습니다', 'error');
@@ -121,7 +147,12 @@ export default function AttendanceHistoryPage() {
   return (
     <div className="history-page">
       <AttendanceTabs />
-      <h2>잔업 이력</h2>
+      <div className="page-header">
+        <h2>잔업 이력</h2>
+        <div className="page-actions">
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
+        </div>
+      </div>
 
       <div className="filters">
         <Select
@@ -171,219 +202,248 @@ export default function AttendanceHistoryPage() {
       ) : records.length === 0 ? (
         <p className="text-muted">해당 월의 기록이 없습니다.</p>
       ) : (
-        <div className="record-list">
-          {records.map((r) => {
-            const isEditing = editingId === r.id;
-            const isToday = r.date === today;
-            return (
-              <div key={r.id} className="card" style={{ marginBottom: 8 }}>
-                <div className="card-body" style={{ padding: 'clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px)' }}>
-                  {isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                        {formatDisplayDate(r.date)} ({getDayName(r.date)})
-                      </div>
-                      <div className="form-row" style={{ gap: 8 }}>
-                        <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
-                          <label style={{ fontSize: 12 }}>시간</label>
-                          <input
-                            aria-label="시간"
-                            type="number"
-                            min={0}
-                            max={12}
-                            value={editForm.hours}
-                            onChange={(e) => setEditForm({ ...editForm, hours: e.target.value })}
-                            placeholder="시간"
-                            style={{ width: '100%' }}
-                          />
+        <>
+          {editMode && pick.size > 0 && (
+            <div className="sel-bar">
+              <span className="sel-count">
+                <strong>{pick.size}</strong>건 골랐습니다
+              </span>
+              <button type="button" className="btn btn-sm btn-danger" onClick={deletePicked}>
+                <Icon name="trash" className="btn-ic" />
+                선택 삭제
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setPick(new Set())}>
+                선택 해제
+              </button>
+            </div>
+          )}
+          <div className="record-list">
+            {records.map((r) => {
+              const isEditing = editingId === r.id;
+              const isToday = r.date === today;
+              const canPick = r.status === 'pending' || isToday;
+              return (
+                <div key={r.id} className={`card${pick.has(r.id) ? ' is-checked' : ''}`} style={{ marginBottom: 8 }}>
+                  <div
+                    className="card-body"
+                    style={{ padding: 'clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px)', display: 'flex', gap: 8 }}
+                  >
+                    {editMode && !isEditing && canPick && (
+                      <input
+                        type="checkbox"
+                        className="sel-check"
+                        checked={pick.has(r.id)}
+                        onChange={() => togglePick(r.id)}
+                        aria-label="삭제할 잔업 기록 고르기"
+                        style={{ marginTop: 3, flexShrink: 0 }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {isEditing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                            {formatDisplayDate(r.date)} ({getDayName(r.date)})
+                          </div>
+                          <div className="form-row" style={{ gap: 8 }}>
+                            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
+                              <label style={{ fontSize: 12 }}>시간</label>
+                              <input
+                                aria-label="시간"
+                                type="number"
+                                min={0}
+                                max={12}
+                                value={editForm.hours}
+                                onChange={(e) => setEditForm({ ...editForm, hours: e.target.value })}
+                                placeholder="시간"
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
+                              <label style={{ fontSize: 12 }}>분</label>
+                              <input
+                                aria-label="분"
+                                type="number"
+                                min={0}
+                                max={59}
+                                value={editForm.mins}
+                                onChange={(e) => setEditForm({ ...editForm, mins: e.target.value })}
+                                placeholder="분"
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: 12 }}>프로젝트</label>
+                            <Select
+                              value={editForm.siteId}
+                              onChange={(v) => setEditForm({ ...editForm, siteId: v })}
+                              options={sites.map((s) => ({ value: s.id, label: s.name }))}
+                              placeholder="프로젝트 선택"
+                              ariaLabel="프로젝트 선택"
+                            />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: 12 }}>사유</label>
+                            <input
+                              aria-label="사유"
+                              type="text"
+                              value={editForm.reason}
+                              onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
+                              placeholder="잔업 사유 (선택)"
+                            />
+                          </div>
+                          <div className="btn-group">
+                            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>
+                              저장
+                            </button>
+                            <button className="btn btn-sm btn-outline" disabled={busy} onClick={cancelEdit}>
+                              취소
+                            </button>
+                          </div>
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
-                          <label style={{ fontSize: 12 }}>분</label>
-                          <input
-                            aria-label="분"
-                            type="number"
-                            min={0}
-                            max={59}
-                            value={editForm.mins}
-                            onChange={(e) => setEditForm({ ...editForm, mins: e.target.value })}
-                            placeholder="분"
-                            style={{ width: '100%' }}
-                          />
-                        </div>
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label style={{ fontSize: 12 }}>프로젝트</label>
-                        <Select
-                          value={editForm.siteId}
-                          onChange={(v) => setEditForm({ ...editForm, siteId: v })}
-                          options={sites.map((s) => ({ value: s.id, label: s.name }))}
-                          placeholder="프로젝트 선택"
-                          ariaLabel="프로젝트 선택"
-                        />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label style={{ fontSize: 12 }}>사유</label>
-                        <input
-                          aria-label="사유"
-                          type="text"
-                          value={editForm.reason}
-                          onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}
-                          placeholder="잔업 사유 (선택)"
-                        />
-                      </div>
-                      <div className="btn-group">
-                        <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>
-                          저장
-                        </button>
-                        <button className="btn btn-sm btn-outline" disabled={busy} onClick={cancelEdit}>
-                          취소
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            fontSize: 14,
-                            marginBottom: 3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <span style={{ whiteSpace: 'nowrap' }}>{formatDisplayDate(r.date)}</span>
-                          <span
-                            style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
-                          >
-                            ({getDayName(r.date)})
-                          </span>
-                          {r.status === 'pending' && (
-                            <span
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
                               style={{
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color: 'var(--accent)',
-                                background: 'transparent',
-                                border: '1px solid var(--accent)',
-                                borderRadius: 4,
-                                padding: '1px 6px',
-                                whiteSpace: 'nowrap',
+                                fontWeight: 600,
+                                fontSize: 14,
+                                marginBottom: 3,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                flexWrap: 'wrap',
                               }}
                             >
-                              승인 대기
-                            </span>
-                          )}
-                          {r.status === 'rejected' && (
-                            <span
+                              <span style={{ whiteSpace: 'nowrap' }}>{formatDisplayDate(r.date)}</span>
+                              <span
+                                style={{
+                                  fontWeight: 400,
+                                  fontSize: 12,
+                                  color: 'var(--text-muted)',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                ({getDayName(r.date)})
+                              </span>
+                              {r.status === 'pending' && (
+                                <span
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: 'var(--accent)',
+                                    background: 'transparent',
+                                    border: '1px solid var(--accent)',
+                                    borderRadius: 4,
+                                    padding: '1px 6px',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  승인 대기
+                                </span>
+                              )}
+                              {r.status === 'rejected' && (
+                                <span
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: 'var(--danger)',
+                                    background: 'var(--danger-tint)',
+                                    border: '1px solid var(--danger)',
+                                    borderRadius: 4,
+                                    padding: '1px 6px',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  거절됨
+                                </span>
+                              )}
+                            </div>
+                            <div
                               style={{
                                 fontSize: 12,
-                                fontWeight: 700,
-                                color: 'var(--danger)',
-                                background: 'var(--danger-tint)',
-                                border: '1px solid var(--danger)',
-                                borderRadius: 4,
-                                padding: '1px 6px',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              거절됨
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: 'var(--text-light)',
-                            display: 'flex',
-                            gap: 6,
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
-                            minWidth: 0,
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>
-                            {formatMinutes(r.minutes)}
-                          </span>
-                          <span
-                            style={{
-                              minWidth: 0,
-                              maxWidth: '70px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              flexShrink: 1,
-                            }}
-                            title={siteMap[r.siteId] || '기타'}
-                          >
-                            {siteMap[r.siteId] || '기타'}
-                          </span>
-                          {r.reason && (
-                            <span
-                              style={{
-                                color: 'var(--text-muted)',
+                                color: 'var(--text-light)',
+                                display: 'flex',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
                                 minWidth: 0,
                                 overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 2,
                               }}
-                              title={r.reason}
                             >
-                              {r.reason}
-                            </span>
-                          )}
-                        </div>
-                        {r.status === 'rejected' && r.rejectionReason && (
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: 'var(--danger)',
-                              marginTop: 3,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                            title={r.rejectionReason}
-                          >
-                            거절 사유: {r.rejectionReason}
+                              <span style={{ fontWeight: 600, color: 'var(--primary)', flexShrink: 0 }}>
+                                {formatMinutes(r.minutes)}
+                              </span>
+                              <span
+                                style={{
+                                  minWidth: 0,
+                                  maxWidth: '70px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 1,
+                                }}
+                                title={siteMap[r.siteId] || '기타'}
+                              >
+                                {siteMap[r.siteId] || '기타'}
+                              </span>
+                              {r.reason && (
+                                <span
+                                  style={{
+                                    color: 'var(--text-muted)',
+                                    minWidth: 0,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 2,
+                                  }}
+                                  title={r.reason}
+                                >
+                                  {r.reason}
+                                </span>
+                              )}
+                            </div>
+                            {r.status === 'rejected' && r.rejectionReason && (
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: 'var(--danger)',
+                                  marginTop: 3,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                                title={r.rejectionReason}
+                              >
+                                거절 사유: {r.rejectionReason}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {(r.status === 'pending' || isToday) && (
-                        <div
-                          className="btn-group"
-                          style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}
-                        >
-                          <button
-                            className="btn btn-sm btn-outline"
-                            style={{ flex: 1, whiteSpace: 'nowrap' }}
-                            onClick={() => startEdit(r)}
-                          >
-                            수정
-                          </button>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            style={{ flex: 1, whiteSpace: 'nowrap' }}
-                            onClick={() => handleDelete(r.id)}
-                          >
-                            <Icon name="trash" className="btn-ic" />
-                            삭제
-                          </button>
+                          {(r.status === 'pending' || isToday) && (
+                            <div
+                              className="btn-group"
+                              style={{ flexShrink: 0, alignItems: 'center', flexDirection: 'row' }}
+                            >
+                              <button
+                                className="btn btn-sm btn-outline"
+                                style={{ flex: 1, whiteSpace: 'nowrap' }}
+                                onClick={() => startEdit(r)}
+                              >
+                                수정
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
