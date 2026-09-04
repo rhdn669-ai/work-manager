@@ -415,7 +415,9 @@ export default function BomDetailPage() {
     const kw = search.trim().toLowerCase();
     let list = kw
       ? displayItems.filter((it) =>
-          [it.code, it.name, it.spec, it.maker, it.category, it.note].some((v) => (v || '').toLowerCase().includes(kw)),
+          [it.code, it.drawingNo, it.name, it.spec, it.maker, it.category, it.note].some((v) =>
+            (v || '').toLowerCase().includes(kw),
+          ),
         )
       : displayItems;
     if (supplierFilter) {
@@ -744,7 +746,9 @@ export default function BomDetailPage() {
     const mainIds = new Set(itemMaster.map((m) => m.groupKey).filter(Boolean));
     let list = itemMaster.filter((m) => !/^IOPN-\d+$/.test(m.code || '') && !mainIds.has(m.id));
     if (kw) {
-      list = list.filter((m) => [m.code, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw)));
+      list = list.filter((m) =>
+        [m.code, m.drawingNo, m.name, m.spec, m.category].some((v) => (v || '').toLowerCase().includes(kw)),
+      );
     }
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     return list.sort((a, b) => collator.compare(a.code || '', b.code || ''));
@@ -1347,7 +1351,7 @@ export default function BomDetailPage() {
         <input
           type="text"
           className="purchase-filter-search"
-          placeholder="코드 · 품명 · 규격 · 메이커 · 분류 · 비고 검색"
+          placeholder="코드 · 도번 · 품명 · 규격 · 메이커 · 분류 · 비고 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -1828,7 +1832,7 @@ export default function BomDetailPage() {
               type="text"
               className="purchase-filter-search"
               style={{ width: '100%' }}
-              placeholder="코드 · 품명 · 규격 · 분류 검색"
+              placeholder="코드 · 도번 · 품명 · 규격 · 분류 검색"
               value={pickerSearch}
               onChange={(e) => setPickerSearch(e.target.value)}
             />

@@ -7283,9 +7283,16 @@ tr.is-newly-added > td {
 }
 .drag-handle-cell {
   width: 32px;
-  padding: 0 !important;
-  text-align: center;
+  /* 손잡이·체크 묶음은 칸 왼쪽에 붙인다 (2026-09-04 대표님 「좀 더 좌측으로」) */
+  padding: 0 0 0 6px !important;
+  text-align: left;
   vertical-align: middle;
+}
+/* 번호 칸(BOM 상세·발주서 상세)도 같은 기준으로 왼쪽 정렬 */
+.table td.bom-no-col,
+.table th.bom-no-col {
+  text-align: left;
+  padding-left: 6px;
 }
 .drag-handle-btn {
   /* 앱 공통 손잡이 = 생산현황(.mx-drag)과 같은 점 6개 (2026-09-04 대표님 「모양 통일」) */
