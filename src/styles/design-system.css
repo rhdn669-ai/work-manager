@@ -2173,7 +2173,7 @@ body {
    po-card-list: 2열 고정(너무 작지도 너무 넓지도 않게)
    kb-board: 2열 고정 그리드(수평 스와이프 → 일반 그리드로 전환)
    ========================================================= */
-@media (min-width: 769px) and (max-width: 1366px) {
+@media (min-width: 769px) {
   .po-card-list {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
@@ -2265,11 +2265,11 @@ body {
   padding: 6px 8px 10px;
 }
 
-/* ── 태블릿·폴더블 펼침(769~1366px — 갤럭시 탭 가로 1280 포함): 표는 잘리지 말고 가로 스크롤 ──
+/* ── 769px 이상(태블릿·PC 모두): 표는 잘리지 말고 가로 스크롤 (2026-09-04 대표님 「PC도 글 잘리면 가로 스크롤」) ──
    .table 은 폭 100%·최소폭 없음·셀 말줄임이 기본이라 이 구간에선 글자가 잘렸다
    (2026-09-03 대표님 「태블릿에서 구매 리스트 글이 잘림 — 가로 스크롤」).
    내용 폭만큼 넓히고(최소는 컨테이너 폭) 넘치는 만큼 래퍼가 스크롤한다. PC(>1200)는 그대로. */
-@media (min-width: 769px) and (max-width: 1366px) {
+@media (min-width: 769px) {
   .table-scroll-x > .table {
     width: max-content;
     min-width: 100%;
