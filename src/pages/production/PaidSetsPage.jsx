@@ -35,11 +35,12 @@ export default function PaidSetsPage() {
 
   const [panels, setPanels] = useState([]);
   const [loaded, setLoaded] = useState(false);
-  const [settings, setSettings] = useState({});
+  const [settings, setSettings] = useState(null); // null = 아직 안 읽음 (자동 지정 판단용)
   const [master, setMaster] = useState([]);
   const [bomByProject, setBomByProject] = useState({}); // { projectId: rows[] }
   const [received, setReceived] = useState({ byItem: {}, meta: null }); // 설정한 발주 현장의 입고
   const [sites, setSites] = useState([]);
+  const [siteEdit, setSiteEdit] = useState(false); // 발주서 프로젝트를 바꾸려고 목록을 연 상태
   const [materials, setMaterials] = useState({}); // { panelId: { box: items } } — 배정 호기가 실제 가져간 양
   useEffect(() => subscribeAllMaterials(setMaterials), []);
   const [groupSel, setGroupSel] = useState('');
@@ -67,6 +68,19 @@ export default function PaidSetsPage() {
       .then((rows) => setSites(rows || []))
       .catch(() => setSites([]));
   }, []);
+  // 회사 이름이 든 현장(「메티스 프로버」)이 하나뿐이면 자동으로 정한다 — 고를 필요가 없다
+  // (2026-09-04 대표님 「메티스 이미 지정인데 선택을 왜 해?」)
+  const settingsLoaded = settings !== null;
+  useEffect(() => {
+    if (!settingsLoaded || siteId || sites.length === 0) return;
+    const hits = sites.filter((x) => (x.name || '').includes(company));
+    if (hits.length === 1)
+      savePaidSetSettings(company, { siteId: hits[0].id, siteName: hits[0].name || '' }).catch(() => {});
+  }, [settingsLoaded, siteId, sites, company]);
+  const siteName = useMemo(
+    () => sites.find((x) => x.id === siteId)?.name || settings?.[company]?.siteName || '',
+    [sites, siteId, settings, company],
+  );
   // 시작 호기 후보 — 이 회사 호기 이름(번호순)
   const projectNames = useMemo(() => {
     const seen = new Set();
@@ -92,12 +106,13 @@ export default function PaidSetsPage() {
           projectId: p.bomLink.projectId,
           projectName: p.bomLink.projectName || '',
           variantKey: p.bomLink.variantKey || '',
-          variantLabel: p.bomLink.variantLabel || '공통',
+          variantLabel: p.bomLink.variantLabel || '미배정', // 타입을 안 고른 호기 (2026-09-04 대표님 「공통 말고 미배정」)
           panels: [],
         });
       if (eligibleIds.has(p.id)) map.get(k).panels.push(p);
     }
-    return [...map.values()];
+    // 타입을 고른 묶음이 먼저, 타입 미배정은 맨 뒤 (2026-09-04 대표님 「배정된 프로젝트가 먼저」)
+    return [...map.values()].sort((a, b) => Number(!a.variantKey) - Number(!b.variantKey));
   }, [panels, company, eligible]);
   const group = groups.find((g) => g.key === groupSel) || groups[0] || null;
 
@@ -267,17 +282,34 @@ export default function PaidSetsPage() {
       <div className="card sht-controls">
         <div className="sht-range">
           <span className="sht-range-label">발주서 프로젝트</span>
-          <Select
-            value={siteId}
-            onChange={setSite}
-            options={[
-              { value: '', label: '선택 안 함' },
-              ...sites.map((x) => ({ value: x.id, label: x.name || x.id })),
-            ]}
-            placeholder="발주서 프로젝트"
-            ariaLabel="발주서를 셀 프로젝트"
-            native
-          />
+          {siteId && !siteEdit ? (
+            <span className="pset-site">
+              <strong>{siteName || '(이름 없음)'}</strong>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setSiteEdit(true)}
+                title="다른 현장의 발주서를 세야 할 때만"
+              >
+                변경
+              </button>
+            </span>
+          ) : (
+            <Select
+              value={siteId}
+              onChange={(v) => {
+                setSite(v);
+                setSiteEdit(false);
+              }}
+              options={[
+                { value: '', label: '선택 안 함' },
+                ...sites.map((x) => ({ value: x.id, label: x.name || x.id })),
+              ]}
+              placeholder="발주서 프로젝트"
+              ariaLabel="발주서를 셀 프로젝트"
+              native
+            />
+          )}
           <span className="sht-range-label">구매 시작 호기</span>
           <Select
             value={startProject}

@@ -72,9 +72,11 @@ describe('배정 대상 호기', () => {
     { id: '4', 회사: '메티스', 프로젝트: 'YS-TEPS0926300' }, // BOM 미연결
     { id: '5', 회사: '디에이치', 프로젝트: 'DH-999', bomLink: link },
   ];
-  it('시작 호기 이상 · BOM 연결 · 같은 회사만, 번호순', () => {
+  it('시작 호기 이상 · BOM 연결 · 같은 회사만 — 차례는 들어온 순서(생산현황 목록) 그대로', () => {
     const out = eligiblePanels(panels, { company: '메티스', startProject: 'YS-TEPS0926273' });
     expect(out.map((p) => p.id)).toEqual(['2', '3']);
+    const shuffled = [panels[2], panels[1], panels[0]];
+    expect(eligiblePanels(shuffled, { company: '메티스', startProject: '' }).map((p) => p.id)).toEqual(['3', '2', '1']);
   });
   it('시작 호기를 안 정하면 연결된 것 전부', () => {
     expect(eligiblePanels(panels, { company: '메티스', startProject: '' }).map((p) => p.id)).toEqual(['1', '2', '3']);

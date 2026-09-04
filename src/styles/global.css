@@ -22485,8 +22485,26 @@ a.lib-row-name:hover {
   white-space: nowrap;
 }
 .pmat-table .pmat-input {
+  /* 다른 편집표(.inline-edit-table)와 같은 결 — 평소엔 글자처럼, 올리면 옅은 배경, 누르면 네이비 테두리
+     (2026-09-04 대표님 「입력칸 디자인 다른 곳과 컨셉이 다름」) */
   width: 72px;
+  height: 32px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
   text-align: center;
+  outline: none;
+}
+.pmat-table .pmat-input:hover {
+  background: var(--bg-subtle);
+}
+.pmat-table .pmat-input:focus {
+  background: var(--bg-card);
+  border-color: var(--primary);
 }
 .pmat-table .pmat-meta {
   font-size: 12px;
@@ -22857,4 +22875,11 @@ a.lib-row-name:hover {
 .editmode-off .mx-drag {
   visibility: hidden;
   pointer-events: none;
+}
+/* 도급 세트 — 자동 지정된 발주서 프로젝트 표시 + 「변경」 */
+.pset-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-md);
 }

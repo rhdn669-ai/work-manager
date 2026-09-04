@@ -93,15 +93,14 @@ export function computeSets({
   return { sets, assigned, items, limiter, unlinked };
 }
 
-/** 배정 대상 호기 — 그 회사, BOM 연결됨, 시작 호기 번호 이상. 번호순 */
+/** 배정 대상 호기 — 그 회사, BOM 연결됨, 시작 호기 번호 이상.
+ *  차례는 «생산현황 목록 그대로»(손으로 끈 순서 → 납기순) — 번호순으로 다시 세우지 않는다
+ *  (2026-09-04 대표님 「번호순 아니고 생산현황 리스트 순」) */
 export function eligiblePanels(panels, { company, startProject }) {
   const start = panelSeq(startProject);
   return (panels || [])
     .filter((p) => (!company || !p.회사 || p.회사 === company) && p.bomLink?.projectId)
-    .filter((p) => start < 0 || panelSeq(p.프로젝트) >= start)
-    .sort(
-      (a, b) => panelSeq(a.프로젝트) - panelSeq(b.프로젝트) || String(a.프로젝트).localeCompare(String(b.프로젝트)),
-    );
+    .filter((p) => start < 0 || panelSeq(p.프로젝트) >= start);
 }
 
 /** 같은 BOM(프로젝트·타입)을 쓰는 호기끼리 묶는다 — 세트는 타입마다 따로 센다 */
