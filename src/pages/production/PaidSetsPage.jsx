@@ -17,7 +17,7 @@ import {
   topUpPaidSet,
 } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
-import { computeSets, eligiblePanels, groupKey, panelSeq, consumedByItem, panelShortage } from '../../domain/paidSets';
+import { computeSets, eligiblePanels, groupKey, consumedByItem, panelShortage } from '../../domain/paidSets';
 
 // 도급 세트 (2026-09-03 대표님 「메티스 도급 자재를 273호기부터 우리가 구매 — 몇 세트 입고됐고
 // 어느 호기에 배정할지」).
