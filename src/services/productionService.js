@@ -13,7 +13,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
 import { shrinkImage } from '../utils/imageResize';
-import { recompute, deriveBoxStatus } from '../domain/production';
+import { recompute, deriveBoxStatus, withAutoDir } from '../domain/production';
 import { syncPanelNcr, removePanelNcr } from './qualityRecordService';
 
 // 판넬 생산현황 — Firestore 실시간 (전 직원 조회 · 관리자 편집).
@@ -49,7 +49,7 @@ export function subscribePanels(cb) {
 }
 
 export async function addPanel(data) {
-  const { id: _id, ...rest } = data;
+  const { id: _id, ...rest } = withAutoDir(data);
   const ref = await addDoc(panelsRef, { ...rest, createdAt: serverTimestamp() });
   return { id: ref.id, ...rest };
 }
@@ -57,7 +57,8 @@ export async function addPanel(data) {
 // 부적합 실적에 반영돼야 하는 변경 — 이 키가 섞였을 때만 연동을 돌려 불필요한 읽기·쓰기를 막는다
 const NCR_SYNC_KEYS = ['검수', '회사', '프로젝트', '호기', '자재'];
 
-export async function updatePanel(id, patch) {
+export async function updatePanel(id, rawPatch) {
+  const patch = withAutoDir(rawPatch); // 호기 이름이 바뀌면 정역도 끝자리로 다시
   await updateDoc(doc(db, 'productionPanels', id), { ...patch, updatedAt: serverTimestamp() });
   if (!Object.keys(patch).some((k) => NCR_SYNC_KEYS.includes(k))) return 'noop';
   // 저장 경로가 여기 하나뿐이라, 판넬 전문을 다시 읽어 품질보증 부적합 실적과 맞춘다

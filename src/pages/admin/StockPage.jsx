@@ -20,9 +20,9 @@ import { isStockTracked } from '../../domain/stock';
 // 여기 적힌 수량만큼 발주서 작성 때 발주 수량에서 빠진다.
 
 const FILTERS = [
-  { value: 'all', label: '전체' },
+  { value: 'all', label: '전체' }, // 0 은 자동으로 빠진다 (2026-09-04 대표님 「0개는 리스트에서 자동 제외」)
   { value: 'has', label: '재고 있는 것만' },
-  { value: 'none', label: '재고 없는 것만' },
+  { value: 'none', label: '0 · 모자란 것 보기' },
 ];
 
 function fmtWhen(ts) {
@@ -66,6 +66,8 @@ export default function StockPage() {
     const kw = search.trim().toLowerCase();
     return tracked.filter((it) => {
       const stock = Number(it.stockQty) || 0;
+      // 0 인 품목은 목록에서 자동으로 뺀다 — 「0 · 모자란 것 보기」로만 꺼내 볼 수 있다
+      if (filter !== 'none' && stock === 0) return false;
       if (filter === 'has' && stock <= 0) return false;
       if (filter === 'none' && stock > 0) return false;
       if (!kw) return true;

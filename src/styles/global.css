@@ -22883,3 +22883,10 @@ a.lib-row-name:hover {
   gap: 8px;
   font-size: var(--font-md);
 }
+
+/* BOM 상세 잠금 — 칸(수량·BOX·타입·비고)은 검정 글씨 그대로 보이되 클릭·입력이 안 된다
+   (2026-09-04 대표님 「칸 수정도 잠그기 — 실수로 눌러서 적히는 경우」) */
+.bom-locked .bom-flat-table input:not([type='checkbox']),
+.bom-locked .bom-flat-table select {
+  pointer-events: none;
+}

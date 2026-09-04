@@ -153,10 +153,25 @@ export default function PaidSetsPage() {
     [variantRows, siteId, received, assignedPanels.length, masterMap, excluded, consumed],
   );
   const spareByItem = useMemo(() => Object.fromEntries(calc.items.map((it) => [it.itemId, it.spare])), [calc]);
-  // 배정 호기별 부족 — 부족분 채우기 버튼은 모자란 품목에 여유가 생겼을 때만
+  // 창고 재고 — 재고 화면에 올려 둔 품목만(stockQty 가 있는 것). 여유가 없으면 여기서 꺼낸다
+  // (2026-09-04 대표님 「제외 말고 재고에서 가져오기」)
+  const stockByItem = useMemo(() => {
+    const out = {};
+    for (const it of calc.items) {
+      const m = masterMap[it.itemId];
+      if (m && m.stockQty !== undefined && m.stockQty !== null) out[it.itemId] = Math.max(0, Number(m.stockQty) || 0);
+    }
+    return out;
+  }, [calc, masterMap]);
+  const hasStock = (itemId) => (stockByItem[itemId] || 0) > 0;
+  // 배정 호기별 부족 — 부족분 채우기 버튼은 모자란 품목에 여유나 재고가 있을 때만
   const shortageOf = (p) => panelShortage(variantRows, materials[p.id] || {});
   const canTopUp = (p) =>
-    shortageOf(p).lines.some((l) => (excluded.includes(l.itemId) ? true : (spareByItem[l.itemId] || 0) > 0));
+    shortageOf(p).lines.some((l) =>
+      excluded.includes(l.itemId) ? true : (spareByItem[l.itemId] || 0) > 0 || hasStock(l.itemId),
+    );
+  const shortPanels = assignedPanels.filter((x) => shortageOf(x).short > 0);
+  const canTopUpAll = shortPanels.some((x) => canTopUp(x));
   const meta = siteId ? received.meta : null;
   // 배정 기준은 발주서에 적힌 세트 수다 — 현장에서 「N세트 발주」로 사 온 것이 그 수.
   // 품목 기준 셈은 「그 세트가 품목까지 다 갖춰졌나」를 보는 보조 숫자.
@@ -197,13 +212,63 @@ export default function PaidSetsPage() {
       setBusy('');
     }
   };
+  const stockNote = (used) => {
+    const n = Object.values(used || {}).reduce((a, b) => a + b, 0);
+    return n > 0 ? ` (재고에서 ${n}개 꺼냄)` : '';
+  };
   const topUp = async (p) => {
     setBusy(p.id);
     try {
-      const r = await topUpPaidSet(p, variantRows, { by, spareByItem, exclude: excluded });
-      if (r.added === 0) toast('채울 수 있는 여유가 없습니다', 'error');
-      else if (r.short > 0) toast(`${r.added}줄을 채웠습니다 — 아직 ${r.short}줄 부족`, 'success');
-      else toast(`${r.added}줄을 채웠습니다 — 도급 자재가 다 찼습니다`, 'success');
+      const r = await topUpPaidSet(p, variantRows, { by, spareByItem, exclude: excluded, stockByItem });
+      if (r.added === 0) toast('채울 수 있는 여유도 재고도 없습니다', 'error');
+      else if (r.short > 0)
+        toast(`${r.added}줄을 채웠습니다${stockNote(r.stockUsed)} — 아직 ${r.short}줄 부족`, 'success', 0);
+      else toast(`${r.added}줄을 채웠습니다${stockNote(r.stockUsed)} — 도급 자재가 다 찼습니다`, 'success', 0);
+    } catch (err) {
+      console.error(err);
+      toast('부족분 채우기에 실패했습니다', 'error', 0);
+    } finally {
+      setBusy('');
+    }
+  };
+  // 배정된 호기 전부의 부족분을 한 번에 — 앞 호기가 쓴 만큼 여유·재고를 줄여 가며 차례대로
+  const topUpAll = async () => {
+    const targets = shortPanels.filter((x) => canTopUp(x));
+    if (targets.length === 0) return;
+    if (
+      !(await confirm(
+        `배정된 호기 ${targets.length}개의 부족분을 발주 여유 → 창고 재고 순으로 채우시겠습니까? 꺼낸 만큼 재고 수량이 줄어듭니다.`,
+      ))
+    )
+      return;
+    setBusy('__all');
+    const spare = { ...spareByItem };
+    const stock = { ...stockByItem };
+    let added = 0;
+    let stockTotal = 0;
+    let stillShort = 0;
+    try {
+      for (const x of targets) {
+        const r = await topUpPaidSet(x, variantRows, { by, spareByItem: spare, exclude: excluded, stockByItem: stock });
+        added += r.added;
+        stillShort += r.short;
+        for (const [id, n] of Object.entries(r.stockUsed || {})) {
+          stock[id] = Math.max(0, (stock[id] || 0) - n);
+          stockTotal += n;
+        }
+        // 여유는 재고보다 먼저 쓰였다 — 채운 양에서 재고분을 뺀 만큼
+        for (const l of shortageOf(x).lines) {
+          const usedSpare = Math.min(l.short, Math.max(0, spare[l.itemId] || 0));
+          spare[l.itemId] = Math.max(0, (spare[l.itemId] || 0) - usedSpare);
+        }
+      }
+      if (added === 0) toast('채울 수 있는 여유도 재고도 없습니다', 'error');
+      else
+        toast(
+          `${targets.length}개 호기에 ${added}줄을 채웠습니다${stockTotal > 0 ? ` (재고에서 ${stockTotal}개 꺼냄)` : ''}${stillShort > 0 ? ` — 아직 ${stillShort}줄 부족` : ' — 부족이 없습니다'}`,
+          'success',
+          0,
+        );
     } catch (err) {
       console.error(err);
       toast('부족분 채우기에 실패했습니다', 'error', 0);
@@ -252,6 +317,22 @@ export default function PaidSetsPage() {
           </h2>
         </div>
         <div className="page-actions">
+          {shortPanels.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy !== '' || !canTopUpAll}
+              title={
+                canTopUpAll
+                  ? '배정된 호기 전부의 모자란 줄을 발주 여유 → 창고 재고 순으로 채움'
+                  : '모자란 품목에 여유도 재고도 없습니다 — 재고 화면에서 수량을 적거나 발주하세요'
+              }
+              onClick={topUpAll}
+            >
+              <Icon name="check" className="btn-ic" />
+              부족분 전부 채우기
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-outline"
@@ -450,8 +531,8 @@ export default function PaidSetsPage() {
                               disabled={busy === p.id || !canTopUp(p)}
                               title={
                                 canTopUp(p)
-                                  ? '새로 들어온 여유로 모자란 줄을 채움'
-                                  : '모자란 품목에 아직 여유가 없습니다'
+                                  ? '모자란 줄을 발주 여유 → 창고 재고 순으로 채움'
+                                  : '모자란 품목에 여유도 재고도 없습니다'
                               }
                               onClick={() => topUp(p)}
                             >
@@ -496,7 +577,7 @@ export default function PaidSetsPage() {
             <div className="table-scroll-x">
               <table className="table pmat-table sht-table pset-items">
                 <colgroup>
-                  {[48, 130, null, null, 90, 90, 90, 90, 100].map((w, i) => (
+                  {[48, 130, null, null, 90, 90, 90, 90, 90, 100].map((w, i) => (
                     <col key={i} style={w ? { width: w } : undefined} />
                   ))}
                 </colgroup>
@@ -520,6 +601,9 @@ export default function PaidSetsPage() {
                     <th scope="col" className="pmat-num">
                       여유
                     </th>
+                    <th scope="col" className="pmat-num" title="창고 재고 (재고 화면에 올린 품목만)">
+                      재고
+                    </th>
                     <th scope="col" className="pmat-num">
                       세트분
                     </th>
@@ -541,6 +625,12 @@ export default function PaidSetsPage() {
                       <td className="pmat-num">{it.received}</td>
                       <td className="pmat-num">{it.consumed}</td>
                       <td className={`pmat-num${it.spare < 0 ? ' is-short' : ''}`}>{it.spare}</td>
+                      <td
+                        className="pmat-num pset-stock"
+                        title={it.itemId in stockByItem ? '창고 재고' : '재고 화면에 없는 품목'}
+                      >
+                        {it.itemId in stockByItem ? stockByItem[it.itemId] : '–'}
+                      </td>
                       <td className="pmat-num">
                         <span
                           className={`status-badge ${it.excluded ? 'status-badge--wait' : it.setsFrom === calc.sets ? 'status-badge--cancel' : 'status-badge--done'} sht-short`}

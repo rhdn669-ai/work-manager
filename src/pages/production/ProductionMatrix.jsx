@@ -104,7 +104,7 @@ function CycleCell({ api, p, field, options, rowIndex, className, title, render 
     setSeen(saved);
     setV(saved);
   }
-  const canEdit = api.canEdit;
+  const canEdit = api.canEditCells; // 잠금을 푼 동안만 칸 수정
   const next = () => {
     if (!canEdit) return;
     const nv = options[(options.indexOf(v) + 1) % options.length];
@@ -144,7 +144,7 @@ function Dt({ api, p, field, row }) {
     <DateCell
       value={p[field] || ''}
       cellCls={`mx-cell mx-date${api.fillCls(field, row)}`}
-      canEdit={api.canEdit}
+      canEdit={api.canEditCells}
       onEnter={() => api.fillEnter(row)}
       onChange={(e) => api.setField(p, { [field]: e.target.value })}
       onPaste={(e) => api.pasteColumn(e, field, row)}
@@ -164,7 +164,7 @@ function Ipgo({ api, p, itemKey, row }) {
     <DateCell
       value={cur}
       cellCls={`mx-cell mx-date${statusCls}${api.fillCls(field, row)}`}
-      canEdit={api.canEdit}
+      canEdit={api.canEditCells}
       onEnter={() => api.fillEnter(row)}
       onChange={(e) => api.setField(p, { 자재입고일: { ...(p.자재입고일 || {}), [itemKey]: e.target.value } })}
       onPaste={(e) =>
@@ -235,6 +235,9 @@ export default function ProductionMatrix({
   const canDrag = canEdit && Array.isArray(orderPool) && editMode;
   // 줄 고르기 — 토글을 켠 동안만. 끄면 고른 것도 비운다.
   const selectable = canEdit && editMode;
+  // 칸 수정(클릭 순환·날짜·입고·자재 타입)도 잠금을 푼 동안만 — 실수로 눌러 적히는 일이 있었다
+  // (2026-09-04 대표님 「칸 수정도 잠그기로 했지 않나」). 작업 열(상세·종결)은 잠금과 무관.
+  const canEditCells = canEdit && editMode;
   const [sel, setSel] = useState(() => new Set());
   useEffect(() => {
     if (!editMode) setSel(new Set());
@@ -300,7 +303,7 @@ export default function ProductionMatrix({
     }
   }
   const setField = (p, patch) => {
-    if (!canEdit) return;
+    if (!canEditCells) return;
     updatePanel(p.id, patch).catch((e) => {
       console.error(e);
       toast('저장에 실패했습니다. 다시 시도해 주세요.', 'error', 0);
@@ -424,7 +427,7 @@ export default function ProductionMatrix({
   // 아직 BOM 을 안 붙인 호기는 회사 기본 프로젝트(가장 많이 쓰는 것)로 붙는다.
   const defaultProjectId = useMemo(() => defaultBomProjectId(orderPool || panels), [orderPool, panels]);
   const pickVariant = (p) => {
-    if (!canEdit) return;
+    if (!canEditCells) return;
     const { project, options } = variantOptionsFor(p, bomProjects, defaultProjectId);
     if (!project || options.length === 0) return;
     const curKey = p.bomLink?.variantKey || '';
@@ -444,7 +447,7 @@ export default function ProductionMatrix({
 
   // 강제 종결 — 앞 공정이 안 끝났어도 출고완료로 닫는다 (2026-09-03 대표님). 다시 누르면 해제.
   const forceClose = async (p) => {
-    if (!canEdit) return;
+    if (!canEditCells) return;
     const closing = !p.출고완료;
     if (
       closing &&
@@ -465,7 +468,7 @@ export default function ProductionMatrix({
 
   // BOX 자재입고 항목 토글 → 박스입고 + 체크일자 갱신 + 박스 상태 자동 산출
   const toggleBoxMat = (p, box, k) => {
-    if (!canEdit) return;
+    if (!canEditCells) return;
     const cur = boxMat(p, box);
     const on = !cur[k];
     const nextMat = { ...cur, [k]: on };
@@ -482,7 +485,7 @@ export default function ProductionMatrix({
 
   // MP 하위 종목 상태 순환(대기→완료→불량) — 진행률은 구독 recompute가 자동 반영
   const cycleMpSub = (p, k) => {
-    if (!canEdit) return;
+    if (!canEditCells) return;
     const cur = normState((p.mp하위상태 || {})[k]);
     const next = UI_TASK_STATES[(UI_TASK_STATES.indexOf(cur) + 1) % UI_TASK_STATES.length];
     setField(p, { mp하위상태: { ...(p.mp하위상태 || {}), [k]: next } });
@@ -494,7 +497,7 @@ export default function ProductionMatrix({
   const isDateField = (f) => f === '납기' || f === '턴온' || f === '자재입고' || AFTER_TURNON_KEYS.includes(f);
 
   const pasteColumn = async (e, field, startRow, toPatch) => {
-    if (!canEdit) return;
+    if (!canEditCells) return;
     const text = e.clipboardData?.getData('text/plain') || '';
     const lines = splitPasted(text);
     if (lines.length <= 1) return; // 한 줄이면 평소대로 그 칸에만 붙는다
@@ -544,6 +547,7 @@ export default function ProductionMatrix({
   // 태블릿에서 클릭 한 번에 1.2~1.7초가 걸렸다 (2026-09-03 실측).
   const apiRef = useRef(null);
   apiRef.current = {
+    canEditCells,
     setField,
     pasteColumn,
     fillEnter,
@@ -582,6 +586,9 @@ export default function ProductionMatrix({
       toggleCheck: call('toggleCheck'),
       get canEdit() {
         return apiRef.current.canEdit;
+      },
+      get canEditCells() {
+        return apiRef.current.canEditCells;
       },
     };
   }, []);
@@ -782,6 +789,7 @@ export default function ProductionMatrix({
                     selectable={selectable}
                     checked={sel.has(p.id)}
                     canEdit={canEdit}
+                    canEditCells={canEditCells}
                     canDefect={canDefect}
                     hasMaterials={!!onMaterials}
                     bomProjects={bomProjects}
@@ -811,7 +819,8 @@ const MatrixRow = memo(function MatrixRow({
   canDrag,
   selectable, // 줄 고르기 체크박스를 보일지
   checked, // 이 줄을 골랐는지 (Set 이 아니라 참·거짓만 넘겨 memo 를 지킨다)
-  canEdit,
+  canEdit, // 작업 열(상세·종결)
+  canEditCells, // 칸 수정 — 잠금을 푼 동안만
   canDefect,
   hasMaterials,
   bomProjects,
@@ -862,7 +871,7 @@ const MatrixRow = memo(function MatrixRow({
         프로젝트명(YS-TEPS1026033) 한 칸만 둔다 — 칸을 쪼개면 이름이 잘린다. */}
           <td className="mx-sticky mx-c1 mx-proj">
             <div className="mx-proj-wrap">
-              {canEdit ? (
+              {canEditCells ? (
                 <Txt api={api} p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
               ) : (
                 <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
@@ -909,7 +918,7 @@ const MatrixRow = memo(function MatrixRow({
             if (options.length === 0)
               return (
                 <td className="mx-cell mx-jaje">
-                  {canEdit ? (
+                  {canEditCells ? (
                     <Txt api={api} p={p} field="자재" rowIndex={idx} className="mx-text-input" />
                   ) : (
                     p.자재 || ''
@@ -919,9 +928,9 @@ const MatrixRow = memo(function MatrixRow({
             return (
               <td
                 className="mx-cell mx-jaje mx-variant"
-                style={{ cursor: canEdit ? 'pointer' : 'default' }}
+                style={{ cursor: canEditCells ? 'pointer' : 'default' }}
                 onClick={() => api.pickVariant(p)}
-                tabIndex={canEdit ? 0 : -1}
+                tabIndex={canEditCells ? 0 : -1}
                 title={`클릭: 타입 전환 (${options.map((o) => o.label).join(' → ')} → 빈값)`}
               >
                 {label ? (
@@ -933,7 +942,11 @@ const MatrixRow = memo(function MatrixRow({
             );
           })()}
           <td className="mx-cell mx-chuck">
-            {canEdit ? <Txt api={api} p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" /> : p.CHUCK || ''}
+            {canEditCells ? (
+              <Txt api={api} p={p} field="CHUCK" rowIndex={idx} className="mx-text-input" />
+            ) : (
+              p.CHUCK || ''
+            )}
           </td>
           <CycleCell
             api={api}
@@ -948,7 +961,7 @@ const MatrixRow = memo(function MatrixRow({
           {BUPMOK.map((b) => {
             if (b === 'MP') {
               const st = deriveMpState(p.mp하위상태 || {});
-              return <MpGroup key={b} p={p} st={st} canEdit={canEdit} onToggle={(k) => api.cycleMpSub(p, k)} />;
+              return <MpGroup key={b} p={p} st={st} canEdit={canEditCells} onToggle={(k) => api.cycleMpSub(p, k)} />;
             }
             const mat = boxMat(p, b);
             const matDate = boxMatDate(p, b);
@@ -966,7 +979,7 @@ const MatrixRow = memo(function MatrixRow({
                 defectDate={boxDefectDate(p.검수, b)}
                 doneDate={boxDoneDate(p, b)}
                 st={st}
-                canEdit={canEdit}
+                canEdit={canEditCells}
                 onMat={(k) => api.toggleBoxMat(p, b, k)}
                 canDefect={canDefect}
                 onDefect={() => api.onOpen(p.id, 'defect', b)}

@@ -704,7 +704,7 @@ export default function PurchaseListPage() {
             <Icon name="plus" className="btn-ic" />
             구매 등록
           </button>
-          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} label="순서 변경" />
+          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
         </div>
       </div>
 

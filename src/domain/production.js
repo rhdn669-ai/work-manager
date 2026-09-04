@@ -271,6 +271,23 @@ export function getDday(date, today = new Date()) {
   return Math.ceil((d - t) / 86400000);
 }
 
+// 정역 자동 — 호기 이름 맨 뒷자리 숫자가 짝수면 「정」, 홀수면 「역」 (2026-09-04 대표님).
+// 숫자로 끝나지 않으면 '' (모르면 비워 둔다)
+export function autoDir(name) {
+  const m = String(name || '')
+    .trim()
+    .match(/(\d)\D*$/);
+  if (!m) return '';
+  return Number(m[1]) % 2 === 0 ? '정' : '역';
+}
+
+// 프로젝트(호기) 이름이 들어오는 저장이면 정역을 자동으로 채운다 — 정역을 따로 준 경우(손으로 고름·사진 판독)는 그대로
+export function withAutoDir(patch) {
+  if (!patch || patch.프로젝트 === undefined || patch.정역) return patch;
+  const dir = autoDir(patch.프로젝트);
+  return dir ? { ...patch, 정역: dir } : patch;
+}
+
 // 새 판넬 레코드 기본 골격
 export function emptyPanel(overrides = {}) {
   return recompute({

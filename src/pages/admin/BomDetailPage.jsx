@@ -214,11 +214,11 @@ export default function BomDetailPage() {
   const [locked, setLocked] = useState(true);
   const lockedRef = useRef(true);
   lockedRef.current = locked;
-  // 잠금이 막는 것은 «순서 이동·삭제·선택 삭제» 뿐 — 칸 수정(수량·BOX·타입·비고·도급/사급)은 언제나 된다
-  // (2026-09-03 대표님 「잠금이 활성화될 때 원하는 기능은 전체삭제, 삭제 및 위치 이동」)
+  // 잠금은 «칸 수정·품목 불러오기·변경·순서 이동·삭제» 전부를 막는다
+  // (2026-09-04 대표님 「칸 수정도 잠그기로 했지 않나 — 실수로 눌러서 적히는 경우가 있어서」)
   const guard = () => {
     if (!lockedRef.current) return true;
-    toast('순서 이동·삭제는 오른쪽 위 「순서·삭제」를 켠 뒤에', 'error');
+    toast('오른쪽 위 「잠금」을 푼 뒤에 고칠 수 있습니다', 'error');
     return false;
   };
 
@@ -537,6 +537,7 @@ export default function BomDetailPage() {
   const paidCount = displayItems.length - freeCount;
 
   function updateField(id, patch) {
+    if (!guard()) return;
     recordHistory('칸 수정', { bump: false }); // 바뀌기 «전» 상태를 이력에
     setBomItems((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
@@ -631,6 +632,7 @@ export default function BomDetailPage() {
   }
   // 특정 BOM 행의 품목을 다른 품목으로 교체하기 위해 picker 열기
   function openPickerReplace(id) {
+    if (!guard()) return;
     setPickerTargetId(id);
     setPicked(new Map());
     setPickerSearch('');
@@ -873,6 +875,7 @@ export default function BomDetailPage() {
 
   // 드롭다운에서 타입 하나 고르기 — 빈값이면 공통
   async function setItemVariant(itemId, key) {
+    if (!guard()) return;
     const next = key ? [key] : [];
     recordHistory('칸 수정', { bump: false });
     setBomItems((list) => list.map((b) => (b.id === itemId ? { ...b, variantKeys: next } : b)));
@@ -967,7 +970,7 @@ export default function BomDetailPage() {
           >
             타입 {variants.length > 0 && <strong>{variants.length}</strong>}
           </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={openPicker}>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => guard() && openPicker()}>
             <Icon name="plus" className="btn-ic" />
             품목 불러오기
           </button>
@@ -1051,18 +1054,17 @@ export default function BomDetailPage() {
             수정 이력
           </button>
           {/* 기본 잠금 — 실수로 고쳐지는 일을 막는다. 열어야 칸·순서·추가·삭제가 된다.
-              버튼은 다른 구매 화면과 같은 「순서·삭제」 토글로 통일 (2026-09-03 대표님) */}
+              버튼은 앱 공통 「잠금」 토글로 통일 (2026-09-04 대표님) */}
           <EditModeButton
             on={!locked}
             onToggle={() => {
               setLocked((v) => !v);
               setDelPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
             }}
-            label="순서·삭제"
             title={
               locked
-                ? '지금은 잠금 상태 — 켜면 순서 이동·삭제 가능 — 칸 수정은 언제나'
-                : '켜짐 — 칸 수정·순서·삭제 가능. 누르면 다시 잠깁니다'
+                ? '잠금 상태 — 풀면 칸 수정·품목 불러오기·변경·순서 이동·삭제 가능'
+                : '풀림 — 칸 수정·순서·삭제 가능. 누르면 다시 잠깁니다'
             }
           />
         </div>

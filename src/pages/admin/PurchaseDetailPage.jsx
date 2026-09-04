@@ -2483,10 +2483,10 @@ export default function PurchaseDetailPage() {
                 style={{ opacity: 0.45, cursor: 'not-allowed' }}
                 title="정산완료·종결 발주서는 품목 줄을 바꿀 수 없습니다"
               >
-                <EditModeButton on={false} onToggle={() => {}} label="순서·삭제" />
+                <EditModeButton on={false} onToggle={() => {}} />
               </span>
             ) : (
-              <EditModeButton on={editMode} onToggle={toggleEditMode} label="순서·삭제" />
+              <EditModeButton on={editMode} onToggle={toggleEditMode} />
             )}
           </div>
         </div>

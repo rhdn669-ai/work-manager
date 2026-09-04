@@ -287,7 +287,7 @@ export default function BomPage() {
             <Icon name="plus" className="btn-ic" />
             프로젝트 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} label="순서·삭제" />
+          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

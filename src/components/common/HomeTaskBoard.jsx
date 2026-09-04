@@ -326,7 +326,7 @@ export default function HomeTaskBoard() {
             <Icon name="plus" className="btn-ic" />
             업무 추가
           </button>
-          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} label="순서 변경" />
+          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
         </div>
       </div>
 

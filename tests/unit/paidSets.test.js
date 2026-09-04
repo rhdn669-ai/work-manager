@@ -140,3 +140,27 @@ describe('있는 만큼만 채우기', () => {
     expect(s.lines[0]).toMatchObject({ id: 'r1', got: 1, short: 1 });
   });
 });
+
+describe('부족분을 창고 재고에서 (2026-09-04)', () => {
+  const rows = [
+    { id: 'r1', itemId: 'A', box: 'P/W BOX', qty: 2, supplyType: '도급' },
+    { id: 'r2', itemId: 'B', box: 'P/W BOX', qty: 3, supplyType: '도급' },
+  ];
+  it('여유를 먼저 쓰고 모자란 만큼만 재고에서, 재고도 있는 만큼만', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 1, B: 0 }, stockByItem: { A: 5, B: 2 } });
+    expect(p.lines[0]).toMatchObject({ add: 2, fromStock: 1, short: 0 });
+    expect(p.lines[1]).toMatchObject({ add: 2, fromStock: 2, short: 1 });
+    expect(p.stockUsed).toEqual({ A: 1, B: 2 });
+    expect(p.short).toBe(1);
+  });
+  it('재고를 안 주면 전과 같다 (fromStock 0, stockUsed 비어 있음)', () => {
+    const p = fillPlan({ rows, spareByItem: { A: 1, B: 0 } });
+    expect(p.lines[0]).toMatchObject({ add: 1, fromStock: 0, short: 1 });
+    expect(p.stockUsed).toEqual({});
+  });
+  it('이미 채워진 줄은 재고를 건드리지 않는다', () => {
+    const p = fillPlan({ rows, spareByItem: {}, current: { r1: 2 }, stockByItem: { A: 9, B: 0 } });
+    expect(p.lines[0]).toMatchObject({ add: 0, fromStock: 0 });
+    expect(p.stockUsed).toEqual({});
+  });
+});

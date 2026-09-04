@@ -132,10 +132,14 @@ export function consumedByItem(rows, materialsList) {
  *   skipRows    이 호기에서 일시 제외한 줄 id 들 — 채우지도, 부족으로 세지도 않는다
  * → { lines: [{ id, box, itemId, need, have, add, total, short }], short: 부족 줄 수, boxes: { [box]: full } }
  */
-export function fillPlan({ rows, spareByItem = {}, exclude = [], current = {}, skipRows = [] }) {
+// stockByItem 을 주면 발주 여유(spare)가 다 떨어진 뒤 창고 재고에서 꺼낸다 — 줄마다 fromStock,
+// 전체로 stockUsed { itemId: n } 을 돌려준다 (2026-09-04 대표님 「제외 말고 재고에서 가져오기」)
+export function fillPlan({ rows, spareByItem = {}, exclude = [], current = {}, skipRows = [], stockByItem = null }) {
   const skip = new Set(exclude || []);
   const skippedRow = new Set(skipRows || []);
   const left = { ...spareByItem };
+  const stock = stockByItem ? { ...stockByItem } : null;
+  const stockUsed = {};
   const lines = [];
   const boxes = {};
   let shortCount = 0;
@@ -150,19 +154,28 @@ export function fillPlan({ rows, spareByItem = {}, exclude = [], current = {}, s
     const have = Math.min(need, Number(current[r.id]) || 0);
     const want = Math.max(0, need - have);
     let add = want;
+    let fromStock = 0;
     if (!skip.has(r.itemId) && r.itemId) {
       const avail = Math.max(0, Number(left[r.itemId]) || 0);
       add = Math.min(want, avail);
       left[r.itemId] = avail - add;
+      // 여유로 못 채운 나머지는 창고 재고에서 (있는 만큼만)
+      if (stock && add < want) {
+        const inStock = Math.max(0, Number(stock[r.itemId]) || 0);
+        fromStock = Math.min(want - add, inStock);
+        stock[r.itemId] = inStock - fromStock;
+        if (fromStock > 0) stockUsed[r.itemId] = (stockUsed[r.itemId] || 0) + fromStock;
+        add += fromStock;
+      }
     }
     const total = have + add;
     const short = need - total;
     if (short > 0) shortCount += 1;
     const box = r.box || '';
     boxes[box] = (boxes[box] ?? true) && short <= 0;
-    lines.push({ id: r.id, box, itemId: r.itemId || '', need, have, add, total, short });
+    lines.push({ id: r.id, box, itemId: r.itemId || '', need, have, add, fromStock, total, short });
   }
-  return { lines, short: shortCount, boxes };
+  return { lines, short: shortCount, boxes, stockUsed };
 }
 
 /** 배정된 호기 하나의 부족 — { short: 줄 수, lines: 부족 줄 } (materials: { [box]: items }) */

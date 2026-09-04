@@ -6,6 +6,7 @@ import { isFreeIssue } from './bomService';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
 import { fillPlan } from '../domain/paidSets';
+import { consumeItemStock } from './purchaseService';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
 //
@@ -132,21 +133,45 @@ export async function assignPaidSet(panel, variantRows, { by = '', seq = 0, spar
   return plan.short;
 }
 
-/** 나중에 들어온 부족분을 채운다 — 이미 있는 것은 두고 모자란 줄만, 있는 만큼만 */
-export async function topUpPaidSet(panel, variantRows, { by = '', spareByItem = {}, exclude = [] } = {}) {
+/**
+ * 나중에 들어온 부족분을 채운다 — 이미 있는 것은 두고 모자란 줄만, 있는 만큼만.
+ * stockByItem 을 주면 발주 여유가 없는 줄은 창고 재고에서 꺼내 채우고, 재고 장부를 그만큼 줄인다
+ * (이력 「도급 배정 · 호기」). 꺼낸 양은 paidSet.stockUsed 에 쌓아 두었다가 배정 취소 때 되돌린다.
+ * 돌려주는 값: { added 채운 줄 수, short 남은 부족 줄 수, stockUsed { itemId: n } }
+ */
+export async function topUpPaidSet(
+  panel,
+  variantRows,
+  { by = '', spareByItem = {}, exclude = [], stockByItem = null } = {},
+) {
   const rows = Object.values(paidRowsByBox(variantRows)).flat();
   const mats = await getPanelMaterials(panel.id);
   const current = {};
   for (const r of rows) current[r.id] = Number(mats?.[r.box || '']?.[r.id]?.qty) || 0;
-  const plan = fillPlan({ rows, spareByItem, exclude, current, skipRows: skippedRows(rows, mats) });
+  const plan = fillPlan({ rows, spareByItem, exclude, current, skipRows: skippedRows(rows, mats), stockByItem });
   const changed = plan.lines.filter((l) => l.add > 0);
-  if (changed.length === 0) return { added: 0, short: plan.short };
+  if (changed.length === 0) return { added: 0, short: plan.short, stockUsed: {} };
   await writePlan(panel.id, { lines: changed }, by);
+  const used = plan.stockUsed || {};
+  const prev = panel.paidSet?.stockUsed || {};
+  const merged = { ...prev };
+  for (const [id, n] of Object.entries(used)) merged[id] = (Number(merged[id]) || 0) + n;
   await updatePanel(panel.id, {
     ...matPatch(panel, plan.boxes),
-    paidSet: { ...(panel.paidSet || {}), short: plan.short, toppedAt: new Date().toISOString().slice(0, 10) },
+    paidSet: {
+      ...(panel.paidSet || {}),
+      short: plan.short,
+      toppedAt: new Date().toISOString().slice(0, 10),
+      ...(Object.keys(used).length ? { stockUsed: merged } : {}),
+    },
   });
-  return { added: changed.length, short: plan.short };
+  // 재고 장부 차감 — 발주 차감과 같은 「얼마를 뺀다」 방식이라 동시에 눌러도 어긋나지 않는다
+  await Promise.all(
+    Object.entries(used).map(([id, n]) =>
+      consumeItemStock(id, n, { byName: by, note: `도급 배정 · ${panel.프로젝트 || ''}` }),
+    ),
+  );
+  return { added: changed.length, short: plan.short, stockUsed: used };
 }
 
 /** 배정 취소 — 도급 줄 수량 0 + 자재 도급 칸 끔 + 배정 기록 지움 */
@@ -167,4 +192,13 @@ export async function unassignPaidSet(panel, variantRows, { by = '' } = {}) {
     ...matPatch(panel, Object.fromEntries(boxes.map((b) => [b, false]))),
     paidSet: deleteField(),
   });
+  // 재고에서 꺼내 채웠던 양은 창고로 되돌린다
+  const used = panel.paidSet?.stockUsed || {};
+  await Promise.all(
+    Object.entries(used)
+      .filter(([, n]) => Number(n) > 0)
+      .map(([id, n]) =>
+        consumeItemStock(id, -Number(n), { byName: by, note: `도급 배정 취소로 되돌림 · ${panel.프로젝트 || ''}` }),
+      ),
+  );
 }
