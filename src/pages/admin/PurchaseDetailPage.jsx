@@ -15,10 +15,10 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   sortableKeyboardCoordinates,
-  arrayMove,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { moveMany } from '../../domain/moveMany';
 import {
   getPurchaseById,
   updatePurchase,
@@ -552,7 +552,12 @@ export default function PurchaseDetailPage() {
     const oldIndex = Number(active.id);
     const newIndex = Number(over.id);
     if (Number.isNaN(oldIndex) || Number.isNaN(newIndex)) return;
-    setForm((f) => ({ ...f, items: arrayMove(f.items, oldIndex, newIndex) }));
+    // 체크한 줄 중 하나를 끌면 체크한 줄 전부가 같이 간다 (2026-09-04 대표님). 줄 id = 인덱스
+    setForm((f) => {
+      const idx = f.items.map((_, i) => String(i));
+      const order = moveMany(idx, [...pickLines].map(String), String(oldIndex), String(newIndex));
+      return { ...f, items: order.map((i) => f.items[Number(i)]) };
+    });
     setPickLines(new Set()); // 순서가 바뀌면 줄 번호가 달라지므로 골라 둔 것은 푼다
     scheduleAutoSave();
   }

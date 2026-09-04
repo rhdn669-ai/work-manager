@@ -14,10 +14,10 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   sortableKeyboardCoordinates,
-  arrayMove,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { moveMany } from '../../domain/moveMany';
 import {
   getBomBySite,
   addBomItem,
@@ -462,7 +462,8 @@ export default function BomDetailPage() {
     const newIndex = orderedIds.indexOf(over.id);
     if (oldIndex < 0 || newIndex < 0) return;
     pushBomUndo('순서 이동'); // Ctrl+Z로 되돌리기 가능
-    const newIds = arrayMove(orderedIds, oldIndex, newIndex);
+    // 체크한 줄 중 하나를 끌면 체크한 줄 전부가 같이 간다 (2026-09-04 대표님)
+    const newIds = moveMany(orderedIds, delPick, active.id, over.id);
     const orderById = new Map(newIds.map((id, idx) => [id, idx]));
     // 낙관적 로컬 반영 → 실패 시 토스트 (기존 발주서는 복사본이라 영향 없음)
     setBomItems((prev) => prev.map((b) => ({ ...b, order: orderById.has(b.id) ? orderById.get(b.id) : b.order })));

@@ -18,7 +18,8 @@ import { CSS } from '@dnd-kit/utilities';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { bulkWritePanels, updatePanel, savePanelOrder, trashPanel } from '../../services/productionService';
-import { misorderedIds, mergeMove } from '../../domain/panelOrder';
+import { misorderedIds } from '../../domain/panelOrder';
+import { moveMany, applyVisibleOrder } from '../../domain/moveMany';
 import { makeBomLink, defaultBomProjectId, variantOptionsFor, variantLabelOf } from '../../domain/panelBom';
 import {
   BUPMOK,
@@ -284,11 +285,12 @@ export default function ProductionMatrix({
   const misordered = useMemo(() => misorderedIds(panels), [panels]);
   async function handleDragEnd({ active, over }) {
     if (!canDrag || !over || active.id === over.id) return;
-    const next = mergeMove(
+    // 체크한 줄 중 하나를 끌면 체크한 줄 전부가 같이 간다 (2026-09-04 대표님)
+    const nextVisible = moveMany(rowIds, sel, active.id, over.id);
+    const next = applyVisibleOrder(
       orderPool.map((p) => p.id),
       rowIds,
-      active.id,
-      over.id,
+      nextVisible,
     );
     try {
       await savePanelOrder(next);

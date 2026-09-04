@@ -25,3 +25,13 @@ export function moveMany(ids, selected, activeId, overId) {
   rest.splice(at, 0, ...group);
   return rest;
 }
+
+/**
+ * 보이는 줄(검색·필터로 걸러진 것)의 새 차례를 전체 목록에 끼워 넣는다 — 숨은 줄은 제자리.
+ * 보이던 줄들이 차지하던 자리에 새 차례를 순서대로 채운다.
+ */
+export function applyVisibleOrder(fullIds, visibleIds, newVisible) {
+  const vis = new Set(visibleIds);
+  const queue = newVisible.slice();
+  return fullIds.map((id) => (vis.has(id) ? queue.shift() : id));
+}

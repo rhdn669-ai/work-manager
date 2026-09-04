@@ -1,6 +1,6 @@
 // 여러 줄 한 번에 옮기기 (2026-09-04 대표님).
 import { describe, it, expect } from 'vitest';
-import { moveMany } from '../../src/domain/moveMany';
+import { moveMany, applyVisibleOrder } from '../../src/domain/moveMany';
 
 const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
 
@@ -23,5 +23,12 @@ describe('여러 줄 옮기기', () => {
   it('같은 자리·없는 id 는 그대로', () => {
     expect(moveMany(ids, [], 'a', 'a')).toEqual(ids);
     expect(moveMany(ids, [], 'zz', 'a')).toEqual(ids);
+  });
+});
+
+describe('보이는 줄 차례를 전체에 끼워 넣기', () => {
+  it('숨은 줄은 제자리, 보이던 자리에 새 차례를 채운다', () => {
+    const full = ['a', 'b', 'c', 'd', 'e'];
+    expect(applyVisibleOrder(full, ['a', 'c', 'e'], ['e', 'a', 'c'])).toEqual(['e', 'b', 'a', 'd', 'c']);
   });
 });

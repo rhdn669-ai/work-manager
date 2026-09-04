@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { moveMany } from '../../domain/moveMany';
 import {
   getBomProjects,
   addBomProject,
@@ -111,10 +112,12 @@ export default function BomPage() {
   async function handleDragEnd(e) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const oldIndex = projects.findIndex((p) => p.id === active.id);
-    const newIndex = projects.findIndex((p) => p.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    const next = arrayMove(projects, oldIndex, newIndex);
+    // 체크한 줄 중 하나를 끌면 체크한 줄 전부가 같이 간다 (2026-09-04 대표님)
+    const ids = projects.map((p) => p.id);
+    const nextIds = moveMany(ids, pick, active.id, over.id);
+    if (nextIds.join('|') === ids.join('|')) return;
+    const byId = new Map(projects.map((p) => [p.id, p]));
+    const next = nextIds.map((id) => byId.get(id));
     setProjects(next);
     try {
       await saveBomProjectsOrder(next.map((p) => p.id));
