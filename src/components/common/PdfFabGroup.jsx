@@ -16,11 +16,16 @@ import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 //   targetSelector?: string                  — 캡처할 인쇄 양식 선택자(기본 .print-form-iopn.print-only)
 //   options?: ReactNode                      — 출력 전에 물을 것(금액·BOX 표시 등). 주면 「PDF 출력」이
 //                                              바로 인쇄하지 않고 이 옵션을 먼저 보여 준다.
+//   inline?: boolean                         — 우하단 FAB 대신 머리 액션 줄의 보통 버튼(「출력」)으로
+//                                              (2026-09-04 대표님 「출력 버튼 다른 곳들과 동일하게 위로」)
+//   showLibrary?: boolean                    — 「자료실 저장」 버튼을 보일지 (기본 true)
 export default function PdfFabGroup({
   defaultFileName,
   onBeforeOutput,
   targetSelector = '.print-form-iopn.print-only',
   options = null,
+  inline = false,
+  showLibrary = true,
 }) {
   const { userProfile } = useAuth();
   const { alert, toast } = useDialog();
@@ -92,26 +97,40 @@ export default function PdfFabGroup({
 
   return (
     <>
-      <div className="pdf-fab-group no-print">
+      {inline ? (
         <button
           type="button"
-          className="pdf-print-fab pdf-fab-secondary"
-          onClick={openModal}
-          title="PDF 파일로 만들어 사내 자료실에 저장합니다"
-        >
-          <Icon name="folder" />
-          자료실 저장
-        </button>
-        <button
-          type="button"
-          className="pdf-print-fab"
+          className="btn btn-sm btn-outline no-print"
           onClick={() => (options ? setOptOpen(true) : handleOutput())}
           title="브라우저 인쇄로 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
         >
-          <Icon name="doc" />
-          PDF 출력
+          <Icon name="doc" className="btn-ic" />
+          출력
         </button>
-      </div>
+      ) : (
+        <div className="pdf-fab-group no-print">
+          {showLibrary && (
+            <button
+              type="button"
+              className="pdf-print-fab pdf-fab-secondary"
+              onClick={openModal}
+              title="PDF 파일로 만들어 사내 자료실에 저장합니다"
+            >
+              <Icon name="folder" />
+              자료실 저장
+            </button>
+          )}
+          <button
+            type="button"
+            className="pdf-print-fab"
+            onClick={() => (options ? setOptOpen(true) : handleOutput())}
+            title="브라우저 인쇄로 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
+          >
+            <Icon name="doc" />
+            PDF 출력
+          </button>
+        </div>
+      )}
 
       {options && (
         <Modal isOpen={optOpen} onClose={() => setOptOpen(false)} title="PDF 출력 옵션">

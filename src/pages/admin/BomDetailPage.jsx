@@ -974,6 +974,73 @@ export default function BomDetailPage() {
           <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/bom')}>
             목록
           </button>
+          <PdfFabGroup
+            inline
+            showLibrary={false}
+            defaultFileName={() => `${project?.name || 'BOM'}_BOM`}
+            onBeforeOutput={() => setPrintStamp(fmtDateTime(new Date()))}
+            options={
+              <>
+                <div className="toggle-row" style={{ marginBottom: 10 }}>
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">금액 표기</span>
+                    <small className="text-muted">단가·금액·합계를 함께 출력합니다. 끄면 수량·품목만 나갑니다</small>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={printShowAmount}
+                      onChange={(e) => setPrintShowAmount(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+                <div className="toggle-row" style={{ marginBottom: 10 }}>
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">도번 표시</span>
+                    <small className="text-muted">도면 번호 열을 추가합니다</small>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={printShowDrawing}
+                      onChange={(e) => setPrintShowDrawing(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+                <div className="toggle-row" style={{ marginBottom: 10 }}>
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">구매처 표시</span>
+                    <small className="text-muted">
+                      구매처 열을 추가합니다. 「구매처별」로 묶어 출력하면 위에 띠로 나오므로 꺼 두는 편이 낫습니다
+                    </small>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={printShowSupplier}
+                      onChange={(e) => setPrintShowSupplier(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+                <div className="toggle-row" style={{ marginBottom: 10 }}>
+                  <div className="toggle-row-text">
+                    <span className="toggle-row-title">BOX 표시</span>
+                    <small className="text-muted">
+                      품목표에 BOX 열을 추가합니다
+                      {hasBox ? '' : ' (이 BOM 에는 BOX 가 적힌 품목이 없습니다)'}
+                    </small>
+                  </div>
+                  <label className="toggle-switch">
+                    <input type="checkbox" checked={printShowBox} onChange={(e) => setPrintShowBox(e.target.checked)} />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </>
+            }
+          />
           <button
             type="button"
             className="btn btn-sm btn-outline"
@@ -1000,72 +1067,6 @@ export default function BomDetailPage() {
           />
         </div>
       </div>
-
-      <PdfFabGroup
-        defaultFileName={() => `${project?.name || 'BOM'}_BOM`}
-        onBeforeOutput={() => setPrintStamp(fmtDateTime(new Date()))}
-        options={
-          <>
-            <div className="toggle-row" style={{ marginBottom: 10 }}>
-              <div className="toggle-row-text">
-                <span className="toggle-row-title">금액 표기</span>
-                <small className="text-muted">단가·금액·합계를 함께 출력합니다. 끄면 수량·품목만 나갑니다</small>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={printShowAmount}
-                  onChange={(e) => setPrintShowAmount(e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-            <div className="toggle-row" style={{ marginBottom: 10 }}>
-              <div className="toggle-row-text">
-                <span className="toggle-row-title">도번 표시</span>
-                <small className="text-muted">도면 번호 열을 추가합니다</small>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={printShowDrawing}
-                  onChange={(e) => setPrintShowDrawing(e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-            <div className="toggle-row" style={{ marginBottom: 10 }}>
-              <div className="toggle-row-text">
-                <span className="toggle-row-title">구매처 표시</span>
-                <small className="text-muted">
-                  구매처 열을 추가합니다. 「구매처별」로 묶어 출력하면 위에 띠로 나오므로 꺼 두는 편이 낫습니다
-                </small>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={printShowSupplier}
-                  onChange={(e) => setPrintShowSupplier(e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-            <div className="toggle-row" style={{ marginBottom: 10 }}>
-              <div className="toggle-row-text">
-                <span className="toggle-row-title">BOX 표시</span>
-                <small className="text-muted">
-                  품목표에 BOX 열을 추가합니다
-                  {hasBox ? '' : ' (이 BOM 에는 BOX 가 적힌 품목이 없습니다)'}
-                </small>
-              </div>
-              <label className="toggle-switch">
-                <input type="checkbox" checked={printShowBox} onChange={(e) => setPrintShowBox(e.target.checked)} />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-          </>
-        }
-      />
 
       {/* 인쇄 전용 IOPN_v4 양식 (자재 명세서) */}
       {(() => {
