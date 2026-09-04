@@ -4,6 +4,17 @@
 // 생산현황 표(.mx-wrap)는 자기 스크립트가 있어 건드리지 않는다.
 const MIN_H = 320;
 const BOTTOM_GAP = 16;
+// 내용 폭으로 펼친 표가 너무 넓어 보여 20% 줄인다 (2026-09-04 대표님 「전체 폭을 일정한 비율로 20%」).
+// 화면 폭보다 좁아지진 않는다. 줄여서 잘리는 칸은 말줄임(title 로 전체 확인).
+const SHRINK = 0.8;
+
+function shrinkWide(el, table) {
+  const box = el.clientWidth;
+  table.style.width = ''; // 자연 폭(max-content)을 재려고 잠시 푼다
+  const natural = table.scrollWidth;
+  if (natural <= box + 1) return; // 화면 안에 다 들어오면 그대로
+  table.style.width = `${Math.max(box, Math.round(natural * SHRINK))}px`;
+}
 
 export function fitTables() {
   if (typeof window === 'undefined') return;
@@ -13,6 +24,7 @@ export function fitTables() {
     if (el.classList.contains('mx-wrap')) return;
     const table = el.querySelector(':scope > table');
     if (!table) return;
+    shrinkWide(el, table);
     const top = el.getBoundingClientRect().top + window.scrollY; // 문서 기준 위치
     // 상자가 화면 위쪽 한 화면 안에서 시작할 때만 자른다 — 아래쪽 어딘가의 작은 표는 그대로
     const avail = Math.round(window.innerHeight - (top - window.scrollY) - BOTTOM_GAP);
