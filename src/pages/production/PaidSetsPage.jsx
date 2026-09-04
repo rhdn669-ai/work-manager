@@ -40,7 +40,6 @@ export default function PaidSetsPage() {
   const [bomByProject, setBomByProject] = useState({}); // { projectId: rows[] }
   const [received, setReceived] = useState({ byItem: {}, meta: null }); // 설정한 발주 현장의 입고
   const [sites, setSites] = useState([]);
-  const [siteEdit, setSiteEdit] = useState(false); // 발주서 프로젝트를 바꾸려고 목록을 연 상태
   const [materials, setMaterials] = useState({}); // { panelId: { box: items } } — 배정 호기가 실제 가져간 양
   useEffect(() => subscribeAllMaterials(setMaterials), []);
   const [groupSel, setGroupSel] = useState('');
@@ -282,25 +281,15 @@ export default function PaidSetsPage() {
       <div className="card sht-controls">
         <div className="sht-range">
           <span className="sht-range-label">발주서 프로젝트</span>
-          {siteId && !siteEdit ? (
+          {siteId ? (
             <span className="pset-site">
+              {/* 회사마다 발주 현장은 하나라 바꿀 일이 없다 — 「변경」 버튼 없음 (2026-09-04 대표님) */}
               <strong>{siteName || '(이름 없음)'}</strong>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => setSiteEdit(true)}
-                title="다른 현장의 발주서를 세야 할 때만"
-              >
-                변경
-              </button>
             </span>
           ) : (
             <Select
               value={siteId}
-              onChange={(v) => {
-                setSite(v);
-                setSiteEdit(false);
-              }}
+              onChange={setSite}
               options={[
                 { value: '', label: '선택 안 함' },
                 ...sites.map((x) => ({ value: x.id, label: x.name || x.id })),
