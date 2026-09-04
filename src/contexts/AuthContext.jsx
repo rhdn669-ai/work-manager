@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
   const lastActivityRef = useRef(0);
 
   useEffect(() => {
-    // localStorage에서 로그인 상태 복원 — 단, 마지막 활동이 30분 초과면 자동 로그아웃
+    // localStorage에서 로그인 상태 복원 — 단, 마지막 활동이 12시간 초과면 자동 로그아웃
     const saved = localStorage.getItem('workManagerUser');
     const stashed = localStorage.getItem('workManagerImpersonator');
     const last = Number(localStorage.getItem(ACTIVITY_KEY) || 0);

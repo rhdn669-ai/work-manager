@@ -28,7 +28,7 @@ export default function SessionTimerBadge() {
   const timeLabel = `${m}:${String(s).padStart(2, '0')}`;
 
   return (
-    <div className={`session-timer ${isUrgent ? 'urgent' : ''}`} title="무활동 30분 시 자동 로그아웃">
+    <div className={`session-timer ${isUrgent ? 'urgent' : ''}`} title="무활동 12시간 시 자동 로그아웃">
       <span className="session-timer-text" aria-label={`자동 로그아웃까지 ${timeLabel} 남음`}>
         <svg
           className="session-timer-icon"
