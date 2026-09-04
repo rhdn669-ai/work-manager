@@ -224,15 +224,7 @@ function SortableItemRow({ id, canDrag, editMode, checked, onCheck, no, children
     <tr ref={setNodeRef} style={style} className={checked ? 'is-checked' : undefined}>
       <td className="bom-no-col" data-label="No" style={editMode ? { width: 76 } : undefined}>
         <span className="bom-no-wrap">
-          {editMode && (
-            <input
-              type="checkbox"
-              className="sel-check"
-              checked={!!checked}
-              onChange={onCheck}
-              aria-label={`${no}번 품목 줄 고르기`}
-            />
-          )}
+          {/* 손잡이 → 체크 → 번호 (앱 공통 순서) */}
           {canDrag && (
             <button
               type="button"
@@ -241,9 +233,16 @@ function SortableItemRow({ id, canDrag, editMode, checked, onCheck, no, children
               title="드래그하여 순서 변경"
               {...attributes}
               {...listeners}
-            >
-              <Icon name="move" />
-            </button>
+            />
+          )}
+          {editMode && (
+            <input
+              type="checkbox"
+              className="sel-check"
+              checked={!!checked}
+              onChange={onCheck}
+              aria-label={`${no}번 품목 줄 고르기`}
+            />
           )}
           {no}
         </span>

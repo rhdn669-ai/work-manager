@@ -1017,9 +1017,7 @@ const MatrixRow = memo(function MatrixRow({
               >
                 상세
               </button>
-              <button className="btn btn-sm btn-danger" onClick={(e) => api.onRemove(e, p)}>
-                <Icon name="trash" className="btn-ic" />
-              </button>
+              {/* 행별 삭제 버튼은 뺐다 — 삭제는 「순서·삭제」 켜고 체크 → 선택 삭제 (2026-09-04 대표님) */}
             </td>
           )}
         </>

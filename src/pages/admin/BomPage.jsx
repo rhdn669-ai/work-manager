@@ -22,13 +22,11 @@ import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
-import { useUndo } from '../../contexts/useUndo';
-import { restoreTrashItem } from '../../services/trashService';
 
 const won = (n) => `${Math.round(n || 0).toLocaleString()}원`;
 
 // 드래그 가능한 프로젝트 행 — 「순서·삭제」가 꺼져 있으면 끌 수도 고를 수도 없다
-function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCopy, onDelete }) {
+function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCopy }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: p.id,
     disabled: !editMode,
@@ -47,25 +45,26 @@ function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCop
       onClick={() => onOpen(p)}
     >
       <td className="drag-handle-cell" data-label="" onClick={(e) => e.stopPropagation()}>
-        {editMode && (
-          <input
-            type="checkbox"
-            className="sel-check"
-            checked={checked}
-            onChange={() => onCheck(p.id)}
-            aria-label="삭제할 프로젝트 고르기"
+        <span className="row-tools">
+          {/* 손잡이 → 체크 (앱 공통 순서) */}
+          <button
+            type="button"
+            className="drag-handle-btn"
+            aria-label="드래그하여 순서 변경"
+            title="드래그하여 순서 변경"
+            {...attributes}
+            {...listeners}
           />
-        )}
-        <button
-          type="button"
-          className="drag-handle-btn"
-          aria-label="드래그하여 순서 변경"
-          title="드래그하여 순서 변경"
-          {...attributes}
-          {...listeners}
-        >
-          <Icon name="move" />
-        </button>
+          {editMode && (
+            <input
+              type="checkbox"
+              className="sel-check"
+              checked={checked}
+              onChange={() => onCheck(p.id)}
+              aria-label="삭제할 프로젝트 고르기"
+            />
+          )}
+        </span>
       </td>
       <td data-label="프로젝트명" title={p.name || ''}>
         <strong className="u-ellipsis-1" title={p.name || ''}>
@@ -97,10 +96,7 @@ function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCop
           <Icon name="copy" className="btn-ic" />
           복사
         </button>
-        <button type="button" className="btn btn-sm btn-danger" onClick={(e) => onDelete(e, p)}>
-          <Icon name="trash" className="btn-ic" />
-          삭제
-        </button>
+        {/* 행별 삭제는 뺐다 — 「순서·삭제」 켜고 체크 → 선택 삭제 (2026-09-04 대표님) */}
       </td>
     </tr>
   );
@@ -109,7 +105,6 @@ function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCop
 export default function BomPage() {
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
-  const { push: pushUndo } = useUndo();
   const navigate = useNavigate();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -230,30 +225,6 @@ export default function BomPage() {
     }
   }
 
-  async function handleDeleteProject(e, project) {
-    e.stopPropagation();
-    if (
-      !(await confirm(
-        `"${project.name}" 프로젝트와 등록된 BOM을 모두 삭제하시겠습니까?\n(휴지통에서 복원할 수 있습니다)`,
-      ))
-    )
-      return;
-    try {
-      const tid = await trashBomProject(project.id, userProfile?.name || '');
-      await deleteBomProject(project.id);
-      setProjects((prev) => prev.filter((p) => p.id !== project.id));
-      if (tid)
-        pushUndo(`BOM 프로젝트 "${project.name}" 삭제`, async () => {
-          await restoreTrashItem(tid);
-          const ps = await getBomProjects();
-          setProjects(ps);
-          loadStats(ps);
-        });
-    } catch {
-      toast('삭제 중 오류가 발생했습니다', 'error');
-    }
-  }
-
   function toggleEditMode() {
     setEditMode((v) => {
       if (v) setPick(new Set()); // 끄면 골라 둔 것도 함께 푼다
@@ -368,7 +339,6 @@ export default function BomPage() {
                       onCheck={togglePick}
                       onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
                       onCopy={openCopyProject}
-                      onDelete={handleDeleteProject}
                     />
                   ))}
                 </tbody>

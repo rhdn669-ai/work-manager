@@ -9,15 +9,13 @@ import {
   getSuppliers,
   nextMainCode,
   nextSubCode,
-  reorderGroupCodes, // 품목 하나를 지운 뒤 남은 번호를 메울 때
   applyGroupLayout,
   inferGroupKeys,
   repadItemCodes,
 } from '../../services/purchaseService';
-import { trashGeneric, restoreTrashItem } from '../../services/trashService';
+import { trashGeneric } from '../../services/trashService';
 import { mainCodeOf, moveInLayout, isWorthSaving } from '../../domain/itemLayout';
 import { getToday } from '../../utils/dateUtils';
-import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
@@ -103,25 +101,26 @@ function SortableItemRow({
       onMouseEnter={onMouseEnter}
     >
       <td className="drag-handle-cell" data-label="">
-        {onCheck && (
-          <input
-            type="checkbox"
-            className="sel-check"
-            checked={!!checked}
-            onChange={() => onCheck(id)}
-            aria-label="삭제할 품목 고르기"
+        <span className="row-tools">
+          {/* 손잡이 → 체크 (앱 공통 순서, 2026-09-04 대표님 「통일」) */}
+          <button
+            type="button"
+            className="drag-handle-btn"
+            aria-label="드래그하여 순서 변경"
+            title="드래그하여 순서 변경"
+            {...attributes}
+            {...listeners}
           />
-        )}
-        <button
-          type="button"
-          className="drag-handle-btn"
-          aria-label="드래그하여 순서 변경"
-          title="드래그하여 순서 변경"
-          {...attributes}
-          {...listeners}
-        >
-          <Icon name="move" />
-        </button>
+          {onCheck && (
+            <input
+              type="checkbox"
+              className="sel-check"
+              checked={!!checked}
+              onChange={() => onCheck(id)}
+              aria-label="삭제할 품목 고르기"
+            />
+          )}
+        </span>
       </td>
       {children}
     </tr>
@@ -322,7 +321,6 @@ function toNum(v) {
 export default function PurchaseItemPage() {
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
-  const { push: pushUndo } = useUndo();
   const [items, setItems] = useState([]);
   const origPriceRef = useRef({}); // 품목별 '로드 시점' 개별단가 — 잠금(모달) 판정 기준(입력 중 실시간 값 아님)
   const [suppliers, setSuppliers] = useState([]);
@@ -789,63 +787,6 @@ export default function PurchaseItemPage() {
       setItems((prev) => prev.filter((it) => !ids.includes(it.id)));
     } catch {
       toast('대분류 삭제 중 오류가 발생했습니다', 'error');
-    }
-  }
-
-  async function handleDelete(it) {
-    if (!(await confirm(`"${it.name || '이 항목'}"을(를) 삭제하시겠습니까?\n휴지통에서 복원할 수 있습니다.`))) return;
-    if (String(it.id).startsWith('tmp-')) {
-      setItems((prev) => prev.filter((x) => x.id !== it.id));
-      return;
-    }
-    // 삭제 대상이 하위분류(-N)면, 같은 대분류의 뒷번호를 당겨 빈 번호를 채움
-    const subMatch = (it.code || '').match(/^(IOPN-\d+)-(\d+)$/);
-    try {
-      const tid = await trashGeneric(
-        'purchaseItems',
-        it.id,
-        {
-          title: it.name || '(품명 없음)',
-          summary: [it.code, it.spec].filter(Boolean).join(' · '),
-        },
-        userProfile?.name || '',
-      );
-      toast('휴지통으로 이동했습니다.');
-      if (tid)
-        pushUndo(`품목 "${it.name || '항목'}" 삭제`, async () => {
-          await restoreTrashItem(tid);
-          await loadData();
-        });
-      const remaining = items.filter((x) => x.id !== it.id);
-      setItems(remaining);
-
-      if (subMatch) {
-        const mainCode = subMatch[1];
-        const siblings = remaining
-          .filter((x) => {
-            const m = (x.code || '').match(/^(IOPN-\d+)-(\d+)$/);
-            return m && m[1] === mainCode;
-          })
-          .sort((a, b) => {
-            const na = parseInt((a.code.match(/-(\d+)$/) || [])[1] || '0', 10);
-            const nb = parseInt((b.code.match(/-(\d+)$/) || [])[1] || '0', 10);
-            return na - nb;
-          });
-        if (siblings.length > 0) {
-          const updates = await reorderGroupCodes(
-            siblings.map((x) => x.id),
-            siblings,
-            mainCode,
-          );
-          if (updates && updates.length > 0) {
-            const codeById = new Map(updates.map((u) => [u.id, u.code]));
-            setItems((prev) => prev.map((x) => (codeById.has(x.id) ? { ...x, code: codeById.get(x.id) } : x)));
-          }
-        }
-      }
-    } catch {
-      toast('삭제 중 오류가 발생했습니다', 'error');
-      await loadData(); // 코드 재정렬 실패 시 서버 상태로 복구
     }
   }
 
@@ -1842,16 +1783,7 @@ export default function PurchaseItemPage() {
                                                   >
                                                     <Icon name={expanded ? 'chevronRight' : 'chevronDown'} />
                                                   </button>
-                                                  <button
-                                                    type="button"
-                                                    className="btn btn-sm btn-danger"
-                                                    onClick={() => handleDelete(it)}
-                                                    aria-label="삭제"
-                                                    title="삭제"
-                                                  >
-                                                    <Icon name="trash" className="btn-ic" />
-                                                    삭제
-                                                  </button>
+                                                  {/* 행별 삭제는 뺐다 — 「순서·삭제」 켜고 체크 → 선택 삭제 (2026-09-04 대표님) */}
                                                 </td>
                                               </SortableItemRow>
                                               {expanded &&

@@ -5653,11 +5653,6 @@ table.cards-sm td {
   gap: 2px;
   white-space: nowrap;
 }
-.bom-flat-table .bom-no-wrap .drag-handle-btn {
-  width: 18px;
-  height: 24px;
-  margin-left: -4px;
-}
 .bom-flat-table tbody td {
   vertical-align: middle;
   padding: 4px 6px;
@@ -7293,22 +7288,33 @@ tr.is-newly-added > td {
   vertical-align: middle;
 }
 .drag-handle-btn {
-  width: 24px;
-  height: 24px;
+  /* 앱 공통 손잡이 = 생산현황(.mx-drag)과 같은 점 6개 (2026-09-04 대표님 「모양 통일」) */
+  width: 12px;
+  height: 22px;
   border: none;
-  background: transparent;
+  background: radial-gradient(circle, #b8bfc8 1.2px, transparent 1.4px) 0 0 / 6px 6px;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: 0;
   line-height: 1;
   cursor: grab;
-  border-radius: 4px;
+  border-radius: 0;
   padding: 0;
+  flex: none;
   user-select: none;
   touch-action: none;
 }
 .drag-handle-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
+  background: radial-gradient(circle, #6b7684 1.2px, transparent 1.4px) 0 0 / 6px 6px;
+}
+.drag-handle-btn svg {
+  display: none;
+}
+/* No 칸 안 배열: 손잡이 · 체크 · 번호 — 생산현황 .mx-no-wrap 과 같은 꼴 */
+.row-tools,
+.bom-no-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .drag-handle-btn:active {
   cursor: grabbing;

@@ -96,16 +96,7 @@ function SortableBomRow({ id, canDrag, showCheck, no, checked, onCheck, children
       <td className="bom-spacer-col" aria-hidden="true"></td>
       <td className="bom-no-col" data-label="No">
         <span className="bom-no-wrap">
-          {/* 잠금 중에는 아예 안 보인다 — 흐릿하게 남겨 두면 눌러도 되는 줄 안다 */}
-          {showCheck && (
-            <input
-              type="checkbox"
-              className="bom-del-check"
-              checked={checked}
-              onChange={() => onCheck(id)}
-              aria-label="삭제할 줄 고르기"
-            />
-          )}
+          {/* 순서는 앱 공통: 손잡이 → 체크 → 번호 (생산현황과 같게, 2026-09-04 대표님 「통일」) */}
           {canDrag && (
             <button
               type="button"
@@ -114,9 +105,17 @@ function SortableBomRow({ id, canDrag, showCheck, no, checked, onCheck, children
               title="드래그하여 순서 변경"
               {...attributes}
               {...listeners}
-            >
-              <Icon name="move" />
-            </button>
+            />
+          )}
+          {/* 잠금 중에는 아예 안 보인다 — 흐릿하게 남겨 두면 눌러도 되는 줄 안다 */}
+          {showCheck && (
+            <input
+              type="checkbox"
+              className="bom-del-check sel-check"
+              checked={checked}
+              onChange={() => onCheck(id)}
+              aria-label="삭제할 줄 고르기"
+            />
           )}
           {no}
         </span>
@@ -615,20 +614,6 @@ export default function BomDetailPage() {
     } catch {
       toast('삭제 중 오류가 발생했습니다 — 화면을 새로 불러옵니다', 'error', 0);
       setBomItems(bomItems);
-    }
-  }
-
-  async function removeRow(id) {
-    if (!guard()) return;
-    const item = displayItems.find((b) => b.id === id);
-    if (!(await confirm(`"${item?.name || '이 항목'}"을(를) BOM에서 삭제하시겠습니까?`))) return;
-    pushBomUndo('줄 삭제');
-    try {
-      const title = [item?.name, item?.spec].filter(Boolean).join(' ') || '(이름 없음)';
-      await trashGeneric('bom', id, { title }, userProfile?.name || '');
-      setBomItems((prev) => prev.filter((b) => b.id !== id));
-    } catch {
-      toast('삭제 중 오류가 발생했습니다', 'error');
     }
   }
 
@@ -1730,17 +1715,7 @@ export default function BomDetailPage() {
                                     <Icon name="edit" className="btn-ic" />
                                     변경
                                   </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-danger bom-row-del"
-                                    onClick={() => removeRow(it.id)}
-                                    aria-label="삭제"
-                                    title="삭제"
-                                    tabIndex={locked ? -1 : 0}
-                                  >
-                                    <Icon name="trash" className="btn-ic" />
-                                    삭제
-                                  </button>
+                                  {/* 행별 삭제는 뺐다 — 「순서·삭제」 켜고 체크 → 선택 삭제 (2026-09-04 대표님) */}
                                 </div>
                               </td>
                             </SortableBomRow>
