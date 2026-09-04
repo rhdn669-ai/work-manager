@@ -2278,6 +2278,19 @@ body {
   .table-scroll-x > .table th {
     max-width: 360px; /* 비고처럼 아주 긴 글은 여기서 말줄임 */
   }
+  /* 긴 표는 상자를 화면 높이에 맞춰 잘라, 가로 스크롤바가 표 «맨 아래»가 아니라 늘 손 닿는 곳에 오게
+     (2026-09-04 대표님 「가로 스크롤이 밑에 있어서 화면 제일 아래로 내려야」). 머리줄은 상자 안에서 고정 */
+  .table-scroll-x:has(> .table) {
+    /* 높이 자체는 utils/fitTables.js 가 실제 위치로 잰다(maxHeight inline). 여기선 스크롤 방식만 */
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable; /* 세로 스크롤바 폭 때문에 가로 스크롤이 헛으로 생기지 않게 */
+  }
+  .table-scroll-x > .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
   /* 구매처·외주 표는 ≥769px 에서 폭 100%·table-layout:fixed·열마다 % 폭이 박혀 있어
      좁은 화면에서 글자를 눌러 버린다 — 이 구간에선 내용 폭대로 (global.css 의 규칙보다 뒤·같은 특성성) */
   .supplier-management-page table.cards-sm,

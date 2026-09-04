@@ -14,6 +14,7 @@ import { useVersionCheck } from '../../hooks/useVersionCheck';
 import { getMileage } from '../../services/vehicleMileageService';
 import { formatRelativeKo } from '../../utils/dateUtils';
 import { useDialog } from './useDialog';
+import { installFitTables, fitTables } from '../../utils/fitTables';
 
 export default function Layout() {
   const { isImpersonating, impersonator, userProfile, stopImpersonation, isAdmin } = useAuth();
@@ -26,6 +27,12 @@ export default function Layout() {
     return window.matchMedia('(min-width: 769px)').matches;
   });
   const location = useLocation();
+  // 긴 표의 상자 높이를 화면에 맞춘다 — 가로 스크롤바가 늘 보이게 (2026-09-04 대표님)
+  useEffect(() => installFitTables(), []);
+  useEffect(() => {
+    const t = setTimeout(fitTables, 300); // 화면 전환 직후 표가 그려질 시간
+    return () => clearTimeout(t);
+  }, [location.pathname]);
   const navigate = useNavigate();
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
