@@ -57,7 +57,8 @@ export default function PaidSetsPage() {
   useEffect(() => subscribePurchaseItems(setMaster), []);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
-  const startProject = settings?.[company]?.startProject || '';
+  // 구매 시작 호기 제한은 뺐다 — BOM 을 연결한 호기 전부, 생산현황 순서대로 (2026-09-04 대표님 「이것도 삭제」)
+  const startProject = '';
   // 발주서를 셀 현장 — BOM 프로젝트와는 다른 목록이라 여기서 한 번 고른다
   const siteId = settings?.[company]?.siteId || '';
   // 전역 제외는 두지 않는다 — 기본 BOM 은 그대로, 뺄 것은 호기의 자재 체크 페이지에서 그 호기만 (2026-09-03 대표님)
@@ -80,14 +81,6 @@ export default function PaidSetsPage() {
     () => sites.find((x) => x.id === siteId)?.name || settings?.[company]?.siteName || '',
     [sites, siteId, settings, company],
   );
-  // 시작 호기 후보 — 이 회사 호기 이름(번호순)
-  const projectNames = useMemo(() => {
-    const seen = new Set();
-    return panels
-      .map((p) => (p.프로젝트 || '').trim())
-      .filter((n) => n && !seen.has(n) && seen.add(n))
-      .sort((a, b) => panelSeq(a) - panelSeq(b) || a.localeCompare(b));
-  }, [panels]);
 
   const eligible = useMemo(() => eligiblePanels(panels, { company, startProject }), [panels, company, startProject]);
 
@@ -172,13 +165,6 @@ export default function PaidSetsPage() {
   const limiterItem = calc.items.find((x) => x.itemId === calc.limiter);
   const bomLoaded = group ? group.projectId in bomByProject : false;
 
-  const setStart = async (v) => {
-    try {
-      await savePaidSetSettings(company, { startProject: v });
-    } catch {
-      toast('시작 호기 저장에 실패했습니다', 'error');
-    }
-  };
   const setSite = async (v) => {
     const site = sites.find((x) => x.id === v);
     try {
@@ -299,15 +285,6 @@ export default function PaidSetsPage() {
               native
             />
           )}
-          <span className="sht-range-label">구매 시작 호기</span>
-          <Select
-            value={startProject}
-            onChange={setStart}
-            options={[{ value: '', label: '전체 (제한 없음)' }, ...projectNames.map((n) => ({ value: n, label: n }))]}
-            placeholder="시작 호기"
-            ariaLabel="구매 시작 호기"
-            native
-          />
         </div>
         {groups.length > 1 && (
           <div className="sht-kinds" role="tablist" aria-label="BOM 타입">
