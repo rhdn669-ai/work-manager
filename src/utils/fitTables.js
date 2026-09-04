@@ -6,7 +6,7 @@ const MIN_H = 320;
 const BOTTOM_GAP = 16;
 // 내용 폭으로 펼친 표가 너무 넓어 보여 20% 줄인다 (2026-09-04 대표님 「전체 폭을 일정한 비율로 20%」).
 // 화면 폭보다 좁아지진 않는다. 줄여서 잘리는 칸은 말줄임(title 로 전체 확인).
-const SHRINK = 0.8;
+const SHRINK = 0.84; // 80% 에서 4% 올림 (2026-09-04 대표님 「4프로 올려봐」)
 
 function shrinkWide(el, table) {
   const box = el.clientWidth;
