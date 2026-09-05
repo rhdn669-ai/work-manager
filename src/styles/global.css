@@ -23347,3 +23347,36 @@ a.lib-row-name:hover {
 .pmat-table.no-fit td.col-action .btn {
   padding: 0 8px;
 }
+
+/* 공장 관리 창 — 입력칸을 다른 창과 같은 규격으로 (2026-09-05 대표님 「입력칸 이상함」) */
+.factory-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.factory-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 0;
+}
+.factory-row .factory-name {
+  width: 140px;
+  flex: none;
+}
+.factory-row .factory-addr {
+  flex: 1;
+  min-width: 0;
+}
+.factory-row .btn {
+  flex: none;
+}
+@media (max-width: 600px) {
+  .factory-row {
+    flex-wrap: wrap;
+  }
+  .factory-row .factory-name {
+    width: 100%;
+  }
+}

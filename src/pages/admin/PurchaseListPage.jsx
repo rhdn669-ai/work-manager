@@ -1249,32 +1249,37 @@ export default function PurchaseListPage() {
 
       <Modal isOpen={factoryModalOpen} onClose={() => setFactoryModalOpen(false)} title="공장 관리">
         <p className="field-hint">납품 장소 프리셋을 설정합니다. 발주서에서 공장을 선택하면 주소가 자동 입력됩니다.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+        {/* 입력칸은 다른 창과 같은 form-group 규격으로 (2026-09-05 대표님 「입력칸 이상함」) */}
+        <div className="factory-rows">
           {factoryForm.map((f, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div key={i} className="factory-row form-group">
               <input
                 type="text"
+                className="factory-name"
+                aria-label="공장명"
                 placeholder="공장명 (예: 1공장)"
                 value={f.name}
                 onChange={(e) =>
                   setFactoryForm((prev) => prev.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
                 }
-                style={{ width: 100, flexShrink: 0 }}
               />
               <input
                 type="text"
+                className="factory-addr"
+                aria-label="주소"
                 placeholder="주소"
                 value={f.address}
                 onChange={(e) =>
                   setFactoryForm((prev) => prev.map((x, j) => (j === i ? { ...x, address: e.target.value } : x)))
                 }
-                style={{ flex: 1, minWidth: 120 }}
               />
               <button
                 type="button"
-                className="btn btn-sm btn-danger"
+                className="btn btn-sm btn-outline"
+                aria-label="이 공장 지우기"
                 onClick={() => setFactoryForm((prev) => prev.filter((_, j) => j !== i))}
               >
+                <Icon name="trash" className="btn-ic" />
                 삭제
               </button>
             </div>
