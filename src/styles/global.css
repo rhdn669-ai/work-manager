@@ -3907,6 +3907,27 @@ body {
   }
 }
 
+/* =========================================================
+   순번(No) 열 표준 (2026-09-05 No 열 표준) — 표마다 제각각이던 헤더 글자·위치·
+   정렬·색을 하나로. 적용: No/번호/#/순번 열 th·td 에 class="col-no", 헤더 글자는
+   "No", 표 맨 왼쪽(손잡이·체크 열이 있으면 그 다음)에 둔다.
+   colgroup·% 로 폭을 직접 관리하는 표(BOM·품질대장·생산현황 등)는 실제 폭이
+   그쪽 값을 따르므로 여기 width 는 별도 폭 시스템이 없는 표에서만 실제로 적용된다. */
+.table th.col-no,
+.table td.col-no {
+  text-align: left;
+  font-weight: 400;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+  width: 48px;
+}
+@media (max-width: 768px) {
+  .table th.col-no,
+  .table td.col-no {
+    width: 40px;
+  }
+}
+
 /* ===== 폼 ===== */
 .form-group {
   margin-bottom: 12px;
@@ -5933,6 +5954,10 @@ table.cards-sm td {
 }
 .bom-flat-table th.bom-no-col {
   border-bottom: none; /* 다른 헤더 셀과 통일 — 네이비 헤더 밑 회색 라인 튀어나옴 제거 */
+}
+/* (2026-09-05 No 열 표준) 화면 표는 col-no 로 이름을 통일 — 발주서 상세는 아직 bom-no-col 유지 */
+.bom-flat-table th.col-no {
+  border-bottom: none;
 }
 .bom-flat-table .bom-action-col {
   text-align: right;

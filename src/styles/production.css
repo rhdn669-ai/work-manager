@@ -1260,15 +1260,18 @@
 .mx-sub-row .mx-sticky {
   z-index: 4;
 }
-.mx-c0 {
+/* (2026-09-05 No 열 표준) 예전 mx-c0 → 앱 공통 col-no 로 이름 통일, sticky 규칙은 그대로 유지 */
+.mx-table th.col-no,
+.mx-table td.col-no {
   left: 0;
   min-width: 44px;
   width: 44px;
   /* 손잡이·체크·번호 묶음은 칸 왼쪽에 붙인다 — 다른 표의 No 칸과 같은 기준 (2026-09-04 대표님) */
   text-align: left;
   padding-left: 6px;
+  color: var(--text-light);
 }
-/* # 칸 = 끌기 손잡이 + 번호. 손잡이는 줄 위에 올리면 나타난다 */
+/* No 칸 = 끌기 손잡이 + 번호. 손잡이는 줄 위에 올리면 나타난다 */
 .mx-no-wrap {
   display: inline-flex;
   align-items: center;
@@ -1314,9 +1317,6 @@
   width: 168px;
   text-align: left;
   box-shadow: 2px 0 0 var(--border, #e5e8eb);
-}
-.mx-no {
-  color: var(--grey-400);
 }
 .mx-proj {
   cursor: pointer;
@@ -1980,10 +1980,10 @@ body:has(.pr-page) .main-content {
   border-color: rgba(214, 48, 63, 0.35);
 }
 
-/* ── 「순서·삭제」를 켠 동안만 # 칸에 체크박스가 하나 더 들어간다 ──
+/* ── 「순서·삭제」를 켠 동안만 No 칸에 체크박스가 하나 더 들어간다 ──
    44px 그대로면 손잡이·체크박스·번호가 겹쳐 눌리므로 칸을 넓히고,
    그 옆에 붙어 고정되는 프로젝트 칸(.mx-c1)의 왼쪽 위치도 같이 옮긴다. */
-.mx-wrap:not(.editmode-off) .mx-c0 {
+.mx-wrap:not(.editmode-off) .col-no {
   min-width: 66px;
   width: 66px;
 }

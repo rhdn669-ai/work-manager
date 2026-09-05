@@ -326,8 +326,9 @@ export default function ReportsPage() {
             <table className="table team-stats-table cards-sm">
               <thead>
                 <tr>
-                  <th scope="col" style={{ width: 48 }}>
-                    #
+                  {/* (2026-09-05 No 열 표준) */}
+                  <th scope="col" className="col-no">
+                    No
                   </th>
                   <th scope="col">이름</th>
                   <th scope="col">부서</th>
@@ -338,7 +339,9 @@ export default function ReportsPage() {
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={r.uid}>
-                    <td data-label="#">{i + 1}</td>
+                    <td className="col-no" data-label="No">
+                      {i + 1}
+                    </td>
                     <td data-label="이름">
                       <strong>{r.name}</strong>
                       {r.resigned && (

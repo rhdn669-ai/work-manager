@@ -649,8 +649,9 @@ export default function ProductionMatrix({
             </tr>
             {/* 2행: 자재 그룹(판금·하네스·자재) + 불량·상태 — 하위 없는 칸은 rowSpan 2 */}
             <tr className="mx-sub-row">
-              <th scope="col" className="mx-sticky mx-c0" rowSpan={2}>
-                #
+              {/* (2026-09-05 No 열 표준) */}
+              <th scope="col" className="mx-sticky col-no" rowSpan={2}>
+                No
               </th>
               <th scope="col" className="mx-sticky mx-c1" rowSpan={2}>
                 프로젝트
@@ -852,7 +853,7 @@ const MatrixRow = memo(function MatrixRow({
     >
       {({ handleProps }) => (
         <>
-          <td className="mx-sticky mx-c0 mx-no" title={mis ? '납기 날짜 차례와 다릅니다' : undefined}>
+          <td className="mx-sticky col-no" title={mis ? '납기 날짜 차례와 다릅니다' : undefined}>
             <span className="mx-no-wrap">
               {canDrag && (
                 <button

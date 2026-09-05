@@ -325,10 +325,11 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                   </th>
                 )}
                 {/* 맨 앞 순번 — 몇 번째 줄인지 눈으로 짚기 위한 것. 서식 문서번호는 표 위(제목 옆)에 있다.
-                    낱장 서식 목록은 번호를 눌러 들어가는 구조라 문서번호를 그대로 남긴다. (2026-08-10 대표님) */}
+                    낱장 서식 목록은 번호를 눌러 들어가는 구조라 문서번호를 그대로 남긴다. (2026-08-10 대표님)
+                    (2026-09-05 No 열 표준) */}
                 {isLedger ? (
-                  <th scope="col" className="q-rowno">
-                    NO
+                  <th scope="col" className="col-no">
+                    No
                   </th>
                 ) : (
                   <th scope="col">번호</th>
@@ -382,7 +383,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                       </td>
                     )}
                     {isLedger ? (
-                      <td className="q-rowno">{rowIdx + 1}</td>
+                      <td className="col-no">{rowIdx + 1}</td>
                     ) : (
                       <td className="q-num">
                         {r.recordNo ||

@@ -313,7 +313,8 @@ export default function ShortagePage({ embedded = false } = {}) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" className="pmat-no">
+                {/* (2026-09-05 No 열 표준) */}
+                <th scope="col" className="col-no">
                   No
                 </th>
                 <th scope="col">코드</th>
@@ -341,7 +342,7 @@ export default function ShortagePage({ embedded = false } = {}) {
             <tbody>
               {list.map((a, i) => (
                 <tr key={a.itemId || `${a.code}-${i}`}>
-                  <td className="pmat-no">{i + 1}</td>
+                  <td className="col-no">{i + 1}</td>
                   <td className="pmat-code">{a.code}</td>
                   <td className="sht-drawing">{masterMap[a.itemId]?.drawingNo || ''}</td>
                   <td className="sht-name">{a.name}</td>

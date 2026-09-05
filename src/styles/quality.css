@@ -1180,12 +1180,12 @@ textarea.q-cell {
   justify-content: center;
 }
 
-/* 대장 맨 앞 순번 — 몇 번째 줄인지 짚는 용도라 좁고 흐리게 */
-.q-grid-table th.q-rowno,
-.q-grid-table td.q-rowno {
+/* 대장 맨 앞 순번 — 몇 번째 줄인지 짚는 용도라 좁고 흐리게 (2026-09-05 No 열 표준: q-rowno → col-no) */
+.q-grid-table th.col-no,
+.q-grid-table td.col-no {
   width: 44px;
-  text-align: center;
-  color: var(--text-muted, #8b95a1);
+  text-align: left;
+  color: var(--text-light);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }

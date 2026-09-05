@@ -426,7 +426,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             </colgroup>
             <thead>
               <tr>
-                <th scope="col" className="pmat-no">
+                <th scope="col" className="col-no">
                   No
                 </th>
                 <th scope="col">코드</th>
@@ -464,7 +464,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     key={r.id}
                     className={skipped ? 'is-skipped' : done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}
                   >
-                    <td className="pmat-no">{i + 1}</td>
+                    <td className="col-no">{i + 1}</td>
                     <td className="pmat-code">{r.code}</td>
                     <td>{r.drawingNo}</td>
                     <td>{r.name}</td>

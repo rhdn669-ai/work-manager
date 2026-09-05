@@ -95,7 +95,8 @@ function SortableBomRow({ id, canDrag, showCheck, no, checked, onCheck, children
           네이비 머리가 왼쪽으로 삐져나온 것처럼 보인다. 그래서 드래그 핸들과 마찬가지로
           체크박스도 No 칸 안에 둔다 (2026-09-02 대표님 「파란줄 튀어나옴」). */}
       <td className="bom-spacer-col" aria-hidden="true"></td>
-      <td className="bom-no-col" data-label="No">
+      <td className="col-no" data-label="No">
+        {/* (2026-09-05 No 열 표준) */}
         <span className="bom-no-wrap">
           {/* 순서는 앱 공통: 손잡이 → 체크 → 번호 (생산현황과 같게, 2026-09-04 대표님 「통일」) */}
           {canDrag && (
@@ -1429,7 +1430,7 @@ export default function BomDetailPage() {
                     <thead>
                       <tr>
                         <th scope="col" className="bom-spacer-col" aria-hidden="true"></th>
-                        <th scope="col" className="bom-no-col">
+                        <th scope="col" className="col-no">
                           <span className="bom-no-wrap">
                             {!locked && (
                               <input
