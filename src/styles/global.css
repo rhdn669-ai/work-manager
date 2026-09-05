@@ -22988,6 +22988,7 @@ a.lib-row-name:hover {
     'name state'
     'tag state';
   align-items: center;
+  align-items: center;
   column-gap: 6px;
   row-gap: 2px;
   cursor: pointer;
@@ -23379,4 +23380,51 @@ a.lib-row-name:hover {
   .factory-row .factory-name {
     width: 100%;
   }
+}
+
+/* BOX 탭 줄 — 부족 수량 배지 + 오른쪽 끝 보기 전환 (2026-09-05 대표님) */
+.pmat-boxes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pmat-rowview {
+  margin-left: auto;
+}
+/* BOX 마다 부족 수량 — 자리(폭)를 늘 비워 두어 탭 간격이 흔들리지 않게 */
+.pmat-box-switch .view-switch-count {
+  min-width: 20px;
+  justify-content: center;
+  background: transparent;
+  color: transparent;
+}
+.pmat-box-switch .view-switch-item .view-switch-count:not(:empty) {
+  background: var(--danger-soft, #fbe9e7);
+  color: var(--danger, #b3261e);
+}
+.pmat-box-switch .view-switch-item.on .view-switch-count:not(:empty) {
+  background: var(--danger-soft, #fbe9e7);
+  color: var(--danger, #b3261e);
+}
+
+/* 호기 목록 — 도급·사급 상태를 나란히 (2026-09-05 대표님) */
+.mhub-item-states {
+  grid-area: state;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mhub-item-states .mhub-item-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 62px;
+  justify-content: space-between;
+}
+.mhub-item-states .mhub-item-state b {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.75;
 }

@@ -89,7 +89,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).length > 0);
   }, [bomRows, link?.variantKey]);
   const box = sp.get('box') || boxesWithRows[0] || CHECKABLE_BOXES[0];
-  const setBox = (b) => setSp({ box: b }, { replace: true });
+  // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
+  // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
+  const setBox = (b) => {
+    const q = new URLSearchParams(sp);
+    q.set('box', b);
+    setSp(q, { replace: true });
+  };
 
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
@@ -112,7 +118,30 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-03 대표님 「도급은 발주서에 체크하는 방식 … 개별로 체크하게 되어 있는데?」). 사급만 손 체크.
   const locked = supplyTab === 'paid';
   const assigned = !!panel?.paidSet;
-  const shown = rows.filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
+  // BOX 마다 이 탭(도급/사급)의 부족 줄 수 — 탭 오른쪽 배지로 보여 어느 BOX 가 모자란지 한눈에
+  // (2026-09-05 대표님 「부족 떠있는 위치 확인이 안 되니 박스 우측에 부족 수량」)
+  const shortByBox = useMemo(() => {
+    const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
+    const out = {};
+    for (const b of CHECKABLE_BOXES) {
+      const list = bomRowsForBox(forVariant, b).filter((r) =>
+        supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r),
+      );
+      const got = received[b] || {};
+      out[b] = list.filter((r) => !isSkipped(got, r.id) && shortageOf(r.qty, receivedQty(got, r.id)) > 0).length;
+    }
+    return out;
+  }, [bomRows, link?.variantKey, received, supplyTab]);
+
+  // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
+  const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
+  const shown = rows
+    .filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)))
+    .filter((r) => {
+      if (rowView === 'all') return true;
+      const done = rowDone(r, rec);
+      return rowView === 'done' ? done : !done;
+    });
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
 
   // ── ④ 연동: 이 BOX 의 도급/사급이 전부 차면 생산현황 자재 칸을 켠다, 하나라도 빠지면 끈다 ──
@@ -337,13 +366,29 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         </div>
       </div>
 
-      {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만 */}
+      {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만. 오른쪽 끝에 보기(전체·부족·완료) */}
       <div className="pmat-boxes no-print">
         <ViewSwitch
-          options={(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({ value: b, label: b }))}
+          options={(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({
+            value: b,
+            label: b,
+            count: shortByBox[b] > 0 ? shortByBox[b] : ' ',
+          }))}
           value={box}
           onChange={setBox}
           ariaLabel="BOX"
+          className="pmat-box-switch"
+        />
+        <ViewSwitch
+          className="pmat-rowview"
+          options={[
+            { value: 'all', label: '전체' },
+            { value: 'short', label: '부족' },
+            { value: 'done', label: '완료' },
+          ]}
+          value={rowView}
+          onChange={setRowView}
+          ariaLabel="줄 보기"
         />
       </div>
 
@@ -413,7 +458,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       </div>
 
       {shown.length === 0 ? (
-        <p className="purchase-empty no-print">이 BOX 에 {supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.</p>
+        <p className="purchase-empty no-print">
+          {rowView === 'short'
+            ? '부족한 줄이 없습니다.'
+            : rowView === 'done'
+              ? '완료된 줄이 없습니다.'
+              : `이 BOX 에 ${supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.`}
+        </p>
       ) : (
         <div className="table-scroll-x no-print">
           <table className="table pmat-table no-fit">

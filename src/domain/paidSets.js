@@ -205,3 +205,20 @@ export function setsForGroup(lotsByName, { variantKey, variantLabel, projectName
   const unnamed = Number(lotsByName?.['']) || 0;
   return { named, unnamed, total: named + unnamed };
 }
+
+/**
+ * 한 호기의 도급·사급 부족 줄 수를 따로 센다 (2026-09-05 대표님 「사급 도급 각자 상태」).
+ * → { paid: { short, total }, free: { short, total } } — total 은 체크 대상 줄 수
+ */
+export function panelShortageBySupply(rows, materials) {
+  const out = { paid: { short: 0, total: 0 }, free: { short: 0, total: 0 } };
+  for (const r of rows || []) {
+    if (!CHECKABLE_BOXES.includes(String(r.box || '').trim())) continue;
+    const k = isFreeIssue(r) ? 'free' : 'paid';
+    const rec = materials?.[r.box || '']?.[r.id];
+    if (rec?.skip) continue; // 이 호기에서 일시 제외
+    out[k].total += 1;
+    if ((Number(rec?.qty) || 0) < (Number(r.qty) || 0)) out[k].short += 1;
+  }
+  return out;
+}

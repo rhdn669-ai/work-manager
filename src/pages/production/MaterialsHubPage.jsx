@@ -6,7 +6,7 @@ import Select from '../../components/common/Select';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
-import { panelShortage } from '../../domain/paidSets';
+import { panelShortageBySupply } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
 import PanelMaterialsPage from './PanelMaterialsPage';
 import ShortagePage from './ShortagePage';
@@ -70,15 +70,20 @@ export default function MaterialsHubPage() {
       alive = false;
     };
   }, [list, bomRowsByProject]);
-  // 점 대신 글자 — 「완료 / 부족 N / 대기」 (2026-09-05 대표님 「점으로 두지 말고 직관적으로」)
+  // 도급·사급 상태를 따로 (2026-09-05 대표님 「사급 도급 열 만들어서 각자 상태도」)
   const stateOf = (p) => {
-    if (!p.bomLink?.projectId) return { cls: 'is-none', label: 'BOM 없음', title: 'BOM 을 아직 연결하지 않았습니다' };
-    if (!p.paidSet) return { cls: 'is-wait', label: '대기', title: '발주서에 이 호기를 걸면 입고 때 채워집니다' };
+    if (!p.bomLink?.projectId) return null;
     const rows = bomItemsForVariant(bomRowsByProject[p.bomLink.projectId] || [], p.bomLink.variantKey || '');
-    const n = panelShortage(rows, materials[p.id] || {}).short;
-    return n > 0
-      ? { cls: 'is-short', label: `부족 ${n}`, title: `도급 ${n}줄 부족` }
-      : { cls: 'is-ok', label: '완료', title: '도급 자재 다 들어옴' };
+    const s = panelShortageBySupply(rows, materials[p.id] || {});
+    const one = (kind, k) => {
+      if (s[k].total === 0) return { cls: 'is-none', label: '–', title: `${kind} 줄 없음` };
+      if (k === 'paid' && !p.paidSet)
+        return { cls: 'is-wait', label: '대기', title: '발주서에 이 호기를 걸면 입고 때 채워집니다' };
+      return s[k].short > 0
+        ? { cls: 'is-short', label: String(s[k].short), title: `${kind} ${s[k].short}줄 부족` }
+        : { cls: 'is-ok', label: '완료', title: `${kind} 자재 다 들어옴` };
+    };
+    return { paid: one('도급', 'paid'), free: one('사급', 'free') };
   };
   const nameOf = (p) => `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() || '(이름 없음)';
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
@@ -118,9 +123,17 @@ export default function MaterialsHubPage() {
                     {p.bomLink?.variantLabel && <span className="mhub-item-tag">{p.bomLink.variantLabel}</span>}
                     {(() => {
                       const st = stateOf(p);
+                      if (!st) return <span className="mhub-item-state is-none">BOM 없음</span>;
                       return (
-                        <span className={`mhub-item-state ${st.cls}`} title={st.title}>
-                          {st.label}
+                        <span className="mhub-item-states">
+                          <span className={`mhub-item-state ${st.paid.cls}`} title={st.paid.title}>
+                            <b>도급</b>
+                            {st.paid.label}
+                          </span>
+                          <span className={`mhub-item-state ${st.free.cls}`} title={st.free.title}>
+                            <b>사급</b>
+                            {st.free.label}
+                          </span>
                         </span>
                       );
                     })()}
