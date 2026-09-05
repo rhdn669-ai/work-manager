@@ -240,6 +240,7 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
 
   // === 연차 핸들러 ===
   function startEditLeave(l) {
+    if (!editMode) return;
     setEditingLeaveId(l.id);
     setEditLeaveForm({ type: l.type, startDate: l.startDate, endDate: l.endDate, reason: l.reason || '' });
   }
@@ -315,6 +316,7 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
 
   // === 잔업 핸들러 ===
   function startEditOt(r) {
+    if (!editMode) return;
     setEditingOtId(r.id);
     setEditOtForm({
       date: r.date,
@@ -892,7 +894,12 @@ function LeaveTab({
                           <div className="btn-group">
                             {canEdit && (
                               <>
-                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>
+                                <button
+                                  className="btn btn-sm btn-outline"
+                                  disabled={busy || !editMode}
+                                  title={!editMode ? '수정하려면 「잠금」을 푸세요' : undefined}
+                                  onClick={() => startEdit(l)}
+                                >
                                   수정
                                 </button>
                                 <button
@@ -1213,7 +1220,12 @@ function OvertimeTab({
                                 </button>
                               </>
                             )}
-                            <button className="btn btn-sm btn-outline" disabled={rowBusy} onClick={() => startEdit(r)}>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              disabled={rowBusy || !editMode}
+                              title={!editMode ? '수정하려면 「잠금」을 푸세요' : undefined}
+                              onClick={() => startEdit(r)}
+                            >
                               수정
                             </button>
                           </div>

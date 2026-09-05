@@ -112,7 +112,13 @@ function TaskCard({ t, editMode, checked, onCheck, onEdit, onMove }) {
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => onEdit(t)}>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            disabled={!editMode}
+            title={!editMode ? '내용을 바꾸려면 「잠금」을 푸세요' : undefined}
+            onClick={() => onEdit(t)}
+          >
             수정
           </button>
         </div>
@@ -254,6 +260,7 @@ export default function HomeTaskBoard() {
   }
 
   function openEdit(t) {
+    if (!editMode) return;
     setEditId(t.id);
     setForm({
       title: t.title || '',
@@ -318,8 +325,9 @@ export default function HomeTaskBoard() {
     }
   }
 
-  // 모바일: 화살표로 단계 이동 (이전/다음 상태로)
+  // 모바일: 화살표로 단계 이동 (이전/다음 상태로) — 「잠금」 풀렸을 때만 (2026-09-05 대표님 「잠금」 통일)
   async function moveStatus(id, dir) {
+    if (!editMode) return;
     const card = tasks.find((t) => t.id === id);
     if (!card) return;
     const cur = COLS.findIndex((c) => c.key === (card.status || 'todo'));
