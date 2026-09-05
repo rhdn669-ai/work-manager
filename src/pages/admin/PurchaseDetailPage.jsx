@@ -2279,11 +2279,23 @@ export default function PurchaseDetailPage() {
         >
           {!isReadOnly && (
             <>
-              <button type="button" className="btn btn-sm btn-outline" onClick={openItemPicker}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={openItemPicker}
+                disabled={cellsLocked}
+                title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 불러올 수 있습니다' : ''}
+              >
                 <Icon name="plus" className="btn-ic" />
                 품목 불러오기
               </button>
-              <button type="button" className="btn btn-sm btn-outline" onClick={openBomModal}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={openBomModal}
+                disabled={cellsLocked}
+                title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 불러올 수 있습니다' : ''}
+              >
                 BOM 가져오기
               </button>
               <button
@@ -2478,7 +2490,13 @@ export default function PurchaseDetailPage() {
               휴지통{form.deletedItems?.length ? ` (${form.deletedItems.length})` : ''}
             </button>
             {!isReadOnly && form.items.some((ln) => (ln.name || '').trim()) && (
-              <button type="button" className="btn btn-sm btn-danger" onClick={clearAllLines}>
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                onClick={clearAllLines}
+                disabled={cellsLocked}
+                title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 지울 수 있습니다' : ''}
+              >
                 <Icon name="trash" className="btn-ic" />
                 전체 삭제
               </button>
@@ -2769,8 +2787,8 @@ export default function PurchaseDetailPage() {
                                       : !canUseStock
                                         ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
                                         : Number(ln.stockShort) > 0
-                                        ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
-                                        : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
+                                          ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
+                                          : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
                                   }
                                 >
                                   {Number(ln.stockShort) > 0
@@ -2790,8 +2808,8 @@ export default function PurchaseDetailPage() {
                                         : !canUseStock
                                           ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
                                           : Number(ln.stockUsed) > 0
-                                          ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
-                                          : '창고 재고를 쓰지 않고 전부 발주하는 중 — 눌러서 남은 재고만큼 빼기'
+                                            ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
+                                            : '창고 재고를 쓰지 않고 전부 발주하는 중 — 눌러서 남은 재고만큼 빼기'
                                     }
                                   >
                                     <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
@@ -4153,12 +4171,19 @@ export default function PurchaseDetailPage() {
                             type="button"
                             className="btn btn-sm btn-outline"
                             onClick={() => restoreDeletedItem(i)}
-                            disabled={isReadOnly}
+                            disabled={isReadOnly || cellsLocked}
+                            title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 복원할 수 있습니다' : ''}
                           >
                             <Icon name="restore" className="btn-ic" />
                             복원
                           </button>
-                          <button type="button" className="btn btn-sm btn-danger" onClick={() => purgeDeletedItem(i)}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            onClick={() => purgeDeletedItem(i)}
+                            disabled={cellsLocked}
+                            title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 지울 수 있습니다' : ''}
+                          >
                             <Icon name="trash" className="btn-ic" />
                             영구삭제
                           </button>

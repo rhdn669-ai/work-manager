@@ -2065,3 +2065,17 @@ body:has(.pr-page) .main-content {
   background: var(--accent-soft, #feefe7);
   color: var(--accent-press, #b3521c);
 }
+
+/* 열 구분선 — 칸마다 세로선 (2026-09-05 대표님 「구분선이 왜 없냐」).
+   품질 대장(.q-grid-table)과 같은 결: 옅은 격자. BOX 경계는 여전히 한 단 진하게 남는다. */
+.mx-table td,
+.mx-table th {
+  border-right: 1px solid #eef1f4;
+}
+.mx-group-row th {
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+}
+.mx-sub-row th,
+.mx-leaf-row th {
+  border-right: 1px solid #e3e7ec;
+}

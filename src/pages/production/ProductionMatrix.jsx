@@ -22,11 +22,10 @@ import { misorderedIds } from '../../domain/panelOrder';
 import { moveMany, applyVisibleOrder } from '../../domain/moveMany';
 import { makeBomLink, defaultBomProjectId, variantOptionsFor, variantLabelOf } from '../../domain/panelBom';
 import {
-  BUPMOK,
+  MATRIX_BOXES,
+  MATERIAL_ONLY_BOXES,
   JAIP,
   JAIP_GROUPS,
-  IPGO_ITEMS,
-  IPGO_GROUPS,
   GIGU_MAKERS,
   MP_SUBS,
   UI_TASK_STATES,
@@ -632,14 +631,15 @@ export default function ProductionMatrix({
               <th scope="col" className="mx-sticky" colSpan={6}>
                 기본
               </th>
-              {BUPMOK.map((b) => (
-                <th scope="col" key={b} colSpan={b === 'MP' ? MP_SUBS.length + 1 : JAIP.length + 3}>
+              {MATRIX_BOXES.map((b) => (
+                <th
+                  scope="col"
+                  key={b}
+                  colSpan={MATERIAL_ONLY_BOXES.includes(b) ? 1 : b === 'MP' ? MP_SUBS.length + 3 : JAIP.length + 3}
+                >
                   {b}
                 </th>
               ))}
-              <th scope="col" colSpan={IPGO_ITEMS.length}>
-                입고 예정일
-              </th>
               <th scope="col" colSpan={2 + AFTER_TURNON.length}>
                 일정
               </th>
@@ -668,14 +668,26 @@ export default function ProductionMatrix({
               <th scope="col" rowSpan={2}>
                 기구
               </th>
-              {BUPMOK.map((b) =>
-                b === 'MP' ? (
+              {MATRIX_BOXES.map((b) =>
+                MATERIAL_ONLY_BOXES.includes(b) ? (
+                  // 준비작업·LOCAL — 자재 사급 한 칸만
+                  <th scope="col" key={b} className="mx-sub-th mx-box-start" rowSpan={2}>
+                    자재 사급
+                  </th>
+                ) : b === 'MP' ? (
                   <Fragment key={b}>
-                    {MP_SUBS.map((s, si) => (
-                      <th scope="col" key={s} className={`mx-sub-th${si === 0 ? ' mx-box-start' : ''}`} rowSpan={2}>
+                    {/* 판금을 맨 앞, 뒤에 자재 사급 (2026-09-05 대표님) */}
+                    <th scope="col" className="mx-sub-th mx-box-start" rowSpan={2}>
+                      판금
+                    </th>
+                    {MP_SUBS.map((s) => (
+                      <th scope="col" key={s} className="mx-sub-th" rowSpan={2}>
                         {s}
                       </th>
                     ))}
+                    <th scope="col" className="mx-sub-th mx-grp-start" rowSpan={2}>
+                      자재 사급
+                    </th>
                     <th scope="col" className="mx-sub-th" rowSpan={2}>
                       상태
                     </th>
@@ -717,17 +729,6 @@ export default function ProductionMatrix({
                   </Fragment>
                 ),
               )}
-              {IPGO_GROUPS.map((g) =>
-                g.leaves.length === 1 ? (
-                  <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" rowSpan={2}>
-                    {g.label}
-                  </th>
-                ) : (
-                  <th scope="col" key={g.key} className="mx-sub-th mx-grp-start" colSpan={g.leaves.length}>
-                    {g.label}
-                  </th>
-                ),
-              )}
               {/* 자재 납기(발주)와 헷갈려 「판넬납기」로 부른다 — 저장 필드명은 납기 그대로 */}
               <th scope="col" rowSpan={2}>
                 판넬납기
@@ -755,9 +756,9 @@ export default function ProductionMatrix({
             </tr>
             {/* 3행: 하네스·자재 하위 leaf (non-MP만) */}
             <tr className="mx-sub-row mx-leaf-row">
-              {BUPMOK.map((b) => (
+              {MATRIX_BOXES.map((b) => (
                 <Fragment key={b}>
-                  {b === 'MP'
+                  {b === 'MP' || MATERIAL_ONLY_BOXES.includes(b)
                     ? null
                     : JAIP_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g, gi) =>
                         g.leaves.map((l, li) => (
@@ -772,14 +773,6 @@ export default function ProductionMatrix({
                       )}
                 </Fragment>
               ))}
-              {/* 일정 입고일 — 하네스·자재 묶음 하위(사급·도급·제작 / 사급·도급) */}
-              {IPGO_GROUPS.filter((g) => g.leaves.length > 1).flatMap((g) =>
-                g.leaves.map((l) => (
-                  <th scope="col" key={`ipgo-${l.key}`} className="mx-sub-th">
-                    {l.label}
-                  </th>
-                )),
-              )}
             </tr>
           </thead>
           <tbody>
@@ -979,10 +972,37 @@ const MatrixRow = memo(function MatrixRow({
             title="클릭: 기구제작 선택 · 붙여넣기 가능"
             render={(v) => (v ? <span className="mx-gigu-badge">{v}</span> : <span className="mx-cell-empty">·</span>)}
           />
-          {BUPMOK.map((b) => {
+          {MATRIX_BOXES.map((b) => {
+            if (MATERIAL_ONLY_BOXES.includes(b)) {
+              // 준비작업·LOCAL — 자재 사급 한 칸 (2026-09-05 대표님)
+              const on = !!boxMat(p, b).자재_사급;
+              const dt = boxMatDate(p, b).자재_사급;
+              return (
+                <td
+                  key={b}
+                  className="mx-cell mx-boxmat mx-box-start"
+                  style={{ cursor: canEditCells ? 'pointer' : 'default' }}
+                  onClick={() => api.toggleBoxMat(p, b, '자재_사급')}
+                  title={`${b} 자재 사급`}
+                >
+                  {on ? <span className="mx-tag is-done">{mmdd(dt) || <Icon name="check" />}</span> : ''}
+                </td>
+              );
+            }
             if (b === 'MP') {
               const st = deriveMpState(p.mp하위상태 || {});
-              return <MpGroup key={b} p={p} st={st} canEdit={canEditCells} onToggle={(k) => api.cycleMpSub(p, k)} />;
+              return (
+                <MpGroup
+                  key={b}
+                  p={p}
+                  st={st}
+                  canEdit={canEditCells}
+                  onToggle={(k) => api.cycleMpSub(p, k)}
+                  mat={boxMat(p, b)}
+                  matDate={boxMatDate(p, b)}
+                  onMat={(k) => api.toggleBoxMat(p, b, k)}
+                />
+              );
             }
             const mat = boxMat(p, b);
             const matDate = boxMatDate(p, b);
@@ -1009,9 +1029,6 @@ const MatrixRow = memo(function MatrixRow({
               />
             );
           })}
-          {IPGO_ITEMS.map((it) => (
-            <Ipgo api={api} row={idx} key={it.key} p={p} itemKey={it.key} />
-          ))}
           <Dt api={api} row={idx} p={p} field="납기" />
           <Dt api={api} row={idx} p={p} field="턴온" />
           {AFTER_TURNON.map((f) => (
@@ -1063,16 +1080,28 @@ const MatrixRow = memo(function MatrixRow({
 });
 
 // MP 하위: 전장 9종 각 셀(대기→완료→불량 순환) + 종합상태(자동)
-function MpGroup({ p, st, canEdit, onToggle }) {
+function MpGroup({ p, st, canEdit, onToggle, mat = {}, matDate = {}, onMat }) {
+  const matCell = (k, cls) => (
+    <td
+      className={`mx-cell mx-boxmat${cls ? ` ${cls}` : ''}`}
+      style={{ cursor: canEdit ? 'pointer' : 'default' }}
+      onClick={() => onMat && onMat(k)}
+      title={k}
+    >
+      {mat[k] ? <span className="mx-tag is-done">{mmdd(matDate[k]) || <Icon name="check" />}</span> : ''}
+    </td>
+  );
   return (
     <>
-      {MP_SUBS.map((k, ki) => {
+      {/* 판금 — MP 맨 앞 (2026-09-05 대표님) */}
+      {matCell('판금', 'mx-box-start')}
+      {MP_SUBS.map((k) => {
         const s = normState((p.mp하위상태 || {})[k]);
 
         return (
           <td
             key={k}
-            className={`mx-cell mx-boxmat${ki === 0 ? ' mx-box-start' : ''}`}
+            className="mx-cell mx-boxmat"
             style={{ cursor: canEdit ? 'pointer' : 'default' }}
             onClick={() => onToggle(k)}
             title={`${k} — ${s === '문제' ? '불량' : s}`}
@@ -1091,6 +1120,7 @@ function MpGroup({ p, st, canEdit, onToggle }) {
           </td>
         );
       })}
+      {matCell('자재_사급', 'mx-grp-start')}
       <td className="mx-cell mx-boxstate" title={st}>
         {st === '완료' ? (
           <span className="mx-tag is-done">

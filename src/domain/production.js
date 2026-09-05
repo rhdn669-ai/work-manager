@@ -6,6 +6,14 @@ import { PANEL_BOXES, normalizeBoxKeys } from './boxes';
 // 부품(BOX·판넬) 6종 — 명판(P/W BOX·S/D·H/T·ROBOT 등)과 동일 도메인
 // BOX 이름은 domain/boxes.js 에서 BOM 과 함께 쓴다 (2026-09-03 대표님 「1대1 매칭」)
 export const BUPMOK = PANEL_BOXES;
+
+/**
+ * 생산현황 표의 BOX 차례 (2026-09-05 대표님).
+ *  · 「준비작업」·「LOCAL」은 실물 BOX 는 아니지만 BOM 에 줄이 있어 맨 앞에 한 칸씩 둔다
+ *  · 이 두 곳과 MP 는 「자재 사급」 한 칸만 — 나머지 체크(하네스·불량·출고사진)는 쓰지 않는다
+ */
+export const MATERIAL_ONLY_BOXES = ['준비작업', 'LOCAL'];
+export const MATRIX_BOXES = [...MATERIAL_ONLY_BOXES, ...PANEL_BOXES];
 // 자재 입고 항목 — 2단 구조: 판금(단일) · 하네스{사급·제작} · 자재{사급·도급}
 export const JAIP_GROUPS = [
   { key: '판금', label: '판금', leaves: [{ key: '판금', label: '판금' }] },

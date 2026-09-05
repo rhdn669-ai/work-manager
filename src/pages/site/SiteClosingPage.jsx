@@ -2550,7 +2550,6 @@ export default function SiteClosingPage() {
                     onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
                     onBlur={() => flushRow(it.id)}
                     disabled={!canEdit || !editMode || cardType === 'employee'}
-                    title={canEdit && !editMode ? '단가를 바꾸려면 「잠금」을 푸세요' : undefined}
                   />
                 </td>
               )}
@@ -3101,7 +3100,6 @@ export default function SiteClosingPage() {
                               onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
                               onBlur={() => flushRow(it.id)}
                               disabled={!canEdit || !editMode || cardType === 'employee'}
-                              title={canEdit && !editMode ? '단가를 바꾸려면 「잠금」을 푸세요' : undefined}
                             />
                           </div>
                           <div className="foot-field closing-amount">
