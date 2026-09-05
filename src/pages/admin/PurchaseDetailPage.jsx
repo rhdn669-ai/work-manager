@@ -182,6 +182,15 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 입고 칸에 쓰는 짧은 날짜 — 올해 것은 「08-11」, 지난해 건만 「25-08-11」 (2026-09-05 대표님 「우측 공백 없애」)
+function fmtDateShort(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  const md = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return d.getFullYear() === new Date().getFullYear() ? md : `${String(d.getFullYear()).slice(2)}-${md}`;
+}
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -2847,11 +2856,8 @@ export default function PurchaseDetailPage() {
                                       title={`입고 ${fmtDate(ln.receivedAt)}${ln.receivedBy ? ` · ${ln.receivedBy}` : ''}`}
                                       onCancel={isReadOnly ? null : () => clearLineReceive(idx)}
                                     />
-                                    {/* 입고 기록(날짜·담당)은 칩 옆에 옅게 — 칩 안에 넣으면 두 줄이 된다 (2026-09-05 대표님) */}
-                                    <span className="recv-meta">
-                                      {fmtDate(ln.receivedAt)}
-                                      {ln.receivedBy ? ` · ${ln.receivedBy}` : ''}
-                                    </span>
+                                    {/* 날짜만 짧게 — 담당자·전체 날짜는 칩 툴팁으로 (2026-09-05 대표님) */}
+                                    <span className="recv-meta">{fmtDateShort(ln.receivedAt)}</span>
                                   </>
                                 ) : (
                                   <button

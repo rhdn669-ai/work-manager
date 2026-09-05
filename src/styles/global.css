@@ -6716,6 +6716,7 @@ table.cards-sm td {
   align-items: center;
   gap: 4px;
   min-width: 0;
+  width: max-content; /* 내용만큼만 — 오른쪽에 빈칸이 남지 않게 (2026-09-05 대표님) */
 }
 .purchase-line-recv-hint {
   font-size: 13px;
