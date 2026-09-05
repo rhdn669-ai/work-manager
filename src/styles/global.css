@@ -22716,9 +22716,10 @@ a.lib-row-name:hover {
   width: 13px;
   height: 13px;
 }
+/* 세트 배정으로 채워진 수 — 예전 min-width 72px 가 칸을 넘겨 「…」가 보였다 (2026-09-05 대표님) */
 .pmat-locked-qty {
   display: inline-block;
-  min-width: 72px;
+  min-width: 0;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -23272,9 +23273,10 @@ a.lib-row-name:hover {
 }
 .recv-chip.is-none {
   background: transparent;
-  border-color: var(--border);
+  border-color: transparent;
   color: var(--text-muted);
   font-weight: 500;
+  padding: 0 2px;
 }
 .recv-chip.is-skip {
   background: var(--grey-100, #f2f4f6);
@@ -23334,18 +23336,8 @@ a.lib-row-name:hover {
   min-width: 0;
   table-layout: fixed;
 }
-.pmat-table.no-fit th,
-.pmat-table.no-fit td {
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-}
-.pmat-table.no-fit td.pmat-num,
-.pmat-table.no-fit th.pmat-num,
-.pmat-table.no-fit .pmat-meta,
-.pmat-table.no-fit td.col-action {
-  white-space: nowrap;
+.pmat-table.no-fit td.u-wrap {
+  -webkit-line-clamp: 3; /* 규격은 세 줄까지 (2026-09-05 대표님) */
 }
 /* 「이 호기」 칸은 재고 버튼이 있든 없든 같은 폭 — 탭을 옮겨도 표가 흔들리지 않는다 */
 .pmat-table.no-fit td.col-action {

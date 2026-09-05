@@ -420,7 +420,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
-              {['4%', '10%', '9%', '12%', null, '6%', '8%', '5%', '9%', '10%', '9%'].map((w, i) => (
+              {['4%', '10%', '10%', '11%', null, '7%', '8%', '5%', '8%', '8%', '12%'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -467,8 +467,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     <td className="col-no">{i + 1}</td>
                     <td className="pmat-code">{r.code}</td>
                     <td>{r.drawingNo}</td>
-                    <td>{r.name}</td>
-                    <td className="pmat-spec" title={r.spec}>
+                    {/* 긴 이름만 줄바꿈 — 코드·도번·기록은 한 줄로 (2026-09-05 대표님) */}
+                    <td className="u-wrap">{r.name}</td>
+                    <td className="pmat-spec u-wrap" title={r.spec}>
                       {r.spec}
                     </td>
                     <td className="pmat-num">{Number(r.qty) || 0}</td>
