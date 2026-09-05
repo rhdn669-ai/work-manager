@@ -143,6 +143,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return rowView === 'done' ? done : !done;
     });
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
+  // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
+  const hasMeta = shown.some((r) => rec[r.id]?.at);
 
   // ── ④ 연동: 이 BOX 의 도급/사급이 전부 차면 생산현황 자재 칸을 켠다, 하나라도 빠지면 끈다 ──
   useEffect(() => {
@@ -471,9 +473,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
-              {['4%', '10%', '10%', '11%', null, '7%', '8%', '5%', '8%', '8%', '12%'].map((w, i) => (
-                <col key={i} style={w ? { width: w } : undefined} />
-              ))}
+              {['4%', '10%', '10%', '11%', null, '7%', '8%', '5%', '8%', '8%', hasMeta ? '12%' : null]
+                .filter((_, i) => hasMeta || i !== 10)
+                .map((w, i) => (
+                  <col key={i} style={w ? { width: w } : undefined} />
+                ))}
             </colgroup>
             <thead>
               <tr>
@@ -500,7 +504,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col" className="col-action">
                   이 호기
                 </th>
-                <th scope="col">기록</th>
+                {hasMeta && <th scope="col">기록</th>}
               </tr>
             </thead>
             <tbody>
@@ -549,25 +553,28 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
-                      <ReceiptChip
-                        got={got}
-                        need={Number(r.qty) || 0}
-                        skip={skipped}
-                        title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                      />
+                      {/* 재고에서 채울 수 있으면 그 버튼이 입고 자리를 대신한다 — 「이 호기」 칸은
+                          제외/포함만 (2026-09-05 대표님 「재고에서 위치가 이상함」) */}
+                      {supplyTab === 'paid' && !skipped && short > 0 && stockOf(r) > 0 ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary pmat-pull-btn"
+                          onClick={() => pullStock(r, got, short)}
+                          title={`창고 재고 ${stockOf(r)}개 중 ${Math.min(short, stockOf(r))}개를 이 호기로`}
+                        >
+                          재고에서 {Math.min(short, stockOf(r))}
+                        </button>
+                      ) : (
+                        <ReceiptChip
+                          got={got}
+                          need={Number(r.qty) || 0}
+                          skip={skipped}
+                          title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                        />
+                      )}
                     </td>
                     {
                       <td className="col-action">
-                        {supplyTab === 'paid' && short > 0 && stockOf(r) > 0 && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary"
-                            onClick={() => pullStock(r, got, short)}
-                            title={`창고 재고 ${stockOf(r)}개 중 ${Math.min(short, stockOf(r))}개를 이 호기로`}
-                          >
-                            재고에서 {Math.min(short, stockOf(r))}
-                          </button>
-                        )}
                         <button
                           type="button"
                           className="btn btn-sm btn-outline"
@@ -578,7 +585,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         </button>
                       </td>
                     }
-                    <td className="pmat-meta">{meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}</td>
+                    {hasMeta && (
+                      <td className="pmat-meta">{meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}</td>
+                    )}
                   </tr>
                 );
               })}

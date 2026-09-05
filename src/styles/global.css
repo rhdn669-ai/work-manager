@@ -23428,3 +23428,81 @@ a.lib-row-name:hover {
   font-weight: 600;
   opacity: 0.75;
 }
+
+/* 입고 칸의 「재고에서 N」 — 입고 칩과 같은 크기감 (2026-09-05 대표님) */
+.pmat-pull-btn {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* ── 자재 체크 머리·BOX 탭 다듬기 (2026-09-05 대표님 「폰트 크기·두께·위치 좀 더 센스 있게」) ── */
+.page-header--sub .pmat-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+.page-header--sub .pmat-title .pmat-title-sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+  margin-left: 2px;
+}
+.pmat-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+.pmat-link strong {
+  font-weight: 600;
+}
+.pmat-variant {
+  margin-left: 0;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+/* BOX 탭 — 고른 것만 굵게, 나머지는 차분하게 */
+.pmat-box-switch .view-switch-item {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  padding: 0 14px;
+}
+.pmat-box-switch .view-switch-item.on {
+  font-weight: 700;
+}
+/* 부족 수 — 작은 원형 숫자 */
+.pmat-box-switch .view-switch-count {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 17px;
+}
+.pmat-rowview .view-switch-item {
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 0 11px;
+}
+.pmat-rowview .view-switch-item.on {
+  font-weight: 700;
+}
+
+/* 숫자 칸 — 입력칸이 칸보다 넓어 「…」가 찍히던 것 (2026-09-05 대표님) */
+.pmat-table.no-fit td.pmat-num {
+  overflow: visible;
+  text-overflow: clip;
+}
+.pmat-table.no-fit .pmat-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 72px;
+}
