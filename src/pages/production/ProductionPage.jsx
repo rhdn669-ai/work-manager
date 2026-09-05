@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { getBomProjects } from '../../services/bomService';
+import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { subscribeAllMaterials } from '../../services/panelMaterialsService';
+import { panelShortage } from '../../domain/paidSets';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import EditModeButton from '../../components/common/EditModeButton';
@@ -130,6 +132,10 @@ export default function ProductionPage() {
   const [panels, setPanels] = useState([]);
   // BOM 프로젝트(타입 목록) — 표의 「자재」 칸에서 타입을 고른다 (2026-09-03 대표님)
   const [bomProjects, setBomProjects] = useState([]);
+  // 자재 현황 배지 — 호기별 도급 부족 줄 수·미배정 호기 수 (2026-09-05 대표님 「자재 현황으로 직관적인 버튼」)
+  const [materials, setMaterials] = useState({}); // { panelId: { box: items } }
+  const [bomRowsByProject, setBomRowsByProject] = useState({});
+  useEffect(() => subscribeAllMaterials(setMaterials), []);
   useEffect(() => {
     getBomProjects()
       .then((list) => setBomProjects(list || []))
@@ -301,6 +307,43 @@ export default function ProductionPage() {
   }, [panels, company]);
   const maxRate = Math.max(...workerStats.map((s) => s.rate), 1);
 
+  // 이 회사 호기가 쓰는 BOM 줄 — 프로젝트마다 한 번
+  const companyPanels = useMemo(() => panels.filter((p) => !p.회사 || p.회사 === company), [panels, company]);
+  useEffect(() => {
+    const ids = [...new Set(companyPanels.map((p) => p.bomLink?.projectId).filter(Boolean))].filter(
+      (id) => !(id in bomRowsByProject),
+    );
+    if (ids.length === 0) return undefined;
+    let alive = true;
+    Promise.all(ids.map((id) => getBomBySite(id).then((rows) => [id, rows || []]))).then((pairs) => {
+      if (alive) setBomRowsByProject((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [companyPanels, bomRowsByProject]);
+  const matStatus = useMemo(() => {
+    const shortByPanel = {};
+    let short = 0;
+    let unassigned = 0;
+    for (const p of companyPanels) {
+      const pid = p.bomLink?.projectId;
+      if (!pid || p.출고완료 || p.강제종결) continue;
+      // 배정 안 한 호기는 「미배정」이지 「부족」이 아니다 — 부족은 배정된 호기만 센다
+      if (!p.paidSet) {
+        unassigned += 1;
+        continue;
+      }
+      const rows = bomItemsForVariant(bomRowsByProject[pid] || [], p.bomLink.variantKey || '');
+      const n = panelShortage(rows, materials[p.id] || {}).short;
+      if (n > 0) {
+        shortByPanel[p.id] = n;
+        short += n;
+      }
+    }
+    return { shortByPanel, short, unassigned };
+  }, [companyPanels, bomRowsByProject, materials]);
+
   if (userProfile && !allowed) return <Navigate to="/dashboard" replace />;
 
   // 공용 아이디인데 이름을 아직 안 적었다면 먼저 묻는다.
@@ -358,12 +401,26 @@ export default function ProductionPage() {
           {/* 다른 화면으로 가는 버튼은 툴바가 아니라 머리 줄 (2026-09-05 대표님 UI 기준안) */}
           <button
             type="button"
-            className="btn btn-sm btn-outline"
-            onClick={() => navigate(`/production/materials?company=${encodeURIComponent(company)}`)}
-            title="호기 자재 체크 · 도급 배정 · 부족 집계"
+            className={`btn btn-sm btn-outline mat-status-btn${matStatus.short > 0 ? ' has-short' : ''}`}
+            onClick={() =>
+              navigate(
+                `/production/materials?company=${encodeURIComponent(company)}&tab=${matStatus.short > 0 ? 'shortage' : 'check'}`,
+              )
+            }
+            title={
+              matStatus.short > 0 ? `도급 부족 ${matStatus.short}줄 — 부족 집계로` : '부족 없음 — 호기 자재 체크로'
+            }
           >
             <Icon name="archive" className="btn-ic" />
-            자재
+            자재 현황
+            {matStatus.short > 0 ? (
+              <span className="mat-badge is-short">부족 {matStatus.short}</span>
+            ) : (
+              <span className="mat-badge is-ok">
+                <Icon name="check" />
+              </span>
+            )}
+            {matStatus.unassigned > 0 && <span className="mat-badge is-wait">미배정 {matStatus.unassigned}</span>}
           </button>
           {/* 권한자는 적고 고칠 수 있고, 지우는 것만 관리자 (2026-08-12 대표님 — 관리자·권한자 2단계) */}
           {isAdmin && (
@@ -469,6 +526,7 @@ export default function ProductionPage() {
                 orderPool={panels.filter((p) => !p.회사 || p.회사 === company)}
                 bomProjects={bomProjects}
                 editMode={editMode}
+                shortByPanel={matStatus.shortByPanel}
               />
 
               {/* 모바일 카드 */}

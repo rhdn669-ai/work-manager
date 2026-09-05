@@ -1999,3 +1999,53 @@ body:has(.pr-page) .main-content {
 .mx-table tbody tr.is-checked > td.mx-sticky {
   background: var(--primary-softer, #f0f3f8);
 }
+
+/* 「자재 현황」 상태 버튼 배지 (2026-09-05 대표님) */
+.mat-status-btn {
+  gap: 6px;
+}
+.mat-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.mat-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.mat-badge.is-short {
+  background: var(--danger-soft, #fbe9e7);
+  color: var(--danger, #b3261e);
+}
+.mat-badge.is-ok {
+  background: var(--success-soft, #e5f4ec);
+  color: var(--success, #1f7a4d);
+}
+.mat-badge.is-wait {
+  background: var(--grey-100, #f2f4f6);
+  color: var(--text-light);
+}
+/* 구성품 버튼의 호기별 부족 숫자 */
+.mx-mat-btn {
+  position: relative;
+}
+.mx-mat-short {
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--danger, #b3261e);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}

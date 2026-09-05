@@ -227,6 +227,7 @@ export default function ProductionMatrix({
   bomProjects = [], // BOM 프로젝트(타입 목록) — 「자재」 칸에서 타입을 고른다
   checkerName = '', // 종결 등 기록에 남길 이름
   editMode = false, // 「순서·삭제」 토글 — 켜야만 끌기 손잡이·고르기 체크박스가 나온다
+  shortByPanel = {}, // { panelId: 도급 부족 줄 수 } — 구성품 버튼에 빨간 숫자 (2026-09-05 대표님)
 }) {
   const { toast, confirm } = useDialog();
 
@@ -798,6 +799,7 @@ export default function ProductionMatrix({
                     canEditCells={canEditCells}
                     canDefect={canDefect}
                     hasMaterials={!!onMaterials}
+                    shortN={shortByPanel[p.id] || 0}
                     bomProjects={bomProjects}
                     defaultProjectId={defaultProjectId}
                     fillField={fillFieldFor(idx)}
@@ -829,6 +831,7 @@ const MatrixRow = memo(function MatrixRow({
   canEditCells, // 칸 수정 — 잠금을 푼 동안만
   canDefect,
   hasMaterials,
+  shortN = 0,
   bomProjects,
   defaultProjectId,
   fillField, // 날짜 채우기 드래그 범위에 든 줄이면 그 열 이름 — 아니면 ''
@@ -887,8 +890,8 @@ const MatrixRow = memo(function MatrixRow({
               {hasMaterials && p.bomLink?.projectId && (
                 <button
                   type="button"
-                  className="mx-mat-btn"
-                  title="구성품 입고 체크 (BOM)"
+                  className={`mx-mat-btn${shortN > 0 ? ' has-short' : ''}`}
+                  title={shortN > 0 ? `도급 부족 ${shortN}줄 — 구성품 입고 체크` : '구성품 입고 체크 (BOM)'}
                   aria-label="구성품 입고 체크"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -896,6 +899,7 @@ const MatrixRow = memo(function MatrixRow({
                   }}
                 >
                   <Icon name="list" />
+                  {shortN > 0 && <b className="mx-mat-short">{shortN}</b>}
                 </button>
               )}
             </div>
