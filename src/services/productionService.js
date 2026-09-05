@@ -1,4 +1,5 @@
 import { orderOf } from '../domain/panelOrder';
+import { shareSubscription } from './shareSub';
 import {
   collection,
   doc,
@@ -21,7 +22,7 @@ import { syncPanelNcr, removePanelNcr } from './qualityRecordService';
 const panelsRef = collection(db, 'productionPanels');
 
 // 실시간 구독 — recompute(진행률·종합상태) 적용해 콜백
-export function subscribePanels(cb) {
+function openPanelsSub(cb) {
   // 바뀐 문서만 다시 계산한다. 매번 전부 새 객체로 만들면 표의 줄 memo 가 전혀 안 먹어
   // 저장 한 번에 줄 전체가 다시 그려진다 (2026-09-03 태블릿 렉 실측).
   const cache = new Map();
@@ -196,3 +197,6 @@ export async function trashPanel(panel, deletedByName = '') {
     throw err;
   }
 }
+
+// 화면마다 따로 열지 않고 하나를 나눠 쓴다 (2026-09-05 대표님)
+export const subscribePanels = shareSubscription(openPanelsSub);

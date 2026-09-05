@@ -135,7 +135,14 @@ export default function ProductionPage() {
   // 자재 현황 배지 — 호기별 도급 부족 줄 수·미배정 호기 수 (2026-09-05 대표님 「자재 현황으로 직관적인 버튼」)
   const [materials, setMaterials] = useState({}); // { panelId: { box: items } }
   const [bomRowsByProject, setBomRowsByProject] = useState({});
-  useEffect(() => subscribeAllMaterials(setMaterials), []);
+  // 배지에 쓰는 자재 기록·BOM 은 «표를 그린 뒤에» 읽는다 — 첫 화면이 늦게 뜨던 원인
+  const [matReady, setMatReady] = useState(false);
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 400));
+    const id = idle(() => setMatReady(true), { timeout: 1500 });
+    return () => (window.cancelIdleCallback || clearTimeout)(id);
+  }, []);
+  useEffect(() => (matReady ? subscribeAllMaterials(setMaterials) : undefined), [matReady]);
   useEffect(() => {
     getBomProjects()
       .then((list) => setBomProjects(list || []))
@@ -310,6 +317,7 @@ export default function ProductionPage() {
   // 이 회사 호기가 쓰는 BOM 줄 — 프로젝트마다 한 번
   const companyPanels = useMemo(() => panels.filter((p) => !p.회사 || p.회사 === company), [panels, company]);
   useEffect(() => {
+    if (!matReady) return undefined;
     const ids = [...new Set(companyPanels.map((p) => p.bomLink?.projectId).filter(Boolean))].filter(
       (id) => !(id in bomRowsByProject),
     );
@@ -321,7 +329,7 @@ export default function ProductionPage() {
     return () => {
       alive = false;
     };
-  }, [companyPanels, bomRowsByProject]);
+  }, [matReady, companyPanels, bomRowsByProject]);
   // 도급·사급을 따로 센다 (2026-09-05 대표님 「여기도 사급 도급 표시가 필요」)
   const matStatus = useMemo(() => {
     const shortByPanel = {};

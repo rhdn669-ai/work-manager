@@ -137,8 +137,26 @@ export async function deleteBomProject(projectId) {
 }
 
 // 프로젝트별 BOM 항목 조회 (order 순)
+// 같은 BOM 을 여러 화면이 반복해서 읽지 않게 잠깐 담아 둔다 (2026-09-05 대표님).
+// BOM 을 고치는 곳에서 clearBomCache() 로 비운다.
+const bomCache = new Map();
+const BOM_TTL = 60000;
+
+export function clearBomCache(siteId) {
+  if (siteId) bomCache.delete(siteId);
+  else bomCache.clear();
+}
+
 export async function getBomBySite(siteId) {
   if (!siteId) return [];
+  const hit = bomCache.get(siteId);
+  if (hit && Date.now() - hit.at < BOM_TTL) return hit.rows;
+  const rows = await fetchBomBySite(siteId);
+  bomCache.set(siteId, { at: Date.now(), rows });
+  return rows;
+}
+
+async function fetchBomBySite(siteId) {
   try {
     const q = query(bomRef, where('siteId', '==', siteId), orderBy('order'));
     const snap = await getDocs(q);
@@ -152,6 +170,7 @@ export async function getBomBySite(siteId) {
 }
 
 export async function addBomItem(siteId, data) {
+  clearBomCache(siteId);
   return addDoc(bomRef, {
     siteId,
     itemId: data.itemId || '',
@@ -178,6 +197,7 @@ export async function addBomItem(siteId, data) {
 // 드래그 순서변경 — 전달된 id 순서대로 order 저장 (프로젝트 목록 saveBomProjectsOrder와 동일 패턴)
 // ※ 발주서 품목은 가져올 때 복사본이므로 기존 발주서에는 영향 없음 — 이후 「품목 불러오기」부터 새 순서 적용
 export async function saveBomItemsOrder(orderedIds) {
+  clearBomCache();
   const batch = writeBatch(db);
   orderedIds.forEach((id, idx) => {
     batch.update(doc(db, 'bom', id), { order: idx, updatedAt: new Date() });
@@ -186,10 +206,12 @@ export async function saveBomItemsOrder(orderedIds) {
 }
 
 export async function updateBomItem(id, data) {
+  clearBomCache();
   await updateDoc(doc(db, 'bom', id), { ...data, updatedAt: new Date() });
 }
 
 export async function deleteBomItem(id) {
+  clearBomCache();
   await deleteDoc(doc(db, 'bom', id));
 }
 
@@ -201,6 +223,7 @@ export function isFreeIssue(item) {
 
 // 실행취소용 — 원래 id 그대로 복원
 export async function restoreBomItem(id, siteId, data) {
+  clearBomCache(siteId);
   await setDoc(doc(db, 'bom', id), {
     siteId,
     itemId: data.itemId || '',
