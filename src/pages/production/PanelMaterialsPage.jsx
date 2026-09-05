@@ -527,8 +527,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
-              {['3.5%', '11%', '9.5%', '9%', null, '5.5%', '6.5%', '4.5%', '7%', '6.5%', hasMeta ? '12%' : null, '9%']
-                .filter((_, i) => hasMeta || i !== 10)
+              {['3.5%', '11%', '9.5%', '9%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '12%' : null, '8.5%', '5.5%']
+                .filter((_, i) => hasMeta || i !== 9)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
                 ))}
@@ -554,12 +554,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col" className="pmat-ok">
                   입고
                 </th>
-                {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상 (2026-09-05 안 B 6단계) */}
-                <th scope="col" className="col-action">
-                  이 호기
-                </th>
                 {hasMeta && <th scope="col">기록</th>}
                 <th scope="col">비고</th>
+                {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상. 작업 열이라 맨 오른쪽·좁게
+                    (2026-09-05 대표님 「폭을 줄이고 맨 우측으로」) */}
+                <th scope="col" className="col-action pmat-act">
+                  이 호기
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -629,25 +630,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         />
                       )}
                     </td>
-                    {
-                      <td className="col-action">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          onClick={() => toggleSkip(r, !skipped)}
-                          disabled={!editMode}
-                          title={
-                            editMode
-                              ? skipped
-                                ? '이 호기에서 다시 넣기'
-                                : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
-                              : '오른쪽 위 「잠금」을 푼 뒤에'
-                          }
-                        >
-                          {skipped ? '포함' : '제외'}
-                        </button>
-                      </td>
-                    }
                     {hasMeta && (
                       <td className="pmat-meta">
                         {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
@@ -676,6 +658,25 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         aria-label={`${r.name} 비고`}
                       />
                     </td>
+                    {
+                      <td className="col-action pmat-act">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => toggleSkip(r, !skipped)}
+                          disabled={!editMode}
+                          title={
+                            editMode
+                              ? skipped
+                                ? '이 호기에서 다시 넣기'
+                                : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
+                              : '오른쪽 위 「잠금」을 푼 뒤에'
+                          }
+                        >
+                          {skipped ? '포함' : '제외'}
+                        </button>
+                      </td>
+                    }
                   </tr>
                 );
               })}

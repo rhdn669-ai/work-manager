@@ -23674,3 +23674,15 @@ a.lib-row-name:hover {
   padding-left: 8px;
   padding-right: 8px;
 }
+
+/* 자재 체크 「이 호기」 작업 열 — 좁게, 버튼만 (2026-09-05 대표님) */
+.pmat-table th.pmat-act,
+.pmat-table td.pmat-act {
+  padding-left: 4px;
+  padding-right: 6px;
+  text-align: right;
+}
+.pmat-table td.pmat-act .btn {
+  padding: 0 8px;
+  min-width: 0;
+}
