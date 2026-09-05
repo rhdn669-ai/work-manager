@@ -144,32 +144,6 @@ function parseCompoundUnit(unitStr) {
   };
 }
 
-// 간단 모드 — "품명 + 개별단가" (엑셀 2열). 코드는 저장 시 자동 부여, 단가=개별단가(단순품목).
-// 엑셀 2열(탭) 또는 "품명 [공백] 개별단가". 줄 끝 숫자만 단가로 봄(품명 끝 숫자는 공백 없어 안전).
-function parseSimpleBulk(text) {
-  const cleanNum = (v) => (v || '').replace(/[^0-9.]/g, '');
-  return (text || '')
-    .split(/\r?\n/)
-    .map((line) => {
-      const t = line.trim();
-      if (!t) return null;
-      if (t.includes('\t')) {
-        const cols = t.split('\t').map((c) => c.trim());
-        const name = cols[0];
-        const priceCol = cols.slice(1).find((c) => /\d/.test(c)) || '';
-        return name ? { name, unitPrice: cleanNum(priceCol) } : null;
-      }
-      const m = t.match(/\s+([\d,]+(?:\.\d+)?)\s*$/);
-      if (m) {
-        const name = t.slice(0, m.index).trim();
-        return name ? { name, unitPrice: m[1].replace(/,/g, '') } : null;
-      }
-      return { name: t, unitPrice: '' };
-    })
-    .filter(Boolean)
-    .filter((r) => r.name && r.name !== '품명');
-}
-
 // 변동률 배지 — 상승 chevronUp빨강 / 하락 chevronDown파랑 / 동일 −회색
 function RateBadge({ from, to, rate }) {
   const r = rate != null ? Number(rate) : Number(from) > 0 ? ((Number(to) - Number(from)) / Number(from)) * 100 : 0;
@@ -374,11 +348,6 @@ export default function PurchaseItemPage() {
   // 엑셀 일괄 추가 모달
   // 엑셀식 셀 채우기 (드래그) — { field, value, rowIds:[], start, end } | null
   const [fill, setFill] = useState(null);
-  // 그룹 안 일괄 추가 (규격·개별단가)
-  const [groupBulk, setGroupBulk] = useState(null); // { repItem } | null
-  const [groupBulkText, setGroupBulkText] = useState('');
-  const [groupBulkSupplier, setGroupBulkSupplier] = useState('');
-  const [groupBulkSaving, setGroupBulkSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -566,9 +535,6 @@ export default function PurchaseItemPage() {
     const next = moveInLayout(layoutFromGroups(groups), active.id, over.id, groupKeys);
     if (next) await applyLayout(next);
   }
-
-  // 그룹 일괄: "규격 + 개별단가" 파싱 (parseSimpleBulk의 name을 규격으로 사용)
-  const parsedGroupBulk = useMemo(() => parseSimpleBulk(groupBulkText), [groupBulkText]);
 
   // ---- 인라인 편집 ----
   function updateField(id, patch) {
@@ -897,62 +863,6 @@ export default function PurchaseItemPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill]);
 
-  // ---- 그룹 안 일괄 추가 (규격·개별단가) ----
-  function openGroupBulk(repItem) {
-    if (!repItem) return;
-    setGroupBulkText('');
-    setGroupBulkSupplier(repItem.defaultSupplierId || '');
-    setGroupBulk({ repItem });
-  }
-
-  async function handleGroupBulkSubmit() {
-    if (!groupBulk) return;
-    const repItem = groupBulk.repItem;
-    if (!/^IOPN-\d+/.test(repItem.code || '')) {
-      alert('이 그룹은 IOPN 코드가 아니어서 일괄 추가할 수 없습니다.');
-      return;
-    }
-    if (parsedGroupBulk.length === 0) {
-      alert('인식된 항목이 없습니다.');
-      return;
-    }
-    setGroupBulkSaving(true);
-    try {
-      // 대표 품목 단위가 복합단위(예: 610m/roll)면 단가 = 개별단가 × 수량으로 환산 (셀 편집과 동일)
-      const repCu = parseCompoundUnit(repItem.unit);
-      const repQty = repCu ? repCu.qty : 1;
-      let buf = [...items];
-      const payloads = parsedGroupBulk.map((r) => {
-        const code = nextSubCode(buf, repItem.code);
-        buf = [...buf, { code, name: repItem.name }];
-        return {
-          code,
-          name: repItem.name || '', // 품명은 대표 품목명 유지
-          spec: r.name, // 붙여넣은 첫 칸 = 규격
-          maker: repItem.maker || '',
-          drawingNo: repItem.drawingNo || '',
-          unit: repItem.unit || '',
-          category: repItem.category || '',
-          unitPrice: Number(r.unitPrice) || 0,
-          standardPrice: Math.round((Number(r.unitPrice) || 0) * repQty), // 복합단위 환산
-          defaultSupplierId: groupBulkSupplier || '',
-          groupKey: repItem.groupKey || repItem.id,
-          priceHistory: [],
-        };
-      });
-      await Promise.all(payloads.map((d) => addPurchaseItem(d)));
-      setGroupBulk(null);
-      setGroupBulkText('');
-      await loadData();
-      expandGroup(repItem.groupKey || repItem.id);
-      toast(`${payloads.length}개 규격을 추가했습니다.`);
-    } catch {
-      toast('일괄 추가 중 오류가 발생했습니다', 'error');
-    } finally {
-      setGroupBulkSaving(false);
-    }
-  }
-
   if (loading) return <Skeleton.Rows count={6} />;
 
   return (
@@ -1277,17 +1187,6 @@ export default function PurchaseItemPage() {
                                     <Icon name="plus" className="btn-ic" />
                                     추가
                                   </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openGroupBulk(repItem);
-                                    }}
-                                    title="규격·금액 여러 개 붙여넣어 한 번에 추가"
-                                  >
-                                    일괄
-                                  </button>
                                 </div>
                                 <SortableContext
                                   items={subItems.map((it) => it.id)}
@@ -1351,18 +1250,6 @@ export default function PurchaseItemPage() {
                                             >
                                               <Icon name="plus" className="btn-ic" />
                                               추가
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className="btn btn-sm btn-outline"
-                                              style={{ marginLeft: 4 }}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                openGroupBulk(repItem);
-                                              }}
-                                              title="규격·금액 여러 개 붙여넣어 한 번에 추가"
-                                            >
-                                              일괄
                                             </button>
                                           </th>
                                         </tr>
@@ -1942,82 +1829,6 @@ export default function PurchaseItemPage() {
               </div>
             );
           })()}
-      </Modal>
-
-      {/* 그룹 안 일괄 추가 (규격·금액) */}
-      <Modal
-        isOpen={!!groupBulk}
-        onClose={() => setGroupBulk(null)}
-        title={`일괄 추가 — ${groupBulk?.repItem?.name || ''}`}
-      >
-        <div className="form-group">
-          <label>규격 · 개별단가 붙여넣기</label>
-          <p className="field-hint">
-            이 그룹(<strong>{groupBulk?.repItem?.name}</strong>)에 <strong>규격 + 개별단가</strong>를 한 번에
-            추가합니다. 품명은 대표 품목명(<strong>{groupBulk?.repItem?.name}</strong>)으로 동일하게 들어가고, 코드는
-            소분류(-N)로 자동 부여됩니다.
-            <br />
-            엑셀 2열(규격·개별단가) 또는 한 줄에 <code>규격 [공백] 개별단가</code> 형식.
-          </p>
-          <textarea
-            value={groupBulkText}
-            onChange={(e) => setGroupBulkText(e.target.value)}
-            rows={6}
-            placeholder={'예)\n케이블 타이	1500\n릴레이 G2RV	3000\n터미널 블록 800'}
-          />
-        </div>
-
-        <div className="form-group">
-          <label>
-            구매처 선택 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>(선택)</span>
-          </label>
-          <Select
-            value={groupBulkSupplier}
-            onChange={(v) => setGroupBulkSupplier(v)}
-            options={[{ value: '', label: '선택 안 함' }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
-            placeholder="구매처 미지정"
-            ariaLabel="구매처 선택"
-          />
-          <p className="field-hint">추가하는 규격들의 기본 구매처로 지정됩니다. (기본값: 대표 품목 구매처)</p>
-        </div>
-
-        {parsedGroupBulk.length > 0 && (
-          <div className="bulk-preview">
-            <div className="bulk-preview-head">{parsedGroupBulk.length}개 인식됨</div>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col">규격</th>
-                  <th scope="col" style={{ textAlign: 'right' }}>
-                    개별단가
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {parsedGroupBulk.slice(0, 50).map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.name}</td>
-                    <td style={{ textAlign: 'right' }}>{r.unitPrice ? Number(r.unitPrice).toLocaleString() : '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setGroupBulk(null)}>
-            취소
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleGroupBulkSubmit}
-            disabled={groupBulkSaving || parsedGroupBulk.length === 0}
-          >
-            {groupBulkSaving ? '추가 중…' : `${parsedGroupBulk.length}개 추가`}
-          </button>
-        </div>
       </Modal>
     </div>
   );
