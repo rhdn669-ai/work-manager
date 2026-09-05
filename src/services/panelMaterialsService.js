@@ -1,6 +1,5 @@
 import { collection, doc, getDocs, onSnapshot, query, where, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { shareSubscription } from './shareSub';
 
 // 호기 × BOX 의 구성품 입고 기록 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」).
 //
@@ -86,7 +85,7 @@ export async function setReceivedMany(panelId, box, entries, by) {
 }
 
 /** 모든 호기의 기록을 한 번에 — cb({ [panelId]: { [box]: items } }). 구간 부족 집계용 */
-function openAllMaterials(cb) {
+export function subscribeAllMaterials(cb) {
   return onSnapshot(ref, (snap) => {
     const out = {};
     snap.docs.forEach((d) => {
@@ -114,6 +113,3 @@ export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {
     { merge: true },
   );
 }
-
-// 화면마다 따로 열지 않고 하나를 나눠 쓴다 (2026-09-05 대표님)
-export const subscribeAllMaterials = shareSubscription(openAllMaterials);

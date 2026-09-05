@@ -18,7 +18,6 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { shareSubscription } from './shareSub';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
 import { getToday } from '../utils/dateUtils';
 import { groupLayoutUpdates } from '../domain/itemLayout';
@@ -155,7 +154,7 @@ export async function getPurchaseItems() {
 }
 
 // 실시간 구독 — 품목 마스터가 변경될 때마다 콜백 호출
-function openPurchaseItems(cb) {
+export function subscribePurchaseItems(cb) {
   const q = query(itemsRef, orderBy('name'));
   return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
@@ -934,6 +933,3 @@ export async function cancelSettlePurchase(purchase) {
     updatedAt: new Date(),
   });
 }
-
-// 화면마다 따로 열지 않고 하나를 나눠 쓴다 (2026-09-05 대표님)
-export const subscribePurchaseItems = shareSubscription(openPurchaseItems);
