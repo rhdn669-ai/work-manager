@@ -6,6 +6,7 @@ import { isFreeIssue } from './bomService';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
 import { fillPlan } from '../domain/paidSets';
+import { setLotsOf } from '../utils/setLots';
 import { consumeItemStock } from './purchaseService';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
@@ -38,8 +39,9 @@ export async function setPaidSetExcluded(company, itemId, excluded) {
 }
 
 /** 그 현장 발주서들의 품목별 입고 합 —
- *  cb({ [itemId]: qty }, { purchases, lines, noItem, setCount })
- *  setCount = 입고된 발주서에 적힌 세트 수 합(참고용 — 품목 셈과 맞는지 견주어 본다) */
+ *  cb({ [itemId]: qty }, { purchases, lines, noItem, setCount, lotsByName })
+ *  setCount = 입고된 발주서에 적힌 세트 수 합(전 타입), lotsByName = 세트 이름(타입)별 합 — 화면은 이걸로 묶음마다 센다
+ *  (2026-09-05 대표님 안 B 1단계: 타입을 무시하고 합산하던 버그 해소) */
 export function subscribeReceivedBySite(siteId, cb) {
   if (!siteId) return () => {};
   const q = query(purchasesRef, where('siteId', '==', siteId));
@@ -50,9 +52,15 @@ export function subscribeReceivedBySite(siteId, cb) {
       let lines = 0;
       let noItem = 0;
       let setCount = 0;
+      const lotsByName = {};
       snap.docs.forEach((d) => {
         const v = d.data();
-        if ((v.items || []).some((ln) => Number(ln.receivedQty) > 0)) setCount += Number(v.setCount) || 0;
+        if ((v.items || []).some((ln) => Number(ln.receivedQty) > 0)) {
+          for (const lot of setLotsOf(v)) {
+            setCount += lot.count;
+            lotsByName[lot.name] = (lotsByName[lot.name] || 0) + lot.count;
+          }
+        }
         for (const ln of v.items || []) {
           const got = Number(ln.receivedQty) || 0;
           if (got <= 0) continue;
@@ -64,11 +72,11 @@ export function subscribeReceivedBySite(siteId, cb) {
           out[ln.itemId] = (out[ln.itemId] || 0) + got;
         }
       });
-      cb(out, { purchases: snap.size, lines, noItem, setCount });
+      cb(out, { purchases: snap.size, lines, noItem, setCount, lotsByName });
     },
     (err) => {
       console.error('[도급 세트] 발주 입고 구독 오류:', err);
-      cb({}, { purchases: 0, lines: 0, noItem: 0, setCount: 0 });
+      cb({}, { purchases: 0, lines: 0, noItem: 0, setCount: 0, lotsByName: {} });
     },
   );
 }

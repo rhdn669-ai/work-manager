@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
@@ -17,7 +18,14 @@ import {
   topUpPaidSet,
 } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
-import { computeSets, eligiblePanels, groupKey, consumedByItem, panelShortage } from '../../domain/paidSets';
+import {
+  computeSets,
+  eligiblePanels,
+  groupKey,
+  consumedByItem,
+  panelShortage,
+  setsForGroup,
+} from '../../domain/paidSets';
 
 // 도급 세트 (2026-09-03 대표님 「메티스 도급 자재를 273호기부터 우리가 구매 — 몇 세트 입고됐고
 // 어느 호기에 배정할지」).
@@ -25,7 +33,8 @@ import { computeSets, eligiblePanels, groupKey, consumedByItem, panelShortage } 
 // 세트 = 한 호기분 도급 BOM. 발주서(프로젝트 = 그 BOM 프로젝트) 입고 합에서 배정한 만큼을 빼고
 // 세트당 수량으로 나눈 몫의 최솟값이 「남은 세트」다. 배정하면 그 호기의 도급 줄이 BOM 수량으로
 // 채워지고 자재 도급 칸이 켜진다.
-export default function PaidSetsPage() {
+// embedded: 자재 허브 탭 안 (2026-09-05 안 B 2단계)
+export default function PaidSetsPage({ embedded = false } = {}) {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
@@ -175,7 +184,9 @@ export default function PaidSetsPage() {
   const meta = siteId ? received.meta : null;
   // 배정 기준은 발주서에 적힌 세트 수다 — 현장에서 「N세트 발주」로 사 온 것이 그 수.
   // 품목 기준 셈은 「그 세트가 품목까지 다 갖춰졌나」를 보는 보조 숫자.
-  const setsByDoc = Math.max(0, (Number(meta?.setCount) || 0) - assignedPanels.length);
+  // 이 묶음(타입)에 해당하는 세트만 — 프로버 5 + M7H 6 을 한 발주서에 담아도 프로버 묶음은 5 (2026-09-05 안 B 1단계)
+  const groupSets = group ? setsForGroup(meta?.lotsByName || {}, group) : { named: 0, unnamed: 0, total: 0 };
+  const setsByDoc = Math.max(0, groupSets.total - assignedPanels.length);
   const canAssign = setsByDoc > 0;
   const limiterItem = calc.items.find((x) => x.itemId === calc.limiter);
   const bomLoaded = group ? group.projectId in bomByProject : false;
@@ -306,12 +317,14 @@ export default function PaidSetsPage() {
 
   return (
     <div className="page pmat-page pset-page">
-      <div className="page-header">
+      <div className={`page-header${embedded ? ' page-header--sub' : ''}`}>
         <div>
-          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
-            <Icon name="chevronLeft" className="btn-ic" />
-            생산현황
-          </button>
+          {!embedded && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+              <Icon name="chevronLeft" className="btn-ic" />
+              생산현황
+            </button>
+          )}
           <h2 className="page-title pmat-title">
             도급 배정 <span className="pmat-title-sub">· {company}</span>
           </h2>
@@ -320,7 +333,7 @@ export default function PaidSetsPage() {
           {shortPanels.length > 0 && (
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-sm btn-primary"
               disabled={busy !== '' || !canTopUpAll}
               title={
                 canTopUpAll
@@ -335,8 +348,8 @@ export default function PaidSetsPage() {
           )}
           <button
             type="button"
-            className="btn btn-outline"
-            onClick={() => navigate(`/production/shortage?company=${encodeURIComponent(company)}`)}
+            className="btn btn-sm btn-outline"
+            onClick={() => navigate(`/production/materials?tab=shortage&company=${encodeURIComponent(company)}`)}
           >
             <Icon name="list" className="btn-ic" />
             부족 집계
@@ -368,20 +381,13 @@ export default function PaidSetsPage() {
           )}
         </div>
         {groups.length > 1 && (
-          <div className="sht-kinds" role="tablist" aria-label="BOM 타입">
-            {groups.map((g) => (
-              <button
-                key={g.key}
-                type="button"
-                role="tab"
-                aria-selected={group?.key === g.key}
-                className={`bom-supply-tab${group?.key === g.key ? ' on' : ''}`}
-                onClick={() => setGroupSel(g.key)}
-              >
-                {g.variantLabel}
-                <b>{g.panels.length}</b>
-              </button>
-            ))}
+          <div className="sht-kinds">
+            <ViewSwitch
+              options={groups.map((g) => ({ value: g.key, label: g.variantLabel, count: g.panels.length }))}
+              value={group?.key}
+              onChange={setGroupSel}
+              ariaLabel="BOM 타입"
+            />
           </div>
         )}
       </div>
@@ -403,7 +409,14 @@ export default function PaidSetsPage() {
               meta && (
                 <span className="pset-meta">
                   · 발주서 {meta.purchases}건 · 입고 줄 {meta.lines}건
-                  {meta.setCount > 0 && <> · 발주서에 적힌 세트 합 {meta.setCount}</>}
+                  {meta.setCount > 0 && (
+                    <>
+                      {' '}
+                      · 이 타입 세트 {groupSets.named}
+                      {groupSets.unnamed > 0 && <> (+타입 미표기 {groupSets.unnamed})</>}
+                      {meta.setCount !== groupSets.total && <> · 발주서 전체 {meta.setCount}</>}
+                    </>
+                  )}
                   {meta.noItem > 0 && <em className="pset-warn"> · 품목 코드 없는 입고 {meta.noItem}줄은 못 셈</em>}
                 </span>
               )
@@ -420,7 +433,7 @@ export default function PaidSetsPage() {
                 <span>세트</span>
               </div>
               <div className="admin-stat-sub">
-                발주서 기준 {meta?.setCount || 0}세트 입고 − 배정 {assignedPanels.length}
+                이 타입 {groupSets.total}세트 입고 − 배정 {assignedPanels.length}
               </div>
             </div>
             <div className={`admin-stat${bomLoaded && calc.sets < setsByDoc ? ' is-warning' : ''}`}>

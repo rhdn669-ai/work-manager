@@ -192,3 +192,16 @@ export function panelShortage(rows, materials) {
   }
   return { short: out.length, lines: out };
 }
+
+/**
+ * 발주서 세트 내역을 묶음(타입)별로 센다 — 한 발주서에 프로버 5 + M7H 6 을 담아도 프로버 묶음은 5 만.
+ * lotsByName: { [세트 이름]: 세트 수 } (이름 '' 은 옛 발주서의 「타입 미표기」 세트)
+ * 묶음: variantKey 가 있으면 variantLabel, 없으면 projectName 으로 발주서에 적힌다 (발주 상세 BOM 가져오기와 같은 규칙)
+ * (2026-09-05 대표님 안 B 1단계)
+ */
+export function setsForGroup(lotsByName, { variantKey, variantLabel, projectName }) {
+  const name = String((variantKey ? variantLabel : projectName) || '').trim();
+  const named = name ? Number(lotsByName?.[name]) || 0 : 0;
+  const unnamed = Number(lotsByName?.['']) || 0;
+  return { named, unnamed, total: named + unnamed };
+}

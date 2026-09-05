@@ -56,7 +56,6 @@ export function demoPanels() {
       비고: '구조 확인용 샘플',
       현장메모: '샘플 데이터입니다',
       자재입고일: Object.fromEntries(JAIP.map((k, n) => [k, day(-20 + n)])),
-      자재입고상태: Object.fromEntries(JAIP.map((k) => [k, true])),
       부품상태: Object.fromEntries(BUPMOK.map((b, n) => [b, n < 불량수 ? '문제' : n < 5 ? '완료' : '대기'])),
       mp하위상태: Object.fromEntries(MP_SUBS.map((k, n) => [k, n < 6 ? '완료' : '대기'])),
       검수완료: i === 1,

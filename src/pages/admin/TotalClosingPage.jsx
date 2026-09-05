@@ -159,8 +159,10 @@ export default function TotalClosingPage() {
 
   return (
     <div className="total-closing-page">
+      {/* (2026-09-05 대표님 UI 기준안) page-actions 보강 */}
       <div className="page-header">
         <h2>총 마감</h2>
+        <div className="page-actions"></div>
       </div>
 
       <div className="filters">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import Select from '../../components/common/Select';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useDialog } from '../../components/common/useDialog';
@@ -28,7 +29,8 @@ const hogiOf = (p) =>
     .filter(Boolean)
     .join(' · ');
 
-export default function ShortagePage() {
+// embedded: 자재 허브 탭 안 (2026-09-05 안 B 2단계)
+export default function ShortagePage({ embedded = false } = {}) {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useDialog();
@@ -161,22 +163,24 @@ export default function ShortagePage() {
   return (
     <div className="page pmat-page sht-page">
       {/* 머리: 제목(좌) · 주행동 1개(발주용 복사)+출력(우측 끝). 범위는 아래 카드로 — 제목이 길어지지 않게 */}
-      <div className="page-header no-print">
+      <div className={`page-header no-print${embedded ? ' page-header--sub' : ''}`}>
         <div>
-          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
-            <Icon name="chevronLeft" className="btn-ic" />
-            생산현황
-          </button>
+          {!embedded && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+              <Icon name="chevronLeft" className="btn-ic" />
+              생산현황
+            </button>
+          )}
           <h2 className="page-title pmat-title">
             부족 자재 집계 <span className="pmat-title-sub">· {company || '전체'}</span>
           </h2>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary" disabled={list.length === 0} onClick={copyForOrder}>
+          <button type="button" className="btn btn-sm btn-primary" disabled={list.length === 0} onClick={copyForOrder}>
             <Icon name="copy" className="btn-ic" />
             발주용 복사
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => window.print()}>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => window.print()}>
             <Icon name="doc" className="btn-ic" />
             출력
           </button>
@@ -205,22 +209,16 @@ export default function ShortagePage() {
             native
           />
         </div>
-        <div className="sht-kinds" role="tablist" aria-label="도급 사급 구분">
-          {[
-            { key: 'paid', label: '도급' },
-            { key: 'free', label: '사급' },
-          ].map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={supplyTab === t.key}
-              className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-              onClick={() => setSupplyTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="sht-kinds">
+          <ViewSwitch
+            options={[
+              { value: 'paid', label: '도급' },
+              { value: 'free', label: '사급' },
+            ]}
+            value={supplyTab}
+            onChange={setSupplyTab}
+            ariaLabel="도급 사급 구분"
+          />
         </div>
       </div>
 

@@ -40,6 +40,7 @@ import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
@@ -1310,24 +1311,17 @@ export default function BomDetailPage() {
       })()}
 
       {/* 도급 / 사급 — 무엇을 보고 무엇을 인쇄할지 가르는 자리 */}
-      <div className="bom-supply-tabs no-print" role="tablist" aria-label="도급 사급 구분">
-        {[
-          { key: 'all', label: '전체', n: displayItems.length },
-          { key: 'paid', label: '도급', n: paidCount },
-          { key: 'free', label: '사급', n: freeCount },
-        ].map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={supplyTab === t.key}
-            className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-            onClick={() => setSupplyTab(t.key)}
-          >
-            {t.label}
-            <span className="bom-supply-tab-n">{t.n}</span>
-          </button>
-        ))}
+      <div className="bom-supply-tabs no-print">
+        <ViewSwitch
+          options={[
+            { value: 'all', label: '전체', count: displayItems.length },
+            { value: 'paid', label: '도급', count: paidCount },
+            { value: 'free', label: '사급', count: freeCount },
+          ]}
+          value={supplyTab}
+          onChange={setSupplyTab}
+          ariaLabel="도급 사급 구분"
+        />
         <span className="bom-supply-tabs-hint">
           {/* 탭 이름이 이미 말해 준다. 사급만은 「왜 금액이 안 잡히지」에서 멈추지
               않게 한 줄 남긴다 (2026-09-03 대표님 「제거」) */}

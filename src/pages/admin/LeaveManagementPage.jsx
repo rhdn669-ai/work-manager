@@ -604,12 +604,13 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
                   입력한 사유는 당사자의 연차/잔업 내역에 함께 표시됩니다.
                 </p>
               </div>
+              {/* (2026-09-05 대표님 UI 기준안) 모달 푸터 순서: 닫기(왼쪽)→처리(오른쪽) */}
               <div className="modal-actions">
-                <button type="button" className="btn btn-danger" onClick={confirmReason}>
-                  {isLeave ? '취소 처리' : '거절 처리'}
-                </button>
                 <button type="button" className="btn btn-outline" onClick={() => setReasonModal(null)}>
                   닫기
+                </button>
+                <button type="button" className="btn btn-danger" onClick={confirmReason}>
+                  {isLeave ? '취소 처리' : '거절 처리'}
                 </button>
               </div>
             </Modal>

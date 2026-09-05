@@ -303,27 +303,6 @@
   gap: 6px;
   margin-bottom: var(--space-4);
 }
-.q-subtab {
-  padding: 6px 14px;
-  min-height: var(--btn-h-sm);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg-card);
-  color: var(--text-light);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
-.q-subtab:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
-}
-.q-subtab.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
 
 /* ── 준비중 안내 ── */
 .q-todo {

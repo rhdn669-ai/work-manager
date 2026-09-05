@@ -122,6 +122,21 @@ export default function TrashPage() {
 
   return (
     <div className="trash-page">
+      {/* 카테고리 탭 — 상위 도메인 탭은 항상 page-header 위 (2026-09-05 대표님 UI 기준안) */}
+      <div className="tab-nav closing-tab-nav no-print">
+        {TRASH_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`tab-nav-item ${tab === t.key ? 'active' : ''}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+            {counts[t.key] > 0 && <span className="tab-nav-count">{counts[t.key]}</span>}
+          </button>
+        ))}
+      </div>
+
       <div className="page-header">
         <h2>휴지통</h2>
         <div className="page-actions no-print">
@@ -149,20 +164,6 @@ export default function TrashPage() {
         앱 전체의 삭제 기록입니다. 복원하면 원래 위치로 되살아납니다.
         {isAdmin ? ' 영구 삭제는 되돌릴 수 없습니다.' : ' 영구 삭제는 관리자만 할 수 있습니다.'}
       </p>
-
-      <div className="tab-nav closing-tab-nav no-print">
-        {TRASH_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={`tab-nav-item ${tab === t.key ? 'active' : ''}`}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-            {counts[t.key] > 0 && <span className="tab-nav-count">{counts[t.key]}</span>}
-          </button>
-        ))}
-      </div>
 
       <TrashList
         items={items}

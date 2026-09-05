@@ -17,6 +17,7 @@ import { seedDemo, clearDemo, countDemo } from '../../services/demoService';
 import { useDialog } from '../../components/common/useDialog';
 import { assetStatusOf, ASSET_STATUS } from '../../domain/qualityForms';
 import { FORM_FIELDS } from '../../domain/qualityFormFields';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import '../../styles/quality.css';
 
 // 품질보증 (MES 모드) — /quality
@@ -213,20 +214,16 @@ function Overview({ assets, records, now }) {
           </div>
           {hasTrend && (
             <div className="q-trend-switch">
-              {[
-                { k: 'all', label: '전체' },
-                ...COMPANIES.map((c) => ({ k: c, label: c })),
-                { k: 'compare', label: '전체·업체 비교' },
-              ].map((o) => (
-                <button
-                  key={o.k}
-                  type="button"
-                  className={`q-subtab ${trendView === o.k ? 'active' : ''}`}
-                  onClick={() => setTrendView(o.k)}
-                >
-                  {o.label}
-                </button>
-              ))}
+              <ViewSwitch
+                options={[
+                  { value: 'all', label: '전체' },
+                  ...COMPANIES.map((c) => ({ value: c, label: c })),
+                  { value: 'compare', label: '전체·업체 비교' },
+                ]}
+                value={trendView}
+                onChange={setTrendView}
+                ariaLabel="불량률 추이 보기"
+              />
             </div>
           )}
           {hasTrend ? (
@@ -242,16 +239,12 @@ function Overview({ assets, records, now }) {
           </div>
           {hasAnySlice && (
             <div className="q-trend-switch">
-              {[{ k: 'all', label: '전체' }, ...COMPANIES.map((c) => ({ k: c, label: c }))].map((o) => (
-                <button
-                  key={o.k}
-                  type="button"
-                  className={`q-subtab ${sliceView === o.k ? 'active' : ''}`}
-                  onClick={() => setSliceView(o.k)}
-                >
-                  {o.label}
-                </button>
-              ))}
+              <ViewSwitch
+                options={[{ value: 'all', label: '전체' }, ...COMPANIES.map((c) => ({ value: c, label: c }))]}
+                value={sliceView}
+                onChange={setSliceView}
+                ariaLabel="불량 유형 분포 보기"
+              />
             </div>
           )}
           {sliceTotal > 0 ? (
@@ -350,20 +343,18 @@ function TabBody({ tab, subCounts }) {
   const active = tab.subTabs.find((s) => s.key === sub) ?? tab.subTabs[0];
   return (
     <>
+      {/* (2026-09-05 대표님 UI 기준안) 소탭 pill → 공용 ViewSwitch */}
       <div className="q-subtabs">
-        {tab.subTabs.map((s) => (
-          <button
-            key={s.key}
-            type="button"
-            className={`q-subtab ${s.key === sub ? 'active' : ''}`}
-            onClick={() => setSub(s.key)}
-          >
-            {s.label}
-            {subCounts[`${tab.key}.${s.key}`] > 0 && (
-              <span className="tab-nav-count">{subCounts[`${tab.key}.${s.key}`]}</span>
-            )}
-          </button>
-        ))}
+        <ViewSwitch
+          options={tab.subTabs.map((s) => ({
+            value: s.key,
+            label: s.label,
+            count: subCounts[`${tab.key}.${s.key}`] > 0 ? subCounts[`${tab.key}.${s.key}`] : undefined,
+          }))}
+          value={sub}
+          onChange={setSub}
+          ariaLabel="소탭"
+        />
       </div>
 
       {tab.key === 'assets' ? (
@@ -529,6 +520,24 @@ export default function QualityPage() {
 
   return (
     <div>
+      {/* (2026-09-05 대표님 UI 기준안) 대탭(밑줄) 은 page-header 위에 배치 */}
+      <div className="tab-nav">
+        {QUALITY_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`tab-nav-item ${t.key === tabKey ? 'active' : ''}`}
+            onClick={() => {
+              setTabKey(t.key);
+              sessionStorage.setItem('qualityTab', t.key);
+            }}
+          >
+            {t.label}
+            {tabCounts[t.key] > 0 && <span className="tab-nav-count">{tabCounts[t.key]}</span>}
+          </button>
+        ))}
+      </div>
+
       <div className="page-header">
         <h2>품질보증</h2>
         {isAdmin && (
@@ -545,23 +554,6 @@ export default function QualityPage() {
       <div className="admin-stats">
         {kpi.map((k) => (
           <KpiCard key={k.key} item={k} />
-        ))}
-      </div>
-
-      <div className="tab-nav">
-        {QUALITY_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={`tab-nav-item ${t.key === tabKey ? 'active' : ''}`}
-            onClick={() => {
-              setTabKey(t.key);
-              sessionStorage.setItem('qualityTab', t.key);
-            }}
-          >
-            {t.label}
-            {tabCounts[t.key] > 0 && <span className="tab-nav-count">{tabCounts[t.key]}</span>}
-          </button>
         ))}
       </div>
 

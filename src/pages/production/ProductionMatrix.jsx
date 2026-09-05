@@ -469,6 +469,12 @@ export default function ProductionMatrix({
   // BOX 자재입고 항목 토글 → 박스입고 + 체크일자 갱신 + 박스 상태 자동 산출
   const toggleBoxMat = (p, box, k) => {
     if (!canEditCells) return;
+    // 도급 자재는 손으로 켜지 않는다 — 발주서 입고·도급 배정이 채운다. 손으로 켜면 자재 체크 화면이
+    // 계산값으로 도로 덮어써서 「켰는데 꺼져 있다」가 생겼다 (2026-09-05 대표님 안 B 0단계)
+    if (k === '자재_도급') {
+      toast('도급 자재는 「도급 배정」에서 자동으로 채워집니다', 'error');
+      return;
+    }
     const cur = boxMat(p, box);
     const on = !cur[k];
     const nextMat = { ...cur, [k]: on };

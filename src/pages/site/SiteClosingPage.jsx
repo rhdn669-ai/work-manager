@@ -27,6 +27,7 @@ import MoneyInput from '../../components/common/MoneyInput';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
+import ViewSwitch from '../../components/common/ViewSwitch'; // (2026-09-05 대표님 UI 기준안)
 import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 import TrashModal from '../../components/common/TrashModal';
@@ -1652,6 +1653,38 @@ export default function SiteClosingPage() {
 
   return (
     <div className="site-closing-page">
+      {/* 공수표 탭 필터 — 상위 도메인 탭은 항상 page-header 위 (2026-09-05 대표님 UI 기준안) */}
+      {items.length > 0 &&
+        (() => {
+          const cnt = (types) => items.filter((i) => types.includes(i.itemType || 'freelancer')).length;
+          const tabs = [
+            { key: 'all', label: '전체', count: items.length },
+            { key: 'employee', label: '직원', count: cnt(['employee']) },
+            { key: 'freelancer', label: '프리랜서', count: cnt(['freelancer']) },
+            { key: 'daily', label: '일용직', count: cnt(['daily']) },
+            { key: 'vendor', label: '업체(공수)', count: cnt(['vendor']) },
+            { key: 'vendor_case', label: '업체(프로젝트)', count: cnt(['vendor_case']) },
+          ];
+          return (
+            <div
+              className="tab-nav closing-tab-nav"
+              style={{ overflowX: 'auto', flexWrap: 'nowrap', WebkitOverflowScrolling: 'touch' }}
+            >
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`tab-nav-item ${closingTab === t.key ? 'active' : ''}`}
+                  style={{ flexShrink: 0 }}
+                  onClick={() => setClosingTab(t.key)}
+                >
+                  {t.label}
+                  {t.count > 0 && <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{t.count}</span>}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       <div
         className="page-header"
         style={{
@@ -1699,20 +1732,21 @@ export default function SiteClosingPage() {
               {copying ? '복사 중...' : '전월 복사'}
             </button>
           )}
-          {canEditSite(site) && !isCompleted && (
-            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>
-              프로젝트 마감
-            </button>
-          )}
+          <button className="btn btn-outline btn-sm" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
+            목록
+          </button>
           {canEdit && (
             <button className="btn btn-outline btn-sm" onClick={() => setTrashOpen(true)}>
               <Icon name="trash" className="btn-ic" />
               휴지통
             </button>
           )}
-          <button className="btn btn-outline btn-sm" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
-            목록
-          </button>
+          {canEditSite(site) && !isCompleted && (
+            <button className="btn btn-danger btn-sm" onClick={handleCloseProject}>
+              <Icon name="check" className="btn-ic" />
+              프로젝트 마감
+            </button>
+          )}
           {canEdit && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
         </div>
       </div>
@@ -1815,7 +1849,8 @@ export default function SiteClosingPage() {
                   style={{ height: 36 }}
                   onClick={() => handleAddFinance('revenue')}
                 >
-                  + 추가
+                  <Icon name="plus" className="btn-ic" />
+                  추가
                 </button>
               </div>
             )}
@@ -1931,7 +1966,8 @@ export default function SiteClosingPage() {
                             className="btn btn-sm btn-outline revenue-add-row"
                             onClick={() => addClosingRow(f.id)}
                           >
-                            + 마감 추가
+                            <Icon name="plus" className="btn-ic" />
+                            마감 추가
                           </button>
                         )}
                       </div>
@@ -1973,23 +2009,28 @@ export default function SiteClosingPage() {
                 style={{ height: 36 }}
                 onClick={() => handleAddFinance('expense')}
               >
-                + 추가
+                <Icon name="plus" className="btn-ic" />
+                추가
               </button>
               <button
                 className="btn btn-sm btn-outline"
                 style={{ height: 36 }}
                 onClick={() => handleAddFinance('expense', '식대')}
               >
-                + 식대
+                <Icon name="plus" className="btn-ic" />
+                식대
               </button>
               <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '교통비')}>
-                + 교통비
+                <Icon name="plus" className="btn-ic" />
+                교통비
               </button>
               <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '자재비')}>
-                + 자재비
+                <Icon name="plus" className="btn-ic" />
+                자재비
               </button>
               <button className="btn btn-sm btn-outline" onClick={() => handleAddFinance('expense', '운송비')}>
-                + 운송비
+                <Icon name="plus" className="btn-ic" />
+                운송비
               </button>
             </div>
           )}
@@ -2247,59 +2288,31 @@ export default function SiteClosingPage() {
         {canEdit && (
           <div className="finance-actions">
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => setShowEmployeeSelect(true)}>
-              + 직원
+              <Icon name="plus" className="btn-ic" />
+              직원
             </button>
             <button
               className="btn btn-sm btn-outline closing-add-btn"
               onClick={() => openFreelancerPicker('freelancer')}
             >
-              + 프리랜서
+              <Icon name="plus" className="btn-ic" />
+              프리랜서
             </button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openFreelancerPicker('daily')}>
-              + 일용직
+              <Icon name="plus" className="btn-ic" />
+              일용직
             </button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor')}>
-              + 업체(공수)
+              <Icon name="plus" className="btn-ic" />
+              업체(공수)
             </button>
             <button className="btn btn-sm btn-outline closing-add-btn" onClick={() => openVendorPicker('vendor_case')}>
-              + 업체(프로젝트)
+              <Icon name="plus" className="btn-ic" />
+              업체(프로젝트)
             </button>
           </div>
         )}
       </div>
-      {/* 공수표 탭 필터 */}
-      {items.length > 0 &&
-        (() => {
-          const cnt = (types) => items.filter((i) => types.includes(i.itemType || 'freelancer')).length;
-          const tabs = [
-            { key: 'all', label: '전체', count: items.length },
-            { key: 'employee', label: '직원', count: cnt(['employee']) },
-            { key: 'freelancer', label: '프리랜서', count: cnt(['freelancer']) },
-            { key: 'daily', label: '일용직', count: cnt(['daily']) },
-            { key: 'vendor', label: '업체(공수)', count: cnt(['vendor']) },
-            { key: 'vendor_case', label: '업체(프로젝트)', count: cnt(['vendor_case']) },
-          ];
-          return (
-            <div
-              className="tab-nav closing-tab-nav"
-              style={{ overflowX: 'auto', flexWrap: 'nowrap', WebkitOverflowScrolling: 'touch' }}
-            >
-              {tabs.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  className={`tab-nav-item ${closingTab === t.key ? 'active' : ''}`}
-                  style={{ flexShrink: 0 }}
-                  onClick={() => setClosingTab(t.key)}
-                >
-                  {t.label}
-                  {t.count > 0 && <span style={{ opacity: 0.55, marginLeft: 3, fontSize: '0.85em' }}>{t.count}</span>}
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-
       {/* 외주관리 연동 datalist */}
       <datalist id="closing-freelancer-list">
         {freelancers.map((f) => (
@@ -2523,18 +2536,17 @@ export default function SiteClosingPage() {
               </div>
             )}
             <div className="closing-cards-toolbar">
-              <div className="closing-viewtog">
-                <button
-                  type="button"
-                  className={viewMode === 'matrix' ? 'on' : ''}
-                  onClick={() => setViewMode('matrix')}
-                >
-                  표
-                </button>
-                <button type="button" className={viewMode === 'card' ? 'on' : ''} onClick={() => setViewMode('card')}>
-                  카드
-                </button>
-              </div>
+              {/* 표/카드 전환 — 공용 ViewSwitch (2026-09-05 대표님 UI 기준안) */}
+              <ViewSwitch
+                className="closing-view-switch"
+                options={[
+                  { value: 'matrix', label: '표' },
+                  { value: 'card', label: '카드' },
+                ]}
+                value={viewMode}
+                onChange={setViewMode}
+                ariaLabel="공수표 보기"
+              />
               {viewMode === 'card' && (
                 <button
                   type="button"
@@ -3112,14 +3124,15 @@ export default function SiteClosingPage() {
                     />
                   </div>
                 </div>
+                {/* 취소 → 확인 순서 (2026-09-05 대표님 UI 기준안) */}
                 <div className="modal-actions" style={{ flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="btn btn-outline"
                     style={{ whiteSpace: 'nowrap', minWidth: 60 }}
-                    onClick={saveCsCellModal}
+                    onClick={() => setCsCellModal(null)}
                   >
-                    저장
+                    취소
                   </button>
                   <button
                     type="button"
@@ -3132,11 +3145,11 @@ export default function SiteClosingPage() {
                   </button>
                   <button
                     type="button"
-                    className="btn btn-outline"
+                    className="btn btn-primary"
                     style={{ whiteSpace: 'nowrap', minWidth: 60 }}
-                    onClick={() => setCsCellModal(null)}
+                    onClick={saveCsCellModal}
                   >
-                    취소
+                    저장
                   </button>
                 </div>
               </div>
@@ -3685,15 +3698,16 @@ export default function SiteClosingPage() {
               "기존 자동채움 끄고 추가"를 선택하면 위 프로젝트의{' '}
               <strong>자동채움만 끄고 기존 입력값은 그대로 유지</strong>합니다(앞으로 자동으로 다시 채우지 않음).
             </p>
+            {/* 취소 → 확인 순서 (2026-09-05 대표님 UI 기준안) */}
             <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={() => confirmDupAdd(true)}>
-                기존 자동채움 끄고 추가
+              <button type="button" className="btn btn-outline" onClick={() => setDupAddModal(null)}>
+                취소
               </button>
               <button type="button" className="btn btn-outline" onClick={() => confirmDupAdd(false)}>
                 그냥 추가
               </button>
-              <button type="button" className="btn btn-outline" onClick={() => setDupAddModal(null)}>
-                취소
+              <button type="button" className="btn btn-primary" onClick={() => confirmDupAdd(true)}>
+                기존 자동채움 끄고 추가
               </button>
             </div>
           </div>

@@ -312,7 +312,6 @@ export function emptyPanel(overrides = {}) {
     자재입고일: {}, // 일정 항목별 입고일 { 판금:'YYYY-MM-DD', 하네스_사급:'', ... }
     비고: '',
     현장메모: '',
-    자재입고상태: Object.fromEntries(JAIP.map((k) => [k, false])),
     부품상태: Object.fromEntries(BUPMOK.map((b) => [b, '대기'])),
     mp하위상태: Object.fromEntries(MP_SUBS.map((k) => [k, '대기'])),
     검수완료: false,

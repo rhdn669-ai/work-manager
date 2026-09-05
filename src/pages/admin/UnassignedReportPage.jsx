@@ -274,8 +274,10 @@ export default function UnassignedReportPage() {
 
   return (
     <div className="unassigned-report-page">
+      {/* (2026-09-05 대표님 UI 기준안) page-actions 보강 */}
       <div className="page-header">
         <h2>직원 배치현황</h2>
+        <div className="page-actions"></div>
       </div>
 
       <div className="filters">

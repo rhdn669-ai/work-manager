@@ -90,7 +90,11 @@ export default function AttendancePage() {
   return (
     <div className="attendance-page">
       <AttendanceTabs />
-      <h2>잔업 등록</h2>
+      {/* (2026-09-05 대표님 UI 기준안) 페이지 머리 표준화 */}
+      <div className="page-header">
+        <h2>잔업 등록</h2>
+        <div className="page-actions"></div>
+      </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body">

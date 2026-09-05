@@ -33,7 +33,11 @@ export default function LeaveBalancePage() {
   return (
     <div className="leave-balance-page">
       <LeaveTabs />
-      <h2>연차 잔여 현황</h2>
+      {/* (2026-09-05 대표님 UI 기준안) 페이지 머리 표준화 */}
+      <div className="page-header">
+        <h2>연차 잔여 현황</h2>
+        <div className="page-actions"></div>
+      </div>
 
       {balance ? (
         <div className="card">

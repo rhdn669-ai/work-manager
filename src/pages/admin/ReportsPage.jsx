@@ -174,10 +174,7 @@ export default function ReportsPage() {
 
   return (
     <div className="reports-page">
-      <div className="page-header">
-        <h2>잔업 · 연차</h2>
-      </div>
-
+      {/* 보기 전환 탭 — 상위 도메인 탭은 항상 page-header 위 (2026-09-05 대표님 UI 기준안) */}
       <div className="tab-nav" role="tablist" aria-label="보기 전환" style={{ marginBottom: 14 }}>
         <button
           type="button"
@@ -193,6 +190,11 @@ export default function ReportsPage() {
         >
           신청 내역
         </button>
+      </div>
+
+      <div className="page-header">
+        <h2>잔업 · 연차</h2>
+        <div className="page-actions"></div>
       </div>
 
       {viewMode === 'requests' ? (
@@ -254,7 +256,7 @@ export default function ReportsPage() {
                       <th scope="col">프로젝트</th>
                       <th scope="col">시간</th>
                       <th scope="col">사유</th>
-                      <th scope="col" style={{ width: 140 }}></th>
+                      <th scope="col" className="col-action"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -275,7 +277,7 @@ export default function ReportsPage() {
                         <td data-label="사유" title={r.reason || ''} style={{ wordBreak: 'break-word' }}>
                           {r.reason || '-'}
                         </td>
-                        <td>
+                        <td className="col-action">
                           <div className="btn-group">
                             <button
                               className="btn btn-sm btn-primary"
@@ -639,15 +641,15 @@ export function EmployeeDetailModal({
                               />
                             </div>
                             <div className="btn-group">
-                              <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>
-                                저장
-                              </button>
                               <button
                                 className="btn btn-sm btn-outline"
                                 disabled={busy}
                                 onClick={() => setEditingId(null)}
                               >
                                 취소
+                              </button>
+                              <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(r)}>
+                                저장
                               </button>
                             </div>
                           </div>
@@ -770,15 +772,15 @@ export function EmployeeDetailModal({
                             />
                           </div>
                           <div className="btn-group">
-                            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>
-                              저장
-                            </button>
                             <button
                               className="btn btn-sm btn-outline"
                               disabled={busy}
                               onClick={() => setEditingId(null)}
                             >
                               취소
+                            </button>
+                            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => saveEdit(l)}>
+                              저장
                             </button>
                           </div>
                         </div>

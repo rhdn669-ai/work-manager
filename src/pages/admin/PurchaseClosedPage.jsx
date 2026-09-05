@@ -81,8 +81,10 @@ export default function PurchaseClosedPage() {
 
   return (
     <div className="purchase-list-page">
+      {/* (2026-09-05 대표님 UI 기준안) page-actions 보강 */}
       <div className="page-header">
         <h2>종결 발주</h2>
+        <div className="page-actions"></div>
       </div>
 
       <p className="field-hint" style={{ marginBottom: 12 }}>

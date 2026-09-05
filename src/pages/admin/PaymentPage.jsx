@@ -6,6 +6,8 @@ import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
 import MoneyCard from '../../components/common/MoneyCard';
+import Select from '../../components/common/Select';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import {
   getPurchases,
   getSuppliers,
@@ -449,41 +451,32 @@ export default function PaymentPage() {
         리스트에서 확정하지 않은 건은 <strong>「마감 미확정」</strong>으로 표시됩니다.
       </p>
 
-      {/* 년월 드롭다운 + 검색 */}
+      {/* 년월 드롭다운 + 검색 (2026-09-05 대표님 UI 기준안) */}
       <div className="payment-filterbar no-print">
         {/* 묶는 기준 — 업체별(기본) / 프로젝트(발주서)별 / 일자별 */}
-        <div className="payment-groupby">
-          {[
-            { k: 'supplier', label: '업체별' },
-            { k: 'project', label: '프로젝트별' },
-            { k: 'date', label: '일자별' },
-          ].map((o) => (
-            <button
-              key={o.k}
-              type="button"
-              className={`btn btn-sm ${groupBy === o.k ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => {
-                setGroupBy(o.k);
-                setExpanded(new Set()); // 기준이 바뀌면 폴더 키가 달라지므로 접어 둔다
-              }}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-        <select
+        <ViewSwitch
+          options={[
+            { value: 'supplier', label: '업체별' },
+            { value: 'project', label: '프로젝트별' },
+            { value: 'date', label: '일자별' },
+          ]}
+          value={groupBy}
+          onChange={(v) => {
+            setGroupBy(v);
+            setExpanded(new Set()); // 기준이 바뀌면 폴더 키가 달라지므로 접어 둔다
+          }}
+          ariaLabel="업체별/프로젝트별/일자별 보기"
+        />
+        <Select
           className="payment-month-select"
           value={monthFilter}
-          onChange={(e) => setMonthFilter(e.target.value)}
-          aria-label="결제요청 년월 선택"
-        >
-          <option value="all">전체 기간</option>
-          {monthOptions.map((m) => (
-            <option key={m} value={m}>
-              {m.replace('.', '년 ')}월
-            </option>
-          ))}
-        </select>
+          onChange={setMonthFilter}
+          options={[
+            { value: 'all', label: '전체 기간' },
+            ...monthOptions.map((m) => ({ value: m, label: `${m.replace('.', '년 ')}월` })),
+          ]}
+          ariaLabel="결제요청 년월 선택"
+        />
         <input
           className="purchase-filter-search"
           type="search"
@@ -641,7 +634,7 @@ export default function PaymentPage() {
                             <th scope="col" style={{ width: 150 }}>
                               세금계산서
                             </th>
-                            <th scope="col" className="col-action" style={{ width: 280 }}>
+                            <th scope="col" className="col-action">
                               작업
                             </th>
                           </tr>

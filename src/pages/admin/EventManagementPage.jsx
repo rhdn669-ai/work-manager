@@ -270,9 +270,10 @@ export default function EventManagementPage() {
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
+          {/* (2026-09-05 대표님 UI 기준안) 주행동은 「새 이벤트/공지」 하나만 — 항상 outline */}
           <button
             type="button"
-            className={`btn btn-sm ${isNewYearWindow && missingThisYearCount > 0 ? 'btn-primary' : 'btn-outline'}`}
+            className="btn btn-sm btn-outline"
             onClick={handleSyncKoreanHolidays}
             disabled={syncing}
             title={`${currentYear}년 한국 공휴일을 Firestore에 일괄 등록합니다`}

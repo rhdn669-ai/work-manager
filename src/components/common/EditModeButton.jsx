@@ -7,7 +7,7 @@ export default function EditModeButton({ on, onToggle, label, title, className =
   return (
     <button
       type="button"
-      className={`btn btn-sm ${on ? 'btn-primary' : 'btn-outline'} editmode-btn${on ? ' on' : ''} ${className}`}
+      className={`btn btn-sm btn-outline editmode-btn${on ? ' on' : ''} ${className}`}
       aria-pressed={on}
       onClick={onToggle}
       title={

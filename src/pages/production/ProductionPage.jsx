@@ -4,6 +4,7 @@ import { getBomProjects } from '../../services/bomService';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import EditModeButton from '../../components/common/EditModeButton';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction, isDefectOnly, canEnterProduction } from '../../utils/workspace';
@@ -353,7 +354,17 @@ export default function ProductionPage() {
             </button>
           )}
         </h2>
-        <div className="page-actions" style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+        <div className="page-actions">
+          {/* 다른 화면으로 가는 버튼은 툴바가 아니라 머리 줄 (2026-09-05 대표님 UI 기준안) */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={() => navigate(`/production/materials?company=${encodeURIComponent(company)}`)}
+            title="호기 자재 체크 · 도급 배정 · 부족 집계"
+          >
+            <Icon name="archive" className="btn-ic" />
+            자재
+          </button>
           {/* 권한자는 적고 고칠 수 있고, 지우는 것만 관리자 (2026-08-12 대표님 — 관리자·권한자 2단계) */}
           {isAdmin && (
             <button className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
@@ -372,6 +383,7 @@ export default function ProductionPage() {
                 <Icon name="plus" className="btn-ic" />
                 판넬 추가
               </button>
+              <EditModeButton on={editMode} onToggle={toggleEditMode} />
             </>
           )}
         </div>
@@ -385,19 +397,13 @@ export default function ProductionPage() {
             <b>{panels.filter((p) => (p.회사 || '') === c).length}</b>
           </button>
         ))}
-        <div className="pr-views" role="tablist" aria-label="보기">
-          {VIEWS.map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={view === v}
-              className={`pr-chip ${view === v ? 'on' : ''}`}
-              onClick={() => setView(v)}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <ViewSwitch
+          className="company-tabs-right"
+          options={VIEWS.map((v) => ({ value: v, label: v }))}
+          value={view}
+          onChange={setView}
+          ariaLabel="보기"
+        />
       </div>
 
       {/* 월별 대수 — 회사마다 세는 날이 다르다(메티스=출하, 디에이치=I/O CHECK).
@@ -423,34 +429,20 @@ export default function ProductionPage() {
               <Icon name="search" />
               <input placeholder="프로젝트·호기·자재·납입처 검색" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
-            <button className={`pr-chip ${urgentOnly ? 'on' : ''}`} onClick={() => setUrgentOnly((v) => !v)}>
+            {/* 켜고 끄는 필터 — 세그먼트와 다른 부품 (2026-09-05 대표님 UI 기준안) */}
+            <button
+              type="button"
+              className={`filter-chip${urgentOnly ? ' on' : ''}`}
+              onClick={() => setUrgentOnly((v) => !v)}
+            >
               긴급 D-7
             </button>
-            <button className={`pr-chip ${hideShipped ? 'on' : ''}`} onClick={() => setHideShipped((v) => !v)}>
+            <button
+              type="button"
+              className={`filter-chip${hideShipped ? ' on' : ''}`}
+              onClick={() => setHideShipped((v) => !v)}
+            >
               출고 숨김
-            </button>
-            {/* 호기 범위를 골라 무엇이 얼마나 모자란지 — BOM 을 연결한 호기만 잡힌다
-                (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」).
-                필터 칩이 아니라 다른 화면으로 가는 버튼이라 오른쪽 끝에 둔다. */}
-            {canEdit && <EditModeButton className="board-toolbar-right" on={editMode} onToggle={toggleEditMode} />}
-            <button
-              type="button"
-              className={`btn btn-sm btn-outline${canEdit ? '' : ' board-toolbar-right'}`}
-              onClick={() => navigate(`/production/shortage?company=${encodeURIComponent(company)}`)}
-              title="호기 범위의 부족 자재를 품목별로 합산"
-            >
-              <Icon name="list" className="btn-ic" />
-              부족 집계
-            </button>
-            {/* 우리가 사서 넣는 도급 자재 — 몇 세트 들어왔고 어느 호기에 줄지 (2026-09-03 대표님) */}
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => navigate(`/production/paid-sets?company=${encodeURIComponent(company)}`)}
-              title="도급 배정 — 세트 입고 현황 · 호기 배정"
-            >
-              <Icon name="archive" className="btn-ic" />
-              도급 배정
             </button>
           </div>
 
@@ -471,7 +463,9 @@ export default function ProductionPage() {
                 checkerName={workerName}
                 onOpen={openModal}
                 onRemove={handleRemove}
-                onMaterials={(id) => navigate(`/production/${id}/materials`)}
+                onMaterials={(id) =>
+                  navigate(`/production/materials?tab=check&panel=${id}&company=${encodeURIComponent(company)}`)
+                }
                 orderPool={panels.filter((p) => !p.회사 || p.회사 === company)}
                 bomProjects={bomProjects}
                 editMode={editMode}
@@ -528,7 +522,9 @@ export default function ProductionPage() {
                                 aria-label="구성품 입고 체크"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/production/${p.id}/materials`);
+                                  navigate(
+                                    `/production/materials?tab=check&panel=${p.id}&company=${encodeURIComponent(company)}`,
+                                  );
                                 }}
                               >
                                 <Icon name="list" />

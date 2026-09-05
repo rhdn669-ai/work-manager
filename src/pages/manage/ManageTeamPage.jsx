@@ -348,8 +348,10 @@ export default function ManageTeamPage() {
     const subLeader = myTeam && myTeam.subManagerId ? userMap[myTeam.subManagerId] : null;
     return (
       <div className="manage-team-page">
+        {/* (2026-09-05 대표님 UI 기준안) page-actions 보강 */}
         <div className="page-header">
           <h2>우리 팀{myTeam && ` — ${myTeam.name}`}</h2>
+          <div className="page-actions"></div>
         </div>
         {!myTeam ? (
           <div className="card">
@@ -646,8 +648,10 @@ export default function ManageTeamPage() {
     const now = new Date();
     return (
       <div className="manage-team-page">
+        {/* (2026-09-05 대표님 UI 기준안) page-actions 보강 */}
         <div className="page-header">
           <h2>팀 구성 현황{myTeam && ` — ${myTeam.name}`}</h2>
+          <div className="page-actions"></div>
         </div>
         <p className="field-hint">
           {now.getFullYear()}년 {now.getMonth() + 1}월 기준 잔업 현황

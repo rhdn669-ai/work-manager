@@ -1338,7 +1338,8 @@ export default function PurchaseItemPage() {
                                           <th scope="col" style={{ width: 110 }}>
                                             비고
                                           </th>
-                                          <th scope="col" className="item-group-add-th">
+                                          {/* (2026-09-05 대표님 UI 기준안) 작업 열 표준 클래스로 통일 */}
+                                          <th scope="col" className="col-action">
                                             <button
                                               type="button"
                                               className="btn btn-sm btn-outline"

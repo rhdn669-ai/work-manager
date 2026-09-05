@@ -4,6 +4,7 @@ import { getTrashItems, restoreTrashItem, purgeTrashItem } from '../../services/
 import { useDialog } from '../../components/common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
 import Skeleton from '../../components/common/Skeleton';
+import Icon from '../../components/common/Icon';
 
 const TYPE_LABEL = {
   purchase: { label: '발주', cls: 'ordered' },
@@ -134,12 +135,14 @@ export default function PurchaseTrashPage() {
                   <td data-label="삭제일시">{fmtDateTime(t.deletedAt)}</td>
                   <td data-label="삭제자">{t.deletedByName || '-'}</td>
                   <td data-label="작업" className="col-action">
+                    {/* (2026-09-05 대표님 UI 기준안) 복원/되돌리기는 outline + 아이콘 */}
                     <button
-                      className="btn btn-sm btn-primary"
+                      className="btn btn-sm btn-outline"
                       onClick={() => handleRestore(t)}
                       disabled={busyId === t.id}
                       style={{ marginRight: 6 }}
                     >
+                      <Icon name="restore" className="btn-ic" />
                       복원
                     </button>
                     {isAdmin && (

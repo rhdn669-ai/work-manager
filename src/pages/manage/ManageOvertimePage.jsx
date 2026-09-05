@@ -78,7 +78,11 @@ export default function ManageOvertimePage() {
 
   return (
     <div className="manage-overtime-page">
-      <h2>부서원 잔업 현황</h2>
+      {/* (2026-09-05 대표님 UI 기준안) 페이지 머리 표준화 */}
+      <div className="page-header">
+        <h2>부서원 잔업 현황</h2>
+        <div className="page-actions"></div>
+      </div>
 
       {/* 승인 대기 */}
       {pendingList.length > 0 && (

@@ -211,7 +211,11 @@ export default function TeamReportsPage() {
 
   return (
     <div className="reports-page">
-      <h2>우리 팀{myTeam && ` — ${myTeam.name}`}</h2>
+      {/* (2026-09-05 대표님 UI 기준안) 페이지 머리 표준화 */}
+      <div className="page-header">
+        <h2>우리 팀{myTeam && ` — ${myTeam.name}`}</h2>
+        <div className="page-actions"></div>
+      </div>
 
       <div className="filters">
         <Select

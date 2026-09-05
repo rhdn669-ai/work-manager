@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -17,8 +18,10 @@ import { specFontClass, localStamp } from '../../utils/printText';
 //
 // 기록은 호기마다 따로(panelMaterials). 같은 BOM 을 여러 호기가 쓰므로 BOM 에 적으면
 // 섞인다. 구성품이 전부 차면 생산현황의 「자재 도급 / 자재 사급」 칸이 저절로 켜진다.
-export default function PanelMaterialsPage() {
-  const { panelId } = useParams();
+// embedded: 자재 허브(MaterialsHubPage) 탭 안에서 그릴 때 — 뒤로 버튼·큰 제목 없이 (2026-09-05 안 B 2단계)
+export default function PanelMaterialsPage({ embedded = false, panelId: panelIdProp = '' } = {}) {
+  const params = useParams();
+  const panelId = panelIdProp || params.panelId;
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
@@ -213,12 +216,14 @@ export default function PanelMaterialsPage() {
   return (
     <div className="page pmat-page">
       {/* ── 화면 ── */}
-      <div className="page-header no-print">
+      <div className={`page-header no-print${embedded ? ' page-header--sub' : ''}`}>
         <div>
-          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
-            <Icon name="chevronLeft" className="btn-ic" />
-            생산현황
-          </button>
+          {!embedded && (
+            <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+              <Icon name="chevronLeft" className="btn-ic" />
+              생산현황
+            </button>
+          )}
           <h2 className="page-title pmat-title">
             {title} <span className="pmat-title-sub">· {box} 자재 체크</span>
           </h2>
@@ -232,7 +237,7 @@ export default function PanelMaterialsPage() {
           </div>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-outline" onClick={() => window.print()}>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => window.print()}>
             <Icon name="doc" className="btn-ic" />
             체크리스트 출력
           </button>
@@ -240,41 +245,26 @@ export default function PanelMaterialsPage() {
       </div>
 
       {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만 */}
-      <div className="pmat-boxes no-print" role="tablist" aria-label="BOX">
-        {(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => (
-          <button
-            key={b}
-            type="button"
-            role="tab"
-            aria-selected={b === box}
-            className={`pmat-box-tab${b === box ? ' on' : ''}`}
-            onClick={() => setBox(b)}
-          >
-            {b}
-          </button>
-        ))}
+      <div className="pmat-boxes no-print">
+        <ViewSwitch
+          options={(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({ value: b, label: b }))}
+          value={box}
+          onChange={setBox}
+          ariaLabel="BOX"
+        />
       </div>
 
       {/* 도급 / 사급 탭 + 진행 */}
       <div className="pmat-kinds no-print">
-        {[
-          { key: 'paid', label: '도급', s: summary.paid },
-          { key: 'free', label: '사급', s: summary.free },
-        ].map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={supplyTab === t.key}
-            className={`bom-supply-tab${supplyTab === t.key ? ' on' : ''}`}
-            onClick={() => setSupplyTab(t.key)}
-          >
-            {t.label}
-            <span className="bom-supply-tab-n">
-              {t.s.done}/{t.s.total}
-            </span>
-          </button>
-        ))}
+        <ViewSwitch
+          options={[
+            { value: 'paid', label: '도급', count: `${summary.paid.done}/${summary.paid.total}` },
+            { value: 'free', label: '사급', count: `${summary.free.done}/${summary.free.total}` },
+          ]}
+          value={supplyTab}
+          onChange={setSupplyTab}
+          ariaLabel="도급 사급 구분"
+        />
         {locked && assigned ? (
           <span
             className="status-badge status-badge--done pmat-locked-badge"
@@ -291,7 +281,7 @@ export default function PanelMaterialsPage() {
             <button
               type="button"
               className="btn btn-sm btn-outline"
-              onClick={() => navigate(`/production/paid-sets?company=${encodeURIComponent(panel.회사 || '')}`)}
+              onClick={() => navigate(`/production/materials?tab=paid&company=${encodeURIComponent(panel.회사 || '')}`)}
             >
               도급 배정으로
             </button>

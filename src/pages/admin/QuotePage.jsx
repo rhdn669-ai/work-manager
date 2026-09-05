@@ -219,12 +219,13 @@ export default function QuotePage() {
               />
             </div>
           </div>
+          {/* (2026-09-05 대표님 UI 기준안) 모달 푸터 순서: 취소(왼쪽)→확인(오른쪽) */}
           <div className="form-actions" style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" className="btn btn-primary" disabled={savingSettings}>
-              {savingSettings ? '저장 중...' : '저장'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setSettingsOpen(false)}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={savingSettings}>
+              {savingSettings ? '저장 중...' : '저장'}
             </button>
           </div>
         </form>

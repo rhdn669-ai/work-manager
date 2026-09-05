@@ -145,7 +145,11 @@ export default function MyProjectsPage() {
 
   return (
     <div className="reports-page">
-      <h2>외주</h2>
+      {/* (2026-09-05 대표님 UI 기준안) 페이지 머리 표준화 */}
+      <div className="page-header">
+        <h2>외주</h2>
+        <div className="page-actions"></div>
+      </div>
 
       <div className="filters">
         <Select

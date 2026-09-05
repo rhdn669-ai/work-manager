@@ -255,12 +255,13 @@ export default function SiteManagementPage() {
               placeholder="업체명을 쉼표로 구분하여 입력"
             />
           </div>
+          {/* (2026-09-05 대표님 UI 기준안) 모달 푸터 순서: 취소(왼쪽)→확인(오른쪽) */}
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">
-              {editSite ? '수정' : '추가'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {editSite ? '수정' : '추가'}
             </button>
           </div>
         </form>

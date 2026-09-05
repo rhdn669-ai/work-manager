@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import ToMaterialsHub from './pages/production/ToMaterialsHub';
 import Layout from './components/common/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import PurchaseLayout from './pages/admin/PurchaseLayout';
@@ -42,9 +43,7 @@ import {
   QualityPage,
   QualitySheetPage,
   ProductionPage,
-  PanelMaterialsPage,
-  ShortagePage,
-  PaidSetsPage,
+  MaterialsHubPage,
   WorkspaceSelectPage,
   MailSendPage,
   PaymentPage,
@@ -78,9 +77,11 @@ const router = createBrowserRouter([
           { path: '/manage/team', element: <ManageTeamPage /> },
           { path: '/library', element: <FileLibraryPage /> },
           { path: '/production', element: <ProductionPage /> },
-          { path: '/production/:panelId/materials', element: <PanelMaterialsPage /> },
-          { path: '/production/shortage', element: <ShortagePage /> },
-          { path: '/production/paid-sets', element: <PaidSetsPage /> },
+          // 자재 허브 — 호기 체크·도급 배정·부족 집계 한 화면 (2026-09-05 안 B 2단계). 옛 주소는 넘긴다
+          { path: '/production/materials', element: <MaterialsHubPage /> },
+          { path: '/production/:panelId/materials', element: <ToMaterialsHub tab="check" /> },
+          { path: '/production/shortage', element: <ToMaterialsHub tab="shortage" /> },
+          { path: '/production/paid-sets', element: <ToMaterialsHub tab="paid" /> },
           { path: '/quality', element: <QualityPage /> },
           { path: '/quality/sheet/:formKey/:id', element: <QualitySheetPage /> },
         ],

@@ -162,28 +162,10 @@
   border-bottom: 1px solid var(--border);
   padding-bottom: 0;
 }
-/* 현황·불량현황·통계 — 칩 세 개 대신 한 덩어리 세그먼트 */
-.pr-views {
-  display: inline-flex;
-  gap: 2px;
+/* 현황·불량현황·통계 — 공용 ViewSwitch (2026-09-05 UI 기준안). 회사 탭 줄 오른쪽 끝 */
+.company-tabs-right {
   margin-left: auto;
   margin-bottom: 6px;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--grey-100, #f2f4f6);
-}
-.pr-views .pr-chip {
-  height: 30px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-light);
-}
-.pr-views .pr-chip.on {
-  background: #fff;
-  color: var(--primary);
-  box-shadow: 0 1px 2px rgba(0, 23, 51, 0.1);
 }
 .board-toolbar-right {
   margin-left: auto;

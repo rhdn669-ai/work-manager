@@ -1161,12 +1161,13 @@ export default function SiteListPage() {
               체크 시 이 프로젝트의 마감 화면·목록에서 매출이 표시되지 않고 합계 계산에서도 제외됩니다.
             </p>
           </div>
+          {/* (2026-09-05 대표님 UI 기준안) 모달 푸터 순서: 취소(왼쪽)→확인(오른쪽) */}
           <div className="modal-actions">
-            <button type="submit" className="btn btn-primary">
-              {editSite ? '수정' : '추가'}
-            </button>
             <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
               취소
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {editSite ? '수정' : '추가'}
             </button>
           </div>
         </form>

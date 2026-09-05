@@ -15,6 +15,7 @@ import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
+import ViewSwitch from '../../components/common/ViewSwitch';
 
 function useViewportWidth() {
   const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
@@ -585,20 +586,17 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      <div className="purchase-filters no-print" style={{ marginBottom: 12 }}>
-        {[
-          { k: 'active', label: '재직', n: activeStaffCount },
-          { k: 'resigned', label: '퇴사', n: resignedUsers.length },
-        ].map((o) => (
-          <button
-            key={o.k}
-            type="button"
-            className={`btn btn-sm ${view === o.k ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setView(o.k)}
-          >
-            {o.label} {o.n}
-          </button>
-        ))}
+      {/* (2026-09-05 대표님 UI 기준안) 재직/퇴사 보기 전환 → 공용 ViewSwitch */}
+      <div className="no-print" style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
+        <ViewSwitch
+          options={[
+            { value: 'active', label: '재직', count: activeStaffCount },
+            { value: 'resigned', label: '퇴사', count: resignedUsers.length },
+          ]}
+          value={view}
+          onChange={setView}
+          ariaLabel="재직/퇴사 보기"
+        />
       </div>
 
       <div className="table-scroll-x">

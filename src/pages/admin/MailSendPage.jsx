@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
+import Select from '../../components/common/Select';
 import { getSuppliers, getPurchases, subscribePurchaseItems } from '../../services/purchaseService';
 import { getVendors } from '../../services/outsourceService';
 import { addMailLog, getMailLogs } from '../../services/mailService';
@@ -399,20 +400,18 @@ export default function MailSendPage() {
               <label className="mail-send-label">수신 업체</label>
               {targetType === 'supplier' && (
                 <div className="mail-send-po-row">
-                  <select
-                    className="payment-month-select mail-send-po-select"
+                  {/* (2026-09-05 대표님 UI 기준안) 네이티브 select → 공용 Select */}
+                  <Select
+                    className="mail-send-po-select"
                     value={poFilter}
-                    onChange={(e) => selectByPO(e.target.value)}
-                    aria-label="발주서로 업체 선택"
-                  >
-                    <option value="">발주서로 선택…</option>
-                    {purchases.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title || '(제목 없음)'}
-                        {p.siteName ? ` · ${p.siteName}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={selectByPO}
+                    options={purchases.map((p) => ({
+                      value: p.id,
+                      label: `${p.title || '(제목 없음)'}${p.siteName ? ` · ${p.siteName}` : ''}`,
+                    }))}
+                    placeholder="발주서로 선택…"
+                    ariaLabel="발주서로 업체 선택"
+                  />
                   {poFilter && (
                     <button type="button" className="btn btn-sm btn-outline" onClick={() => selectByPO('')}>
                       해제
@@ -606,13 +605,14 @@ export default function MailSendPage() {
             </p>
           )}
         </div>
+        {/* (2026-09-05 대표님 UI 기준안) 모달 푸터 순서: 취소(왼쪽)→확인(오른쪽) */}
         <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setPreviewOpen(false)}>
+            취소
+          </button>
           <button type="button" className="btn btn-primary" data-no-enter onClick={confirmSend} disabled={sending}>
             <Icon name="mail" className="btn-ic" />
             {recipients.length}개 업체에 발송
-          </button>
-          <button type="button" className="btn btn-outline" onClick={() => setPreviewOpen(false)}>
-            취소
           </button>
         </div>
       </Modal>

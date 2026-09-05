@@ -4800,31 +4800,9 @@ table.cards-sm td {
   gap: 10px;
   margin-bottom: 12px;
 }
-/* 묶는 기준 전환 — 프로젝트별 / 업체별 (버튼 두 개를 한 덩어리로) */
-.payment-groupby {
-  display: flex;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-.payment-month-select {
-  height: var(--btn-h-md);
-  padding: 0 34px 0 12px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: var(--radius-sm, 10px);
-  background: #fff
-    url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
-    no-repeat right 12px center;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text, #1f2937);
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
+/* 결제요청 년월 선택 — 공용 Select 트리거 최소 폭만 지정 (2026-09-05 대표님 UI 기준안) */
+.payment-month-select .ds-select__trigger {
   min-width: 150px;
-}
-.payment-month-select:focus {
-  outline: none;
-  border-color: var(--primary, #002050);
 }
 
 /* 결제 페이지 — 발주서 폴더 */
@@ -7199,9 +7177,7 @@ table.cards-sm td {
   padding: 10px 12px 0; /* 껍데기 여백을 걷었으니 여기서 제 몫만 갖는다 */
   margin-bottom: 6px;
 }
-/* 헤더(추가/일괄) 셀과 행(복사/삭제) 셀을 완전히 동일한 패딩·폭·정렬로 강제 — 어긋남 방지 */
-.table th.item-group-add-th,
-.item-group-add-th,
+/* 헤더 작업 칸은 col-action(표준 클래스)으로 통일, 행(복사/삭제) 셀만 여기서 폭·정렬 강제 (2026-09-05 대표님 UI 기준안) */
 .table td.item-actions-cell {
   text-align: right !important;
   padding: 4px 16px 4px 6px !important; /* 상 우 하 좌 모두 동일 */
@@ -7209,7 +7185,6 @@ table.cards-sm td {
   vertical-align: middle !important;
   white-space: nowrap;
 }
-.item-group-add-th .btn,
 .item-actions-cell .btn {
   min-height: var(--btn-h-sm); /* 헤더·행 버튼 동일 높이 */
   vertical-align: middle; /* inline-flex 버튼 baseline 정렬로 인한 세로 어긋남 방지 (아이콘 유/무 혼합 시) */
@@ -13619,27 +13594,9 @@ tr.is-newly-added > td {
   gap: 8px;
   margin-bottom: 8px;
 }
-/* 보기 토글 (표 / 카드) */
-.closing-viewtog {
-  display: inline-flex;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  overflow: hidden;
+/* 표/카드 전환 — 공용 ViewSwitch, 위치만 왼쪽 고정 (2026-09-05 대표님 UI 기준안) */
+.closing-view-switch {
   margin-right: auto;
-}
-.closing-viewtog button {
-  font-size: 13px;
-  font-weight: 700;
-  padding: 7px 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.closing-viewtog button.on {
-  background: var(--primary);
-  color: #fff;
 }
 
 /* ── 공수표 매트릭스(인원 × 날짜) ── */
@@ -13805,23 +13762,6 @@ table.closing-matrix thead th {
 }
 .mx-auto.off {
   background: #fee2e2;
-  color: var(--danger);
-}
-.mx-del {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-.mx-del:hover {
-  background: var(--danger-tint, #fdecec);
   color: var(--danger);
 }
 .closing-matrix .mx-price input {
@@ -22889,4 +22829,201 @@ a.lib-row-name:hover {
 .bom-locked .bom-flat-table input:not([type='checkbox']),
 .bom-locked .bom-flat-table select {
   pointer-events: none;
+}
+
+/* ── 보기 전환 세그먼트 (앱 공통, 2026-09-05 대표님 UI 기준안) ── */
+.view-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--grey-100, #f2f4f6);
+  flex: none;
+}
+.view-switch-item {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-light);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.view-switch-item.on {
+  background: #fff;
+  color: var(--primary);
+  box-shadow: 0 1px 2px rgba(0, 23, 51, 0.1);
+}
+.view-switch--md .view-switch-item {
+  height: 30px;
+}
+.view-switch--md {
+  padding: 3px;
+}
+.view-switch-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--grey-200, #e5e8eb);
+  color: var(--text-light);
+}
+.view-switch-item.on .view-switch-count {
+  background: var(--primary-soft, #fdeee6);
+  color: var(--primary);
+}
+/* 필터 칩(켜고 끄기) — 세그먼트와 다른 부품 */
+.filter-chip {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-light);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filter-chip.on {
+  border-color: var(--primary);
+  background: var(--primary-soft, #fdeee6);
+  color: var(--primary);
+}
+/* 잠금 해제 상태 — 주행동(primary)과 겹치지 않게 오렌지 테두리 outline (2026-09-05 대표님 승인) */
+.editmode-btn.on {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft, #fdeee6);
+}
+
+/* ── 자재 허브 (2026-09-05 안 B 2단계) ── */
+.mhub-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mhub-body {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.mhub-list {
+  position: sticky;
+  top: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  padding: 8px;
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+}
+.mhub-list-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+  padding: 4px 8px 6px;
+  letter-spacing: 0.02em;
+}
+.mhub-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mhub-item {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.mhub-item:hover {
+  background: var(--grey-100, #f2f4f6);
+}
+.mhub-item.on {
+  background: var(--primary-soft, #fdeee6);
+  color: var(--primary);
+}
+.mhub-item.no-bom {
+  color: var(--text-light);
+  font-weight: 500;
+}
+.mhub-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mhub-item-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--grey-100, #f2f4f6);
+  color: var(--text-light);
+  flex: none;
+}
+.mhub-item.on .mhub-item-tag {
+  background: #fff;
+  color: var(--primary);
+}
+.mhub-item-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success, #1f7a4d);
+  flex: none;
+}
+.mhub-empty {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--text-light);
+}
+.mhub-pick {
+  display: none;
+}
+.mhub-main {
+  min-width: 0;
+}
+/* 허브 탭 안의 페이지 머리 — 작은 소제목 줄 */
+.page-header--sub h2 {
+  font-size: 16px;
+}
+.page-header--sub {
+  margin-bottom: var(--space-2, 8px);
+}
+@media (max-width: 1023px) {
+  .mhub-body {
+    grid-template-columns: 1fr;
+  }
+  .mhub-list {
+    display: none;
+  }
+  .mhub-pick {
+    display: block;
+    margin-bottom: 10px;
+  }
 }

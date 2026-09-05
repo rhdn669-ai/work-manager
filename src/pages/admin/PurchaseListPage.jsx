@@ -37,6 +37,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import EditModeButton from '../../components/common/EditModeButton';
+import ViewSwitch from '../../components/common/ViewSwitch';
 import { setLotsLabel, setLotsOf } from '../../utils/setLots';
 import Skeleton from '../../components/common/Skeleton';
 import RegenOrderPdfModal from '../../components/admin/RegenOrderPdfModal';
@@ -723,13 +724,10 @@ export default function PurchaseListPage() {
     <div className={`purchase-list-page printable-page${editMode ? '' : ' editmode-off'}`}>
       <div className="page-header">
         <h2>구매 · 발주 현황</h2>
+        {/* (2026-09-05 대표님 UI 기준안) 머리 버튼 순서: 보조 outline → 휴지통 → 주행동(primary) → 잠금 */}
         <div className="page-actions no-print">
           <button type="button" className="btn btn-sm btn-outline" onClick={openFactoryModal}>
             공장 관리
-          </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
-            <Icon name="trash" className="btn-ic" />
-            휴지통
           </button>
           <button
             type="button"
@@ -739,6 +737,10 @@ export default function PurchaseListPage() {
           >
             <Icon name="archive" className="btn-ic" />
             저장본 일괄 재생성
+          </button>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setTrashOpen(true)}>
+            <Icon name="trash" className="btn-ic" />
+            휴지통
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
             <Icon name="plus" className="btn-ic" />
@@ -833,6 +835,7 @@ export default function PurchaseListPage() {
         )}
       </div>
 
+      {/* (2026-09-05 대표님 UI 기준안) 보드/목록 보기 전환 → 공용 ViewSwitch */}
       <div className="purchase-filters no-print">
         <input
           type="text"
@@ -841,27 +844,15 @@ export default function PurchaseListPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div
-          className="tab-nav"
-          role="tablist"
-          aria-label="보기 전환"
-          style={{ marginBottom: 0, flex: '0 0 auto', width: 'auto', maxWidth: 'none' }}
-        >
-          <button
-            type="button"
-            className={`tab-nav-item ${viewMode === 'board' ? 'active' : ''}`}
-            onClick={() => setViewMode('board')}
-          >
-            보드
-          </button>
-          <button
-            type="button"
-            className={`tab-nav-item ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            목록
-          </button>
-        </div>
+        <ViewSwitch
+          options={[
+            { value: 'board', label: '보드' },
+            { value: 'list', label: '목록' },
+          ]}
+          value={viewMode}
+          onChange={setViewMode}
+          ariaLabel="보드/목록 보기"
+        />
       </div>
 
       {viewMode === 'board' ? (

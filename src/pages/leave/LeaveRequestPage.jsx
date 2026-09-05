@@ -91,7 +91,11 @@ export default function LeaveRequestPage() {
   return (
     <div className="leave-request-page">
       <LeaveTabs />
-      <h2>연차 신청</h2>
+      {/* (2026-09-05 대표님 UI 기준안) 페이지 머리 표준화 */}
+      <div className="page-header">
+        <h2>연차 신청</h2>
+        <div className="page-actions"></div>
+      </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body">
