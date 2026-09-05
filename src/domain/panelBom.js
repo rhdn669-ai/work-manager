@@ -8,8 +8,13 @@
 
 import { PANEL_BOXES } from './boxes';
 
-/** 호기 자재 체크 대상 BOX — MP 는 하위 9종을 따로 관리하므로 뺀다 */
-export const CHECKABLE_BOXES = PANEL_BOXES.filter((b) => b !== 'MP');
+/**
+ * 호기 자재 체크 대상 BOX.
+ *  · 「준비작업」은 실물 BOX 는 아니지만 BOM 에 줄이 있어 체크해야 한다 — 맨 앞에 둔다
+ *    (2026-09-05 대표님 「P/W BOX 전에 준비작업 자재 칸 추가하고 BOM 연동」)
+ *  · MP 는 하위 9종을 생산현황에서 따로 관리하므로 뺀다
+ */
+export const CHECKABLE_BOXES = ['준비작업', ...PANEL_BOXES.filter((b) => b !== 'MP')];
 
 /** 연결이 되어 있나 */
 export function hasBomLink(p) {

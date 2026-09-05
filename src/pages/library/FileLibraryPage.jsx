@@ -652,8 +652,9 @@ export default function FileLibraryPage() {
     }
   }
 
-  // ── 파일·폴더 트리 DnD ──
+  // ── 파일·폴더 트리 DnD ── 잠금(editMode=false) 상태에서는 이동·정렬 불가
   function treeDndProps(folder) {
+    if (!editMode) return {};
     return {
       draggable: true,
       onDragStart: (e) => {
@@ -1002,8 +1003,9 @@ export default function FileLibraryPage() {
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-outline"
-                                  title="이름 변경"
+                                  title={editMode ? '이름 변경' : '이름을 바꾸려면 「잠금」을 푸세요'}
                                   aria-label="이름 변경"
+                                  disabled={!editMode}
                                   onClick={() => {
                                     setRenameTarget(folder);
                                     setRenameName(folder.name);
@@ -1025,8 +1027,9 @@ export default function FileLibraryPage() {
                         <tr
                           key={file.id}
                           className={`lib-row lib-row--file${selected.has(file.id) ? ' is-selected' : ''}${draggingFileId === file.id ? ' is-dragging' : ''}`}
-                          draggable
+                          draggable={editMode}
                           onDragStart={(e) => {
+                            if (!editMode) return;
                             e.dataTransfer.setData('text/fileId', file.id);
                             e.dataTransfer.effectAllowed = 'move';
                             setDraggingFileId(file.id);
@@ -1086,8 +1089,9 @@ export default function FileLibraryPage() {
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-outline"
-                                  title="이름 변경"
+                                  title={editMode ? '이름 변경' : '이름을 바꾸려면 「잠금」을 푸세요'}
                                   aria-label="이름 변경"
+                                  disabled={!editMode}
                                   onClick={() => openFileRename(file)}
                                 >
                                   <Icon name="edit" className="btn-ic" />

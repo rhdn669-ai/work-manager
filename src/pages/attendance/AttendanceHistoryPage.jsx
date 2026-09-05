@@ -103,6 +103,7 @@ export default function AttendanceHistoryPage() {
   }
 
   function startEdit(r) {
+    if (!editMode) return;
     setEditingId(r.id);
     setEditForm({
       hours: String(Math.floor((r.minutes || 0) / 60)),
@@ -430,6 +431,8 @@ export default function AttendanceHistoryPage() {
                                 className="btn btn-sm btn-outline"
                                 style={{ flex: 1, whiteSpace: 'nowrap' }}
                                 onClick={() => startEdit(r)}
+                                disabled={!editMode}
+                                title={!editMode ? '수정하려면 「잠금」을 푸세요' : undefined}
                               >
                                 수정
                               </button>

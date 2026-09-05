@@ -164,7 +164,8 @@ function TaskCard({ t, editMode, checked, onCheck, onEdit, onMove }) {
           <button
             type="button"
             className="task-move__btn"
-            disabled={colIdx <= 0}
+            disabled={!editMode || colIdx <= 0}
+            title={!editMode ? '단계를 바꾸려면 「잠금」을 푸세요' : undefined}
             onClick={() => onMove(t.id, -1)}
             aria-label="이전 단계로"
           >
@@ -174,7 +175,8 @@ function TaskCard({ t, editMode, checked, onCheck, onEdit, onMove }) {
           <button
             type="button"
             className="task-move__btn"
-            disabled={colIdx >= COLS.length - 1}
+            disabled={!editMode || colIdx >= COLS.length - 1}
+            title={!editMode ? '단계를 바꾸려면 「잠금」을 푸세요' : undefined}
             onClick={() => onMove(t.id, 1)}
             aria-label="다음 단계로"
           >

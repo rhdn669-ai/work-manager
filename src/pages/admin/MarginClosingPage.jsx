@@ -387,9 +387,17 @@ export default function MarginClosingPage() {
         <button
           type="button"
           className={`mc-amt${row.edited ? ' is-edited' : ''}`}
-          onClick={() => !locked && setEditing({ key: row.key })}
+          onClick={() => {
+            if (locked || !editMode) return;
+            setEditing({ key: row.key });
+          }}
+          disabled={locked || !editMode}
           title={
-            row.edited ? `자동 계산 ${won(row.autoAmount)}원${row.reason ? ` · ${row.reason}` : ''}` : '눌러서 고치기'
+            !editMode
+              ? '금액을 고치려면 「잠금」을 푸세요'
+              : row.edited
+                ? `자동 계산 ${won(row.autoAmount)}원${row.reason ? ` · ${row.reason}` : ''}`
+                : '눌러서 고치기'
           }
         >
           {won(row.amount)}

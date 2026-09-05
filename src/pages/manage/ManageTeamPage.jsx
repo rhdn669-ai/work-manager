@@ -789,7 +789,13 @@ export default function ManageTeamPage() {
                   <td data-label="팀원">{members.length}명</td>
                   <td className="col-action">
                     <div className="btn-group" style={{ justifyContent: 'flex-end' }}>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        title={editMode ? '팀 정보 수정' : '수정하려면 「잠금」을 푸세요'}
+                        disabled={!editMode}
+                        onClick={() => openEdit(t)}
+                      >
                         수정
                       </button>
                       {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}

@@ -280,6 +280,7 @@ export default function BomDetailPage() {
 
   // 이력의 그 시점으로 되돌리기 — 되돌리기 자체도 이력에 남겨 다시 되돌릴 수 있다
   async function revertTo(entry) {
+    if (!guard()) return;
     if (
       !(await confirm(`${entry.atLocal} (${entry.label}) 직전 상태로 BOM 을 되돌리시겠습니까?
 지금 상태는 이력에 남아 다시 되돌릴 수 있습니다.`))
@@ -576,6 +577,7 @@ export default function BomDetailPage() {
     const next = (value || '').trim();
     setEditingDrawing(null);
     if ((row.drawingNo || '') === next) return;
+    if (!guard()) return;
     try {
       if (row.itemId) {
         await updatePurchaseItem(row.itemId, { drawingNo: next });
@@ -823,6 +825,7 @@ export default function BomDetailPage() {
   // 타입을 만들어 두면 품목마다 「어느 형번에 들어가는지」를 정할 수 있고,
   // 발주서로 가져올 때 형번 하나를 고르면 그 형번 자재만 담긴다.
   async function addVariant() {
+    if (!guard()) return;
     const label = newVariant.trim();
     if (!label) return;
     if (variants.some((v) => v.label === label)) {
@@ -842,6 +845,7 @@ export default function BomDetailPage() {
   }
 
   async function renameVariant(key, label) {
+    if (!guard()) return;
     const next = variants.map((v) => (v.key === key ? { ...v, label } : v));
     setProject((p) => ({ ...p, variants: next }));
     try {
@@ -852,6 +856,7 @@ export default function BomDetailPage() {
   }
 
   async function deleteVariant(v) {
+    if (!guard()) return;
     const only = bomItems.filter((b) => {
       const ks = Array.isArray(b.variantKeys) ? b.variantKeys : [];
       return ks.length === 1 && ks[0] === v.key;
@@ -894,6 +899,7 @@ export default function BomDetailPage() {
 
   // 품목이 들어갈 타입 켜고 끄기 — 전부 끄면 공통(모든 타입에 포함)
   async function toggleItemVariant(itemId, key) {
+    if (!guard()) return;
     const cur = bomItems.find((b) => b.id === itemId);
     if (!cur) return;
     const ks = Array.isArray(cur.variantKeys) ? cur.variantKeys : [];

@@ -70,6 +70,7 @@ export default function LeaveHistoryPage() {
   }
 
   function startEdit(l) {
+    if (!editMode) return;
     setEditingId(l.id);
     setEditForm({
       type: l.type,
@@ -370,7 +371,8 @@ export default function LeaveHistoryPage() {
                             <button
                               className="btn btn-sm btn-outline"
                               style={{ whiteSpace: 'nowrap', minWidth: 50, padding: '0 14px' }}
-                              disabled={busy}
+                              disabled={busy || !editMode}
+                              title={!editMode ? '수정하려면 「잠금」을 푸세요' : undefined}
                               onClick={() => startEdit(l)}
                             >
                               수정

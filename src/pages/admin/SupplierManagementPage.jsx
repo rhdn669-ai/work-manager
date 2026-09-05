@@ -82,6 +82,7 @@ export default function SupplierManagementPage() {
   }
 
   function openEdit(s) {
+    if (!editMode) return;
     setEditTarget(s);
     setForm({
       name: s.name || '',
@@ -416,7 +417,8 @@ export default function SupplierManagementPage() {
                         type="button"
                         className="btn btn-sm btn-outline"
                         onClick={() => openEdit(s)}
-                        title="수정"
+                        disabled={!editMode}
+                        title={editMode ? '수정' : '수정하려면 「잠금」을 푸세요'}
                         aria-label="수정"
                         style={{ minHeight: 36 }}
                       >

@@ -247,11 +247,11 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
                     </td>
                   )}
                   <td className="q-num">
-                    <LedgerCell f={{ key: 'assetNo', type: 'text' }} row={a} onCommit={editCell} />
+                    <LedgerCell f={{ key: 'assetNo', type: 'text' }} row={a} onCommit={editCell} readOnly={!editMode} />
                   </td>
                   {cols.map((c) => (
                     <td key={c.key}>
-                      <LedgerCell f={c} row={a} onCommit={editCell} readOnly={!!c.calc} />
+                      <LedgerCell f={c} row={a} onCommit={editCell} readOnly={!editMode || !!c.calc} />
                     </td>
                   ))}
                   {hasCycle && (

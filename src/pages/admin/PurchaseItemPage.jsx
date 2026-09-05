@@ -158,7 +158,7 @@ function RateBadge({ from, to, rate }) {
 }
 
 // 단가 변경 이력 — 전 품목 통합, 최근순 + 기간·업체 필터
-function PriceHistoryView({ items, onDelete }) {
+function PriceHistoryView({ items, onDelete, editMode }) {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -262,7 +262,8 @@ function PriceHistoryView({ items, onDelete }) {
                       type="button"
                       className="btn btn-sm btn-danger"
                       onClick={() => onDelete(h.itemId, h.entry)}
-                      title="이 이력 삭제"
+                      disabled={!editMode}
+                      title={editMode ? '이 이력 삭제' : '이력을 지우려면 「잠금」을 푸세요'}
                       aria-label="삭제"
                     >
                       <Icon name="trash" className="btn-ic" />
@@ -806,6 +807,7 @@ export default function PurchaseItemPage() {
 
   // ---- 엑셀식 셀 채우기 (드래그) ----
   function startFill(e, field, value, rowIds, startIndex) {
+    if (!editMode) return; // 잠금 상태에서는 엑셀식 채우기로도 값이 바뀌면 안 된다
     e.preventDefault();
     e.stopPropagation();
     setFill({ field, value, rowIds, start: startIndex, end: startIndex });
@@ -966,7 +968,9 @@ export default function PurchaseItemPage() {
         </button>
       </div>
 
-      {activeTab === 'history' && <PriceHistoryView items={items} onDelete={handleDeletePriceChange} />}
+      {activeTab === 'history' && (
+        <PriceHistoryView items={items} onDelete={handleDeletePriceChange} editMode={editMode} />
+      )}
       {activeTab === 'items' && (
         <>
           {dupDrawings.length > 0 && (
@@ -1113,10 +1117,13 @@ export default function PurchaseItemPage() {
                                 type="text"
                                 className="item-group-code-input"
                                 value={editingHeaderCode?.repId === repItem?.id ? editingHeaderCode.value : repCode}
-                                title={repCode || ''}
+                                title={editMode ? repCode || '' : '코드를 바꾸려면 「잠금」을 푸세요'}
                                 placeholder="코드"
+                                readOnly={!editMode}
                                 onFocus={() =>
-                                  repItem && setEditingHeaderCode({ repId: repItem.id, value: repItem.code || '' })
+                                  editMode &&
+                                  repItem &&
+                                  setEditingHeaderCode({ repId: repItem.id, value: repItem.code || '' })
                                 }
                                 onChange={(e) =>
                                   setEditingHeaderCode((prev) => (prev ? { ...prev, value: e.target.value } : prev))
@@ -1124,7 +1131,7 @@ export default function PurchaseItemPage() {
                                 onBlur={(e) => {
                                   const newCode = e.target.value;
                                   setEditingHeaderCode(null);
-                                  if (repItem && newCode !== repItem.code) {
+                                  if (editMode && repItem && newCode !== repItem.code) {
                                     updateField(repItem.id, { code: newCode });
                                     flushItem(repItem.id);
                                   }
@@ -1139,10 +1146,13 @@ export default function PurchaseItemPage() {
                                 type="text"
                                 className="item-group-name-input"
                                 value={repName}
-                                title={repName || ''}
+                                title={editMode ? repName || '' : '품명을 바꾸려면 「잠금」을 푸세요'}
                                 placeholder="(품명 없음)"
-                                onChange={(e) => repItem && updateField(repItem.id, { name: e.target.value })}
-                                onBlur={() => repItem && flushItem(repItem.id)}
+                                readOnly={!editMode}
+                                onChange={(e) =>
+                                  editMode && repItem && updateField(repItem.id, { name: e.target.value })
+                                }
+                                onBlur={() => editMode && repItem && flushItem(repItem.id)}
                                 onClick={(e) => e.stopPropagation()}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') e.currentTarget.blur();
@@ -1301,8 +1311,11 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.code || ''}
-                                                    title={it.code || ''}
+                                                    title={
+                                                      editMode ? it.code || '' : '코드를 바꾸려면 「잠금」을 푸세요'
+                                                    }
                                                     placeholder="코드"
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { code: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                     ref={(el) => {
@@ -1322,8 +1335,13 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.drawingNo || ''}
-                                                    title={it.drawingNo || ''}
+                                                    title={
+                                                      editMode
+                                                        ? it.drawingNo || ''
+                                                        : '도번을 바꾸려면 「잠금」을 푸세요'
+                                                    }
                                                     aria-label="도번"
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { drawingNo: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                   />
@@ -1344,8 +1362,11 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.name || ''}
-                                                    title={it.name || ''}
+                                                    title={
+                                                      editMode ? it.name || '' : '품명을 바꾸려면 「잠금」을 푸세요'
+                                                    }
                                                     placeholder="품명"
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { name: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                   />
@@ -1366,7 +1387,10 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.maker || ''}
-                                                    title={it.maker || ''}
+                                                    title={
+                                                      editMode ? it.maker || '' : '메이커를 바꾸려면 「잠금」을 푸세요'
+                                                    }
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { maker: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                   />
@@ -1387,7 +1411,10 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.spec || ''}
-                                                    title={it.spec || ''}
+                                                    title={
+                                                      editMode ? it.spec || '' : '규격을 바꾸려면 「잠금」을 푸세요'
+                                                    }
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { spec: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                   />
@@ -1407,7 +1434,10 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.category || ''}
-                                                    title={it.category || ''}
+                                                    title={
+                                                      editMode ? it.category || '' : '분류를 바꾸려면 「잠금」을 푸세요'
+                                                    }
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { category: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                   />
@@ -1427,9 +1457,15 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.unit || ''}
-                                                    title={it.unit || ''}
+                                                    title={
+                                                      editMode
+                                                        ? it.unit || ''
+                                                        : '수량/단위를 바꾸려면 「잠금」을 푸세요'
+                                                    }
                                                     placeholder="개·m·2/개·roll/610m·박스 24개·10EA"
+                                                    readOnly={!editMode}
                                                     onChange={(e) => {
+                                                      if (!editMode) return;
                                                       const newUnit = e.target.value;
                                                       const cu = parseCompoundUnit(newUnit);
                                                       const patch = { unit: newUnit };
@@ -1491,13 +1527,21 @@ export default function PurchaseItemPage() {
                                                               ? Number(unitPrice).toLocaleString()
                                                               : ''
                                                         }
-                                                        readOnly={priceLocked}
+                                                        readOnly={!editMode || priceLocked}
                                                         style={priceLocked ? { cursor: 'pointer' } : undefined}
-                                                        title={priceLocked ? '클릭해서 단가 변경(이력 기록)' : ''}
+                                                        title={
+                                                          !editMode
+                                                            ? '개별단가를 바꾸려면 「잠금」을 푸세요'
+                                                            : priceLocked
+                                                              ? '클릭해서 단가 변경(이력 기록)'
+                                                              : ''
+                                                        }
                                                         onClick={() => {
+                                                          if (!editMode) return;
                                                           if (priceLocked) openPriceEdit(it);
                                                         }}
                                                         onFocus={() =>
+                                                          editMode &&
                                                           !priceLocked &&
                                                           setUnitEdit((m) => ({
                                                             ...m,
@@ -1505,7 +1549,7 @@ export default function PurchaseItemPage() {
                                                           }))
                                                         }
                                                         onChange={(e) => {
-                                                          if (priceLocked) return; // 저장된 단가는 모달로만 수정(이력 기록)
+                                                          if (!editMode || priceLocked) return; // 저장된 단가는 모달로만 수정(이력 기록)
                                                           const disp = fmtDec(e.target.value);
                                                           setUnitEdit((m) => ({ ...m, [it.id]: disp }));
                                                           const up = toNum(disp);
@@ -1552,9 +1596,10 @@ export default function PurchaseItemPage() {
                                                         inputMode="numeric"
                                                         className={`num-input ${isAuto ? 'is-readonly' : ''}`}
                                                         value={total ? Number(total).toLocaleString() : ''}
-                                                        readOnly={isAuto}
+                                                        readOnly={!editMode || isAuto}
+                                                        title={!editMode ? '단가를 바꾸려면 「잠금」을 푸세요' : ''}
                                                         onChange={(e) => {
-                                                          if (isAuto) return;
+                                                          if (!editMode || isAuto) return;
                                                           const raw = e.target.value.replace(/[^0-9]/g, '');
                                                           updateField(it.id, { standardPrice: raw ? Number(raw) : 0 });
                                                         }}
@@ -1587,7 +1632,9 @@ export default function PurchaseItemPage() {
                                                   <Select
                                                     className="po-supplier-select"
                                                     value={it.defaultSupplierId || ''}
+                                                    disabled={!editMode}
                                                     onChange={(val) => {
+                                                      if (!editMode) return;
                                                       updateField(it.id, { defaultSupplierId: val });
                                                       // 신규(tmp) 행은 품명 저장 시 함께 저장됨 — 즉시 저장은 기존 행만
                                                       if (!String(it.id).startsWith('tmp-')) {
@@ -1632,8 +1679,11 @@ export default function PurchaseItemPage() {
                                                   <input
                                                     type="text"
                                                     value={it.note || ''}
-                                                    title={it.note || ''}
+                                                    title={
+                                                      editMode ? it.note || '' : '비고를 바꾸려면 「잠금」을 푸세요'
+                                                    }
                                                     placeholder="-"
+                                                    readOnly={!editMode}
                                                     onChange={(e) => updateField(it.id, { note: e.target.value })}
                                                     onBlur={() => flushItem(it.id)}
                                                   />

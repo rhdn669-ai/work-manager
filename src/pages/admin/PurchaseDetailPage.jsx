@@ -2755,18 +2755,20 @@ export default function PurchaseDetailPage() {
                                 <button
                                   type="button"
                                   className={`stock-used-badge is-short${Number(ln.stockShort) > 0 ? ' is-filled' : ''}`}
-                                  disabled={!canUseStock}
+                                  disabled={!canUseStock || cellsLocked}
                                   onClick={
-                                    !canUseStock
+                                    !canUseStock || cellsLocked
                                       ? undefined
                                       : Number(ln.stockShort) > 0
                                         ? () => undoShortage(idx)
                                         : () => fillShortage(idx, Math.max(0, -(Number(master?.stockQty) || 0)))
                                   }
                                   title={
-                                    !canUseStock
-                                      ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
-                                      : Number(ln.stockShort) > 0
+                                    cellsLocked
+                                      ? '오른쪽 위 「잠금」을 풀어야 바꿀 수 있습니다'
+                                      : !canUseStock
+                                        ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
+                                        : Number(ln.stockShort) > 0
                                         ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
                                         : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
                                   }
@@ -2780,12 +2782,14 @@ export default function PurchaseDetailPage() {
                                   <button
                                     type="button"
                                     className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
-                                    disabled={!canUseStock}
-                                    onClick={!canUseStock ? undefined : () => toggleStockLine(idx)}
+                                    disabled={!canUseStock || cellsLocked}
+                                    onClick={!canUseStock || cellsLocked ? undefined : () => toggleStockLine(idx)}
                                     title={
-                                      !canUseStock
-                                        ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
-                                        : Number(ln.stockUsed) > 0
+                                      cellsLocked
+                                        ? '오른쪽 위 「잠금」을 풀어야 바꿀 수 있습니다'
+                                        : !canUseStock
+                                          ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
+                                          : Number(ln.stockUsed) > 0
                                           ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
                                           : '창고 재고를 쓰지 않고 전부 발주하는 중 — 눌러서 남은 재고만큼 빼기'
                                     }

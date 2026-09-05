@@ -401,7 +401,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                             f={c}
                             row={r}
                             onCommit={editCell}
-                            readOnly={c.calc || r.sourceType === 'production'}
+                            readOnly={!editMode || c.calc || r.sourceType === 'production'}
                           />
                         ) : (
                           r[c.key] || '—'
@@ -415,7 +415,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                             f={def.fields.find((f) => VERDICT_KEYS.includes(f.key))}
                             row={r}
                             onCommit={editCell}
-                            readOnly={r.sourceType === 'production'}
+                            readOnly={!editMode || r.sourceType === 'production'}
                           />
                         </td>
                       ) : (

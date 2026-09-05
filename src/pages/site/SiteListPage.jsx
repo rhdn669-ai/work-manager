@@ -871,6 +871,8 @@ export default function SiteListPage() {
                               display: 'flex',
                               alignItems: 'center',
                             }}
+                            title={editMode ? undefined : '수정하려면 「잠금」을 푸세요'}
+                            disabled={!editMode}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();

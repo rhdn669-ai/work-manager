@@ -420,7 +420,13 @@ export default function EventManagementPage() {
                 className="event-actions"
                 style={{ flexShrink: 0, display: 'flex', gap: 6, alignItems: 'flex-start' }}
               >
-                <button className="btn btn-sm btn-outline" onClick={() => openEdit(ev)}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => openEdit(ev)}
+                  disabled={!editMode}
+                  title={editMode ? undefined : '내용을 고치려면 「잠금」을 푸세요'}
+                >
                   수정
                 </button>
               </div>

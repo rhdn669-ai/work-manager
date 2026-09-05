@@ -678,7 +678,12 @@ export function EmployeeDetailModal({
                             </div>
                             {canEdit && (
                               <div className="btn-group" style={{ flexShrink: 0 }}>
-                                <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(r)}>
+                                <button
+                                  className="btn btn-sm btn-outline"
+                                  disabled={busy || !editMode}
+                                  title={editMode ? '' : '수정하려면 「잠금」을 푸세요'}
+                                  onClick={() => startEdit(r)}
+                                >
                                   수정
                                 </button>
                               </div>
@@ -807,7 +812,12 @@ export function EmployeeDetailModal({
                           </div>
                           {canEdit && (
                             <div className="btn-group" style={{ flexShrink: 0 }}>
-                              <button className="btn btn-sm btn-outline" disabled={busy} onClick={() => startEdit(l)}>
+                              <button
+                                className="btn btn-sm btn-outline"
+                                disabled={busy || !editMode}
+                                title={editMode ? '' : '수정하려면 「잠금」을 푸세요'}
+                                onClick={() => startEdit(l)}
+                              >
                                 수정
                               </button>
                             </div>

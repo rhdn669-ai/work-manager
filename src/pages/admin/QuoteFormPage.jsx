@@ -45,9 +45,10 @@ export default function QuoteFormPage() {
   const [isEditing, setIsEditing] = useState(isNew);
   const [form, setForm] = useState({ ...EMPTY_FORM, items: [{ ...EMPTY_LINE }] });
   const [saving, setSaving] = useState(false);
-  // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제(저장 전 폼 배열이라 휴지통 아님, 2026-09-04 대표님 「잠금」 통일)
+  // 「잠금」 — 풀었을 때만 칸 수정 + 체크박스 + 선택 삭제(저장 전 폼 배열이라 휴지통 아님, 2026-09-04 대표님 「잠금」 통일)
   const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const LOCK_HINT = '내용을 고치려면 「잠금」을 푸세요';
 
   useEffect(() => {
     getSuppliers().then(setSuppliers).catch(console.error);
@@ -127,9 +128,11 @@ export default function QuoteFormPage() {
   }
 
   function updateLine(idx, patch) {
+    if (!editMode) return;
     setForm((f) => ({ ...f, items: f.items.map((ln, i) => (i === idx ? { ...ln, ...patch } : ln)) }));
   }
   function addLine() {
+    if (!editMode) return;
     setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] }));
   }
   function toggleEditMode() {
@@ -359,6 +362,8 @@ export default function QuoteFormPage() {
               placeholder="예) STAGE 1SET"
               required
               autoFocus={isNew}
+              readOnly={!editMode}
+              title={editMode ? undefined : LOCK_HINT}
             />
           </div>
 
@@ -387,6 +392,7 @@ export default function QuoteFormPage() {
                           ]}
                           ariaLabel="거래처 선택"
                           placeholder="거래처 선택"
+                          disabled={!editMode}
                         />
                         {!form.supplierId && (
                           <input
@@ -395,6 +401,8 @@ export default function QuoteFormPage() {
                             value={form.supplierName}
                             onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
                             placeholder="목록에 없으면 직접 입력"
+                            readOnly={!editMode}
+                            title={editMode ? undefined : LOCK_HINT}
                           />
                         )}
                       </td>
@@ -414,6 +422,8 @@ export default function QuoteFormPage() {
                           value={form.siteName}
                           onChange={(e) => setForm({ ...form, siteName: e.target.value })}
                           placeholder="예) SEMES 프로버설비"
+                          readOnly={!editMode}
+                          title={editMode ? undefined : LOCK_HINT}
                         />
                       </td>
                       <th scope="col" className="lbl">
@@ -441,6 +451,8 @@ export default function QuoteFormPage() {
                           className="quote-inline-input"
                           value={form.validity}
                           onChange={(e) => setForm({ ...form, validity: e.target.value })}
+                          readOnly={!editMode}
+                          title={editMode ? undefined : LOCK_HINT}
                         />
                       </td>
                       <th scope="col" className="lbl">
@@ -458,6 +470,8 @@ export default function QuoteFormPage() {
                           className="quote-inline-input"
                           value={form.delivery}
                           onChange={(e) => setForm({ ...form, delivery: e.target.value })}
+                          readOnly={!editMode}
+                          title={editMode ? undefined : LOCK_HINT}
                         />
                       </td>
                       <th scope="col" className="lbl">
@@ -475,6 +489,8 @@ export default function QuoteFormPage() {
                           className="quote-inline-input"
                           value={form.payment}
                           onChange={(e) => setForm({ ...form, payment: e.target.value })}
+                          readOnly={!editMode}
+                          title={editMode ? undefined : LOCK_HINT}
                         />
                       </td>
                       <th scope="col" className="lbl">
@@ -565,8 +581,9 @@ export default function QuoteFormPage() {
                                 type="text"
                                 placeholder="품명"
                                 value={ln.name}
-                                title={ln.name || ''}
+                                title={editMode ? ln.name || '' : LOCK_HINT}
                                 onChange={(e) => updateLine(idx, { name: e.target.value })}
+                                readOnly={!editMode}
                               />
                             </td>
                             <td className="c-spec">
@@ -574,8 +591,9 @@ export default function QuoteFormPage() {
                                 type="text"
                                 placeholder="규격"
                                 value={ln.spec}
-                                title={ln.spec || ''}
+                                title={editMode ? ln.spec || '' : LOCK_HINT}
                                 onChange={(e) => updateLine(idx, { spec: e.target.value })}
+                                readOnly={!editMode}
                               />
                             </td>
                             <td className="c-unit">
@@ -583,6 +601,8 @@ export default function QuoteFormPage() {
                                 type="text"
                                 value={ln.unit}
                                 onChange={(e) => updateLine(idx, { unit: e.target.value })}
+                                readOnly={!editMode}
+                                title={editMode ? undefined : LOCK_HINT}
                               />
                             </td>
                             <td className="c-qty">
@@ -591,6 +611,8 @@ export default function QuoteFormPage() {
                                 min="0"
                                 value={ln.qty || ''}
                                 onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                                readOnly={!editMode}
+                                title={editMode ? undefined : LOCK_HINT}
                               />
                             </td>
                             <td className="c-price">
@@ -599,6 +621,8 @@ export default function QuoteFormPage() {
                                 min="0"
                                 value={ln.unitPrice || ''}
                                 onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                                readOnly={!editMode}
+                                title={editMode ? undefined : LOCK_HINT}
                               />
                             </td>
                             <td className="c-amount">
@@ -610,14 +634,21 @@ export default function QuoteFormPage() {
                               <input
                                 type="text"
                                 value={ln.note}
-                                title={ln.note || ''}
+                                title={editMode ? ln.note || '' : LOCK_HINT}
                                 onChange={(e) => updateLine(idx, { note: e.target.value })}
+                                readOnly={!editMode}
                               />
                             </td>
                           </tr>
                         ) : (
                           // 빈 행 — 출력물과 동일하게 A4 한 장을 채운다. 클릭하면 그 자리부터 입력 가능
-                          <tr key={idx} className="quote-edit-row quote-empty-row" onClick={addLine}>
+                          // (잠금 중엔 눌러도 줄이 추가되지 않는다 — 「잠금」을 풀어야 한다)
+                          <tr
+                            key={idx}
+                            className={`quote-edit-row${editMode ? ' quote-empty-row' : ''}`}
+                            onClick={editMode ? addLine : undefined}
+                            title={editMode ? undefined : LOCK_HINT}
+                          >
                             <td className="c-no">{idx + 1}</td>
                             <td className="c-name"></td>
                             <td className="c-spec"></td>
@@ -645,6 +676,8 @@ export default function QuoteFormPage() {
                           value={form.note}
                           onChange={(e) => setForm({ ...form, note: e.target.value })}
                           rows={3}
+                          readOnly={!editMode}
+                          title={editMode ? undefined : LOCK_HINT}
                         />
                       </td>
                     </tr>

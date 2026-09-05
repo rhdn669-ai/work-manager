@@ -263,7 +263,13 @@ function KanbanCard({ p, dragEnabled, editMode, checked, onCheck, onOpen, onEdit
               종결
             </button>
           )}
-          <button type="button" className="btn btn-sm btn-outline" onClick={(e) => onEdit(e, p)}>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={(e) => onEdit(e, p)}
+            disabled={!editMode}
+            title={editMode ? '' : '수정하려면 「잠금」을 푸세요'}
+          >
             수정
           </button>
           {/* 카드별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
@@ -1062,7 +1068,13 @@ export default function PurchaseListPage() {
                                   종결
                                 </button>
                               )}
-                              <button type="button" className="btn btn-sm btn-outline" onClick={(e) => openEdit(e, p)}>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline"
+                                onClick={(e) => openEdit(e, p)}
+                                disabled={!editMode}
+                                title={editMode ? '' : '수정하려면 「잠금」을 푸세요'}
+                              >
                                 수정
                               </button>
                               {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}

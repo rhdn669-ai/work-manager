@@ -630,6 +630,7 @@ export default function SiteClosingPage() {
   }
 
   async function handleClearItems() {
+    if (!editMode) return;
     if (
       !(await confirm(
         `공수표 항목 ${items.length}건을 모두 휴지통으로 보냅니다.\n휴지통에서 복원할 수 있습니다.\n\n계속하시겠습니까?`,
@@ -1028,6 +1029,7 @@ export default function SiteClosingPage() {
   }
 
   async function toggleEmployeeAutofill(itemId) {
+    if (!editMode) return;
     const buf = editBuf[itemId];
     if (!buf) return;
     const next = !buf.autofillDisabled;
@@ -1379,8 +1381,9 @@ export default function SiteClosingPage() {
           value={buf.date || ''}
           onChange={(e) => updateFinanceField(f.id, 'date', e.target.value)}
           onBlur={() => flushFinance(f.id)}
-          disabled={!canEdit}
+          disabled={!canEdit || !editMode}
           aria-label="발생일"
+          title={canEdit && !editMode ? '발생일을 바꾸려면 「잠금」을 푸세요' : undefined}
         />
         <input
           className="expense-input-desc"
@@ -1388,7 +1391,8 @@ export default function SiteClosingPage() {
           placeholder="항목명"
           onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
           onBlur={() => flushFinance(f.id)}
-          disabled={!canEdit || !!chipKey}
+          disabled={!canEdit || !editMode || !!chipKey}
+          title={canEdit && !editMode ? '항목명을 바꾸려면 「잠금」을 푸세요' : undefined}
         />
         <input
           className="expense-input-note"
@@ -1396,14 +1400,15 @@ export default function SiteClosingPage() {
           placeholder="비고"
           onChange={(e) => updateFinanceField(f.id, 'note', e.target.value)}
           onBlur={() => flushFinance(f.id)}
-          disabled={!canEdit}
+          disabled={!canEdit || !editMode}
+          title={canEdit && !editMode ? '비고를 바꾸려면 「잠금」을 푸세요' : undefined}
         />
         <MoneyInput
           className={`expense-input-amount ${!dirtyFinances.has(f.id) && lastSavedAt && (buf.amount || 0) > 0 ? 'is-saved' : ''}`}
           value={buf.amount || 0}
           onChange={(e) => updateFinanceField(f.id, 'amount', e.target.value)}
           onBlur={() => flushFinance(f.id)}
-          disabled={!canEdit}
+          disabled={!canEdit || !editMode}
         />
         <span className="expense-won">원</span>
         {/* 행별 삭제는 뺐다 — 「잠금」 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일) */}
@@ -1733,7 +1738,12 @@ export default function SiteClosingPage() {
         <div className="page-actions">
           {canEdit && saveStatus}
           {canEdit && items.length > 0 && (
-            <button className="btn btn-outline btn-sm" onClick={handleClearItems} disabled={clearing}>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={handleClearItems}
+              disabled={clearing || !editMode}
+              title={editMode ? undefined : '공수표를 초기화하려면 「잠금」을 푸세요'}
+            >
               {clearing ? '삭제 중...' : '공수표 초기화'}
             </button>
           )}
@@ -1908,7 +1918,8 @@ export default function SiteClosingPage() {
                         title={buf.description || ''}
                         onChange={(e) => updateFinanceField(f.id, 'description', e.target.value)}
                         onBlur={() => flushFinance(f.id)}
-                        disabled={!canEdit}
+                        disabled={!canEdit || !editMode}
+                        title={canEdit && !editMode ? '항목명을 바꾸려면 「잠금」을 푸세요' : undefined}
                       />
                       <div className="revenue-unitprice">
                         <span className="label">{isOnceProject ? '금액' : '1대당'}</span>
@@ -1921,7 +1932,7 @@ export default function SiteClosingPage() {
                               : updateFinanceUnitPrice(f.id, e.target.value)
                           }
                           onBlur={() => flushFinance(f.id)}
-                          disabled={!canEdit}
+                          disabled={!canEdit || !editMode}
                         />
                         <span className="label">원</span>
                       </div>
@@ -1943,15 +1954,17 @@ export default function SiteClosingPage() {
                               value={c.date || ''}
                               onChange={(e) => updateClosingRow(f.id, idx, 'date', e.target.value)}
                               onBlur={() => flushFinance(f.id)}
-                              disabled={!canEdit}
+                              disabled={!canEdit || !editMode}
+                              title={canEdit && !editMode ? '마감일자를 바꾸려면 「잠금」을 푸세요' : undefined}
                             />
                             <input
                               type="text"
                               value={c.units || ''}
                               onChange={(e) => updateClosingRow(f.id, idx, 'units', e.target.value)}
                               onBlur={() => flushFinance(f.id)}
-                              disabled={!canEdit}
+                              disabled={!canEdit || !editMode}
                               placeholder="예: 1호기, 2호기 (콤마로 구분 → 자동 카운트)"
+                              title={canEdit && !editMode ? '호기를 바꾸려면 「잠금」을 푸세요' : undefined}
                             />
                             {/* 이 줄 삭제는 「잠금」 풀렸을 때만 — 실수로 누르는 일이 많았다 (2026-09-04 대표님) */}
                             {canEdit && editMode && (
@@ -2426,9 +2439,15 @@ export default function SiteClosingPage() {
               <button
                 type="button"
                 className="mx-cs"
-                onClick={() => canEdit && openCsCellModal(it.id, d)}
-                disabled={!canEdit}
-                title={csSiteName ? `${csSiteName} · ${v ?? ''}공수` : '탭하여 공수·현장 입력'}
+                onClick={() => canEdit && editMode && openCsCellModal(it.id, d)}
+                disabled={!canEdit || !editMode}
+                title={
+                  canEdit && !editMode
+                    ? '공수·현장을 바꾸려면 「잠금」을 푸세요'
+                    : csSiteName
+                      ? `${csSiteName} · ${v ?? ''}공수`
+                      : '탭하여 공수·현장 입력'
+                }
               >
                 {hasValue ? v : '+'}
               </button>
@@ -2443,8 +2462,14 @@ export default function SiteClosingPage() {
                 value={v ?? ''}
                 onChange={(e) => updateDay(it.id, d, e.target.value)}
                 onBlur={() => flushRow(it.id)}
-                disabled={!canEdit}
-                title={isOnLeave ? leaveBadgeLabel(leaveType) : undefined}
+                disabled={!canEdit || !editMode}
+                title={
+                  canEdit && !editMode
+                    ? '공수를 바꾸려면 「잠금」을 푸세요'
+                    : isOnLeave
+                      ? leaveBadgeLabel(leaveType)
+                      : undefined
+                }
               />
             );
           }
@@ -2488,9 +2513,9 @@ export default function SiteClosingPage() {
                     placeholder="이름"
                     onChange={(e) => updateField(it.id, nameField, e.target.value)}
                     onBlur={() => flushRow(it.id)}
-                    disabled={!canEdit}
+                    disabled={!canEdit || !editMode}
                     readOnly={detailLocked}
-                    title={buf[nameField] || ''}
+                    title={canEdit && !editMode ? '이름을 바꾸려면 「잠금」을 푸세요' : buf[nameField] || ''}
                   />
                   {isVendor && (buf.vendor || '').trim() && (
                     <span className="mx-vendor-label" title={buf.vendor}>
@@ -2502,7 +2527,14 @@ export default function SiteClosingPage() {
                       type="button"
                       className={`mx-auto ${buf.autofillDisabled ? 'off' : ''}`}
                       onClick={() => toggleEmployeeAutofill(it.id)}
-                      title={buf.autofillDisabled ? '자동채움 꺼짐 — 켜기' : '자동채움 켜짐 — 끄기'}
+                      disabled={!editMode}
+                      title={
+                        !editMode
+                          ? '자동채움을 바꾸려면 「잠금」을 푸세요'
+                          : buf.autofillDisabled
+                            ? '자동채움 꺼짐 — 켜기'
+                            : '자동채움 켜짐 — 끄기'
+                      }
                     >
                       {buf.autofillDisabled ? 'OFF' : 'ON'}
                     </button>
@@ -2517,7 +2549,8 @@ export default function SiteClosingPage() {
                     value={buf.unitPrice || 0}
                     onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
                     onBlur={() => flushRow(it.id)}
-                    disabled={!canEdit || cardType === 'employee'}
+                    disabled={!canEdit || !editMode || cardType === 'employee'}
+                    title={canEdit && !editMode ? '단가를 바꾸려면 「잠금」을 푸세요' : undefined}
                   />
                 </td>
               )}
@@ -2727,12 +2760,14 @@ export default function SiteClosingPage() {
                           list={!vendorLocked && cardType !== 'employee' ? 'closing-vendor-list' : undefined}
                           onChange={(e) => updateField(it.id, 'vendor', e.target.value)}
                           onBlur={() => flushRow(it.id)}
-                          disabled={!canEdit}
+                          disabled={!canEdit || !editMode}
                           readOnly={vendorLocked}
                           title={
-                            vendorLocked
-                              ? `${buf.vendor || ''}${buf.vendor ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
-                              : buf.vendor || undefined
+                            canEdit && !editMode
+                              ? '업체명을 바꾸려면 「잠금」을 푸세요'
+                              : vendorLocked
+                                ? `${buf.vendor || ''}${buf.vendor ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
+                                : buf.vendor || undefined
                           }
                         />
                       )}
@@ -2751,12 +2786,14 @@ export default function SiteClosingPage() {
                         }
                         onChange={(e) => updateField(it.id, 'detail', e.target.value)}
                         onBlur={() => flushRow(it.id)}
-                        disabled={!canEdit}
+                        disabled={!canEdit || !editMode}
                         readOnly={detailLocked}
                         title={
-                          detailLocked
-                            ? `${buf.detail || ''}${buf.detail ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
-                            : buf.detail || undefined
+                          canEdit && !editMode
+                            ? '이름을 바꾸려면 「잠금」을 푸세요'
+                            : detailLocked
+                              ? `${buf.detail || ''}${buf.detail ? ' · ' : ''}모달에서 선택된 값은 수정 불가 (삭제 후 재추가)`
+                              : buf.detail || undefined
                         }
                       />
                       {/* 업체(공수): 업체명은 모달 선택값 — 읽기전용 텍스트로 표시 */}
@@ -2770,8 +2807,13 @@ export default function SiteClosingPage() {
                           type="button"
                           className={`closing-autofill-btn ${buf.autofillDisabled ? 'is-disabled' : ''}`}
                           onClick={() => toggleEmployeeAutofill(it.id)}
+                          disabled={!editMode}
                           title={
-                            buf.autofillDisabled ? '자동 채움 꺼짐 — 클릭해서 켜기' : '자동 채움 켜짐 — 클릭해서 끄기'
+                            !editMode
+                              ? '자동 채움을 바꾸려면 「잠금」을 푸세요'
+                              : buf.autofillDisabled
+                                ? '자동 채움 꺼짐 — 클릭해서 켜기'
+                                : '자동 채움 켜짐 — 클릭해서 끄기'
                           }
                         >
                           {buf.autofillDisabled ? '자동 OFF' : '자동 ON'}
@@ -2847,15 +2889,17 @@ export default function SiteClosingPage() {
                                       value={c.date || ''}
                                       onChange={(e) => updateRowClosing(it.id, idx, 'date', e.target.value)}
                                       onBlur={() => flushRow(it.id)}
-                                      disabled={!canEdit}
+                                      disabled={!canEdit || !editMode}
+                                      title={canEdit && !editMode ? '납기일을 바꾸려면 「잠금」을 푸세요' : undefined}
                                     />
                                     <input
                                       type="text"
                                       value={c.units || ''}
                                       onChange={(e) => updateRowClosing(it.id, idx, 'units', e.target.value)}
                                       onBlur={() => flushRow(it.id)}
-                                      disabled={!canEdit}
+                                      disabled={!canEdit || !editMode}
                                       placeholder="예: 1호기, 2호기 (콤마 구분 → 자동 카운트)"
+                                      title={canEdit && !editMode ? '호기를 바꾸려면 「잠금」을 푸세요' : undefined}
                                     />
                                     <span className="vendor-case-count">{Number(c.count) || 0}대</span>
                                     {/* 이 줄 삭제는 「잠금」 풀렸을 때만 — 실수로 누르는 일이 많았다 (2026-09-04 대표님) */}
@@ -2968,14 +3012,16 @@ export default function SiteClosingPage() {
                                             <button
                                               type="button"
                                               className={`cs-cell-btn ${hasValue ? 'has-value' : ''}`}
-                                              onClick={() => canEdit && openCsCellModal(it.id, d)}
-                                              disabled={!canEdit}
+                                              onClick={() => canEdit && editMode && openCsCellModal(it.id, d)}
+                                              disabled={!canEdit || !editMode}
                                               title={
-                                                canEdit
-                                                  ? '탭하여 공수·현장 입력'
-                                                  : csSiteName
-                                                    ? `${csSiteName} · ${v}공수`
-                                                    : ''
+                                                canEdit && !editMode
+                                                  ? '공수·현장을 바꾸려면 「잠금」을 푸세요'
+                                                  : canEdit
+                                                    ? '탭하여 공수·현장 입력'
+                                                    : csSiteName
+                                                      ? `${csSiteName} · ${v}공수`
+                                                      : ''
                                               }
                                             >
                                               <span className="cs-cell-qty">{hasValue ? v : '+'}</span>
@@ -3008,15 +3054,17 @@ export default function SiteClosingPage() {
                                                 value={v ?? ''}
                                                 onChange={(e) => updateDay(it.id, d, e.target.value)}
                                                 onBlur={() => flushRow(it.id)}
-                                                disabled={!canEdit}
+                                                disabled={!canEdit || !editMode}
                                                 title={
-                                                  isOnLeave
-                                                    ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`
-                                                    : isDaily
-                                                      ? '시간 입력'
-                                                      : isVendorCase
-                                                        ? '납품 건수'
-                                                        : ''
+                                                  canEdit && !editMode
+                                                    ? '공수를 바꾸려면 「잠금」을 푸세요'
+                                                    : isOnLeave
+                                                      ? `${leaveBadgeLabel(leaveType)} (근무 ${workFraction})`
+                                                      : isDaily
+                                                        ? '시간 입력'
+                                                        : isVendorCase
+                                                          ? '납품 건수'
+                                                          : ''
                                                 }
                                               />
                                               {isOnLeave && (
@@ -3052,7 +3100,8 @@ export default function SiteClosingPage() {
                               value={buf.unitPrice || 0}
                               onChange={(e) => updateField(it.id, 'unitPrice', e.target.value)}
                               onBlur={() => flushRow(it.id)}
-                              disabled={!canEdit || cardType === 'employee'}
+                              disabled={!canEdit || !editMode || cardType === 'employee'}
+                              title={canEdit && !editMode ? '단가를 바꾸려면 「잠금」을 푸세요' : undefined}
                             />
                           </div>
                           <div className="foot-field closing-amount">

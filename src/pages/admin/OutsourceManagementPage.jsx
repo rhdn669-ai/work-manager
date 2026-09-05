@@ -186,6 +186,7 @@ export default function OutsourceManagementPage() {
   }
 
   async function handleRemoveProject(project) {
+    if (!editMode) return;
     if (!(await confirm(`"${project.name}"을(를) 삭제하시겠습니까?`))) return;
     setDetailBusy(true);
     try {
@@ -701,7 +702,8 @@ export default function OutsourceManagementPage() {
                           type="button"
                           className="btn btn-sm btn-outline"
                           onClick={() => openEdit(f)}
-                          title="수정"
+                          disabled={!editMode}
+                          title={editMode ? '수정' : '수정하려면 「잠금」을 푸세요'}
                           aria-label="수정"
                           style={{ minHeight: 36 }}
                         >
@@ -801,7 +803,8 @@ export default function OutsourceManagementPage() {
                         type="button"
                         className="btn btn-sm btn-outline"
                         onClick={() => openEdit(v)}
-                        title="수정"
+                        disabled={!editMode}
+                        title={editMode ? '수정' : '수정하려면 「잠금」을 푸세요'}
                         aria-label="수정"
                         style={{ minHeight: 36 }}
                       >
@@ -1229,6 +1232,8 @@ export default function OutsourceManagementPage() {
                               type="button"
                               className="btn btn-sm btn-outline"
                               onClick={() => (isEditing ? setEditRateFor(null) : openRateEdit(f))}
+                              disabled={!isEditing && !editMode}
+                              title={!isEditing && !editMode ? '단가를 바꾸려면 「잠금」을 푸세요' : undefined}
                               style={{ minHeight: 36 }}
                             >
                               {isEditing ? '취소' : '단가 변경'}
@@ -1236,10 +1241,11 @@ export default function OutsourceManagementPage() {
                             <button
                               type="button"
                               className="btn btn-sm btn-danger"
-                              title="이 소속 직원 삭제"
+                              title={editMode ? '이 소속 직원 삭제' : '삭제하려면 「잠금」을 푸세요'}
                               aria-label="삭제"
                               style={{ minHeight: 36 }}
                               onClick={async () => {
+                                if (!editMode) return;
                                 if (
                                   !(await confirm(
                                     `"${f.name}"을(를) 이 업체에서 완전히 삭제하시겠습니까?\n(외주관리에서도 제거되며, 공수표에 기록된 과거 내역은 남습니다.)`,
@@ -1262,7 +1268,7 @@ export default function OutsourceManagementPage() {
                                   setDetailBusy(false);
                                 }
                               }}
-                              disabled={detailBusy}
+                              disabled={detailBusy || !editMode}
                             >
                               <Icon name="trash" className="btn-ic" />
                               삭제
@@ -1300,9 +1306,10 @@ export default function OutsourceManagementPage() {
                                           <button
                                             type="button"
                                             className="btn btn-sm btn-danger"
-                                            title="이 이력 삭제"
+                                            title={editMode ? '이 이력 삭제' : '삭제하려면 「잠금」을 푸세요'}
                                             aria-label="이 이력 삭제"
                                             onClick={async () => {
+                                              if (!editMode) return;
                                               if (
                                                 !(await confirm(
                                                   `${h.rate.toLocaleString()}원 ${period} 이력을 삭제하시겠습니까?`,
@@ -1324,7 +1331,7 @@ export default function OutsourceManagementPage() {
                                                 setDetailBusy(false);
                                               }
                                             }}
-                                            disabled={detailBusy}
+                                            disabled={detailBusy || !editMode}
                                           >
                                             <Icon name="trash" className="btn-ic" />
                                             삭제
@@ -1430,7 +1437,8 @@ export default function OutsourceManagementPage() {
                           type="button"
                           className="btn btn-sm btn-danger"
                           onClick={() => handleRemoveProject(p)}
-                          disabled={detailBusy}
+                          disabled={detailBusy || !editMode}
+                          title={editMode ? undefined : '삭제하려면 「잠금」을 푸세요'}
                           style={{ minHeight: 36 }}
                         >
                           <Icon name="trash" className="btn-ic" />

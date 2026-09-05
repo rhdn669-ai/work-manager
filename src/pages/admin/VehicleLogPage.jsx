@@ -83,6 +83,7 @@ export default function VehicleLogPage() {
   }
 
   function openEdit(r) {
+    if (r.hasInput && !editMode) return;
     setEditTarget(r);
     setEditForm({
       odometer: r.odometer ? Number(r.odometer).toLocaleString() : '',
@@ -540,7 +541,13 @@ export default function VehicleLogPage() {
                       <td style={{ padding: '6px 6px', height: 36 }}>{fmtDate(r.recordedAt)}</td>
                       <td className="col-action">
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          <button type="button" className="btn btn-sm btn-outline" onClick={() => openEdit(r)}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => openEdit(r)}
+                            disabled={r.hasInput && !editMode}
+                            title={r.hasInput && !editMode ? '수정하려면 「잠금」을 푸세요' : undefined}
+                          >
                             {r.hasInput ? '수정' : '입력'}
                           </button>
                         </div>
@@ -632,6 +639,8 @@ export default function VehicleLogPage() {
                     className="btn btn-sm btn-outline"
                     style={{ flex: 1, minWidth: 80 }}
                     onClick={() => openEdit(r)}
+                    disabled={r.hasInput && !editMode}
+                    title={r.hasInput && !editMode ? '수정하려면 「잠금」을 푸세요' : undefined}
                   >
                     {r.hasInput ? '수정' : '입력'}
                   </button>
