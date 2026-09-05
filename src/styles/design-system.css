@@ -512,6 +512,18 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 열 폭을 스스로 정한 표(.no-fit)는 말줄임 대신 줄바꿈 — 코드·도번이 잘리면 안 된다
+   (2026-09-05 대표님 「사급 도급 리스트 사이즈가 다름」) */
+.table.no-fit th,
+.table.no-fit td:not(.col-action):not(.pmat-num) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.table.no-fit thead th {
+  white-space: nowrap;
+}
 .table td.u-wrap {
   white-space: normal;
   word-break: break-word;

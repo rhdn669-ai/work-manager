@@ -125,6 +125,9 @@ export function fitTables() {
   document.querySelectorAll('.table-scroll-x').forEach((el) => {
     if (el.classList.contains('mx-wrap')) return;
     const table = el.querySelector(':scope > table');
+    // 열 폭을 스스로 정한 표(.no-fit)는 자동 조정 대상이 아니다 — 탭마다 폭이 달라지는 것을 막는다
+    // (2026-09-05 대표님 「사급 도급 리스트 사이즈가 다름」)
+    if (table && table.classList.contains('no-fit')) return;
     if (!table || !table.tBodies[0] || table.tBodies[0].rows.length === 0) return;
     fitWidth(el, table);
     const top = el.getBoundingClientRect().top;

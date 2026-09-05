@@ -23290,3 +23290,40 @@ a.lib-row-name:hover {
 .pmat-table tr.is-done > td {
   background: var(--success-soft-weak, #f4faf6);
 }
+
+/* 입고 칩 옆 기록(날짜·담당) — 옅게 */
+.recv-meta {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 호기 자재 체크 표 — 도급·사급 탭 폭을 같게, 오른쪽 빈칸 없이 (2026-09-05 대표님).
+   열 폭은 colgroup 이 정하고(자동 배치), 글자는 잘리지 않게 줄바꿈한다. */
+.pmat-table.no-fit {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+.pmat-table.no-fit th,
+.pmat-table.no-fit td {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+.pmat-table.no-fit td.pmat-num,
+.pmat-table.no-fit th.pmat-num,
+.pmat-table.no-fit .pmat-meta,
+.pmat-table.no-fit td.col-action {
+  white-space: nowrap;
+}
+/* 「이 호기」 칸은 재고 버튼이 있든 없든 같은 폭 — 탭을 옮겨도 표가 흔들리지 않는다 */
+.pmat-table.no-fit td.col-action {
+  overflow: hidden;
+}
+.pmat-table.no-fit td.col-action .btn {
+  padding: 0 8px;
+}

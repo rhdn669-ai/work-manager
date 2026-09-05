@@ -56,7 +56,7 @@ import EditModeButton from '../../components/common/EditModeButton';
 import Select from '../../components/common/Select';
 import ReceiptChip from '../../components/common/ReceiptChip';
 import Skeleton from '../../components/common/Skeleton';
-import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
+import { ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
 import { ensureAnonymousAuth } from '../../config/firebase';
 import { sendTrackedMail, getRepliesByPurchase } from '../../services/mailThreadService';
@@ -74,7 +74,6 @@ import { PO_COLS } from '../../domain/tableWidths';
 import {
   PO_DEFAULTS,
   poDateStr,
-  poNumber,
   deriveSupplier,
   computeSupplierList as computeSupplierListPure,
 } from '../../utils/purchaseOrder';
@@ -365,10 +364,6 @@ export default function PurchaseDetailPage() {
 
   // PDF → 자료실 저장
   const printRef = useRef(null); // 인쇄 양식 DOM (PDF 캡처 대상)
-  const [pdfModalOpen, setPdfModalOpen] = useState(false);
-  const [pdfFolders, setPdfFolders] = useState([]); // [{ id, label }] 경로 라벨 포함 평면 목록
-  const [pdfFolderId, setPdfFolderId] = useState('');
-  const [pdfFileName, setPdfFileName] = useState('');
 
   // 메일 발송 미리보기 모달
   const [mailPreview, setMailPreview] = useState(null); // { supplierName, to, subject, html, fileName } | null
@@ -414,26 +409,9 @@ export default function PurchaseDetailPage() {
     loadData();
     const unsub = subscribePurchaseItems(setItemMaster);
     const unsubPanels = subscribePanels(setAllPanels);
-    const unsubFolders = subscribeFolders((list) => {
-      // 중첩 폴더를 "상위 / 하위" 경로 라벨로 평탄화
-      const byId = new Map(list.map((f) => [f.id, f]));
-      const labelOf = (f) => {
-        const parts = [];
-        let cur = f;
-        let guard = 0;
-        while (cur && guard < 20) {
-          parts.unshift(cur.name);
-          cur = cur.parentId ? byId.get(cur.parentId) : null;
-          guard += 1;
-        }
-        return parts.join(' / ');
-      };
-      setPdfFolders(list.map((f) => ({ id: f.id, label: labelOf(f) })).sort((a, b) => a.label.localeCompare(b.label)));
-    });
     return () => {
       unsub();
       unsubPanels();
-      unsubFolders();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -1060,6 +1038,9 @@ export default function PurchaseDetailPage() {
   // 검색·업체 필터가 걸리면 일부만 보여 순서를 옮길 수 없다.
   // 「순서·삭제」를 켠 동안에만 끌 수 있다.
   const canDragItems = editMode && !isReadOnly && !itemSearch.trim() && itemSupplierFilter === 'all';
+  // 잠금은 칸 수정도 막는다 — 수량·품목 변경·재고 반영. 입고·출력 같은 «작업»은 잠금과 무관
+  // (2026-09-05 대표님 「잠금 상태인데 수량 변경이 됨」). 다른 화면(생산현황·BOM 상세)과 같은 규칙.
+  const cellsLocked = !editMode || isReadOnly;
 
   // 발주 종결 — 보드에서 내려 종결 목록으로 옮긴다. 삭제가 아니라 이동이다.
   async function handleClosePurchase() {
@@ -1255,15 +1236,6 @@ export default function PurchaseDetailPage() {
     }
   }
 
-  // PDF 자료실 저장 모달 열기 — 기본 파일명/스탬프 세팅
-  function openPdfModal() {
-    if (!purchase) return;
-    const no = poNumber(purchase);
-    const safeTitle = (purchase.title || '발주서').replace(/[/\\]/g, '_');
-    setPdfFileName(`${no}_${safeTitle}`);
-    setPdfModalOpen(true);
-  }
-
   // 「PDF 출력」 — 옵션(금액 표기 등) 선택 모달을 먼저 연다.
   function handlePdfOutput() {
     setPdfShowAmount(true); // 매번 기본값(금액 표기)으로 리셋
@@ -1282,36 +1254,6 @@ export default function PurchaseDetailPage() {
       setPrintHideAmount(false); // 출력 후 원복 — 메일·자료실 저장에 영향 없음
       setPrintShowBox(false); // BOX 열은 전체 PDF 출력에서만 — 업체별·메일·자료실 미표시
     }, 200);
-  }
-
-  // 자료실 저장 — 버튼 누르면 즉시 모달을 닫고 PDF 생성·업로드는 백그라운드로 진행.
-  // 대표님은 대기하지 않고 바로 다른 작업을 할 수 있으며, 완료/실패는 토스트로만 알린다.
-  function handleSavePdfToLibrary() {
-    const el = printRef.current;
-    if (!el) {
-      alert('인쇄 양식을 찾을 수 없습니다.');
-      return;
-    }
-    const fileName = `${pdfFileName || '발주서'}.pdf`;
-    const folderId = pdfFolderId || null;
-    // 모달 즉시 닫기 — 시작 토스트 없음, 결과만 sticky 토스트로 알림(총괄 수칙)
-    setPdfModalOpen(false);
-    // fire-and-forget — await로 화면을 막지 않음
-    (async () => {
-      try {
-        await flushAutoSave();
-        setPrintStamp(fmtDateTime(new Date()));
-        setPrintAccountMode(true); // 내부 저장본: 계좌 포함
-        await new Promise((r) => setTimeout(r, 250));
-        const blob = await captureToPdfBlob(el, fileName);
-        setPrintAccountMode(false);
-        await uploadPdfToLibrary(blob, pdfFileName, folderId, userProfile);
-        toast(`자료실에 저장되었습니다: ${fileName}`, 'success', 0);
-      } catch (err) {
-        setPrintAccountMode(false);
-        toast(`자료실 저장 실패: ${err?.message || err}`, 'error', 0);
-      }
-    })();
   }
 
   // 페이지 이탈 시 미저장분 flush
@@ -2413,32 +2355,21 @@ export default function PurchaseDetailPage() {
               종결 해제
             </button>
           )}
+          {/* 출력은 다른 화면과 같이 머리 줄에 — 우하단 FAB(자료실 저장·PDF 출력) 제거 (2026-09-05 대표님) */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={handlePdfOutput}
+            title="브라우저 인쇄로 발주서를 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
+          >
+            <Icon name="doc" className="btn-ic" />
+            출력
+          </button>
           <button type="button" className="btn btn-sm btn-danger" onClick={handleTrashPurchase}>
             <Icon name="trash" className="btn-ic" />
             삭제
           </button>
         </div>
-      </div>
-
-      <div className="pdf-fab-group no-print">
-        <button
-          type="button"
-          className="pdf-print-fab pdf-fab-secondary"
-          onClick={openPdfModal}
-          title="발주서를 PDF 파일로 만들어 사내 자료실에 저장합니다"
-        >
-          <Icon name="folder" />
-          자료실 저장
-        </button>
-        <button
-          type="button"
-          className="pdf-print-fab"
-          onClick={handlePdfOutput}
-          title="브라우저 인쇄로 발주서를 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
-        >
-          <Icon name="doc" />
-          PDF 출력
-        </button>
       </div>
 
       {/* 인쇄 전용 IOPN_v4 발주서 양식 — 공용 컴포넌트로 분리(저장본 일괄 재생성과 동일 양식 공유) */}
@@ -2793,12 +2724,14 @@ export default function PurchaseDetailPage() {
                                 }
                                 readOnly
                                 tabIndex={-1}
-                                onClick={isReadOnly ? undefined : () => openQtyModal(idx)}
+                                onClick={cellsLocked ? undefined : () => openQtyModal(idx)}
                                 title={
                                   Number(ln.stockUsed) > 0
                                     ? `원래 ${Number(ln.stockNeed).toLocaleString()}개 필요 · 재고 ${ln.stockUsed}개를 써서 ${Number(ln.qty).toLocaleString()}개만 발주합니다`
-                                    : isReadOnly
-                                      ? ''
+                                    : cellsLocked
+                                      ? isReadOnly
+                                        ? ''
+                                        : '수량을 바꾸려면 오른쪽 위 「잠금」을 푸세요'
                                       : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'
                                 }
                               />
@@ -2907,12 +2840,19 @@ export default function PurchaseDetailPage() {
                                   </span>
                                 ) : receivedQty > 0 ? (
                                   // 입고 상태는 앱 공통 칩 하나로 — 마우스를 올리면 ✕ 로 취소 (2026-09-05 대표님)
-                                  <ReceiptChip
-                                    got={receivedQty}
-                                    need={savedQty}
-                                    title={`입고 ${fmtDate(ln.receivedAt)}${ln.receivedBy ? ` · ${ln.receivedBy}` : ''}`}
-                                    onCancel={isReadOnly ? null : () => clearLineReceive(idx)}
-                                  />
+                                  <>
+                                    <ReceiptChip
+                                      got={receivedQty}
+                                      need={savedQty}
+                                      title={`입고 ${fmtDate(ln.receivedAt)}${ln.receivedBy ? ` · ${ln.receivedBy}` : ''}`}
+                                      onCancel={isReadOnly ? null : () => clearLineReceive(idx)}
+                                    />
+                                    {/* 입고 기록(날짜·담당)은 칩 옆에 옅게 — 칩 안에 넣으면 두 줄이 된다 (2026-09-05 대표님) */}
+                                    <span className="recv-meta">
+                                      {fmtDate(ln.receivedAt)}
+                                      {ln.receivedBy ? ` · ${ln.receivedBy}` : ''}
+                                    </span>
+                                  </>
                                 ) : (
                                   <button
                                     type="button"
@@ -2933,7 +2873,7 @@ export default function PurchaseDetailPage() {
                                   className="btn btn-sm btn-outline"
                                   onClick={() => openItemPickerReplace(idx)}
                                   aria-label="품목 변경"
-                                  disabled={isReadOnly}
+                                  disabled={cellsLocked}
                                   title="이 행의 품목을 다른 품목으로 변경"
                                 >
                                   <Icon name="edit" className="btn-ic" />
@@ -3915,50 +3855,6 @@ export default function PurchaseDetailPage() {
             )}
           </div>
         </form>
-      </Modal>
-
-      <Modal isOpen={pdfModalOpen} onClose={() => setPdfModalOpen(false)} title="PDF로 자료실 저장">
-        <p className="field-hint">
-          현재 발주서 양식을 PDF 파일로 만들어 사내 자료실에 보관합니다. 저장 위치 폴더와 파일명을 지정하세요.
-        </p>
-        <div className="form-group">
-          <label>파일명</label>
-          <input
-            aria-label="파일명"
-            type="text"
-            value={pdfFileName}
-            onChange={(e) => setPdfFileName(e.target.value)}
-            placeholder="예: IOPN20260620_발주서"
-          />
-          <p className="field-hint">확장자(.pdf)는 자동으로 붙습니다.</p>
-        </div>
-        <div className="form-group">
-          <label>저장 폴더</label>
-          <Select
-            value={pdfFolderId}
-            onChange={setPdfFolderId}
-            options={pdfFolders.map((f) => ({ value: f.id, label: f.label }))}
-            placeholder="자료실 최상위 (폴더 없음)"
-            ariaLabel="저장 폴더 선택"
-          />
-        </div>
-        <p className="field-hint">
-          「자료실에 저장」을 누르면 <strong>바로 닫히고</strong>, 생성·업로드는 뒤에서 진행됩니다. 완료되면 알림으로
-          알려드려요 — 기다리실 필요 없습니다.
-        </p>
-        <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setPdfModalOpen(false)}>
-            취소
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSavePdfToLibrary}
-            disabled={!pdfFileName.trim()}
-          >
-            자료실에 저장
-          </button>
-        </div>
       </Modal>
 
       <Modal isOpen={pdfOptOpen} onClose={() => setPdfOptOpen(false)} title="PDF 출력 옵션">

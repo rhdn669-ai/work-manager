@@ -416,7 +416,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         <p className="purchase-empty no-print">이 BOX 에 {supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.</p>
       ) : (
         <div className="table-scroll-x no-print">
-          <table className="table pmat-table">
+          <table className="table pmat-table no-fit">
+            {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
+                오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
+            <colgroup>
+              {['4%', '10%', '9%', '12%', null, '6%', '8%', '5%', '9%', '10%', '9%'].map((w, i) => (
+                <col key={i} style={w ? { width: w } : undefined} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col" className="pmat-no">
