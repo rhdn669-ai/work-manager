@@ -12,7 +12,7 @@ import { getAllSites } from '../../services/siteService';
 import {
   subscribePaidSetSettings,
   savePaidSetSettings,
-  subscribeReceivedBySite,
+  subscribeReceivedFor,
   assignPaidSet,
   unassignPaidSet,
   topUpPaidSet,
@@ -129,10 +129,12 @@ export default function PaidSetsPage({ embedded = false } = {}) {
       alive = false;
     };
   }, [groups, bomByProject]);
+  // 발주서가 BOM 을 직접 기억하면(bomProjectId) 그걸로, 옛 발주서는 설정한 현장으로 — 둘을 합쳐 센다 (안 B 3단계)
+  const bomProjectId = group?.projectId || '';
   useEffect(() => {
-    if (!siteId) return undefined;
-    return subscribeReceivedBySite(siteId, (byItem, meta) => setReceived({ byItem, meta }));
-  }, [siteId]);
+    if (!siteId && !bomProjectId) return undefined;
+    return subscribeReceivedFor({ siteId, bomProjectId }, (byItem, meta) => setReceived({ byItem, meta }));
+  }, [siteId, bomProjectId]);
 
   // ── 이 묶음의 셈 ──
   const variantRows = useMemo(
@@ -153,7 +155,7 @@ export default function PaidSetsPage({ embedded = false } = {}) {
     () =>
       computeSets({
         rows: variantRows,
-        receivedByItem: siteId ? received.byItem : {},
+        receivedByItem: siteId || bomProjectId ? received.byItem : {},
         assigned: assignedPanels.length,
         master: masterMap,
         exclude: excluded,
@@ -181,7 +183,7 @@ export default function PaidSetsPage({ embedded = false } = {}) {
     );
   const shortPanels = assignedPanels.filter((x) => shortageOf(x).short > 0);
   const canTopUpAll = shortPanels.some((x) => canTopUp(x));
-  const meta = siteId ? received.meta : null;
+  const meta = siteId || bomProjectId ? received.meta : null;
   // 배정 기준은 발주서에 적힌 세트 수다 — 현장에서 「N세트 발주」로 사 온 것이 그 수.
   // 품목 기준 셈은 「그 세트가 품목까지 다 갖춰졌나」를 보는 보조 숫자.
   // 이 묶음(타입)에 해당하는 세트만 — 프로버 5 + M7H 6 을 한 발주서에 담아도 프로버 묶음은 5 (2026-09-05 안 B 1단계)
@@ -208,7 +210,7 @@ export default function PaidSetsPage({ embedded = false } = {}) {
     setBusy(p.id);
     try {
       const seq = assignedPanels.length + 1;
-      const short = await assignPaidSet(p, variantRows, { by, seq, spareByItem, exclude: excluded });
+      const { short } = await assignPaidSet(p, variantRows, { by, seq, spareByItem, exclude: excluded });
       if (short > 0)
         toast(
           `${p.프로젝트} 에 ${seq}번째 세트를 배정했습니다 — 품목 ${short}줄이 모자라 그 BOX 는 아직 안 켜졌습니다 (부족 집계 확인)`,
@@ -475,8 +477,13 @@ export default function PaidSetsPage({ embedded = false } = {}) {
             </div>
           </div>
 
-          {/* 호기 배정 */}
+          {/* 호기 배정 — 발주서에 호기를 걸면 입고 때 자동으로 채워진다. 여기 버튼은 옛 발주서·예외용 (안 B 5단계) */}
           <h3 className="pset-h">호기 배정</h3>
+          <div className="pset-auto-hint no-print">
+            <Icon name="alert" className="btn-ic" />
+            발주 상세 「생산 호기」에서 호기를 걸어 두면 입고 처리 때 자동으로 배정됩니다. 아래 버튼은 옛 발주서나
+            예외에만 쓰세요.
+          </div>
           <div className="table-scroll-x">
             <table className="table pmat-table sht-table pset-panels">
               <colgroup>

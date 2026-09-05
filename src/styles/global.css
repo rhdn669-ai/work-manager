@@ -23143,3 +23143,16 @@ a.lib-row-name:hover {
 .perm-card.is-compact .perm-card-head {
   padding: 6px 8px;
 }
+
+/* 도급 배정 — 자동 배정 안내 (안 B 5단계) */
+.pset-auto-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: var(--primary-soft, #fdeee6);
+  color: var(--text);
+  font-size: 13px;
+}

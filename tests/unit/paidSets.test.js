@@ -7,6 +7,7 @@ import {
   perSetByItem,
   groupKey,
   fillPlan,
+  setsForGroup,
   consumedByItem,
   panelShortage,
 } from '../../src/domain/paidSets';
@@ -16,7 +17,11 @@ const free = (itemId, qty) => ({ id: `f-${itemId}`, itemId, qty, supplyType: 'fr
 
 describe('세트당 수량', () => {
   it('같은 품목이 여러 BOX 에 있으면 합친다, 사급은 뺀다', () => {
-    const { byItem, unlinked } = perSetByItem([paid('A', 2, { box: 'P/W BOX' }), paid('A', 3, { box: 'L/D BOX' }), free('B', 9)]);
+    const { byItem, unlinked } = perSetByItem([
+      paid('A', 2, { box: 'P/W BOX' }),
+      paid('A', 3, { box: 'L/D BOX' }),
+      free('B', 9),
+    ]);
     expect(byItem.get('A').perSet).toBe(5);
     expect(byItem.has('B')).toBe(false);
     expect(unlinked).toBe(0);
@@ -58,7 +63,11 @@ describe('세트 수', () => {
     expect(computeSets({ rows: [free('B', 1)], receivedByItem: { B: 100 } }).sets).toBe(0);
   });
   it('품목 마스터가 있으면 코드·품명은 마스터 것', () => {
-    const r = computeSets({ rows: [paid('A', 1)], receivedByItem: {}, master: { A: { code: 'IOPN-1', name: 'Relay' } } });
+    const r = computeSets({
+      rows: [paid('A', 1)],
+      receivedByItem: {},
+      master: { A: { code: 'IOPN-1', name: 'Relay' } },
+    });
     expect(r.items[0].code).toBe('IOPN-1');
   });
 });
@@ -121,7 +130,10 @@ describe('있는 만큼만 채우기', () => {
     expect(p.short).toBe(0);
     expect(p.boxes['P/W BOX']).toBe(true);
     expect(p.lines.find((l) => l.id === 'r3')).toBeUndefined();
-    const s = panelShortage(rows, { 'P/W BOX': { r1: { qty: 2 }, r3: { qty: 0, skip: true } }, 'L/D BOX': { r2: { qty: 1 } } });
+    const s = panelShortage(rows, {
+      'P/W BOX': { r1: { qty: 2 }, r3: { qty: 0, skip: true } },
+      'L/D BOX': { r2: { qty: 1 } },
+    });
     expect(s.short).toBe(0);
   });
   it('부족분 채우기 — 이미 들어온 것은 두고 모자란 만큼만 더한다', () => {
@@ -131,7 +143,10 @@ describe('있는 만큼만 채우기', () => {
     expect(p.lines.find((l) => l.id === 'r1').add).toBe(0);
   });
   it('배정 호기들이 실제로 가져간 양을 품목별로 합친다', () => {
-    const c = consumedByItem(rows, [{ 'P/W BOX': { r1: { qty: 2 }, r3: { qty: 1 }, f1: { qty: 9 } } }, { 'L/D BOX': { r2: { qty: 1 } } }]);
+    const c = consumedByItem(rows, [
+      { 'P/W BOX': { r1: { qty: 2 }, r3: { qty: 1 }, f1: { qty: 9 } } },
+      { 'L/D BOX': { r2: { qty: 1 } } },
+    ]);
     expect(c).toEqual({ A: 3, B: 1 });
   });
   it('호기의 부족 줄', () => {
@@ -162,5 +177,31 @@ describe('부족분을 창고 재고에서 (2026-09-04)', () => {
     const p = fillPlan({ rows, spareByItem: {}, current: { r1: 2 }, stockByItem: { A: 9, B: 0 } });
     expect(p.lines[0]).toMatchObject({ add: 0, fromStock: 0 });
     expect(p.stockUsed).toEqual({});
+  });
+});
+
+describe('묶음(타입)별 세트 수 (2026-09-05 안 B 1단계)', () => {
+  const lots = { 프로버: 5, M7H: 6, '': 2 };
+  it('타입이 있는 묶음은 그 이름의 세트만 + 타입 미표기', () => {
+    expect(setsForGroup(lots, { variantKey: 'a', variantLabel: '프로버', projectName: '메티스' })).toEqual({
+      named: 5,
+      unnamed: 2,
+      total: 7,
+    });
+    expect(setsForGroup(lots, { variantKey: 'b', variantLabel: 'M7H', projectName: '메티스' })).toEqual({
+      named: 6,
+      unnamed: 2,
+      total: 8,
+    });
+  });
+  it('타입 없는 묶음은 프로젝트 이름으로 적힌 세트', () => {
+    expect(setsForGroup({ 메티스: 3 }, { variantKey: '', variantLabel: '미배정', projectName: '메티스' })).toEqual({
+      named: 3,
+      unnamed: 0,
+      total: 3,
+    });
+  });
+  it('아무것도 없으면 0', () => {
+    expect(setsForGroup({}, { variantKey: 'a', variantLabel: 'X', projectName: 'Y' }).total).toBe(0);
   });
 });

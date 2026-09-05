@@ -43,42 +43,67 @@ export async function setPaidSetExcluded(company, itemId, excluded) {
  *  setCount = 입고된 발주서에 적힌 세트 수 합(전 타입), lotsByName = 세트 이름(타입)별 합 — 화면은 이걸로 묶음마다 센다
  *  (2026-09-05 대표님 안 B 1단계: 타입을 무시하고 합산하던 버그 해소) */
 export function subscribeReceivedBySite(siteId, cb) {
-  if (!siteId) return () => {};
-  const q = query(purchasesRef, where('siteId', '==', siteId));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const out = {};
-      let lines = 0;
-      let noItem = 0;
-      let setCount = 0;
-      const lotsByName = {};
-      snap.docs.forEach((d) => {
-        const v = d.data();
-        if ((v.items || []).some((ln) => Number(ln.receivedQty) > 0)) {
-          for (const lot of setLotsOf(v)) {
-            setCount += lot.count;
-            lotsByName[lot.name] = (lotsByName[lot.name] || 0) + lot.count;
-          }
-        }
-        for (const ln of v.items || []) {
-          const got = Number(ln.receivedQty) || 0;
-          if (got <= 0) continue;
-          lines += 1;
-          if (!ln.itemId) {
-            noItem += 1;
-            continue;
-          }
-          out[ln.itemId] = (out[ln.itemId] || 0) + got;
-        }
-      });
-      cb(out, { purchases: snap.size, lines, noItem, setCount, lotsByName });
-    },
-    (err) => {
-      console.error('[도급 세트] 발주 입고 구독 오류:', err);
-      cb({}, { purchases: 0, lines: 0, noItem: 0, setCount: 0, lotsByName: {} });
-    },
+  return subscribeReceivedFor({ siteId }, cb);
+}
+
+/**
+ * 발주서 직결 구독 (2026-09-05 안 B 3단계) — BOM 프로젝트로 직결된 발주서(bomProjectId) 와
+ * (옛 방식) 설정한 현장의 발주서를 합쳐 센다. 둘 다 없으면 아무것도 안 한다.
+ */
+export function subscribeReceivedFor({ siteId = '', bomProjectId = '' } = {}, cb) {
+  const qs = [];
+  if (bomProjectId) qs.push(query(purchasesRef, where('bomProjectId', '==', bomProjectId)));
+  if (siteId) qs.push(query(purchasesRef, where('siteId', '==', siteId)));
+  if (qs.length === 0) return () => {};
+  const parts = qs.map(() => null); // 구독마다 마지막 스냅샷의 문서들
+  const emit = () => {
+    const byId = new Map();
+    parts.forEach((docs) => (docs || []).forEach((d) => byId.set(d.id, d)));
+    summarize([...byId.values()], cb);
+  };
+  const unsubs = qs.map((q, i) =>
+    onSnapshot(
+      q,
+      (snap) => {
+        parts[i] = snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+        emit();
+      },
+      (err) => {
+        console.error('[도급 배정] 발주 입고 구독 오류:', err);
+        parts[i] = [];
+        emit();
+      },
+    ),
   );
+  return () => unsubs.forEach((u) => u());
+}
+
+function summarize(docs, cb) {
+  const out = {};
+  let lines = 0;
+  let noItem = 0;
+  let setCount = 0;
+  const lotsByName = {};
+  docs.forEach((d) => {
+    const v = d.data;
+    if ((v.items || []).some((ln) => Number(ln.receivedQty) > 0)) {
+      for (const lot of setLotsOf(v)) {
+        setCount += lot.count;
+        lotsByName[lot.name] = (lotsByName[lot.name] || 0) + lot.count;
+      }
+    }
+    for (const ln of v.items || []) {
+      const got = Number(ln.receivedQty) || 0;
+      if (got <= 0) continue;
+      lines += 1;
+      if (!ln.itemId) {
+        noItem += 1;
+        continue;
+      }
+      out[ln.itemId] = (out[ln.itemId] || 0) + got;
+    }
+  });
+  cb(out, { purchases: docs.length, lines, noItem, setCount, lotsByName });
 }
 
 // 호기의 BOX 별 도급 줄 — { box: rows[] } (줄 없는 BOX 는 뺀다)
@@ -138,7 +163,8 @@ export async function assignPaidSet(panel, variantRows, { by = '', seq = 0, spar
     ...matPatch(panel, plan.boxes),
     paidSet: { seq, at: new Date().toISOString().slice(0, 10), by, short: plan.short },
   });
-  return plan.short;
+  // lines 는 자동 배분이 여유를 줄여 가려고 쓴다 (2026-09-05 안 B 4단계)
+  return { short: plan.short, lines: plan.lines };
 }
 
 /**
@@ -158,7 +184,7 @@ export async function topUpPaidSet(
   for (const r of rows) current[r.id] = Number(mats?.[r.box || '']?.[r.id]?.qty) || 0;
   const plan = fillPlan({ rows, spareByItem, exclude, current, skipRows: skippedRows(rows, mats), stockByItem });
   const changed = plan.lines.filter((l) => l.add > 0);
-  if (changed.length === 0) return { added: 0, short: plan.short, stockUsed: {} };
+  if (changed.length === 0) return { added: 0, short: plan.short, stockUsed: {}, lines: [] };
   await writePlan(panel.id, { lines: changed }, by);
   const used = plan.stockUsed || {};
   const prev = panel.paidSet?.stockUsed || {};
@@ -179,7 +205,7 @@ export async function topUpPaidSet(
       consumeItemStock(id, n, { byName: by, note: `도급 배정 · ${panel.프로젝트 || ''}` }),
     ),
   );
-  return { added: changed.length, short: plan.short, stockUsed: used };
+  return { added: changed.length, short: plan.short, stockUsed: used, lines: changed };
 }
 
 /** 배정 취소 — 도급 줄 수량 0 + 자재 도급 칸 끔 + 배정 기록 지움 */

@@ -337,11 +337,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col" className="pmat-ok">
                   확인
                 </th>
-                {locked && assigned && (
-                  <th scope="col" className="col-action">
-                    이 호기
-                  </th>
-                )}
+                {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상 (2026-09-05 안 B 6단계) */}
+                <th scope="col" className="col-action">
+                  이 호기
+                </th>
                 <th scope="col">기록</th>
               </tr>
             </thead>
@@ -397,7 +396,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         ''
                       )}
                     </td>
-                    {locked && assigned && (
+                    {
                       <td className="col-action">
                         <button
                           type="button"
@@ -408,7 +407,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           {skipped ? '포함' : '제외'}
                         </button>
                       </td>
-                    )}
+                    }
                     <td className="pmat-meta">{meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}</td>
                   </tr>
                 );

@@ -67,6 +67,8 @@ import { contactsOf, hasChoice, mailToLine, resolveEmail, supplierKey } from '..
 import { paidList, payButtonLabel, unpaidAmount } from '../../domain/payment';
 import { poFingerprint } from '../../utils/poFingerprint';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
+import { mergeBomLinks, bomLinksLabel } from '../../domain/purchaseBom';
+import { autoAllocateFromPurchase, allocationSummary } from '../../services/paidAutoAllocate';
 import { PO_COLS } from '../../domain/tableWidths';
 import {
   PO_DEFAULTS,
@@ -325,6 +327,42 @@ export default function PurchaseDetailPage() {
   // 이 발주가 어느 생산 호기 것인지 — 여러 대에 걸칠 수 있다(입고는 한 번에 되므로 발주서 단위로 건다)
   const [allPanels, setAllPanels] = useState([]);
   const [panelPickOpen, setPanelPickOpen] = useState(false);
+  // 옛 발주서(BOM 에서 안 가져온 것)도 자동 배분을 쓰게 — 창에서 BOM·타입을 골라 연결 (안 B 3단계)
+  const [linkPick, setLinkPick] = useState('');
+  const bomLinkOptions = useMemo(() => {
+    const out = [{ value: '', label: 'BOM 고르기' }];
+    for (const bp of bomProjects) {
+      const vs = Array.isArray(bp.variants) ? bp.variants.filter((v) => v?.key) : [];
+      if (vs.length === 0) out.push({ value: `${bp.id}|`, label: bp.name });
+      for (const v of vs) out.push({ value: `${bp.id}|${v.key}`, label: `${bp.name} · ${v.label || v.key}` });
+    }
+    return out;
+  }, [bomProjects]);
+  async function openPanelPick() {
+    setPanelPickOpen(true);
+    if (bomProjects.length === 0) {
+      try {
+        setBomProjects(await getBomProjects());
+      } catch {
+        /* 목록 못 불러오면 연결 선택만 비어 있다 */
+      }
+    }
+  }
+  function applyBomLink(v) {
+    setLinkPick(v);
+    if (!v) return;
+    const [projectId, variantKey] = v.split('|');
+    const bp = bomProjects.find((x) => x.id === projectId);
+    if (!bp) return;
+    const vLabel = variantKey ? (bp.variants || []).find((x) => x.key === variantKey)?.label || '' : '';
+    setForm((f) => ({
+      ...f,
+      bomLinks: mergeBomLinks(f.bomLinks, { projectId: bp.id, projectName: bp.name, variantKey, variantLabel: vLabel }),
+      bomProjectId: f.bomProjectId || bp.id,
+    }));
+    scheduleAutoSave();
+    setLinkPick('');
+  }
   const [panelPickProject, setPanelPickProject] = useState('');
   // 세트 내역 고치기 — BOM으로 담을 땐 저절로 쌓이지만, 옛 발주서나 잘못 담은 건 손으로 맞춘다
   const [setLotsDraft, setSetLotsDraft] = useState(null); // null = 닫힘
@@ -966,7 +1004,21 @@ export default function PurchaseDetailPage() {
         report = r;
         // 타입마다 몇 세트인지 따로 남긴다 — 숫자 하나로 두면 나중에 담은 타입이 앞의 것을 덮어쓴다
         const setLots = mergeSetLots(f.setLots, vLabel || bp.name, setCount);
-        return { ...f, items: r.merged, setLots, setCount: totalSetCount(setLots) };
+        // 발주서가 어느 BOM(프로젝트·타입)에서 왔는지 기억한다 — 도급 배정이 이걸로 발주서를 찾는다 (안 B 3단계)
+        const bomLinks = mergeBomLinks(f.bomLinks, {
+          projectId: bp.id,
+          projectName: bp.name,
+          variantKey,
+          variantLabel: vLabel || '',
+        });
+        return {
+          ...f,
+          items: r.merged,
+          setLots,
+          setCount: totalSetCount(setLots),
+          bomLinks,
+          bomProjectId: f.bomProjectId || bp.id,
+        };
       });
       scheduleAutoSave();
       setBomModalOpen(false);
@@ -1134,6 +1186,8 @@ export default function PurchaseDetailPage() {
         supplierNotes: f.supplierNotes || {},
         setCount: Number(f.setCount) || 0,
         setLots: f.setLots || [],
+        bomLinks: f.bomLinks || [], // BOM 직결 (안 B 3단계)
+        bomProjectId: f.bomProjectId || '',
         mailBody: f.mailBody || '',
         deletedItems: f.deletedItems || [],
       });
@@ -1292,11 +1346,25 @@ export default function PurchaseDetailPage() {
     setReceiveModal({ lineIdx, line });
   }
 
+  // 입고 처리 뒤 걸린 호기에 도급 자재를 자동 배분한다 (2026-09-05 대표님 안 B 4단계).
+  // 배분은 백그라운드 — 실패해도 입고는 이미 끝났으니 알림만 남긴다.
+  async function allocateAfterReceive(items) {
+    const cur = purchaseRef.current || purchase;
+    try {
+      const r = await autoAllocateFromPurchase({ ...cur, items }, { by: userProfile?.name || '' });
+      const msg = allocationSummary(r);
+      if (msg) toast(msg, r.short.length || r.noType.length ? 'error' : 'success', 0);
+    } catch (err) {
+      console.error('[자동 배분]', err);
+      toast('도급 자재 자동 배분에 실패했습니다 — 자재 › 도급 배정에서 직접 배정하세요', 'error', 0);
+    }
+  }
+
   async function submitReceive(e) {
     e.preventDefault();
     if (!receiveModal) return;
     try {
-      await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
+      const r = await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
         qty: receiveForm.qty,
         date: receiveForm.date,
         note: receiveForm.note,
@@ -1304,6 +1372,7 @@ export default function PurchaseDetailPage() {
       });
       setReceiveModal(null);
       await loadData({ silent: true });
+      allocateAfterReceive(r.items);
     } catch {
       toast('입고 처리 중 오류가 발생했습니다', 'error');
     }
@@ -1335,7 +1404,7 @@ export default function PurchaseDetailPage() {
         : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
     if (!(await confirm(msg))) return;
     try {
-      await bulkReceivePurchase(purchaseRef.current, {
+      const r = await bulkReceivePurchase(purchaseRef.current, {
         mode,
         date: bulkForm.date,
         note: bulkForm.note,
@@ -1343,6 +1412,7 @@ export default function PurchaseDetailPage() {
       });
       setBulkModal(null);
       await loadData({ silent: true });
+      allocateAfterReceive(r.items);
     } catch {
       toast('일괄 입고 처리 중 오류가 발생했습니다', 'error');
     }
@@ -2269,7 +2339,7 @@ export default function PurchaseDetailPage() {
               <button
                 type="button"
                 className="btn btn-sm btn-outline"
-                onClick={() => setPanelPickOpen(true)}
+                onClick={openPanelPick}
                 title="이 발주가 어느 생산 호기 것인지 고르기"
               >
                 생산 호기{' '}
@@ -3597,7 +3667,29 @@ export default function PurchaseDetailPage() {
         <p className="field-hint" style={{ marginBottom: 12 }}>
           이 발주가 어느 호기 자재인지 고릅니다. 여러 대를 걸 수 있고, 자재가 모자라면{' '}
           <strong>생산이 뒤인 호기가 미입고</strong>로 남습니다.
+          {bomLinksLabel(form.bomLinks) ? (
+            <>
+              {' '}
+              입고 처리하면 걸린 호기 순서대로 <strong>도급 자재가 자동으로 채워집니다</strong> (BOM{' '}
+              {bomLinksLabel(form.bomLinks)}).
+            </>
+          ) : (
+            <> BOM 을 연결하면 입고 때 걸린 호기에 도급 자재가 자동으로 채워집니다.</>
+          )}
         </p>
+        {!isReadOnly && (
+          <div className="stock-filters no-print" style={{ marginBottom: 8 }}>
+            <span className="stock-summary">BOM 연결</span>
+            <Select
+              value={linkPick}
+              onChange={applyBomLink}
+              options={bomLinkOptions}
+              className="stock-filter-select"
+              ariaLabel="BOM 연결"
+            />
+            {bomLinksLabel(form.bomLinks) && <span className="stock-summary">{bomLinksLabel(form.bomLinks)}</span>}
+          </div>
+        )}
         <div className="stock-filters no-print">
           <Select
             value={panelPickProject}
@@ -3627,9 +3719,24 @@ export default function PurchaseDetailPage() {
           {allPanels.length === 0 && <p className="purchase-empty">생산현황에 등록된 판넬이 없습니다.</p>}
         </div>
         <div className="modal-actions">
-          <button type="button" className="btn btn-primary" onClick={() => setPanelPickOpen(false)}>
+          <button type="button" className="btn btn-outline" onClick={() => setPanelPickOpen(false)}>
             닫기
           </button>
+          {bomLinksLabel(form.bomLinks) && (form.panels || []).length > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              title="이미 입고된 만큼 걸린 호기에 지금 배분"
+              onClick={async () => {
+                await flushAutoSave();
+                setPanelPickOpen(false);
+                allocateAfterReceive((purchaseRef.current || purchase).items || []);
+              }}
+            >
+              <Icon name="check" className="btn-ic" />
+              지금 배분
+            </button>
+          )}
         </div>
       </Modal>
 
