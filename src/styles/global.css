@@ -22954,9 +22954,14 @@ a.lib-row-name:hover {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'name dot'
+    'tag dot';
   align-items: center;
-  gap: 6px;
+  column-gap: 6px;
+  row-gap: 2px;
   cursor: pointer;
 }
 .mhub-item:hover {
@@ -22970,27 +22975,29 @@ a.lib-row-name:hover {
   color: var(--text-light);
   font-weight: 500;
 }
+/* 이름은 잘리지 않게 한 줄 전부, 타입 태그는 아랫줄 (2026-09-05 대표님 「호기 표시가 잘려서 보이네」) */
 .mhub-item-name {
-  flex: 1;
+  grid-area: name;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .mhub-item-tag {
+  grid-area: tag;
+  justify-self: start;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 0 6px;
   border-radius: 999px;
   background: var(--grey-100, #f2f4f6);
   color: var(--text-light);
-  flex: none;
 }
 .mhub-item.on .mhub-item-tag {
   background: #fff;
   color: var(--primary);
 }
 .mhub-item-dot {
+  grid-area: dot;
   width: 7px;
   height: 7px;
   border-radius: 50%;

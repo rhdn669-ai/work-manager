@@ -9,6 +9,7 @@ import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanelMaterials, setReceived, setSkipped } from '../../services/panelMaterialsService';
+import { pullRowFromStock } from '../../services/paidSetService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { specFontClass, localStamp } from '../../utils/printText';
@@ -174,6 +175,22 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       await setSkipped(panelId, box, r.id, on, userProfile?.name || '');
     } catch {
       toast('저장에 실패했습니다', 'error');
+    }
+  };
+  // 부족한 도급 줄을 창고 재고에서 (2026-09-05 대표님 「부족한 거 재고에서 땡겨오는 버튼 없나」)
+  const stockOf = (r) => {
+    const m = r.itemId ? masterMap[r.itemId] : null;
+    return m && m.stockQty !== undefined && m.stockQty !== null ? Math.max(0, Number(m.stockQty) || 0) : 0;
+  };
+  const pullStock = async (r, have, short) => {
+    const n = Math.min(short, stockOf(r));
+    if (n <= 0) return;
+    try {
+      await pullRowFromStock(panel, r, { box, have, n, by: userProfile?.name || '' });
+      toast(`${r.code || r.name} ${n}개를 창고 재고에서 가져왔습니다 (재고 ${stockOf(r) - n} 남음)`, 'success', 0);
+    } catch (err) {
+      console.error(err);
+      toast('재고에서 가져오기에 실패했습니다', 'error', 0);
     }
   };
   const fillAll = () => fillAllTo(true);
@@ -398,6 +415,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     </td>
                     {
                       <td className="col-action">
+                        {supplyTab === 'paid' && short > 0 && stockOf(r) > 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => pullStock(r, got, short)}
+                            title={`창고 재고 ${stockOf(r)}개 중 ${Math.min(short, stockOf(r))}개를 이 호기로`}
+                          >
+                            재고에서 {Math.min(short, stockOf(r))}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn btn-sm btn-outline"
