@@ -23686,3 +23686,20 @@ a.lib-row-name:hover {
   padding: 0 8px;
   min-width: 0;
 }
+
+/* 비고 입력칸은 칸 폭을 꽉 채운다 — 숫자 입력칸의 72px 상한이 여기까지 걸려 있었다 (2026-09-05 대표님) */
+.pmat-table.no-fit .pmat-input.pmat-note {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  display: block;
+}
+.pmat-table.no-fit td.pmat-note-cell {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+/* 「이 호기」 버튼도 칸을 채운다 */
+.pmat-table td.pmat-act .btn {
+  width: 100%;
+  justify-content: center;
+}
