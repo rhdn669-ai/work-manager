@@ -113,3 +113,17 @@ export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {
     { merge: true },
   );
 }
+
+/** 이 호기·이 줄의 비고 — 개수와 별개로 한 줄 메모 (2026-09-05 대표님 「비고란도 하나」) */
+export async function setNote(panelId, box, bomItemId, note) {
+  await setDoc(
+    doc(ref, materialsDocId(panelId, box)),
+    {
+      panelId,
+      box,
+      items: { [bomItemId]: { note: String(note || '').trim() } },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}

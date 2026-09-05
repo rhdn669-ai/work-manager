@@ -23646,3 +23646,31 @@ a.lib-row-name:hover {
   background: var(--danger, #b3261e);
   z-index: 1200;
 }
+
+/* 자재 체크 비고 칸 — 글자처럼 보이다가 잠금을 풀면 입력칸 (2026-09-05 대표님) */
+.pmat-table.no-fit td.pmat-note-cell {
+  white-space: normal;
+}
+.pmat-table .pmat-note {
+  width: 100%;
+  max-width: none;
+  text-align: left;
+  font-weight: 500;
+  font-size: 12.5px;
+  padding: 4px 6px;
+  height: 28px;
+}
+.pmat-table .pmat-note[readonly] {
+  cursor: default;
+  color: var(--text-light);
+}
+.pmat-table .pmat-note[readonly]:hover {
+  background: transparent;
+}
+
+/* 자재 체크 표 — 열이 12개라 칸 안쪽 여백을 조금 줄인다 (2026-09-05) */
+.pmat-table.no-fit th,
+.pmat-table.no-fit td {
+  padding-left: 8px;
+  padding-right: 8px;
+}

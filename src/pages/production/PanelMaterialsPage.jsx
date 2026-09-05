@@ -10,7 +10,7 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { subscribePanelMaterials, setReceived, setSkipped } from '../../services/panelMaterialsService';
+import { subscribePanelMaterials, setReceived, setSkipped, setNote } from '../../services/panelMaterialsService';
 import {
   pullRowFromStock,
   unassignPaidSet,
@@ -158,6 +158,23 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [box, rows.length, summary, supplyTab]);
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
   const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
+  // 비고 — 호기·줄마다 한 줄 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」)
+  const [noteDraft, setNoteDraft] = useState({}); // { [rowId]: '입력 중' }
+  const commitNote = async (r) => {
+    const v = noteDraft[r.id];
+    if (v === undefined) return;
+    setNoteDraft((d) => {
+      const n = { ...d };
+      delete n[r.id];
+      return n;
+    });
+    if (v.trim() === String(rec[r.id]?.note || '')) return;
+    try {
+      await setNote(panelId, box, r.id, v);
+    } catch {
+      toast('비고 저장에 실패했습니다', 'error');
+    }
+  };
 
   // ── ④ 연동: 이 BOX 의 도급/사급이 전부 차면 생산현황 자재 칸을 켠다, 하나라도 빠지면 끈다 ──
   useEffect(() => {
@@ -510,7 +527,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
-              {['4%', '10%', '10%', '11%', null, '7%', '8%', '5%', '8%', '8%', hasMeta ? '12%' : null]
+              {['3.5%', '11%', '9.5%', '9%', null, '5.5%', '6.5%', '4.5%', '7%', '6.5%', hasMeta ? '12%' : null, '9%']
                 .filter((_, i) => hasMeta || i !== 10)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -542,6 +559,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                   이 호기
                 </th>
                 {hasMeta && <th scope="col">기록</th>}
+                <th scope="col">비고</th>
               </tr>
             </thead>
             <tbody>
@@ -641,6 +659,23 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         )}
                       </td>
                     )}
+                    {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
+                    <td className="pmat-note-cell">
+                      <input
+                        type="text"
+                        className="pmat-input pmat-note"
+                        value={noteDraft[r.id] !== undefined ? noteDraft[r.id] : rec[r.id]?.note || ''}
+                        placeholder={editMode ? '메모' : ''}
+                        readOnly={!editMode}
+                        title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
+                        onChange={(e) => setNoteDraft((d) => ({ ...d, [r.id]: e.target.value }))}
+                        onBlur={() => commitNote(r)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                        }}
+                        aria-label={`${r.name} 비고`}
+                      />
+                    </td>
                   </tr>
                 );
               })}
