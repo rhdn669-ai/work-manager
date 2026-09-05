@@ -4,18 +4,20 @@ import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import Select from '../../components/common/Select';
 import { subscribePanels } from '../../services/productionService';
+import { subscribeAllMaterials } from '../../services/panelMaterialsService';
+import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { panelShortage } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
 import PanelMaterialsPage from './PanelMaterialsPage';
-import PaidSetsPage from './PaidSetsPage';
 import ShortagePage from './ShortagePage';
 
 // 자재 허브 — 호기 자재 체크 · 도급 배정 · 부족 집계를 한 화면의 탭 3개로
 // (2026-09-05 대표님 안 B 2단계 「자재 화면 3 → 1」). 옛 주소(/production/:id/materials,
 // /production/shortage, /production/paid-sets)는 라우터가 여기로 넘긴다.
 //   ?company=메티스&tab=check|paid|shortage&panel=<호기 id>
+// 「도급 배정」 탭은 뺐다 — 발주서에 호기를 걸면 입고 때 자동 배정되므로 (2026-09-05 대표님)
 const TABS = [
   { value: 'check', label: '호기 체크' },
-  { value: 'paid', label: '도급 배정' },
   { value: 'shortage', label: '부족 집계' },
 ];
 
@@ -26,6 +28,10 @@ export default function MaterialsHubPage() {
   const panelId = sp.get('panel') || '';
   const [panels, setPanels] = useState([]);
   useEffect(() => subscribePanels(setPanels), []);
+  // 호기 점 색 — 초록: 도급 다 들어옴 · 주황: 배정됐는데 부족 · 없음: 아직 발주에 안 걸림
+  const [materials, setMaterials] = useState({});
+  const [bomRowsByProject, setBomRowsByProject] = useState({});
+  useEffect(() => subscribeAllMaterials(setMaterials), []);
 
   // 회사 — 주소에 없으면 고른 호기의 회사, 그것도 없으면 첫 회사
   const picked = panels.find((p) => p.id === panelId) || null;
@@ -51,6 +57,25 @@ export default function MaterialsHubPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, panelId, list.length]);
 
+  useEffect(() => {
+    const ids = [...new Set(list.map((p) => p.bomLink?.projectId).filter(Boolean))].filter(
+      (id) => !(id in bomRowsByProject),
+    );
+    if (ids.length === 0) return undefined;
+    let alive = true;
+    Promise.all(ids.map((id) => getBomBySite(id).then((rows) => [id, rows || []]))).then((pairs) => {
+      if (alive) setBomRowsByProject((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [list, bomRowsByProject]);
+  const dotOf = (p) => {
+    if (!p.paidSet || !p.bomLink?.projectId) return null;
+    const rows = bomItemsForVariant(bomRowsByProject[p.bomLink.projectId] || [], p.bomLink.variantKey || '');
+    const n = panelShortage(rows, materials[p.id] || {}).short;
+    return n > 0 ? { cls: 'is-short', title: `도급 ${n}줄 부족` } : { cls: 'is-ok', title: '도급 자재 다 들어옴' };
+  };
   const nameOf = (p) => `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() || '(이름 없음)';
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
 
@@ -87,7 +112,10 @@ export default function MaterialsHubPage() {
                   >
                     <span className="mhub-item-name">{nameOf(p)}</span>
                     {p.bomLink?.variantLabel && <span className="mhub-item-tag">{p.bomLink.variantLabel}</span>}
-                    {p.paidSet && <span className="mhub-item-dot" title="도급 세트 배정됨" />}
+                    {(() => {
+                      const d = dotOf(p);
+                      return d ? <span className={`mhub-item-dot ${d.cls}`} title={d.title} /> : null;
+                    })()}
                   </button>
                 </li>
               ))}
@@ -114,8 +142,6 @@ export default function MaterialsHubPage() {
             )}
           </div>
         </div>
-      ) : tab === 'paid' ? (
-        <PaidSetsPage embedded />
       ) : (
         <ShortagePage embedded />
       )}

@@ -9,7 +9,15 @@ import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanelMaterials, setReceived, setSkipped } from '../../services/panelMaterialsService';
-import { pullRowFromStock } from '../../services/paidSetService';
+import {
+  pullRowFromStock,
+  unassignPaidSet,
+  topUpPaidSet,
+  subscribeReceivedFor,
+  subscribePaidSetSettings,
+} from '../../services/paidSetService';
+import { subscribeAllMaterials } from '../../services/panelMaterialsService';
+import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { specFontClass, localStamp } from '../../utils/printText';
@@ -170,6 +178,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     }
   };
   // 이 호기에서만 줄을 일시 제외/복귀 — 기본 BOM 은 그대로 (세트 배정 호기의 도급 탭에서)
+  const title = `${panel?.프로젝트 || ''}${panel?.호기 ? ` ${panel.호기}` : ''}`.trim() || '호기';
   const toggleSkip = async (r, on) => {
     try {
       await setSkipped(panelId, box, r.id, on, userProfile?.name || '');
@@ -193,11 +202,73 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       toast('재고에서 가져오기에 실패했습니다', 'error', 0);
     }
   };
+  // 도급 배정 탭을 없애며 옮겨 온 것 — 배정 취소 · 부족분 전부 재고에서 (2026-09-05 대표님)
+  const stockByItem = useMemo(() => {
+    const out = {};
+    for (const r of bomRows) if (r.itemId && stockOf(r) > 0) out[r.itemId] = stockOf(r);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bomRows, masterMap]);
+  const variantRows = useMemo(() => bomItemsForVariant(bomRows, link?.variantKey || ''), [bomRows, link?.variantKey]);
+  // 발주 여유 = 이 BOM 으로 들어온 입고 − 배정 호기들이 가져간 양 (부족 집계와 같은 셈)
+  const [settings, setSettings] = useState({});
+  useEffect(() => subscribePaidSetSettings(setSettings), []);
+  const siteId = settings?.[panel?.회사 || '']?.siteId || '';
+  const [receivedByItem, setReceivedByItem] = useState({});
+  useEffect(() => {
+    if (!link?.projectId) return undefined;
+    return subscribeReceivedFor({ bomProjectId: link.projectId, siteId }, (byItem) => setReceivedByItem(byItem));
+  }, [link?.projectId, siteId]);
+  const [allMaterials, setAllMaterials] = useState({});
+  const [allPanels, setAllPanels] = useState([]);
+  useEffect(() => subscribeAllMaterials(setAllMaterials), []);
+  useEffect(() => subscribePanels(setAllPanels), []);
+  const spareByItem = useMemo(() => {
+    if (!link?.projectId) return {};
+    const assigned = allPanels.filter((p) => p.paidSet && p.bomLink?.projectId === link.projectId);
+    const consumed = consumedByItem(
+      bomRows,
+      assigned.map((p) => allMaterials[p.id] || {}),
+    );
+    const out = {};
+    for (const [itemId, q] of Object.entries(receivedByItem)) out[itemId] = q - (consumed[itemId] || 0);
+    return out;
+  }, [link?.projectId, allPanels, bomRows, allMaterials, receivedByItem]);
+  const canFillAll = useMemo(
+    () => Object.values(spareByItem).some((v) => v > 0) || Object.keys(stockByItem).length > 0,
+    [spareByItem, stockByItem],
+  );
+  const pullAllStock = async () => {
+    try {
+      const r = await topUpPaidSet(panel, variantRows, { by: userProfile?.name || '', spareByItem, stockByItem });
+      const n = Object.values(r.stockUsed || {}).reduce((a, b) => a + b, 0);
+      if (r.added === 0) toast('발주 여유도 창고 재고도 없어 채울 줄이 없습니다', 'error');
+      else
+        toast(
+          `${r.added}줄을 채웠습니다${n > 0 ? ` (재고에서 ${n}개)` : ''}${r.short > 0 ? ` — 아직 ${r.short}줄 부족` : ''}`,
+          'success',
+          0,
+        );
+    } catch (err) {
+      console.error(err);
+      toast('재고에서 채우기에 실패했습니다', 'error', 0);
+    }
+  };
+  const unassign = async () => {
+    if (!(await confirm(`${title} 의 도급 배정을 취소하시겠습니까? 도급 줄 수량이 0 이 되고 자재 도급 칸이 꺼집니다.`)))
+      return;
+    try {
+      await unassignPaidSet(panel, variantRows, { by: userProfile?.name || '' });
+      toast('도급 배정을 취소했습니다', 'success');
+    } catch (err) {
+      console.error(err);
+      toast('취소에 실패했습니다', 'error', 0);
+    }
+  };
   const fillAll = () => fillAllTo(true);
   const clearAll = () => fillAllTo(false);
 
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
-  const title = `${panel?.프로젝트 || ''}${panel?.호기 ? ` ${panel.호기}` : ''}`.trim() || '호기';
 
   if (!loadedPanels)
     return (
@@ -283,25 +354,33 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           ariaLabel="도급 사급 구분"
         />
         {locked && assigned ? (
-          <span
-            className="status-badge status-badge--done pmat-locked-badge"
-            title="도급 배정 화면에서 배정·취소·부족분 채우기"
-          >
-            <Icon name="lock" />
-            세트 배정 · {panel.paidSet.seq}번째 · {panel.paidSet.at}
-            {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
+          <span className="pmat-assigned-row">
+            <span
+              className="status-badge status-badge--done pmat-locked-badge"
+              title="발주 입고분이 이 호기에 들어온 상태"
+            >
+              <Icon name="lock" />
+              도급 배정 · {panel.paidSet.at}
+              {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
+            </span>
+            {summary.paid.done < summary.paid.total && canFillAll && (
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={pullAllStock}
+                title="모자란 줄 전부를 발주 여유 → 창고 재고 순으로 (있는 만큼만)"
+              >
+                부족분 채우기
+              </button>
+            )}
+            <button type="button" className="btn btn-sm btn-outline" onClick={unassign}>
+              배정 취소
+            </button>
           </span>
         ) : locked ? (
           <span className="pmat-hint pmat-hint-paid">
             <Icon name="lock" />
-            도급 자재는 손으로 적지 않습니다 — 「도급 배정」에서 배정하면 채워집니다
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => navigate(`/production/materials?tab=paid&company=${encodeURIComponent(panel.회사 || '')}`)}
-            >
-              도급 배정으로
-            </button>
+            도급 자재는 손으로 적지 않습니다 — 발주 상세 「생산 호기」에 이 호기를 걸어 두면 입고 때 자동으로 채워집니다
           </span>
         ) : (
           <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>

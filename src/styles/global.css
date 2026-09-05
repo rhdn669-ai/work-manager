@@ -23163,3 +23163,23 @@ a.lib-row-name:hover {
   color: var(--text);
   font-size: 13px;
 }
+
+/* 호기 체크 — 배정 배지 줄 (배정 취소·부족분 전부 재고에서) */
+.pmat-assigned-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 허브 호기 점 — 초록 다 들어옴 · 주황 부족 */
+.mhub-item-dot.is-ok {
+  background: var(--success, #1f7a4d);
+}
+.mhub-item-dot.is-short {
+  background: var(--warning, #e08a00);
+}
+/* 부족 집계 — 끌어올 곳이 있는 칸 */
+.sht-table td.is-have {
+  color: var(--success, #1f7a4d);
+  font-weight: 700;
+}

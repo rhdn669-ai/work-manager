@@ -81,7 +81,7 @@ const router = createBrowserRouter([
           { path: '/production/materials', element: <MaterialsHubPage /> },
           { path: '/production/:panelId/materials', element: <ToMaterialsHub tab="check" /> },
           { path: '/production/shortage', element: <ToMaterialsHub tab="shortage" /> },
-          { path: '/production/paid-sets', element: <ToMaterialsHub tab="paid" /> },
+          { path: '/production/paid-sets', element: <ToMaterialsHub tab="check" /> },
           { path: '/quality', element: <QualityPage /> },
           { path: '/quality/sheet/:formKey/:id', element: <QualitySheetPage /> },
         ],

@@ -11,6 +11,8 @@ import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { aggregateShortage } from '../../domain/panelMaterials';
+import { consumedByItem } from '../../domain/paidSets';
+import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 범위 부족 집계 (2026-09-03 대표님 「호기수 범위 선택해서 구간에 뭐가 얼마나 부족한지」).
@@ -21,7 +23,7 @@ import { specFontClass, localStamp } from '../../utils/printText';
 // 출력 열 폭(%) — NO·품목명·도번·규격·BOM·입고·부족·호기, 합 100
 const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
 // 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
-const SHT_SCREEN_COLS = [48, 130, 124, null, null, 76, 76, 76, 240];
+const SHT_SCREEN_COLS = [48, 130, 124, null, null, 76, 76, 76, 84, 84, 200];
 
 const hogiOf = (p) =>
   [p.프로젝트, p.호기]
@@ -122,6 +124,47 @@ export default function ShortagePage({ embedded = false } = {}) {
     return out;
   }, [linked, bomByProject, materials, masterMap, supplyTab]);
   const list = useMemo(() => aggregateShortage(entries), [entries]);
+
+  // 부족 품목을 어디서 끌어올 수 있나 — 발주 여유(입고 − 배정 호기가 가져간 양) · 창고 재고 (2026-09-05 대표님)
+  const [settings, setSettings] = useState({});
+  useEffect(() => subscribePaidSetSettings(setSettings), []);
+  const projectIds = useMemo(() => [...new Set(linked.map((p) => p.bomLink.projectId))].sort(), [linked]);
+  const siteId = settings?.[company]?.siteId || '';
+  const [receivedByProject, setReceivedByProject] = useState({});
+  useEffect(() => {
+    const unsubs = projectIds.map((pid) =>
+      subscribeReceivedFor({ bomProjectId: pid, siteId }, (byItem) =>
+        setReceivedByProject((prev) => ({ ...prev, [pid]: byItem })),
+      ),
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [projectIds, siteId]);
+  const spareByItem = useMemo(() => {
+    const received = {};
+    const seenSite = new Set(); // 현장 발주서는 프로젝트마다 겹쳐 들어오니 한 번만
+    for (const pid of projectIds) {
+      for (const [itemId, q] of Object.entries(receivedByProject[pid] || {})) {
+        if (seenSite.has(itemId) && siteId) continue;
+        received[itemId] = (received[itemId] || 0) + q;
+        if (siteId) seenSite.add(itemId);
+      }
+    }
+    const allRows = projectIds.flatMap((pid) => bomByProject[pid] || []);
+    const assigned = panels.filter(
+      (p) => p.paidSet && p.bomLink?.projectId && projectIds.includes(p.bomLink.projectId),
+    );
+    const consumed = consumedByItem(
+      allRows,
+      assigned.map((p) => materials[p.id] || {}),
+    );
+    const out = {};
+    for (const [itemId, q] of Object.entries(received)) out[itemId] = q - (consumed[itemId] || 0);
+    return out;
+  }, [projectIds, receivedByProject, siteId, bomByProject, panels, materials]);
+  const stockOf = (itemId) => {
+    const m = itemId ? masterMap[itemId] : null;
+    return m && m.stockQty !== undefined && m.stockQty !== null ? Math.max(0, Number(m.stockQty) || 0) : null;
+  };
   const totalShort = list.reduce((s, a) => s + a.short, 0);
 
   // 발주서 「품목 불러오기 → 코드 붙여넣기」 형식 그대로 — 코드(없으면 도번) <탭> 수량
@@ -284,6 +327,12 @@ export default function ShortagePage({ embedded = false } = {}) {
                 <th scope="col" className="pmat-num">
                   부족
                 </th>
+                <th scope="col" className="pmat-num" title="발주 입고분 중 아직 호기에 안 들어간 양">
+                  발주 여유
+                </th>
+                <th scope="col" className="pmat-num" title="창고 재고 (재고 화면에 올린 품목만)">
+                  창고 재고
+                </th>
                 <th scope="col">모자란 호기</th>
               </tr>
             </thead>
@@ -301,6 +350,12 @@ export default function ShortagePage({ embedded = false } = {}) {
                   <td className="pmat-num">{a.got}</td>
                   <td className="pmat-num">
                     <span className="status-badge status-badge--cancel sht-short">{a.short}</span>
+                  </td>
+                  <td className={`pmat-num${(spareByItem[a.itemId] || 0) > 0 ? ' is-have' : ''}`}>
+                    {a.itemId && spareByItem[a.itemId] !== undefined ? Math.max(0, spareByItem[a.itemId]) : '–'}
+                  </td>
+                  <td className={`pmat-num${(stockOf(a.itemId) || 0) > 0 ? ' is-have' : ''}`}>
+                    {stockOf(a.itemId) === null ? '–' : stockOf(a.itemId)}
                   </td>
                   <td className="sht-panels">
                     {a.panels.slice(0, 3).map((h) => (
