@@ -35,6 +35,64 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+// 권한 카드 — 머리(제목·권한자 수·누락 수)를 누르면 펼쳐지고, 권한자와 권한 없는 재직자를 나눠 보여 준다
+function PermCard({ title, hint, tone, viewers, missing, open, onToggle, onPick, compact }) {
+  const badge = (u, reason, muted) => (
+    <button
+      type="button"
+      key={u.uid}
+      className={`perm-badge${muted ? ' is-missing' : ''}${reason === '권한 부여' ? ' is-granted' : ''}`}
+      onClick={() => onPick(u)}
+      title={`${u.name}${reason ? ` (${reason})` : ' — 권한 없음'}`}
+    >
+      {u.name}
+      {reason && <span className="perm-badge-sub">({reason})</span>}
+    </button>
+  );
+  return (
+    <div className={`card perm-card perm-card--${tone}${compact ? ' is-compact' : ''}`}>
+      <button type="button" className="perm-card-head" onClick={onToggle} aria-expanded={open}>
+        <Icon name={open ? 'chevronDown' : 'chevronRight'} className="perm-card-caret" />
+        <strong>{title}</strong>
+        <span className="perm-card-count">
+          권한자 <b>{viewers.length}</b>명
+          {missing.length > 0 && (
+            <>
+              {' '}
+              · 누락 <b className="is-warn">{missing.length}</b>명
+            </>
+          )}
+        </span>
+        <span className="perm-card-hint">{hint}</span>
+      </button>
+      {open && (
+        <div className="perm-card-body">
+          <div className="perm-group">
+            <div className="perm-group-title">권한자</div>
+            <div className="perm-badges">
+              {viewers.length === 0 ? (
+                <span className="text-muted text-sm">권한자가 없습니다.</span>
+              ) : (
+                viewers.map(({ user, reason }) => badge(user, reason, false))
+              )}
+            </div>
+          </div>
+          <div className="perm-group">
+            <div className="perm-group-title">권한 없음 (재직자)</div>
+            <div className="perm-badges">
+              {missing.length === 0 ? (
+                <span className="text-muted text-sm">없음 — 재직자 전원이 권한이 있습니다.</span>
+              ) : (
+                missing.map((u) => badge(u, '', true))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function UserManagementPage() {
   const { confirm, alert, toast } = useDialog();
   const { impersonate, userProfile } = useAuth();
@@ -42,6 +100,8 @@ export default function UserManagementPage() {
   const vw = useViewportWidth();
   const isSmall = vw <= 600;
   const isXSmall = vw <= 360;
+  const [permOpen, setPermOpen] = useState({}); // 권한 카드 펼침 { salary, site, archive } — 기본 접힘
+  const togglePerm = (k) => setPermOpen((o) => ({ ...o, [k]: !o[k] }));
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [balances, setBalances] = useState({});
@@ -364,6 +424,8 @@ export default function UserManagementPage() {
     return null;
   }
   const archiveViewers = users.map((u) => ({ user: u, reason: getArchiveViewReason(u) })).filter((x) => x.reason);
+  // 권한이 없는 재직자(공용 아이디 제외) — 「누락」으로 함께 보여 준다
+  const permMissing = (reasonOf) => activeUsers.filter(isRealStaff).filter((u) => !reasonOf(u));
 
   if (loading) return <Skeleton.Rows count={6} />;
 
@@ -394,197 +456,44 @@ export default function UserManagementPage() {
         ※ 누적 연차는 입사일 기준 자동 계산됩니다. "연차 수정"은 현재 잔여만 입력하면 이후 발생분은 자동 반영됩니다.
       </p>
 
-      <div
-        className="card permission-cards"
-        style={{
-          padding: isXSmall ? '6px 8px' : 'var(--space-3, 11px)',
-          marginBottom: isXSmall ? 8 : 'var(--space-2, 8px)',
-          background: 'var(--accent-soft, #feefe7)',
-          border: '1px solid var(--accent-tint, #f6d3c4)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--space-2, 8px)',
-            flexWrap: 'wrap',
-            gap: 'var(--space-2, 8px)',
-            lineHeight: 1.3,
-          }}
-        >
-          <strong style={{ fontSize: 14 }}>금액 열람 권한자 ({salaryViewers.length}명)</strong>
-          <span className="text-muted" style={{ fontSize: 12 }}>
-            관리자·대표·부사장은 자동 포함. 그 외 직원은 아래에서 권한 부여 가능.
-          </span>
-        </div>
-        <div
-          className="permission-badge-row"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`,
-            gap: isXSmall ? 4 : 'var(--space-2, 8px)',
-          }}
-        >
-          {salaryViewers.length === 0 ? (
-            <span className="text-muted text-sm">권한자가 없습니다.</span>
-          ) : (
-            salaryViewers.map(({ user, reason }) => (
-              <span
-                key={user.uid}
-                className="badge permission-badge"
-                onClick={() => openEdit(user)}
-                title={`${user.name} (${reason})`}
-                style={{
-                  cursor: 'pointer',
-                  background: reason === '권한 부여' ? 'var(--primary-soft, #e6ecf5)' : 'var(--accent-soft, #fde8df)',
-                  color: 'var(--text, #1f2937)',
-                  border: '1px solid rgba(0,32,80,0.12)',
-                  padding: isXSmall ? '0px 3px' : '1px 5px',
-                  borderRadius: 999,
-                  fontSize: isXSmall ? 10 : 11,
-                  height: isXSmall ? 18 : 20,
-                  lineHeight: isXSmall ? '18px' : '20px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {user.name} <span style={{ opacity: 0.6, marginLeft: 3 }}>({reason})</span>
-              </span>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div
-        className="card permission-cards"
-        style={{
-          padding: isXSmall ? '6px 8px' : 'var(--space-3, 11px)',
-          marginBottom: isXSmall ? 8 : 'var(--space-2, 8px)',
-          background: 'var(--primary-soft, #e6ecf5)',
-          border: '1px solid var(--primary-tint, #c2cee0)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--space-2, 8px)',
-            flexWrap: 'wrap',
-            gap: 'var(--space-2, 8px)',
-            lineHeight: 1.3,
-          }}
-        >
-          <strong style={{ fontSize: 14 }}>프로젝트 추가 권한자 ({siteCreators.length}명)</strong>
-          <span className="text-muted" style={{ fontSize: 12 }}>
-            관리자는 자동 포함. 그 외 직원은 아래 직원 행을 눌러 권한 부여.
-          </span>
-        </div>
-        <div
-          className="permission-badge-row"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`,
-            gap: isXSmall ? 4 : 'var(--space-2, 8px)',
-          }}
-        >
-          {siteCreators.length === 0 ? (
-            <span className="text-muted text-sm">권한자가 없습니다.</span>
-          ) : (
-            siteCreators.map(({ user, reason }) => (
-              <span
-                key={user.uid}
-                className="badge permission-badge"
-                onClick={() => openEdit(user)}
-                title={`${user.name} (${reason})`}
-                style={{
-                  cursor: 'pointer',
-                  background: reason === '권한 부여' ? 'var(--primary-soft, #e6ecf5)' : 'var(--primary-tint, #d7e0ee)',
-                  color: 'var(--text, #1f2937)',
-                  border: '1px solid rgba(0,32,80,0.12)',
-                  padding: isXSmall ? '0px 3px' : '1px 5px',
-                  borderRadius: 999,
-                  fontSize: isXSmall ? 10 : 11,
-                  height: isXSmall ? 18 : 20,
-                  lineHeight: isXSmall ? '18px' : '20px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {user.name} <span style={{ opacity: 0.6, marginLeft: 3 }}>({reason})</span>
-              </span>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div
-        className="card permission-cards"
-        style={{
-          padding: isXSmall ? '6px 8px' : 'var(--space-3, 11px)',
-          marginBottom: isXSmall ? 8 : 'var(--space-2, 8px)',
-          background: 'var(--bg-secondary, #eef1f5)',
-          border: '1px solid var(--border, #d5dbe4)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--space-2, 8px)',
-            flexWrap: 'wrap',
-            gap: 'var(--space-2, 8px)',
-            lineHeight: 1.3,
-          }}
-        >
-          <strong style={{ fontSize: 14 }}>자료실 열람 권한자 ({archiveViewers.length}명)</strong>
-          <span className="text-muted" style={{ fontSize: 12 }}>
-            관리자·대표·부사장은 자동 포함. 그 외 직원은 아래 직원 행을 눌러 권한 부여.
-          </span>
-        </div>
-        <div
-          className="permission-badge-row"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(auto-fit, minmax(${isXSmall ? '90px' : '110px'}, 1fr))`,
-            gap: isXSmall ? 4 : 'var(--space-2, 8px)',
-          }}
-        >
-          {archiveViewers.length === 0 ? (
-            <span className="text-muted text-sm">권한자가 없습니다.</span>
-          ) : (
-            archiveViewers.map(({ user, reason }) => (
-              <span
-                key={user.uid}
-                className="badge permission-badge"
-                onClick={() => openEdit(user)}
-                title={`${user.name} (${reason})`}
-                style={{
-                  cursor: 'pointer',
-                  background: reason === '권한 부여' ? 'var(--primary-soft, #e6ecf5)' : 'var(--bg-card, #ffffff)',
-                  color: 'var(--text, #1f2937)',
-                  border: '1px solid rgba(0,32,80,0.12)',
-                  padding: isXSmall ? '0px 3px' : '1px 5px',
-                  borderRadius: 999,
-                  fontSize: isXSmall ? 10 : 11,
-                  height: isXSmall ? 18 : 20,
-                  lineHeight: isXSmall ? '18px' : '20px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {user.name} <span style={{ opacity: 0.6, marginLeft: 3 }}>({reason})</span>
-              </span>
-            ))
-          )}
-        </div>
-      </div>
+      {/* 권한 카드 3종 — 기본은 접힘, 펼치면 권한자와 «권한 없는 재직자»가 함께 보인다
+          (2026-09-05 대표님 「권한 누락 항목도 표시하고 열고 접는 형태로」) */}
+      <PermCard
+        id="salary"
+        title="금액 열람 권한"
+        hint="관리자·대표·부사장은 자동 포함. 이름을 누르면 권한을 바꿀 수 있습니다."
+        tone="accent"
+        viewers={salaryViewers}
+        missing={permMissing(getSalaryPermissionReason)}
+        open={!!permOpen.salary}
+        onToggle={() => togglePerm('salary')}
+        onPick={openEdit}
+        compact={isXSmall}
+      />
+      <PermCard
+        id="site"
+        title="프로젝트 추가 권한"
+        hint="관리자는 자동 포함. 이름을 누르면 권한을 바꿀 수 있습니다."
+        tone="primary"
+        viewers={siteCreators}
+        missing={permMissing(getCreateSiteReason)}
+        open={!!permOpen.site}
+        onToggle={() => togglePerm('site')}
+        onPick={openEdit}
+        compact={isXSmall}
+      />
+      <PermCard
+        id="archive"
+        title="자료실 열람 권한"
+        hint="관리자·대표·부사장은 자동 포함. 이름을 누르면 권한을 바꿀 수 있습니다."
+        tone="grey"
+        viewers={archiveViewers}
+        missing={permMissing(getArchiveViewReason)}
+        open={!!permOpen.archive}
+        onToggle={() => togglePerm('archive')}
+        onPick={openEdit}
+        compact={isXSmall}
+      />
 
       {/* (2026-09-05 대표님 UI 기준안) 재직/퇴사 보기 전환 → 공용 ViewSwitch */}
       <div className="no-print" style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>

@@ -23027,3 +23027,119 @@ a.lib-row-name:hover {
     margin-bottom: 10px;
   }
 }
+
+/* ── 직원 관리 권한 카드 (접기/펼치기 + 누락 표시, 2026-09-05 대표님) ── */
+.perm-card {
+  padding: 0;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.perm-card--accent {
+  background: var(--accent-soft, #feefe7);
+  border-color: var(--accent-tint, #f6d3c4);
+}
+.perm-card--primary {
+  background: var(--primary-soft, #e6ecf5);
+  border-color: var(--primary-tint, #c2cee0);
+}
+.perm-card--grey {
+  background: var(--bg-secondary, #eef1f5);
+  border-color: var(--border, #d5dbe4);
+}
+.perm-card-head {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+.perm-card-head strong {
+  font-size: 14px;
+}
+.perm-card-caret {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--text-light);
+}
+.perm-card-count {
+  font-size: 13px;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+.perm-card-count b {
+  color: var(--text);
+}
+.perm-card-count b.is-warn {
+  color: var(--danger, #b3261e);
+}
+.perm-card-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-light);
+  text-align: right;
+}
+.perm-card-body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.perm-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+.perm-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.perm-badge {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 32, 80, 0.12);
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.perm-badge.is-granted {
+  background: var(--primary-soft, #e6ecf5);
+}
+.perm-badge.is-missing {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-light);
+  font-weight: 500;
+}
+.perm-badge-sub {
+  opacity: 0.6;
+}
+@media (max-width: 768px) {
+  .perm-card-hint {
+    display: none;
+  }
+  .perm-card-head {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+}
+.perm-card.is-compact .perm-card-head {
+  padding: 6px 8px;
+}
