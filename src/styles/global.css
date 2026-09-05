@@ -23638,3 +23638,11 @@ a.lib-row-name:hover {
     border-right: 0;
   }
 }
+
+/* 데이터 멈춤 안내 — 위쪽에 눈에 띄게 (2026-09-05 대표님) */
+.update-toast.is-stuck {
+  bottom: auto;
+  top: calc(72px + env(safe-area-inset-top));
+  background: var(--danger, #b3261e);
+  z-index: 1200;
+}

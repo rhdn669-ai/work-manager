@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { probeFirestore, resetLocalCacheAndReload } from '../../utils/firestoreWatchdog';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { isDefectOnly } from '../../utils/workspace';
@@ -94,6 +95,20 @@ export default function Layout() {
     };
   }, []);
   const [exitToast, setExitToast] = useState(false);
+  // 데이터가 영영 안 올 때 — 로컬 캐시 초기화 안내 (2026-09-05 대표님 「이 상태에서 자꾸 머무는데」)
+  const [dataStuck, setDataStuck] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(() => {
+      probeFirestore().then((r) => {
+        if (alive && r === 'stuck') setDataStuck(true);
+      });
+    }, 4000);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, []);
   const exitArmedRef = useRef(false);
   const exitTimerRef = useRef(null);
 
@@ -208,6 +223,15 @@ export default function Layout() {
       {exitToast && (
         <div className="exit-toast" role="status" aria-live="polite">
           한 번 더 누르면 종료됩니다
+        </div>
+      )}
+      {/* 데이터가 영영 안 올 때 — 로컬 캐시 초기화 안내 (2026-09-05 대표님) */}
+      {dataStuck && (
+        <div className="update-toast is-stuck" role="alert">
+          <span className="update-toast-text">데이터를 못 받아 오고 있습니다 — 저장된 캐시가 꼬였을 수 있습니다</span>
+          <button type="button" className="btn btn-sm btn-primary" onClick={resetLocalCacheAndReload}>
+            초기화 후 다시 열기
+          </button>
         </div>
       )}
       {hasNewVersion && (
