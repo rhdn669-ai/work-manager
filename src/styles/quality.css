@@ -1184,7 +1184,7 @@ textarea.q-cell {
 .q-grid-table th.col-no,
 .q-grid-table td.col-no {
   width: 44px;
-  text-align: left;
+  text-align: center; /* (2026-09-05 대표님 「NO 중정렬로 통일」) */
   color: var(--text-light);
   font-size: 13px;
   font-variant-numeric: tabular-nums;

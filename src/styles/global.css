@@ -3915,7 +3915,7 @@ body {
    그쪽 값을 따르므로 여기 width 는 별도 폭 시스템이 없는 표에서만 실제로 적용된다. */
 .table th.col-no,
 .table td.col-no {
-  text-align: left;
+  text-align: center; /* 가운데 정렬로 통일 (2026-09-05 대표님) */
   font-weight: 400;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
@@ -6722,10 +6722,12 @@ table.cards-sm td {
   color: var(--text-muted);
   padding: 0 4px;
 }
+/* 「입고」 버튼은 글자 길이만큼만 — 열을 다 채우면 표가 무거워 보인다 (2026-09-05 대표님) */
 .purchase-recv-btn {
-  width: 100%;
-  height: 32px;
-  padding: 0 8px;
+  width: auto;
+  min-width: 0;
+  height: 26px;
+  padding: 0 12px;
 }
 .purchase-recv-chip {
   display: inline-flex;
@@ -7288,11 +7290,11 @@ tr.is-newly-added > td {
   text-align: left;
   vertical-align: middle;
 }
-/* 번호 칸(BOM 상세·발주서 상세)도 같은 기준으로 왼쪽 정렬 */
+/* 번호 칸(발주서 상세)도 같은 기준으로 가운데 정렬 (2026-09-05 대표님) */
 .table td.bom-no-col,
 .table th.bom-no-col {
-  text-align: left;
-  padding-left: 6px;
+  text-align: center;
+  padding-left: 0;
 }
 .drag-handle-btn {
   /* 앱 공통 손잡이 = 생산현황(.mx-drag)과 같은 점 6개 (2026-09-04 대표님 「모양 통일」) */

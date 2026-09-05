@@ -1266,9 +1266,9 @@
   left: 0;
   min-width: 44px;
   width: 44px;
-  /* 손잡이·체크·번호 묶음은 칸 왼쪽에 붙인다 — 다른 표의 No 칸과 같은 기준 (2026-09-04 대표님) */
-  text-align: left;
-  padding-left: 6px;
+  /* 손잡이·체크·번호 묶음 — No 는 가운데 정렬로 통일 (2026-09-05 대표님) */
+  text-align: center;
+  padding-left: 0;
   color: var(--text-light);
 }
 /* No 칸 = 끌기 손잡이 + 번호. 손잡이는 줄 위에 올리면 나타난다 */
