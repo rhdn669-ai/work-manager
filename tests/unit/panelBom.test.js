@@ -12,9 +12,10 @@ import {
 } from '../../src/domain/panelBom';
 
 describe('연결 값', () => {
-  it('MP 는 체크 대상에서 뺀다 — 하위 9종을 따로 관리한다', () => {
-    expect(CHECKABLE_BOXES).not.toContain('MP');
+  it('체크 대상은 준비작업·LOCAL 이 앞, MP 까지 전부 (2026-09-05 대표님 「리스트에 MP 가 없네」)', () => {
+    expect(CHECKABLE_BOXES.slice(0, 2)).toEqual(['준비작업', 'LOCAL']);
     expect(CHECKABLE_BOXES).toContain('P/W BOX');
+    expect(CHECKABLE_BOXES[CHECKABLE_BOXES.length - 1]).toBe('MP');
   });
   it('프로젝트가 없으면 연결이 아니다', () => {
     expect(makeBomLink({})).toBeNull();

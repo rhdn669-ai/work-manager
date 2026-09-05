@@ -9,12 +9,13 @@
 import { PANEL_BOXES } from './boxes';
 
 /**
- * 호기 자재 체크 대상 BOX.
+ * 호기 자재 체크 대상 BOX — 생산현황 표와 같은 차례.
  *  · 「준비작업」·「LOCAL」은 실물 BOX 는 아니지만 BOM 에 줄이 있어 체크해야 한다 — 맨 앞에 둔다
  *    (2026-09-05 대표님 「로컬 준비작업 둘 다 들어와야」)
- *  · MP 는 하위 9종을 생산현황에서 따로 관리하므로 뺀다
+ *  · MP 도 넣는다 — BOM 에 MP 사급 줄이 있다. 생산현황의 MP 하위 9종(조립 진행)과는 별개로
+ *    「무엇이 들어왔나」만 본다 (2026-09-05 대표님 「리스트에 아직 MP 가 없네」)
  */
-export const CHECKABLE_BOXES = ['준비작업', 'LOCAL', ...PANEL_BOXES.filter((b) => b !== 'MP')];
+export const CHECKABLE_BOXES = ['준비작업', 'LOCAL', ...PANEL_BOXES];
 
 /** 연결이 되어 있나 */
 export function hasBomLink(p) {
