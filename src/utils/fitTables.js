@@ -10,6 +10,15 @@
 const MIN_H = 320;
 const BOTTOM_GAP = 16;
 const CELL_SLACK = 6; // 칸마다 여유(px) — 글자 폭에 딱 맞추면 마지막 글자가 붙는다
+// 표본 줄 수 — 3,000칸짜리 표를 전부 재면 한 번에 1초가 걸려 화면이 굳었다(2026-09-05 실측).
+// 앞쪽 줄만 재도 열 폭은 거의 같다(코드·도번·규격은 길이가 고르다).
+const SAMPLE_ROWS = 24;
+
+function sampleRows(table) {
+  const head = [...table.querySelectorAll('thead tr')];
+  const body = table.tBodies[0] ? [...table.tBodies[0].rows].slice(0, SAMPLE_ROWS) : [];
+  return head.concat(body);
+}
 
 const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
 
@@ -22,9 +31,14 @@ function cellNeed(td) {
     ':scope > input, :scope > select, :scope > button, :scope > .ds-select, :scope > span, :scope > div',
   );
   if (controls.length === 0) {
-    const r = document.createRange();
-    r.selectNodeContents(td);
-    need = r.getBoundingClientRect().width;
+    // 글자 칸 — canvas 로 잰다. Range.getBoundingClientRect 는 칸마다 레이아웃을 다시 돌려
+    // 3,000칸 표에서 1초 넘게 걸렸다 (2026-09-05 대표님 「반응이 느린데」)
+    if (ctx) {
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      need = ctx.measureText((td.textContent || '').trim()).width;
+    } else {
+      need = td.scrollWidth;
+    }
   } else {
     let sum = 0;
     controls.forEach((c) => {
@@ -49,10 +63,12 @@ function cellNeed(td) {
           if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
           const w = ctx ? ctx.measureText(String(inner.value || inner.placeholder || '')).width : inner.clientWidth;
           sum += w + parseFloat(f.paddingLeft) + parseFloat(f.paddingRight) + 8 + (c.scrollWidth - inner.clientWidth);
+        } else if (c.querySelector('button, select, svg')) {
+          sum += c.scrollWidth + 6; // 버튼·아이콘이 든 칸만 실측
         } else {
-          const r = document.createRange();
-          r.selectNodeContents(c);
-          sum += Math.max(r.getBoundingClientRect().width, c.querySelector('button, select') ? c.scrollWidth : 0);
+          const f = getComputedStyle(c);
+          if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
+          sum += (ctx ? ctx.measureText((c.textContent || '').trim()).width : c.scrollWidth) + 8;
         }
       } else {
         sum += c.scrollWidth + 6;
@@ -66,7 +82,7 @@ function cellNeed(td) {
 // 열마다 필요한 폭 = 그 열에서 가장 긴 칸 (colspan 칸은 건너뛴다)
 function columnNeeds(table) {
   const cols = [];
-  for (const tr of table.querySelectorAll('thead tr, tbody tr')) {
+  for (const tr of sampleRows(table)) {
     let ci = 0;
     for (const cell of tr.children) {
       const span = Number(cell.colSpan) || 1;
@@ -95,17 +111,23 @@ function restoreColumnWidths(table) {
 }
 
 function anyCut(table) {
-  for (const c of table.querySelectorAll('td')) {
-    if (c.scrollWidth > c.clientWidth + 1) return true;
-  }
-  for (const i of table.querySelectorAll('input[type="text"]')) {
-    if (i.scrollWidth > i.clientWidth + 1) return true;
+  for (const tr of sampleRows(table)) {
+    for (const c of tr.children) {
+      if (c.scrollWidth > c.clientWidth + 1) return true;
+      const i = c.querySelector('input[type="text"]');
+      if (i && i.scrollWidth > i.clientWidth + 1) return true;
+    }
   }
   return false;
 }
 
 function fitWidth(el, table) {
   const box = el.clientWidth;
+  // 같은 상자 폭·같은 열 수면 지난번 결과 그대로 — 검색으로 줄 수가 바뀌어도 다시 재지 않는다
+  // (글자마다 다시 재서 검색 입력이 몇 초씩 걸렸다, 2026-09-05 실측)
+  const sig = `${box}|${table.rows[0]?.cells.length || 0}`;
+  if (table.dataset.fitSig === sig) return;
+  table.dataset.fitSig = sig;
   // 1) 원래 배치로 돌려 잘리는지 본다 — 안 잘리면 그대로(폭 100%·열 % 유지)
   el.classList.remove('is-wide');
   restoreColumnWidths(table);
@@ -143,21 +165,34 @@ export function fitTables() {
 /** 앱 껍데기에서 한 번 부른다 — 창 크기·배너 열림닫힘·화면 전환마다 다시 맞춘다 */
 export function installFitTables() {
   if (typeof window === 'undefined') return () => {};
-  let raf = 0;
+  // body 전체를 지켜보던 ResizeObserver 는 뗐다 — 글자 하나 바뀌어 높이가 달라져도 표 전체를 다시 쟀다.
+  // 창 크기 변화(디바운스)와 표 «자체» 크기 변화(줄이 늘거나 줄 때)에만 돈다.
+  let timer = 0;
   const run = () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = 0;
-      fitTables();
-    });
+    clearTimeout(timer);
+    timer = setTimeout(fitTables, 300);
   };
   window.addEventListener('resize', run);
-  const ro = new ResizeObserver(run);
-  ro.observe(document.body);
+  const ro = new ResizeObserver((entries) => {
+    // 우리가 폭을 바꾼 결과로 다시 불리는 것은 fitSig 가 걸러 준다
+    if (entries.length) run();
+  });
+  const watched = new WeakSet();
+  const watch = () => {
+    document.querySelectorAll('.table-scroll-x > table').forEach((t) => {
+      if (watched.has(t)) return;
+      watched.add(t);
+      ro.observe(t);
+    });
+  };
+  // 화면 전환·데이터 도착으로 새 표가 생기면 감시 대상에 넣는다 (가볍게 1초마다)
+  const scan = setInterval(watch, 1000);
+  watch();
   run();
   return () => {
     window.removeEventListener('resize', run);
     ro.disconnect();
-    if (raf) cancelAnimationFrame(raf);
+    clearInterval(scan);
+    clearTimeout(timer);
   };
 }
