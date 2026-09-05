@@ -19732,7 +19732,6 @@ a.lib-row-name:hover {
 .lib-bc-back-ic {
   width: 16px !important;
   height: 16px !important;
-  transform: rotate(180deg);
 }
 .lib-bc-trail {
   display: flex;
@@ -23219,4 +23218,75 @@ a.lib-row-name:hover {
 }
 .page-header--sub.is-actions-only > div:empty {
   display: none;
+}
+
+/* ── 입고 상태 칩 (앱 공통, 2026-09-05 대표님) ── */
+.recv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+}
+.recv-chip.is-full {
+  background: var(--success-soft, #e5f4ec);
+  color: var(--success, #1f7a4d);
+}
+.recv-chip.is-partial {
+  background: var(--accent-soft, #feefe7);
+  color: var(--accent-press, #b3521c);
+}
+.recv-chip.is-none {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.recv-chip.is-skip {
+  background: var(--grey-100, #f2f4f6);
+  color: var(--text-light);
+}
+.recv-chip-ic {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.recv-chip-x {
+  width: 16px;
+  height: 16px;
+  margin-right: -3px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.12s;
+}
+.recv-chip-x svg {
+  width: 11px;
+  height: 11px;
+}
+.recv-chip:hover .recv-chip-x,
+.recv-chip-x:focus-visible {
+  opacity: 0.75;
+}
+.recv-chip-x:hover {
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.08);
+}
+/* 표 안에서 줄 배경은 옅게 — 칩이 주인공 */
+.pmat-table tr.is-done > td {
+  background: var(--success-soft-weak, #f4faf6);
 }

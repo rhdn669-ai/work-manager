@@ -32,6 +32,9 @@ export default function QuoteFormPage() {
   const { quoteId } = useParams();
   const navigate = useNavigate();
   const isNew = !quoteId;
+  // (2026-09-05 뒤로가기 표준)
+  const back = () =>
+    window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/purchase/quotes', { replace: true });
   const { confirm, alert, toast } = useDialog();
   const { userProfile } = useAuth();
   const { info: SELF_INFO } = useCompanyInfo();
@@ -306,10 +309,17 @@ export default function QuoteFormPage() {
 
       {/* 화면용 헤더 */}
       <div className="page-header screen-only">
-        <button type="button" className="btn btn-sm btn-outline" onClick={handleCancel}>
-          <Icon name="chevronDown" style={{ transform: 'rotate(90deg)', display: 'block' }} />
-          {isEditing && !isNew ? '취소' : '목록'}
-        </button>
+        {/* (2026-09-05 뒤로가기 표준) — 편집 중 취소는 뒤로가기와 분리한 별도 버튼 */}
+        {isEditing && !isNew ? (
+          <button type="button" className="btn btn-sm btn-outline" onClick={handleCancel}>
+            취소
+          </button>
+        ) : (
+          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+            <Icon name="chevronLeft" className="btn-ic" />
+            구매
+          </button>
+        )}
         <h2>{isNew ? '새 견적서' : isEditing ? '견적서 수정' : quote?.title || '견적서'}</h2>
         <div className="page-actions">
           {isEditing ? (

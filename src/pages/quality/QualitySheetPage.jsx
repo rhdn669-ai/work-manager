@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import QualitySheet from '../../components/quality/QualitySheet';
+import Icon from '../../components/common/Icon';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
@@ -114,7 +115,14 @@ export default function QualitySheetPage() {
   return (
     <div className="q-sheet-page">
       <div className="page-header no-print">
-        <h2>{def.title}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* (2026-09-05 뒤로가기 표준) */}
+          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+            <Icon name="chevronLeft" className="btn-ic" />
+            품질보증
+          </button>
+          <h2>{def.title}</h2>
+        </div>
       </div>
       <QualitySheet page formKey={formKey} docNo={docNoOf(formKey)} record={record} onSave={save} onClose={back} />
     </div>

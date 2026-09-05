@@ -157,6 +157,9 @@ export default function SiteClosingPage() {
   const navigate = useNavigate();
   const vw = useViewportWidth();
   const isXSmall = vw <= 360;
+  // (2026-09-05 뒤로가기 표준)
+  const back = () =>
+    window.history.state?.idx > 0 ? navigate(-1) : navigate(`/sites?y=${y}&m=${m}`, { replace: true });
 
   const [site, setSite] = useState(null);
   const [userMap, setUserMap] = useState({});
@@ -1582,8 +1585,10 @@ export default function SiteClosingPage() {
       <div className="card">
         <div className="card-body">
           <p>이 프로젝트에 접근 권한이 없습니다.</p>
-          <button className="btn btn-outline" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
-            목록으로
+          {/* (2026-09-05 뒤로가기 표준) */}
+          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+            <Icon name="chevronLeft" className="btn-ic" />
+            프로젝트
           </button>
         </div>
       </div>
@@ -1694,6 +1699,11 @@ export default function SiteClosingPage() {
           ...(isXSmall ? { flexDirection: 'column' } : {}),
         }}
       >
+        {/* (2026-09-05 뒤로가기 표준) */}
+        <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+          <Icon name="chevronLeft" className="btn-ic" />
+          프로젝트
+        </button>
         <h2 style={{ minWidth: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }} title={site.name}>
           {site.name}
         </h2>
@@ -1732,9 +1742,6 @@ export default function SiteClosingPage() {
               {copying ? '복사 중...' : '전월 복사'}
             </button>
           )}
-          <button className="btn btn-outline btn-sm" onClick={() => navigate(`/sites?y=${y}&m=${m}`)}>
-            목록
-          </button>
           {canEdit && (
             <button className="btn btn-outline btn-sm" onClick={() => setTrashOpen(true)}>
               <Icon name="trash" className="btn-ic" />

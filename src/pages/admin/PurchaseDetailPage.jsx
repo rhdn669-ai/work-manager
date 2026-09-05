@@ -54,6 +54,7 @@ import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import EditModeButton from '../../components/common/EditModeButton';
 import Select from '../../components/common/Select';
+import ReceiptChip from '../../components/common/ReceiptChip';
 import Skeleton from '../../components/common/Skeleton';
 import { subscribeFolders, ensureProjectFolders, ensureFolder } from '../../services/fileLibraryService';
 import { captureToPdfBlob, uploadPdfToLibrary } from '../../utils/pdfExport';
@@ -182,17 +183,6 @@ function fmtDate(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// 좁은 칩 안에서 쓰는 짧은 날짜. 올해 것은 연도를 뺀다 — 대부분 올해 발주라
-// 연도는 자리만 차지하고, 지난해 건만 두 자리로 표시해 구분한다 (2026-08-26 대표님 「글짤림」).
-function fmtDateShort(ts) {
-  if (!ts) return '-';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  if (Number.isNaN(d.getTime())) return '-';
-  const md = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const thisYear = new Date().getFullYear();
-  return d.getFullYear() === thisYear ? md : `${String(d.getFullYear()).slice(2)}-${md}`;
-}
-
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -260,6 +250,8 @@ export default function PurchaseDetailPage() {
   const { userProfile } = useAuth();
   const { confirm, alert, toast } = useDialog();
   const { push: pushGlobalUndo } = useUndo();
+  // (2026-09-05 뒤로가기 표준)
+  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/purchase', { replace: true }));
 
   const [purchase, setPurchase] = useState(null);
   const [sites, setSites] = useState([]);
@@ -2271,57 +2263,64 @@ export default function PurchaseDetailPage() {
         .purchase-line-item-wrap .purchase-line-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
       `}</style>
       <div className="page-header screen-only">
-        <div
-          className="purchase-detail-header-left"
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: 0 }}>
-            <h2 style={{ margin: 0 }}>{purchase.title || '(제목 없음)'}</h2>
-            <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
-              {STATUS[status]?.label || status}
-            </span>
-            {/* 담은 타입마다 「T5391 5세트」처럼 따로 보여 준다.
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {/* (2026-09-05 뒤로가기 표준) */}
+          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+            <Icon name="chevronLeft" className="btn-ic" />
+            구매
+          </button>
+          <div
+            className="purchase-detail-header-left"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: 0 }}>
+              <h2 style={{ margin: 0 }}>{purchase.title || '(제목 없음)'}</h2>
+              <span className={`purchase-badge purchase-badge-${STATUS[status]?.cls || 'ordered'}`}>
+                {STATUS[status]?.label || status}
+              </span>
+              {/* 담은 타입마다 「T5391 5세트」처럼 따로 보여 준다.
                 옛 발주서는 세트 내역 없이 숫자만 있으므로 그때는 「6세트」로 그대로 둔다. */}
-            {setLotsLabel(form.setLots)
-              ? (form.setLots || [])
-                  .filter((l) => l && String(l.name ?? '').trim() && Number(l.count) > 0)
-                  .map((l) => (
+              {setLotsLabel(form.setLots)
+                ? (form.setLots || [])
+                    .filter((l) => l && String(l.name ?? '').trim() && Number(l.count) > 0)
+                    .map((l) => (
+                      <button
+                        key={l.name}
+                        type="button"
+                        className="purchase-badge po-set-badge"
+                        onClick={isReadOnly ? undefined : openSetLots}
+                        disabled={isReadOnly}
+                        title={isReadOnly ? '' : '눌러서 세트 내역 고치기'}
+                      >
+                        {l.name} {Number(l.count)}세트
+                      </button>
+                    ))
+                : Number(form.setCount) > 0 && (
                     <button
-                      key={l.name}
                       type="button"
                       className="purchase-badge po-set-badge"
                       onClick={isReadOnly ? undefined : openSetLots}
                       disabled={isReadOnly}
-                      title={isReadOnly ? '' : '눌러서 세트 내역 고치기'}
+                      title={isReadOnly ? '' : '눌러서 타입별 세트 내역 적기'}
                     >
-                      {l.name} {Number(l.count)}세트
+                      {form.setCount}세트
                     </button>
-                  ))
-              : Number(form.setCount) > 0 && (
-                  <button
-                    type="button"
-                    className="purchase-badge po-set-badge"
-                    onClick={isReadOnly ? undefined : openSetLots}
-                    disabled={isReadOnly}
-                    title={isReadOnly ? '' : '눌러서 타입별 세트 내역 적기'}
-                  >
-                    {form.setCount}세트
-                  </button>
-                )}
-          </div>
-          {purchase.subtitle && (
-            <div
-              style={{
-                margin: 0,
-                fontSize: 16,
-                color: 'var(--text-secondary, #6b7280)',
-                fontWeight: 600,
-                letterSpacing: '-0.02em',
-              }}
-            >
-              {purchase.subtitle}
+                  )}
             </div>
-          )}
+            {purchase.subtitle && (
+              <div
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  color: 'var(--text-secondary, #6b7280)',
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {purchase.subtitle}
+              </div>
+            )}
+          </div>
         </div>
         <div
           className="page-actions purchase-detail-top-actions"
@@ -2417,9 +2416,6 @@ export default function PurchaseDetailPage() {
           <button type="button" className="btn btn-sm btn-danger" onClick={handleTrashPurchase}>
             <Icon name="trash" className="btn-ic" />
             삭제
-          </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase')}>
-            목록
           </button>
         </div>
       </div>
@@ -2685,7 +2681,6 @@ export default function PurchaseDetailPage() {
                         const savedQty = Number(ln.qty) || 0;
                         const receivedQty = Number(ln.receivedQty) || 0;
                         const isLineSaved = (ln.name || '').trim().length > 0;
-                        const isFullyReceived = isLineSaved && savedQty > 0 && receivedQty >= savedQty;
                         return (
                           <SortableItemRow
                             key={idx}
@@ -2911,31 +2906,13 @@ export default function PurchaseDetailPage() {
                                     저장 후 입고
                                   </span>
                                 ) : receivedQty > 0 ? (
-                                  isReadOnly ? (
-                                    // 정산완료 등 읽기전용 — 상태만 표시
-                                    <span
-                                      className={`purchase-recv-chip is-readonly ${isFullyReceived ? 'is-full' : 'is-partial'}`}
-                                    >
-                                      <span className="purchase-recv-chip-qty">
-                                        {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty}
-                                      </span>
-                                      <span className="purchase-recv-chip-date">{fmtDate(ln.receivedAt)}</span>
-                                    </span>
-                                  ) : (
-                                    // 입고됨 — 누르면 바로 입고 취소 (별도 되돌리기 버튼 없음)
-                                    <button
-                                      type="button"
-                                      className="btn btn-sm btn-danger purchase-recv-cancel"
-                                      onClick={() => clearLineReceive(idx)}
-                                      title="클릭하면 입고 기록을 취소합니다"
-                                    >
-                                      <span className="purchase-recv-cancel-status">
-                                        {isFullyReceived ? '완료' : '부분'} {receivedQty}/{savedQty} ·{' '}
-                                        {fmtDateShort(ln.receivedAt)}
-                                      </span>
-                                      <span className="purchase-recv-cancel-act">입고 취소</span>
-                                    </button>
-                                  )
+                                  // 입고 상태는 앱 공통 칩 하나로 — 마우스를 올리면 ✕ 로 취소 (2026-09-05 대표님)
+                                  <ReceiptChip
+                                    got={receivedQty}
+                                    need={savedQty}
+                                    title={`입고 ${fmtDate(ln.receivedAt)}${ln.receivedBy ? ` · ${ln.receivedBy}` : ''}`}
+                                    onCancel={isReadOnly ? null : () => clearLineReceive(idx)}
+                                  />
                                 ) : (
                                   <button
                                     type="button"

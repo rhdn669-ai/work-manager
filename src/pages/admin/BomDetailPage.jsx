@@ -137,6 +137,9 @@ export default function BomDetailPage() {
   const { confirm, alert, toast } = useDialog();
   const { push: pushUndo } = useUndo();
   const { userProfile } = useAuth();
+  // (2026-09-05 뒤로가기 표준)
+  const back = () =>
+    window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/purchase/bom', { replace: true });
 
   const [project, setProject] = useState(null);
   const [bomItems, setBomItems] = useState([]);
@@ -950,6 +953,11 @@ export default function BomDetailPage() {
       `}</style>
       <div className="page-header screen-only">
         <div className="bom-title-wrap">
+          {/* (2026-09-05 뒤로가기 표준) */}
+          <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+            <Icon name="chevronLeft" className="btn-ic" />
+            구매
+          </button>
           <h2>{project.name}</h2>
           <button
             type="button"
@@ -974,9 +982,6 @@ export default function BomDetailPage() {
           <button type="button" className="btn btn-sm btn-outline" onClick={() => guard() && openPicker()}>
             <Icon name="plus" className="btn-ic" />
             품목 불러오기
-          </button>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/admin/purchase/bom')}>
-            목록
           </button>
           <PdfFabGroup
             inline
@@ -1338,7 +1343,7 @@ export default function BomDetailPage() {
             <Icon name="trash" className="btn-ic" />
             선택 삭제
           </button>
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setDelPick(new Set())}>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setDelPick(new Set())}>
             선택 해제
           </button>
         </div>

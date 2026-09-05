@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
+import ReceiptChip from '../../components/common/ReceiptChip';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -280,8 +281,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return (
       <div className="page">
         <p className="text-muted">판넬을 찾을 수 없습니다.</p>
-        <button type="button" className="btn btn-outline" onClick={back}>
-          목록으로
+        {/* (2026-09-05 뒤로가기 표준) */}
+        <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+          <Icon name="chevronLeft" className="btn-ic" />
+          생산현황
         </button>
       </div>
     );
@@ -292,8 +295,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         <p className="text-muted">
           이 호기에 연결된 BOM 이 없습니다. 생산현황 표의 「상세」에서 BOM 프로젝트와 타입을 먼저 골라 주세요.
         </p>
-        <button type="button" className="btn btn-outline" onClick={back}>
-          생산현황으로
+        {/* (2026-09-05 뒤로가기 표준) */}
+        <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+          <Icon name="chevronLeft" className="btn-ic" />
+          생산현황
         </button>
       </div>
     );
@@ -431,7 +436,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                   부족
                 </th>
                 <th scope="col" className="pmat-ok">
-                  확인
+                  입고
                 </th>
                 {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상 (2026-09-05 안 B 6단계) */}
                 <th scope="col" className="col-action">
@@ -483,14 +488,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       )}
                     </td>
                     <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>
+                    {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
-                      {skipped ? (
-                        <span className="status-badge status-badge--wait">제외</span>
-                      ) : done ? (
-                        <Icon name="check" className="pmat-check" />
-                      ) : (
-                        ''
-                      )}
+                      <ReceiptChip
+                        got={got}
+                        need={Number(r.qty) || 0}
+                        skip={skipped}
+                        title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                      />
                     </td>
                     {
                       <td className="col-action">

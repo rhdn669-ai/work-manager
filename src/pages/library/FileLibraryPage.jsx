@@ -766,7 +766,8 @@ export default function FileLibraryPage() {
               aria-label="상위 폴더로"
               title="상위 폴더로"
             >
-              <Icon name="chevronRight" className="lib-bc-back-ic" />
+              {/* (2026-09-05 뒤로가기 표준) */}
+              <Icon name="chevronLeft" className="lib-bc-back-ic" />
             </button>
             <div className="lib-bc-trail">
               <button
