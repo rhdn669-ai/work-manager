@@ -147,6 +147,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return rowView === 'done' ? done : !done;
     });
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
+  // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽으로 옮긴다 — 빈 화면만 보고
+  // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님)
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const cur = supplyTab === 'free' ? summary.free.total : summary.paid.total;
+    if (cur > 0) return;
+    const other = supplyTab === 'free' ? summary.paid.total : summary.free.total;
+    if (other > 0) setSupplyTab(supplyTab === 'free' ? 'paid' : 'free');
+  }, [box, rows.length, summary, supplyTab]);
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
   const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
 

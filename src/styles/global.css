@@ -23597,3 +23597,44 @@ a.lib-row-name:hover {
 .mhub-list-title {
   font-size: 13px;
 }
+
+/* ── 화면 표 열 구분선 통일 (2026-09-05 대표님) ──
+   품질 대장(.q-grid-table)처럼 칸마다 세로선. 인쇄 서식(.print-form-iopn·.q-paper-table)과
+   카드형(.unassigned-table)은 구조가 달라 제외한다. */
+.table th:not(:last-child),
+.table td:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.table th:not(:last-child) {
+  border-right-color: rgba(255, 255, 255, 0.16);
+}
+/* 자체 정의 표 3종도 같은 결로 */
+.pur-table th:not(:last-child),
+.pur-table td:not(:last-child),
+.vehicle-log-table th:not(:last-child),
+.vehicle-log-table td:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+/* 발주 목록 머리는 옅은 회색 배경이라 흰 선이 안 보인다 — 일반 테두리색으로 */
+.pur-table thead th:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.vehicle-log-table th:not(:last-child) {
+  border-right-color: rgba(255, 255, 255, 0.16);
+}
+/* BOM·발주 상세의 스페이서 열은 선을 긋지 않는다(빈 칸을 나누면 격자가 어지럽다) */
+.bom-flat-table .bom-spacer-col,
+.bom-flat-table th.bom-spacer-col {
+  border-right: 0 !important;
+}
+/* 인쇄에서는 화면용 세로선을 쓰지 않는다 — 인쇄 서식이 제 규격을 그린다 */
+@media print {
+  .table th,
+  .table td,
+  .pur-table th,
+  .pur-table td,
+  .vehicle-log-table th,
+  .vehicle-log-table td {
+    border-right: 0;
+  }
+}

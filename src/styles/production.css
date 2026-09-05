@@ -2079,3 +2079,12 @@ body:has(.pr-page) .main-content {
 .mx-leaf-row th {
   border-right: 1px solid #e3e7ec;
 }
+
+/* 생산 보드 목록도 같은 결 (2026-09-05 대표님) */
+.board-table th:not(:last-child),
+.board-table td:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.board-table th:not(:last-child) {
+  border-right-color: rgba(255, 255, 255, 0.16);
+}
