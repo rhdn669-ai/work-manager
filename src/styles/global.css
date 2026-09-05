@@ -23703,3 +23703,21 @@ a.lib-row-name:hover {
   width: 100%;
   justify-content: center;
 }
+
+/* 자재 체크 표 — 모든 칸 가운데 정렬로 통일 (2026-09-05 대표님 「중앙 정렬 통일」) */
+.pmat-table.no-fit th,
+.pmat-table.no-fit td,
+.pmat-table.no-fit td.pmat-num,
+.pmat-table.no-fit th.pmat-num,
+.pmat-table.no-fit td.pmat-act,
+.pmat-table.no-fit th.pmat-act {
+  text-align: center;
+}
+.pmat-table.no-fit .pmat-input.pmat-note {
+  text-align: center;
+}
+.pmat-table.no-fit td .recv-chip,
+.pmat-table.no-fit td .pmat-pull-btn {
+  margin-left: auto;
+  margin-right: auto;
+}
