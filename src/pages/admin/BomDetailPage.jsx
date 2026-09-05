@@ -1352,30 +1352,22 @@ export default function BomDetailPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div className="bom-sort" role="group" aria-label="정렬 방식">
-          <button
-            type="button"
-            className={`btn btn-sm ${sortBy === 'order' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setSortBy('order')}
-          >
-            추가순
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${sortBy === 'code' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setSortBy('code')}
-          >
-            코드순
-          </button>
-        </div>
-        <button
-          type="button"
-          className={`btn btn-sm ${groupBy === 'supplier' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setGroupBy((v) => (v === 'supplier' ? 'none' : 'supplier'))}
-          title="구매처별로 묶어서 보기/출력"
-        >
-          구매처별 {groupBy === 'supplier' ? 'ON' : 'OFF'}
-        </button>
+        {/* 정렬 하나로 — 「구매처순」이 곧 구매처별 묶어 보기(띠·소계·출력 순서) (2026-09-05 대표님) */}
+        <ViewSwitch
+          className="bom-sort"
+          options={[
+            { value: 'order', label: '추가순' },
+            { value: 'code', label: '코드순' },
+            { value: 'supplier', label: '구매처순' },
+          ]}
+          value={groupBy === 'supplier' ? 'supplier' : sortBy}
+          onChange={(v) => {
+            if (v === 'supplier') return setGroupBy('supplier');
+            setGroupBy('none');
+            setSortBy(v);
+          }}
+          ariaLabel="정렬 방식"
+        />
         {boxOptions.length > 1 && (
           <Select
             className="bom-supplier-select"

@@ -22944,7 +22944,7 @@ a.lib-row-name:hover {
 }
 .mhub-item {
   width: 100%;
-  min-height: 36px;
+  min-height: 40px;
   padding: 6px 10px;
   border: 0;
   border-radius: 8px;
@@ -22957,8 +22957,8 @@ a.lib-row-name:hover {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas:
-    'name dot'
-    'tag dot';
+    'name state'
+    'tag state';
   align-items: center;
   column-gap: 6px;
   row-gap: 2px;
@@ -23182,4 +23182,41 @@ a.lib-row-name:hover {
 .sht-table td.is-have {
   color: var(--success, #1f7a4d);
   font-weight: 700;
+}
+
+/* 허브 호기 상태 칩 — 점 대신 글자 (2026-09-05 대표님) */
+.mhub-item-state {
+  grid-area: state;
+  justify-self: end;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.mhub-item-state.is-ok {
+  background: var(--success-soft, #e5f4ec);
+  color: var(--success, #1f7a4d);
+}
+.mhub-item-state.is-short {
+  background: var(--danger-soft, #fbe9e7);
+  color: var(--danger, #b3261e);
+}
+.mhub-item-state.is-wait {
+  background: var(--grey-100, #f2f4f6);
+  color: var(--text-light);
+}
+.mhub-item-state.is-none {
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+/* 허브 탭 안 — 제목 없이 버튼만 있는 줄 */
+.page-header--sub.is-actions-only {
+  justify-content: flex-end;
+  min-height: 0;
+  margin-bottom: 8px;
+}
+.page-header--sub.is-actions-only > div:empty {
+  display: none;
 }

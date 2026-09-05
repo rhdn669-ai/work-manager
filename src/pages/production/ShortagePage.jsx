@@ -206,17 +206,19 @@ export default function ShortagePage({ embedded = false } = {}) {
   return (
     <div className="page pmat-page sht-page">
       {/* 머리: 제목(좌) · 주행동 1개(발주용 복사)+출력(우측 끝). 범위는 아래 카드로 — 제목이 길어지지 않게 */}
-      <div className={`page-header no-print${embedded ? ' page-header--sub' : ''}`}>
+      <div className={`page-header no-print${embedded ? ' page-header--sub is-actions-only' : ''}`}>
         <div>
           {!embedded && (
-            <button type="button" className="btn btn-sm btn-outline" onClick={back}>
-              <Icon name="chevronLeft" className="btn-ic" />
-              생산현황
-            </button>
+            <>
+              <button type="button" className="btn btn-sm btn-outline" onClick={back}>
+                <Icon name="chevronLeft" className="btn-ic" />
+                생산현황
+              </button>
+              <h2 className="page-title pmat-title">
+                부족 자재 집계 <span className="pmat-title-sub">· {company || '전체'}</span>
+              </h2>
+            </>
           )}
-          <h2 className="page-title pmat-title">
-            부족 자재 집계 <span className="pmat-title-sub">· {company || '전체'}</span>
-          </h2>
         </div>
         <div className="page-actions">
           <button type="button" className="btn btn-sm btn-primary" disabled={list.length === 0} onClick={copyForOrder}>
