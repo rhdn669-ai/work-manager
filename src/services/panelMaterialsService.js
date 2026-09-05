@@ -97,3 +97,19 @@ export function subscribeAllMaterials(cb) {
     cb(out);
   });
 }
+
+/** 창고 재고에서 가져온 개수를 그 줄에 누적해 적는다 — 기록에 「재고 N」으로 보인다 (2026-09-05 대표님) */
+export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {
+  const add = Math.max(0, Number(n) || 0);
+  if (!add) return;
+  await setDoc(
+    doc(ref, materialsDocId(panelId, box)),
+    {
+      panelId,
+      box,
+      items: { [bomItemId]: { fromStock: (Number(prev) || 0) + add } },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}

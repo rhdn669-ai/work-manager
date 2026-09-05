@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
+import EditModeButton from '../../components/common/EditModeButton';
 import ReceiptChip from '../../components/common/ReceiptChip';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useAuth } from '../../contexts/useAuth';
@@ -116,7 +117,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
   // 도급은 «항상» 읽기 전용 — 우리가 사서 넣는 자재라 「도급 세트」 배정으로만 채운다
   // (2026-09-03 대표님 「도급은 발주서에 체크하는 방식 … 개별로 체크하게 되어 있는데?」). 사급만 손 체크.
-  const locked = supplyTab === 'paid';
+  // 잠금 — 사급 개수도 실수로 고쳐지지 않게 (2026-09-05 대표님 「잠금이 왜 없지」).
+  // 도급은 잠금과 무관하게 «항상» 읽기 전용(발주 입고가 채운다).
+  const [editMode, setEditMode] = useState(false);
+  const locked = supplyTab === 'paid' || !editMode;
   const assigned = !!panel?.paidSet;
   // BOX 마다 이 탭(도급/사급)의 부족 줄 수 — 탭 오른쪽 배지로 보여 어느 BOX 가 모자란지 한눈에
   // (2026-09-05 대표님 「부족 떠있는 위치 확인이 안 되니 박스 우측에 부족 수량」)
@@ -144,7 +148,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     });
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
-  const hasMeta = shown.some((r) => rec[r.id]?.at);
+  const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
 
   // ── ④ 연동: 이 BOX 의 도급/사급이 전부 차면 생산현황 자재 칸을 켠다, 하나라도 빠지면 끈다 ──
   useEffect(() => {
@@ -227,7 +231,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const n = Math.min(short, stockOf(r));
     if (n <= 0) return;
     try {
-      await pullRowFromStock(panel, r, { box, have, n, by: userProfile?.name || '' });
+      await pullRowFromStock(panel, r, {
+        box,
+        have,
+        n,
+        by: userProfile?.name || '',
+        fromStock: Number(rec[r.id]?.fromStock) || 0,
+      });
       toast(`${r.code || r.name} ${n}개를 창고 재고에서 가져왔습니다 (재고 ${stockOf(r) - n} 남음)`, 'success', 0);
     } catch (err) {
       console.error(err);
@@ -365,6 +375,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             <Icon name="doc" className="btn-ic" />
             체크리스트 출력
           </button>
+          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
         </div>
       </div>
 
@@ -398,8 +409,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       <div className="pmat-kinds no-print">
         <ViewSwitch
           options={[
-            { value: 'paid', label: '도급', count: `${summary.paid.done}/${summary.paid.total}` },
-            { value: 'free', label: '사급', count: `${summary.free.done}/${summary.free.total}` },
+            {
+              value: 'paid',
+              label: '도급',
+              count: (
+                <span className={summary.paid.done < summary.paid.total ? 'is-short' : ''}>
+                  {summary.paid.done}/{summary.paid.total}
+                </span>
+              ),
+            },
+            {
+              value: 'free',
+              label: '사급',
+              count: (
+                <span className={summary.free.done < summary.free.total ? 'is-short' : ''}>
+                  {summary.free.done}/{summary.free.total}
+                </span>
+              ),
+            },
           ]}
           value={supplyTab}
           onChange={setSupplyTab}
@@ -419,13 +446,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
+                disabled={!editMode}
                 onClick={pullAllStock}
                 title="모자란 줄 전부를 발주 여유 → 창고 재고 순으로 (있는 만큼만)"
               >
                 부족분 채우기
               </button>
             )}
-            <button type="button" className="btn btn-sm btn-outline" onClick={unassign}>
+            <button type="button" className="btn btn-sm btn-outline" disabled={!editMode} onClick={unassign}>
               배정 취소
             </button>
           </span>
@@ -559,6 +587,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         <button
                           type="button"
                           className="btn btn-sm btn-primary pmat-pull-btn"
+                          disabled={!editMode}
                           onClick={() => pullStock(r, got, short)}
                           title={`창고 재고 ${stockOf(r)}개 중 ${Math.min(short, stockOf(r))}개를 이 호기로`}
                         >
@@ -579,14 +608,29 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           type="button"
                           className="btn btn-sm btn-outline"
                           onClick={() => toggleSkip(r, !skipped)}
-                          title={skipped ? '이 호기에서 다시 넣기' : '이 호기에서만 빼기 — 기본 BOM 은 그대로'}
+                          disabled={!editMode}
+                          title={
+                            editMode
+                              ? skipped
+                                ? '이 호기에서 다시 넣기'
+                                : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
+                              : '오른쪽 위 「잠금」을 푼 뒤에'
+                          }
                         >
                           {skipped ? '포함' : '제외'}
                         </button>
                       </td>
                     }
                     {hasMeta && (
-                      <td className="pmat-meta">{meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}</td>
+                      <td className="pmat-meta">
+                        {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                        {/* 창고 재고에서 꺼내 채운 몫 (2026-09-05 대표님 「기록에 재고 사용한 건 추가 표시」) */}
+                        {Number(meta?.fromStock) > 0 && (
+                          <span className="pmat-from-stock" title="창고 재고에서 가져온 개수">
+                            재고 {meta.fromStock}
+                          </span>
+                        )}
+                      </td>
                     )}
                   </tr>
                 );

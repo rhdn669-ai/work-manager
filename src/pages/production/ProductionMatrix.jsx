@@ -800,7 +800,7 @@ export default function ProductionMatrix({
                     canEditCells={canEditCells}
                     canDefect={canDefect}
                     hasMaterials={!!onMaterials}
-                    shortN={shortByPanel[p.id] || 0}
+                    shortN={shortByPanel[p.id] || null}
                     bomProjects={bomProjects}
                     defaultProjectId={defaultProjectId}
                     fillField={fillFieldFor(idx)}
@@ -832,7 +832,7 @@ const MatrixRow = memo(function MatrixRow({
   canEditCells, // 칸 수정 — 잠금을 푼 동안만
   canDefect,
   hasMaterials,
-  shortN = 0,
+  shortN = null, // { paid, free } — 도급·사급 부족 줄 수
   bomProjects,
   defaultProjectId,
   fillField, // 날짜 채우기 드래그 범위에 든 줄이면 그 열 이름 — 아니면 ''
@@ -891,8 +891,12 @@ const MatrixRow = memo(function MatrixRow({
               {hasMaterials && p.bomLink?.projectId && (
                 <button
                   type="button"
-                  className={`mx-mat-btn${shortN > 0 ? ' has-short' : ''}`}
-                  title={shortN > 0 ? `도급 부족 ${shortN}줄 — 구성품 입고 체크` : '구성품 입고 체크 (BOM)'}
+                  className={`mx-mat-btn${shortN ? ' has-short' : ''}`}
+                  title={
+                    shortN
+                      ? `도급 ${shortN.paid}줄 · 사급 ${shortN.free}줄 부족 — 구성품 입고 체크`
+                      : '구성품 입고 체크 (BOM)'
+                  }
                   aria-label="구성품 입고 체크"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -900,7 +904,13 @@ const MatrixRow = memo(function MatrixRow({
                   }}
                 >
                   <Icon name="list" />
-                  {shortN > 0 && <b className="mx-mat-short">{shortN}</b>}
+                  {/* 도급(빨강)·사급(주황)을 따로 (2026-09-05 대표님) */}
+                  {shortN && (
+                    <b className="mx-mat-short">
+                      {shortN.paid > 0 && <span className="is-paid">{shortN.paid}</span>}
+                      {shortN.free > 0 && <span className="is-free">{shortN.free}</span>}
+                    </b>
+                  )}
                 </button>
               )}
             </div>

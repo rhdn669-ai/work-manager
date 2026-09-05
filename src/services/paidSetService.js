@@ -1,7 +1,7 @@
 import { collection, doc, onSnapshot, query, where, setDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { updatePanel } from './productionService';
-import { setReceivedMany, getPanelMaterials, setReceived } from './panelMaterialsService';
+import { setReceivedMany, getPanelMaterials, setReceived, addFromStock } from './panelMaterialsService';
 import { isFreeIssue } from './bomService';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
@@ -242,10 +242,11 @@ export async function unassignPaidSet(panel, variantRows, { by = '' } = {}) {
  * 들어온 개수를 n 만큼 올리고 재고 장부를 n 줄인다(이력 「도급 배정 · 호기」). 세트 배정 호기면
  * paidSet.stockUsed 에 쌓아 두어 배정 취소 때 되돌린다. BOX 자재 칸은 자재 체크 화면 연동이 맞춘다.
  */
-export async function pullRowFromStock(panel, row, { box, have = 0, n = 0, by = '' } = {}) {
+export async function pullRowFromStock(panel, row, { box, have = 0, n = 0, by = '', fromStock = 0 } = {}) {
   const qty = Math.max(0, Number(n) || 0);
   if (!qty || !row?.itemId) return 0;
   await setReceived(panel.id, box, row.id, (Number(have) || 0) + qty, by);
+  await addFromStock(panel.id, box, row.id, qty, fromStock); // 기록에 「재고 N」
   await consumeItemStock(row.itemId, qty, { byName: by, note: `도급 배정 · ${panel.프로젝트 || ''}` });
   if (panel.paidSet) {
     const used = { ...(panel.paidSet.stockUsed || {}) };

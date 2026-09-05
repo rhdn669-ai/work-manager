@@ -2034,18 +2034,34 @@ body:has(.pr-page) .main-content {
 .mx-mat-btn {
   position: relative;
 }
+/* 구성품 버튼의 부족 수 — 도급(빨강)·사급(주황) 두 칸 (2026-09-05 대표님) */
 .mx-mat-short {
   position: absolute;
   top: -6px;
   right: -7px;
-  min-width: 16px;
+  display: inline-flex;
   height: 16px;
-  padding: 0 4px;
   border-radius: 999px;
-  background: var(--danger, #b3261e);
-  color: #fff;
+  overflow: hidden;
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
+}
+.mx-mat-short span {
+  min-width: 16px;
+  padding: 0 4px;
   text-align: center;
+  color: #fff;
+}
+.mx-mat-short .is-paid {
+  background: var(--danger, #b3261e);
+}
+.mx-mat-short .is-free {
+  background: var(--accent, #f25618);
+}
+
+/* 자재 현황 버튼 — 사급 부족 배지 (2026-09-05 대표님) */
+.mat-badge.is-free {
+  background: var(--accent-soft, #feefe7);
+  color: var(--accent-press, #b3521c);
 }

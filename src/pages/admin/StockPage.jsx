@@ -377,6 +377,9 @@ export default function StockPage() {
                         type="number"
                         className={`num-input stock-input${stock < 0 ? ' is-minus' : ''}`}
                         value={value}
+                        /* 잠금 상태에서는 수량도 못 고친다 — 다른 화면과 같은 규칙 (2026-09-05 대표님) */
+                        readOnly={!editMode}
+                        title={editMode ? '' : '수량을 바꾸려면 오른쪽 위 「잠금」을 푸세요'}
                         disabled={saving === it.id}
                         onChange={(e) => setEdit((p) => ({ ...p, [it.id]: e.target.value }))}
                         onBlur={() => commit(it)}
@@ -556,7 +559,7 @@ export default function StockPage() {
         )}
       </Modal>
 
-      <Modal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} title="재고 조정 이력">
+      <Modal isOpen={!!historyItem} onClose={() => setHistoryItem(null)} title="재고 조정 이력" size="lg">
         <p className="field-hint" style={{ marginBottom: 12 }}>
           {historyItem?.name} {historyItem?.spec ? `· ${historyItem.spec}` : ''}
         </p>

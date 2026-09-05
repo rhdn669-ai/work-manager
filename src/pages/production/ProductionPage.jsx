@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
-import { panelShortage } from '../../domain/paidSets';
+import { panelShortageBySupply } from '../../domain/paidSets';
 import Icon from '../../components/common/Icon';
 import TrashModal from '../../components/common/TrashModal';
 import EditModeButton from '../../components/common/EditModeButton';
@@ -322,26 +322,25 @@ export default function ProductionPage() {
       alive = false;
     };
   }, [companyPanels, bomRowsByProject]);
+  // 도급·사급을 따로 센다 (2026-09-05 대표님 「여기도 사급 도급 표시가 필요」)
   const matStatus = useMemo(() => {
     const shortByPanel = {};
-    let short = 0;
+    let paid = 0;
+    let free = 0;
     let unassigned = 0;
     for (const p of companyPanels) {
       const pid = p.bomLink?.projectId;
       if (!pid || p.출고완료 || p.강제종결) continue;
-      // 배정 안 한 호기는 「미배정」이지 「부족」이 아니다 — 부족은 배정된 호기만 센다
-      if (!p.paidSet) {
-        unassigned += 1;
-        continue;
-      }
       const rows = bomItemsForVariant(bomRowsByProject[pid] || [], p.bomLink.variantKey || '');
-      const n = panelShortage(rows, materials[p.id] || {}).short;
-      if (n > 0) {
-        shortByPanel[p.id] = n;
-        short += n;
-      }
+      const s = panelShortageBySupply(rows, materials[p.id] || {});
+      // 배정 안 한 호기의 도급은 「미배정」으로 센다 — 부족이 아니다
+      const paidShort = p.paidSet ? s.paid.short : 0;
+      if (!p.paidSet) unassigned += 1;
+      paid += paidShort;
+      free += s.free.short;
+      if (paidShort > 0 || s.free.short > 0) shortByPanel[p.id] = { paid: paidShort, free: s.free.short };
     }
-    return { shortByPanel, short, unassigned };
+    return { shortByPanel, paid, free, short: paid + free, unassigned };
   }, [companyPanels, bomRowsByProject, materials]);
 
   if (userProfile && !allowed) return <Navigate to="/dashboard" replace />;
@@ -408,14 +407,16 @@ export default function ProductionPage() {
               )
             }
             title={
-              matStatus.short > 0 ? `도급 부족 ${matStatus.short}줄 — 부족 집계로` : '부족 없음 — 호기 자재 체크로'
+              matStatus.short > 0
+                ? `도급 ${matStatus.paid}줄 · 사급 ${matStatus.free}줄 부족 — 부족 집계로`
+                : '부족 없음 — 호기 자재 체크로'
             }
           >
             <Icon name="archive" className="btn-ic" />
             자재 현황
-            {matStatus.short > 0 ? (
-              <span className="mat-badge is-short">부족 {matStatus.short}</span>
-            ) : (
+            {matStatus.paid > 0 && <span className="mat-badge is-short">도급 {matStatus.paid}</span>}
+            {matStatus.free > 0 && <span className="mat-badge is-free">사급 {matStatus.free}</span>}
+            {matStatus.short === 0 && (
               <span className="mat-badge is-ok">
                 <Icon name="check" />
               </span>
