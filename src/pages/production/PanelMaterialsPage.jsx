@@ -218,12 +218,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   };
-  // 이 탭의 줄을 한 번에 — 통째로 들어온 날은 BOM 수량대로, 잘못 채웠을 땐 0 으로
+  // 이 탭의 줄을 한 번에 — 통째로 들어온 날은 필요 수량대로, 잘못 채웠을 땐 0 으로
   const fillAllTo = async (toBom) => {
     if (
       !toBom &&
       !(await confirm(
-        `${supplyTab === 'free' ? '사급' : '도급'} ${shown.length}건의 들어온 개수를 모두 0 으로 되돌리시겠습니까?`,
+        `${supplyTab === 'free' ? '사급' : '도급'} ${shown.length}건의 입고 수량을 모두 0 으로 되돌리시겠습니까?`,
       ))
     )
       return;
@@ -232,7 +232,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         shown.map((r) => setReceived(panelId, box, r.id, toBom ? Number(r.qty) || 0 : 0, userProfile?.name || '')),
       );
       toast(
-        toBom ? `${shown.length}건을 BOM 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
+        toBom ? `${shown.length}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
         'success',
       );
     } catch {
@@ -489,7 +489,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             도급 자재는 손으로 적지 않습니다 — 발주 상세 「생산 호기」에 이 호기를 걸어 두면 입고 때 자동으로 채워집니다
           </span>
         ) : (
-          <span className="pmat-hint">들어온 개수를 적으면 BOM 수량에 닿을 때 저절로 체크됩니다</span>
+          <span className="pmat-hint">입고 수량을 적으면 필요 수량에 닿을 때 저절로 체크됩니다</span>
         )}
         {shown.length > 0 && !locked && (
           <span className="pmat-fill">
@@ -497,7 +497,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               type="button"
               className="btn btn-sm btn-outline"
               onClick={clearAll}
-              title="이 탭의 들어온 개수를 전부 0 으로"
+              title="이 탭의 입고 수량을 전부 0 으로"
             >
               전부 비움
             </button>
@@ -505,7 +505,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               type="button"
               className="btn btn-sm btn-outline"
               onClick={fillAll}
-              title="이 탭의 줄을 전부 BOM 수량대로"
+              title="이 탭의 줄을 전부 필요 수량대로"
             >
               전부 들어옴
             </button>
@@ -543,10 +543,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
                 <th scope="col" className="pmat-num">
-                  BOM 수량
+                  필요 수량
                 </th>
                 <th scope="col" className="pmat-num">
-                  들어온 개수
+                  입고 수량
                 </th>
                 <th scope="col" className="pmat-num">
                   부족
@@ -602,7 +602,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') e.currentTarget.blur();
                           }}
-                          aria-label={`${r.name} 들어온 개수`}
+                          aria-label={`${r.name} 입고 수량`}
                         />
                       )}
                     </td>
