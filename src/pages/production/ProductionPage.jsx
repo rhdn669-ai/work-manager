@@ -4,6 +4,7 @@ import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import Icon from '../../components/common/Icon';
+import ProjectName from '../../components/common/ProjectName';
 import TrashModal from '../../components/common/TrashModal';
 import EditModeButton from '../../components/common/EditModeButton';
 import ViewSwitch from '../../components/common/ViewSwitch';
@@ -580,7 +581,7 @@ export default function ProductionPage() {
                         )}
                         <div className="grow">
                           <div className="proj-name">
-                            {p.프로젝트 || '—'}
+                            <ProjectName name={p.프로젝트} />
                             {p.bomLink?.projectId && (
                               <button
                                 type="button"

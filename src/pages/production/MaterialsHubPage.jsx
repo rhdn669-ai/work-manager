@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
+import ProjectName from '../../components/common/ProjectName';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import Select from '../../components/common/Select';
 import { subscribePanels } from '../../services/productionService';
@@ -119,7 +120,7 @@ export default function MaterialsHubPage() {
                     onClick={() => patch({ panel: p.id })}
                     title={p.bomLink?.projectId ? '' : 'BOM 을 아직 연결하지 않은 호기'}
                   >
-                    <span className="mhub-item-name">{nameOf(p)}</span>
+                    <ProjectName name={nameOf(p)} className="mhub-item-name" />
                     {p.bomLink?.variantLabel && <span className="mhub-item-tag">{p.bomLink.variantLabel}</span>}
                     {(() => {
                       const st = stateOf(p);

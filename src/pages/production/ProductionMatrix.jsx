@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Icon from '../../components/common/Icon';
+import ProjectName from '../../components/common/ProjectName';
 import { useDialog } from '../../components/common/useDialog';
 import { bulkWritePanels, updatePanel, savePanelOrder, trashPanel } from '../../services/productionService';
 import { misorderedIds } from '../../domain/panelOrder';
@@ -877,7 +878,7 @@ const MatrixRow = memo(function MatrixRow({
               {canEditCells ? (
                 <Txt api={api} p={p} field="프로젝트" rowIndex={idx} className="mx-proj-input" />
               ) : (
-                <span className="mx-proj-name">{p.프로젝트 || '—'}</span>
+                <ProjectName name={p.프로젝트} className="mx-proj-name" />
               )}
               {/* 구성품 입고 체크 — BOX 마다 두지 않고 호기당 하나 (2026-09-03 대표님
             「개별로 두지말고 프로젝트 명 칸 옆에」). BOM 을 연결한 호기만 */}

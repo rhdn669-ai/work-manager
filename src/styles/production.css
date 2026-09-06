@@ -2088,3 +2088,9 @@ body:has(.pr-page) .main-content {
 .board-table th:not(:last-child) {
   border-right-color: rgba(255, 255, 255, 0.16);
 }
+
+/* 호기 이름 맨 뒤 세 자리 — 강조 (2026-09-05 대표님) */
+.proj-tail {
+  color: var(--accent, #f25618);
+  font-weight: 800;
+}
