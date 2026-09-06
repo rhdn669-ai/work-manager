@@ -710,10 +710,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                   규격
                 </th>
                 <th scope="col" className="c-qty">
-                  BOM
+                  필요 수량
                 </th>
                 <th scope="col" className="c-qty">
-                  입고
+                  입고 수량
                 </th>
                 <th scope="col" className="c-qty">
                   부족

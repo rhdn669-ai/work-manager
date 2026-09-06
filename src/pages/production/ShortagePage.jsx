@@ -20,7 +20,7 @@ import { specFontClass, localStamp } from '../../utils/printText';
 // 범위 안 호기의 BOM 구성품을 품목 마스터 id 로 합쳐 「무엇이 총 몇 개 모자란지」와
 // 「어느 호기가 모자란지」를 보여준다. 호기마다 BOM 이 달라도 같은 품목이면 한 줄이다.
 // 발주로 바로 넘기도록 붙여넣기 형식(코드 <탭> 수량)으로 복사할 수 있다.
-// 출력 열 폭(%) — NO·품목명·도번·규격·BOM·입고·부족·호기, 합 100
+// 출력 열 폭(%) — NO·품목명·도번·규격·필요수량·입고수량·부족·호기, 합 100
 const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
 // 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
 const SHT_SCREEN_COLS = [48, 130, 124, null, null, 76, 76, 76, 84, 84, 200];
@@ -322,10 +322,10 @@ export default function ShortagePage({ embedded = false } = {}) {
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
                 <th scope="col" className="pmat-num">
-                  BOM 합
+                  필요 수량 합
                 </th>
                 <th scope="col" className="pmat-num">
-                  입고 합
+                  입고 수량 합
                 </th>
                 <th scope="col" className="pmat-num">
                   부족
@@ -419,10 +419,10 @@ export default function ShortagePage({ embedded = false } = {}) {
                   규격
                 </th>
                 <th scope="col" className="c-qty">
-                  BOM
+                  필요 수량
                 </th>
                 <th scope="col" className="c-qty">
-                  입고
+                  입고 수량
                 </th>
                 <th scope="col" className="c-qty">
                   부족
