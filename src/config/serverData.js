@@ -12,10 +12,31 @@ import { removeRow } from '../services/serverDocDelete';
 const URL = import.meta.env.VITE_SB_URL || '';
 const ANON = import.meta.env.VITE_SB_ANON_KEY || '';
 
-export const sb = createClient(URL, ANON, {
-  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'wmServerAuth' },
-  db: { schema: 'wm' },
-});
+// 접속 준비는 «실제로 부를 때» 한다. 파일을 읽는 순간 만들면, 서버를 쓰지 않는 곳
+// (예: 계산 로직만 확인하는 단위 시험)에서도 서버 주소가 없다고 멈춰 버린다.
+let client = null;
+function connect() {
+  if (client) return client;
+  if (!URL || !ANON)
+    throw new Error('사내 서버 주소나 열쇠가 설정되지 않았습니다 (.env 의 VITE_SB_URL · VITE_SB_ANON_KEY)');
+  client = createClient(URL, ANON, {
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'wmServerAuth' },
+    db: { schema: 'wm' },
+  });
+  return client;
+}
+
+// 지금까지처럼 `sb.from(...)` 으로 쓸 수 있게 두되, 처음 쓰는 순간에 연결한다.
+export const sb = new Proxy(
+  {},
+  {
+    get(_t, key) {
+      const c = connect();
+      const v = c[key];
+      return typeof v === 'function' ? v.bind(c) : v;
+    },
+  },
+);
 
 // 컬렉션 이름 → 표 이름 (bomHistory → bom_history)
 const tableOf = (name) => name.replace(/(?<!^)(?=[A-Z])/g, '_').toLowerCase();
