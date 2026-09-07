@@ -1,5 +1,5 @@
-import { collection, addDoc, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, addDoc, getDocs, query, orderBy, limit, where } from '../config/data';
+import { db } from '../config/data';
 
 const mailLogsRef = collection(db, 'mailLogs');
 

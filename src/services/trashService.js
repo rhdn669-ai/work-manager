@@ -11,9 +11,10 @@ import {
   where,
   writeBatch,
   onSnapshot,
-} from 'firebase/firestore';
+} from '../config/data';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/data';
+import { storage } from '../config/firebase';
 
 // 삭제된 발주/프로젝트BOM의 스냅샷을 보관하는 휴지통
 const trashRef = collection(db, 'trash');

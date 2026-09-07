@@ -1,5 +1,5 @@
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDoc, getDocs, setDoc } from '../config/data';
+import { db } from '../config/data';
 
 // 고정지출 — 월별 단일 문서로 저장
 // 컬렉션: monthlyFixedExpenses

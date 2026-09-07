@@ -1,5 +1,5 @@
-import { collection, doc, getDocs, addDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDocs, addDoc, deleteDoc, query, where, serverTimestamp } from '../config/data';
+import { db } from '../config/data';
 import { DEMO_FLAG, demoPanels, demoAssets, demoRecords } from '../domain/demoSeed';
 import { computeCalcFields } from '../domain/qualityFormFields';
 import { recompute } from '../domain/production';

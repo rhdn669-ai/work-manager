@@ -5,8 +5,9 @@
 // 제목을 고쳐 답장해도, 본문을 다 지워도 붙는다 (2026-08-28 대표님).
 //
 // 번호를 문서 ID 로 쓴다 — 답장이 오면 조회 한 번으로 끝난다.
-import { collection, doc, setDoc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { db, callSendEmail } from '../config/firebase';
+import { collection, doc, setDoc, getDoc, getDocs, query, where } from '../config/data';
+import { db } from '../config/data';
+import { callSendEmail } from '../config/firebase';
 import { newMessageId, threadKeyOf } from '../utils/mailTemplate';
 
 const threadsRef = collection(db, 'mailThreads');

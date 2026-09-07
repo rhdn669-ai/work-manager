@@ -6,8 +6,8 @@
 //
 // 손으로 넣은 항목만 따로 컬렉션을 쓴다. 삭제가 휴지통을 거쳐야 하는데(앱 규칙),
 // 휴지통은 문서 단위로 옮기기 때문이다.
-import { collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, query, where } from '../config/data';
+import { db } from '../config/data';
 import { trashGeneric } from './trashService';
 
 const closingsRef = collection(db, 'marginClosings');

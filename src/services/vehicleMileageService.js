@@ -1,5 +1,5 @@
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from '../config/data';
+import { db } from '../config/data';
 
 // 차량 운행 키로수 — 사용자×월 단일 문서
 // 컬렉션: vehicleMileages

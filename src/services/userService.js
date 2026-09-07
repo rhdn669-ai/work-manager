@@ -1,16 +1,5 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy } from '../config/data';
+import { db } from '../config/data';
 
 const usersRef = collection(db, 'users');
 

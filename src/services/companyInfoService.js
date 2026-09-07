@@ -1,5 +1,5 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { doc, getDoc, setDoc } from '../config/data';
+import { db } from '../config/data';
 
 // 견적서·발주서·BOM 3종 출력물이 공용으로 쓰는 발행처 정보.
 // 기본값은 코드에 두고, 관리자가 "견적서 관리 → 양식 설정"에서 수정하면

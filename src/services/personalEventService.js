@@ -1,15 +1,5 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp } from '../config/data';
+import { db } from '../config/data';
 
 const ref = collection(db, 'personalEvents');
 

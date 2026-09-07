@@ -56,3 +56,4 @@ tests/ui/*-snapshots/
 
 # 조사·검증용 임시 파일
 .tmp-*
+.env.server

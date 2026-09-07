@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { AuthContext } from './useAuth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, query, where, getDocs, isServer } from '../config/data';
+import { signInToServer, signOutOfServer } from '../services/serverAuth';
+import { db } from '../config/data';
 import { getDepartmentsByLeader } from '../services/departmentService';
 import { getAllSites } from '../services/siteService';
 import { INACTIVITY_TIMEOUT_MS, SESSION_ACTIVITY_KEY as ACTIVITY_KEY } from '../utils/sessionConfig';
@@ -66,6 +67,9 @@ export function AuthProvider({ children }) {
   }
 
   const login = async (code, password = '') => {
+    // 사내 서버를 쓸 때는 먼저 서버에 로그인해야 자료를 볼 수 있다.
+    // 사번과 비밀번호는 지금까지 쓰던 그대로다(서버가 사번을 아이디로 바꿔 받는다).
+    if (isServer) await signInToServer(code, password);
     const q = query(collection(db, 'users'), where('code', '==', code));
     const snapshot = await getDocs(q);
     if (snapshot.empty) {
@@ -86,6 +90,10 @@ export function AuthProvider({ children }) {
 
   // 지문(생체) 로그인 — 비밀번호 검증 없이 저장된 코드로 세션 복원 (생체 인증이 곧 본인확인)
   const loginByCode = async (code) => {
+    // 지문 로그인 — 서버 세션이 살아 있으면 그대로 쓰고, 끊겼으면 코드 로그인으로 돌려보낸다.
+    if (isServer && !(await signInToServer(code, null))) {
+      throw new Error('다시 코드와 비밀번호로 로그인해주세요.');
+    }
     const q = query(collection(db, 'users'), where('code', '==', code));
     const snapshot = await getDocs(q);
     if (snapshot.empty) {
@@ -100,6 +108,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    if (isServer) signOutOfServer();
     setUserProfile(null);
     setImpersonator(null);
     localStorage.removeItem('workManagerUser');

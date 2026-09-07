@@ -1,5 +1,5 @@
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDoc, getDocs, query, where } from '../config/data';
+import { db } from '../config/data';
 import { getBomBySite, bomItemsForVariant } from './bomService';
 import { getPanelMaterials } from './panelMaterialsService';
 import { updatePanel } from './productionService';

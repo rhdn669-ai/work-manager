@@ -1,5 +1,5 @@
-import { doc, getDocFromServer, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { doc, getDocFromServer, terminate, clearIndexedDbPersistence } from '../config/data';
+import { db } from '../config/data';
 
 // Firestore 로컬 캐시(IndexedDB)가 꼬여 읽기가 영영 안 오는 상태를 잡는다
 // (2026-09-05 대표님 「앱이 먹통 · 이 상태에서 자꾸 머무는데」 — 새 창은 정상, 그 창만 멈춤).

@@ -1,5 +1,5 @@
-import { doc, onSnapshot, setDoc, getDoc, deleteField } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { doc, onSnapshot, setDoc, getDoc, deleteField } from '../config/data';
+import { db } from '../config/data';
 
 const COLL = 'userPreferences';
 

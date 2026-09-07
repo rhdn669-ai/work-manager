@@ -1,5 +1,5 @@
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from '../config/data';
+import { db } from '../config/data';
 
 const quotesRef = collection(db, 'quotes');
 

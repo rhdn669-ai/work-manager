@@ -10,9 +10,10 @@ import {
   orderBy,
   getDocs,
   writeBatch,
-} from 'firebase/firestore';
+} from '../config/data';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage, ensureAnonymousAuth } from '../config/firebase';
+import { db } from '../config/data';
+import { storage, ensureAnonymousAuth } from '../config/firebase';
 
 // 사내 자료실 — 전 직원이 폴더를 만들고 파일을 올리고 받을 수 있는 공용 클라우드 저장소
 // Firestore에는 메타데이터(폴더/파일 정보), Firebase Storage에는 실제 파일 바이너리를 저장한다.

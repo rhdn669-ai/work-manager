@@ -1,5 +1,5 @@
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { doc, setDoc } from '../config/data';
+import { db } from '../config/data';
 import { getToday } from '../utils/dateUtils';
 
 // 신규 사용자 프로필 생성 (회원가입 시)

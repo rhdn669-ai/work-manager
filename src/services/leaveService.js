@@ -1,5 +1,5 @@
-import { collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, query, where } from '../config/data';
+import { db } from '../config/data';
 import { calculateAccruedLeave } from '../utils/leaveCalculator';
 import { getUser } from './userService';
 import { syncEmployeeLeaveDaysForMonth } from './siteService';

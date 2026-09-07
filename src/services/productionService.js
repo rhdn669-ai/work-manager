@@ -1,16 +1,8 @@
 import { orderOf } from '../domain/panelOrder';
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-  getDoc,
-  writeBatch,
-} from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDoc, writeBatch } from '../config/data';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/data';
+import { storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
 import { shrinkImage } from '../utils/imageResize';
 import { recompute, deriveBoxStatus, withAutoDir } from '../domain/production';

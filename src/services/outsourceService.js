@@ -11,8 +11,8 @@ import {
   where,
   arrayUnion,
   arrayRemove,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+} from '../config/data';
+import { db } from '../config/data';
 
 const closingItemsRef = collection(db, 'siteClosingItems');
 

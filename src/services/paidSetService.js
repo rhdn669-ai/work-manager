@@ -1,5 +1,5 @@
-import { collection, doc, onSnapshot, query, where, setDoc, deleteField, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, onSnapshot, query, where, setDoc, deleteField, serverTimestamp } from '../config/data';
+import { db } from '../config/data';
 import { updatePanel } from './productionService';
 import { setReceivedMany, getPanelMaterials, setReceived, addFromStock } from './panelMaterialsService';
 import { isFreeIssue } from './bomService';

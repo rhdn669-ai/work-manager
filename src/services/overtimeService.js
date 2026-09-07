@@ -1,5 +1,5 @@
-import { collection, doc, getDocs, setDoc, query, where, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDocs, setDoc, query, where, orderBy } from '../config/data';
+import { db } from '../config/data';
 import { getWeekStart, getWeekEnd } from '../utils/dateUtils';
 import { WEEKLY_OVERTIME_LIMIT } from '../utils/constants';
 

@@ -1,5 +1,5 @@
-import { collection, doc, getDocs, onSnapshot, query, where, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDocs, onSnapshot, query, where, setDoc, serverTimestamp } from '../config/data';
+import { db } from '../config/data';
 
 // 호기 × BOX 의 구성품 입고 기록 (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트」).
 //

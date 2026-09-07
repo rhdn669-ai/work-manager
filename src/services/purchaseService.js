@@ -16,8 +16,8 @@ import {
   increment,
   writeBatch,
   onSnapshot,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+} from '../config/data';
+import { db } from '../config/data';
 import { addFinanceItem, deleteFinanceItem } from './siteService';
 import { getToday } from '../utils/dateUtils';
 import { groupLayoutUpdates } from '../domain/itemLayout';

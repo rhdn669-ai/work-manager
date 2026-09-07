@@ -10,8 +10,8 @@ import {
   query,
   where,
   orderBy,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+} from '../config/data';
+import { db } from '../config/data';
 import { QUARTER_LEAVE_TYPES } from '../utils/constants';
 
 const sitesRef = collection(db, 'sites');

@@ -1,15 +1,5 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  onSnapshot,
-  serverTimestamp,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDocs, query, where } from '../config/data';
+import { db } from '../config/data';
 import { trashGeneric } from './trashService';
 import { NCR_FORM_KEY, SHIPMENT_FORM_KEY, panelToNcrFacts, panelToShipmentFacts } from '../domain/productionQuality';
 

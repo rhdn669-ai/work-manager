@@ -1,5 +1,5 @@
-import { collection, getDocs, getDoc, addDoc, updateDoc, doc, query, where } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, getDocs, getDoc, addDoc, updateDoc, doc, query, where } from '../config/data';
+import { db } from '../config/data';
 import { getToday } from '../utils/dateUtils';
 import { getUser } from './userService';
 import { trashGeneric } from './trashService';

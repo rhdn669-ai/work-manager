@@ -11,8 +11,8 @@ import {
   where,
   orderBy,
   writeBatch,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
+} from '../config/data';
+import { db } from '../config/data';
 
 const bomRef = collection(db, 'bom');
 const projectsRef = collection(db, 'bomProjects');

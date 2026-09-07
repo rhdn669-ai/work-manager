@@ -1,5 +1,5 @@
-import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp } from '../config/data';
+import { db } from '../config/data';
 import { trashGeneric } from './trashService';
 import { nextCalibrationDate } from '../domain/qualityForms';
 
