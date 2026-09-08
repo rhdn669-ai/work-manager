@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
+import { useFileUrl } from '../../utils/useFileUrl';
 import Icon from './Icon';
 
 // 폴더 안 이미지들을 앱을 벗어나지 않고 넘겨보는 라이트박스.
@@ -80,6 +81,9 @@ export default function ImageLightbox({ images, index, onIndex, onClose }) {
     }
   }, [index, total, images]);
 
+  // 사내 서버 사진은 볼 때마다 잠시 열리는 주소를 새로 받는다
+  const curUrl = useFileUrl(cur?.downloadURL);
+
   if (!cur) return null;
 
   return (
@@ -106,7 +110,7 @@ export default function ImageLightbox({ images, index, onIndex, onClose }) {
         <div className="lib-lightbox-view" onWheel={onWheel} onDoubleClick={() => (zoom > 1 ? reset() : zoomBy(2))}>
           <img
             loading="lazy"
-            src={cur.downloadURL}
+            src={curUrl}
             alt={cur.name}
             className={zoom > 1 ? 'is-zoomed' : undefined}
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}

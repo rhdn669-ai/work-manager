@@ -3,6 +3,7 @@ import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { updatePanel, uploadDefectPhoto, attachDefectPhoto } from '../../services/productionService';
+import FileImage from '../../components/common/FileImage';
 import { useUploads } from '../../contexts/useUploads';
 import ImageLightbox from '../../components/common/ImageLightbox';
 import Select from '../../components/common/Select';
@@ -286,7 +287,7 @@ export default function ProductionPanelModal({
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '사진')]} />
                   ) : it.사진 ? (
                     <div className="defect-ba-photo-wrap">
-                      <img
+                      <FileImage
                         loading="lazy"
                         className="defect-ba-photo"
                         src={it.사진}
@@ -322,7 +323,7 @@ export default function ProductionPanelModal({
                     <PhotoProgress pct={upSlots[slotKey(part, round, i, '조치사진')]} />
                   ) : it.조치사진 ? (
                     <div className="defect-ba-photo-wrap">
-                      <img
+                      <FileImage
                         loading="lazy"
                         className="defect-ba-photo"
                         src={it.조치사진}

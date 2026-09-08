@@ -1,6 +1,8 @@
 import { orderOf } from '../domain/panelOrder';
 import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDoc, writeBatch } from '../config/data';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { isServer } from '../config/data';
+import * as ServerFiles from './serverFiles';
 import { db } from '../config/data';
 import { storage } from '../config/firebase';
 import { trashGeneric } from './trashService';
@@ -96,6 +98,12 @@ export async function uploadDefectPhoto(file, onProgress) {
   // 올리기 전에 긴 변 2400px·JPEG 90%로 줄여 1~1.5MB로 만든다(A4 200dpi — 확대해도 또렷).
   const small = await shrinkImage(file);
   const path = `productionDefects/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+  if (isServer) {
+    if (onProgress) onProgress(10);
+    const mark = await ServerFiles.uploadFileTo('production', 'defects/' + path.split('/')[1], small, 'image/jpeg');
+    if (onProgress) onProgress(100);
+    return mark;
+  }
   const task = uploadBytesResumable(ref(storage, path), small, { contentType: small.type || 'image/jpeg' });
   if (onProgress) {
     task.on('state_changed', (snap) => {
@@ -111,6 +119,12 @@ export async function uploadDefectPhoto(file, onProgress) {
 export async function uploadShipPhoto(file, onProgress) {
   const small = await shrinkImage(file);
   const path = `productionShipPhotos/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+  if (isServer) {
+    if (onProgress) onProgress(10);
+    const mark = await ServerFiles.uploadFileTo('production', 'ship/' + path.split('/')[1], small, 'image/jpeg');
+    if (onProgress) onProgress(100);
+    return mark;
+  }
   const task = uploadBytesResumable(ref(storage, path), small, { contentType: small.type || 'image/jpeg' });
   if (onProgress) {
     task.on('state_changed', (snap) => {

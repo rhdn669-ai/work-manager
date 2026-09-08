@@ -4,6 +4,7 @@ import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
 import { SHIP_PHOTO_SIDES, boxShipPhotos } from '../../domain/production';
 import { uploadShipPhoto, attachShipPhoto } from '../../services/productionService';
+import FileImage from '../../components/common/FileImage';
 import { useUploads } from '../../contexts/useUploads';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -86,7 +87,7 @@ export default function ShipPhotoModal({ panel, box, canEdit, checkerName, onClo
                 <div className="ship-photo-box is-busy">올리는 중 {pct}%</div>
               ) : url ? (
                 <button type="button" className="ship-photo-box" onClick={() => setView({ url, side })}>
-                  <img src={url} alt={`${box} ${side}`} loading="lazy" />
+                  <FileImage src={url} alt={`${box} ${side}`} loading="lazy" />
                 </button>
               ) : (
                 <button
@@ -119,7 +120,7 @@ export default function ShipPhotoModal({ panel, box, canEdit, checkerName, onClo
       />
       {view && (
         <Modal isOpen onClose={() => setView(null)} title={`${box} · ${view.side}`} size="lg">
-          <img src={view.url} alt={view.side} style={{ width: '100%', borderRadius: 'var(--radius-sm)' }} />
+          <FileImage src={view.url} alt={view.side} style={{ width: '100%', borderRadius: 'var(--radius-sm)' }} />
         </Modal>
       )}
     </Modal>

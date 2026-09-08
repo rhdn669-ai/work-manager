@@ -13,6 +13,8 @@ import {
   onSnapshot,
 } from '../config/data';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
+import { isServer } from '../config/data';
+import * as ServerFiles from './serverFiles';
 import { db } from '../config/data';
 import { storage } from '../config/firebase';
 
@@ -129,7 +131,8 @@ export async function purgeTrashItem(trashId) {
     const path = t.payload?.storagePath;
     if ((t.collection === 'libraryFiles' || t.type === 'libraryFiles') && path) {
       try {
-        await deleteObject(storageRef(storage, path));
+        if (isServer) await ServerFiles.removeFileAt(path);
+        else await deleteObject(storageRef(storage, path));
       } catch {
         /* 이미 없으면 무시 */
       }

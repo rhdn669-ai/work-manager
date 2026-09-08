@@ -12,6 +12,8 @@ import {
   writeBatch,
 } from '../config/data';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { isServer } from '../config/data';
+import * as ServerFiles from './serverFiles';
 import { db } from '../config/data';
 import { storage, ensureAnonymousAuth } from '../config/firebase';
 
@@ -51,12 +53,30 @@ export async function setFolderOrder(updates) {
 }
 
 // 파일 목록 실시간 구독 (최신 업로드 우선)
+// 사내 서버의 보관함은 비공개라, 화면에 넘기기 전에 잠시 열리는 주소를 채워 준다.
+// 예전 구글 주소가 적힌 파일은 그대로 둔다(옮기기 전에도 열리도록).
+async function withOpenUrls(files) {
+  if (!isServer) return files;
+  const need = files.filter((f) => ServerFiles.isMarked(f.downloadURL) || (!f.downloadURL && f.storagePath));
+  if (!need.length) return files;
+  const map = await ServerFiles.signMany(need.map((f) => ServerFiles.splitPath(f.storagePath)));
+  return files.map((f) => {
+    if (!ServerFiles.isMarked(f.downloadURL) && f.downloadURL) return f;
+    const { bucket, path } = ServerFiles.splitPath(f.storagePath);
+    const url = map.get(`${bucket}/${path}`);
+    return url ? { ...f, downloadURL: url } : f;
+  });
+}
+
 export function subscribeFiles(cb) {
   const q = query(filesRef, orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snap) => {
-      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      withOpenUrls(rows)
+        .then(cb)
+        .catch(() => cb(rows));
     },
     (err) => {
       console.error('[자료실] 파일 구독 오류:', err);
@@ -129,7 +149,7 @@ export async function getSupplierLibraryFiles(supplierName) {
   const files = fileSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const rank = (n = '') => (/사업자|등록증/.test(n) ? 0 : /통장|계좌/.test(n) ? 1 : 2);
   files.sort((a, b) => rank(a.name) - rank(b.name));
-  return files;
+  return withOpenUrls(files);
 }
 
 // 자료실 「명함」 폴더 — 메일 하단에 붙일 담당자 명함.
@@ -254,6 +274,24 @@ export async function uploadFile(file, folderId, user, onProgress, displayName) 
   }
   const fileName = (displayName && displayName.trim()) || file.name;
   const storagePath = buildStoragePath(folderId, fileName);
+  if (isServer) {
+    const { bucket, path } = ServerFiles.splitPath(storagePath);
+    if (onProgress) onProgress(10);
+    const mark = await ServerFiles.uploadFileTo(bucket, path, file, file.type);
+    if (onProgress) onProgress(100);
+    await addDoc(filesRef, {
+      name: fileName,
+      folderId: folderId || null,
+      storagePath,
+      downloadURL: mark,
+      size: file.size || 0,
+      contentType: file.type || 'application/octet-stream',
+      uploadedBy: user?.uid || '',
+      uploadedByName: user?.name || '',
+      createdAt: new Date(),
+    });
+    return;
+  }
   const task = uploadBytesResumable(ref(storage, storagePath), file, {
     contentType: file.type || 'application/octet-stream',
   });
@@ -333,7 +371,8 @@ export async function replaceLibraryFile(fileMeta, blob, user) {
 export async function deleteFile(fileMeta) {
   if (fileMeta.storagePath) {
     try {
-      await deleteObject(ref(storage, fileMeta.storagePath));
+      if (isServer) await ServerFiles.removeFileAt(fileMeta.storagePath);
+      else await deleteObject(ref(storage, fileMeta.storagePath));
     } catch {
       /* 이미 없으면 무시 */
     }
