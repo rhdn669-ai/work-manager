@@ -527,7 +527,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
-              {['3.5%', '11%', '9.5%', '9%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '12%' : null, '8.5%', '5.5%']
+              {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
+              {['3.5%', '12%', '13%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '12%' : null, '8.5%', '5.5%']
                 .filter((_, i) => hasMeta || i !== 9)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -538,7 +539,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col" className="col-no">
                   No
                 </th>
-                <th scope="col">코드</th>
                 <th scope="col">도번</th>
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
@@ -576,7 +576,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     className={skipped ? 'is-skipped' : done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}
                   >
                     <td className="col-no">{i + 1}</td>
-                    <td className="pmat-code">{r.code}</td>
                     <td>{r.drawingNo}</td>
                     {/* 긴 이름만 줄바꿈 — 코드·도번·기록은 한 줄로 (2026-09-05 대표님) */}
                     <td className="u-wrap">{r.name}</td>

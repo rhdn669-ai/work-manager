@@ -23,7 +23,8 @@ import { specFontClass, localStamp } from '../../utils/printText';
 // 출력 열 폭(%) — NO·품목명·도번·규격·필요수량·입고수량·부족·호기, 합 100
 const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
 // 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
-const SHT_SCREEN_COLS = [48, 130, 124, null, null, 76, 76, 76, 84, 84, 200];
+// 코드 열은 뺐다 — 생산 화면은 도번·품명으로 본다 (2026-09-08 대표님)
+const SHT_SCREEN_COLS = [48, 140, null, null, 76, 76, 76, 84, 84, 200];
 
 const hogiOf = (p) =>
   [p.프로젝트, p.호기]
@@ -317,7 +318,6 @@ export default function ShortagePage({ embedded = false } = {}) {
                 <th scope="col" className="col-no">
                   No
                 </th>
-                <th scope="col">코드</th>
                 <th scope="col">도번</th>
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
@@ -343,7 +343,6 @@ export default function ShortagePage({ embedded = false } = {}) {
               {list.map((a, i) => (
                 <tr key={a.itemId || `${a.code}-${i}`}>
                   <td className="col-no">{i + 1}</td>
-                  <td className="pmat-code">{a.code}</td>
                   <td className="sht-drawing">{masterMap[a.itemId]?.drawingNo || ''}</td>
                   <td className="sht-name">{a.name}</td>
                   <td className="sht-spec" title={a.spec}>
