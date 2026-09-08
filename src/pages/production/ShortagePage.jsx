@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFillHeight } from '../../utils/useFillHeight';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
@@ -38,8 +38,7 @@ export default function ShortagePage({ embedded = false } = {}) {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useDialog();
-  const scrollRef = useRef(null);
-  useFillHeight(scrollRef);
+  const scrollRef = useFillHeight();
   const company = sp.get('company') || '';
 
   const [panels, setPanels] = useState([]);

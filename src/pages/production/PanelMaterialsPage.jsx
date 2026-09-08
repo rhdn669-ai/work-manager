@@ -58,8 +58,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [typing, setTyping] = useState(null); // 지금 숫자를 적고 있는 줄 id
   const pressRef = useRef({ timer: 0, long: false });
   // 표 상자를 화면 아래까지 늘려 그 안에서 스크롤 — 머리줄·도번 열을 붙여 두기 위해 (2026-09-08 대표님)
-  const scrollRef = useRef(null);
-  useFillHeight(scrollRef);
+  const scrollRef = useFillHeight();
 
   // ── 판넬 ──
   useEffect(() => {
