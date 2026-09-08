@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AuthContext } from './useAuth';
 import { collection, query, where, getDocs, isServer } from '../config/data';
-import { signInToServer, signOutOfServer } from '../services/serverAuth';
+import { signInToServer, signOutOfServer, serverSessionAlive } from '../services/serverAuth';
 import { db } from '../config/data';
 import { getDepartmentsByLeader } from '../services/departmentService';
 import { getAllSites } from '../services/siteService';
@@ -45,6 +45,25 @@ export function AuthProvider({ children }) {
     }
     if (saved) {
       const profile = JSON.parse(saved);
+      // 사내 서버를 쓸 때는 서버 쪽 로그인도 살아 있어야 자료가 보인다.
+      // (구글에서 사내 서버로 옮긴 첫날, 예전 로그인 흔적만 남은 사람은 빈 화면을 보게 된다)
+      if (isServer) {
+        serverSessionAlive()
+          .then((alive) => {
+            if (!alive) {
+              localStorage.removeItem('workManagerUser');
+              localStorage.removeItem('workManagerImpersonator');
+              setUserProfile(null);
+              setLoading(false);
+              return;
+            }
+            setUserProfile(profile);
+            localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+            checkTeamLeader(profile.uid);
+          })
+          .catch(() => setLoading(false));
+        return;
+      }
       setUserProfile(profile);
       // 복원 직후를 활동 시간으로 기록
       localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
