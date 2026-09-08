@@ -23861,3 +23861,8 @@ a.lib-row-name:hover {
 .toast__action:hover {
   background: rgba(255, 255, 255, 0.18);
 }
+
+/* 표 자체에 overflow:hidden 이 걸려 있으면 붙임(sticky)이 표 안에서만 먹어 겉으로는 안 붙는다 — 상자에서만 자른다 */
+.pmat-scroll .pmat-table {
+  overflow: visible;
+}
