@@ -68,6 +68,40 @@ const FAST = {
   leaveBalances: { userId: 'user_id' },
 };
 
+// 방금 저장한 값을 잠깐(6초) 들고 있는다.
+//
+// 구글은 저장하는 즉시 화면에 반영해 주었지만, 사내 서버는 몇 초마다 다시 읽어 오는 방식이라
+// 저장 직후 잠깐 «옛 값» 이 보였다. 그래서 입고 수량을 적어도 안 들어간 것처럼 보였다
+// (2026-09-08 대표님 「입력이 한 번에 안 됨」). 아래 기억이 그 틈을 메운다.
+const FRESH_MS = 6000;
+const justWritten = new Map();
+const freshKey = (name, id) => `${name}/${id}`;
+function remember(name, id, data) {
+  justWritten.set(freshKey(name, id), { data, at: Date.now() });
+}
+function forget(name, id) {
+  justWritten.set(freshKey(name, id), { data: null, at: Date.now() });
+}
+function applyFresh(name, rows) {
+  const now = Date.now();
+  const out = rows.map((r) => {
+    const hit = justWritten.get(freshKey(name, r.id));
+    if (hit && now - hit.at < FRESH_MS) return hit.data ? { ...r, data: hit.data } : null;
+    return r;
+  });
+  // 방금 새로 만든 줄이 아직 목록에 안 잡혔으면 끼워 넣는다
+  const have = new Set(rows.map((r) => r.id));
+  for (const [k, v] of justWritten) {
+    if (now - v.at >= FRESH_MS) {
+      justWritten.delete(k);
+      continue;
+    }
+    const [n, id] = [k.slice(0, k.indexOf('/')), k.slice(k.indexOf('/') + 1)];
+    if (n === name && v.data && !have.has(id)) out.push({ id, data: v.data });
+  }
+  return out.filter(Boolean);
+}
+
 // 문서 id — Firestore 가 만들던 20자와 같은 모양
 const newId = () => {
   const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -224,15 +258,16 @@ export async function getDocs(refOrQuery) {
   const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
   const { data, error } = await build(name, cs).limit(10000);
   if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-  const docs = (data || []).map(wrap);
-  return snapshotOf(docs, data || []);
+  const rows = applyFresh(name, data || []);
+  return snapshotOf(rows.map(wrap), rows);
 }
 
 export async function getDoc(ref) {
   const { data, error } = await sb.from(tableOf(ref.name)).select('id,data').eq('id', ref.id).maybeSingle();
   if (error) throw new Error(`${ref.name} 조회 실패: ${error.message}`);
-  if (!data) return { id: ref.id, exists: () => false, data: () => undefined };
-  return wrap(data);
+  const [row] = applyFresh(ref.name, data ? [data] : []);
+  if (!row) return { id: ref.id, exists: () => false, data: () => undefined };
+  return wrap(row);
 }
 export const getDocFromServer = getDoc;
 
@@ -265,8 +300,9 @@ function splitMarks(patch) {
 
 async function rpc(fn, args, label) {
   // 도우미 함수는 공용 칸(public)에 있다 — 앱 기본 칸은 wm 이라 여기서만 바꿔 부른다
-  const { error } = await sb.schema('public').rpc(fn, args);
+  const { data, error } = await sb.schema('public').rpc(fn, args);
   if (error) throw new Error(`${label} 실패: ${error.message}`);
+  return data;
 }
 
 export async function addDoc(colRef, data) {
@@ -281,17 +317,19 @@ export async function setDoc(ref, data, opts = {}) {
     // 「얹어 저장」은 «속 안까지» 얹어야 한다. 겉만 얹으면 items 같은 묶음이 통째로 갈려
     // 먼저 적어 둔 기록이 사라진다 (2026-09-08 대표님 「추가 입고 체크에 기존 것도 초기화」).
     if (Object.keys(plain).length) {
-      await rpc(
+      const saved = await rpc(
         'doc_merge',
         { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: plain },
         `${ref.name} 저장`,
       );
+      if (saved) remember(ref.name, ref.id, saved);
     }
     if (dels.length || ops.length) await applyExtras(ref, dels, ops);
     return;
   }
   const { error } = await sb.from(tableOf(ref.name)).upsert({ id: ref.id, data: plain });
   if (error) throw new Error(`${ref.name} 저장 실패: ${error.message}`);
+  remember(ref.name, ref.id, plain);
   if (dels.length || ops.length) await applyExtras(ref, dels, ops);
 }
 
@@ -330,11 +368,12 @@ async function applyExtras(ref, dels, ops) {
 export async function updateDoc(ref, patch) {
   const { plain, dels, ops } = splitMarks(patch || {});
   if (Object.keys(plain).length || dels.length) {
-    await rpc(
+    const saved = await rpc(
       'doc_patch',
       { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: plain, p_dels: dels },
       `${ref.name} 수정`,
     );
+    if (saved) remember(ref.name, ref.id, saved);
   }
   if (ops.length) await applyExtras(ref, [], ops);
 }
@@ -342,6 +381,7 @@ export async function updateDoc(ref, patch) {
 // 실제 지우기는 서비스 계층(serverDocDelete)에 있다 — 앱의 삭제는 늘 휴지통을 먼저 거친다.
 async function removeOne(ref) {
   await removeRow(sb, tableOf(ref.name), ref.id);
+  forget(ref.name, ref.id);
 }
 export { removeOne as deleteDoc };
 
@@ -377,7 +417,8 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
         const { data, error } = await build(name, cs).limit(10000);
         if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-        v = snapshotOf((data || []).map(wrap), data || [], prev);
+        const rows = applyFresh(name, data || []);
+        v = snapshotOf(rows.map(wrap), rows, prev);
         prev = v.__state;
       }
       if (!stopped) onNext(v);

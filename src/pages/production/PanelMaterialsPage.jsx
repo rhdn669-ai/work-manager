@@ -528,7 +528,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['3.5%', '12%', '13%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '12%' : null, '8.5%', '5.5%']
+              {['3.5%', '15%', '14%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '11%' : null, '7.5%', '5.5%']
                 .filter((_, i) => hasMeta || i !== 9)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -576,7 +576,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     className={skipped ? 'is-skipped' : done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}
                   >
                     <td className="col-no">{i + 1}</td>
-                    <td>{r.drawingNo}</td>
+                    <td className="pmat-drawing">{r.drawingNo}</td>
                     {/* 긴 이름만 줄바꿈 — 코드·도번·기록은 한 줄로 (2026-09-05 대표님) */}
                     <td className="u-wrap">{r.name}</td>
                     <td className="pmat-spec u-wrap" title={r.spec}>
