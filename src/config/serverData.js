@@ -82,6 +82,43 @@ function remember(name, id, data) {
 function forget(name, id) {
   justWritten.set(freshKey(name, id), { data: null, at: Date.now() });
 }
+// 화면 구독 등록부 — 저장이 끝나면 4초 주기를 기다리지 않고 곧바로 다시 읽게 한다
+// (2026-09-09 대표님 「입력 반응이 한 박자 느려서 헷갈리네」)
+const listeners = new Map(); // name → Set(다시 읽기 함수)
+function listen(name, fn) {
+  if (!listeners.has(name)) listeners.set(name, new Set());
+  listeners.get(name).add(fn);
+  return () => listeners.get(name)?.delete(fn);
+}
+function refresh(name) {
+  const set = listeners.get(name);
+  if (!set) return;
+  for (const fn of set) fn();
+}
+
+// 화면이 마지막으로 본 값 — 저장을 보내기 «전에» 바뀔 모습을 먼저 보여 주는 데 쓴다
+const lastRows = new Map(); // name → Map(id → data)
+function noteRows(name, rows) {
+  lastRows.set(name, new Map(rows.map((r) => [r.id, r.data])));
+}
+function deepMerge(a, b) {
+  if (!a || typeof a !== 'object' || Array.isArray(a) || !b || typeof b !== 'object' || Array.isArray(b)) return b;
+  const o = { ...a };
+  for (const [k, v] of Object.entries(b)) o[k] = k in o ? deepMerge(o[k], v) : v;
+  return o;
+}
+// 마지막으로 본 값이 있으면 바꿀 모습을 미리 기억하고 화면을 곧바로 다시 그린다
+function optimistic(name, id, change) {
+  const cur = lastRows.get(name)?.get(id);
+  if (cur === undefined) return;
+  try {
+    remember(name, id, change(cur));
+    refresh(name);
+  } catch {
+    /* 미리 보여 주기는 실패해도 그만 — 서버 응답이 오면 어차피 맞춰진다 */
+  }
+}
+
 function applyFresh(name, rows) {
   const now = Date.now();
   const out = rows.map((r) => {
@@ -317,19 +354,26 @@ export async function setDoc(ref, data, opts = {}) {
     // 「얹어 저장」은 «속 안까지» 얹어야 한다. 겉만 얹으면 items 같은 묶음이 통째로 갈려
     // 먼저 적어 둔 기록이 사라진다 (2026-09-08 대표님 「추가 입고 체크에 기존 것도 초기화」).
     if (Object.keys(plain).length) {
+      optimistic(ref.name, ref.id, (cur) => deepMerge(cur, plain));
       const saved = await rpc(
         'doc_merge',
         { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: plain },
         `${ref.name} 저장`,
       );
       if (saved) remember(ref.name, ref.id, saved);
+      refresh(ref.name);
     }
     if (dels.length || ops.length) await applyExtras(ref, dels, ops);
     return;
   }
-  const { error } = await sb.from(tableOf(ref.name)).upsert({ id: ref.id, data: plain });
-  if (error) throw new Error(`${ref.name} 저장 실패: ${error.message}`);
   remember(ref.name, ref.id, plain);
+  refresh(ref.name);
+  const { error } = await sb.from(tableOf(ref.name)).upsert({ id: ref.id, data: plain });
+  if (error) {
+    forget(ref.name, ref.id);
+    refresh(ref.name);
+    throw new Error(`${ref.name} 저장 실패: ${error.message}`);
+  }
   if (dels.length || ops.length) await applyExtras(ref, dels, ops);
 }
 
@@ -368,20 +412,30 @@ async function applyExtras(ref, dels, ops) {
 export async function updateDoc(ref, patch) {
   const { plain, dels, ops } = splitMarks(patch || {});
   if (Object.keys(plain).length || dels.length) {
+    optimistic(ref.name, ref.id, (cur) => {
+      const next = { ...cur, ...plain };
+      for (const k of dels) delete next[k];
+      return next;
+    });
     const saved = await rpc(
       'doc_patch',
       { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: plain, p_dels: dels },
       `${ref.name} 수정`,
     );
     if (saved) remember(ref.name, ref.id, saved);
+    refresh(ref.name);
   }
-  if (ops.length) await applyExtras(ref, [], ops);
+  if (ops.length) {
+    await applyExtras(ref, [], ops);
+    refresh(ref.name);
+  }
 }
 
 // 실제 지우기는 서비스 계층(serverDocDelete)에 있다 — 앱의 삭제는 늘 휴지통을 먼저 거친다.
 async function removeOne(ref) {
-  await removeRow(sb, tableOf(ref.name), ref.id);
   forget(ref.name, ref.id);
+  refresh(ref.name);
+  await removeRow(sb, tableOf(ref.name), ref.id);
 }
 export { removeOne as deleteDoc };
 
@@ -406,9 +460,18 @@ export function onSnapshot(refOrQuery, onNext, onError) {
   let stopped = false;
   let timer = 0;
   const isDoc = refOrQuery.__kind === 'doc';
+  const colName = refOrQuery.name;
   let prev = null;
+  let busy = false;
+  let again = false;
   const tick = async () => {
     if (stopped) return;
+    if (busy) {
+      again = true; // 읽는 중에 저장이 끝나면, 끝난 뒤 한 번 더 읽는다
+      return;
+    }
+    busy = true;
+    clearTimeout(timer);
     try {
       let v;
       if (isDoc) {
@@ -418,6 +481,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         const { data, error } = await build(name, cs).limit(10000);
         if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
         const rows = applyFresh(name, data || []);
+        noteRows(name, rows);
         v = snapshotOf(rows.map(wrap), rows, prev);
         prev = v.__state;
       }
@@ -427,8 +491,17 @@ export function onSnapshot(refOrQuery, onNext, onError) {
       if (onError) onError(e);
       else console.error('[사내 서버] 자동 갱신 실패', e);
     }
-    if (!stopped) timer = setTimeout(tick, document.hidden ? POLL_MS * 4 : POLL_MS);
+    busy = false;
+    if (stopped) return;
+    if (again) {
+      again = false;
+      tick();
+      return;
+    }
+    timer = setTimeout(tick, document.hidden ? POLL_MS * 4 : POLL_MS);
   };
+  // 저장이 끝나면 곧바로 다시 읽도록 등록해 둔다
+  const unlisten = listen(colName, tick);
   const wake = () => {
     if (!document.hidden && !stopped) {
       clearTimeout(timer);
@@ -440,6 +513,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
   return () => {
     stopped = true;
     clearTimeout(timer);
+    unlisten();
     document.removeEventListener('visibilitychange', wake);
   };
 }
