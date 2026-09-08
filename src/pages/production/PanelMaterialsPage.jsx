@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
@@ -46,6 +46,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
   const [supplyTab, setSupplyTab] = useState('paid'); // 'paid' | 'free'
   const [draft, setDraft] = useState({}); // 입력 중인 개수 { [bomItemId]: '3' }
+  // 숫자를 직접 적는 칸은 «길게 누를 때»만 연다 — 100번 중 96번은 필요 수량 그대로 들어오기 때문
+  // (2026-09-08 대표님 「자동 채우기 버튼으로, 한 번 더 누르면 수량 입력」 → 실측 후 A안 확정)
+  const [typing, setTyping] = useState(null); // 지금 숫자를 적고 있는 줄 id
+  const pressRef = useRef({ timer: 0, long: false });
 
   // ── 판넬 ──
   useEffect(() => {
@@ -202,6 +206,34 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [panel, rows, rec, box, toast]);
 
   // ── 개수 저장 ──
+  // 한 번 누르면 필요 수량만큼 채우고, 채워진 것을 다시 누르면 0 으로 되돌린다.
+  const toggleRow = async (r, got) => {
+    const want = got > 0 ? 0 : Number(r.qty) || 0;
+    try {
+      await setReceived(panelId, box, r.id, want, userProfile?.name || '');
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
+    }
+  };
+
+  // 길게 누르면 숫자 칸이 열린다 (일부만 들어온 드문 경우)
+  const startPress = (r) => {
+    pressRef.current.long = false;
+    clearTimeout(pressRef.current.timer);
+    pressRef.current.timer = setTimeout(() => {
+      pressRef.current.long = true;
+      setTyping(r.id);
+    }, 500);
+  };
+  const endPress = (r, got) => {
+    clearTimeout(pressRef.current.timer);
+    if (pressRef.current.long) return; // 길게 눌러 숫자 칸이 열린 경우는 여기서 끝
+    toggleRow(r, got);
+  };
+  const cancelPress = () => {
+    clearTimeout(pressRef.current.timer);
+  };
+
   const commit = async (r) => {
     const raw = draft[r.id];
     if (raw === undefined) return;
@@ -211,6 +243,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       delete nd[r.id];
       return nd;
     });
+    setTyping(null);
     if (n === receivedQty(rec, r.id)) return;
     try {
       await setReceived(panelId, box, r.id, n, userProfile?.name || '');
@@ -384,17 +417,18 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               생산현황
             </button>
           )}
+          {/* 제목과 BOM 정보를 한 줄로 — 표 볼 자리를 넓힌다 (2026-09-08 대표님 「상단이 너무 많이 차지」) */}
           <h2 className="page-title pmat-title">
             {title} <span className="pmat-title-sub">· {box} 자재 체크</span>
+            <span className="pmat-link">
+              BOM <strong>{link.projectName || project?.name || ''}</strong>
+              {link.variantLabel ? (
+                <span className="pmat-variant">{link.variantLabel}</span>
+              ) : (
+                <span className="pmat-variant is-common">공통</span>
+              )}
+            </span>
           </h2>
-          <div className="pmat-link">
-            BOM <strong>{link.projectName || project?.name || ''}</strong>
-            {link.variantLabel ? (
-              <span className="pmat-variant">{link.variantLabel}</span>
-            ) : (
-              <span className="pmat-variant is-common">공통</span>
-            )}
-          </div>
         </div>
         <div className="page-actions">
           <button type="button" className="btn btn-sm btn-outline" onClick={() => window.print()}>
@@ -489,7 +523,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             도급 자재는 손으로 적지 않습니다 — 발주 상세 「생산 호기」에 이 호기를 걸어 두면 입고 때 자동으로 채워집니다
           </span>
         ) : (
-          <span className="pmat-hint">입고 수량을 적으면 필요 수량에 닿을 때 저절로 체크됩니다</span>
+          <span className="pmat-hint">수량을 누르면 필요 수량만큼 채워집니다 · 길게 누르면 직접 적습니다</span>
         )}
         {shown.length > 0 && !locked && (
           <span className="pmat-fill">
@@ -588,21 +622,41 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         <span className="pmat-locked-qty" title="세트 배정 — 도급 배정 화면에서만 바뀝니다">
                           {got || 0}
                         </span>
-                      ) : (
+                      ) : typing === r.id ? (
                         <input
                           className="num-input pmat-input"
                           type="number"
                           min="0"
                           inputMode="numeric"
+                          autoFocus
                           value={draft[r.id] !== undefined ? draft[r.id] : got || ''}
                           placeholder="0"
                           onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
                           onBlur={() => commit(r)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') e.currentTarget.blur();
+                            if (e.key === 'Escape') setTyping(null);
                           }}
                           aria-label={`${r.name} 입고 수량`}
                         />
+                      ) : (
+                        <button
+                          type="button"
+                          className={`pmat-qty-btn${got > 0 ? ' is-filled' : ''}`}
+                          onPointerDown={() => startPress(r)}
+                          onPointerUp={() => endPress(r, got)}
+                          onPointerLeave={cancelPress}
+                          onPointerCancel={cancelPress}
+                          onContextMenu={(e) => e.preventDefault()}
+                          title={
+                            got > 0
+                              ? '누르면 0 으로 되돌립니다 · 길게 누르면 수량을 적습니다'
+                              : `누르면 ${Number(r.qty) || 0}개(필요 수량)로 채웁니다 · 길게 누르면 수량을 적습니다`
+                          }
+                          aria-label={`${r.name} 입고 수량 ${got || 0}`}
+                        >
+                          {got || 0}
+                        </button>
                       )}
                     </td>
                     <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>

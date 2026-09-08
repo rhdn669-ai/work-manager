@@ -22445,6 +22445,38 @@ a.lib-row-name:hover {
   font-weight: 700;
   white-space: nowrap;
 }
+/* 입고 수량 — 누르면 필요 수량만큼 채우고, 다시 누르면 0. 길게 누르면 숫자를 적는다
+   (2026-09-08 대표님. 실측상 100건 중 96건이 필요 수량 그대로 들어온다) */
+.pmat-table .pmat-qty-btn {
+  width: 72px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-lighter);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.pmat-table .pmat-qty-btn:hover {
+  background: var(--bg-subtle);
+}
+.pmat-table .pmat-qty-btn:active {
+  background: var(--primary-soft, #e8edf7);
+}
+.pmat-table .pmat-qty-btn.is-filled {
+  color: var(--text);
+}
+.pmat-table .pmat-qty-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
 /* 도번은 잘리면 못 알아본다 — 한 줄로, 줄이지 말고 그대로 (2026-09-08 대표님 「도번이 짤림」) */
 .pmat-table .pmat-drawing {
   white-space: nowrap;
@@ -23726,4 +23758,33 @@ a.lib-row-name:hover {
 .pmat-table.no-fit td .pmat-pull-btn {
   margin-left: auto;
   margin-right: auto;
+}
+
+/* 자재 체크 화면 — 위쪽이 자리를 많이 먹어 표가 좁았다. 줄 간격을 조인다
+   (2026-09-08 대표님 「상단에 차지하는 화면이 너무 많아서 리스트 보는 구역이 좁음」) */
+.pmat-page .page-header {
+  margin-bottom: 8px;
+  padding-bottom: 0;
+}
+.pmat-page .pmat-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 0;
+}
+.pmat-page .pmat-title .pmat-link {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-light);
+  margin: 0;
+}
+.pmat-page .pmat-boxes {
+  margin: 6px 0;
+}
+.pmat-page .pmat-kinds {
+  margin: 6px 0 8px;
+}
+.pmat-page .pmat-hint {
+  font-size: 12px;
 }
