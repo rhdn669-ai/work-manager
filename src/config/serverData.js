@@ -278,7 +278,16 @@ export async function addDoc(colRef, data) {
 export async function setDoc(ref, data, opts = {}) {
   const { plain, dels, ops } = splitMarks(data || {});
   if (opts.merge) {
-    await updateDoc(ref, data);
+    // 「얹어 저장」은 «속 안까지» 얹어야 한다. 겉만 얹으면 items 같은 묶음이 통째로 갈려
+    // 먼저 적어 둔 기록이 사라진다 (2026-09-08 대표님 「추가 입고 체크에 기존 것도 초기화」).
+    if (Object.keys(plain).length) {
+      await rpc(
+        'doc_merge',
+        { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: plain },
+        `${ref.name} 저장`,
+      );
+    }
+    if (dels.length || ops.length) await applyExtras(ref, dels, ops);
     return;
   }
   const { error } = await sb.from(tableOf(ref.name)).upsert({ id: ref.id, data: plain });
