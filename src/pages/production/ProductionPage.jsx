@@ -412,7 +412,9 @@ export default function ProductionPage() {
             className={`btn btn-sm btn-outline mat-status-btn${matStatus.short > 0 ? ' has-short' : ''}`}
             onClick={() =>
               navigate(
-                `/production/materials?company=${encodeURIComponent(company)}&tab=${matStatus.short > 0 ? 'shortage' : 'check'}`,
+                // 자재 화면은 늘 「호기 체크」로 연다 — 부족 집계는 그 안에서 눌러 본다
+                // (2026-09-08 대표님 「첫 화면이 부족 집계가 아니라 호기 체크로」)
+                `/production/materials?company=${encodeURIComponent(company)}&tab=check`,
               )
             }
             title={

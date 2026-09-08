@@ -23788,3 +23788,16 @@ a.lib-row-name:hover {
 .pmat-page .pmat-hint {
   font-size: 12px;
 }
+
+/* 자재 허브 호기 목록 — 「끝난 호기 숨김」 버튼 (2026-09-08 대표님) */
+.mhub-list-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mhub-list-title .mhub-done-toggle {
+  font-size: 11.5px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}

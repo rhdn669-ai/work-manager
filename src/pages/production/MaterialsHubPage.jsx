@@ -47,11 +47,20 @@ export default function MaterialsHubPage() {
     setSp(q, { replace: true });
   };
 
+  // 끝난 호기(출고완료·출고숨김)는 기본으로 감춘다 — 생산현황의 「출고 숨김」과 같은 기준
+  // (2026-09-08 대표님 「종결된 호기는 호기 체크에서도 숨기기」)
+  const [hideDone, setHideDone] = useState(true);
+  const isDone = (p) => p.overallStatus === '출고완료' || p.overallStatus === '출고숨김';
+  const doneCount = useMemo(
+    () => panels.filter((p) => (!p.회사 || p.회사 === company) && isDone(p)).length,
+    [panels, company],
+  );
+
   // 호기 목록 — 생산현황 순서 그대로, BOM 을 연결한 호기가 먼저
   const list = useMemo(() => {
-    const mine = panels.filter((p) => !p.회사 || p.회사 === company);
+    const mine = panels.filter((p) => (!p.회사 || p.회사 === company) && (!hideDone || !isDone(p)));
     return [...mine.filter((p) => p.bomLink?.projectId), ...mine.filter((p) => !p.bomLink?.projectId)];
-  }, [panels, company]);
+  }, [panels, company, hideDone]);
   // 호기 탭인데 아직 안 골랐으면 BOM 연결된 첫 호기
   useEffect(() => {
     if (tab === 'check' && !panelId && list.length) patch({ panel: list[0].id });
@@ -110,7 +119,19 @@ export default function MaterialsHubPage() {
         <div className="mhub-body">
           {/* 호기 목록 — PC 는 왼쪽 세로, 모바일은 위쪽 선택 상자 */}
           <aside className="mhub-list no-print">
-            <div className="mhub-list-title">호기</div>
+            <div className="mhub-list-title">
+              호기
+              {doneCount > 0 && (
+                <button
+                  type="button"
+                  className={`filter-chip mhub-done-toggle${hideDone ? '' : ' on'}`}
+                  onClick={() => setHideDone((v) => !v)}
+                  title={hideDone ? `끝난 호기 ${doneCount}대를 감추는 중` : '끝난 호기까지 보이는 중'}
+                >
+                  {hideDone ? `끝난 호기 ${doneCount} 숨김` : `끝난 호기 ${doneCount} 표시`}
+                </button>
+              )}
+            </div>
             <ul>
               {list.map((p) => (
                 <li key={p.id}>
