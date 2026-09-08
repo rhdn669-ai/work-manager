@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [siteCount, setSiteCount] = useState(0);
   const [adminStats, setAdminStats] = useState({ users: 0, departments: 0 });
   const [pendingList, setPendingList] = useState([]); // 결재 대기 목록 (관리자)
+  const [pendingMore, setPendingMore] = useState({ pay: 0, ot: 0, leave: 0 }); // 목록에 못 담은 나머지 수
   const [recentApprovals, setRecentApprovals] = useState([]); // 최근 결재 결과 (직원)
   const [notices, setNotices] = useState([]); // 공지사항
   const [loading, setLoading] = useState(true);
@@ -108,10 +109,16 @@ export default function DashboardPage() {
           });
         }
 
-        const merged = [...payItems, ...otItems, ...leaveItems]
-          .sort((a, b) => (b.sortKey || '').localeCompare(a.sortKey || ''))
-          .slice(0, 8);
+        // 종류마다 자리를 나눠 준다 — 결제가 많으면 잔업·연차가 목록 밖으로 밀려
+        // 관리자 첫 화면에서 아예 안 보였다 (2026-09-08 대표님 「잔업·연차 승인건 이전처럼 보이게」)
+        const newest = (arr) => [...arr].sort((x, y) => (y.sortKey || '').localeCompare(x.sortKey || ''));
+        const merged = [...newest(payItems).slice(0, 5), ...newest(otItems).slice(0, 5), ...newest(leaveItems).slice(0, 5)];
         setPendingList(merged);
+        setPendingMore({
+          pay: Math.max(0, payItems.length - 5),
+          ot: Math.max(0, otItems.length - 5),
+          leave: Math.max(0, leaveItems.length - 5),
+        });
       } else {
         // 직원 — 최근 1일 결재 결과 (잔업/연차)
         const since = new Date();
@@ -327,6 +334,18 @@ export default function DashboardPage() {
                     </Link>
                   </li>
                 ))}
+                {(pendingMore.pay > 0 || pendingMore.ot > 0 || pendingMore.leave > 0) && (
+                  <li className="home-list-item home-list-more">
+                    {[
+                      pendingMore.pay > 0 ? `결제 ${pendingMore.pay}건` : '',
+                      pendingMore.ot > 0 ? `잔업 ${pendingMore.ot}건` : '',
+                      pendingMore.leave > 0 ? `연차 ${pendingMore.leave}건` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}{' '}
+                    더 있습니다
+                  </li>
+                )}
               </ul>
             ) : (
               <div className="home-empty">결재 대기 항목이 없습니다.</div>
