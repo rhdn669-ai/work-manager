@@ -112,7 +112,11 @@ export default function DashboardPage() {
         // 종류마다 자리를 나눠 준다 — 결제가 많으면 잔업·연차가 목록 밖으로 밀려
         // 관리자 첫 화면에서 아예 안 보였다 (2026-09-08 대표님 「잔업·연차 승인건 이전처럼 보이게」)
         const newest = (arr) => [...arr].sort((x, y) => (y.sortKey || '').localeCompare(x.sortKey || ''));
-        const merged = [...newest(payItems).slice(0, 5), ...newest(otItems).slice(0, 5), ...newest(leaveItems).slice(0, 5)];
+        const merged = [
+          ...newest(payItems).slice(0, 5),
+          ...newest(otItems).slice(0, 5),
+          ...newest(leaveItems).slice(0, 5),
+        ];
         setPendingList(merged);
         setPendingMore({
           pay: Math.max(0, payItems.length - 5),
