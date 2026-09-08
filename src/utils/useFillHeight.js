@@ -3,11 +3,18 @@
 //
 // 쓰는 법: const scrollRef = useFillHeight();  →  <div ref={scrollRef}>
 // (상자가 자료를 받은 뒤에야 그려지는 화면이 많아, 상자가 «생기는 순간»을 잡아야 한다.)
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useFillHeight(bottomGap = 12) {
-  const [el, setEl] = useState(null);
+  const nodeRef = useRef(null);
+  const [tick, setTick] = useState(0);
+  const attach = useCallback((node) => {
+    nodeRef.current = node;
+    setTick((v) => v + 1);
+  }, []);
+
   useEffect(() => {
+    const el = nodeRef.current;
     if (!el) return undefined;
     const fit = () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
@@ -21,6 +28,7 @@ export function useFillHeight(bottomGap = 12) {
       window.removeEventListener('resize', fit);
       ro.disconnect();
     };
-  }, [el, bottomGap]);
-  return setEl;
+  }, [tick, bottomGap]);
+
+  return attach;
 }
