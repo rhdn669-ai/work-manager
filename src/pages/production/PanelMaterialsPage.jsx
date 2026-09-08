@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
+import { useFillHeight } from '../../utils/useFillHeight';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import EditModeButton from '../../components/common/EditModeButton';
 import ReceiptChip from '../../components/common/ReceiptChip';
@@ -10,7 +11,13 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { subscribePanelMaterials, setReceived, setSkipped, setNote } from '../../services/panelMaterialsService';
+import {
+  subscribePanelMaterials,
+  setReceived,
+  setSkipped,
+  setNote,
+  setReceivedMany,
+} from '../../services/panelMaterialsService';
 import {
   pullRowFromStock,
   unassignPaidSet,
@@ -50,6 +57,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-08 대표님 「자동 채우기 버튼으로, 한 번 더 누르면 수량 입력」 → 실측 후 A안 확정)
   const [typing, setTyping] = useState(null); // 지금 숫자를 적고 있는 줄 id
   const pressRef = useRef({ timer: 0, long: false });
+  // 표 상자를 화면 아래까지 늘려 그 안에서 스크롤 — 머리줄·도번 열을 붙여 두기 위해 (2026-09-08 대표님)
+  const scrollRef = useRef(null);
+  useFillHeight(scrollRef);
 
   // ── 판넬 ──
   useEffect(() => {
@@ -207,10 +217,23 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   // ── 개수 저장 ──
   // 한 번 누르면 필요 수량만큼 채우고, 채워진 것을 다시 누르면 0 으로 되돌린다.
+  // 저장 뒤 몇 초 동안 「되돌리기」를 띄운다 — 한 번 누르기로 바뀌면서 잘못 누를 일이 생겼다 (2026-09-08 대표님)
+  const undoable = (message, restore) =>
+    toast({ message, type: 'success', duration: 6000, action: { label: '되돌리기', onClick: restore } });
+  const by = () => userProfile?.name || '';
+  const restoreOne = (r, prevQty) => async () => {
+    try {
+      await setReceived(panelId, box, r.id, prevQty, by());
+    } catch {
+      toast('되돌리지 못했습니다', 'error');
+    }
+  };
+
   const toggleRow = async (r, got) => {
     const want = got > 0 ? 0 : Number(r.qty) || 0;
     try {
-      await setReceived(panelId, box, r.id, want, userProfile?.name || '');
+      await setReceived(panelId, box, r.id, want, by());
+      undoable(want > 0 ? `${r.name} ${want}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -244,9 +267,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return nd;
     });
     setTyping(null);
-    if (n === receivedQty(rec, r.id)) return;
+    const before = receivedQty(rec, r.id);
+    if (n === before) return;
     try {
-      await setReceived(panelId, box, r.id, n, userProfile?.name || '');
+      await setReceived(panelId, box, r.id, n, by());
+      undoable(`${r.name} ${n}개`, restoreOne(r, before));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -260,13 +285,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       ))
     )
       return;
+    const before = shown.map((r) => ({ id: r.id, qty: receivedQty(rec, r.id) }));
     try {
       await Promise.all(
         shown.map((r) => setReceived(panelId, box, r.id, toBom ? Number(r.qty) || 0 : 0, userProfile?.name || '')),
       );
-      toast(
+      undoable(
         toBom ? `${shown.length}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
         'success',
+        async () => {
+          try {
+            await setReceivedMany(panelId, box, before, by());
+          } catch {
+            toast('되돌리지 못했습니다', 'error');
+          }
+        },
       );
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
@@ -556,13 +589,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               : `이 BOX 에 ${supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.`}
         </p>
       ) : (
-        <div className="table-scroll-x no-print">
+        <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
           <table className="table pmat-table no-fit">
             {/* 도급·사급 탭이 같은 폭이 되도록 열 폭을 고정한다. 규격은 남는 자리를 채워
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['3.5%', '15%', '14%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '11%' : null, '7.5%', '5.5%']
+              {['44px', '15%', '14%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '11%' : null, '7.5%', '5.5%']
                 .filter((_, i) => hasMeta || i !== 9)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />

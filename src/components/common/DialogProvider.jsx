@@ -22,6 +22,7 @@ export function DialogProvider({ children }) {
   //   toast('실패', 'error')
   //   toast('완료', 'success', 0)                 — sticky: X 누를 때까지 유지
   //   toast({ message, type, sticky: true })      — 객체형
+  //   toast({ message, action: { label: '되돌리기', onClick } })  — 버튼 달린 알림 (2026-09-08)
   const toast = useCallback(
     (input, type = 'success', duration = 2400) => {
       const opts = normalize(input);
@@ -30,7 +31,8 @@ export function DialogProvider({ children }) {
       const ttype = opts.type || type;
       const dur = opts.duration ?? duration;
       const sticky = opts.sticky === true || dur === 0;
-      setToasts((list) => [...list, { id, message, type: ttype, sticky }]);
+      const action = opts.action && typeof opts.action.onClick === 'function' ? opts.action : null;
+      setToasts((list) => [...list, { id, message, type: ttype, sticky, action }]);
       if (!sticky) setTimeout(() => removeToast(id), dur);
       return id;
     },
@@ -109,6 +111,18 @@ export function DialogProvider({ children }) {
                 )}
               </svg>
               <span>{t.message}</span>
+              {t.action && (
+                <button
+                  type="button"
+                  className="toast__action"
+                  onClick={() => {
+                    removeToast(t.id);
+                    t.action.onClick();
+                  }}
+                >
+                  {t.action.label || '되돌리기'}
+                </button>
+              )}
               <button type="button" className="toast__close" onClick={() => removeToast(t.id)} aria-label="닫기">
                 <Icon name="close" className="btn-ic" />
               </button>

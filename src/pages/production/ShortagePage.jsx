@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFillHeight } from '../../utils/useFillHeight';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
@@ -24,7 +25,7 @@ import { specFontClass, localStamp } from '../../utils/printText';
 const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
 // 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
 // 코드 열은 뺐다 — 생산 화면은 도번·품명으로 본다 (2026-09-08 대표님)
-const SHT_SCREEN_COLS = [48, 140, null, null, 76, 76, 76, 84, 84, 200];
+const SHT_SCREEN_COLS = [44, 140, null, null, 76, 76, 76, 84, 84, 200];
 
 const hogiOf = (p) =>
   [p.프로젝트, p.호기]
@@ -37,6 +38,8 @@ export default function ShortagePage({ embedded = false } = {}) {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useDialog();
+  const scrollRef = useRef(null);
+  useFillHeight(scrollRef);
   const company = sp.get('company') || '';
 
   const [panels, setPanels] = useState([]);
@@ -305,7 +308,7 @@ export default function ShortagePage({ embedded = false } = {}) {
       </div>
 
       {list.length > 0 ? (
-        <div className="table-scroll-x no-print">
+        <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
           <table className="table pmat-table sht-table">
             <colgroup>
               {SHT_SCREEN_COLS.map((w, i) => (

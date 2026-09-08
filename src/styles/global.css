@@ -23809,3 +23809,55 @@ a.lib-row-name:hover {
   color: var(--text-light);
   text-align: center;
 }
+
+/* ── 생산 자재 표: 머리줄과 No·도번 열을 붙여 둔다 (2026-09-08 대표님 2순위) ──
+   표 상자(.pmat-scroll)가 세로 스크롤 상자가 되고, 그 안에서 머리줄은 위에, 앞 두 열은 왼쪽에 붙는다 */
+.pmat-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.pmat-scroll .pmat-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.pmat-scroll .pmat-table th:nth-child(1),
+.pmat-scroll .pmat-table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.pmat-scroll .pmat-table th:nth-child(2),
+.pmat-scroll .pmat-table td:nth-child(2) {
+  position: sticky;
+  left: 44px;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--border);
+}
+.pmat-scroll .pmat-table thead th:nth-child(1),
+.pmat-scroll .pmat-table thead th:nth-child(2) {
+  z-index: 4;
+}
+/* 붙은 칸은 뒤 글자가 비치지 않게 바탕을 준다 — 줄 상태색(is-done 등)은 그 규칙이 더 세서 그대로 이긴다 */
+.pmat-scroll .pmat-table tbody td:nth-child(1),
+.pmat-scroll .pmat-table tbody td:nth-child(2) {
+  background: var(--card-bg, #fff);
+}
+
+/* 알림의 「되돌리기」 버튼 (2026-09-08 대표님 3순위) */
+.toast__action {
+  margin-left: 10px;
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toast__action:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
