@@ -13,7 +13,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"*.{js,json}\"",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && vite build && wrangler deploy",
     "cf:dev": "wrangler dev --remote",
     "verify:unit": "vitest run tests/unit",
     "verify:ui": "playwright test",
