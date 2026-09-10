@@ -58,7 +58,9 @@ export function boxSummary(rows, received) {
  * 돌려주는 것: [{ itemId, code, name, spec, supplyType, need, got, short, panels: [label…] }]
  * 호기마다 BOM 이 달라도 같은 품목(itemId)이면 한 줄로 합친다.
  */
-export function aggregateShortage(entries) {
+// onlyShort=false 면 모자라지 않은 품목도 함께 돌려준다 —
+// 사급 재고 화면은 「BOM 에 있는 사급 품목 전부」를 보여 주어야 하기 때문 (2026-09-10 대표님)
+export function aggregateShortage(entries, { onlyShort = true } = {}) {
   const map = new Map();
   for (const { panelLabel, rows, received } of entries || []) {
     for (const r of rows || []) {
@@ -88,5 +90,7 @@ export function aggregateShortage(entries) {
       if (short > 0 && panelLabel && !a.panels.includes(panelLabel)) a.panels.push(panelLabel);
     }
   }
-  return [...map.values()].filter((a) => a.short > 0).sort((x, y) => y.short - x.short || x.code.localeCompare(y.code));
+  return [...map.values()]
+    .filter((a) => !onlyShort || a.short > 0)
+    .sort((x, y) => y.short - x.short || x.code.localeCompare(y.code));
 }
