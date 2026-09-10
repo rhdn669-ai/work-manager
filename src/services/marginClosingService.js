@@ -125,6 +125,7 @@ export async function addManualItem(year, month, data) {
     kind: data.kind === 'revenue' ? 'revenue' : 'expense',
     vendor: data.vendor || '',
     siteName: data.siteName || '',
+    itemName: data.itemName || '', // 품목 (2026-09-10 대표님 「수기로 금액 품목 업체 입력」)
     description: data.description || '',
     amount: Number(data.amount) || 0,
     payDue: data.payDue || '', // 결제일 (YYYY-MM-DD) — 자동 건과 같은 형식

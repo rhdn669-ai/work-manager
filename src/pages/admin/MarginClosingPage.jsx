@@ -143,6 +143,7 @@ export default function MarginClosingPage() {
         key: `manual:${m.id}`,
         manualId: m.id,
         siteName: m.siteName || '(사용처 없음)',
+        itemName: m.itemName || '',
         description: m.description || '(내역 없음)',
         amount: Number(m.amount) || 0,
         manual: true,
@@ -164,6 +165,7 @@ export default function MarginClosingPage() {
         manualId: m.id,
         vendor: m.vendor || '(업체 없음)',
         siteName: m.siteName || '(사용처 없음)',
+        itemName: m.itemName || '',
         description: m.description || '(내역 없음)',
         amount: Number(m.amount) || 0,
         payDue: m.payDue || '',
@@ -474,7 +476,9 @@ export default function MarginClosingPage() {
           <button
             type="button"
             className="btn btn-sm btn-outline"
-            onClick={() => setAdding({ kind: tab, vendor: '', siteName: '', description: '', amount: '', payDue: '' })}
+            onClick={() =>
+              setAdding({ kind: tab, vendor: '', siteName: '', itemName: '', description: '', amount: '', payDue: '' })
+            }
             disabled={locked}
           >
             <Icon name="plus" className="btn-ic" />
@@ -618,7 +622,11 @@ export default function MarginClosingPage() {
                     {revenue.map((r) => (
                       <tr key={r.key} className={r.confirmed ? '' : 'is-todo'}>
                         <td className="mc-site">{r.siteName}</td>
-                        <td className="mc-desc">{r.description}</td>
+                        <td className="mc-desc">
+                          {r.itemName ? <strong className="mc-item">{r.itemName}</strong> : null}
+                          {r.itemName && r.description ? ' · ' : ''}
+                          {r.description}
+                        </td>
                         <td className="col-unit">
                           <span className="mc-src">{r.manual ? '직접입력' : '자동'}</span>
                         </td>
@@ -807,7 +815,11 @@ export default function MarginClosingPage() {
                                       <span title={r.title || ''}>{r.title || '—'}</span>
                                     )}
                                   </td>
-                                  <td className="mc-desc">{r.description}</td>
+                                  <td className="mc-desc">
+                                    {r.itemName ? <strong className="mc-item">{r.itemName}</strong> : null}
+                                    {r.itemName && r.description ? ' · ' : ''}
+                                    {r.description}
+                                  </td>
                                   <td className="col-unit">
                                     <span className="mc-src">{r.manual ? '직접입력' : '자동'}</span>
                                   </td>
@@ -869,6 +881,14 @@ export default function MarginClosingPage() {
                 value={adding.siteName}
                 onChange={(e) => setAdding((s) => ({ ...s, siteName: e.target.value }))}
                 placeholder="프로젝트 이름"
+              />
+            </div>
+            <div className="form-field">
+              <label>품목</label>
+              <input
+                value={adding.itemName}
+                onChange={(e) => setAdding((s) => ({ ...s, itemName: e.target.value }))}
+                placeholder="무엇을 샀는지 (예: 난연 케이블 타이)"
               />
             </div>
             <div className="form-field">

@@ -23866,3 +23866,9 @@ a.lib-row-name:hover {
 .pmat-scroll .pmat-table {
   overflow: visible;
 }
+
+/* 마감 리스트 — 수기 항목의 품목 (2026-09-10 대표님 「수기로 금액 품목 업체 입력」) */
+.mc-desc .mc-item {
+  font-weight: 700;
+  color: var(--text);
+}
