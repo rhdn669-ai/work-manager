@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { getConfirmedKeys } from '../../services/marginClosingService';
+import {
+  getConfirmedKeys,
+  getAllManualItems,
+  markManualPaid,
+  unmarkManualPaid,
+} from '../../services/marginClosingService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -85,6 +90,18 @@ export default function PaymentPage() {
       setLoading(false);
     }
   }, []);
+
+  // 마감 리스트에 손으로 넣은 건 — 발주서 없이 산 물건도 결제 대기에 오른다
+  // (2026-09-10 대표님 「결제 페이지에도 올라가게」)
+  const [manualItems, setManualItems] = useState([]);
+  const loadManual = useCallback(() => {
+    getAllManualItems()
+      .then((list) => setManualItems(list.filter((m) => m.kind !== 'revenue')))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadManual();
+  }, [loadManual]);
 
   // 마감 확정 기록 — 한 번만 읽는다. 보는 달과 확정 달이 어긋나도 놓치지 않게
   // 최근 열두 달을 통째로 가져온다(monthFilter='전체'일 때도 동작).
@@ -203,12 +220,55 @@ export default function PaymentPage() {
         });
       }
     }
+    // 발주서 없이 산 건 — 마감 리스트에서 손으로 넣은 것이 그대로 결제 대기가 된다.
+    // 발주서가 없으므로 금액을 다시 셀 곳이 없다. 적어 둔 금액을 공급가로 본다.
+    for (const m of manualItems) {
+      const supply = Number(m.amount) || 0;
+      if (!supply) continue;
+      const vendor = m.vendor || '(업체 없음)';
+      const supInfo = supByName.get(vendor) || {};
+      const paidAt = m.paidAt || null;
+      out.push({
+        manualId: m.id,
+        isManual: true,
+        purchaseId: '',
+        title: m.itemName || m.description || '(직접입력)',
+        siteName: m.siteName || '',
+        supplier: vendor,
+        supplierKey: supplierKey(vendor, null),
+        representative: supInfo.representative || '',
+        contact: supInfo.contact || '',
+        email: supInfo.email || '',
+        businessNumber: supInfo.businessNumber || '',
+        bankName: supInfo.bankName || '',
+        bankAccount: supInfo.bankAccount || '',
+        category: supInfo.category || '',
+        note: supInfo.note || '',
+        taxInvoice: null,
+        requestedAt: m.createdAt,
+        dueDate: m.payDue || '',
+        seq: 1,
+        seqTotal: 1,
+        supply,
+        total: supply + Math.round(supply * 0.1),
+        pendingAmount: 0,
+        pendingCount: 0,
+        paid: !!paidAt,
+        paidAt,
+        paidBy: m.paidBy || '',
+        canCancel: !!paidAt,
+        // 대표님이 직접 적어 넣은 금액이라 업체 내역과 대조할 것이 없다 — 확정으로 둔다
+        closingConfirmed: true,
+      });
+    }
+
     // 마감 확정 — 마감 리스트와 같은 열쇠를 쓴다.
     //
     // 확정 안 된 건은 금액이 아직 업체 내역과 대조되지 않았다는 뜻이라 알려 준다. 막지는 않는다.
     // 대표님이 대조하며 금액을 고쳤으면 그 금액으로 결제한다 — 고친 값을 두고 옛 계산값으로
     // 돈을 주면 틀린 금액이 나간다 (2026-08-27 대표님 「마감에서 금액 변동이 있어서…」).
     for (const r of out) {
+      if (r.isManual) continue; // 직접입력 건은 대조할 발주서가 없다
       const c = confirmedKeys[`po:${r.purchaseId}:${r.supplierKey}`];
       r.closingConfirmed = !!c;
       if (r.paid) continue; // 이미 나간 돈은 건드리지 않는다
@@ -221,7 +281,7 @@ export default function PaymentPage() {
     }
     out.sort((a, b) => ms(b.requestedAt) - ms(a.requestedAt));
     return out;
-  }, [purchases, itemMaster, suppliers, supByName, confirmedKeys]);
+  }, [purchases, itemMaster, suppliers, supByName, confirmedKeys, manualItems]);
 
   const pendingCount = allRows.filter((r) => !r.paid).length;
   const paidCount = allRows.filter((r) => r.paid).length;
@@ -403,8 +463,14 @@ export default function PaymentPage() {
       }))
     )
       return;
-    setBusy(`${r.purchaseId}-${r.supplier}-${r.seq || 1}`);
+    setBusy(`${r.manualId || r.purchaseId}-${r.supplier}-${r.seq || 1}`);
     try {
+      if (r.isManual) {
+        await markManualPaid(r.manualId, userProfile?.name || '');
+        loadManual();
+        toast('결제 완료 처리했습니다.');
+        return;
+      }
       await markSupplierPaid(r.purchaseId, r.supplierKey || r.supplier, userProfile?.name || '', r.supply);
       applyPaidLocal(r.purchaseId, r.supplierKey || r.supplier, {
         paidAt: new Date(),
@@ -419,8 +485,14 @@ export default function PaymentPage() {
   }
   async function cancelPay(r) {
     if (!(await confirm({ title: '결제 취소', message: `"${r.supplier}" 결제 완료를 취소할까요?` }))) return;
-    setBusy(`${r.purchaseId}-${r.supplier}-${r.seq || 1}`);
+    setBusy(`${r.manualId || r.purchaseId}-${r.supplier}-${r.seq || 1}`);
     try {
+      if (r.isManual) {
+        await unmarkManualPaid(r.manualId);
+        loadManual();
+        toast('결제 완료를 취소했습니다.');
+        return;
+      }
       await unmarkSupplierPaid(r.purchaseId, r.supplierKey || r.supplier);
       applyPaidLocal(r.purchaseId, r.supplierKey || r.supplier, null);
       toast('결제 완료를 취소했습니다.');
@@ -641,7 +713,7 @@ export default function PaymentPage() {
                         </thead>
                         <tbody>
                           {f.rows.map((r) => {
-                            const k = `${r.purchaseId}-${r.supplier}-${r.seq || 1}`;
+                            const k = `${r.manualId || r.purchaseId}-${r.supplier}-${r.seq || 1}`;
                             const seqTag = r.seqTotal > 1 ? `${r.seq}차` : '';
                             return (
                               <tr key={k} className={r.paid ? 'is-paid-row' : ''}>
@@ -753,10 +825,14 @@ export default function PaymentPage() {
                                     <button
                                       type="button"
                                       className="btn btn-sm btn-outline"
-                                      onClick={() => navigate(`/admin/purchase/${r.purchaseId}`)}
+                                      onClick={() =>
+                                        navigate(
+                                          r.isManual ? '/admin/margin-closing' : `/admin/purchase/${r.purchaseId}`,
+                                        )
+                                      }
                                     >
                                       <Icon name="chevronRight" className="btn-ic" />
-                                      발주서
+                                      {r.isManual ? '마감 리스트' : '발주서'}
                                     </button>
                                     {r.paid ? (
                                       <button

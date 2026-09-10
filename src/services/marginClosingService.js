@@ -119,6 +119,21 @@ export async function getManualItems(year, month) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// 결제 페이지가 쓰는 전체 목록 — 달을 가리지 않고 한 번에 읽는다(건수가 적다)
+export async function getAllManualItems() {
+  const snap = await getDocs(manualRef);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// 직접입력 건의 결제 완료 표시 (2026-09-10 대표님 「결제 페이지에도 올라가게」)
+export async function markManualPaid(id, by = '') {
+  return updateDoc(doc(manualRef, id), { paidAt: new Date(), paidBy: by });
+}
+
+export async function unmarkManualPaid(id) {
+  return updateDoc(doc(manualRef, id), { paidAt: null, paidBy: '' });
+}
+
 export async function addManualItem(year, month, data) {
   return addDoc(manualRef, {
     monthKey: monthDocId(year, month),
