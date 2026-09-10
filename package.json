@@ -17,7 +17,8 @@
     "cf:dev": "wrangler dev --remote",
     "verify:unit": "vitest run tests/unit",
     "verify:ui": "playwright test",
-    "verify:ui:update": "playwright test --update-snapshots"
+    "verify:ui:update": "playwright test --update-snapshots",
+    "verify:collections": "node scripts/verify-collections.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
