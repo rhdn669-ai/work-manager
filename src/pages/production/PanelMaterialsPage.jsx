@@ -11,12 +11,14 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
+import { subscribeFreeStock, takeFreeStock, returnFreeStock } from '../../services/freeStockService';
 import {
   subscribePanelMaterials,
   setReceived,
   setSkipped,
   setNote,
   setReceivedMany,
+  addFromStock,
 } from '../../services/panelMaterialsService';
 import {
   pullRowFromStock,
@@ -92,6 +94,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   // ── 품목 마스터 (코드·품명·규격·도번은 여기서 읽는다) ──
   useEffect(() => subscribePurchaseItems(setMaster), []);
+  // 사급 재고 — 호기를 정하지 않고 들어온 고객사 물건 (2026-09-10 대표님)
+  const [freeStock, setFreeStock] = useState({});
+  const company = panel?.회사 || '';
+  useEffect(() => {
+    if (!company) return undefined;
+    return subscribeFreeStock(company, setFreeStock);
+  }, [company]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
   // ── 이 호기의 입고 기록 ──
@@ -256,6 +265,45 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     clearTimeout(pressRef.current.timer);
   };
 
+  // 사급 재고에서 이 호기로 — 재고가 줄고, 되돌리면 재고로 돌아온다
+  const pullFree = async (r, have, n) => {
+    try {
+      const took = await takeFreeStock(company, r.itemId, n, {
+        by: userProfile?.name || '',
+        note: `${panel?.프로젝트 || ''} · ${box}`,
+      });
+      if (took <= 0) {
+        toast('사급 재고가 모자랍니다', 'error');
+        return;
+      }
+      const prevFrom = Number(rec[r.id]?.fromStock) || 0;
+      await setReceived(panelId, box, r.id, (Number(have) || 0) + took, userProfile?.name || '');
+      await addFromStock(panelId, box, r.id, took, prevFrom);
+      toast({
+        message: `${r.name || r.code} ${took}개를 사급 재고에서 가져왔습니다`,
+        type: 'success',
+        duration: 6000,
+        action: {
+          label: '되돌리기',
+          onClick: async () => {
+            try {
+              await returnFreeStock(company, r.itemId, took, {
+                by: userProfile?.name || '',
+                note: `${panel?.프로젝트 || ''} · ${box} 되돌림`,
+              });
+              await setReceived(panelId, box, r.id, Number(have) || 0, userProfile?.name || '');
+            } catch {
+              toast('되돌리지 못했습니다', 'error');
+            }
+          },
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      toast('사급 재고에서 가져오기에 실패했습니다', 'error');
+    }
+  };
+
   const commit = async (r) => {
     const raw = draft[r.id];
     if (raw === undefined) return;
@@ -314,13 +362,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     }
   };
   // 부족한 도급 줄을 창고 재고에서 (2026-09-05 대표님 「부족한 거 재고에서 땡겨오는 버튼 없나」)
+  // 도급은 창고 재고(우리가 산 물건), 사급은 사급 재고(고객사 물건)를 본다
   const stockOf = (r) => {
+    if (supplyTab === 'free') return Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
     const m = r.itemId ? masterMap[r.itemId] : null;
     return m && m.stockQty !== undefined && m.stockQty !== null ? Math.max(0, Number(m.stockQty) || 0) : 0;
   };
   const pullStock = async (r, have, short) => {
     const n = Math.min(short, stockOf(r));
     if (n <= 0) return;
+    if (supplyTab === 'free') return pullFree(r, have, n);
     try {
       await pullRowFromStock(panel, r, {
         box,
@@ -696,7 +747,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     <td className="pmat-ok">
                       {/* 재고에서 채울 수 있으면 그 버튼이 입고 자리를 대신한다 — 「이 호기」 칸은
                           제외/포함만 (2026-09-05 대표님 「재고에서 위치가 이상함」) */}
-                      {supplyTab === 'paid' && !skipped && short > 0 && stockOf(r) > 0 ? (
+                      {!locked && !skipped && short > 0 && stockOf(r) > 0 ? (
                         <button
                           type="button"
                           className="btn btn-sm btn-primary pmat-pull-btn"
