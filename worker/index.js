@@ -92,7 +92,7 @@ async function hometaxTaxInvoice(request, env) {
       parsed = JSON.parse(raw);
     }
     // 공급자 사업자번호로 정규화 (bizNo 지정 시 필터)
-    const list = (parsed?.data?.resTaxInvoiceList || parsed?.data || []);
+    const list = parsed?.data?.resTaxInvoiceList || parsed?.data || [];
     const norm = (Array.isArray(list) ? list : []).map((r) => ({
       writeDate: r.resWriteDate || r.resIssueDate || '',
       approvalNo: r.resIssueId || r.resManageNo || '',
