@@ -943,7 +943,7 @@ export default function MarginClosingPage() {
               <label>금액 (공급가)</label>
               <MoneyInput
                 value={adding.amount}
-                onChange={(v) => setAdding((s) => ({ ...s, amount: v }))}
+                onChange={(e) => setAdding((s) => ({ ...s, amount: e.target.value }))}
                 placeholder="0"
               />
             </div>
