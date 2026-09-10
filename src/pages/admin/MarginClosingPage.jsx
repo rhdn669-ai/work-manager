@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import Select from '../../components/common/Select';
+import MoneyInput from '../../components/common/MoneyInput';
 import Skeleton from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
 import MoneyCard from '../../components/common/MoneyCard';
@@ -36,6 +37,7 @@ import {
   sumRows,
   groupState,
   withVat,
+  MISC_VENDOR,
 } from '../../domain/marginClosing';
 import '../../styles/margin-closing.css';
 
@@ -180,6 +182,37 @@ export default function MarginClosingPage() {
     ];
     return groupByVendor(all);
   }, [purchases, itemMaster, suppliers, year, month, manual, confirms]);
+
+  // 손으로 넣을 때 고를 명단 — 이름을 직접 치면 오타로 업체가 갈라진다
+  // (2026-09-10 대표님 「입력 명단에서 선택하게 해야지」)
+  const vendorOptions = useMemo(() => {
+    const names = new Set();
+    for (const sp of suppliers) if (sp.name) names.add(sp.name);
+    for (const g of expense) if (g.vendor && g.vendor !== MISC_VENDOR) names.add(g.vendor);
+    return [...names].sort((a, b) => a.localeCompare(b)).map((n) => ({ value: n, label: n }));
+  }, [suppliers, expense]);
+
+  const siteOptions = useMemo(
+    () =>
+      sites
+        .map((st) => st.name)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+        .map((n) => ({ value: n, label: n })),
+    [sites],
+  );
+
+  const itemOptions = useMemo(
+    () =>
+      itemMaster
+        .map((it) => {
+          const label = [it.code, it.name, it.spec].filter(Boolean).join(' · ');
+          return { value: it.name || it.code || '', label, key: it.id };
+        })
+        .filter((o) => o.value)
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [itemMaster],
+  );
 
   const expenseRows = useMemo(() => expense.flatMap((g) => g.lines), [expense]);
   const revSum = useMemo(() => sumRows(revenue), [revenue]);
@@ -852,8 +885,8 @@ export default function MarginClosingPage() {
 
       {adding && (
         <Modal isOpen onClose={() => setAdding(null)} title="항목 추가">
-          <form onSubmit={onAdd} className="form-grid">
-            <div className="form-field">
+          <form onSubmit={onAdd}>
+            <div className="form-group">
               <label>구분</label>
               <Select
                 value={adding.kind}
@@ -866,50 +899,56 @@ export default function MarginClosingPage() {
               />
             </div>
             {adding.kind === 'expense' && (
-              <div className="form-field">
+              <div className="form-group">
                 <label>업체</label>
-                <input
+                <Select
                   value={adding.vendor}
-                  onChange={(e) => setAdding((s) => ({ ...s, vendor: e.target.value }))}
-                  placeholder="결제할 업체 이름"
+                  onChange={(v) => setAdding((s) => ({ ...s, vendor: v }))}
+                  options={vendorOptions}
+                  placeholder="결제할 업체 고르기"
+                  ariaLabel="업체"
                 />
               </div>
             )}
-            <div className="form-field">
+            <div className="form-group">
               <label>사용처</label>
-              <input
+              <Select
                 value={adding.siteName}
-                onChange={(e) => setAdding((s) => ({ ...s, siteName: e.target.value }))}
-                placeholder="프로젝트 이름"
+                onChange={(v) => setAdding((s) => ({ ...s, siteName: v }))}
+                options={siteOptions}
+                placeholder="프로젝트 고르기"
+                ariaLabel="사용처"
               />
             </div>
-            <div className="form-field">
+            <div className="form-group">
               <label>품목</label>
-              <input
+              <Select
                 value={adding.itemName}
-                onChange={(e) => setAdding((s) => ({ ...s, itemName: e.target.value }))}
-                placeholder="무엇을 샀는지 (예: 난연 케이블 타이)"
+                onChange={(v) => setAdding((s) => ({ ...s, itemName: v }))}
+                options={itemOptions}
+                placeholder="품목 고르기"
+                ariaLabel="품목"
               />
             </div>
-            <div className="form-field">
+            <div className="form-group">
               <label>내역</label>
               <input
+                aria-label="내역"
                 value={adding.description}
                 onChange={(e) => setAdding((s) => ({ ...s, description: e.target.value }))}
                 placeholder="무엇에 대한 돈인지"
               />
             </div>
-            <div className="form-field">
-              <label>금액</label>
-              <input
+            <div className="form-group">
+              <label>금액 (공급가)</label>
+              <MoneyInput
                 value={adding.amount}
-                onChange={(e) => setAdding((s) => ({ ...s, amount: e.target.value.replace(/[^0-9]/g, '') }))}
-                inputMode="numeric"
+                onChange={(v) => setAdding((s) => ({ ...s, amount: v }))}
                 placeholder="0"
               />
             </div>
             {adding.kind === 'expense' && (
-              <div className="form-field">
+              <div className="form-group">
                 <label>결제일</label>
                 <input
                   type="date"
