@@ -7,7 +7,7 @@
 // 번호를 문서 ID 로 쓴다 — 답장이 오면 조회 한 번으로 끝난다.
 import { collection, doc, setDoc, getDoc, getDocs, query, where } from '../config/data';
 import { db } from '../config/data';
-import { callSendEmail } from '../config/firebase';
+import { callSendEmail } from '../config/data';
 import { newMessageId, threadKeyOf } from '../utils/mailTemplate';
 
 const threadsRef = collection(db, 'mailThreads');
