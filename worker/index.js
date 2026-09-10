@@ -25,6 +25,14 @@ export default {
     if (url.pathname.startsWith('/assets/') && (res.headers.get('content-type') || '').includes('text/html')) {
       return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
     }
+    // 화면 뼈대(HTML)는 절대 캐시하지 않는다. 이것이 캐시되면 새로 올린 뒤에도 가장자리 서버가
+    // 옛 뼈대를 계속 내주어, 앱이 옛 설정(구글)으로 돌아간 것처럼 보인다 (2026-09-10 실측).
+    if ((res.headers.get('content-type') || '').includes('text/html')) {
+      const fresh = new Response(res.body, res);
+      fresh.headers.set('cache-control', 'no-store, must-revalidate');
+      fresh.headers.delete('etag');
+      return fresh;
+    }
     return res;
   },
 };
