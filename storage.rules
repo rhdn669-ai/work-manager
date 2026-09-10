@@ -1,11 +1,17 @@
 rules_version = '2';
 
-// ⚠️ 임시 롤백(2026-07-03) — Firestore 규칙 롤백과 함께 개방으로 되돌림.
-// 재조임은 전 클라이언트 최신화 또는 서버 로그인 전환 후 진행.
+// ⛔ 읽기 전용 (2026-09-10 대표님 「막아줘」)
+//
+// 자료실 첨부와 생산 사진은 2026-09-08 에 사내 서버 보관함으로 옮겼다(177개 181MB).
+// 여기는 원본을 남겨 둔 곳이라 «읽기만» 되게 막는다 — 옛 앱으로 파일을 올려도
+// 사내 서버에는 없어 나중에 사라진 것처럼 보이기 때문이다.
+//
+// 되돌리려면: scratchpad 의 storage.rules.before 로 되돌리고 다시 올린다.
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
   }
 }
