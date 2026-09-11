@@ -74,6 +74,7 @@ export function aggregateShortage(entries, { onlyShort = true } = {}) {
         map.set(key, {
           itemId: r.itemId || '',
           code: r.code || '',
+          drawingNo: r.drawingNo || '', // 사급 재고 표가 도번 칸을 쓴다 (안 담으면 빈칸)
           name: r.name || '',
           spec: r.spec || '',
           supplyType: r.supplyType || '',

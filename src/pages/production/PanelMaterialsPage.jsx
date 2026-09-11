@@ -339,7 +339,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       );
       undoable(
         toBom ? `${shown.length}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
-        'success',
         async () => {
           try {
             await setReceivedMany(panelId, box, before, by());

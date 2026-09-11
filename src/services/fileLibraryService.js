@@ -345,6 +345,27 @@ export async function replaceLibraryFile(fileMeta, blob, user) {
   const folderId = fileMeta.folderId || null;
   const fileName = fileMeta.name || 'document.pdf';
   const newPath = buildStoragePath(folderId, fileName);
+  // 사내 서버 모드에서도 구글에 올리려 들던 곳 — 올리기(uploadFile)와 같은 갈림길을 둔다 (2026-09-11)
+  if (isServer) {
+    const { bucket, path } = ServerFiles.splitPath(newPath);
+    const mark = await ServerFiles.uploadFileTo(bucket, path, blob, 'application/pdf');
+    await updateDoc(doc(db, 'libraryFiles', fileMeta.id), {
+      storagePath: newPath,
+      downloadURL: mark,
+      size: blob.size || 0,
+      contentType: 'application/pdf',
+      updatedAt: new Date(),
+      updatedByName: user?.name || '',
+    });
+    if (fileMeta.storagePath && fileMeta.storagePath !== newPath) {
+      try {
+        await ServerFiles.removeFileAt(fileMeta.storagePath);
+      } catch {
+        /* 이미 없으면 무시 */
+      }
+    }
+    return;
+  }
   const task = uploadBytesResumable(ref(storage, newPath), blob, { contentType: 'application/pdf' });
   await new Promise((resolve, reject) => {
     task.on('state_changed', null, reject, resolve);

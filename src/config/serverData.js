@@ -204,14 +204,23 @@ export const query = (ref, ...cs) => ({ __kind: 'query', name: ref.name, cs: [..
 export const documentId = () => '__id';
 
 // ── 조회 ──────────────────────────────────────────────────────────────
+// 「bomLink.projectId」 처럼 «속 값» 을 가리키는 이름은 자리마다 끊어 줘야 한다.
+// 그냥 이어 붙이면 점이 들어간 «그런 이름의 칸» 을 찾게 되어 언제나 0건이 나온다
+// (BOM 을 건 호기 15대를 못 찾던 원인, 2026-09-11).
+function jsonPathOf(field, asText) {
+  const parts = field.split('.');
+  const last = parts.pop();
+  return `${['data', ...parts].join('->')}->${asText ? '>' : ''}${last}`;
+}
+
 function build(name, cs = [], select = 'id,data') {
   let q = sb.from(tableOf(name)).select(select);
   const fast = FAST[name] || {};
   for (const c of cs) {
     if (c.__kind === 'where') {
       const col = c.field === '__id' ? 'id' : fast[c.field];
-      const path = col || `data->>${c.field}`;
-      const jsonPath = `data->${c.field}`;
+      const path = col || jsonPathOf(c.field, true);
+      const jsonPath = jsonPathOf(c.field, false);
       const v = toPlain(c.value);
       switch (c.op) {
         case '==':
@@ -238,23 +247,58 @@ function build(name, cs = [], select = 'id,data') {
         case 'in':
           q = q.in(col || path, v);
           break;
+        // 「목록 안에 이 값이 있나」 — 서버의 묶음(jsonb) 은 «JSON 글꼴» 로 물어야 한다.
+        // 배열을 그대로 넘기면 `cs.{값}` 이라는 다른 문법으로 나가 서버가 400 을 돌려준다
+        // (담당 프로젝트를 못 읽어 직원 첫 화면이 통째로 멈추던 원인, 2026-09-11).
         case 'array-contains':
-          q = q.contains(jsonPath, [v]);
+          q = q.contains(jsonPath, JSON.stringify([v]));
           break;
         case 'array-contains-any':
-          q = q.overlaps(jsonPath, v);
+          q = q.or(
+            toPlain(c.value)
+              .map((x) => `${jsonPath}.cs.${JSON.stringify([x])}`)
+              .join(','),
+          );
           break;
         default:
           throw new Error(`아직 못 옮긴 조건: ${c.op}`);
       }
     } else if (c.__kind === 'order') {
       const col = fast[c.field];
-      q = q.order(col || `data->>${c.field}`, { ascending: c.dir !== 'desc' });
+      q = q.order(col || jsonPathOf(c.field, true), { ascending: c.dir !== 'desc' });
     } else if (c.__kind === 'limit') {
       q = q.limit(c.n);
     }
   }
   return q;
+}
+
+// 색인 칸이 아닌 이름으로 줄을 세우면 서버는 «글자» 로 견준다 — 10 이 2 보다 앞에 온다.
+// BOM 자재가 10개를 넘으면 순서가 조용히 뒤섞이던 원인이라, 받아 온 뒤 여기서 다시 세운다.
+// (구글에서는 색인이 없으면 오류가 나서 화면 코드가 직접 다시 세웠는데, 서버는 조용히 성공한다.)
+function resort(name, cs, rows) {
+  const fast = FAST[name] || {};
+  const orders = cs.filter((c) => c.__kind === 'order' && c.field !== '__id' && !fast[c.field]);
+  if (!orders.length || rows.length < 2) return rows;
+  const valueAt = (row, field) => field.split('.').reduce((o, k) => (o == null ? o : o[k]), row.data || {});
+  const compare = (x, y) => {
+    if (typeof x === 'number' && typeof y === 'number') return x - y;
+    return String(x ?? '').localeCompare(String(y ?? ''), 'ko');
+  };
+  return [...rows].sort((a, b) => {
+    for (const o of orders) {
+      const d = compare(valueAt(a, o.field), valueAt(b, o.field));
+      if (d) return o.dir === 'desc' ? -d : d;
+    }
+    return 0;
+  });
+}
+
+// 「몇 줄까지」는 여기서 자른다 — 조회는 늘 넉넉히 받아 오고, 줄 세운 뒤에 잘라야 맞다
+function finish(name, cs, rows) {
+  const sorted = resort(name, cs, rows);
+  const lim = cs.find((c) => c.__kind === 'limit');
+  return lim && sorted.length > lim.n ? sorted.slice(0, lim.n) : sorted;
 }
 
 // 조회 결과 묶음. 지난번과 견주어 «무엇이 바뀌었는지»(docChanges) 도 알려 준다 —
@@ -295,7 +339,7 @@ export async function getDocs(refOrQuery) {
   const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
   const { data, error } = await build(name, cs).limit(10000);
   if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-  const rows = applyFresh(name, data || []);
+  const rows = finish(name, cs, applyFresh(name, data || []));
   return snapshotOf(rows.map(wrap), rows);
 }
 
@@ -378,8 +422,10 @@ export async function setDoc(ref, data, opts = {}) {
 }
 
 async function applyExtras(ref, dels, ops) {
+  // 여기서 한 일의 «마지막 모습» — 아래에서 다시 적어 둔다
+  let last = null;
   if (dels.length) {
-    await rpc(
+    last = await rpc(
       'doc_patch',
       { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: {}, p_dels: dels },
       `${ref.name} 항목 지우기`,
@@ -387,7 +433,7 @@ async function applyExtras(ref, dels, ops) {
   }
   for (const op of ops) {
     if (op.kind === 'array') {
-      await rpc(
+      last = await rpc(
         'doc_array',
         {
           p_schema: 'wm',
@@ -400,28 +446,75 @@ async function applyExtras(ref, dels, ops) {
         `${ref.name} 목록 수정`,
       );
     } else {
-      await rpc(
+      last = await rpc(
         'doc_increment',
         { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_field: op.field, p_by: op.by },
         `${ref.name} 숫자 더하기`,
       );
     }
   }
+  // 숫자 더하기·목록 넣기는 「얹어 저장」 뒤에 따로 돈다. 그 결과를 다시 적어 두지 않으면
+  // 6초 동안 더해지기 «전» 값이 남아, 화면에도 옛 수량이 보이고 재고 확인도 그 값을 본다.
+  // 사급 품목을 여러 호기에서 잇달아 가져가면 재고가 두 번 빠지던 원인이다 (2026-09-11).
+  if (last) {
+    remember(ref.name, ref.id, last);
+    refresh(ref.name);
+  }
 }
+
+// 「supplierSent.(주)이레텍.sentAt」 같은 점 이름은 «그 자리만» 고치라는 뜻이다.
+// 펴 주지 않고 그대로 보내면 점이 들어간 «그런 이름의 칸» 이 새로 생겨 버린다.
+function expandPaths(flat) {
+  let nested = false;
+  const out = {};
+  for (const [k, v] of Object.entries(flat)) {
+    if (!k.includes('.')) {
+      out[k] = v;
+      continue;
+    }
+    nested = true;
+    const parts = k.split('.');
+    let cur = out;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      if (!cur[parts[i]] || typeof cur[parts[i]] !== 'object') cur[parts[i]] = {};
+      cur = cur[parts[i]];
+    }
+    cur[parts[parts.length - 1]] = v;
+  }
+  return { out, nested };
+}
+
+const dropAt = (obj, path) => {
+  let o = obj;
+  for (let i = 0; i < path.length - 1 && o; i += 1) o = o[path[i]];
+  if (o) delete o[path[path.length - 1]];
+};
 
 export async function updateDoc(ref, patch) {
   const { plain, dels, ops } = splitMarks(patch || {});
-  if (Object.keys(plain).length || dels.length) {
+  const { out: obj, nested } = expandPaths(plain);
+  const deepDels = dels.filter((k) => k.includes('.')).map((k) => k.split('.'));
+  const flatDels = dels.filter((k) => !k.includes('.'));
+  const table = tableOf(ref.name);
+  const at = { p_schema: 'wm', p_table: table, p_id: ref.id };
+
+  if (Object.keys(obj).length || dels.length) {
     optimistic(ref.name, ref.id, (cur) => {
-      const next = { ...cur, ...plain };
-      for (const k of dels) delete next[k];
+      const base = deepDels.length ? JSON.parse(JSON.stringify(cur || {})) : cur;
+      const next = nested ? deepMerge(base, obj) : { ...base, ...obj };
+      for (const k of flatDels) delete next[k];
+      for (const p of deepDels) dropAt(next, p);
       return next;
     });
-    const saved = await rpc(
-      'doc_patch',
-      { p_schema: 'wm', p_table: tableOf(ref.name), p_id: ref.id, p_patch: plain, p_dels: dels },
-      `${ref.name} 수정`,
-    );
+    let saved = null;
+    if (Object.keys(obj).length) {
+      // 속을 고치는 것은 「얹어 저장」으로 — 겉만 얹으면 형제 값이 통째로 갈린다
+      saved = nested
+        ? await rpc('doc_merge', { ...at, p_patch: obj }, `${ref.name} 수정`)
+        : await rpc('doc_patch', { ...at, p_patch: obj, p_dels: [] }, `${ref.name} 수정`);
+    }
+    if (flatDels.length) saved = await rpc('doc_patch', { ...at, p_patch: {}, p_dels: flatDels }, `${ref.name} 수정`);
+    for (const p of deepDels) saved = await rpc('doc_unset', { ...at, p_path: p }, `${ref.name} 항목 지우기`);
     if (saved) remember(ref.name, ref.id, saved);
     refresh(ref.name);
   }
@@ -480,7 +573,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
         const { data, error } = await build(name, cs).limit(10000);
         if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-        const rows = applyFresh(name, data || []);
+        const rows = finish(name, cs, applyFresh(name, data || []));
         noteRows(name, rows);
         v = snapshotOf(rows.map(wrap), rows, prev);
         prev = v.__state;
