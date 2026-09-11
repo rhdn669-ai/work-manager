@@ -240,6 +240,8 @@
 
   --header-height: 60px;
   --sidebar-width: 164px;
+  /* 떠 있는 「잠금」이 차지하는 아래쪽 높이 — 잠금이 뜨는 화면에서만 값이 생긴다 */
+  --fab-clear: 0px;
 
   color-scheme: light;
 }
@@ -23986,6 +23988,25 @@ a.lib-row-name:hover {
 .editlock-bar-ic {
   width: 1em;
   height: 1em;
+}
+
+/* 잠금이 뜨는 화면은 본문 아래를 버튼 높이만큼 비운다 — 맨 아래 버튼·스크롤바를 덮지 않게
+   (2026-09-11 대표님 「젤 하단 다른 버튼과 겹치는데 아래에 잠금 버튼만큼 공백을」) */
+body.has-editlock {
+  --fab-clear: 72px; /* 아래 24 + 버튼 48 */
+}
+body.has-editlock .main-content,
+body.has-editlock .main-content.expanded {
+  padding-bottom: calc(18px + var(--fab-clear));
+}
+@media (max-width: 768px) {
+  body.has-editlock {
+    --fab-clear: 124px; /* 아래 76(하단 네비 위) + 버튼 48 */
+  }
+  body.has-editlock .main-content,
+  body.has-editlock .main-content.expanded {
+    padding-bottom: calc(16px + var(--fab-clear) + env(safe-area-inset-bottom));
+  }
 }
 
 /* 인쇄물에는 나오지 않는다 */

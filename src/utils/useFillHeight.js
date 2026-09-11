@@ -18,7 +18,8 @@ export function useFillHeight(bottomGap = 12) {
     if (!el) return undefined;
     const fit = () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
-      el.style.maxHeight = `calc(100dvh - ${Math.round(top)}px - ${bottomGap}px)`;
+      // 떠 있는 「잠금」이 있으면 그만큼 더 줄인다 — 표 아래 스크롤바가 버튼에 가리지 않게
+      el.style.maxHeight = `calc(100dvh - ${Math.round(top)}px - ${bottomGap}px - var(--fab-clear, 0px))`;
     };
     fit();
     window.addEventListener('resize', fit);

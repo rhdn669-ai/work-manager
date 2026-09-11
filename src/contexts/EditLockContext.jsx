@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { EditLockContext } from './useEditLock';
 import Icon from '../components/common/Icon';
@@ -17,6 +17,12 @@ export function EditLockProvider({ children }) {
     () => setLock((s) => ({ path: pathname, on: !(s.on && s.path === pathname) })),
     [pathname],
   );
+
+  // 잠금이 뜨는 화면에는 본문 아래에 버튼만큼 자리를 비운다 (CSS 가 --fab-clear 로 받는다)
+  useEffect(() => {
+    document.body.classList.toggle('has-editlock', users > 0);
+    return () => document.body.classList.remove('has-editlock');
+  }, [users]);
 
   const register = useCallback(() => {
     setUsers((n) => n + 1);
