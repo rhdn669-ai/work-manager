@@ -23928,13 +23928,17 @@ a.lib-row-name:hover {
   align-items: center;
   gap: 8px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--grey-700);
+  border: none;
+  /* 흰 알약으로 두었더니 흰 표 위에서 묻혔다 (2026-09-11 대표님 「눈에 잘 안띄네」).
+     잠김은 앱 기본색 네이비, 풀림은 오렌지 — 멀리서도 지금 어느 쪽인지 바로 보인다. */
+  background: var(--primary);
+  color: #fff;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 8px 22px rgba(0, 32, 80, 0.32),
+    0 2px 6px rgba(0, 32, 80, 0.2);
   cursor: pointer;
   transition:
     transform 0.12s,
@@ -23944,8 +23948,9 @@ a.lib-row-name:hover {
 /* 풀린 상태 = 활성 → 오렌지(디자인 규칙 §4 「활성 상태」) */
 .editlock-fab.on {
   background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  box-shadow:
+    0 8px 22px rgba(240, 88, 25, 0.4),
+    0 2px 6px rgba(240, 88, 25, 0.25);
 }
 .editlock-fab:hover {
   transform: translateY(-1px);
@@ -24010,6 +24015,6 @@ a.lib-row-name:hover {
     display: none;
   }
   .editlock-fab-ic {
-    font-size: 20px;
+    font-size: 22px;
   }
 }
