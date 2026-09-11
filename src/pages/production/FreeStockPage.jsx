@@ -186,14 +186,14 @@ export default function FreeStockPage({ company }) {
     const { row, to, reason } = fixing;
     const t = Number(to) || 0;
     if (t === row.have) return setFixing(null);
-    if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.have)} → ${won(t)} 으로 고칠까요?`))) return;
+    if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.have)} → ${won(t)} 으로 수정할까요?`))) return;
     try {
       await setFreeStockQty(company, row, t, { by: me, reason });
       setFixing(null);
-      toast('재고를 고쳤습니다', 'success');
+      toast('재고를 수정했습니다', 'success');
     } catch (err) {
       console.error(err);
-      toast('고치기에 실패했습니다', 'error');
+      toast('수정에 실패했습니다', 'error');
     }
   }
 
@@ -316,9 +316,9 @@ export default function FreeStockPage({ company }) {
                           type="button"
                           className="btn btn-sm btn-outline"
                           onClick={() => setFixing({ row: r, to: String(r.have), reason: '' })}
-                          title="실제 개수로 맞추기"
+                          title="실제 개수로 수정"
                         >
-                          고치기
+                          수정
                         </button>
                       )}
                     </div>
@@ -380,7 +380,7 @@ export default function FreeStockPage({ company }) {
       )}
 
       {fixing && (
-        <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 고치기">
+        <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 수정">
           <form onSubmit={onFix}>
             <p className="field-hint" style={{ marginTop: 0 }}>
               <strong>{fixing.row.name || fixing.row.code}</strong> · 지금 {won(fixing.row.have)}
@@ -411,7 +411,7 @@ export default function FreeStockPage({ company }) {
                 취소
               </button>
               <button type="submit" className="btn btn-primary">
-                고치기
+                수정
               </button>
             </div>
           </form>

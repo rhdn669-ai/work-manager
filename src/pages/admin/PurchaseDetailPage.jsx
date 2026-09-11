@@ -2234,7 +2234,7 @@ export default function PurchaseDetailPage() {
                         className="purchase-badge po-set-badge"
                         onClick={isReadOnly ? undefined : openSetLots}
                         disabled={isReadOnly}
-                        title={isReadOnly ? '' : '눌러서 세트 내역 고치기'}
+                        title={isReadOnly ? '' : '눌러서 세트 내역 수정'}
                       >
                         {l.name} {Number(l.count)}세트
                       </button>

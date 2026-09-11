@@ -258,7 +258,7 @@ export default function MarginClosingPage() {
     try {
       await setRowConfirm(year, month, row.key, { amount, confirmed: row.confirmed, by: me, reason });
       await loadClosing();
-      toast('금액을 고쳤습니다', 'success');
+      toast('금액을 수정했습니다', 'success');
     } catch (err) {
       console.error(err);
       toast('금액을 저장하지 못했습니다', 'error');
@@ -425,7 +425,7 @@ export default function MarginClosingPage() {
               ? '금액을 고치려면 「잠금」을 푸세요'
               : row.edited
                 ? `자동 계산 ${won(row.autoAmount)}원${row.reason ? ` · ${row.reason}` : ''}`
-                : '눌러서 고치기'
+                : '눌러서 수정'
           }
         >
           {won(row.amount)}
@@ -963,7 +963,7 @@ export default function MarginClosingPage() {
       )}
 
       {reasonModal && (
-        <Modal isOpen onClose={() => setReasonModal(null)} title="금액 고치기">
+        <Modal isOpen onClose={() => setReasonModal(null)} title="금액 수정">
           <p className="field-hint" style={{ marginTop: 0 }}>
             <strong>{reasonModal.row.vendor}</strong> · {reasonModal.row.title || '항목'}
           </p>
