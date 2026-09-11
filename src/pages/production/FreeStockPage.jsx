@@ -25,6 +25,15 @@ import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../ser
 const won = (n) => (Number(n) || 0).toLocaleString();
 const hasBomLink = (p) => !!p?.bomLink?.projectId;
 
+// 기록에 적히는 말 — 통에 들어옴 / 호기로 나감 / 되돌아옴 / 손으로 맞춤
+const LOG_LABEL = { in: '들어옴', out: '호기로', back: '되돌림', fix: '손으로 맞춤' };
+const fmtWhen = (v) => {
+  const d = v ? new Date(v) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 export default function FreeStockPage({ company }) {
   const { userProfile } = useAuth();
   const { toast, confirm } = useDialog();
@@ -40,6 +49,7 @@ export default function FreeStockPage({ company }) {
   // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
   // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
   const [fixing, setFixing] = useState(null); // { row, to, reason }
+  const [logOf, setLogOf] = useState(null); // 기록을 펼쳐 볼 줄
   // 표에서 바로 적는 입고 수량 — 창을 띄우지 않는다 (2026-09-11 대표님)
   const [draft, setDraft] = useState({}); // { [itemId]: '3' }
   const [saving, setSaving] = useState('');
@@ -264,7 +274,16 @@ export default function FreeStockPage({ company }) {
                   <td className="col-num">{won(r.perOne)}</td>
                   <td className="col-num">{won(r.got)}</td>
                   <td className="col-num">
-                    <b>{won(r.have)}</b>
+                    {/* 누르면 그 품목의 오간 기록이 열린다 — 적어 둔 이유도 여기서 보인다
+                        (2026-09-11 대표님 「어차피 이유 적어도 표시도 안되네」) */}
+                    <button
+                      type="button"
+                      className="fstock-have"
+                      onClick={() => setLogOf(r)}
+                      title={`${r.name || r.code} 들어오고 나간 기록 보기`}
+                    >
+                      <b>{won(r.have)}</b>
+                    </button>
                   </td>
                   <td className="col-action">
                     <div className="btn-group">
@@ -311,6 +330,55 @@ export default function FreeStockPage({ company }) {
         </div>
       )}
 
+      {/* 오간 기록 — 지금 수량이 왜 이 숫자인지 여기서 다 보인다 */}
+      {logOf && (
+        <Modal isOpen onClose={() => setLogOf(null)} title={`${logOf.name || logOf.code} 기록`} size="lg">
+          <p className="field-hint">
+            지금 재고 <b>{won(logOf.have)}</b>
+            {logOf.spec ? ` · ${logOf.spec}` : ''}
+          </p>
+          {(logOf.log || []).length === 0 ? (
+            <div className="empty-state">
+              <p>아직 오간 기록이 없습니다</p>
+            </div>
+          ) : (
+            <div className="table-scroll-x">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">언제</th>
+                    <th scope="col">무엇</th>
+                    <th scope="col" className="col-num">
+                      개수
+                    </th>
+                    <th scope="col">메모</th>
+                    <th scope="col">적은 사람</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...(logOf.log || [])]
+                    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+                    .map((l, i) => (
+                      <tr key={`${l.at}-${i}`}>
+                        <td>{fmtWhen(l.at)}</td>
+                        <td>{LOG_LABEL[l.kind] || l.kind || ''}</td>
+                        <td className="col-num">{l.kind === 'fix' ? `${won(l.from)} → ${won(l.n)}` : won(l.n)}</td>
+                        <td className="u-wrap">{l.note || ''}</td>
+                        <td>{l.by || ''}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setLogOf(null)}>
+              닫기
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {fixing && (
         <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 고치기">
           <form onSubmit={onFix}>
@@ -328,11 +396,13 @@ export default function FreeStockPage({ company }) {
               />
             </div>
             <div className="form-group">
-              <label>이유</label>
+              <label>
+                이유 <span className="field-hint-inline">(안 적어도 됩니다)</span>
+              </label>
               <input
                 value={fixing.reason}
                 onChange={(e) => setFixing((s) => ({ ...s, reason: e.target.value }))}
-                placeholder="세어 보니 다름 등"
+                placeholder="예: 세어 보니 달랐습니다"
                 aria-label="이유"
               />
             </div>

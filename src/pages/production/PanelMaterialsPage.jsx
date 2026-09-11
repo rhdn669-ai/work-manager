@@ -235,9 +235,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const undoable = (message, restore) =>
     toast({ message, type: 'success', duration: 6000, action: { label: '되돌리기', onClick: restore } });
   const by = () => userProfile?.name || '';
-  const restoreOne = (r, prevQty) => async () => {
+  // 되돌리기는 «되돌린 양만큼» 재고도 되돌려야 한다.
+  // 호기 수량만 되돌리고 통을 그대로 두면, 통에서 빠진 것이 사라진 채로 남는다 (2026-09-11).
+  const restoreOne = (r, prevQty, appliedQty) => async () => {
     try {
       await setReceived(panelId, box, r.id, prevQty, by());
+      await syncFree(r, appliedQty, prevQty);
     } catch {
       toast('되돌리지 못했습니다', 'error');
     }
@@ -280,7 +283,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     try {
       await setReceived(panelId, box, r.id, want, by());
       await syncFree(r, got, want);
-      undoable(want > 0 ? `${r.name} ${want}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got));
+      undoable(want > 0 ? `${r.name} ${want}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got, want));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -340,7 +343,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     try {
       await setReceived(panelId, box, r.id, n, by());
       await syncFree(r, before, n);
-      undoable(`${r.name} ${n}개`, restoreOne(r, before));
+      undoable(`${r.name} ${n}개`, restoreOne(r, before, n));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -369,6 +372,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         async () => {
           try {
             await setReceivedMany(panelId, box, before, by());
+            // 통도 함께 되돌린다 — 한 줄씩 차례로
+            for (const r of shown) {
+              const b = before.find((x) => x.id === r.id)?.qty || 0;
+              await syncFree(r, toBom ? Number(r.qty) || 0 : 0, b);
+            }
           } catch {
             toast('되돌리지 못했습니다', 'error');
           }
@@ -767,7 +775,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         </button>
                       )}
                     </td>
-                    <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>{short > 0 ? short : ''}</td>
+                    <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>
+                      {short > 0 ? short : ''}
+                      {/* 통에 얼마 남았는지 늘 보인다 — 통을 거칠지 말지 여기서 바로 판단된다
+                          (2026-09-11 대표님). 전에는 부족할 때 뜨는 버튼으로만 짐작했다 */}
+                      {supplyTab === 'free' && stockOf(r) > 0 && <span className="pmat-instock">통 {stockOf(r)}</span>}
+                    </td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
                       {/* 재고에서 채울 수 있으면 그 버튼이 입고 자리를 대신한다 — 「이 호기」 칸은
