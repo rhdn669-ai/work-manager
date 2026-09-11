@@ -257,8 +257,10 @@ export default function PaymentPage() {
         paidAt,
         paidBy: m.paidBy || '',
         canCancel: !!paidAt,
-        // 대표님이 직접 적어 넣은 금액이라 업체 내역과 대조할 것이 없다 — 확정으로 둔다
-        closingConfirmed: true,
+        // 확정은 마감 리스트에서 한다 — 두 화면이 같은 것을 보게 한다.
+        // 여기서만 늘 확정으로 두면, 아직 확정 안 한 건도 결제 화면에서는 멀쩡해 보였다
+        // (2026-09-11 대표님 「마감 리스트에 맞춘다」).
+        closingConfirmed: !!confirmedKeys[`manual:${m.id}`],
       });
     }
 

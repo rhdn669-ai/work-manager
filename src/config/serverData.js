@@ -328,11 +328,14 @@ function snapshotOf(docs, rows, prev) {
   };
 }
 
-const wrap = (row) => ({
+const wrap = (row, name) => ({
   id: row.id,
   exists: () => true,
   data: () => fromPlain(row.data || {}),
   get: (f) => fromPlain(row.data || {})[f],
+  // 구글은 줄마다 「자리표」를 함께 줬다. batch.delete(d.ref) 처럼 그것을 바로 쓰는 곳이 있어
+  // 빠져 있으면 BOM 프로젝트 지우기가 통째로 터진다 (2026-09-11).
+  ref: { __kind: 'doc', name, id: row.id },
 });
 
 export async function getDocs(refOrQuery) {
@@ -340,7 +343,10 @@ export async function getDocs(refOrQuery) {
   const { data, error } = await build(name, cs).limit(10000);
   if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
   const rows = finish(name, cs, applyFresh(name, data || []));
-  return snapshotOf(rows.map(wrap), rows);
+  return snapshotOf(
+    rows.map((r) => wrap(r, name)),
+    rows,
+  );
 }
 
 export async function getDoc(ref) {
@@ -348,7 +354,7 @@ export async function getDoc(ref) {
   if (error) throw new Error(`${ref.name} 조회 실패: ${error.message}`);
   const [row] = applyFresh(ref.name, data ? [data] : []);
   if (!row) return { id: ref.id, exists: () => false, data: () => undefined };
-  return wrap(row);
+  return wrap(row, ref.name);
 }
 export const getDocFromServer = getDoc;
 
@@ -532,15 +538,78 @@ async function removeOne(ref) {
 }
 export { removeOne as deleteDoc };
 
-// 여러 건 한꺼번에 — 순서대로 보낸다
+// 여러 건 한꺼번에 — «전부 되거나, 전부 안 되거나».
+//
+// 옮겨 온 뒤 한동안은 하나씩 순서대로 내보냈는데, 중간에서 실패하면 앞부분만 저장된 채
+// 남았다. BOM 순서를 바꾸다 끊기면 절반만 옮겨진 목록이 남는 식이다.
+// 이제 서버 함수(doc_batch) 하나로 보내 한 묶음으로 처리한다 (2026-09-11 대표님).
 export function writeBatch() {
-  const jobs = [];
+  const ops = [];
+  const previews = [];
+  const touched = [];
+
+  // 표식(서버시각·목록 넣기·숫자 더하기)을 서버가 알아듣는 일거리로 바꾼다
+  const markOps = (base, marks) =>
+    marks.map((m) =>
+      m.kind === 'array'
+        ? { ...base, k: 'array', f: m.field, add: m.add, rm: m.remove }
+        : { ...base, k: 'inc', f: m.field, by: m.by },
+    );
+
   return {
-    set: (ref, data, opts) => jobs.push(() => setDoc(ref, data, opts)),
-    update: (ref, patch) => jobs.push(() => updateDoc(ref, patch)),
-    delete: (ref) => jobs.push(() => removeOne(ref)),
+    set(ref, data, opts = {}) {
+      const { plain, dels, ops: marks } = splitMarks(data || {});
+      const { out: obj } = expandPaths(plain);
+      const base = { t: tableOf(ref.name), id: ref.id };
+      if (opts.merge) {
+        if (Object.keys(obj).length) ops.push({ ...base, k: 'merge', d: obj });
+        previews.push(() => optimistic(ref.name, ref.id, (cur) => deepMerge(cur, obj)));
+      } else {
+        ops.push({ ...base, k: 'set', d: obj });
+        previews.push(() => remember(ref.name, ref.id, obj));
+      }
+      if (dels.length) ops.push({ ...base, k: 'patch', dels });
+      ops.push(...markOps(base, marks));
+      touched.push(ref);
+    },
+    update(ref, patch) {
+      const { plain, dels, ops: marks } = splitMarks(patch || {});
+      const { out: obj, nested } = expandPaths(plain);
+      const base = { t: tableOf(ref.name), id: ref.id };
+      const flatDels = dels.filter((k) => !k.includes('.'));
+      const deepDels = dels.filter((k) => k.includes('.')).map((k) => k.split('.'));
+      if (Object.keys(obj).length) ops.push({ ...base, k: nested ? 'merge' : 'patch', d: obj });
+      if (flatDels.length) ops.push({ ...base, k: 'patch', dels: flatDels });
+      for (const p of deepDels) ops.push({ ...base, k: 'unset', path: p });
+      ops.push(...markOps(base, marks));
+      previews.push(() =>
+        optimistic(ref.name, ref.id, (cur) => {
+          const next = nested ? deepMerge(cur, obj) : { ...cur, ...obj };
+          for (const k of flatDels) delete next[k];
+          return next;
+        }),
+      );
+      touched.push(ref);
+    },
+    delete(ref) {
+      ops.push({ t: tableOf(ref.name), id: ref.id, k: 'del' });
+      previews.push(() => forget(ref.name, ref.id));
+      touched.push(ref);
+    },
     commit: async () => {
-      for (const j of jobs) await j();
+      if (!ops.length) return;
+      const names = [...new Set(touched.map((r) => r.name))];
+      for (const p of previews) p();
+      for (const n of names) refresh(n);
+      try {
+        await rpc('doc_batch', { p_schema: 'wm', p_ops: ops }, '묶음 저장');
+      } catch (e) {
+        // 미리 보여 준 것을 걷어 낸다 — 저장이 안 됐으니 화면도 되돌아가야 한다
+        for (const r of touched) justWritten.delete(freshKey(r.name, r.id));
+        for (const n of names) refresh(n);
+        throw e;
+      }
+      for (const n of names) refresh(n);
     },
   };
 }
@@ -575,7 +644,11 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
         const rows = finish(name, cs, applyFresh(name, data || []));
         noteRows(name, rows);
-        v = snapshotOf(rows.map(wrap), rows, prev);
+        v = snapshotOf(
+          rows.map((r) => wrap(r, name)),
+          rows,
+          prev,
+        );
         prev = v.__state;
       }
       if (!stopped) onNext(v);
