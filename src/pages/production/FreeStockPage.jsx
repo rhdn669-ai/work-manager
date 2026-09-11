@@ -36,10 +36,9 @@ export default function FreeStockPage({ company }) {
   const [bomByProject, setBomByProject] = useState({});
   const [stock, setStock] = useState({});
   const [q, setQ] = useState('');
-  const [view, setView] = useState('short'); // short | all | have
+  const [view, setView] = useState('all'); // all | have
   // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
   // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
-  const [adding, setAdding] = useState(null); // { row, qty, note }
   const [fixing, setFixing] = useState(null); // { row, to, reason }
   // 표에서 바로 적는 입고 수량 — 창을 띄우지 않는다 (2026-09-11 대표님)
   const [draft, setDraft] = useState({}); // { [itemId]: '3' }
@@ -82,10 +81,21 @@ export default function FreeStockPage({ company }) {
   // BOM 의 사급 줄을 호기·BOX 별로 모아 품목 단위로 합친다
   const rows = useMemo(() => {
     const entries = [];
+    // 「1대당」 — 호기 하나가 쓰는 개수(BOX 를 합친 값). 호기마다 다르면 가장 큰 값을 쓴다.
+    // 회사 전체 합계를 보여 주면 「이 품목 몇 개짜리인지」가 안 보인다 (2026-09-11 대표님)
+    const perOne = new Map();
     for (const p of mine) {
       const all = bomByProject[p.bomLink.projectId];
       if (!all) continue;
       const forVariant = bomItemsForVariant(all, p.bomLink.variantKey || '');
+      const one = new Map();
+      for (const box of CHECKABLE_BOXES) {
+        for (const r of bomRowsForBox(forVariant, box).filter(isFreeIssue)) {
+          const k = r.itemId || `row:${r.id}`;
+          one.set(k, (one.get(k) || 0) + (Number(r.qty) || 0));
+        }
+      }
+      for (const [k, v] of one) perOne.set(k, Math.max(perOne.get(k) || 0, v));
       for (const box of CHECKABLE_BOXES) {
         const list = bomRowsForBox(forVariant, box)
           .filter(isFreeIssue)
@@ -105,23 +115,28 @@ export default function FreeStockPage({ company }) {
     }
     const agg = aggregateShortage(entries, { onlyShort: false });
     const kw = q.trim().toLowerCase();
-    return agg
-      .map((a) => {
-        const have = Math.max(0, Number(stock[a.itemId]?.qty) || 0);
-        const short = Math.max(0, a.short - have); // 재고로 채우고도 남는 부족
-        return { ...a, have, shortAfterStock: short, log: stock[a.itemId]?.log || [] };
-      })
-      .filter((r) => {
-        if (view === 'short' && r.shortAfterStock <= 0) return false;
-        if (view === 'have' && r.have <= 0) return false;
-        if (!kw) return true;
-        return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
-          String(v || '')
-            .toLowerCase()
-            .includes(kw),
-        );
-      })
-      .sort((x, y) => y.shortAfterStock - x.shortAfterStock || (x.name || '').localeCompare(y.name || ''));
+    return (
+      agg
+        .map((a) => {
+          const have = Math.max(0, Number(stock[a.itemId]?.qty) || 0);
+          return { ...a, have, perOne: perOne.get(a.itemId || '') || 0, log: stock[a.itemId]?.log || [] };
+        })
+        .filter((r) => {
+          if (view === 'have' && r.have <= 0) return false;
+          if (!kw) return true;
+          return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
+            String(v || '')
+              .toLowerCase()
+              .includes(kw),
+          );
+        })
+        // 도번 순 — 표의 첫 열이 도번이라 찾기 쉽다. 도번이 없는 것은 뒤로.
+        .sort((x, y) => {
+          const a = x.drawingNo || '힣';
+          const b = y.drawingNo || '힣';
+          return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
+        })
+    );
   }, [mine, bomByProject, materials, masterMap, stock, q, view]);
 
   const sums = useMemo(() => {
@@ -129,27 +144,8 @@ export default function FreeStockPage({ company }) {
     return {
       kinds: all.length,
       have: all.reduce((s, r) => s + r.have, 0),
-      short: all.reduce((s, r) => s + r.shortAfterStock, 0),
     };
   }, [rows]);
-
-  async function onAdd(e) {
-    e.preventDefault();
-    const { row, qty, note } = adding;
-    const n = Number(qty) || 0;
-    if (n <= 0) return toast('수량을 적어 주세요', 'error');
-    try {
-      await receiveFreeStock(company, { itemId: row.itemId, code: row.code, name: row.name, spec: row.spec }, n, {
-        by: me,
-        note: note || '',
-      });
-      setAdding(null);
-      toast(`${row.name || row.code} ${n}개 받았습니다`, 'success');
-    } catch (err) {
-      console.error(err);
-      toast('저장에 실패했습니다', 'error');
-    }
-  }
 
   // 칸에 적은 수를 그대로 재고에 더한다 — 「받기」 창을 없앤 자리 (2026-09-11 대표님
   // 「모달 수량 입력 말고 입고수량 칸에 바로 입력하는 방식으로하자」)
@@ -201,9 +197,6 @@ export default function FreeStockPage({ company }) {
           <span className="fstock-sum">
             재고 <b>{won(sums.have)}</b>
           </span>
-          <span className="fstock-sum">
-            부족 <b className={sums.short > 0 ? 'is-short' : ''}>{won(sums.short)}</b>
-          </span>
         </div>
         <input
           className="fstock-search"
@@ -214,7 +207,6 @@ export default function FreeStockPage({ company }) {
         />
         <ViewSwitch
           options={[
-            { value: 'short', label: '부족' },
             { value: 'have', label: '재고 있음' },
             { value: 'all', label: '전체' },
           ]}
@@ -227,14 +219,14 @@ export default function FreeStockPage({ company }) {
       {rows.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
-          <p>{view === 'short' ? '모자란 사급 품목이 없습니다' : `${company} 사급 품목이 없습니다`}</p>
+          <p>{view === 'have' ? '재고가 남은 사급 품목이 없습니다' : `${company} 사급 품목이 없습니다`}</p>
           <span>BOM 에 사급으로 표시된 품목이 여기에 모입니다.</span>
         </div>
       ) : (
         <div className="table-scroll-x no-print">
           <table className="table pmat-table">
             <colgroup>
-              {['44px', '15%', '16%', null, '7%', '7%', '8%', '7%', '13%'].map((w, i) => (
+              {['44px', '15%', '16%', null, '8%', '8%', '8%', '13%'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -247,16 +239,13 @@ export default function FreeStockPage({ company }) {
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
                 <th scope="col" className="col-num">
-                  필요
+                  1대당
                 </th>
                 <th scope="col" className="col-num">
                   투입
                 </th>
                 <th scope="col" className="col-num">
                   재고
-                </th>
-                <th scope="col" className="col-num">
-                  부족
                 </th>
                 <th scope="col" className="col-action">
                   입고 수량
@@ -265,20 +254,17 @@ export default function FreeStockPage({ company }) {
             </thead>
             <tbody>
               {rows.map((r, i) => (
-                <tr key={r.itemId || r.code || i} className={r.shortAfterStock > 0 ? '' : 'is-done'}>
+                <tr key={r.itemId || r.code || i}>
                   <td className="col-no">{i + 1}</td>
                   <td className="pmat-drawing">{r.drawingNo}</td>
                   <td className="u-wrap">{r.name}</td>
                   <td className="pmat-spec u-wrap" title={r.spec}>
                     {r.spec}
                   </td>
-                  <td className="col-num">{won(r.need)}</td>
+                  <td className="col-num">{won(r.perOne)}</td>
                   <td className="col-num">{won(r.got)}</td>
                   <td className="col-num">
                     <b>{won(r.have)}</b>
-                  </td>
-                  <td className={`col-num${r.shortAfterStock > 0 ? ' is-short' : ''}`}>
-                    {r.shortAfterStock > 0 ? won(r.shortAfterStock) : ''}
                   </td>
                   <td className="col-action">
                     <div className="btn-group">
@@ -323,48 +309,6 @@ export default function FreeStockPage({ company }) {
             </tbody>
           </table>
         </div>
-      )}
-
-      {adding && (
-        <Modal isOpen onClose={() => setAdding(null)} title="사급 받기">
-          <form onSubmit={onAdd}>
-            <p className="field-hint" style={{ marginTop: 0 }}>
-              <strong>{adding.row.name || adding.row.code}</strong>
-              {adding.row.spec ? ` · ${adding.row.spec}` : ''}
-              <br />
-              필요 {won(adding.row.need)} · 투입 {won(adding.row.got)} · 지금 재고 {won(adding.row.have)}
-            </p>
-            <div className="form-group">
-              <label>받은 수량</label>
-              <input
-                autoFocus
-                value={adding.qty}
-                onChange={(e) => setAdding((s) => ({ ...s, qty: e.target.value.replace(/[^0-9]/g, '') }))}
-                inputMode="numeric"
-                placeholder="0"
-                aria-label="받은 수량"
-              />
-            </div>
-            <div className="form-group">
-              <label>메모</label>
-              <input
-                value={adding.note}
-                onChange={(e) => setAdding((s) => ({ ...s, note: e.target.value }))}
-                placeholder="언제·어디서 왔는지 (선택)"
-                aria-label="메모"
-              />
-            </div>
-            <p className="field-hint">지금 재고에 더해집니다. 호기 자재 체크에서 「재고에서 N」으로 가져다 씁니다.</p>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-outline" onClick={() => setAdding(null)}>
-                취소
-              </button>
-              <button type="submit" className="btn btn-primary">
-                받기
-              </button>
-            </div>
-          </form>
-        </Modal>
       )}
 
       {fixing && (
