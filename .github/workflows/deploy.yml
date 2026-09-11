@@ -1,9 +1,17 @@
 name: Deploy to Cloudflare Workers
 
+# ⛔ 자동 배포를 껐다 (2026-09-11).
+#
+# 이 워크플로는 2026-09-10 과 2026-09-11 두 번, 「성공」이라고 하면서 사내 서버 설정이
+# 빠진 결과물을 운영에 올렸다. 두 번 다 직원이 앱을 못 쓰는 사고가 됐다.
+# 검사를 더 촘촘히 하는 것보다 «배포 길을 하나로» 줄이는 편이 확실하다.
+#
+# 배포는 이제 로컬에서만 한다:  npm run deploy
+#   (scripts/deploy.mjs 가 만들기 전·올린 뒤 두 번 사내 서버 주소를 확인한다)
+#
+# 되살리려면 아래 workflow_dispatch 를 지우고 push 트리거를 되돌린다.
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
 
 jobs:
   deploy:
