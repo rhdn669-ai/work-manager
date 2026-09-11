@@ -12,6 +12,7 @@ import { COMPANIES } from '../../domain/production';
 import PanelMaterialsPage from './PanelMaterialsPage';
 import ShortagePage from './ShortagePage';
 import FreeStockPage from './FreeStockPage';
+import PaidStockPage from './PaidStockPage';
 
 // 자재 허브 — 호기 자재 체크 · 도급 배정 · 부족 집계를 한 화면의 탭 3개로
 // (2026-09-05 대표님 안 B 2단계 「자재 화면 3 → 1」). 옛 주소(/production/:id/materials,
@@ -23,6 +24,8 @@ const TABS = [
   { value: 'shortage', label: '부족 집계' },
   // 호기를 정하지 않고 들어온 사급을 모아 두는 곳 (2026-09-10 대표님 「사급 재고를 따로」)
   { value: 'freestock', label: '사급 재고' },
+  // 도급도 같은 모양으로 — 들어온 것 중 아직 호기에 안 간 양 (2026-09-11 대표님)
+  { value: 'paidstock', label: '도급 재고' },
 ];
 
 export default function MaterialsHubPage() {
@@ -190,6 +193,8 @@ export default function MaterialsHubPage() {
         </div>
       ) : tab === 'freestock' ? (
         <FreeStockPage company={company} />
+      ) : tab === 'paidstock' ? (
+        <PaidStockPage company={company} />
       ) : (
         <ShortagePage embedded />
       )}

@@ -44,8 +44,7 @@ import {
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getBomProjects, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
-import { subscribePanels } from '../../services/productionService';
-import { panelReceiveStatus } from '../../utils/panelAllocation';
+import {} from '../../services/productionService';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
@@ -70,7 +69,6 @@ import { paidList, payButtonLabel, unpaidAmount } from '../../domain/payment';
 import { poFingerprint } from '../../utils/poFingerprint';
 import { mergeSetLots, setLotsLabel, totalSetCount } from '../../utils/setLots';
 import { mergeBomLinks, bomLinksLabel } from '../../domain/purchaseBom';
-import { autoAllocateFromPurchase, allocationSummary } from '../../services/paidAutoAllocate';
 import { PO_COLS } from '../../domain/tableWidths';
 import {
   PO_DEFAULTS,
@@ -323,7 +321,6 @@ export default function PurchaseDetailPage() {
   const [itemPickerTargetIdx, setItemPickerTargetIdx] = useState(null); // null=추가 모드, 숫자=그 행 품목 교체 모드
   const [bomProjects, setBomProjects] = useState([]);
   // 이 발주가 어느 생산 호기 것인지 — 여러 대에 걸칠 수 있다(입고는 한 번에 되므로 발주서 단위로 건다)
-  const [allPanels, setAllPanels] = useState([]);
   const [panelPickOpen, setPanelPickOpen] = useState(false);
   // 옛 발주서(BOM 에서 안 가져온 것)도 자동 배분을 쓰게 — 창에서 BOM·타입을 골라 연결 (안 B 3단계)
   const [linkPick, setLinkPick] = useState('');
@@ -336,45 +333,8 @@ export default function PurchaseDetailPage() {
     }
     return out;
   }, [bomProjects]);
-  const [panelPickProject, setPanelPickProject] = useState('');
-  // 같은 설비를 1차사 두 곳에서 받는다. 품목 구성은 같지만 「사급이냐 도급이냐」가 48종에서
-  // 갈린다 — 회사를 섞어 걸면 우리가 산 자재가 고객사가 댈 자리로 들어간다.
-  // 그래서 회사로 먼저 거르고, 한 발주서에는 한 회사만 건다 (2026-09-11 대표님).
-  const [panelPickCompany, setPanelPickCompany] = useState('');
-  const [showDonePanels, setShowDonePanels] = useState(false);
-
-  const panelCompanies = useMemo(
-    () => [...new Set(allPanels.map((p) => (p.회사 || '').trim()).filter(Boolean))].sort(),
-    [allPanels],
-  );
-  // 이 발주서가 어느 회사 것인지 — 이미 걸린 호기가 먼저, 없으면 BOM 이름에서 찾는다
-  const guessCompany = () => {
-    const picked = (form.panels || []).map((x) => allPanels.find((p) => p.id === x.id)).filter(Boolean);
-    if (picked.length) return picked[0].회사 || '';
-    const names = (form.bomLinks || []).map((l) => l.projectName || '').join(' ');
-    return panelCompanies.find((c) => names.includes(c)) || '';
-  };
-
-  // 고를 수 있는 호기 — 회사 → 끝난 호기 → 프로젝트 순으로 거른다.
-  // 이미 걸어 둔 호기는 끝났더라도 남겨야 뺄 수 있다.
-  const visiblePanels = useMemo(
-    () =>
-      allPanels
-        .filter((p) => !panelPickCompany || (p.회사 || '') === panelPickCompany)
-        .filter(
-          (p) =>
-            showDonePanels ||
-            (p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김') ||
-            (form.panels || []).some((x) => x.id === p.id),
-        )
-        .filter((p) => !panelPickProject || (p.프로젝트 || '') === panelPickProject),
-    [allPanels, panelPickCompany, showDonePanels, panelPickProject, form.panels],
-  );
-
   async function openPanelPick() {
     setPanelPickOpen(true);
-    setPanelPickCompany(guessCompany());
-    setShowDonePanels(false);
     if (bomProjects.length === 0) {
       try {
         setBomProjects(await getBomProjects());
@@ -451,10 +411,8 @@ export default function PurchaseDetailPage() {
   useEffect(() => {
     loadData();
     const unsub = subscribePurchaseItems(setItemMaster);
-    const unsubPanels = subscribePanels(setAllPanels);
     return () => {
       unsub();
-      unsubPanels();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -703,29 +661,6 @@ export default function PurchaseDetailPage() {
     toast(`더했던 ${filled}개를 도로 뺐습니다`);
   }
 
-  // ---- 생산 호기 걸기 ----
-  // 입고는 한 번에 되므로 발주서 단위로 여러 대를 건다.
-  // 목록 순서(납기 → 호기)가 곧 생산 순서라, 자재가 모자라면 뒤 호기가 미입고로 남는다.
-  const panelProjects = useMemo(() => {
-    const names = new Set(allPanels.map((p) => (p.프로젝트 || '').trim()).filter(Boolean));
-    return [...names].sort((a, b) => a.localeCompare(b));
-  }, [allPanels]);
-
-  function togglePanel(p) {
-    setForm((f) => {
-      const cur = Array.isArray(f.panels) ? f.panels : [];
-      const has = cur.some((x) => x.id === p.id);
-      const next = has
-        ? cur.filter((x) => x.id !== p.id)
-        : [...cur, { id: p.id, 프로젝트: p.프로젝트 || '', 호기: p.호기 || '' }];
-      // 생산 순서(구독 정렬)를 그대로 따르게 다시 줄 세운다
-      const order = new Map(allPanels.map((x, i) => [x.id, i]));
-      next.sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
-      return { ...f, panels: next };
-    });
-    scheduleAutoSave();
-  }
-
   // 세트 내역 고치기 — 옛 발주서엔 타입명 없이 세트 수만 남아 있어 이름을 채워 넣어야 한다
   function openSetLots() {
     const cur = (form.setLots || []).filter((l) => l && (String(l.name ?? '').trim() || Number(l.count) > 0));
@@ -745,9 +680,6 @@ export default function PurchaseDetailPage() {
     setSetLotsDraft(null);
     toast(clean.length ? `세트 내역을 ${clean.length}줄로 저장했습니다.` : '세트 내역을 비웠습니다.');
   }
-
-  // 걸린 호기별로 자재를 다 받았는지 — 앞 호기부터 채우고 모자라면 뒤가 미입고
-  const panelStatus = useMemo(() => panelReceiveStatus(form.items, form.panels || []), [form.items, form.panels]);
 
   // 발주 수량 변경 모달 열기 (보유자재 있으면 감량)
   function openQtyModal(idx) {
@@ -1320,23 +1252,11 @@ export default function PurchaseDetailPage() {
 
   // 입고 처리 뒤 걸린 호기에 도급 자재를 자동 배분한다 (2026-09-05 대표님 안 B 4단계).
   // 배분은 백그라운드 — 실패해도 입고는 이미 끝났으니 알림만 남긴다.
-  async function allocateAfterReceive(items) {
-    const cur = purchaseRef.current || purchase;
-    try {
-      const r = await autoAllocateFromPurchase({ ...cur, items }, { by: userProfile?.name || '' });
-      const msg = allocationSummary(r);
-      if (msg) toast(msg, r.short.length || r.noType.length ? 'error' : 'success', 0);
-    } catch (err) {
-      console.error('[자동 배분]', err);
-      toast('도급 자재 자동 배분에 실패했습니다 — 자재 › 도급 배정에서 직접 배정하세요', 'error', 0);
-    }
-  }
-
   async function submitReceive(e) {
     e.preventDefault();
     if (!receiveModal) return;
     try {
-      const r = await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
+      await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
         qty: receiveForm.qty,
         date: receiveForm.date,
         note: receiveForm.note,
@@ -1344,7 +1264,6 @@ export default function PurchaseDetailPage() {
       });
       setReceiveModal(null);
       await loadData({ silent: true });
-      allocateAfterReceive(r.items);
     } catch {
       toast('입고 처리 중 오류가 발생했습니다', 'error');
     }
@@ -1376,7 +1295,7 @@ export default function PurchaseDetailPage() {
         : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
     if (!(await confirm(msg))) return;
     try {
-      const r = await bulkReceivePurchase(purchaseRef.current, {
+      await bulkReceivePurchase(purchaseRef.current, {
         mode,
         date: bulkForm.date,
         note: bulkForm.note,
@@ -1384,7 +1303,6 @@ export default function PurchaseDetailPage() {
       });
       setBulkModal(null);
       await loadData({ silent: true });
-      allocateAfterReceive(r.items);
     } catch {
       toast('일괄 입고 처리 중 오류가 발생했습니다', 'error');
     }
@@ -2331,14 +2249,9 @@ export default function PurchaseDetailPage() {
                 type="button"
                 className="btn btn-sm btn-outline"
                 onClick={openPanelPick}
-                title="이 발주가 어느 생산 호기 것인지 고르기"
+                title="이 발주가 어느 BOM 자재인지 알려 주기"
               >
-                생산 호기{' '}
-                {(form.panels || []).length > 0 && (
-                  <strong className={panelStatus.some((st) => !st.done) ? 'po-panel-short' : undefined}>
-                    {(form.panels || []).length}
-                  </strong>
-                )}
+                BOM 연결
               </button>
             </>
           )}
@@ -2468,21 +2381,6 @@ export default function PurchaseDetailPage() {
             <em>프로젝트</em>
             {purchase.siteName || '-'}
           </span>
-          {/* 걸린 호기는 정보 줄에 글자로만 — 고르는 것은 우측 「생산 호기」 버튼 */}
-          {(form.panels || []).length > 0 && (
-            <span>
-              <em>생산 호기</em>
-              {(form.panels || []).map((p, i) => {
-                const st = panelStatus[i];
-                return (
-                  <span key={p.id} className={st && !st.done ? 'po-panel-short' : undefined}>
-                    {i > 0 && <span className="po-panel-sep">·</span>}
-                    {p.호기 || p.프로젝트 || '호기'}
-                  </span>
-                );
-              })}
-            </span>
-          )}
           <span title={purchase.requesterName || ''}>
             <em>등록자</em>
             {purchase.requesterName || '-'}
@@ -3635,19 +3533,11 @@ export default function PurchaseDetailPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={panelPickOpen} onClose={() => setPanelPickOpen(false)} title="생산 호기 걸기" size="lg">
+      <Modal isOpen={panelPickOpen} onClose={() => setPanelPickOpen(false)} title="BOM 연결">
         <p className="field-hint" style={{ marginBottom: 12 }}>
-          이 발주가 어느 호기 자재인지 고릅니다. 여러 대를 걸 수 있고, 자재가 모자라면{' '}
-          <strong>생산이 뒤인 호기가 미입고</strong>로 남습니다.
-          {bomLinksLabel(form.bomLinks) ? (
-            <>
-              {' '}
-              입고 처리하면 걸린 호기 순서대로 <strong>도급 자재가 자동으로 채워집니다</strong> (BOM{' '}
-              {bomLinksLabel(form.bomLinks)}).
-            </>
-          ) : (
-            <> BOM 을 연결하면 입고 때 걸린 호기에 도급 자재가 자동으로 채워집니다.</>
-          )}
+          이 발주가 어느 BOM 자재인지 알려 줍니다. 연결해 두면 입고한 수량이 그 BOM 의 「들어온 양」으로 잡히고, 호기
+          자재 체크에서 <strong>「도급 세트 배정」</strong>을 누를 때 그만큼 채워집니다. 호기를 미리 고를 필요는
+          없습니다 — 생산 순서가 바뀌어도 그때그때 남은 양에서 나갑니다.
         </p>
         {!isReadOnly && (
           <div className="stock-filters no-print" style={{ marginBottom: 8 }}>
@@ -3662,70 +3552,10 @@ export default function PurchaseDetailPage() {
             {bomLinksLabel(form.bomLinks) && <span className="stock-summary">{bomLinksLabel(form.bomLinks)}</span>}
           </div>
         )}
-        <div className="stock-filters no-print">
-          {panelCompanies.length > 1 && (
-            <Select
-              value={panelPickCompany}
-              onChange={setPanelPickCompany}
-              options={[{ value: '', label: '전체 회사' }, ...panelCompanies.map((c) => ({ value: c, label: c }))]}
-              className="stock-filter-select"
-              ariaLabel="회사 고르기"
-            />
-          )}
-          <Select
-            value={panelPickProject}
-            onChange={setPanelPickProject}
-            options={[{ value: '', label: '전체 프로젝트' }, ...panelProjects.map((n) => ({ value: n, label: n }))]}
-            className="stock-filter-select"
-            ariaLabel="프로젝트 고르기"
-          />
-          <label className="stock-summary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input type="checkbox" checked={showDonePanels} onChange={(e) => setShowDonePanels(e.target.checked)} />
-            끝난 호기도
-          </label>
-          <span className="stock-summary">
-            걸린 호기 <strong>{(form.panels || []).length}</strong>대
-          </span>
-        </div>
-        <div className="po-panel-list">
-          {visiblePanels.map((p) => {
-            const on = (form.panels || []).some((x) => x.id === p.id);
-            return (
-              <label key={p.id} className={`po-panel-row${on ? ' is-on' : ''}`}>
-                <input type="checkbox" checked={on} onChange={() => togglePanel(p)} />
-                <span className="po-panel-proj">{p.프로젝트 || '(프로젝트 없음)'}</span>
-                <span className="po-panel-no">{p.호기 || '(호기 없음)'}</span>
-                <span className="po-panel-due">{p.납기 ? `납기 ${p.납기}` : ''}</span>
-              </label>
-            );
-          })}
-          {visiblePanels.length === 0 && (
-            <p className="purchase-empty">
-              {allPanels.length === 0
-                ? '생산현황에 등록된 판넬이 없습니다.'
-                : '조건에 맞는 호기가 없습니다 — 회사·프로젝트를 바꾸거나 「끝난 호기도」를 켜 보세요.'}
-            </p>
-          )}
-        </div>
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setPanelPickOpen(false)}>
             닫기
           </button>
-          {bomLinksLabel(form.bomLinks) && (form.panels || []).length > 0 && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              title="이미 입고된 만큼 걸린 호기에 지금 배분"
-              onClick={async () => {
-                await flushAutoSave();
-                setPanelPickOpen(false);
-                allocateAfterReceive((purchaseRef.current || purchase).items || []);
-              }}
-            >
-              <Icon name="check" className="btn-ic" />
-              지금 배분
-            </button>
-          )}
         </div>
       </Modal>
 
