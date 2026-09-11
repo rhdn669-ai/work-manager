@@ -76,6 +76,18 @@ describe('자재 칸의 타입 선택', () => {
     expect(defaultBomProjectId([{ bomLink: { projectId: 'P' } }, { bomLink: { projectId: 'P' } }, { bomLink: { projectId: 'Q' } }])).toBe('P');
     expect(defaultBomProjectId([{}, {}])).toBe('');
   });
+  it('한 대도 안 붙은 회사는 이름에 회사가 들어간 BOM 을 기본으로 (디에이치 연동 안 되던 것)', () => {
+    const list = [
+      { id: 'M', name: '프로버 (메티스)', variants: [] },
+      { id: 'D', name: '프로버 (디에이치)', variants: [] },
+    ];
+    expect(defaultBomProjectId([{}, {}], list, '디에이치')).toBe('D');
+    expect(defaultBomProjectId([{}, {}], list, '메티스')).toBe('M');
+    // 이미 붙어 있으면 그쪽이 이긴다 — 회사 이름 짐작은 «마지막 수단»이다
+    expect(defaultBomProjectId([{ bomLink: { projectId: 'M' } }], list, '디에이치')).toBe('M');
+    // 짝이 없으면 빈 값 (예전처럼 글자로 적는 화면으로 간다)
+    expect(defaultBomProjectId([{}], list, '없는회사')).toBe('');
+  });
   it('연결된 프로젝트의 타입, 없으면 기본 프로젝트의 타입', () => {
     expect(variantOptionsFor({ bomLink: { projectId: 'P' } }, projects, '').options.map((o) => o.label)).toEqual(['T5391 / MT8311', 'M7H']);
     expect(variantOptionsFor({}, projects, 'P').options).toHaveLength(2);

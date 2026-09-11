@@ -11,7 +11,13 @@ import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { subscribeFreeStock, takeFreeStock, returnFreeStock } from '../../services/freeStockService';
+import {
+  subscribeFreeStock,
+  takeFreeStock,
+  returnFreeStock,
+  receiveFreeStock,
+  getFreeStockQty,
+} from '../../services/freeStockService';
 import {
   subscribePanelMaterials,
   setReceived,
@@ -237,10 +243,43 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     }
   };
 
+  // ── 사급은 «언제나» 재고 통을 거친다 (2026-09-11 대표님 「알아서 받은 걸로」) ──
+  //
+  // 물건이 들어오는 모양이 그때그때 다르다. 세트로 호기 수 맞춰 오기도 하고, 같은 품목이
+  // 한 박스에 담겨 오기도 한다. 회사로 고를 수도 없다(반대 경우도 있다).
+  // 그래서 «어디에 적을지»를 사람이 고르지 않게 했다 — 호기에서 그냥 체크하면,
+  // 통에 없는 만큼은 「방금 들어온 것」으로 적히고 곧바로 이 호기로 나간다.
+  // 결과: 재고 통은 늘 실물과 같고, 어디로 갔는지도 다 남는다.
+  const syncFree = async (r, before, after) => {
+    if (supplyTab !== 'free' || !r.itemId || !company) return;
+    const d = (Number(after) || 0) - (Number(before) || 0);
+    if (d === 0) return;
+    const who = by();
+    const where = `${panel?.프로젝트 || ''} · ${box}`;
+    try {
+      if (d > 0) {
+        const have = await getFreeStockQty(company, r.itemId);
+        const short = d - have;
+        if (short > 0) {
+          // 통에 없던 만큼 — 호기에서 바로 체크한 물건이다
+          await receiveFreeStock(company, r, short, { by: who, note: `${where} 바로 체크` });
+        }
+        const took = await takeFreeStock(company, r.itemId, d, { by: who, note: where });
+        if (took > 0) await addFromStock(panelId, box, r.id, took, Number(rec[r.id]?.fromStock) || 0);
+      } else {
+        await returnFreeStock(company, r.itemId, -d, { by: who, note: `${where} 되돌림` });
+      }
+    } catch (err) {
+      console.error('[사급 재고] 맞추기 실패', err);
+      toast('사급 재고를 맞추지 못했습니다 — 재고 화면에서 확인해 주세요', 'error');
+    }
+  };
+
   const toggleRow = async (r, got) => {
     const want = got > 0 ? 0 : Number(r.qty) || 0;
     try {
       await setReceived(panelId, box, r.id, want, by());
+      await syncFree(r, got, want);
       undoable(want > 0 ? `${r.name} ${want}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
@@ -265,42 +304,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     clearTimeout(pressRef.current.timer);
   };
 
-  // 사급 재고에서 이 호기로 — 재고가 줄고, 되돌리면 재고로 돌아온다
+  // 사급 재고에서 이 호기로 — 이제 재고 빼기는 syncFree 한 곳이 맡는다.
+  // 여기서 또 빼면 두 번 빠진다(2026-09-11).
   const pullFree = async (r, have, n) => {
+    const before = Number(have) || 0;
+    const after = before + (Number(n) || 0);
     try {
-      const took = await takeFreeStock(company, r.itemId, n, {
-        by: userProfile?.name || '',
-        note: `${panel?.프로젝트 || ''} · ${box}`,
+      await setReceived(panelId, box, r.id, after, by());
+      await syncFree(r, before, after);
+      undoable(`${r.name || r.code} ${n}개를 사급 재고에서 가져왔습니다`, async () => {
+        try {
+          await setReceived(panelId, box, r.id, before, by());
+          await syncFree(r, after, before);
+        } catch {
+          toast('되돌리지 못했습니다', 'error');
+        }
       });
-      if (took <= 0) {
-        toast('사급 재고가 모자랍니다', 'error');
-        return;
-      }
-      const prevFrom = Number(rec[r.id]?.fromStock) || 0;
-      await setReceived(panelId, box, r.id, (Number(have) || 0) + took, userProfile?.name || '');
-      await addFromStock(panelId, box, r.id, took, prevFrom);
-      toast({
-        message: `${r.name || r.code} ${took}개를 사급 재고에서 가져왔습니다`,
-        type: 'success',
-        duration: 6000,
-        action: {
-          label: '되돌리기',
-          onClick: async () => {
-            try {
-              await returnFreeStock(company, r.itemId, took, {
-                by: userProfile?.name || '',
-                note: `${panel?.프로젝트 || ''} · ${box} 되돌림`,
-              });
-              await setReceived(panelId, box, r.id, Number(have) || 0, userProfile?.name || '');
-            } catch {
-              toast('되돌리지 못했습니다', 'error');
-            }
-          },
-        },
-      });
-    } catch (err) {
-      console.error(err);
-      toast('사급 재고에서 가져오기에 실패했습니다', 'error');
+    } catch {
+      toast('저장 중 오류가 발생했습니다', 'error');
     }
   };
 
@@ -318,6 +339,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     if (n === before) return;
     try {
       await setReceived(panelId, box, r.id, n, by());
+      await syncFree(r, before, n);
       undoable(`${r.name} ${n}개`, restoreOne(r, before));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
@@ -337,6 +359,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       await Promise.all(
         shown.map((r) => setReceived(panelId, box, r.id, toBom ? Number(r.qty) || 0 : 0, userProfile?.name || '')),
       );
+      // 사급이면 재고 통도 함께 맞춘다 — 한 줄씩 차례로(같은 품목이 겹쳐도 셈이 안 엉키게)
+      for (const r of shown) {
+        const b = before.find((x) => x.id === r.id)?.qty || 0;
+        await syncFree(r, b, toBom ? Number(r.qty) || 0 : 0);
+      }
       undoable(
         toBom ? `${shown.length}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
         async () => {

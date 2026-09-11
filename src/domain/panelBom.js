@@ -66,7 +66,7 @@ export function bomRowsForBox(rows, box) {
  * 회사의 기본 BOM 프로젝트 — 그 회사 호기들이 가장 많이 연결한 프로젝트.
  * 표의 「자재」 칸에서 타입을 고르면 연결이 없는 호기는 이 프로젝트로 붙는다.
  */
-export function defaultBomProjectId(panels) {
+export function defaultBomProjectId(panels, bomProjects = [], company = '') {
   const count = new Map();
   for (const p of panels || []) {
     const id = p?.bomLink?.projectId;
@@ -75,7 +75,17 @@ export function defaultBomProjectId(panels) {
   let best = '';
   let n = 0;
   for (const [id, c] of count) if (c > n) [best, n] = [id, c];
-  return best;
+  if (best) return best;
+
+  // 아직 한 대도 안 붙은 회사 — 이름에 회사가 들어간 BOM 을 기본으로 삼는다.
+  //
+  // 「자재」 칸은 «가장 많이 쓰는 BOM» 을 첫 호기에 붙여 주는데, 한 대도 안 붙어 있으면
+  // 그 기준이 없어 눌러도 아무 일이 안 났다. 디에이치는 BOM 을 다 만들어 두고도 호기
+  // 192 대가 전부 연결되지 않았다 (2026-09-11 대표님 「디에이치 BOM 만들었는데 연동이 안되네」).
+  const c = String(company || '').trim();
+  if (!c) return '';
+  const hit = (bomProjects || []).find((x) => String(x?.name || '').includes(c));
+  return hit ? hit.id : '';
 }
 
 /** 호기의 「자재」 칸에 보일 타입 목록 — 연결된 프로젝트의 타입, 없으면 기본 프로젝트의 타입 */

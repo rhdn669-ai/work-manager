@@ -426,7 +426,10 @@ export default function ProductionMatrix({
   // 「자재」 칸 = BOM 타입(형번) 고르기 — 모달이 아니라 표에서 (2026-09-03 대표님 「해당 위치 자재에서」).
   // 누르면 빈값 → 타입1 → 타입2 → 빈값 으로 돈다. 고르면 자재 글자와 BOM 연결(타입)이 같이 저장되고,
   // 아직 BOM 을 안 붙인 호기는 회사 기본 프로젝트(가장 많이 쓰는 것)로 붙는다.
-  const defaultProjectId = useMemo(() => defaultBomProjectId(orderPool || panels), [orderPool, panels]);
+  const defaultProjectId = useMemo(
+    () => defaultBomProjectId(orderPool || panels, bomProjects, company),
+    [orderPool, panels, bomProjects, company],
+  );
   const pickVariant = (p) => {
     if (!canEditCells) return;
     const { project, options } = variantOptionsFor(p, bomProjects, defaultProjectId);

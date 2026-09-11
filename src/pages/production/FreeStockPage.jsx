@@ -14,7 +14,6 @@ import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
-import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
@@ -38,9 +37,13 @@ export default function FreeStockPage({ company }) {
   const [stock, setStock] = useState({});
   const [q, setQ] = useState('');
   const [view, setView] = useState('short'); // short | all | have
-  const editMode = useEditLock();
+  // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
+  // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
   const [adding, setAdding] = useState(null); // { row, qty, note }
   const [fixing, setFixing] = useState(null); // { row, to, reason }
+  // 표에서 바로 적는 입고 수량 — 창을 띄우지 않는다 (2026-09-11 대표님)
+  const [draft, setDraft] = useState({}); // { [itemId]: '3' }
+  const [saving, setSaving] = useState('');
 
   useEffect(() => subscribePurchaseItems(setMaster), []);
   useEffect(() => subscribePanels(setPanels), []);
@@ -148,6 +151,30 @@ export default function FreeStockPage({ company }) {
     }
   }
 
+  // 칸에 적은 수를 그대로 재고에 더한다 — 「받기」 창을 없앤 자리 (2026-09-11 대표님
+  // 「모달 수량 입력 말고 입고수량 칸에 바로 입력하는 방식으로하자」)
+  async function commitDraft(r) {
+    const raw = draft[r.itemId];
+    if (raw === undefined) return;
+    setDraft((d) => {
+      const nd = { ...d };
+      delete nd[r.itemId];
+      return nd;
+    });
+    const n = Math.max(0, Number(raw) || 0);
+    if (n <= 0) return;
+    setSaving(r.itemId);
+    try {
+      await receiveFreeStock(company, { itemId: r.itemId, code: r.code, name: r.name, spec: r.spec }, n, { by: me });
+      toast(`${r.name || r.code} ${n}개 받았습니다`, 'success');
+    } catch (err) {
+      console.error(err);
+      toast('저장에 실패했습니다', 'error');
+    } finally {
+      setSaving('');
+    }
+  }
+
   async function onFix(e) {
     e.preventDefault();
     const { row, to, reason } = fixing;
@@ -232,7 +259,7 @@ export default function FreeStockPage({ company }) {
                   부족
                 </th>
                 <th scope="col" className="col-action">
-                  받기
+                  입고 수량
                 </th>
               </tr>
             </thead>
@@ -255,23 +282,40 @@ export default function FreeStockPage({ company }) {
                   </td>
                   <td className="col-action">
                     <div className="btn-group">
-                      {editMode && r.have > 0 && (
+                      {/* 들어온 개수를 칸에 바로 적는다 — 적고 Enter (창을 띄우지 않는다) */}
+                      <input
+                        className="num-input pmat-input"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        placeholder="0"
+                        disabled={saving === r.itemId}
+                        value={draft[r.itemId] ?? ''}
+                        onChange={(e) => setDraft((d) => ({ ...d, [r.itemId]: e.target.value }))}
+                        onBlur={() => commitDraft(r)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                          if (e.key === 'Escape')
+                            setDraft((d) => {
+                              const nd = { ...d };
+                              delete nd[r.itemId];
+                              return nd;
+                            });
+                        }}
+                        aria-label={`${r.name || r.code} 입고 수량`}
+                      />
+                      {/* 실물을 세어 숫자를 맞출 때 — 잠금과 무관하게 늘 보인다
+                          (2026-09-11 대표님, 잠금 뒤에 숨어 있어 못 찾으셨다) */}
+                      {r.have > 0 && (
                         <button
                           type="button"
                           className="btn btn-sm btn-outline"
                           onClick={() => setFixing({ row: r, to: String(r.have), reason: '' })}
+                          title="실제 개수로 맞추기"
                         >
                           고치기
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => setAdding({ row: r, qty: String(r.shortAfterStock || ''), note: '' })}
-                        title={`${r.name || r.code} 받은 수량 적기`}
-                      >
-                        받기
-                      </button>
                     </div>
                   </td>
                 </tr>
