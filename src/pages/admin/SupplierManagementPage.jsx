@@ -9,7 +9,7 @@ import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 
 import { PAYMENT_TERM_TYPES, paymentTermLabel } from '../../utils/paymentTerms';
 
@@ -36,9 +36,8 @@ export default function SupplierManagementPage() {
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
   const [search, setSearch] = useState('');
-  // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -224,13 +223,6 @@ export default function SupplierManagementPage() {
     );
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -275,7 +267,6 @@ export default function SupplierManagementPage() {
             <Icon name="plus" className="btn-ic" />
             구매처 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

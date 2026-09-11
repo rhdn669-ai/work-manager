@@ -31,8 +31,8 @@ import ViewSwitch from '../../components/common/ViewSwitch'; // (2026-09-05 대�
 import { useDialog } from '../../components/common/useDialog';
 import Skeleton from '../../components/common/Skeleton';
 import TrashModal from '../../components/common/TrashModal';
-import EditModeButton from '../../components/common/EditModeButton';
 import { trashGeneric } from '../../services/trashService';
+import { useEditLock } from '../../contexts/useEditLock';
 
 // 공수표 항목 유형 라벨 (휴지통 요약용)
 const CLOSING_TYPE_LABEL = {
@@ -223,20 +223,9 @@ export default function SiteClosingPage() {
   // 공수표 휴지통 모달
   const [trashOpen, setTrashOpen] = useState(false);
   // 잠금 토글 — 이 화면 전체가 하나를 공유. 목록마다 고른 것은 따로 둔다 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pickExpense, setPickExpense] = useState(() => new Set());
   const [pickRevenue, setPickRevenue] = useState(() => new Set());
   const [pickClosing, setPickClosing] = useState(() => new Set());
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) {
-        setPickExpense(new Set());
-        setPickRevenue(new Set());
-        setPickClosing(new Set());
-      }
-      return !v;
-    });
-  }
   function toggleExpensePick(id) {
     setPickExpense((prev) => {
       const next = new Set(prev);
@@ -328,6 +317,14 @@ export default function SiteClosingPage() {
   }
   const isCompleted = site?.status === 'completed';
   const canEdit = canEditSite(site) && !isCompleted;
+  const editMode = useEditLock({
+    enabled: canEdit,
+    onLock: () => {
+      setPickExpense(new Set());
+      setPickRevenue(new Set());
+      setPickClosing(new Set());
+    },
+  });
   const [copying, setCopying] = useState(false);
   const [clearing, setClearing] = useState(false);
 
@@ -1764,7 +1761,6 @@ export default function SiteClosingPage() {
               프로젝트 마감
             </button>
           )}
-          {canEdit && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
         </div>
       </div>
 

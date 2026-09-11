@@ -6,10 +6,10 @@ import { panelShortageBySupply } from '../../domain/paidSets';
 import Icon from '../../components/common/Icon';
 import ProjectName from '../../components/common/ProjectName';
 import TrashModal from '../../components/common/TrashModal';
-import EditModeButton from '../../components/common/EditModeButton';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 import { canProduction, isDefectOnly, canEnterProduction } from '../../utils/workspace';
 import { monthlyCounts, monthLabel, basisLabel } from '../../domain/monthlyLoad';
 import { subscribePanels, addPanel, trashPanel } from '../../services/productionService';
@@ -155,12 +155,12 @@ export default function ProductionPage() {
   const [company, setCompany] = useState(COMPANIES[0]); // 메티스 · 디에이치 (전체 탭 없음 — 대표님 지시)
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [hideShipped, setHideShipped] = useState(true);
-  // 순서 이동·선택 삭제 잠금 — 기본은 잠김, 화면을 나가면 다시 잠긴다 (2026-09-03 대표님
-  // 「실수로 옮겨버리는 경우가 많아서」)
-  const [editMode, setEditMode] = useState(false);
   // 모바일 카드용 선택 삭제 — 데스크탑 표(ProductionMatrix)는 자체 선택을 갖고 있어 별개로 둔다
   // (2026-09-04 대표님 「잠금」 통일)
   const [pick, setPick] = useState(() => new Set());
+  // 순서 이동·선택 삭제 잠금 — 기본은 잠김, 화면을 나가면 다시 잠긴다 (2026-09-03 대표님
+  // 「실수로 옮겨버리는 경우가 많아서」)
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [openId, setOpenId] = useState(null);
   const [openMode, setOpenMode] = useState('info'); // 'info'(기본정보) | 'defect'(부품 불량) | 'ship'(출고사진)
   const [openPart, setOpenPart] = useState(null); // defect 모드일 때 대상 BOX
@@ -244,13 +244,6 @@ export default function ProductionPage() {
       return;
     await trashPanel(p, userProfile?.name || '');
     if (openId === p.id) setOpenId(null);
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -452,7 +445,6 @@ export default function ProductionPage() {
                 <Icon name="plus" className="btn-ic" />
                 판넬 추가
               </button>
-              <EditModeButton on={editMode} onToggle={toggleEditMode} />
             </>
           )}
         </div>

@@ -17,9 +17,9 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 
 export default function ManageTeamPage() {
   const { userProfile, isAdmin, canApproveLeave } = useAuth();
@@ -31,8 +31,8 @@ export default function ManageTeamPage() {
   const [showModal, setShowModal] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   // 잠금 토글 — 기본 잠김. 풀면 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [editTeam, setEditTeam] = useState(null);
   const [form, setForm] = useState({ name: '', managerId: '', subManagerId: '', memberIds: [] });
   const [memberListOpen, setMemberListOpen] = useState(false);
@@ -290,13 +290,6 @@ export default function ManageTeamPage() {
       await updateUser(u.uid, { departmentId: '', isTeamLeader: false, isSubTeamLeader: false });
     }
     await trashGeneric('departments', team.id, { title: team.name }, userProfile?.name || '');
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -714,7 +707,6 @@ export default function ManageTeamPage() {
           <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
             <Icon name="plus" className="btn-ic" />팀 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
       <p className="field-hint">

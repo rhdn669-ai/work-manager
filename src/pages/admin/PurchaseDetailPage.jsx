@@ -53,6 +53,7 @@ import Modal from '../../components/common/Modal';
 import MoneyInput from '../../components/common/MoneyInput';
 import Icon from '../../components/common/Icon';
 import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import Select from '../../components/common/Select';
 import ReceiptChip from '../../components/common/ReceiptChip';
 import Skeleton from '../../components/common/Skeleton';
@@ -284,9 +285,6 @@ export default function PurchaseDetailPage() {
   });
   const [lineTrashOpen, setLineTrashOpen] = useState(false);
   const [saveState, setSaveState] = useState('saved'); // 'saving' | 'saved' | 'error'
-  // 「순서·삭제」 토글 — 기본 꺼짐(화면을 나가면 다시 꺼진다).
-  // 켜야만 품목 줄을 끌어 옮기거나 골라서 지울 수 있다(실수로 옮기는 것 방지).
-  const [editMode, setEditMode] = useState(false);
   const [pickLines, setPickLines] = useState(() => new Set()); // 골라 둔 품목 줄 번호(인덱스)
 
   const [receiveModal, setReceiveModal] = useState(null); // { lineIdx, line } | null
@@ -886,13 +884,6 @@ export default function PurchaseDetailPage() {
     scheduleAutoSave();
   }
 
-  // 「순서·삭제」 토글 — 끄면 골라 둔 것도 함께 푼다
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPickLines(new Set());
-      return !v;
-    });
-  }
   function togglePickLine(idx) {
     setPickLines((prev) => {
       const next = new Set(prev);
@@ -1039,6 +1030,8 @@ export default function PurchaseDetailPage() {
   }, [form.items, itemMaster, suppliers]);
 
   const isReadOnly = purchase?.status === 'settled' || purchase?.status === 'closed';
+  // 정산완료·종결 발주서는 품목 줄을 바꿀 수 없다 — 잠금 자체를 쓰지 않는다.
+  const editMode = useEditLock({ enabled: !isReadOnly, onLock: () => setPickLines(new Set()) });
   // 재고를 건드릴 수 있는 건 아직 발주가 나가지 않은 「발주대기」뿐이다.
   // 발주 뒤에 수량이 바뀌면 업체에 보낸 발주서와 앱 숫자가 어긋나고,
   // 회신·입고 처리도 그 수량을 기준으로 하므로 정합성이 깨진다.
@@ -2284,7 +2277,7 @@ export default function PurchaseDetailPage() {
                 className="btn btn-sm btn-outline"
                 onClick={openItemPicker}
                 disabled={cellsLocked}
-                title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 불러올 수 있습니다' : ''}
+                title={cellsLocked ? '오른쪽 아래 「잠금」을 풀어야 불러올 수 있습니다' : ''}
               >
                 <Icon name="plus" className="btn-ic" />
                 품목 불러오기
@@ -2294,7 +2287,7 @@ export default function PurchaseDetailPage() {
                 className="btn btn-sm btn-outline"
                 onClick={openBomModal}
                 disabled={cellsLocked}
-                title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 불러올 수 있습니다' : ''}
+                title={cellsLocked ? '오른쪽 아래 「잠금」을 풀어야 불러올 수 있습니다' : ''}
               >
                 BOM 가져오기
               </button>
@@ -2495,22 +2488,20 @@ export default function PurchaseDetailPage() {
                 className="btn btn-sm btn-danger"
                 onClick={clearAllLines}
                 disabled={cellsLocked}
-                title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 지울 수 있습니다' : ''}
+                title={cellsLocked ? '오른쪽 아래 「잠금」을 풀어야 지울 수 있습니다' : ''}
               >
                 <Icon name="trash" className="btn-ic" />
                 전체 삭제
               </button>
             )}
-            {/* 정산완료·종결 발주서는 줄을 지우지도 옮기지도 못한다(기존 규칙) — 토글도 눌리지 않게 잠근다 */}
-            {isReadOnly ? (
+            {/* 정산완료·종결 발주서는 줄을 지우지도 옮기지도 못한다(기존 규칙) — 잠금 자체를 쓰지 않고, 잠긴 모양만 보여준다 */}
+            {isReadOnly && (
               <span
                 style={{ opacity: 0.45, cursor: 'not-allowed' }}
                 title="정산완료·종결 발주서는 품목 줄을 바꿀 수 없습니다"
               >
                 <EditModeButton on={false} onToggle={() => {}} />
               </span>
-            ) : (
-              <EditModeButton on={editMode} onToggle={toggleEditMode} />
             )}
           </div>
         </div>
@@ -2758,7 +2749,7 @@ export default function PurchaseDetailPage() {
                                     : cellsLocked
                                       ? isReadOnly
                                         ? ''
-                                        : '수량을 바꾸려면 오른쪽 위 「잠금」을 푸세요'
+                                        : '수량을 바꾸려면 오른쪽 아래 「잠금」을 푸세요'
                                       : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'
                                 }
                               />
@@ -2783,7 +2774,7 @@ export default function PurchaseDetailPage() {
                                   }
                                   title={
                                     cellsLocked
-                                      ? '오른쪽 위 「잠금」을 풀어야 바꿀 수 있습니다'
+                                      ? '오른쪽 아래 「잠금」을 풀어야 바꿀 수 있습니다'
                                       : !canUseStock
                                         ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
                                         : Number(ln.stockShort) > 0
@@ -2804,7 +2795,7 @@ export default function PurchaseDetailPage() {
                                     onClick={!canUseStock || cellsLocked ? undefined : () => toggleStockLine(idx)}
                                     title={
                                       cellsLocked
-                                        ? '오른쪽 위 「잠금」을 풀어야 바꿀 수 있습니다'
+                                        ? '오른쪽 아래 「잠금」을 풀어야 바꿀 수 있습니다'
                                         : !canUseStock
                                           ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
                                           : Number(ln.stockUsed) > 0
@@ -4172,7 +4163,7 @@ export default function PurchaseDetailPage() {
                             className="btn btn-sm btn-outline"
                             onClick={() => restoreDeletedItem(i)}
                             disabled={isReadOnly || cellsLocked}
-                            title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 복원할 수 있습니다' : ''}
+                            title={cellsLocked ? '오른쪽 아래 「잠금」을 풀어야 복원할 수 있습니다' : ''}
                           >
                             <Icon name="restore" className="btn-ic" />
                             복원
@@ -4182,7 +4173,7 @@ export default function PurchaseDetailPage() {
                             className="btn btn-sm btn-danger"
                             onClick={() => purgeDeletedItem(i)}
                             disabled={cellsLocked}
-                            title={cellsLocked ? '오른쪽 위 「잠금」을 풀어야 지울 수 있습니다' : ''}
+                            title={cellsLocked ? '오른쪽 아래 「잠금」을 풀어야 지울 수 있습니다' : ''}
                           >
                             <Icon name="trash" className="btn-ic" />
                             영구삭제

@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../common/Icon';
 import TrashModal from '../common/TrashModal';
-import EditModeButton from '../common/EditModeButton';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
+import { useEditLock } from '../../contexts/useEditLock';
 import { VERDICT, kindOf } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
 import { FORM_FIELDS, computeCalcFields, colWidthOf } from '../../domain/qualityFormFields';
@@ -35,8 +35,8 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   const [printing, setPrinting] = useState(null);
   const [checked, setChecked] = useState(() => new Set()); // 출력용 선택 (문서형만)
   // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ enabled: isAdmin, onLock: () => setPick(new Set()) });
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [verdictFilter, setVerdictFilter] = useState('all');
@@ -141,13 +141,6 @@ export default function QualityRecordLedger({ formKey, docNo }) {
     }
   };
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -229,8 +222,6 @@ export default function QualityRecordLedger({ formKey, docNo }) {
             <Icon name="plus" className="btn-ic" />
             {isLedger ? '행 추가' : '신규'}
           </button>
-          {/* 지우는 것은 관리자만 (2026-08-12 대표님) — 잠금도 같이 관리자 전용 (2026-09-04 「잠금」 통일) */}
-          {isAdmin && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
         </div>
       </div>
 

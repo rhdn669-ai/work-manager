@@ -98,15 +98,29 @@ export default function PdfFabGroup({
   return (
     <>
       {inline ? (
-        <button
-          type="button"
-          className="btn btn-sm btn-outline no-print"
-          onClick={() => (options ? setOptOpen(true) : handleOutput())}
-          title="브라우저 인쇄로 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
-        >
-          <Icon name="doc" className="btn-ic" />
-          출력
-        </button>
+        <>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline no-print"
+            onClick={() => (options ? setOptOpen(true) : handleOutput())}
+            title="브라우저 인쇄로 출력합니다 (인쇄 대화상자에서 'PDF로 저장' 선택 가능)"
+          >
+            <Icon name="doc" className="btn-ic" />
+            출력
+          </button>
+          {/* 위로 올릴 때 이것까지 함께 올라와야 한다 — 떠 있던 시절엔 두 개가 한 묶음이었다 */}
+          {showLibrary && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline no-print"
+              onClick={openModal}
+              title="PDF 파일로 만들어 사내 자료실에 저장합니다"
+            >
+              <Icon name="folder" className="btn-ic" />
+              자료실 저장
+            </button>
+          )}
+        </>
       ) : (
         <div className="pdf-fab-group no-print">
           {showLibrary && (

@@ -3,11 +3,11 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import { useFillHeight } from '../../utils/useFillHeight';
 import ViewSwitch from '../../components/common/ViewSwitch';
-import EditModeButton from '../../components/common/EditModeButton';
 import ReceiptChip from '../../components/common/ReceiptChip';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
@@ -141,7 +141,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-03 대표님 「도급은 발주서에 체크하는 방식 … 개별로 체크하게 되어 있는데?」). 사급만 손 체크.
   // 잠금 — 사급 개수도 실수로 고쳐지지 않게 (2026-09-05 대표님 「잠금이 왜 없지」).
   // 도급은 잠금과 무관하게 «항상» 읽기 전용(발주 입고가 채운다).
-  const [editMode, setEditMode] = useState(false);
+  const editMode = useEditLock();
   const locked = supplyTab === 'paid' || !editMode;
   const assigned = !!panel?.paidSet;
   // BOX 마다 이 탭(도급/사급)의 부족 줄 수 — 탭 오른쪽 배지로 보여 어느 BOX 가 모자란지 한눈에
@@ -517,7 +517,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             <Icon name="doc" className="btn-ic" />
             체크리스트 출력
           </button>
-          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
         </div>
       </div>
 
@@ -805,7 +804,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               ? skipped
                                 ? '이 호기에서 다시 넣기'
                                 : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
-                              : '오른쪽 위 「잠금」을 푼 뒤에'
+                              : '오른쪽 아래 「잠금」을 푼 뒤에'
                           }
                         >
                           {skipped ? '포함' : '제외'}

@@ -15,8 +15,8 @@ import { getDepartments } from '../../services/departmentService';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 import Skeleton from '../../components/common/Skeleton';
 import { PROJECT_ICONS, getProjectIcon } from '../../config/projectIcons';
 import TrashModal from '../../components/common/TrashModal';
@@ -99,8 +99,8 @@ export default function SiteListPage() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [trashOpen, setTrashOpen] = useState(false);
   // 잠금 토글 — 기본 잠김. 풀면 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ enabled: isAdmin, onLock: () => setPick(new Set()) });
 
   useEffect(() => {
     if (!userProfile) return;
@@ -383,13 +383,6 @@ export default function SiteListPage() {
       });
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -503,7 +496,6 @@ export default function SiteListPage() {
               <Icon name="plus" className="btn-ic" />
               프로젝트 추가
             </button>
-            {isAdmin && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
           </div>
         )}
       </div>

@@ -19,7 +19,7 @@ import AttendanceTabs from '../../components/common/AttendanceTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import { useDialog } from '../../components/common/useDialog';
 
 export default function AttendanceHistoryPage() {
@@ -34,9 +34,8 @@ export default function AttendanceHistoryPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
-  // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   const today = getToday();
 
@@ -68,13 +67,6 @@ export default function AttendanceHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -150,9 +142,6 @@ export default function AttendanceHistoryPage() {
       <AttendanceTabs />
       <div className="page-header">
         <h2>잔업 이력</h2>
-        <div className="page-actions">
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
-        </div>
       </div>
 
       <div className="filters">

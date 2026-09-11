@@ -10,7 +10,7 @@ import Modal from '../../components/common/Modal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 
 const INFO_FIELDS = [
   { key: 'companyAndCeo', label: '회사명/대표' },
@@ -40,8 +40,9 @@ export default function QuotePage() {
   const [settingsForm, setSettingsForm] = useState(companyInfo);
   const [savingSettings, setSavingSettings] = useState(false);
   // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
+  // 자물쇠는 화면 오른쪽 아래에 떠 있다 (2026-09-11 대표님 「스크롤 해도 따라오는 버튼으로」)
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   function openSettings() {
     setSettingsForm(companyInfo);
@@ -93,13 +94,6 @@ export default function QuotePage() {
       { title: q.title, summary: [q.supplierName, q.siteName].filter(Boolean).join(' · ') },
       userProfile?.name || '',
     );
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -164,7 +158,6 @@ export default function QuotePage() {
             <Icon name="plus" className="btn-ic" />
             견적서 작성
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

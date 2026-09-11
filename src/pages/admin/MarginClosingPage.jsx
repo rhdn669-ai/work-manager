@@ -10,8 +10,8 @@ import MoneyCard from '../../components/common/MoneyCard';
 import Icon from '../../components/common/Icon';
 import EmptyState from '../../components/common/EmptyState';
 import TrashModal from '../../components/common/TrashModal';
-import EditModeButton from '../../components/common/EditModeButton';
 import MailReplyList from '../../components/common/MailReplyList';
+import { useEditLock } from '../../contexts/useEditLock';
 import { getAllSites, getFinanceItems } from '../../services/siteService';
 import { getPurchases, getSuppliers, subscribePurchaseItems } from '../../services/purchaseService';
 import { addMailLog, getStatementRequests } from '../../services/mailService';
@@ -86,8 +86,8 @@ export default function MarginClosingPage() {
   const [trashOpen, setTrashOpen] = useState(false);
   const [busy, setBusy] = useState('');
   // 잠금 토글 — 기본 잠김. 풀면 수기 입력 항목에 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set()); // 골라 둔 수기 입력 항목 id(manualId)
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   const loadClosing = useCallback(async () => {
     const mk = `${year}-${String(month).padStart(2, '0')}`;
@@ -364,13 +364,6 @@ export default function MarginClosingPage() {
     }
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -521,7 +514,6 @@ export default function MarginClosingPage() {
             <Icon name={locked ? 'unlock' : 'check'} className="btn-ic" />
             {locked ? `${month}월 마감 풀기` : `${month}월 마감 완료`}
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

@@ -41,12 +41,12 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
-import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/useDialog';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
+import { useEditLock } from '../../contexts/useEditLock';
 import { trashGeneric } from '../../services/trashService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
@@ -215,15 +215,17 @@ export default function BomDetailPage() {
     bomItemsRef.current = bomItems;
   }, [bomItems]);
 
-  // ── 잠금: 기본은 잠금 — 실수로 고쳐지는 일이 잦았다 (2026-09-03 대표님). 오른쪽 위 버튼으로 푼다 ──
-  const [locked, setLocked] = useState(true);
+  // ── 잠금: 화면 오른쪽 아래 공용 자물쇠 하나를 쓴다. 기본은 잠금 — 실수로 고쳐지는 일이 잦았다
+  // (2026-09-03 대표님 · 2026-09-11 대표님 「스크롤 해도 따라오는 버튼으로」) ──
+  const unlocked = useEditLock({ onLock: () => setDelPick(new Set()) });
+  const locked = !unlocked;
   const lockedRef = useRef(true);
   lockedRef.current = locked;
   // 잠금은 «칸 수정·품목 불러오기·변경·순서 이동·삭제» 전부를 막는다
   // (2026-09-04 대표님 「칸 수정도 잠그기로 했지 않나 — 실수로 눌러서 적히는 경우가 있어서」)
   const guard = () => {
     if (!lockedRef.current) return true;
-    toast('오른쪽 위 「잠금」을 푼 뒤에 고칠 수 있습니다', 'error');
+    toast('오른쪽 아래 「잠금」을 푼 뒤에 고칠 수 있습니다', 'error');
     return false;
   };
 
@@ -1066,20 +1068,6 @@ export default function BomDetailPage() {
             <Icon name="clock" className="btn-ic" />
             수정 이력
           </button>
-          {/* 기본 잠금 — 실수로 고쳐지는 일을 막는다. 열어야 칸·순서·추가·삭제가 된다.
-              버튼은 앱 공통 「잠금」 토글로 통일 (2026-09-04 대표님) */}
-          <EditModeButton
-            on={!locked}
-            onToggle={() => {
-              setLocked((v) => !v);
-              setDelPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
-            }}
-            title={
-              locked
-                ? '잠금 상태 — 풀면 칸 수정·품목 불러오기·변경·순서 이동·삭제 가능'
-                : '풀림 — 칸 수정·순서·삭제 가능. 누르면 다시 잠깁니다'
-            }
-          />
         </div>
       </div>
 

@@ -13,7 +13,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import { isStockTracked } from '../../domain/stock';
 
 // 재고 — 품목별로 창고에 몇 개 남았는지 손으로 적어 두는 곳.
@@ -49,9 +49,8 @@ export default function StockPage() {
   const [adding, setAdding] = useState(false);
   const [addSearch, setAddSearch] = useState('');
   const [newMode, setNewMode] = useState(false); // 검색으로 못 찾아 새로 만드는 중
-  // 「잠금」 — 풀었을 때만 체크박스 + 선택 빼기 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   useEffect(
     () =>
@@ -186,13 +185,6 @@ export default function StockPage() {
     }
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -236,7 +228,6 @@ export default function StockPage() {
             <Icon name="plus" className="btn-ic" />
             항목 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 
@@ -379,7 +370,7 @@ export default function StockPage() {
                         value={value}
                         /* 잠금 상태에서는 수량도 못 고친다 — 다른 화면과 같은 규칙 (2026-09-05 대표님) */
                         readOnly={!editMode}
-                        title={editMode ? '' : '수량을 바꾸려면 오른쪽 위 「잠금」을 푸세요'}
+                        title={editMode ? '' : '수량을 바꾸려면 오른쪽 아래 「잠금」을 푸세요'}
                         disabled={saving === it.id}
                         onChange={(e) => setEdit((p) => ({ ...p, [it.id]: e.target.value }))}
                         onBlur={() => commit(it)}

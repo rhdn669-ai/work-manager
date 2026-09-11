@@ -8,7 +8,7 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import { useDialog } from '../../components/common/useDialog';
 
 // 관리자 운행일지 — 차량 운행자 지정자의 월별 누적 키로수 / 운행 km 모니터링
@@ -70,9 +70,8 @@ export default function VehicleLogPage() {
   const [editError, setEditError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
-  // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   async function reloadRecords() {
     const prevY = month === 1 ? year - 1 : year;
@@ -120,13 +119,6 @@ export default function VehicleLogPage() {
     } finally {
       setEditSaving(false);
     }
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
   }
 
   function togglePick(uid) {
@@ -265,7 +257,6 @@ export default function VehicleLogPage() {
             <Icon name="trash" className="btn-ic" />
             휴지통
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

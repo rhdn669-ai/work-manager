@@ -20,7 +20,7 @@ import {
 } from '../../services/fileLibraryService';
 import { trashGeneric, subscribeTrashByType } from '../../services/trashService';
 import TrashModal from '../../components/common/TrashModal';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 
 function formatSize(bytes) {
   if (!bytes) return '0 B';
@@ -254,7 +254,7 @@ export default function FileLibraryPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   // 잠금 — 풀었을 때만 체크박스 + 선택 삭제 바 노출 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
+  const editMode = useEditLock({ onLock: () => setSelected(new Set()) });
 
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
@@ -378,13 +378,6 @@ export default function FileLibraryPage() {
   }
   function toggleSelectAll() {
     setSelected(() => (allSelected ? new Set() : new Set(selectableIds)));
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setSelected(new Set());
-      return !v;
-    });
   }
 
   // 고른 폴더·파일을 한꺼번에 — 기존 폴더/파일 삭제와 같은 길(trashGeneric 소프트 삭제)로 반복
@@ -745,7 +738,6 @@ export default function FileLibraryPage() {
             <Icon name="plus" className="btn-ic" />
             파일 올리기
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

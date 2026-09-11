@@ -8,7 +8,7 @@ import Select from '../../components/common/Select';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import IopnDocSeal from '../../components/admin/IopnDocSeal';
@@ -46,8 +46,9 @@ export default function QuoteFormPage() {
   const [form, setForm] = useState({ ...EMPTY_FORM, items: [{ ...EMPTY_LINE }] });
   const [saving, setSaving] = useState(false);
   // 「잠금」 — 풀었을 때만 칸 수정 + 체크박스 + 선택 삭제(저장 전 폼 배열이라 휴지통 아님, 2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  // 보기 모드에서는 고칠 칸이 없다 — 수정 중일 때만 자물쇠를 쓴다
+  const editMode = useEditLock({ enabled: isEditing, onLock: () => setPick(new Set()) });
   const LOCK_HINT = '내용을 고치려면 「잠금」을 푸세요';
 
   useEffect(() => {
@@ -135,13 +136,6 @@ export default function QuoteFormPage() {
     if (!editMode) return;
     setForm((f) => ({ ...f, items: [...f.items, { ...EMPTY_LINE }] }));
   }
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(idx) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -209,7 +203,6 @@ export default function QuoteFormPage() {
         const updated = { ...quote, ...payload };
         setQuote(updated);
         setIsEditing(false);
-        setEditMode(false);
         setPick(new Set());
         toast('저장되었습니다.');
       }
@@ -239,7 +232,6 @@ export default function QuoteFormPage() {
   function handleCancel() {
     if (isNew) navigate('/admin/purchase/quotes');
     else setIsEditing(false);
-    setEditMode(false);
     setPick(new Set());
   }
 
@@ -331,7 +323,6 @@ export default function QuoteFormPage() {
                 <Icon name="check" className="btn-ic" />
                 {saving ? '저장 중...' : '저장'}
               </button>
-              <EditModeButton on={editMode} onToggle={toggleEditMode} />
             </>
           ) : (
             <>
@@ -339,6 +330,7 @@ export default function QuoteFormPage() {
                 <Icon name="edit" className="btn-ic" />
                 수정
               </button>
+              {quote && <PdfFabGroup inline defaultFileName={() => `견적서_${quote.supplierName || ''}`.trim()} />}
               <button type="button" className="btn btn-sm btn-danger" onClick={handleDelete}>
                 <Icon name="trash" className="btn-ic" />
                 삭제
@@ -725,9 +717,6 @@ export default function QuoteFormPage() {
 
       {/* 인쇄용 */}
       {printQuote && <QuotePrintForm quote={printQuote} hostClass="print-only" />}
-
-      {/* PDF FAB — 보기 모드에서만 */}
-      {!isEditing && quote && <PdfFabGroup defaultFileName={() => `견적서_${quote.supplierName || ''}`.trim()} />}
     </div>
   );
 }

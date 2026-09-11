@@ -36,7 +36,7 @@ import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { setLotsLabel, setLotsOf } from '../../utils/setLots';
 import Skeleton from '../../components/common/Skeleton';
@@ -318,11 +318,9 @@ export default function PurchaseListPage() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const navigate = useNavigate();
 
-  // 「순서 변경」 토글 — 기본 꺼짐(화면을 나가면 다시 꺼진다).
-  // 켜야만 카드 순서 변경·칸반 상태 이동이 되고, 꺼져 있으면 카드는 열기만 한다.
-  const [editMode, setEditMode] = useState(false);
   // 카드별 삭제 대신 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일) — 같은 editMode를 그대로 쓴다
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [trashOpen, setTrashOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [regenTask, setRegenTask] = useState(null); // 백그라운드 재생성 잡 { jobs, suppliers, sites, itemMaster }
@@ -630,13 +628,6 @@ export default function PurchaseListPage() {
       });
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -752,7 +743,6 @@ export default function PurchaseListPage() {
             <Icon name="plus" className="btn-ic" />
             구매 등록
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

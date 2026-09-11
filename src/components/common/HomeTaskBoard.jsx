@@ -17,8 +17,8 @@ import { useDialog } from './useDialog';
 import Modal from './Modal';
 import Select from './Select';
 import Icon from './Icon';
-import EditModeButton from './EditModeButton';
 import { isRealStaff } from '../../utils/workspace';
+import { useEditLock } from '../../contexts/useEditLock';
 
 const COLS = [
   { key: 'todo', label: '할 일' },
@@ -230,8 +230,8 @@ export default function HomeTaskBoard() {
   );
   // 「잠금」 — 풀었을 때만 카드를 끌어 단계를 옮기거나 체크박스로 골라 지울 수 있다
   // (실수로 옮기거나 지우는 것 방지, 2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -290,13 +290,6 @@ export default function HomeTaskBoard() {
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -373,7 +366,6 @@ export default function HomeTaskBoard() {
             <Icon name="plus" className="btn-ic" />
             업무 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

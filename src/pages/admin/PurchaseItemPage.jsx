@@ -19,7 +19,7 @@ import { getToday } from '../../utils/dateUtils';
 import { useAuth } from '../../contexts/useAuth';
 import Modal from '../../components/common/Modal';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
+import { useEditLock } from '../../contexts/useEditLock';
 import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Skeleton from '../../components/common/Skeleton';
@@ -301,9 +301,8 @@ export default function PurchaseItemPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trashOpen, setTrashOpen] = useState(false);
-  // 순서·삭제 토글 — 기본 꺼짐. 켠 동안만 대분류·품목을 끌고 골라 지울 수 있다
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set()); // 골라 둔 품목 id (대분류는 대상 아님 — 순서만)
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
   const [filterCategory, setFilterCategory] = useState('');
@@ -757,14 +756,6 @@ export default function PurchaseItemPage() {
     }
   }
 
-  // ---- 순서·삭제 토글 ----
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 끄면 골라 둔 것도 함께 푼다
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -946,7 +937,6 @@ export default function PurchaseItemPage() {
             <Icon name="plus" className="btn-ic" />
             품목 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

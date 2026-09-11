@@ -11,8 +11,8 @@ import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { getKoreanHolidaysAsEvents } from '../../utils/koreanHolidays';
 import Modal from './Modal';
 import Icon from './Icon';
-import EditModeButton from './EditModeButton';
 import { useDialog } from './useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 
 const TYPE_LABEL = {
   event: '이벤트',
@@ -56,8 +56,8 @@ export default function HomeCalendar() {
   const [personalForm, setPersonalForm] = useState({ title: '', startDate: '', endDate: '', note: '' });
   const [personalBusy, setPersonalBusy] = useState(false);
   // 「내 일정」 선택 삭제 — 잠금 풀고 체크 → 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   useEffect(() => {
     let active = true;
@@ -179,13 +179,6 @@ export default function HomeCalendar() {
     } finally {
       setPersonalBusy(false);
     }
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -501,7 +494,6 @@ export default function HomeCalendar() {
                       >
                         내 일정 추가
                       </button>
-                      <EditModeButton on={editMode} onToggle={toggleEditMode} />
                     </div>
                   )}
                 </div>

@@ -8,8 +8,8 @@ import LeaveTabs from '../../components/common/LeaveTabs';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 
 const STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },
@@ -41,8 +41,8 @@ export default function LeaveHistoryPage() {
   const [busy, setBusy] = useState(false);
   const [holidayEvents, setHolidayEvents] = useState([]);
   // 잠금 — 풀었을 때만 체크박스 + 「선택 취소」 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   useEffect(() => {
     getEvents()
@@ -92,13 +92,6 @@ export default function LeaveHistoryPage() {
       type,
       endDate: single ? f.startDate : f.endDate,
     }));
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -167,9 +160,6 @@ export default function LeaveHistoryPage() {
       <LeaveTabs />
       <div className="page-header">
         <h2>연차 사용 이력</h2>
-        <div className="page-actions">
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
-        </div>
       </div>
 
       <div className="filters">

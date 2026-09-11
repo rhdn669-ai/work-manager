@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '../common/Icon';
 import TrashModal from '../common/TrashModal';
-import EditModeButton from '../common/EditModeButton';
 import { useDialog } from '../common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
+import { useEditLock } from '../../contexts/useEditLock';
 import { ASSET_STATUS, assetStatusOf } from '../../domain/qualityForms';
 import { FORM_FIELDS, computeCalcFields, colWidthOf } from '../../domain/qualityFormFields';
 import { subscribeAssets, addAsset, updateAsset, trashAsset } from '../../services/qualityAssetService';
@@ -27,8 +27,8 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ enabled: isAdmin, onLock: () => setPick(new Set()) });
 
   useEffect(() => subscribeAssets(setAll), []);
   useEffect(() => subscribeTrashByType('qualityAssets', (t) => setTrashCount(t.length)), []);
@@ -80,13 +80,6 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
     return base;
   }, [all, assetType]);
   const total = counts.normal + counts.due + counts.over;
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 잠그면 골라 둔 것도 함께 푼다
-      return !v;
-    });
-  }
 
   function togglePick(id) {
     setPick((prev) => {
@@ -144,8 +137,6 @@ export default function QualityAssetLedger({ assetType, docNo, label }) {
           <button type="button" className="btn btn-primary btn-sm" onClick={addBlankRow}>
             <Icon name="plus" className="btn-ic" />행 추가
           </button>
-          {/* 지우는 것은 관리자만 (2026-08-12 대표님) — 잠금도 같이 관리자 전용 (2026-09-04 「잠금」 통일) */}
-          {isAdmin && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
         </div>
       </div>
 

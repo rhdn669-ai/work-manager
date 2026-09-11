@@ -7,6 +7,7 @@ import { isDefectOnly } from '../../utils/workspace';
 import { getCardLibrary } from '../../services/fileLibraryService';
 import { setLibraryCards } from '../../utils/mailTemplate';
 import BottomNav from './BottomNav';
+import { EditLockProvider } from '../../contexts/EditLockContext';
 import { ensureBodyScrollUnlockedIfIdle } from './bodyScrollLock';
 import HintReminderBanner from './HintReminderBanner';
 import VehicleMileageModal from './VehicleMileageModal';
@@ -214,9 +215,12 @@ export default function Layout() {
           {/* 힌트 설정 안내 배너 — 고정 헤더 아래 보이는 영역 안에서 렌더(헤더 뒤에 가려져
               빈 공간을 만들던 문제 수정). 힌트 미설정 계정에만 노출. */}
           <HintReminderBanner />
-          <Suspense fallback={<div className="loading">로딩 중...</div>}>
-            <Outlet />
-          </Suspense>
+          {/* 「잠금」 — 떠 있는 자물쇠 하나를 화면들이 나눠 쓴다 (2026-09-11 대표님) */}
+          <EditLockProvider>
+            <Suspense fallback={<div className="loading">로딩 중...</div>}>
+              <Outlet />
+            </Suspense>
+          </EditLockProvider>
         </main>
       </div>
       {!isAdmin && !defectOnly && <BottomNav />}

@@ -23912,3 +23912,104 @@ a.lib-row-name:hover {
   margin-left: auto;
   flex-wrap: nowrap;
 }
+
+/* ===== 「잠금」 떠 있는 버튼 — 표를 내려봐도 따라온다 (2026-09-11 대표님) =====
+   전에는 화면마다 위쪽 버튼 줄에 있었다. 표를 한참 내려보다 누르려면 다시 맨 위로
+   올라가야 해서 작은 화면에서 특히 불편했다. 잠금은 «수시로» 켜고 끄는 것이라
+   한 번 누르고 마는 출력 버튼과 달리 손 닿는 곳에 있어야 한다. */
+.editlock-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 91; /* 출력 버튼(90) 위 */
+  min-height: 48px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--grey-700);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s,
+    background 0.12s;
+}
+/* 풀린 상태 = 활성 → 오렌지(디자인 규칙 §4 「활성 상태」) */
+.editlock-fab.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.editlock-fab:hover {
+  transform: translateY(-1px);
+}
+.editlock-fab:active {
+  transform: translateY(0);
+}
+.editlock-fab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.editlock-fab-ic {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+/* 풀어 둔 것을 화면 위에서도 알 수 있게 — 버튼이 구석에 있어 헷갈리는 것을 막는다 */
+.editlock-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  margin: 0 0 10px;
+  border-radius: 999px;
+  background: #fdeee7;
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.editlock-bar-ic {
+  width: 1em;
+  height: 1em;
+}
+
+/* 인쇄물에는 나오지 않는다 */
+@media print {
+  .editlock-fab,
+  .editlock-bar {
+    display: none !important;
+  }
+}
+
+/* 작은 화면 — 하단 네비(60px)와 홈 인디케이터를 피해 올린다 */
+@media (max-width: 768px) {
+  .editlock-fab {
+    right: 16px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+/* 아주 좁으면 글자를 접고 자물쇠만 — 원형 48px */
+@media (max-width: 400px) {
+  .editlock-fab {
+    min-width: 48px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+  .editlock-fab-text {
+    display: none;
+  }
+  .editlock-fab-ic {
+    font-size: 20px;
+  }
+}

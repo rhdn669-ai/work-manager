@@ -26,8 +26,8 @@ import Select from '../../components/common/Select';
 import TrashModal from '../../components/common/TrashModal';
 import { useDialog } from '../../components/common/useDialog';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
+import { useEditLock } from '../../contexts/useEditLock';
 
 export default function OutsourceManagementPage() {
   const { isAdmin, canViewSalary, userProfile } = useAuth();
@@ -35,9 +35,8 @@ export default function OutsourceManagementPage() {
   const { push: pushUndo } = useUndo();
   const [tab, setTab] = useState('freelancer'); // 'freelancer' | 'daily' | 'vendor'
   const [trashOpen, setTrashOpen] = useState(false);
-  // 잠금 토글 — 기본 잠김. 풀면 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [freelancers, setFreelancers] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [closingItems, setClosingItems] = useState([]);
@@ -393,13 +392,6 @@ export default function OutsourceManagementPage() {
       });
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -533,7 +525,6 @@ export default function OutsourceManagementPage() {
             <Icon name="plus" className="btn-ic" />
             {tab === 'vendor' ? '업체' : tab === 'daily' ? '일용직' : '프리랜서'} 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

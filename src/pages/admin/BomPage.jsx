@@ -19,10 +19,10 @@ import { trashBomProject } from '../../services/trashService';
 import Modal from '../../components/common/Modal';
 import TrashModal from '../../components/common/TrashModal';
 import Icon from '../../components/common/Icon';
-import EditModeButton from '../../components/common/EditModeButton';
 import Skeleton from '../../components/common/Skeleton';
 import { useDialog } from '../../components/common/useDialog';
 import { useAuth } from '../../contexts/useAuth';
+import { useEditLock } from '../../contexts/useEditLock';
 
 const won = (n) => `${Math.round(n || 0).toLocaleString()}원`;
 
@@ -126,9 +126,9 @@ export default function BomPage() {
     }
   }
   const [trashOpen, setTrashOpen] = useState(false);
-  // 순서·삭제 토글 — 기본 꺼짐. 화면을 나가면 저절로 꺼진다(여기 state 뿐)
-  const [editMode, setEditMode] = useState(false);
+  // 순서·삭제 토글 — 화면 오른쪽 아래 공용 자물쇠를 쓴다 (2026-09-11 대표님 「스크롤 해도 따라오는 버튼으로」)
   const [pick, setPick] = useState(() => new Set()); // 골라 둔 프로젝트 id
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [projects, setProjects] = useState([]);
   const [stats, setStats] = useState({}); // projectId → { count, qty, amount }
   const [loading, setLoading] = useState(true);
@@ -228,13 +228,6 @@ export default function BomPage() {
     }
   }
 
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set()); // 끄면 골라 둔 것도 함께 푼다
-      return !v;
-    });
-  }
-
   function togglePick(id) {
     setPick((prev) => {
       const next = new Set(prev);
@@ -287,7 +280,6 @@ export default function BomPage() {
             <Icon name="plus" className="btn-ic" />
             프로젝트 추가
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

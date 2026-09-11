@@ -12,9 +12,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
-import EditModeButton from '../../components/common/EditModeButton';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
@@ -38,7 +38,7 @@ export default function FreeStockPage({ company }) {
   const [stock, setStock] = useState({});
   const [q, setQ] = useState('');
   const [view, setView] = useState('short'); // short | all | have
-  const [editMode, setEditMode] = useState(false);
+  const editMode = useEditLock();
   const [adding, setAdding] = useState(null); // { row, qty, note }
   const [fixing, setFixing] = useState(null); // { row, to, reason }
 
@@ -195,9 +195,6 @@ export default function FreeStockPage({ company }) {
           onChange={setView}
           ariaLabel="보기"
         />
-        <div className="fstock-acts">
-          <EditModeButton on={editMode} onToggle={() => setEditMode((v) => !v)} />
-        </div>
       </div>
 
       {rows.length === 0 ? (

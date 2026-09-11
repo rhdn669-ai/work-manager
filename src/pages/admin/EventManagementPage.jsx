@@ -9,8 +9,8 @@ import TrashModal from '../../components/common/TrashModal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 
 function useViewportWidth() {
   const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
@@ -59,8 +59,8 @@ export default function EventManagementPage() {
   });
   const [syncing, setSyncing] = useState(false);
   // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -147,13 +147,6 @@ export default function EventManagementPage() {
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
-  }
-
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
   }
 
   function togglePick(id) {
@@ -296,7 +289,6 @@ export default function EventManagementPage() {
           >
             <Icon name="plus" className="btn-ic" />새 이벤트/공지
           </button>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       </div>
 

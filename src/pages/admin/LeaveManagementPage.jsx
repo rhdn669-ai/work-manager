@@ -23,8 +23,8 @@ import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import Icon from '../../components/common/Icon';
 import Skeleton from '../../components/common/Skeleton';
-import EditModeButton from '../../components/common/EditModeButton';
 import { useDialog } from '../../components/common/useDialog';
+import { useEditLock } from '../../contexts/useEditLock';
 
 const LEAVE_STATUS_STYLES = {
   confirmed: { color: 'var(--success)', label: '승인됨' },
@@ -104,8 +104,8 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
   // { kind: 'leave-cancel' | 'overtime-reject', target: object, reason: string }
 
   // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
   const [pick, setPick] = useState(() => new Set());
+  const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
@@ -372,12 +372,6 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
   }
 
   // === 잠금 · 선택 삭제 (연차/잔업 공통) ===
-  function toggleEditMode() {
-    setEditMode((v) => {
-      if (v) setPick(new Set());
-      return !v;
-    });
-  }
   function switchTab(tab) {
     setActiveTab(tab);
     setPick(new Set());
@@ -440,16 +434,9 @@ export default function LeaveManagementPage({ embedded = false } = {}) {
         </button>
       </div>
 
-      {!embedded ? (
+      {!embedded && (
         <div className="page-header">
           <h2>연차/잔업 신청 목록</h2>
-          <div className="page-actions">
-            <EditModeButton on={editMode} onToggle={toggleEditMode} />
-          </div>
-        </div>
-      ) : (
-        <div className="page-actions" style={{ display: 'flex', justifyContent: 'flex-end', margin: '8px 0' }}>
-          <EditModeButton on={editMode} onToggle={toggleEditMode} />
         </div>
       )}
 
