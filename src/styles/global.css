@@ -24071,3 +24071,12 @@ body.has-editlock .main-content.expanded {
   color: var(--grey-600);
   white-space: nowrap;
 }
+
+/* 사급 재고의 「재고」 칸 — 숫자(기록 열기)와 「수정」이 나란히 (2026-09-11 대표님) */
+.fstock-have-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}

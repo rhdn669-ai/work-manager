@@ -27,9 +27,17 @@ const hasBomLink = (p) => !!p?.bomLink?.projectId;
 
 // 기록에 적히는 말 — 통에 들어옴 / 호기로 나감 / 되돌아옴 / 손으로 맞춤
 const LOG_LABEL = { in: '들어옴', out: '호기로', back: '되돌림', fix: '손으로 맞춤' };
+// 서버에서 읽어 온 날짜는 «글자가 아니라 값»으로 온다(toDate 를 가진 객체).
+// 앱 곳곳이 쓰는 규칙과 같게 둘 다 받는다 — 글자로만 다루면 빈칸이 된다 (2026-09-11 대표님)
+const whenMs = (v) => {
+  if (!v) return 0;
+  const d = typeof v?.toDate === 'function' ? v.toDate() : new Date(v);
+  return d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
+};
 const fmtWhen = (v) => {
-  const d = v ? new Date(v) : null;
-  if (!d || Number.isNaN(d.getTime())) return '';
+  const ms = whenMs(v);
+  if (!ms) return '';
+  const d = new Date(ms);
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
@@ -48,7 +56,7 @@ export default function FreeStockPage({ company }) {
   const [view, setView] = useState('all'); // all | have
   // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
   // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
-  const [fixing, setFixing] = useState(null); // { row, to, reason }
+  const [fixing, setFixing] = useState(null); // { row, to }
   const [logOf, setLogOf] = useState(null); // 기록을 펼쳐 볼 줄
   // 표에서 바로 적는 입고 수량 — 창을 띄우지 않는다 (2026-09-11 대표님)
   const [draft, setDraft] = useState({}); // { [itemId]: '3' }
@@ -183,12 +191,12 @@ export default function FreeStockPage({ company }) {
 
   async function onFix(e) {
     e.preventDefault();
-    const { row, to, reason } = fixing;
+    const { row, to } = fixing;
     const t = Number(to) || 0;
     if (t === row.have) return setFixing(null);
     if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.have)} → ${won(t)} 으로 수정할까요?`))) return;
     try {
-      await setFreeStockQty(company, row, t, { by: me, reason });
+      await setFreeStockQty(company, row, t, { by: me });
       setFixing(null);
       toast('재고를 수정했습니다', 'success');
     } catch (err) {
@@ -236,7 +244,7 @@ export default function FreeStockPage({ company }) {
         <div className="table-scroll-x no-print">
           <table className="table pmat-table">
             <colgroup>
-              {['44px', '15%', '16%', null, '8%', '8%', '8%', '13%'].map((w, i) => (
+              {['44px', '14%', '15%', null, '7%', '7%', '14%', '11%'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -274,16 +282,28 @@ export default function FreeStockPage({ company }) {
                   <td className="col-num">{won(r.perOne)}</td>
                   <td className="col-num">{won(r.got)}</td>
                   <td className="col-num">
-                    {/* 누르면 그 품목의 오간 기록이 열린다 — 적어 둔 이유도 여기서 보인다
-                        (2026-09-11 대표님 「어차피 이유 적어도 표시도 안되네」) */}
-                    <button
-                      type="button"
-                      className="fstock-have"
-                      onClick={() => setLogOf(r)}
-                      title={`${r.name || r.code} 들어오고 나간 기록 보기`}
-                    >
-                      <b>{won(r.have)}</b>
-                    </button>
+                    {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
+                        고치는 대상(재고) 바로 옆에 둔다 (2026-09-11 대표님) */}
+                    <div className="fstock-have-cell">
+                      <button
+                        type="button"
+                        className="fstock-have"
+                        onClick={() => setLogOf(r)}
+                        title={`${r.name || r.code} 들어오고 나간 기록 보기`}
+                      >
+                        <b>{won(r.have)}</b>
+                      </button>
+                      {r.have > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => setFixing({ row: r, to: String(r.have) })}
+                          title="실제 개수로 수정"
+                        >
+                          수정
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="col-action">
                     <div className="btn-group">
@@ -309,18 +329,6 @@ export default function FreeStockPage({ company }) {
                         }}
                         aria-label={`${r.name || r.code} 입고 수량`}
                       />
-                      {/* 실물을 세어 숫자를 맞출 때 — 잠금과 무관하게 늘 보인다
-                          (2026-09-11 대표님, 잠금 뒤에 숨어 있어 못 찾으셨다) */}
-                      {r.have > 0 && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline"
-                          onClick={() => setFixing({ row: r, to: String(r.have), reason: '' })}
-                          title="실제 개수로 수정"
-                        >
-                          수정
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -357,7 +365,7 @@ export default function FreeStockPage({ company }) {
                 </thead>
                 <tbody>
                   {[...(logOf.log || [])]
-                    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+                    .sort((a, b) => whenMs(b.at) - whenMs(a.at))
                     .map((l, i) => (
                       <tr key={`${l.at}-${i}`}>
                         <td>{fmtWhen(l.at)}</td>
@@ -393,17 +401,6 @@ export default function FreeStockPage({ company }) {
                 onChange={(e) => setFixing((s) => ({ ...s, to: e.target.value.replace(/[^0-9]/g, '') }))}
                 inputMode="numeric"
                 aria-label="실제 수량"
-              />
-            </div>
-            <div className="form-group">
-              <label>
-                이유 <span className="field-hint-inline">(안 적어도 됩니다)</span>
-              </label>
-              <input
-                value={fixing.reason}
-                onChange={(e) => setFixing((s) => ({ ...s, reason: e.target.value }))}
-                placeholder="예: 세어 보니 달랐습니다"
-                aria-label="이유"
               />
             </div>
             <div className="modal-actions">
