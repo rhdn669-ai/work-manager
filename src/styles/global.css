@@ -24080,3 +24080,11 @@ body.has-editlock .main-content.expanded {
   gap: 8px;
   flex-wrap: nowrap;
 }
+
+/* 사급 재고 요약 — 「지금 재고로 N SET」 (2026-09-11 대표님) */
+.fstock-sets em {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--grey-600);
+}

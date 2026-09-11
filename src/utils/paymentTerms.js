@@ -3,6 +3,7 @@
 // 현장에서 쓰는 조건은 네 가지로 갈린다. 조건 종류와 숫자 하나면 전부 담긴다.
 //   afterDays  입고일 + N일
 //   nextMonth  익월 N일
+//   thisMonthEnd  당월 말일 — 물건이 온 그달 말일에 준다 (2026-09-11 대표님 「당월말 결제조건이 없네」)
 //   nextMonthEnd  익월 말일
 //   nextMonthAfterClose  당월 말 마감 · 익월 N일 (nextMonth 와 결과는 같고 뜻이 다르다)
 //   prepaidOrder    발주시 선결제 — 돈을 먼저 보내야 물건이 온다. 마감일은 발주일 당일.
@@ -15,6 +16,7 @@
 export const PAYMENT_TERM_TYPES = [
   { value: '', label: '지정 안 함' },
   { value: 'afterDays', label: '입고일 + N일', needsDay: true, unit: '일' },
+  { value: 'thisMonthEnd', label: '당월 말일', needsDay: false },
   { value: 'nextMonth', label: '익월 N일', needsDay: true, unit: '일' },
   { value: 'nextMonthEnd', label: '익월 말일', needsDay: false },
   { value: 'nextMonthAfterClose', label: '당월 말 마감 · 익월 N일', needsDay: true, unit: '일' },
@@ -81,9 +83,15 @@ export function calcPaymentDue(supplier, baseDate) {
     return ymd(d);
   }
 
-  // 나머지는 전부 다음 달을 본다
   const y = base.getFullYear();
   const m = base.getMonth() + 1; // 다음 달 (0-based 라 +1 이 곧 익월)
+
+  if (type === 'thisMonthEnd') {
+    // new Date(y, m, 0) = 물건이 온 그달의 마지막 날
+    return ymd(new Date(y, m, 0));
+  }
+
+  // 나머지는 전부 다음 달을 본다
 
   if (type === 'nextMonthEnd') {
     // new Date(y, m + 1, 0) = 익월 마지막 날

@@ -3,14 +3,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { poNumber, deriveSupplier, mapPrintItems, computeSupplierList } from '../../src/utils/purchaseOrder';
 import { ccOf, mailToLine } from '../../src/domain/supplierContacts';
-import {
-  paidList,
-  paidTotal,
-  hasLegacyPaid,
-  unpaidAmount,
-  nextSeq,
-  payButtonLabel,
-} from '../../src/domain/payment';
+import { paidList, paidTotal, hasLegacyPaid, unpaidAmount, nextSeq, payButtonLabel } from '../../src/domain/payment';
 import { calculateAccruedLeave } from '../../src/utils/leaveCalculator';
 import { effLen, specFontClass } from '../../src/utils/printText';
 import { formatMinutes, getMonthEnd } from '../../src/utils/dateUtils';
@@ -22,13 +15,7 @@ import {
   isPrepaidTerm,
   prepaidBasisOf,
 } from '../../src/utils/paymentTerms';
-import {
-  closingRowsOf,
-  payMonthLabel,
-  vatOf,
-  withVat,
-  applyConfirm,
-} from '../../src/domain/marginClosing';
+import { closingRowsOf, payMonthLabel, vatOf, withVat, applyConfirm } from '../../src/domain/marginClosing';
 import {
   buildMailHtml,
   mailSubject,
@@ -184,6 +171,12 @@ describe('구매처 결제 조건 → 결제 마감일', () => {
     expect(calcPaymentDue({ paymentTermType: 'nextMonth', paymentTermDay: 10 }, '2026-08-03')).toBe('2026-09-10');
   });
   it('익월 말일 — 윤년 2월도 맞는다', () => {
+    // 당월 말일 — 물건이 온 그달 말일 (2026-09-11 대표님)
+    expect(calcPaymentDue({ paymentTermType: 'thisMonthEnd' }, '2026-08-03')).toBe('2026-08-31');
+    expect(calcPaymentDue({ paymentTermType: 'thisMonthEnd' }, '2026-08-31')).toBe('2026-08-31');
+    expect(calcPaymentDue({ paymentTermType: 'thisMonthEnd' }, '2024-02-05')).toBe('2024-02-29'); // 윤년
+    expect(calcPaymentDue({ paymentTermType: 'thisMonthEnd' }, '2026-02-05')).toBe('2026-02-28');
+    expect(calcPaymentDue({ paymentTermType: 'thisMonthEnd' }, '2026-12-10')).toBe('2026-12-31');
     expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, '2026-08-03')).toBe('2026-09-30');
     expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, '2024-01-15')).toBe('2024-02-29');
     expect(calcPaymentDue({ paymentTermType: 'nextMonthEnd' }, '2026-01-15')).toBe('2026-02-28');
@@ -448,13 +441,24 @@ describe('구매처 담당자 메일', () => {
   });
 
   it('여러 줄이면 첫 줄이 대표', () => {
-    const sup = { email: '옛날@a.com', emails: [{ name: '김', email: 'cosel@a.com' }, { name: '박', email: 'delta@a.com' }] };
+    const sup = {
+      email: '옛날@a.com',
+      emails: [
+        { name: '김', email: 'cosel@a.com' },
+        { name: '박', email: 'delta@a.com' },
+      ],
+    };
     expect(primaryEmail(sup)).toBe('cosel@a.com');
     expect(contactsOf(sup)).toHaveLength(2);
   });
 
   it('빈 줄·공백은 버린다', () => {
-    const sup = { emails: [{ name: '김', email: ' a@b.c ' }, { name: '빈', email: '' }] };
+    const sup = {
+      emails: [
+        { name: '김', email: ' a@b.c ' },
+        { name: '빈', email: '' },
+      ],
+    };
     expect(contactsOf(sup)).toEqual([{ name: '김', email: 'a@b.c' }]);
   });
 
@@ -940,11 +944,7 @@ describe('BOM — 사급은 우리 돈이 아니다', () => {
   });
 
   it('발주로 넘길 목록에서 사급이 빠진다', () => {
-    const bom = [
-      { name: 'A', supplyType: '' },
-      { name: 'B', supplyType: 'free' },
-      { name: 'C' },
-    ];
+    const bom = [{ name: 'A', supplyType: '' }, { name: 'B', supplyType: 'free' }, { name: 'C' }];
     const toOrder = bom.filter((b) => !isFreeIssue(b));
     expect(toOrder.map((b) => b.name)).toEqual(['A', 'C']);
   });

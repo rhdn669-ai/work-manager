@@ -96,8 +96,9 @@ export default function FreeStockPage({ company }) {
     };
   }, [mine, bomByProject]);
 
-  // BOM 의 사급 줄을 호기·BOX 별로 모아 품목 단위로 합친다
-  const rows = useMemo(() => {
+  // BOM 의 사급 줄을 호기·BOX 별로 모아 품목 단위로 합친다.
+  // allRows 는 검색·보기를 거치지 않은 전체 — 위쪽 요약은 늘 전체를 봐야 한다.
+  const { rows, allRows } = useMemo(() => {
     const entries = [];
     // 「1대당」 — 호기 하나가 쓰는 개수(BOX 를 합친 값). 호기마다 다르면 가장 큰 값을 쓴다.
     // 회사 전체 합계를 보여 주면 「이 품목 몇 개짜리인지」가 안 보인다 (2026-09-11 대표님)
@@ -133,37 +134,50 @@ export default function FreeStockPage({ company }) {
     }
     const agg = aggregateShortage(entries, { onlyShort: false });
     const kw = q.trim().toLowerCase();
-    return (
-      agg
-        .map((a) => {
-          const have = Math.max(0, Number(stock[a.itemId]?.qty) || 0);
-          return { ...a, have, perOne: perOne.get(a.itemId || '') || 0, log: stock[a.itemId]?.log || [] };
-        })
-        .filter((r) => {
-          if (view === 'have' && r.have <= 0) return false;
-          if (!kw) return true;
-          return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
-            String(v || '')
-              .toLowerCase()
-              .includes(kw),
-          );
-        })
-        // 도번 순 — 표의 첫 열이 도번이라 찾기 쉽다. 도번이 없는 것은 뒤로.
-        .sort((x, y) => {
-          const a = x.drawingNo || '힣';
-          const b = y.drawingNo || '힣';
-          return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
-        })
-    );
+    const mapped = agg.map((a) => {
+      const have = Math.max(0, Number(stock[a.itemId]?.qty) || 0);
+      const one = perOne.get(a.itemId || '') || 0;
+      // 「가능 SET」 — 지금 재고로 몇 대분이 되나 (2026-09-11 대표님)
+      return { ...a, have, perOne: one, sets: one > 0 ? Math.floor(have / one) : 0, log: stock[a.itemId]?.log || [] };
+    });
+    const filtered = mapped
+      .filter((r) => {
+        if (view === 'have' && r.have <= 0) return false;
+        if (!kw) return true;
+        return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
+          String(v || '')
+            .toLowerCase()
+            .includes(kw),
+        );
+      })
+      // 도번 순 — 표의 첫 열이 도번이라 찾기 쉽다. 도번이 없는 것은 뒤로.
+      .sort((x, y) => {
+        const a = x.drawingNo || '힣';
+        const b = y.drawingNo || '힣';
+        return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
+      });
+    return { rows: filtered, allRows: mapped };
   }, [mine, bomByProject, materials, masterMap, stock, q, view]);
 
   const sums = useMemo(() => {
-    const all = rows;
+    const all = allRows;
+    // 지금 재고로 몇 SET 을 만들 수 있나 — 가장 모자란 품목이 정한다 (2026-09-11 대표님)
+    let sets = null;
+    let worst = null;
+    for (const r of all) {
+      if (r.perOne <= 0) continue;
+      if (sets === null || r.sets < sets) {
+        sets = r.sets;
+        worst = r;
+      }
+    }
     return {
       kinds: all.length,
       have: all.reduce((s, r) => s + r.have, 0),
+      sets,
+      worst,
     };
-  }, [rows]);
+  }, [allRows]);
 
   // 칸에 적은 수를 그대로 재고에 더한다 — 「받기」 창을 없앤 자리 (2026-09-11 대표님
   // 「모달 수량 입력 말고 입고수량 칸에 바로 입력하는 방식으로하자」)
@@ -215,6 +229,13 @@ export default function FreeStockPage({ company }) {
           <span className="fstock-sum">
             재고 <b>{won(sums.have)}</b>
           </span>
+          {/* 가장 모자란 품목이 전체 SET 수를 정한다 (2026-09-11 대표님) */}
+          {sums.sets !== null && (
+            <span className="fstock-sum fstock-sets">
+              지금 재고로 <b className={sums.sets === 0 ? 'is-short' : ''}>{won(sums.sets)} SET</b>
+              {sums.worst ? <em>모자란 것 · {sums.worst.name || sums.worst.code}</em> : null}
+            </span>
+          )}
         </div>
         <input
           className="fstock-search"
@@ -259,8 +280,8 @@ export default function FreeStockPage({ company }) {
                 <th scope="col" className="col-num">
                   1대당
                 </th>
-                <th scope="col" className="col-num">
-                  투입
+                <th scope="col" className="col-num" title="지금 재고로 몇 대분이 되나">
+                  가능 SET
                 </th>
                 <th scope="col" className="col-num">
                   재고
@@ -280,7 +301,9 @@ export default function FreeStockPage({ company }) {
                     {r.spec}
                   </td>
                   <td className="col-num">{won(r.perOne)}</td>
-                  <td className="col-num">{won(r.got)}</td>
+                  <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
+                    {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
+                  </td>
                   <td className="col-num">
                     {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
                         고치는 대상(재고) 바로 옆에 둔다 (2026-09-11 대표님) */}
