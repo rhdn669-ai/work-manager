@@ -614,10 +614,68 @@ export function writeBatch() {
   };
 }
 
+// ── 「무엇이 바뀌었나」 지켜보기 ────────────────────────────────────────
+//
+// 화면마다 제 표를 통째로 다시 읽으면, 주기를 줄일수록 서버가 버겁다.
+// 그래서 서버에 아주 작은 표(wm.change_log)를 두고 «그것만» 1초마다 본다.
+// 표가 바뀌면 거기에 시각이 적히므로, 바뀐 표만 골라 다시 읽으면 된다.
+//   · 읽는 양  44줄짜리 표 하나        (전에는 구독 중인 모든 표를 통째로)
+//   · 반응     1초 안                   (전에는 최대 4초)
+// (2026-09-11 대표님 B8 「실시간 반영」)
+//
+// 이 지켜보기가 끊겨도 아래 폴링이 백업으로 남아 결국 갱신된다.
+const WATCH_MS = 1000;
+let watchTimer = 0;
+let watching = false;
+const seenAt = new Map(); // 표 이름 → 마지막으로 본 시각
+const nameOfTable = new Map(); // 표 이름 → 컬렉션 이름 (구독이 등록될 때 채워진다)
+
+let watchFails = 0;
+let watchOk = false; // 지켜보기가 한 번이라도 성공했는가
+
+async function watchTick() {
+  try {
+    const { data, error } = await sb.from('change_log').select('table_name,changed_at');
+    if (error) throw error;
+    watchFails = 0;
+    watchOk = true;
+    for (const row of data || []) {
+      const before = seenAt.get(row.table_name);
+      seenAt.set(row.table_name, row.changed_at);
+      // 처음 본 것은 기준만 잡고 넘어간다 — 열자마자 전부 다시 읽을 필요가 없다
+      if (before === undefined || before === row.changed_at) continue;
+      const col = nameOfTable.get(row.table_name);
+      if (col) refresh(col);
+    }
+  } catch {
+    // 못 보면 백업 폴링을 다시 촘촘하게 — 지켜보기가 죽었는데 느려지기까지 하면 안 된다
+    watchFails += 1;
+    if (watchFails === 3) refreshAll();
+  }
+  if (watching) watchTimer = setTimeout(watchTick, document.hidden ? WATCH_MS * 8 : WATCH_MS);
+}
+
+function startWatch() {
+  if (watching) return;
+  watching = true;
+  watchTick();
+}
+function stopWatchIfIdle() {
+  if (listeners.size > 0) return;
+  watching = false;
+  clearTimeout(watchTimer);
+}
+
 // ── 화면 자동 갱신 ────────────────────────────────────────────────────
-// 실시간 기능은 아직 올리지 않았으므로 잠깐씩 다시 읽어 화면을 갱신한다.
-// 창이 뒤에 있으면 쉬고, 앞으로 오면 곧바로 한 번 읽는다.
-const POLL_MS = 4000;
+// 위 지켜보기가 못 볼 때를 대비한 백업. 창이 뒤에 있으면 쉬고, 앞으로 오면 곧바로 읽는다.
+const POLL_MS = 12000;
+const POLL_MS_FALLBACK = 4000;
+// 지켜보기가 «실제로 도는 것을 확인하기 전에는» 예전 주기(4초)를 그대로 쓴다.
+// 새 장치가 안 돌 때 오히려 느려지는 일이 없어야 한다.
+const pollMs = () => (watchOk && watchFails < 3 ? POLL_MS : POLL_MS_FALLBACK);
+function refreshAll() {
+  for (const [, set] of listeners) for (const fn of set) fn();
+}
 export function onSnapshot(refOrQuery, onNext, onError) {
   let stopped = false;
   let timer = 0;
@@ -664,10 +722,13 @@ export function onSnapshot(refOrQuery, onNext, onError) {
       tick();
       return;
     }
-    timer = setTimeout(tick, document.hidden ? POLL_MS * 4 : POLL_MS);
+    timer = setTimeout(tick, document.hidden ? pollMs() * 4 : pollMs());
   };
   // 저장이 끝나면 곧바로 다시 읽도록 등록해 둔다
   const unlisten = listen(colName, tick);
+  // 「무엇이 바뀌었나」를 볼 때 이 표가 어느 화면 것인지 알아야 한다
+  nameOfTable.set(tableOf(colName), colName);
+  startWatch();
   const wake = () => {
     if (!document.hidden && !stopped) {
       clearTimeout(timer);
@@ -680,6 +741,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
     stopped = true;
     clearTimeout(timer);
     unlisten();
+    stopWatchIfIdle(); // 보는 화면이 하나도 없으면 지켜보기도 쉰다
     document.removeEventListener('visibilitychange', wake);
   };
 }
