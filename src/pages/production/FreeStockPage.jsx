@@ -286,8 +286,8 @@ export default function FreeStockPage({ company }) {
                 <th scope="col" className="col-num">
                   재고
                 </th>
-                <th scope="col" className="col-action">
-                  입고 수량
+                <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 재고에 더해집니다">
+                  이번 입고
                 </th>
               </tr>
             </thead>
@@ -329,7 +329,7 @@ export default function FreeStockPage({ company }) {
                     </div>
                   </td>
                   <td className="col-action">
-                    <div className="btn-group">
+                    <div className="fstock-in-cell">
                       {/* 들어온 개수를 칸에 바로 적는다 — 적고 Enter (창을 띄우지 않는다) */}
                       <input
                         className="num-input pmat-input"
@@ -350,8 +350,15 @@ export default function FreeStockPage({ company }) {
                               return nd;
                             });
                         }}
-                        aria-label={`${r.name || r.code} 입고 수량`}
+                        aria-label={`${r.name || r.code} 이번 입고 개수`}
                       />
+                      {/* 누르기 전에 결과를 먼저 보여 준다 — 「더하기」인지 「맞추기」인지 헷갈려
+                          재고가 두 배로 불어난 일이 있었다 (2026-09-11 대표님) */}
+                      {Number(draft[r.itemId]) > 0 && (
+                        <span className="fstock-preview">
+                          {won(r.have)} → <b>{won(r.have + Number(draft[r.itemId]))}</b>
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>

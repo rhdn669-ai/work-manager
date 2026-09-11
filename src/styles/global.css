@@ -24088,3 +24088,21 @@ body.has-editlock .main-content.expanded {
   font-size: 12px;
   color: var(--grey-600);
 }
+
+/* 사급 재고 「이번 입고」 — 적는 동안 결과를 미리 보여 준다 (2026-09-11 대표님) */
+.fstock-in-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.fstock-preview {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--grey-600);
+  white-space: nowrap;
+}
+.fstock-preview b {
+  color: var(--accent);
+}
