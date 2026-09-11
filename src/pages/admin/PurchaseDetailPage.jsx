@@ -336,8 +336,45 @@ export default function PurchaseDetailPage() {
     }
     return out;
   }, [bomProjects]);
+  const [panelPickProject, setPanelPickProject] = useState('');
+  // 같은 설비를 1차사 두 곳에서 받는다. 품목 구성은 같지만 「사급이냐 도급이냐」가 48종에서
+  // 갈린다 — 회사를 섞어 걸면 우리가 산 자재가 고객사가 댈 자리로 들어간다.
+  // 그래서 회사로 먼저 거르고, 한 발주서에는 한 회사만 건다 (2026-09-11 대표님).
+  const [panelPickCompany, setPanelPickCompany] = useState('');
+  const [showDonePanels, setShowDonePanels] = useState(false);
+
+  const panelCompanies = useMemo(
+    () => [...new Set(allPanels.map((p) => (p.회사 || '').trim()).filter(Boolean))].sort(),
+    [allPanels],
+  );
+  // 이 발주서가 어느 회사 것인지 — 이미 걸린 호기가 먼저, 없으면 BOM 이름에서 찾는다
+  const guessCompany = () => {
+    const picked = (form.panels || []).map((x) => allPanels.find((p) => p.id === x.id)).filter(Boolean);
+    if (picked.length) return picked[0].회사 || '';
+    const names = (form.bomLinks || []).map((l) => l.projectName || '').join(' ');
+    return panelCompanies.find((c) => names.includes(c)) || '';
+  };
+
+  // 고를 수 있는 호기 — 회사 → 끝난 호기 → 프로젝트 순으로 거른다.
+  // 이미 걸어 둔 호기는 끝났더라도 남겨야 뺄 수 있다.
+  const visiblePanels = useMemo(
+    () =>
+      allPanels
+        .filter((p) => !panelPickCompany || (p.회사 || '') === panelPickCompany)
+        .filter(
+          (p) =>
+            showDonePanels ||
+            (p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김') ||
+            (form.panels || []).some((x) => x.id === p.id),
+        )
+        .filter((p) => !panelPickProject || (p.프로젝트 || '') === panelPickProject),
+    [allPanels, panelPickCompany, showDonePanels, panelPickProject, form.panels],
+  );
+
   async function openPanelPick() {
     setPanelPickOpen(true);
+    setPanelPickCompany(guessCompany());
+    setShowDonePanels(false);
     if (bomProjects.length === 0) {
       try {
         setBomProjects(await getBomProjects());
@@ -361,7 +398,6 @@ export default function PurchaseDetailPage() {
     scheduleAutoSave();
     setLinkPick('');
   }
-  const [panelPickProject, setPanelPickProject] = useState('');
   // 세트 내역 고치기 — BOM으로 담을 땐 저절로 쌓이지만, 옛 발주서나 잘못 담은 건 손으로 맞춘다
   const [setLotsDraft, setSetLotsDraft] = useState(null); // null = 닫힘
   const [bomLoading, setBomLoading] = useState(false);
@@ -3627,6 +3663,15 @@ export default function PurchaseDetailPage() {
           </div>
         )}
         <div className="stock-filters no-print">
+          {panelCompanies.length > 1 && (
+            <Select
+              value={panelPickCompany}
+              onChange={setPanelPickCompany}
+              options={[{ value: '', label: '전체 회사' }, ...panelCompanies.map((c) => ({ value: c, label: c }))]}
+              className="stock-filter-select"
+              ariaLabel="회사 고르기"
+            />
+          )}
           <Select
             value={panelPickProject}
             onChange={setPanelPickProject}
@@ -3634,25 +3679,33 @@ export default function PurchaseDetailPage() {
             className="stock-filter-select"
             ariaLabel="프로젝트 고르기"
           />
+          <label className="stock-summary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={showDonePanels} onChange={(e) => setShowDonePanels(e.target.checked)} />
+            끝난 호기도
+          </label>
           <span className="stock-summary">
             걸린 호기 <strong>{(form.panels || []).length}</strong>대
           </span>
         </div>
         <div className="po-panel-list">
-          {allPanels
-            .filter((p) => !panelPickProject || (p.프로젝트 || '') === panelPickProject)
-            .map((p) => {
-              const on = (form.panels || []).some((x) => x.id === p.id);
-              return (
-                <label key={p.id} className={`po-panel-row${on ? ' is-on' : ''}`}>
-                  <input type="checkbox" checked={on} onChange={() => togglePanel(p)} />
-                  <span className="po-panel-proj">{p.프로젝트 || '(프로젝트 없음)'}</span>
-                  <span className="po-panel-no">{p.호기 || '(호기 없음)'}</span>
-                  <span className="po-panel-due">{p.납기 ? `납기 ${p.납기}` : ''}</span>
-                </label>
-              );
-            })}
-          {allPanels.length === 0 && <p className="purchase-empty">생산현황에 등록된 판넬이 없습니다.</p>}
+          {visiblePanels.map((p) => {
+            const on = (form.panels || []).some((x) => x.id === p.id);
+            return (
+              <label key={p.id} className={`po-panel-row${on ? ' is-on' : ''}`}>
+                <input type="checkbox" checked={on} onChange={() => togglePanel(p)} />
+                <span className="po-panel-proj">{p.프로젝트 || '(프로젝트 없음)'}</span>
+                <span className="po-panel-no">{p.호기 || '(호기 없음)'}</span>
+                <span className="po-panel-due">{p.납기 ? `납기 ${p.납기}` : ''}</span>
+              </label>
+            );
+          })}
+          {visiblePanels.length === 0 && (
+            <p className="purchase-empty">
+              {allPanels.length === 0
+                ? '생산현황에 등록된 판넬이 없습니다.'
+                : '조건에 맞는 호기가 없습니다 — 회사·프로젝트를 바꾸거나 「끝난 호기도」를 켜 보세요.'}
+            </p>
+          )}
         </div>
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setPanelPickOpen(false)}>
