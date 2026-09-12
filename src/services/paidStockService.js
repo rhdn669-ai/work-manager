@@ -114,3 +114,22 @@ export async function takePaidStock(company, item, n, { by = '', note = '' } = {
   );
   return take;
 }
+
+/** 되돌림 — 호기에서 뺀 것을 통으로 돌려준다 (배정 취소) */
+export async function givebackPaidStock(company, item, n, { by = '', note = '' } = {}) {
+  const back = Math.max(0, Number(n) || 0);
+  if (!back || !item?.itemId) return 0;
+  await setDoc(
+    doc(ref, paidStockId(company, item.itemId)),
+    {
+      company,
+      itemId: item.itemId,
+      qty: increment(back),
+      updatedAt: serverTimestamp(),
+      updatedBy: by,
+      log: arrayUnion({ at: new Date().toISOString(), by, kind: 'back', n: back, note }),
+    },
+    { merge: true },
+  );
+  return back;
+}

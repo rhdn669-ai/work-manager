@@ -7,8 +7,7 @@ import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
 import { fillPlan } from '../domain/paidSets';
 import { setLotsOf } from '../utils/setLots';
-import { takePaidStock } from './paidStockService';
-import { consumeItemStock } from './purchaseService';
+import { takePaidStock, givebackPaidStock } from './paidStockService';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
 //
@@ -211,10 +210,11 @@ export async function topUpPaidSet(
       ...(Object.keys(used).length ? { stockUsed: merged } : {}),
     },
   });
-  // 재고 장부 차감 — 발주 차감과 같은 「얼마를 뺀다」 방식이라 동시에 눌러도 어긋나지 않는다
+  // 통에서 빼기 — 도급 자재는 회사마다 통이 따로다. 창고 장부를 깎으면 통은 그대로 남아
+  // 같은 물건을 두 번 쓰게 된다 (2026-09-12).
   await Promise.all(
     Object.entries(used).map(([id, n]) =>
-      consumeItemStock(id, n, { byName: by, note: `도급 배정 · ${panel.프로젝트 || ''}` }),
+      takePaidStock(panel.회사 || '', { itemId: id }, n, { by, note: `호기로 · ${panel.프로젝트 || ''}` }),
     ),
   );
   return { added: changed.length, short: plan.short, stockUsed: used, lines: changed };
@@ -238,13 +238,16 @@ export async function unassignPaidSet(panel, variantRows, { by = '' } = {}) {
     ...matPatch(panel, Object.fromEntries(boxes.map((b) => [b, false]))),
     paidSet: deleteField(),
   });
-  // 재고에서 꺼내 채웠던 양은 창고로 되돌린다
+  // 통에서 꺼내 채웠던 양은 그 회사 통으로 되돌린다 (뺀 곳과 같은 곳으로)
   const used = panel.paidSet?.stockUsed || {};
   await Promise.all(
     Object.entries(used)
       .filter(([, n]) => Number(n) > 0)
       .map(([id, n]) =>
-        consumeItemStock(id, -Number(n), { byName: by, note: `도급 배정 취소로 되돌림 · ${panel.프로젝트 || ''}` }),
+        givebackPaidStock(panel.회사 || '', { itemId: id }, Number(n), {
+          by,
+          note: `배정 취소로 되돌림 · ${panel.프로젝트 || ''}`,
+        }),
       ),
   );
 }

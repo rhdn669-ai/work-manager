@@ -62,7 +62,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [bomRows, setBomRows] = useState([]);
   const [master, setMaster] = useState([]);
   const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
-  const [supplyTab, setSupplyTab] = useState('paid'); // 'paid' | 'free'
+  const [tabPick, setTabPick] = useState('paid'); // 사람이 고른 탭 — 'paid' | 'free'
   const [draft, setDraft] = useState({}); // 입력 중인 개수 { [bomItemId]: '3' }
   // 숫자를 직접 적는 칸은 «길게 누를 때»만 연다 — 100번 중 96번은 필요 수량 그대로 들어오기 때문
   // (2026-09-08 대표님 「자동 채우기 버튼으로, 한 번 더 누르면 수량 입력」 → 실측 후 A안 확정)
@@ -183,15 +183,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return rowView === 'done' ? done : !done;
     });
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
-  // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽으로 옮긴다 — 빈 화면만 보고
-  // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님)
-  useEffect(() => {
-    if (rows.length === 0) return;
-    const cur = supplyTab === 'free' ? summary.free.total : summary.paid.total;
-    if (cur > 0) return;
-    const other = supplyTab === 'free' ? summary.paid.total : summary.free.total;
-    if (other > 0) setSupplyTab(supplyTab === 'free' ? 'paid' : 'free');
-  }, [box, rows.length, summary, supplyTab]);
+  // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽을 «보여 준다» — 빈 화면만 보고
+  // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님).
+  // 상태를 바꾸지 않고 셈으로만 정한다. 그리는 중에 상태를 바꾸면 화면이 연달아 다시 그려진다.
+  const supplyTab = useMemo(() => {
+    if (rows.length === 0) return tabPick;
+    const cur = tabPick === 'free' ? summary.free.total : summary.paid.total;
+    if (cur > 0) return tabPick;
+    const other = tabPick === 'free' ? summary.paid.total : summary.free.total;
+    return other > 0 ? (tabPick === 'free' ? 'paid' : 'free') : tabPick;
+  }, [rows.length, summary, tabPick]);
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
   const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
   // 비고 — 호기·줄마다 한 줄 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」)
@@ -436,12 +437,18 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     }
   };
   // 도급 배정 탭을 없애며 옮겨 온 것 — 배정 취소 · 부족분 전부 재고에서 (2026-09-05 대표님)
+  // 통이 도착해도 이 목록이 다시 셈해지지 않아 「부족분 채우기」가 늘 빈손이었다
+  // (2026-09-12 대표님 「재고 넣는게 왜 안되냐」 — 통에 16개가 있는데 미입고였다).
   const stockByItem = useMemo(() => {
     const out = {};
-    for (const r of bomRows) if (r.itemId && stockOf(r) > 0) out[r.itemId] = stockOf(r);
+    for (const r of bomRows) {
+      // 「부족분 채우기」는 도급 전용이므로 언제나 도급 통을 본다 —
+      // 사급 탭을 보는 중이라고 사급 통을 집으면 안 된다
+      const n = r.itemId ? Math.max(0, Number(paidStock[r.itemId]?.qty) || 0) : 0;
+      if (n > 0) out[r.itemId] = n;
+    }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bomRows, masterMap]);
+  }, [bomRows, paidStock]);
   const variantRows = useMemo(() => bomItemsForVariant(bomRows, link?.variantKey || ''), [bomRows, link?.variantKey]);
   // 발주 여유 = 이 BOM 으로 들어온 입고 − 배정 호기들이 가져간 양 (부족 집계와 같은 셈)
   const [settings, setSettings] = useState({});
@@ -620,7 +627,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             },
           ]}
           value={supplyTab}
-          onChange={setSupplyTab}
+          onChange={setTabPick}
           ariaLabel="도급 사급 구분"
         />
         {locked && assigned ? (
