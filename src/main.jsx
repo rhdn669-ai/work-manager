@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { ensureAnonymousAuth } from './config/firebase';
 import { isServer } from './config/data';
 import './styles/global.css';
 import { bootUiScale } from './utils/uiScale';
@@ -34,20 +33,16 @@ try {
   /* ignore */
 }
 
-// Firestore/Storage 접근을 위한 익명 인증을 앱 렌더 전에 확보.
-// (보안 2단계: 규칙을 "인증된 요청만 허용"으로 조이기 위한 전제 — 첫 read 전에 세션 필요)
-ensureAnonymousAuth()
-  .catch(() => {
-    /* 익명 인증 실패해도 앱은 렌더 (규칙 배포 전엔 무관, 배포 후엔 재시도) */
-  })
-  .finally(() => {
-    bootUiScale();
-    createRoot(document.getElementById('root')).render(
-      <StrictMode>
-        <App />
-      </StrictMode>,
-    );
-  });
+// 첫 화면을 구글 로그인이 막지 않게 한다. 예전에는 자료가 구글에 있어 첫 읽기 전에
+// 세션이 필요했지만, 지금 자료는 사내 서버에 있다. 구글은 파일 올리기·메일에만 남아
+// 있고, 그쪽은 쓰는 순간 ensureAnonymousAuth 를 부른다
+// (2026-09-12 대표님 「걷어낼까요?」 → 「ㅇㅇ」).
+bootUiScale();
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
 
 // Service Worker 등록 (PWA)
 if ('serviceWorker' in navigator) {

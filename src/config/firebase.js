@@ -21,10 +21,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// App Check(reCAPTCHA v3) — 사이트 키가 설정된 경우에만 활성화. 사용자 화면 변화 없음.
-// Firebase 콘솔에서 모니터링 모드로 시작 → 이상 없으면 강제(enforce) 전환.
+// App Check(reCAPTCHA v3) — 사이트 키가 있을 때만, 그리고 «구글을 실제로 쓸 때»만 켠다.
+// 파일을 읽는 순간 켜면 첫 화면마다 구글로 reCAPTCHA 토큰을 받으러 나간다. 자료는 이미
+// 사내 서버로 옮겼고 구글은 메일·옛 저장소에만 남아 있어, 대부분의 화면에서 헛걸음이다
+// (2026-09-12 대표님 「걷어낼까요?」 → 「ㅇㅇ」).
 const appCheckKey = import.meta.env.VITE_APPCHECK_SITE_KEY;
-if (appCheckKey) {
+let appCheckOn = false;
+export function ensureAppCheck() {
+  if (appCheckOn || !appCheckKey) return;
+  appCheckOn = true;
   try {
     initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(appCheckKey),
@@ -59,6 +64,7 @@ export const callSendEmail = (data) => _sendEmail({ ...data, token: import.meta.
 // 앱 자체 인증(accessCode) 외에 Firebase 세션이 필요한 기능(Storage)용
 let _anonPromise = null;
 export function ensureAnonymousAuth() {
+  ensureAppCheck(); // 구글을 실제로 쓰는 순간에만 켠다
   if (auth.currentUser) return Promise.resolve(auth.currentUser);
   if (_anonPromise) return _anonPromise;
   _anonPromise = new Promise((resolve, reject) => {
