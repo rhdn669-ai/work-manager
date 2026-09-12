@@ -90,10 +90,21 @@ function listen(name, fn) {
   listeners.get(name).add(fn);
   return () => listeners.get(name)?.delete(fn);
 }
+// 같은 표에 신호가 겹쳐 들어오면 한 번으로 묶는다. 저장 한 번에 optimistic·서버응답·
+// 「무엇이 바뀌었나」 신호가 잇달아 와서, 그때마다 표를 통째로 다시 읽으면 태블릿이 버겁다
+// (2026-09-12 대표님 「앱이 느림」).
+const refreshTimers = new Map();
 function refresh(name) {
-  const set = listeners.get(name);
-  if (!set) return;
-  for (const fn of set) fn();
+  if (!listeners.get(name)?.size) return;
+  if (refreshTimers.has(name)) return;
+  refreshTimers.set(
+    name,
+    setTimeout(() => {
+      refreshTimers.delete(name);
+      const set = listeners.get(name);
+      if (set) for (const fn of set) fn();
+    }, 120),
+  );
 }
 
 // 화면이 마지막으로 본 값 — 저장을 보내기 «전에» 바뀔 모습을 먼저 보여 주는 데 쓴다
@@ -338,9 +349,23 @@ const wrap = (row, name) => ({
   ref: { __kind: 'doc', name, id: row.id },
 });
 
+// 같은 조회가 겹쳐 나가면 한 번만 보내고 그 답을 나눠 쓴다.
+// 자재 화면은 호기·자재 목록을 여러 곳에서 함께 보기 때문에 같은 표를 두세 번씩 읽고 있었다.
+const inflight = new Map();
+const queryKey = (name, cs) => `${name}|${JSON.stringify(cs, (k, v) => (v instanceof Date ? v.toISOString() : v))}`;
+function sharedFetch(key, run) {
+  const hit = inflight.get(key);
+  if (hit) return hit;
+  // run() 이 돌려주는 것은 진짜 Promise 가 아니라 then 만 가진 물건이다 (.finally 가 없다).
+  // 그대로 쓰면 조회가 시작하자마자 터진다 — 반드시 Promise 로 감싼다.
+  const pr = Promise.resolve(run()).finally(() => setTimeout(() => inflight.delete(key), 60));
+  inflight.set(key, pr);
+  return pr;
+}
+
 export async function getDocs(refOrQuery) {
   const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
-  const { data, error } = await build(name, cs).limit(10000);
+  const { data, error } = await sharedFetch(queryKey(name, cs), () => build(name, cs).limit(10000));
   if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
   const rows = finish(name, cs, applyFresh(name, data || []));
   return snapshotOf(
@@ -698,7 +723,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         v = await getDoc(refOrQuery);
       } else {
         const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
-        const { data, error } = await build(name, cs).limit(10000);
+        const { data, error } = await sharedFetch(queryKey(name, cs), () => build(name, cs).limit(10000));
         if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
         const rows = finish(name, cs, applyFresh(name, data || []));
         noteRows(name, rows);

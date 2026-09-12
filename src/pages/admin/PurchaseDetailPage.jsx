@@ -2502,7 +2502,6 @@ export default function PurchaseDetailPage() {
                         <th scope="col" className="bom-no-col" style={editMode ? { width: 76 } : undefined}>
                           No
                         </th>
-                        <th scope="col">코드</th>
                         <th scope="col">도번</th>
                         <th scope="col">BOX</th>
                         <th scope="col">품명</th>
@@ -2526,7 +2525,7 @@ export default function PurchaseDetailPage() {
                     <tbody>
                       {form.items.length === 0 && (
                         <tr>
-                          <td colSpan={17} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                          <td colSpan={16} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
                             품목이 없습니다 — 상단 「품목 불러오기」로 시작하세요.
                           </td>
                         </tr>
@@ -2536,7 +2535,7 @@ export default function PurchaseDetailPage() {
                         !form.items.some(lineMatchesSearch) && (
                           <tr>
                             <td
-                              colSpan={16}
+                              colSpan={15}
                               className="text-muted text-sm"
                               style={{ textAlign: 'center', padding: 16 }}
                             >
@@ -2574,15 +2573,6 @@ export default function PurchaseDetailPage() {
                             onCheck={() => togglePickLine(idx)}
                             no={idx + 1}
                           >
-                            <td data-label="코드">
-                              <input
-                                type="text"
-                                className="bom-readonly-input bom-code-input"
-                                value={master?.code || ''}
-                                readOnly
-                                tabIndex={-1}
-                              />
-                            </td>
                             {/* 도번 — 품목에 적힌 것을 보여 준다. 발주서는 이미 나간 문서라
                                 여기서는 고치지 않는다. 고치는 곳은 품목과 BOM 이다. */}
                             <td data-label="도번" title={master?.drawingNo || ln.drawingNo || ''}>

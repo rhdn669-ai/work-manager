@@ -40,7 +40,7 @@ describe('품목 표 칸 폭', () => {
     // BOM: 여백·No 다음이 코드·도번·BOX
     expect(BOM_COLS_WITH_VARIANT[3]).toBe(BOM_COLS_WITH_VARIANT[4]);
     expect(BOM_COLS_NO_VARIANT[3]).toBe(BOM_COLS_NO_VARIANT[4]);
-    // 발주서: No·코드 다음이 도번·BOX
-    expect(PO_COLS[2]).toBe(PO_COLS[3]);
+    // 발주서: No 다음이 도번·BOX (코드 열 없음)
+    expect(PO_COLS[1]).toBe(PO_COLS[2]);
   });
 });

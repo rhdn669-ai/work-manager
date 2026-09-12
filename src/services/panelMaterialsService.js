@@ -99,6 +99,22 @@ export function subscribeAllMaterials(cb) {
 }
 
 /** 창고 재고에서 가져온 개수를 그 줄에 누적해 적는다 — 기록에 「재고 N」으로 보인다 (2026-09-05 대표님) */
+/** 사급을 「없는데 바로 체크」해서 통에 없던 만큼 받은 걸로 적은 양 — 되돌릴 때 그만큼은
+ *  통으로 돌려주지 않고 «없던 일»로 만든다. 안 그러면 없던 재고가 생긴다
+ *  (2026-09-12 대표님 「없는 수량을 넣었다가 다시빼면 없던 재고가 생겨버림」). */
+export async function setAutoIn(panelId, box, bomItemId, n) {
+  await setDoc(
+    doc(ref, materialsDocId(panelId, box)),
+    {
+      panelId,
+      box,
+      items: { [bomItemId]: { autoIn: Math.max(0, Number(n) || 0) } },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
 export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {
   const add = Math.max(0, Number(n) || 0);
   if (!add) return;

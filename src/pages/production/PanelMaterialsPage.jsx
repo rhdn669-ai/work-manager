@@ -25,6 +25,7 @@ import {
   setNote,
   setReceivedMany,
   addFromStock,
+  setAutoIn,
 } from '../../services/panelMaterialsService';
 import {
   pullRowFromStock,
@@ -37,6 +38,7 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
+import { freeStockMoves } from '../../domain/freeStockSync';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -259,19 +261,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     if (d === 0) return;
     const who = by();
     const where = `${panel?.프로젝트 || ''} · ${box}`;
+    const auto = Math.max(0, Number(rec[r.id]?.autoIn) || 0);
     try {
-      if (d > 0) {
-        const have = await getFreeStockQty(company, r.itemId);
-        const short = d - have;
-        if (short > 0) {
-          // 통에 없던 만큼 — 호기에서 바로 체크한 물건이다
-          await receiveFreeStock(company, r, short, { by: who, note: `${where} 바로 체크` });
-        }
-        const took = await takeFreeStock(company, r.itemId, d, { by: who, note: where });
-        if (took > 0) await addFromStock(panelId, box, r.id, took, Number(rec[r.id]?.fromStock) || 0);
-      } else {
-        await returnFreeStock(company, r.itemId, -d, { by: who, note: `${where} 되돌림` });
+      // 무엇을 얼마나 움직일지는 domain/freeStockSync 가 정한다 (그 셈만 따로 시험한다)
+      const have = d > 0 ? await getFreeStockQty(company, r.itemId) : 0;
+      const mv = freeStockMoves({ before, after, have, autoIn: auto });
+      if (!mv) return;
+      if (mv.receive > 0) {
+        // 통에 없던 만큼 — 호기에서 바로 체크한 물건이다
+        await receiveFreeStock(company, r, mv.receive, { by: who, note: `${where} 바로 체크` });
       }
+      if (mv.take > 0) {
+        const took = await takeFreeStock(company, r.itemId, mv.take, { by: who, note: where });
+        if (took > 0) await addFromStock(panelId, box, r.id, took, Number(rec[r.id]?.fromStock) || 0);
+      }
+      if (mv.giveBack > 0) {
+        await returnFreeStock(company, r.itemId, mv.giveBack, { by: who, note: `${where} 되돌림` });
+      }
+      if (mv.autoIn !== auto) await setAutoIn(panelId, box, r.id, mv.autoIn);
     } catch (err) {
       console.error('[사급 재고] 맞추기 실패', err);
       toast('사급 재고를 맞추지 못했습니다 — 재고 화면에서 확인해 주세요', 'error');

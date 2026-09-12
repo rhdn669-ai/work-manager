@@ -20503,6 +20503,10 @@ a.lib-row-name:hover {
   .po-item-table {
     table-layout: fixed;
     width: 100%;
+    /* 태블릿에서는 화면 폭을 %로 나누면 칸마다 너무 좁아 글이 「…」로 잘렸다.
+       최소 폭을 정해 두면 모자란 만큼만 상자 안에서 가로로 밀린다
+       (2026-09-12 대표님 「글이짤려 가로스크롤 있는데」). */
+    min-width: 1480px;
   }
   .po-item-table th,
   .po-item-table td {
