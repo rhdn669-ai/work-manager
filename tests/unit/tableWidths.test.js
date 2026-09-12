@@ -8,6 +8,7 @@ import {
   BOM_COLS_WITH_VARIANT,
   BOM_COLS_NO_VARIANT,
   PO_COLS,
+  STOCK_COLS,
   sumOf,
 } from '../../src/domain/tableWidths';
 
@@ -34,6 +35,15 @@ describe('품목 표 칸 폭', () => {
       // 가장 넓은 칸(규격)이 그다음보다 확실히 넓어야 한다
       expect(sorted[0]).toBeGreaterThan(sorted[1]);
     }
+  });
+
+  it('재고 표 폭은 한 벌뿐 — 사급·도급이 같은 값을 쓴다 (2026-09-12 대표님)', () => {
+    // 따로 적어 두었더니 남음 칸이 9% 와 13% 로 어긋나 있었다.
+    expect(STOCK_COLS).toHaveLength(9);
+    // 「남은 공간 전부」는 규격 한 칸뿐 — 둘이면 브라우저가 제멋대로 나눈다
+    expect(STOCK_COLS.filter((w) => w === null)).toHaveLength(1);
+    const pct = STOCK_COLS.filter((w) => typeof w === 'string' && w.endsWith('%')).map((w) => parseFloat(w));
+    expect(pct.reduce((a, b) => a + b, 0)).toBeLessThan(100); // 규격이 쓸 자리가 남아야 한다
   });
 
   it('도번과 BOX 는 같은 폭 — 나란히 놓이는 두 칸이다 (2026-09-02 대표님)', () => {

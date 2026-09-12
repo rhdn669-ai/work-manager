@@ -10,6 +10,7 @@ import { subscribePurchaseItems } from '../../services/purchaseService';
 import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBom';
+import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
 import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../services/paidStockService';
 
@@ -290,7 +291,7 @@ export default function PaidStockPage({ company = '' }) {
         <div className="table-scroll-x no-print">
           <table className="table pmat-table">
             <colgroup>
-              {['44px', '13%', '14%', null, '6%', '8%', '7%', '9%', '11%'].map((w, i) => (
+              {STOCK_COLS.map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>

@@ -22,6 +22,7 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { aggregateShortage } from '../../domain/panelMaterials';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
+import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
 
 const won = (n) => (Number(n) || 0).toLocaleString();
@@ -259,7 +260,7 @@ export default function FreeStockPage({ company }) {
         <div className="table-scroll-x no-print">
           <table className="table pmat-table">
             <colgroup>
-              {['44px', '13%', '14%', null, '6%', '8%', '7%', '13%', '11%'].map((w, i) => (
+              {STOCK_COLS.map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
