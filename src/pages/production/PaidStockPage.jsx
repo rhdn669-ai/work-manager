@@ -330,7 +330,14 @@ export default function PaidStockPage({ company = '' }) {
                     {r.spec}
                   </td>
                   <td className="col-num">{won(r.perOne)}</td>
-                  <td className="col-num">{won(r.out)}</td>
+                  <td className="col-num">
+                    {won(r.out)}
+                    {/* 몇 대분이 나갔는지 — 개수만으로는 감이 안 온다 (2026-09-12 대표님 「나감 set 표시」).
+                        1대당으로 나눈 몫(버림)이라, 딱 안 떨어지는 자투리는 위 개수에 그대로 있다. */}
+                    {r.perOne > 0 && r.out >= r.perOne && (
+                      <em className="fstock-sets-sub">{won(Math.floor(r.out / r.perOne))} SET</em>
+                    )}
+                  </td>
                   <td className="col-num">
                     {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
                         사급 재고와 같은 자리·같은 모양으로 둔다 (2026-09-11 대표님) */}
