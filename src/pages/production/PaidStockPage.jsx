@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
+import { useFillHeight } from '../../utils/useFillHeight';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
@@ -28,7 +29,6 @@ import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../serv
 //   1대당    호기 하나가 쓰는 개수 (BOX 합)
 //   가능 SET 남음 ÷ 1대당 (버림)
 const won = (n) => (Number(n) || 0).toLocaleString();
-const ALL_BOX = '전체';
 
 // 기록에 적히는 말 — 사급 재고와 같은 말을 쓴다
 const LOG_LABEL = { in: '들어옴', fix: '손으로 맞춤' };
@@ -61,11 +61,11 @@ export default function PaidStockPage({ company = '' }) {
   const [saving, setSaving] = useState('');
   const [fixing, setFixing] = useState(null); // { row, to }
   const [logOf, setLogOf] = useState(null); // 기록을 펼쳐 볼 줄
+  // 표 상자를 화면 아래까지 늘려 «상자 안에서» 세로로 스크롤하게 한다 — 그래야 머리줄이
+  // 위에 붙는다 (2026-09-12 대표님 「위에 줄은 스크롤해도 고정으로 내려가게」).
+  const scrollRef = useFillHeight();
   const [q, setQ] = useState('');
   const [view, setView] = useState('all'); // all | have
-  // 어느 BOX 만 볼지 — 「전체」면 BOX 를 가리지 않는다 (2026-09-12 대표님 「박스별로 나눠줄래?」).
-  // 남음(재고)은 품목마다 하나뿐이라 BOX 로 못 쪼갠다 — 그 칸만 늘 전체 값이다.
-  const [box, setBox] = useState(ALL_BOX);
 
   useEffect(() => subscribePanels(setPanels), []);
   useEffect(() => subscribeAllMaterials(setMaterials), []);
@@ -113,54 +113,52 @@ export default function PaidStockPage({ company = '' }) {
     };
   }, [all, bomByProject]);
 
-  // 셈에 쓸 BOX — 「전체」면 모두
-  const boxesToCount = useMemo(() => (box === ALL_BOX ? CHECKABLE_BOXES : [box]), [box]);
+  const { groups, allRows } = useMemo(() => {
+    const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
+    const goneAll = new Map(); // 호기들에 들어간 총량
+    const info = new Map();
+    const byBox = new Map(); // box → { perOne: Map, gone: Map }
+    const pick = (bx) => {
+      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map() });
+      return byBox.get(bx);
+    };
 
-  // 이 BOM 에 도급 줄이 실제로 있는 BOX 만 탭에 올린다 — 빈 탭을 눌러 보게 두지 않는다
-  const boxesWithRows = useMemo(() => {
-    const has = new Set();
-    for (const p of mine) {
+    // 나간 양 — 끝난 호기까지 «모든» 호기가 실제로 가져간 만큼
+    for (const p of all) {
       const rows0 = bomByProject[p.bomLink.projectId];
       if (!rows0) continue;
       const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
       for (const bx of CHECKABLE_BOXES) {
-        if (bomRowsForBox(forVariant, bx).some((r) => !isFreeIssue(r))) has.add(bx);
-      }
-    }
-    return CHECKABLE_BOXES.filter((b) => has.has(b));
-  }, [mine, bomByProject]);
-
-  const { rows, allRows } = useMemo(() => {
-    const perOne = new Map(); // 1대당 (호기마다 다르면 가장 큰 값)
-    const gone = new Map(); // 호기들에 이미 들어간 양
-    const info = new Map(); // 품목 정보
-
-    // 나간 양 — 끝난 호기까지 «모든» 호기가 실제로 가져간 만큼
-    for (const p of all) {
-      const rows = bomByProject[p.bomLink.projectId];
-      if (!rows) continue;
-      const forVariant = bomItemsForVariant(rows, p.bomLink.variantKey || '');
-      for (const bx of boxesToCount) {
         const list = bomRowsForBox(forVariant, bx).filter((r) => !isFreeIssue(r));
+        if (list.length === 0) continue;
         const rec = (materials[p.id] || {})[bx] || {};
+        const g = pick(bx).gone;
         for (const r of list) {
           if (!r.itemId) continue;
-          gone.set(r.itemId, (gone.get(r.itemId) || 0) + receivedQty(rec, r.id));
+          const got = receivedQty(rec, r.id);
+          goneAll.set(r.itemId, (goneAll.get(r.itemId) || 0) + got);
+          g.set(r.itemId, (g.get(r.itemId) || 0) + got);
         }
       }
     }
 
-    // 1대당·품목 정보 — 지금 일하는 호기 기준
+    // 1대당·품목 정보 — 지금 일하는 호기 기준. 호기마다 다르면 가장 큰 값을 쓴다.
     for (const p of mine) {
-      const rows = bomByProject[p.bomLink.projectId];
-      if (!rows) continue;
-      const forVariant = bomItemsForVariant(rows, p.bomLink.variantKey || '');
+      const rows0 = bomByProject[p.bomLink.projectId];
+      if (!rows0) continue;
+      const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
       const one = new Map();
-      for (const bx of boxesToCount) {
+      const oneBox = new Map(); // box → Map(itemId → 개수)
+      for (const bx of CHECKABLE_BOXES) {
         const list = bomRowsForBox(forVariant, bx).filter((r) => !isFreeIssue(r));
+        if (list.length === 0) continue;
+        if (!oneBox.has(bx)) oneBox.set(bx, new Map());
+        const ob = oneBox.get(bx);
         for (const r of list) {
           if (!r.itemId) continue;
-          one.set(r.itemId, (one.get(r.itemId) || 0) + (Number(r.qty) || 0));
+          const q0 = Number(r.qty) || 0;
+          one.set(r.itemId, (one.get(r.itemId) || 0) + q0);
+          ob.set(r.itemId, (ob.get(r.itemId) || 0) + q0);
           if (!info.has(r.itemId)) {
             const m = masterMap[r.itemId];
             info.set(r.itemId, {
@@ -173,47 +171,66 @@ export default function PaidStockPage({ company = '' }) {
           }
         }
       }
-      for (const [k, v] of one) perOne.set(k, Math.max(perOne.get(k) || 0, v));
+      for (const [k, v] of one) perOneAll.set(k, Math.max(perOneAll.get(k) || 0, v));
+      for (const [bx, m0] of oneBox) {
+        const dst = pick(bx).perOne;
+        for (const [itemId, v] of m0) dst.set(itemId, Math.max(dst.get(itemId) || 0, v));
+      }
     }
 
-    const mapped = [...info.values()].map((it) => {
+    // 품목마다의 재고·가능 SET — BOX 와 무관하게 하나다
+    const stockOfItem = new Map();
+    for (const it of info.values()) {
       const fromPo = projectId || siteId ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
-      const out = Math.max(0, gone.get(it.itemId) || 0);
-      const base = fromPo - out; // 발주서만으로 설명되는 남음
-      const adjust = Number(manual[it.itemId]?.qty) || 0; // 손으로 적어 넣은 몫
+      const out0 = Math.max(0, goneAll.get(it.itemId) || 0);
+      const base = fromPo - out0;
+      const adjust = Number(manual[it.itemId]?.qty) || 0;
       const left = Math.max(0, base + adjust);
-      const one = perOne.get(it.itemId) || 0;
-      return {
+      const one = perOneAll.get(it.itemId) || 0;
+      stockOfItem.set(it.itemId, {
         ...it,
         gotIn: fromPo,
-        out,
         base,
         adjust,
         left,
         log: manual[it.itemId]?.log || [],
-        perOne: one,
+        perOneAll: one,
+        // 「가능 SET」은 호기 한 대 기준으로 고정한다. BOX 몫으로 나누면 같은 재고인데
+        // BOX 마다 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
         sets: one > 0 ? Math.floor(left / one) : 0,
-      };
-    });
+      });
+    }
 
     const kw = q.trim().toLowerCase();
-    const filtered = mapped
-      .filter((r) => {
-        if (view === 'have' && r.left <= 0) return false;
-        if (!kw) return true;
-        return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
-          String(v || '')
-            .toLowerCase()
-            .includes(kw),
-        );
-      })
-      .sort((x, y) => {
-        const a = x.drawingNo || '힣';
-        const b = y.drawingNo || '힣';
-        return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
-      });
-    return { rows: filtered, allRows: mapped };
-  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view, boxesToCount]);
+    const keep = (r) => {
+      if (view === 'have' && r.left <= 0) return false;
+      if (!kw) return true;
+      return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
+        String(v || '')
+          .toLowerCase()
+          .includes(kw),
+      );
+    };
+    const byDrawing = (x, y) =>
+      (x.drawingNo || '힣').localeCompare(y.drawingNo || '힣', 'ko') ||
+      (x.name || '').localeCompare(y.name || '', 'ko');
+
+    const out = [];
+    for (const bx of CHECKABLE_BOXES) {
+      const b = byBox.get(bx);
+      if (!b) continue;
+      const list = [...b.perOne.keys()]
+        .map((itemId) => {
+          const base = stockOfItem.get(itemId);
+          return base ? { ...base, perOne: b.perOne.get(itemId) || 0, out: b.gone.get(itemId) || 0 } : null;
+        })
+        .filter(Boolean)
+        .filter(keep)
+        .sort(byDrawing);
+      if (list.length > 0) out.push({ box: bx, rows: list });
+    }
+    return { groups: out, allRows: [...stockOfItem.values()] };
+  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view]);
 
   // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
   async function commitDraft(r) {
@@ -269,20 +286,6 @@ export default function PaidStockPage({ company = '' }) {
 
   return (
     <div className="fstock">
-      {/* BOX 별로 나눠 보기 — 1대당·나감·가능 SET 이 그 BOX 기준으로 바뀐다.
-          남음은 품목마다 통이 하나뿐이라 BOX 로 못 쪼갠다(늘 전체 값) (2026-09-12 대표님) */}
-      {boxesWithRows.length > 1 && (
-        <div className="pmat-boxes no-print">
-          <ViewSwitch
-            options={[ALL_BOX, ...boxesWithRows].map((b) => ({ value: b, label: b }))}
-            value={box}
-            onChange={setBox}
-            ariaLabel="BOX"
-            className="pmat-box-switch"
-          />
-        </div>
-      )}
-
       <div className="fstock-head no-print">
         <div className="fstock-sums">
           <span className="fstock-sum">
@@ -316,14 +319,14 @@ export default function PaidStockPage({ company = '' }) {
         />
       </div>
 
-      {rows.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
           <p>{view === 'have' ? '남은 도급 자재가 없습니다' : `${company} 도급 품목이 없습니다`}</p>
           <span>BOM 에 도급으로 표시된 품목이 여기에 모입니다. 발주서를 BOM 에 연결해야 들어온 양이 잡힙니다.</span>
         </div>
       ) : (
-        <div className="table-scroll-x no-print">
+        <div className="table-scroll-x no-print" ref={scrollRef}>
           <table className="table pmat-table">
             <colgroup>
               {STOCK_COLS.map((w, i) => (
@@ -344,16 +347,8 @@ export default function PaidStockPage({ company = '' }) {
                 <th scope="col" className="col-num" title="호기들에 이미 들어간 양">
                   나감
                 </th>
-                <th
-                  scope="col"
-                  className="col-num"
-                  title={
-                    box === ALL_BOX
-                      ? '들어온 양 − 나간 양 (손으로 적어 넣은 몫 포함)'
-                      : '재고는 품목마다 하나뿐이라 BOX 로 나뉘지 않습니다 — 늘 전체 값입니다'
-                  }
-                >
-                  남음{box === ALL_BOX ? '' : ' (전체)'}
+                <th scope="col" className="col-num" title="들어온 양 − 나간 양 (손으로 적어 넣은 몫 포함)">
+                  남음
                 </th>
                 <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
                   가능 SET
@@ -364,79 +359,92 @@ export default function PaidStockPage({ company = '' }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
-                <tr key={r.itemId}>
-                  <td className="col-no">{i + 1}</td>
-                  <td className="pmat-drawing">{r.drawingNo}</td>
-                  <td className="u-wrap">{r.name}</td>
-                  <td className="pmat-spec u-wrap" title={r.spec}>
-                    {r.spec}
-                  </td>
-                  <td className="col-num">{won(r.perOne)}</td>
-                  {/* 개수 말고 몇 대분인지로 보여 준다 (2026-09-12 대표님 「나감 수량말고 세트로만 표시」).
+              {/* BOX 마다 구분줄을 놓고 그 아래 그 BOX 품목을 늘어놓는다. 한 품목이 여러 BOX 에
+                  쓰이면 여러 번 나온다 — 1대당·나감은 그 BOX 몫이고, 남음·가능 SET 은 품목
+                  하나에 하나뿐이라 어느 줄에서나 같다 (2026-09-12 대표님 「구분선으로 박스명」). */}
+              {groups.map((g) => (
+                <Fragment key={g.box}>
+                  <tr className="fstock-boxrow">
+                    <th scope="colgroup" colSpan={9}>
+                      {g.box}
+                      <em>{g.rows.length}품목</em>
+                    </th>
+                  </tr>
+                  {g.rows.map((r, i) => (
+                    <tr key={`${g.box}-${r.itemId}`}>
+                      <td className="col-no">{i + 1}</td>
+                      <td className="pmat-drawing">{r.drawingNo}</td>
+                      <td className="u-wrap">{r.name}</td>
+                      <td className="pmat-spec u-wrap" title={r.spec}>
+                        {r.spec}
+                      </td>
+                      <td className="col-num">{won(r.perOne)}</td>
+                      {/* 개수 말고 몇 대분인지로 보여 준다 (2026-09-12 대표님 「나감 수량말고 세트로만 표시」).
                       정확한 개수는 칸에 손을 올리면 나온다 — 1대당이 없는 품목은 개수 그대로. */}
-                  <td className="col-num" title={`${won(r.out)}개`}>
-                    {r.perOne > 0 ? `${won(Math.floor(r.out / r.perOne))} SET` : won(r.out)}
-                  </td>
-                  <td className="col-num">
-                    {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
+                      <td className="col-num" title={`${won(r.out)}개`}>
+                        {r.perOne > 0 ? `${won(Math.floor(r.out / r.perOne))} SET` : won(r.out)}
+                      </td>
+                      <td className="col-num">
+                        {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
                         사급 재고와 같은 자리·같은 모양으로 둔다 (2026-09-11 대표님) */}
-                    <div className="fstock-have-cell">
-                      <button
-                        type="button"
-                        className="fstock-have"
-                        onClick={() => setLogOf(r)}
-                        title={`${r.name || r.code} 들어오고 나간 기록 보기`}
-                      >
-                        <b>{won(r.left)}</b>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => setFixing({ row: r, to: String(r.left) })}
-                        title="실제 개수로 수정"
-                      >
-                        수정
-                      </button>
-                    </div>
-                  </td>
-                  <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
-                    {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
-                  </td>
-                  <td className="col-action">
-                    <div className="fstock-in-cell">
-                      {/* 들어온 개수를 칸에 바로 적는다 — 적고 Enter (창을 띄우지 않는다) */}
-                      <input
-                        className="num-input pmat-input"
-                        type="number"
-                        min="0"
-                        inputMode="numeric"
-                        placeholder="0"
-                        disabled={saving === r.itemId}
-                        value={draft[r.itemId] ?? ''}
-                        onChange={(e) => setDraft((d) => ({ ...d, [r.itemId]: e.target.value }))}
-                        onBlur={() => commitDraft(r)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                          if (e.key === 'Escape')
-                            setDraft((d) => {
-                              const nd = { ...d };
-                              delete nd[r.itemId];
-                              return nd;
-                            });
-                        }}
-                        aria-label={`${r.name || r.code} 이번 입고 개수`}
-                      />
-                      {/* 누르기 전에 결과를 먼저 보여 준다 — 「더하기」인지 「맞추기」인지 헷갈려
+                        <div className="fstock-have-cell">
+                          <button
+                            type="button"
+                            className="fstock-have"
+                            onClick={() => setLogOf(r)}
+                            title={`${r.name || r.code} 들어오고 나간 기록 보기`}
+                          >
+                            <b>{won(r.left)}</b>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setFixing({ row: r, to: String(r.left) })}
+                            title="실제 개수로 수정"
+                          >
+                            수정
+                          </button>
+                        </div>
+                      </td>
+                      <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
+                        {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
+                      </td>
+                      <td className="col-action">
+                        <div className="fstock-in-cell">
+                          {/* 들어온 개수를 칸에 바로 적는다 — 적고 Enter (창을 띄우지 않는다) */}
+                          <input
+                            className="num-input pmat-input"
+                            type="number"
+                            min="0"
+                            inputMode="numeric"
+                            placeholder="0"
+                            disabled={saving === r.itemId}
+                            value={draft[r.itemId] ?? ''}
+                            onChange={(e) => setDraft((d) => ({ ...d, [r.itemId]: e.target.value }))}
+                            onBlur={() => commitDraft(r)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur();
+                              if (e.key === 'Escape')
+                                setDraft((d) => {
+                                  const nd = { ...d };
+                                  delete nd[r.itemId];
+                                  return nd;
+                                });
+                            }}
+                            aria-label={`${r.name || r.code} 이번 입고 개수`}
+                          />
+                          {/* 누르기 전에 결과를 먼저 보여 준다 — 「더하기」인지 「맞추기」인지 헷갈려
                           재고가 두 배로 불어난 일이 있었다 (2026-09-11 대표님) */}
-                      {Number(draft[r.itemId]) > 0 && (
-                        <span className="fstock-preview">
-                          {won(r.left)} → <b>{won(r.left + Number(draft[r.itemId]))}</b>
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                          {Number(draft[r.itemId]) > 0 && (
+                            <span className="fstock-preview">
+                              {won(r.left)} → <b>{won(r.left + Number(draft[r.itemId]))}</b>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
           </table>

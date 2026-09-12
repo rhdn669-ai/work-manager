@@ -24174,3 +24174,30 @@ body.has-editlock .main-content.expanded {
   color: var(--text-light, #3f4a5a);
   white-space: nowrap;
 }
+
+/* 재고 표의 BOX 구분줄 — 한 페이지 안에서 BOX 를 가른다 (2026-09-12 대표님) */
+.fstock-boxrow th {
+  /* 머리줄 바로 아래에 붙어 「지금 어느 BOX 를 보는 중인지」가 늘 보이게 한다.
+     작고 흐리게 두었더니 줄 사이에 묻혔다 (2026-09-12 대표님 「눈에 안 띔」) —
+     글자를 키우고 왼쪽에 굵은 띠를 둘러 한눈에 걸리게 한다. */
+  position: sticky;
+  top: 37px;
+  z-index: 2;
+  text-align: left;
+  padding: 11px 14px 10px;
+  background: var(--primary-soft, #e7ebf2);
+  border-top: 2px solid var(--primary, #0f285f);
+  border-bottom: 1px solid var(--primary, #0f285f);
+  border-left: 5px solid var(--primary, #0f285f);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--primary, #0f285f);
+}
+.fstock-boxrow th em {
+  margin-left: 10px;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-light, #3f4a5a);
+}
