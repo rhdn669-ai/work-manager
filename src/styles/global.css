@@ -23027,13 +23027,17 @@ a.lib-row-name:hover {
   font-weight: 600;
   color: var(--text);
   display: grid;
-  grid-template-columns: 30px 1fr auto;
+  /* 이름에 한 줄을 통째로 준다. 배지를 이름 옆에 두면 목록이 좁아지는 태블릿에서
+     이름이 「YS-TEPS09262…」로 잘리고 타입까지 두 줄로 깨진다 — 목록 183px 일 때
+     이름에 54px 밖에 안 남는데 117px 이 필요했다
+     (2026-09-12 대표님 「똑바로 안함?」). 배지는 타입과 함께 아랫줄로. */
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   grid-template-areas:
-    'no name state'
+    'no name name'
     'no tag state';
   align-items: center;
-  column-gap: 10px;
-  row-gap: 2px;
+  column-gap: 8px;
+  row-gap: 3px;
   cursor: pointer;
 }
 /* 몇 번째인지 — 표의 No 칸처럼 제 자리를 갖는다. 폭을 고정해 자릿수가 늘어도
@@ -23045,7 +23049,7 @@ a.lib-row-name:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-right: 9px;
+  padding-right: 7px;
   border-right: 1px solid var(--border, #e5e8eb);
   font-size: 12px;
   font-weight: 700;
@@ -23073,11 +23077,17 @@ a.lib-row-name:hover {
   grid-area: name;
   min-width: 0;
   white-space: nowrap;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mhub-item-tag {
   grid-area: tag;
   justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 11px;
   font-weight: 600;
   padding: 0 6px;
