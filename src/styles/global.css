@@ -24239,6 +24239,17 @@ body.has-editlock .main-content.expanded {
 .fstock-owner-switch button {
   font-size: 12px;
 }
+/* 「이번 입고」가 누구 물건인지 — 고른 쪽이 한눈에 걸리게 주황으로
+   (2026-09-12 대표님 「고객사,우리것 주황색으로 눈에안띔」) */
+.fstock-owner-switch .view-switch-item.on {
+  background: var(--accent, #f25618);
+  border-color: var(--accent, #f25618);
+  color: #fff;
+  font-weight: 700;
+}
+.fstock-owner-switch .view-switch-item.on:hover {
+  background: var(--accent, #f25618);
+}
 
 /* 사급 → 도급 옮기기 (2026-09-12 대표님) */
 .fstock-pick {
