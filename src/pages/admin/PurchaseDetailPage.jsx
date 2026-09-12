@@ -833,7 +833,15 @@ export default function PurchaseDetailPage() {
 
   // skipConfirm — 「선택 삭제」에서 여러 줄을 한 번의 확인으로 지울 때 쓴다(확인은 호출한 쪽에서 이미 받았다)
   async function removeLine(idx, { skipConfirm = false } = {}) {
-    if (!skipConfirm && !(await confirm('이 품목 행을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.'))) return;
+    // 이미 입고한 줄은 한 번 더 묻는다. 수량을 줄일 때는 막으면서 삭제는 그냥 되고 있었다
+    // (2026-09-12 조사) — 지우면 그 입고 기록도 함께 사라져 도급 재고 셈이 틀어진다.
+    const gotQty = Number(formRef.current?.items?.[idx]?.receivedQty) || 0;
+    if (gotQty > 0) {
+      const nm = formRef.current?.items?.[idx]?.name || '이 품목';
+      if (!(await confirm(`${nm} 은 이미 ${gotQty}개 입고됐습니다.\n지우면 그 입고 기록도 없어집니다. 삭제할까요?`)))
+        return;
+    } else if (!skipConfirm && !(await confirm('이 품목 행을 삭제하시겠습니까?\n발주 휴지통에서 복원할 수 있습니다.')))
+      return;
     const gone = formRef.current.items[idx];
     if (gone) applyStockUse([gone], -1, '발주 품목 삭제로 되돌림'); // 안 사게 됐으니 창고로 반환
     setForm((f) => {

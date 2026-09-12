@@ -486,7 +486,10 @@ export function deriveStatus(items, currentStatus) {
   if (currentStatus === 'settled') return 'settled';
   const list = Array.isArray(items) ? items : [];
   if (list.length === 0) return 'ordered';
-  const allReceived = list.every((it) => Number(it.receivedQty) >= Number(it.qty) && Number(it.qty) > 0);
+  // 수량 0 인 줄은 「들어올 것이 없는 줄」이다 — 창고 재고로 전량 채운 품목이 그렇다.
+  // 그 줄 때문에 allReceived 가 영영 참이 못 되어, 나머지를 다 입고해도 「부분입고」에
+  // 갇히고 정산 단추가 뜨지 않았다 (2026-09-12 조사 · 「M 10월납품 1차」에 4줄 있음).
+  const allReceived = list.every((it) => Number(it.qty) <= 0 || Number(it.receivedQty) >= Number(it.qty));
   if (allReceived) return 'received';
   const anyReceived = list.some((it) => Number(it.receivedQty) > 0);
   return anyReceived ? 'partial' : 'ordered';
