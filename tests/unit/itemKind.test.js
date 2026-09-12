@@ -1,46 +1,42 @@
 import { describe, it, expect } from 'vitest';
-import { MADE, ELEC, mainCodeOf, isMainItem, madeMainCodes, isMade, kindLabel } from '../../src/domain/itemKind';
+import { MADE, PAID, FREE, MADE_TYPE, isMade, kindOf, kindLabel, nextKind, inKindTab } from '../../src/domain/itemKind';
 
-describe('품목이 전장자재인가 판금인가', () => {
-  const 품목들 = [
-    { code: 'IOPN-047', name: '브라켓', kind: MADE }, // 대분류에 표시
-    { code: 'IOPN-047-1', name: 'BASE PLATE' },
-    { code: 'IOPN-014', name: 'CP' },
-    { code: 'IOPN-014-19', name: 'CP', spec: 'FAZ-C35' },
-  ];
-  const 가공대분류 = madeMainCodes(품목들);
+describe('BOM 줄의 갈래 — 도급·사급·판금', () => {
+  const 도급 = { supplyType: PAID };
+  const 사급 = { supplyType: FREE };
+  const 판금 = { supplyType: MADE_TYPE };
 
-  it('대분류 코드만 떼어 낸다', () => {
-    expect(mainCodeOf('IOPN-014-19')).toBe('IOPN-014');
-    expect(mainCodeOf('IOPN-014')).toBe('IOPN-014');
-    expect(mainCodeOf('')).toBe('');
+  it('담긴 자리가 곧 구분이다', () => {
+    expect(kindOf(도급)).toBe('paid');
+    expect(kindOf(사급)).toBe('free');
+    expect(kindOf(판금)).toBe('made');
+    expect(kindOf({})).toBe('paid'); // 안 적혔으면 도급
   });
 
-  it('대분류 품목인지 가린다 — 소분류가 붙으면 아니다', () => {
-    expect(isMainItem({ code: 'IOPN-014' })).toBe(true);
-    expect(isMainItem({ code: 'IOPN-014-19' })).toBe(false);
-  });
-
-  it('대분류에 한 번 표시하면 그 아래 품목이 모두 판금이 된다', () => {
-    // 대표님 「내가 품목에 추가하고 알아서 넣을게 연동만 잘되게해줘」
-    expect(가공대분류).toEqual(new Set(['IOPN-047']));
-    expect(isMade({ code: 'IOPN-047-1' }, 가공대분류)).toBe(true);
-    expect(isMade({ code: 'IOPN-014-19' }, 가공대분류)).toBe(false);
-  });
-
-  it('줄에 직접 적은 갈래가 대분류보다 먼저다', () => {
-    expect(isMade({ code: 'IOPN-014-19', kind: MADE }, 가공대분류)).toBe(true);
-    expect(isMade({ code: 'IOPN-047-1', kind: ELEC }, 가공대분류)).toBe(false);
-  });
-
-  it('표시된 대분류가 하나도 없으면 전부 전장자재다', () => {
-    const 빈것 = madeMainCodes([{ code: 'IOPN-014' }]);
-    expect(빈것.size).toBe(0);
-    expect(isMade({ code: 'IOPN-047-1' }, 빈것)).toBe(false);
+  it('판금인지 가린다', () => {
+    expect(isMade(판금)).toBe(true);
+    expect(isMade(사급)).toBe(false);
+    expect(isMade(도급)).toBe(false);
   });
 
   it('이름을 돌려준다', () => {
-    expect(kindLabel({ code: 'IOPN-047-1' }, 가공대분류)).toBe('판금');
-    expect(kindLabel({ code: 'IOPN-014-19' }, 가공대분류)).toBe('전장자재');
+    expect(kindLabel(판금)).toBe(MADE);
+    expect(kindLabel(사급)).toBe('사급');
+    expect(kindLabel(도급)).toBe('도급');
+  });
+
+  it('누를 때마다 도급 → 사급 → 판금 → 도급 (대표님 「누를 때마다 돌아가게」)', () => {
+    expect(nextKind(도급)).toBe(FREE);
+    expect(nextKind(사급)).toBe(MADE_TYPE);
+    expect(nextKind(판금)).toBe(PAID);
+  });
+
+  it('탭으로 거른다 — 판금은 도급에도 사급에도 안 든다', () => {
+    expect(inKindTab(판금, 'made')).toBe(true);
+    expect(inKindTab(판금, 'paid')).toBe(false);
+    expect(inKindTab(판금, 'free')).toBe(false);
+    expect(inKindTab(판금, 'all')).toBe(true);
+    expect(inKindTab(도급, 'paid')).toBe(true);
+    expect(inKindTab(사급, 'free')).toBe(true);
   });
 });

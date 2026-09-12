@@ -1,57 +1,55 @@
-// 품목의 큰 갈래 — 「전장자재」인가 「판금」인가. (2026-09-12 대표님)
+// BOM 줄의 갈래 — 「도급」·「사급」·「판금」 셋. (2026-09-12 대표님)
 //
-// 전장자재는 사서 넣는 부품이고, 판금은 도면대로 깎아 만드는 물건이다. 두 갈래는 보는
-// 사람도 다루는 방식도 달라 화면에서 갈라 보여야 한다.
+// 사급·도급과 마찬가지로 «담는 자리가 곧 구분»이다. BOM 의 판금 탭에 담으면 그 줄이 판금이
+// 된다 (대표님 「bom에 전체,도급,사급,그리고 판금탭을 추가하고 거기서 박스 구분할거임」).
 //
-// 갈래는 «품목 대분류»에 한 번만 적어 둔다. 품목 하나하나에 적게 하면 새 품목을 넣을 때마다
-// 빠뜨리기 쉽다 — 대분류(IOPN-047 같은 것)에 「판금」이라고 표시해 두면 그 아래 품목은
-// 저절로 판금이 된다 (대표님 「내가 품목에 추가하고 알아서 넣을게 연동만 잘되게해줘」).
+// 처음에는 품목 대분류에 「판금」을 표시해 두고 그 아래 품목을 모두 판금으로 보려 했는데,
+// 대표님이 「품목에서는 판금안에 전부 넣고 거기서 구분할게 아니고」라고 바로잡아 주셨다.
+// 같은 품목이라도 어느 BOM 줄이냐에 따라 판금일 수도 아닐 수도 있기 때문이다.
 //
-// 사급·도급과는 다른 축이다. 판금도 회사에 따라 사급일 수도 도급일 수도 있다
-// (대표님 「갈림」).
+// 자리는 supplyType 한 칸에 담는다 — 셋 중 하나뿐이라 칸을 늘릴 까닭이 없다.
+//   ''      도급 (우리가 사서 넣는 것)
+//   'free'  사급 (고객사가 주는 것)
+//   'made'  판금 (도면대로 만들어 넣는 것)
 
+export const PAID = '';
+export const FREE = 'free';
+export const MADE_TYPE = 'made';
+
+/** 화면에 쓰는 이름 */
 export const MADE = '판금';
-export const ELEC = '전장자재';
+export const PAID_LABEL = '도급';
+export const FREE_LABEL = '사급';
 
-/** 품목 코드에서 대분류 코드만 — IOPN-014-19 → IOPN-014 */
-export function mainCodeOf(code) {
-  const m = String(code || '').match(/^([A-Za-z]+-\d+)/);
-  return m ? m[1] : '';
+/** 이 줄이 판금인가 */
+export function isMade(row) {
+  return (row?.supplyType || '') === MADE_TYPE;
 }
 
-/** 그 품목이 대분류(하위가 없는 머리 품목)인가 — IOPN-014 처럼 끝에 소분류가 없다 */
-export function isMainItem(item) {
-  return /^[A-Za-z]+-\d+$/.test(String(item?.code || ''));
-}
-
-/**
- * 「판금」으로 표시된 대분류 코드들 — 품목 목록에서 한 번 뽑아 두고 돌려 쓴다.
- * @param {Array} items 품목 마스터 전체
- * @returns {Set<string>} 예: Set { 'IOPN-047' }
- */
-export function madeMainCodes(items) {
-  const out = new Set();
-  for (const it of items || []) {
-    if ((it?.kind || '') === MADE) out.add(mainCodeOf(it.code) || String(it.code || ''));
-  }
-  out.delete('');
-  return out;
-}
-
-/**
- * 이 품목(또는 BOM 줄)이 판금인가.
- * 줄에 직접 적힌 kind 가 있으면 그것을 먼저 본다 — 대분류와 다르게 두고 싶을 때를 위해서다.
- * @param {object} row  { kind?, code? } 또는 품목
- * @param {Set<string>} madeMains madeMainCodes(items)
- */
-export function isMade(row, madeMains) {
-  if ((row?.kind || '') === MADE) return true;
-  if ((row?.kind || '') === ELEC) return false;
-  if (!madeMains || madeMains.size === 0) return false;
-  return madeMains.has(mainCodeOf(row?.code));
+/** 이 줄의 갈래 — 'paid' | 'free' | 'made' */
+export function kindOf(row) {
+  const t = row?.supplyType || '';
+  if (t === MADE_TYPE) return 'made';
+  if (t === FREE) return 'free';
+  return 'paid';
 }
 
 /** 화면에 쓰는 이름 */
-export function kindLabel(row, madeMains) {
-  return isMade(row, madeMains) ? MADE : ELEC;
+export function kindLabel(row) {
+  const k = kindOf(row);
+  return k === 'made' ? MADE : k === 'free' ? FREE_LABEL : PAID_LABEL;
+}
+
+/** 누를 때마다 도급 → 사급 → 판금 → 도급 (대표님 「누를 때마다 돌아가게」) */
+export function nextKind(row) {
+  const t = row?.supplyType || '';
+  if (t === PAID) return FREE;
+  if (t === FREE) return MADE_TYPE;
+  return PAID;
+}
+
+/** 탭 값(all|paid|free|made)으로 줄을 거른다 */
+export function inKindTab(row, tab) {
+  if (!tab || tab === 'all') return true;
+  return kindOf(row) === tab;
 }

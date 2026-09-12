@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
-import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
+import { getBomProjectById, getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeFreeStock, takeFreeStock, returnFreeStock, getFreeStockQty } from '../../services/freeStockService';
 import {
@@ -28,7 +28,7 @@ import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBo
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { freeStockMoves } from '../../domain/freeStockSync';
 import { subscribePaidStock } from '../../services/paidStockService';
-import { MADE, ELEC, madeMainCodes, isMade } from '../../domain/itemKind';
+import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -106,19 +106,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [company]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
-  // ── 판금은 도급·사급과 나란한 네 번째 구분이다 (2026-09-12 대표님 「나 방식」) ──
-  // 갈래는 품목 대분류에 적어 둔 것을 따른다 — domain/itemKind 가 정한다.
-  const madeMains = useMemo(() => madeMainCodes(master), [master]);
-  // 이 줄이 지금 고른 구분에 드는가 — 판금은 사급·도급보다 «먼저» 가른다.
-  // 판금으로 표시된 품목은 도급 탭에도 사급 탭에도 나오지 않는다.
-  const inTab = useCallback(
-    (r) => {
-      if (isMade(r, madeMains)) return supplyTab === MADE;
-      if (supplyTab === MADE) return false;
-      return supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r);
-    },
-    [supplyTab, madeMains],
-  );
+  // ── 갈래: 도급 · 사급 · 판금 — BOM 줄에 담긴 자리가 곧 구분이다 (2026-09-12 대표님) ──
+  const inTab = useCallback((r) => inKindTab(r, supplyTab === MADE ? 'made' : supplyTab), [supplyTab]);
 
   // ── 이 호기의 입고 기록 ──
   useEffect(() => subscribePanelMaterials(panelId, setReceivedMap), [panelId]);
@@ -135,7 +124,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           name: m?.name || r.name || '',
           spec: m?.spec || r.spec || '',
           drawingNo: m?.drawingNo || r.drawingNo || '',
-          kind: r.kind || m?.kind || '',
         };
       }),
     [bomRows, masterMap],
@@ -144,8 +132,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 이 호기에 판금 줄이 있나 — 없으면 탭을 올리지 않는다
   const hasMade = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    return forVariant.some((r) => isMade(r, madeMains));
-  }, [bomRowsFull, link?.variantKey, madeMains]);
+    return forVariant.some(isMade);
+  }, [bomRowsFull, link?.variantKey]);
 
   const boxesWithRows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
@@ -198,7 +186,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const done = rowDone(r, rec);
     return rowView === 'done' ? done : !done;
   });
-  const isMadeRow = useCallback((r) => isMade(r, madeMains), [madeMains]);
+  const isMadeRow = useCallback((r) => isMade(r), []);
   const summary = useMemo(() => boxSummary(rows, rec, isMadeRow), [rows, rec, isMadeRow]);
   // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽으로 옮긴다 — 빈 화면만 보고
   // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님).

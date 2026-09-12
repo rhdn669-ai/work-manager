@@ -44,7 +44,7 @@ import ViewSwitch from '../../components/common/ViewSwitch';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/useDialog';
-import { MADE, madeMainCodes, isMade } from '../../domain/itemKind';
+import { MADE, MADE_TYPE, isMade, kindLabel, nextKind, inKindTab } from '../../domain/itemKind';
 import { moveFreeToPaid, goneByItem } from '../../services/stockMoveService';
 import { subscribePanels } from '../../services/productionService';
 import { useUndo } from '../../contexts/useUndo';
@@ -397,8 +397,7 @@ export default function BomDetailPage() {
     return set.size === 1 ? [...set][0] : '';
   }, [panelsAll, projectId]);
 
-  const madeMains = useMemo(() => madeMainCodes(itemMaster), [itemMaster]);
-  const isMadeRow = useCallback((it) => isMade(it, madeMains), [madeMains]);
+  const isMadeRow = useCallback((it) => isMade(it), []);
 
   const displayItems = useMemo(
     () =>
@@ -451,9 +450,7 @@ export default function BomDetailPage() {
     if (boxFilter) {
       list = list.filter((it) => (it.box || '').trim() === (boxFilter === NO_BOX ? '' : boxFilter));
     }
-    if (supplyTab === MADE) list = list.filter(isMadeRow);
-    else if (supplyTab === 'paid') list = list.filter((it) => !isMadeRow(it) && !isFreeIssue(it));
-    else if (supplyTab === 'free') list = list.filter((it) => !isMadeRow(it) && isFreeIssue(it));
+    if (supplyTab !== 'all') list = list.filter((it) => inKindTab(it, supplyTab === MADE ? 'made' : supplyTab));
     const sorted = [...list];
     if (sortBy === 'code') {
       sorted.sort((a, b) => collator.compare(a.code || '', b.code || ''));
@@ -565,13 +562,15 @@ export default function BomDetailPage() {
   // 갈 곳을 잃고, 도급 쪽은 들어옴이 0 이라 남음이 음수가 된다
   // (2026-09-12 대표님 「bom에서 버튼눌러서 그냥 옮기면안됨?」).
   async function toggleSupply(it) {
-    const toPaid = isFreeIssue(it); // 지금 사급이면 도급으로 가는 길
+    const nextType = nextKind(it); // 도급 → 사급 → 판금 → 도급 (대표님 「누를 때마다 돌아가게」)
     const apply = () => {
-      const next = { supplyType: toPaid ? '' : 'free' };
+      const next = { supplyType: nextType };
       updateField(it.id, next);
       flushItem(it.id, next); // 바뀔 값을 함께 넘긴다 — 상태 갱신을 기다리지 않게
     };
-    if (!toPaid || !bomCompany || !it.itemId) return apply();
+    // 사급이던 줄이 사급이 아니게 되는 순간 — 그 회사 사급 통에 남은 것이 갈 곳을 잃는다
+    const leavingFree = isFreeIssue(it) && nextType !== 'free';
+    if (!leavingFree || !bomCompany || !it.itemId) return apply();
     let gone = {};
     let left = 0;
     try {
@@ -585,7 +584,7 @@ export default function BomDetailPage() {
     const move = left + (Number(gone[it.itemId]) || 0);
     if (move <= 0) return apply(); // 옮길 것이 없다
     const ok = await confirm(
-      `${it.name || it.code} 을 도급으로 바꿉니다.
+      `${it.name || it.code} 을 ${nextType === MADE_TYPE ? '판금' : '도급'}으로 바꿉니다.
 ` +
         `${bomCompany} 사급 재고에 남은 ${left}개와 지금까지 나간 ${Number(gone[it.itemId]) || 0}개를 ` +
         `도급 재고로 함께 옮길까요?
@@ -776,7 +775,7 @@ export default function BomDetailPage() {
         spec: m.spec || '',
         unit: m.unit || '',
         drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
-        supplyType: addAsFree ? 'free' : '', // 담는 자리가 곧 구분이다 (2026-09-02 대표님)
+        supplyType: supplyTab === MADE ? MADE_TYPE : addAsFree ? 'free' : '', // 담는 자리가 곧 구분 (2026-09-02·09-12 대표님)
         qty,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -848,7 +847,7 @@ export default function BomDetailPage() {
         spec: m.spec || '',
         unit: m.unit || '',
         drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
-        supplyType: addAsFree ? 'free' : '', // 담는 자리가 곧 구분이다 (2026-09-02 대표님)
+        supplyType: supplyTab === MADE ? MADE_TYPE : addAsFree ? 'free' : '', // 담는 자리가 곧 구분 (2026-09-02·09-12 대표님)
         qty: Number(qtyInput) || 0,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -1383,7 +1382,7 @@ export default function BomDetailPage() {
             { value: 'all', label: '전체', count: displayItems.length },
             { value: 'paid', label: '도급', count: paidCount },
             { value: 'free', label: '사급', count: freeCount },
-            ...(madeCount > 0 ? [{ value: MADE, label: MADE, count: madeCount }] : []),
+            { value: MADE, label: MADE, count: madeCount },
           ]}
           value={supplyTab}
           onChange={setSupplyTab}
@@ -1690,15 +1689,17 @@ export default function BomDetailPage() {
                               <td data-label="구분">
                                 <button
                                   type="button"
-                                  className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}`}
+                                  className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}${isMade(it) ? ' is-made' : ''}`}
                                   onClick={() => toggleSupply(it)}
                                   title={
-                                    isFreeIssue(it)
-                                      ? '사급 — 고객사 제공 자재. 금액 합계에서 빠집니다. 눌러서 도급으로'
-                                      : '도급 — 우리가 사서 넣는 자재. 눌러서 사급으로'
+                                    isMade(it)
+                                      ? '판금 — 도면대로 만들어 넣는 것. 눌러서 도급으로'
+                                      : isFreeIssue(it)
+                                        ? '사급 — 고객사 제공 자재. 금액 합계에서 빠집니다. 눌러서 판금으로'
+                                        : '도급 — 우리가 사서 넣는 자재. 눌러서 사급으로'
                                   }
                                 >
-                                  {isFreeIssue(it) ? '사급' : '도급'}
+                                  {kindLabel(it)}
                                 </button>
                               </td>
                               <td data-label="수량">

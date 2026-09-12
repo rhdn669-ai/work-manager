@@ -26,6 +26,8 @@ const TABS = [
   { value: 'freestock', label: '사급 재고' },
   // 도급도 같은 모양으로 — 들어온 것 중 아직 호기에 안 간 양 (2026-09-11 대표님)
   { value: 'paidstock', label: '도급 재고' },
+  // 판금도 같은 모양으로 — BOM 판금 탭에 담은 줄만 센다 (2026-09-12 대표님 「판금 재고 탭을 따로」)
+  { value: 'madestock', label: '판금 재고' },
 ];
 
 export default function MaterialsHubPage() {
@@ -196,7 +198,9 @@ export default function MaterialsHubPage() {
       ) : tab === 'freestock' ? (
         <FreeStockPage company={company} />
       ) : tab === 'paidstock' ? (
-        <PaidStockPage company={company} />
+        <PaidStockPage company={company} kind="paid" />
+      ) : tab === 'madestock' ? (
+        <PaidStockPage company={company} kind="made" />
       ) : (
         <ShortagePage embedded />
       )}

@@ -8,9 +8,10 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
+import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBom';
+import { inKindTab } from '../../domain/itemKind';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
 import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../services/paidStockService';
@@ -45,7 +46,8 @@ const fmtWhen = (v) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-export default function PaidStockPage({ company = '' }) {
+// kind: 'paid'(도급) | 'made'(판금) — 셈은 같고 어느 갈래 줄을 세느냐만 다르다 (2026-09-12 대표님)
+export default function PaidStockPage({ company = '', kind = 'paid' }) {
   const { userProfile } = useAuth();
   const { toast, confirm } = useDialog();
   const me = userProfile?.name || '';
@@ -129,7 +131,7 @@ export default function PaidStockPage({ company = '' }) {
       if (!rows0) continue;
       const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
       for (const bx of CHECKABLE_BOXES) {
-        const list = bomRowsForBox(forVariant, bx).filter((r) => !isFreeIssue(r));
+        const list = bomRowsForBox(forVariant, bx).filter((r) => inKindTab(r, kind));
         if (list.length === 0) continue;
         const rec = (materials[p.id] || {})[bx] || {};
         const g = pick(bx).gone;
@@ -150,7 +152,7 @@ export default function PaidStockPage({ company = '' }) {
       const one = new Map();
       const oneBox = new Map(); // box → Map(itemId → 개수)
       for (const bx of CHECKABLE_BOXES) {
-        const list = bomRowsForBox(forVariant, bx).filter((r) => !isFreeIssue(r));
+        const list = bomRowsForBox(forVariant, bx).filter((r) => inKindTab(r, kind));
         if (list.length === 0) continue;
         if (!oneBox.has(bx)) oneBox.set(bx, new Map());
         const ob = oneBox.get(bx);
@@ -233,7 +235,7 @@ export default function PaidStockPage({ company = '' }) {
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
     return { groups: out, allRows: [...stockOfItem.values()] };
-  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view]);
+  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view, kind]);
 
   // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
   async function commitDraft(r) {
@@ -334,7 +336,11 @@ export default function PaidStockPage({ company = '' }) {
       {groups.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
-          <p>{view === 'have' ? '남은 도급 자재가 없습니다' : `${company} 도급 품목이 없습니다`}</p>
+          <p>
+            {view === 'have'
+              ? '남은 도급 자재가 없습니다'
+              : `${company} ${kind === 'made' ? '판금' : '도급'} 품목이 없습니다`}
+          </p>
           <span>BOM 에 도급으로 표시된 품목이 여기에 모입니다. 발주서를 BOM 에 연결해야 들어온 양이 잡힙니다.</span>
         </div>
       ) : (
