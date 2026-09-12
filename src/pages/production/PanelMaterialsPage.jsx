@@ -570,7 +570,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           onChange={setSupplyTab}
           ariaLabel="도급 사급 구분"
         />
-        {supplyTab === 'paid' && (
+        {/* 안내는 잠겨 있을 때만 — 잠금을 풀면 그 자리를 「전부 비움·전부 들어옴」이 쓴다.
+            둘을 함께 두면 줄이 하나 늘어 표가 그만큼 짧아졌다
+            (2026-09-12 대표님 「잠금해제를하면 리스트가 다시작아짐」). */}
+        {supplyTab === 'paid' && locked && (
           <span className="pmat-hint pmat-hint-paid">
             발주서를 입고하면 도급 재고에 쌓이고, 여기서 세트를 만들며 체크한 만큼 빠집니다
           </span>
