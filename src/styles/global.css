@@ -24201,3 +24201,15 @@ body.has-editlock .main-content.expanded {
   font-size: 12px;
   color: var(--text-light, #3f4a5a);
 }
+
+/* 품목 대분류의 「전장자재 / 가공품」 표시 (2026-09-12 대표님) */
+.item-group-kind {
+  flex: none;
+  min-width: 74px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.item-group-kind:disabled {
+  opacity: 1; /* 잠겨 있어도 무슨 갈래인지는 또렷하게 */
+  cursor: default;
+}
