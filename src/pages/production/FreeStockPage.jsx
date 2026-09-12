@@ -4,10 +4,12 @@
 // 무엇이 들어와야 하는지 알 수 있다(대표님 「BOM 에 있는 사급품이 리스트가 되어야」).
 //
 // 숫자는 서로 이어져 있다.
-//   필요   그 회사 호기들이 BOM 대로 쓸 총량
-//   투입   이미 호기에 들어간 양(호기 자재 체크에서 체크한 것)
-//   재고   여기 쌓여 있는 양 — 「사급 받기」로 늘고, 호기에서 「재고에서 N」으로 줄어든다
-//   부족   필요 − 투입 − 재고. 재고를 받으면 곧바로 줄어든다.
+// 말은 도급 재고와 하나로 맞춘다 — 두 통을 나란히 보시기 때문이다
+// (2026-09-12 대표님 「사급에도 있는게 좋지않나」).
+//   1대당    호기 하나가 쓰는 개수 (BOX 합)
+//   가능 SET 남음 ÷ 1대당 (버림)
+//   나감     호기들에 이미 들어간 양 (끝난 호기까지)
+//   남음     통에 쌓여 있는 양 — 「이번 입고」로 늘고, 호기에서 「재고에서 N」으로 줄어든다
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
 import Modal from '../../components/common/Modal';
@@ -69,18 +71,10 @@ export default function FreeStockPage({ company }) {
 
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
-  // 이 회사 호기 중 BOM 을 연결한 것만 — 끝난 호기(출고)는 뺀다
-  const mine = useMemo(
-    () =>
-      panels.filter(
-        (p) =>
-          (!p.회사 || p.회사 === company) &&
-          hasBomLink(p) &&
-          p.overallStatus !== '출고완료' &&
-          p.overallStatus !== '출고숨김',
-      ),
-    [panels, company],
-  );
+  // 이 회사 호기 중 BOM 을 연결한 것 «전부» — 끝난 호기도 넣는다.
+  // 나간 자재는 호기가 출고됐다고 통으로 돌아오지 않는다. 끝난 호기를 빼고 세면
+  // 「나감」이 실제보다 적게 나온다 (도급 통에서 먼저 드러난 것과 같은 셈, 2026-09-12).
+  const mine = useMemo(() => panels.filter((p) => (!p.회사 || p.회사 === company) && hasBomLink(p)), [panels, company]);
 
   useEffect(() => {
     const ids = [...new Set(mine.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
@@ -227,12 +221,12 @@ export default function FreeStockPage({ company }) {
             품목 <b>{sums.kinds}</b>
           </span>
           <span className="fstock-sum">
-            재고 <b>{won(sums.have)}</b>
+            남음 <b>{won(sums.have)}</b>
           </span>
           {/* 가장 모자란 품목이 전체 SET 수를 정한다 (2026-09-11 대표님) */}
           {sums.sets !== null && (
             <span className="fstock-sum fstock-sets">
-              지금 재고로 <b className={sums.sets === 0 ? 'is-short' : ''}>{won(sums.sets)} SET</b>
+              지금 남은 것으로 <b className={sums.sets === 0 ? 'is-short' : ''}>{won(sums.sets)} SET</b>
               {sums.worst ? <em>모자란 것 · {sums.worst.name || sums.worst.code}</em> : null}
             </span>
           )}
@@ -246,7 +240,7 @@ export default function FreeStockPage({ company }) {
         />
         <ViewSwitch
           options={[
-            { value: 'have', label: '재고 있음' },
+            { value: 'have', label: '남은 것' },
             { value: 'all', label: '전체' },
           ]}
           value={view}
@@ -258,14 +252,14 @@ export default function FreeStockPage({ company }) {
       {rows.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
-          <p>{view === 'have' ? '재고가 남은 사급 품목이 없습니다' : `${company} 사급 품목이 없습니다`}</p>
+          <p>{view === 'have' ? '남은 사급 자재가 없습니다' : `${company} 사급 품목이 없습니다`}</p>
           <span>BOM 에 사급으로 표시된 품목이 여기에 모입니다.</span>
         </div>
       ) : (
         <div className="table-scroll-x no-print">
           <table className="table pmat-table">
             <colgroup>
-              {['44px', '14%', '15%', null, '7%', '7%', '14%', '11%'].map((w, i) => (
+              {['44px', '13%', '14%', null, '6%', '8%', '7%', '13%', '11%'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -280,13 +274,16 @@ export default function FreeStockPage({ company }) {
                 <th scope="col" className="col-num">
                   1대당
                 </th>
-                <th scope="col" className="col-num" title="지금 재고로 몇 대분이 되나">
+                <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
                   가능 SET
                 </th>
-                <th scope="col" className="col-num">
-                  재고
+                <th scope="col" className="col-num" title="호기들에 이미 들어간 양">
+                  나감
                 </th>
-                <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 재고에 더해집니다">
+                <th scope="col" className="col-num" title="통에 남아 있는 양">
+                  남음
+                </th>
+                <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 남음에 더해집니다">
                   이번 입고
                 </th>
               </tr>
@@ -304,9 +301,10 @@ export default function FreeStockPage({ company }) {
                   <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
                     {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
                   </td>
+                  <td className="col-num">{won(r.got)}</td>
                   <td className="col-num">
                     {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
-                        고치는 대상(재고) 바로 옆에 둔다 (2026-09-11 대표님) */}
+                        고치는 대상(남음) 바로 옆에 둔다 (2026-09-11 대표님) */}
                     <div className="fstock-have-cell">
                       <button
                         type="button"
