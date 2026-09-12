@@ -26,6 +26,7 @@ import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
 
 const won = (n) => (Number(n) || 0).toLocaleString();
+const ALL_BOX = '전체';
 const hasBomLink = (p) => !!p?.bomLink?.projectId;
 
 // 기록에 적히는 말 — 통에 들어옴 / 호기로 나감 / 되돌아옴 / 손으로 맞춤
@@ -57,6 +58,9 @@ export default function FreeStockPage({ company }) {
   const [stock, setStock] = useState({});
   const [q, setQ] = useState('');
   const [view, setView] = useState('all'); // all | have
+  // 어느 BOX 만 볼지 — 「전체」면 BOX 를 가리지 않는다 (2026-09-12 대표님 「박스별로 나눠줄래?」).
+  // 남음(재고)은 품목마다 하나뿐이라 BOX 로 못 쪼갠다 — 그 칸만 늘 전체 값이다.
+  const [box, setBox] = useState(ALL_BOX);
   // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
   // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
   const [fixing, setFixing] = useState(null); // { row, to }
@@ -92,6 +96,23 @@ export default function FreeStockPage({ company }) {
   }, [mine, bomByProject]);
 
   // BOM 의 사급 줄을 호기·BOX 별로 모아 품목 단위로 합친다.
+  // 셈에 쓸 BOX — 「전체」면 모두
+  const boxesToCount = useMemo(() => (box === ALL_BOX ? CHECKABLE_BOXES : [box]), [box]);
+
+  // 이 BOM 에 사급 줄이 실제로 있는 BOX 만 탭에 올린다 — 빈 탭을 눌러 보게 두지 않는다
+  const boxesWithRows = useMemo(() => {
+    const has = new Set();
+    for (const p of mine) {
+      const rows0 = bomByProject[p.bomLink.projectId];
+      if (!rows0) continue;
+      const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
+      for (const bx of CHECKABLE_BOXES) {
+        if (bomRowsForBox(forVariant, bx).some(isFreeIssue)) has.add(bx);
+      }
+    }
+    return CHECKABLE_BOXES.filter((b) => has.has(b));
+  }, [mine, bomByProject]);
+
   // allRows 는 검색·보기를 거치지 않은 전체 — 위쪽 요약은 늘 전체를 봐야 한다.
   const { rows, allRows } = useMemo(() => {
     const entries = [];
@@ -103,15 +124,15 @@ export default function FreeStockPage({ company }) {
       if (!all) continue;
       const forVariant = bomItemsForVariant(all, p.bomLink.variantKey || '');
       const one = new Map();
-      for (const box of CHECKABLE_BOXES) {
-        for (const r of bomRowsForBox(forVariant, box).filter(isFreeIssue)) {
+      for (const bx of boxesToCount) {
+        for (const r of bomRowsForBox(forVariant, bx).filter(isFreeIssue)) {
           const k = r.itemId || `row:${r.id}`;
           one.set(k, (one.get(k) || 0) + (Number(r.qty) || 0));
         }
       }
       for (const [k, v] of one) perOne.set(k, Math.max(perOne.get(k) || 0, v));
-      for (const box of CHECKABLE_BOXES) {
-        const list = bomRowsForBox(forVariant, box)
+      for (const bx of boxesToCount) {
+        const list = bomRowsForBox(forVariant, bx)
           .filter(isFreeIssue)
           .map((r) => {
             const m = r.itemId ? masterMap[r.itemId] : null;
@@ -124,7 +145,7 @@ export default function FreeStockPage({ company }) {
             };
           });
         if (list.length === 0) continue;
-        entries.push({ panelLabel: p.프로젝트 || p.id, rows: list, received: (materials[p.id] || {})[box] || {} });
+        entries.push({ panelLabel: p.프로젝트 || p.id, rows: list, received: (materials[p.id] || {})[bx] || {} });
       }
     }
     const agg = aggregateShortage(entries, { onlyShort: false });
@@ -152,7 +173,7 @@ export default function FreeStockPage({ company }) {
         return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
       });
     return { rows: filtered, allRows: mapped };
-  }, [mine, bomByProject, materials, masterMap, stock, q, view]);
+  }, [mine, bomByProject, materials, masterMap, stock, q, view, boxesToCount]);
 
   const sums = useMemo(() => {
     const all = allRows;
@@ -216,6 +237,20 @@ export default function FreeStockPage({ company }) {
 
   return (
     <div className="fstock">
+      {/* BOX 별로 나눠 보기 — 1대당·나감·가능 SET 이 그 BOX 기준으로 바뀐다.
+          남음은 품목마다 통이 하나뿐이라 BOX 로 못 쪼갠다(늘 전체 값) (2026-09-12 대표님) */}
+      {boxesWithRows.length > 1 && (
+        <div className="pmat-boxes no-print">
+          <ViewSwitch
+            options={[ALL_BOX, ...boxesWithRows].map((b) => ({ value: b, label: b }))}
+            value={box}
+            onChange={setBox}
+            ariaLabel="BOX"
+            className="pmat-box-switch"
+          />
+        </div>
+      )}
+
       <div className="fstock-head no-print">
         <div className="fstock-sums">
           <span className="fstock-sum">
@@ -278,8 +313,16 @@ export default function FreeStockPage({ company }) {
                 <th scope="col" className="col-num" title="호기들에 이미 들어간 양">
                   나감
                 </th>
-                <th scope="col" className="col-num" title="재고에 남아 있는 양">
-                  남음
+                <th
+                  scope="col"
+                  className="col-num"
+                  title={
+                    box === ALL_BOX
+                      ? '재고에 남아 있는 양'
+                      : '재고는 품목마다 하나뿐이라 BOX 로 나뉘지 않습니다 — 늘 전체 값입니다'
+                  }
+                >
+                  남음{box === ALL_BOX ? '' : ' (전체)'}
                 </th>
                 <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
                   가능 SET
