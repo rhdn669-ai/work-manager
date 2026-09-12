@@ -62,7 +62,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [bomRows, setBomRows] = useState([]);
   const [master, setMaster] = useState([]);
   const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
-  const [tabPick, setTabPick] = useState('paid'); // 사람이 고른 탭 — 'paid' | 'free'
+  const [supplyTab, setSupplyTab] = useState('paid'); // 'paid' | 'free'
   const [draft, setDraft] = useState({}); // 입력 중인 개수 { [bomItemId]: '3' }
   // 숫자를 직접 적는 칸은 «길게 누를 때»만 연다 — 100번 중 96번은 필요 수량 그대로 들어오기 때문
   // (2026-09-08 대표님 「자동 채우기 버튼으로, 한 번 더 누르면 수량 입력」 → 실측 후 A안 확정)
@@ -183,16 +183,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return rowView === 'done' ? done : !done;
     });
   const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
-  // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽을 «보여 준다» — 빈 화면만 보고
+  // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽으로 옮긴다 — 빈 화면만 보고
   // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님).
-  // 상태를 바꾸지 않고 셈으로만 정한다. 그리는 중에 상태를 바꾸면 화면이 연달아 다시 그려진다.
-  const supplyTab = useMemo(() => {
-    if (rows.length === 0) return tabPick;
-    const cur = tabPick === 'free' ? summary.free.total : summary.paid.total;
-    if (cur > 0) return tabPick;
-    const other = tabPick === 'free' ? summary.paid.total : summary.free.total;
-    return other > 0 ? (tabPick === 'free' ? 'paid' : 'free') : tabPick;
-  }, [rows.length, summary, tabPick]);
+  //
+  // 셈(useMemo)으로 바꾸려다 화면을 통째로 죽인 적이 있다 (2026-09-12). 줄(rows)이 탭으로
+  // 걸러지고, 요약(summary)이 그 줄에서 나오고, 탭이 그 요약을 보기 때문에 서로를 참조하는
+  // 고리가 된다. 효과(useEffect)는 그 고리를 «다음 그리기»로 끊어 준다 — 그래서 이대로 둔다.
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const cur = supplyTab === 'free' ? summary.free.total : summary.paid.total;
+    if (cur > 0) return;
+    const other = supplyTab === 'free' ? summary.paid.total : summary.free.total;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 설명 참고: 고리를 끊는 유일한 자리
+    if (other > 0) setSupplyTab(supplyTab === 'free' ? 'paid' : 'free');
+  }, [box, rows.length, summary, supplyTab]);
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
   const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
   // 비고 — 호기·줄마다 한 줄 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」)
@@ -627,7 +631,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             },
           ]}
           value={supplyTab}
-          onChange={setTabPick}
+          onChange={setSupplyTab}
           ariaLabel="도급 사급 구분"
         />
         {locked && assigned ? (
