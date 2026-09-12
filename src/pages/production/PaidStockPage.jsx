@@ -41,20 +41,20 @@ export default function PaidStockPage({ company = '' }) {
 
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
-  // 이 회사 호기 중 BOM 을 연결한 것만 — 끝난 호기(출고)는 뺀다
+  // 이 회사 호기 중 BOM 을 연결한 것 «전부» — 끝난 호기도 넣는다.
+  // 나간 자재는 호기가 출고됐다고 통으로 돌아오지 않는다. 끝난 호기를 빼고 세면
+  // 이미 나간 몫이 그대로 「남아 있는 것」으로 둔갑한다
+  // (2026-09-12 대표님 「13세트중 6세트만 나갔다고 되어있는데 뭐지」 — 출고한 6대분이 빠져 있었다).
+  const all = useMemo(() => panels.filter((p) => (!p.회사 || p.회사 === company) && hasBomLink(p)), [panels, company]);
+
+  // 표에 어떤 품목을 보일지는 «지금 일하는» 호기의 BOM 으로 정한다 — 끝난 호기의 옛 품목까지
+  // 늘어놓을 까닭이 없다. 나간 양만 위의 전부를 센다.
   const mine = useMemo(
-    () =>
-      panels.filter(
-        (p) =>
-          (!p.회사 || p.회사 === company) &&
-          hasBomLink(p) &&
-          p.overallStatus !== '출고완료' &&
-          p.overallStatus !== '출고숨김',
-      ),
-    [panels, company],
+    () => all.filter((p) => p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김'),
+    [all],
   );
 
-  const projectId = mine[0]?.bomLink?.projectId || '';
+  const projectId = mine[0]?.bomLink?.projectId || all[0]?.bomLink?.projectId || '';
 
   // 들어온 양 — BOM 으로 묶인 발주서 + (옛 방식) 설정된 현장의 발주서.
   // 볼 곳이 없으면 구독만 걸지 않는다 — 그릴 때 상태를 건드리면 화면을 두 번 그린다.
@@ -66,7 +66,7 @@ export default function PaidStockPage({ company = '' }) {
 
   // BOM 은 프로젝트마다 한 번만 읽는다
   useEffect(() => {
-    const ids = [...new Set(mine.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
+    const ids = [...new Set(all.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
     if (ids.length === 0) return undefined;
     let alive = true;
     Promise.all(ids.map((id) => getBomBySite(id).then((rows) => [id, rows || []])))
@@ -77,25 +77,39 @@ export default function PaidStockPage({ company = '' }) {
     return () => {
       alive = false;
     };
-  }, [mine, bomByProject]);
+  }, [all, bomByProject]);
 
   const { rows, allRows } = useMemo(() => {
     const perOne = new Map(); // 1대당 (호기마다 다르면 가장 큰 값)
     const gone = new Map(); // 호기들에 이미 들어간 양
     const info = new Map(); // 품목 정보
 
-    for (const p of mine) {
-      const all = bomByProject[p.bomLink.projectId];
-      if (!all) continue;
-      const forVariant = bomItemsForVariant(all, p.bomLink.variantKey || '');
-      const one = new Map();
+    // 나간 양 — 끝난 호기까지 «모든» 호기가 실제로 가져간 만큼
+    for (const p of all) {
+      const rows = bomByProject[p.bomLink.projectId];
+      if (!rows) continue;
+      const forVariant = bomItemsForVariant(rows, p.bomLink.variantKey || '');
       for (const box of CHECKABLE_BOXES) {
         const list = bomRowsForBox(forVariant, box).filter((r) => !isFreeIssue(r));
         const rec = (materials[p.id] || {})[box] || {};
         for (const r of list) {
           if (!r.itemId) continue;
-          one.set(r.itemId, (one.get(r.itemId) || 0) + (Number(r.qty) || 0));
           gone.set(r.itemId, (gone.get(r.itemId) || 0) + receivedQty(rec, r.id));
+        }
+      }
+    }
+
+    // 1대당·품목 정보 — 지금 일하는 호기 기준
+    for (const p of mine) {
+      const rows = bomByProject[p.bomLink.projectId];
+      if (!rows) continue;
+      const forVariant = bomItemsForVariant(rows, p.bomLink.variantKey || '');
+      const one = new Map();
+      for (const box of CHECKABLE_BOXES) {
+        const list = bomRowsForBox(forVariant, box).filter((r) => !isFreeIssue(r));
+        for (const r of list) {
+          if (!r.itemId) continue;
+          one.set(r.itemId, (one.get(r.itemId) || 0) + (Number(r.qty) || 0));
           if (!info.has(r.itemId)) {
             const m = masterMap[r.itemId];
             info.set(r.itemId, {
@@ -136,7 +150,7 @@ export default function PaidStockPage({ company = '' }) {
         return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
       });
     return { rows: filtered, allRows: mapped };
-  }, [mine, bomByProject, materials, masterMap, received, projectId, siteId, q, view]);
+  }, [all, mine, bomByProject, materials, masterMap, received, projectId, siteId, q, view]);
 
   const sums = useMemo(() => {
     let sets = null;

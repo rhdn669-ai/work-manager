@@ -51,9 +51,13 @@ export function subscribeReceivedBySite(siteId, cb) {
  * (옛 방식) 설정한 현장의 발주서를 합쳐 센다. 둘 다 없으면 아무것도 안 한다.
  */
 export function subscribeReceivedFor({ siteId = '', bomProjectId = '' } = {}, cb) {
+  // BOM 에 걸린 발주서가 있으면 «그것만» 센다. 현장 이름으로도 함께 끌어오면, 그 현장에서
+  // 산 것이면 무엇이든 세트 통에 섞인다 — 세트와 무관한 단품 선결제까지 들어와
+  // 「13세트 시켰는데 왜 더 있지」가 된다 (2026-09-12 대표님 「9월선결제 아직 입고전임」).
+  // 현장 이름 경로는 BOM 을 아직 안 건 옛 발주서를 위한 뒷길로만 남긴다.
   const qs = [];
   if (bomProjectId) qs.push(query(purchasesRef, where('bomProjectId', '==', bomProjectId)));
-  if (siteId) qs.push(query(purchasesRef, where('siteId', '==', siteId)));
+  else if (siteId) qs.push(query(purchasesRef, where('siteId', '==', siteId)));
   if (qs.length === 0) return () => {};
   const parts = qs.map(() => null); // 구독마다 마지막 스냅샷의 문서들
   const emit = () => {
