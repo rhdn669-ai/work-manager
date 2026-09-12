@@ -129,12 +129,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     [bomRows, masterMap],
   );
 
-  // 이 호기에 판금 줄이 있나 — 없으면 탭을 올리지 않는다
-  const hasMade = useMemo(() => {
-    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    return forVariant.some(isMade);
-  }, [bomRowsFull, link?.variantKey]);
-
   const boxesWithRows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
     return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).length > 0);
@@ -570,20 +564,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 </span>
               ),
             },
-            // 판금은 도급·사급과 나란한 네 번째 구분 (2026-09-12 대표님 「판금으로 명칭 하자」)
-            ...(hasMade
-              ? [
-                  {
-                    value: MADE,
-                    label: MADE,
-                    count: (
-                      <span className={summary.made.done < summary.made.total ? 'is-short' : ''}>
-                        {summary.made.done}/{summary.made.total}
-                      </span>
-                    ),
-                  },
-                ]
-              : []),
+            // 판금은 도급·사급과 나란한 네 번째 구분 — 줄이 아직 없어도 늘 보인다
+            // (2026-09-12 대표님 「여기도 도급 사급 옆에 판금 들어가야지」)
+            {
+              value: MADE,
+              label: MADE,
+              count: (
+                <span className={summary.made.done < summary.made.total ? 'is-short' : ''}>
+                  {summary.made.done}/{summary.made.total}
+                </span>
+              ),
+            },
           ]}
           value={supplyTab}
           onChange={setSupplyTab}

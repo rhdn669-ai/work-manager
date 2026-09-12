@@ -24274,3 +24274,16 @@ body.has-editlock .main-content.expanded {
   color: var(--text-light, #3f4a5a);
   white-space: nowrap;
 }
+
+/* BOX 탭이 많아 태블릿에서 오른쪽으로 삐져나갔다 — 줄을 바꿔 다 보이게
+   (2026-09-12 대표님 「mp가 우측으로 튀어나감」) */
+.pmat-boxes .view-switch,
+.pmat-kinds .view-switch {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  max-width: 100%;
+}
+.pmat-boxes {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
