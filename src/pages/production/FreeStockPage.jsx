@@ -312,7 +312,7 @@ export default function FreeStockPage({ company }) {
       <div className="fstock-head no-print">
         <div className="fstock-sums">
           <span className="fstock-sum">
-            품목 <b>{sums.kinds}</b>
+            품목 <b>{sums.kinds}종</b>
           </span>
           <span className="fstock-sum">
             남음 <b>{won(sums.have)}</b>

@@ -45,6 +45,8 @@ import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/useDialog';
 import { MADE, madeMainCodes, isMade } from '../../domain/itemKind';
+import { moveFreeToPaid, goneByItem } from '../../services/stockMoveService';
+import { subscribePanels } from '../../services/productionService';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { useEditLock } from '../../contexts/useEditLock';
@@ -384,6 +386,20 @@ export default function BomDetailPage() {
     return m;
   }, [suppliers]);
 
+  // ※ 이 블록은 아래 목록 셈(displayItems·filtered)이 쓰므로 «그보다 위»에 있어야 한다.
+  //    아래에 두었다가 「Cannot access before initialization」으로 BOM 화면이 죽었다 (2026-09-12).
+  // (2026-09-12 대표님 「판금으로 명칭 하자 그러고 나 방식」)
+  // 이 BOM 을 쓰는 호기들의 회사 — 재고는 회사별이라 어느 통에서 옮길지 이것으로 정한다
+  const [panelsAll, setPanelsAll] = useState([]);
+  useEffect(() => subscribePanels(setPanelsAll), []);
+  const bomCompany = useMemo(() => {
+    const set = new Set(panelsAll.filter((p) => p?.bomLink?.projectId === projectId && p.회사).map((p) => p.회사));
+    return set.size === 1 ? [...set][0] : '';
+  }, [panelsAll, projectId]);
+
+  const madeMains = useMemo(() => madeMainCodes(itemMaster), [itemMaster]);
+  const isMadeRow = useCallback((it) => isMade(it, madeMains), [madeMains]);
+
   const displayItems = useMemo(
     () =>
       bomItems.map((b) => {
@@ -544,10 +560,50 @@ export default function BomDetailPage() {
   // 수량은 사급도 센다 — 실제로 쓰는 자재라 「몇 개 필요한가」는 그대로 유효하다.
   // 다만 갈라 보여 준다 (2026-09-02 대표님 「놓고 따로 센다」).
   // 판금은 도급·사급과 나란한 네 번째 구분 — 품목 대분류에 적어 둔 것을 따른다
-  // (2026-09-12 대표님 「판금으로 명칭 하자 그러고 나 방식」)
-  const madeMains = useMemo(() => madeMainCodes(itemMaster), [itemMaster]);
-  const isMadeRow = useCallback((it) => isMade(it, madeMains), [madeMains]);
   const madeCount = useMemo(() => displayItems.filter(isMadeRow).length, [displayItems, isMadeRow]);
+  // 사급 → 도급으로 바꿀 때는 재고도 함께 옮길지 묻는다. BOM 만 바꾸면 사급 통에 남은 양이
+  // 갈 곳을 잃고, 도급 쪽은 들어옴이 0 이라 남음이 음수가 된다
+  // (2026-09-12 대표님 「bom에서 버튼눌러서 그냥 옮기면안됨?」).
+  async function toggleSupply(it) {
+    const toPaid = isFreeIssue(it); // 지금 사급이면 도급으로 가는 길
+    const apply = () => {
+      const next = { supplyType: toPaid ? '' : 'free' };
+      updateField(it.id, next);
+      flushItem(it.id, next); // 바뀔 값을 함께 넘긴다 — 상태 갱신을 기다리지 않게
+    };
+    if (!toPaid || !bomCompany || !it.itemId) return apply();
+    let gone = {};
+    let left = 0;
+    try {
+      gone = await goneByItem(bomCompany, [it.itemId]);
+      const { getFreeStockSplit } = await import('../../services/freeStockService');
+      left = (await getFreeStockSplit(bomCompany, it.itemId)).qty;
+    } catch {
+      /* 못 읽으면 옮기기는 묻지 않고 구분만 바꾼다 */
+      return apply();
+    }
+    const move = left + (Number(gone[it.itemId]) || 0);
+    if (move <= 0) return apply(); // 옮길 것이 없다
+    const ok = await confirm(
+      `${it.name || it.code} 을 도급으로 바꿉니다.
+` +
+        `${bomCompany} 사급 재고에 남은 ${left}개와 지금까지 나간 ${Number(gone[it.itemId]) || 0}개를 ` +
+        `도급 재고로 함께 옮길까요?
+
+취소를 누르면 구분만 바꿉니다.`,
+    );
+    if (ok) {
+      try {
+        await moveFreeToPaid(bomCompany, [it], { by: userProfile?.name || '', gone });
+        toast(`${it.name || it.code} ${move}개를 도급 재고로 옮겼습니다`, 'success', 0);
+      } catch (err) {
+        console.error(err);
+        toast('재고를 옮기지 못했습니다 — 재고 화면에서 확인해 주세요', 'error', 0);
+      }
+    }
+    apply();
+  }
+
   const freeCount = useMemo(
     () => displayItems.filter((it) => !isMadeRow(it) && isFreeIssue(it)).length,
     [displayItems, isMadeRow],
@@ -1635,11 +1691,7 @@ export default function BomDetailPage() {
                                 <button
                                   type="button"
                                   className={`bom-supply-btn${isFreeIssue(it) ? ' is-free' : ''}`}
-                                  onClick={() => {
-                                    const next = { supplyType: isFreeIssue(it) ? '' : 'free' };
-                                    updateField(it.id, next);
-                                    flushItem(it.id, next); // 바뀔 값을 함께 넘긴다 — 상태 갱신을 기다리지 않게
-                                  }}
+                                  onClick={() => toggleSupply(it)}
                                   title={
                                     isFreeIssue(it)
                                       ? '사급 — 고객사 제공 자재. 금액 합계에서 빠집니다. 눌러서 도급으로'
