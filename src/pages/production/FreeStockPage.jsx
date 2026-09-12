@@ -64,6 +64,8 @@ export default function FreeStockPage({ company }) {
   // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
   // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
   const [fixing, setFixing] = useState(null); // { row, to }
+  // 「이번 입고」가 고객사가 준 것인지 우리가 댄 것인지 — 평소엔 고객사 (2026-09-12 대표님)
+  const [inOurs, setInOurs] = useState(false);
   const [logOf, setLogOf] = useState(null); // 기록을 펼쳐 볼 줄
   // 표에서 바로 적는 입고 수량 — 창을 띄우지 않는다 (2026-09-11 대표님)
   const [draft, setDraft] = useState({}); // { [itemId]: '3' }
@@ -151,6 +153,8 @@ export default function FreeStockPage({ company }) {
       whole.set(a.itemId, {
         ...a,
         have,
+        // 「우리가 댄」 몫 — 고객사 것 = have − ours (2026-09-12 대표님)
+        ours: Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have),
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정 — BOX 몫으로 나누면 같은 재고인데 BOX 마다
         // 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
@@ -225,8 +229,11 @@ export default function FreeStockPage({ company }) {
     if (n <= 0) return;
     setSaving(r.itemId);
     try {
-      await receiveFreeStock(company, { itemId: r.itemId, code: r.code, name: r.name, spec: r.spec }, n, { by: me });
-      toast(`${r.name || r.code} ${n}개 받았습니다`, 'success');
+      await receiveFreeStock(company, { itemId: r.itemId, code: r.code, name: r.name, spec: r.spec }, n, {
+        by: me,
+        ours: inOurs,
+      });
+      toast(`${r.name || r.code} ${n}개 ${inOurs ? '우리 것으로 ' : ''}받았습니다`, 'success', 2000);
     } catch (err) {
       console.error(err);
       toast('저장에 실패했습니다', 'error');
@@ -284,6 +291,18 @@ export default function FreeStockPage({ company }) {
           value={view}
           onChange={setView}
           ariaLabel="보기"
+        />
+        {/* 「이번 입고」에 적는 것이 누구 물건인지 — 평소엔 고객사, 우리 것을 넣을 때만 바꾼다
+            (2026-09-12 대표님 「사급 품목중에 우리가 보유하고있는 품목」) */}
+        <ViewSwitch
+          options={[
+            { value: 'them', label: '고객사' },
+            { value: 'ours', label: '우리 것' },
+          ]}
+          value={inOurs ? 'ours' : 'them'}
+          onChange={(v) => setInOurs(v === 'ours')}
+          ariaLabel="이번 입고가 누구 물건인지"
+          className="fstock-owner-switch"
         />
       </div>
 

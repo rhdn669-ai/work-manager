@@ -115,6 +115,25 @@ export async function setAutoIn(panelId, box, bomItemId, n) {
   );
 }
 
+/** 그 줄이 사급 재고의 «우리 몫»에서 꺼내 쓴 누계 — 되돌릴 때 우리 몫으로 얼마를 돌릴지 안다
+ *  (2026-09-12 대표님 「고객사거 먼저」). 음수로 부르면 줄어든다. */
+export async function addFromOurs(panelId, box, bomItemId, n, prev = 0) {
+  const delta = Number(n) || 0;
+  if (!delta) return;
+  const next = Math.max(0, (Number(prev) || 0) + delta);
+  if (next === (Number(prev) || 0)) return;
+  await setDoc(
+    doc(ref, materialsDocId(panelId, box)),
+    {
+      panelId,
+      box,
+      items: { [bomItemId]: { fromOurs: next } },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
 // 되돌릴 때는 음수로 부른다 — 재고로 돌려준 만큼 이 줄의 「재고에서 쓴 누계」도 줄어야 한다
 // (2026-09-12: 안 줄이면 다음에 지울 때 또 돌려주게 된다).
 export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {

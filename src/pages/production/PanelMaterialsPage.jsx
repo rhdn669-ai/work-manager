@@ -19,6 +19,7 @@ import {
   setNote,
   setReceivedMany,
   addFromStock,
+  addFromOurs,
 } from '../../services/panelMaterialsService';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
@@ -291,17 +292,27 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const who = by();
     const where = `${panel?.프로젝트 || ''} · ${box}`;
     const kept = Math.max(0, Number(rec[r.id]?.fromStock) || 0);
+    const keptOurs = Math.max(0, Number(rec[r.id]?.fromOurs) || 0); // 그중 「우리가 댄」 몫
     try {
       const have = d > 0 ? await getFreeStockQty(company, r.itemId) : 0;
       const mv = freeStockMoves({ before, after, have, fromStock: kept });
       if (!mv) return;
       if (mv.take > 0) {
-        const took = await takeFreeStock(company, r.itemId, mv.take, { by: who, note: where });
-        if (took > 0) await addFromStock(panelId, box, r.id, took, kept);
+        // 고객사 것부터 나간다 — 우리 몫에서 나간 만큼만 따로 적어 둔다 (2026-09-12 대표님)
+        const { take, fromOurs } = await takeFreeStock(company, r.itemId, mv.take, { by: who, note: where });
+        if (take > 0) {
+          await addFromStock(panelId, box, r.id, take, kept);
+          if (fromOurs > 0) await addFromOurs(panelId, box, r.id, fromOurs, keptOurs);
+        }
       }
       if (mv.giveBack > 0) {
-        await returnFreeStock(company, r.itemId, mv.giveBack, { by: who, note: `${where} 되돌림` });
+        await returnFreeStock(company, r.itemId, mv.giveBack, {
+          by: who,
+          note: `${where} 되돌림`,
+          tookOurs: keptOurs,
+        });
         await addFromStock(panelId, box, r.id, -mv.giveBack, kept);
+        await addFromOurs(panelId, box, r.id, -Math.min(mv.giveBack, keptOurs), keptOurs);
       }
     } catch (err) {
       console.error('[사급 재고] 맞추기 실패', err);
