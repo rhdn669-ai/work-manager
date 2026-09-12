@@ -20,13 +20,7 @@ import {
   setReceivedMany,
   addFromStock,
 } from '../../services/panelMaterialsService';
-import {
-  pullRowFromStock,
-  unassignPaidSet,
-  topUpPaidSet,
-  subscribeReceivedFor,
-  subscribePaidSetSettings,
-} from '../../services/paidSetService';
+import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
@@ -176,8 +170,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 잠금 — 사급 개수도 실수로 고쳐지지 않게 (2026-09-05 대표님 「잠금이 왜 없지」).
   // 도급은 잠금과 무관하게 «항상» 읽기 전용(발주 입고가 채운다).
   const editMode = useEditLock();
-  const locked = supplyTab === 'paid' || !editMode;
-  const assigned = !!panel?.paidSet;
+  // 도급도 사급처럼 손으로 체크한다 — 호기에서 세트를 실제로 만들면서 세는 것이 실물과 맞는다
+  // (2026-09-12 대표님 「호기수마다 실제로 세트를 만들면서 수량체크가 되어야할거겉은데」).
+  // 도급 재고는 «발주 입고 + 손으로 적은 몫 − 호기에 들어간 양»이라, 여기서 체크만 하면
+  // 재고가 저절로 줄고 지우면 저절로 돌아온다 — 재고를 따로 건드릴 일이 없다.
+  const locked = !editMode;
   // BOX 마다 이 탭(도급/사급)의 부족 줄 수 — 탭 오른쪽 배지로 보여 어느 BOX 가 모자란지 한눈에
   // (2026-09-05 대표님 「부족 떠있는 위치 확인이 안 되니 박스 우측에 부족 수량」)
   const shortByBox = useMemo(() => {
@@ -341,27 +338,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     clearTimeout(pressRef.current.timer);
   };
 
-  // 사급 재고에서 이 호기로 — 이제 재고 빼기는 syncFree 한 곳이 맡는다.
-  // 여기서 또 빼면 두 번 빠진다(2026-09-11).
-  const pullFree = async (r, have, n) => {
-    const before = Number(have) || 0;
-    const after = before + (Number(n) || 0);
-    try {
-      await setReceived(panelId, box, r.id, after, by());
-      await syncFree(r, before, after);
-      undoable(`${r.name || r.code} ${n}개를 사급 재고에서 가져왔습니다`, async () => {
-        try {
-          await setReceived(panelId, box, r.id, before, by());
-          await syncFree(r, after, before);
-        } catch {
-          toast('되돌리지 못했습니다', 'error');
-        }
-      });
-    } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
-    }
-  };
-
   const commit = async (r) => {
     const raw = draft[r.id];
     if (raw === undefined) return;
@@ -443,40 +419,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const spare = Math.max(0, Number(spareByItem[r.itemId]) || 0);
     return kept + spare;
   };
-  const pullStock = async (r, have, short) => {
-    const n = Math.min(short, stockOf(r));
-    if (n <= 0) return;
-    if (supplyTab === 'free') return pullFree(r, have, n);
-    try {
-      await pullRowFromStock(panel, r, {
-        box,
-        have,
-        n,
-        by: userProfile?.name || '',
-        fromStock: Number(rec[r.id]?.fromStock) || 0,
-      });
-      // 잠깐 알리고 사라진다 — 여러 줄을 잇달아 가져오면 알림이 쌓여 표를 가린다
-      // (2026-09-12 대표님 「토스트 2초후 지워지게」)
-      toast(`${r.code || r.name} ${n}개를 재고에서 가져왔습니다 (재고 ${stockOf(r) - n} 남음)`, 'success', 2000);
-    } catch (err) {
-      console.error(err);
-      toast('재고에서 가져오기에 실패했습니다', 'error', 0);
-    }
-  };
-  // 도급 배정 탭을 없애며 옮겨 온 것 — 배정 취소 · 부족분 전부 재고에서 (2026-09-05 대표님)
-  // 통이 도착해도 이 목록이 다시 셈해지지 않아 「부족분 채우기」가 늘 빈손이었다
-  // (2026-09-12 대표님 「재고 넣는게 왜 안되냐」 — 통에 16개가 있는데 미입고였다).
-  const stockByItem = useMemo(() => {
-    const out = {};
-    for (const r of bomRows) {
-      // 「부족분 채우기」는 도급 전용이므로 언제나 도급 통을 본다 —
-      // 사급 탭을 보는 중이라고 사급 통을 집으면 안 된다
-      const n = r.itemId ? Math.max(0, Number(paidStock[r.itemId]?.qty) || 0) : 0;
-      if (n > 0) out[r.itemId] = n;
-    }
-    return out;
-  }, [bomRows, paidStock]);
-  const variantRows = useMemo(() => bomItemsForVariant(bomRows, link?.variantKey || ''), [bomRows, link?.variantKey]);
   // 발주 여유 = 이 BOM 으로 들어온 입고 − 배정 호기들이 가져간 양 (부족 집계와 같은 셈)
   const [settings, setSettings] = useState({});
   useEffect(() => subscribePaidSetSettings(setSettings), []);
@@ -501,37 +443,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     for (const [itemId, q] of Object.entries(receivedByItem)) out[itemId] = q - (consumed[itemId] || 0);
     return out;
   }, [link?.projectId, allPanels, bomRows, allMaterials, receivedByItem]);
-  const canFillAll = useMemo(
-    () => Object.values(spareByItem).some((v) => v > 0) || Object.keys(stockByItem).length > 0,
-    [spareByItem, stockByItem],
-  );
-  const pullAllStock = async () => {
-    try {
-      const r = await topUpPaidSet(panel, variantRows, { by: userProfile?.name || '', spareByItem, stockByItem });
-      const n = Object.values(r.stockUsed || {}).reduce((a, b) => a + b, 0);
-      if (r.added === 0) toast('발주 여유도 재고도 없어 채울 줄이 없습니다', 'error');
-      else
-        toast(
-          `${r.added}줄을 채웠습니다${n > 0 ? ` (재고에서 ${n}개)` : ''}${r.short > 0 ? ` — 아직 ${r.short}줄 부족` : ''}`,
-          'success',
-          2000,
-        );
-    } catch (err) {
-      console.error(err);
-      toast('재고에서 채우기에 실패했습니다', 'error', 0);
-    }
-  };
-  const unassign = async () => {
-    if (!(await confirm(`${title} 의 도급 배정을 취소하시겠습니까? 도급 줄 수량이 0 이 되고 자재 도급 칸이 꺼집니다.`)))
-      return;
-    try {
-      await unassignPaidSet(panel, variantRows, { by: userProfile?.name || '' });
-      toast('도급 배정을 취소했습니다', 'success');
-    } catch (err) {
-      console.error(err);
-      toast('취소에 실패했습니다', 'error', 0);
-    }
-  };
   const fillAll = () => fillAllTo(true);
   const clearAll = () => fillAllTo(false);
 
@@ -671,50 +582,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           onChange={setSupplyTab}
           ariaLabel="도급 사급 구분"
         />
-        {/* 「부족분 채우기」를 배정된 호기에만 보여 주고 있었다. 그런데 최초 배정을 만드는 길이
-            앱에 없어(assignPaidSet 은 부르는 곳이 없었다), 한 번도 배정 안 된 호기는 이 단추를
-            볼 방법이 아예 없었다 — 품목마다 하나씩 눌러야 했다 (2026-09-12 조사).
-            이제 도급 탭이면 배정 여부와 상관없이 보인다. */}
-        {locked ? (
-          <span className="pmat-assigned-row">
-            {assigned && (
-              <span
-                className="status-badge status-badge--done pmat-locked-badge"
-                title="발주 입고분이 이 호기에 들어온 상태"
-              >
-                <Icon name="lock" />
-                도급 배정 · {panel.paidSet.at}
-                {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
-              </span>
-            )}
-            {summary.paid.done < summary.paid.total && canFillAll && (
-              <button
-                type="button"
-                className="btn btn-sm btn-primary"
-                disabled={!editMode}
-                onClick={pullAllStock}
-                title="모자란 줄 전부를 발주 여유 → 창고 재고 순으로 (있는 만큼만)"
-              >
-                부족분 채우기
-              </button>
-            )}
-            {assigned && (
-              <button type="button" className="btn btn-sm btn-outline" disabled={!editMode} onClick={unassign}>
-                배정 취소
-              </button>
-            )}
-            {/* 「발주 상세에 호기를 걸어 두면 자동으로 채워진다」고 안내하고 있었다. 호기 걸기는
-                2026-09-11 에 걷어냈고, 자동으로 채우는 코드도 처음부터 없었다 — 없는 기능을
-                시키면서 단추는 하나도 주지 않는 화면이었다 (2026-09-12 조사). */}
-            {!canFillAll && (
-              <span className="pmat-hint pmat-hint-paid">
-                <Icon name="lock" />
-                도급은 손으로 적지 않습니다 — 발주서를 입고하거나 도급 재고에 수량을 넣으면 여기서 채울 수 있습니다
-              </span>
-            )}
+        {supplyTab === 'paid' && (
+          <span className="pmat-hint pmat-hint-paid">
+            발주서를 입고하면 도급 재고에 쌓이고, 여기서 세트를 만들며 체크한 만큼 빠집니다
           </span>
-        ) : (
-          <span className="pmat-hint">수량을 누르면 필요 수량만큼 채워집니다 · 길게 누르면 직접 적습니다</span>
         )}
         {shown.length > 0 && !locked && (
           <span className="pmat-fill">
@@ -810,7 +681,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     <td className="pmat-num">{Number(r.qty) || 0}</td>
                     <td className="pmat-num">
                       {locked ? (
-                        <span className="pmat-locked-qty" title="세트 배정 — 도급 배정 화면에서만 바뀝니다">
+                        <span className="pmat-locked-qty" title="고치려면 오른쪽 아래 「잠금」을 푸세요">
                           {got || 0}
                         </span>
                       ) : typing === r.id ? (
@@ -859,30 +730,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     </td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
-                      {/* 재고에서 채울 수 있으면 그 버튼이 입고 자리를 대신한다 — 「이 호기」 칸은
-                          제외/포함만 (2026-09-05 대표님 「재고에서 위치가 이상함」) */}
-                      {/* 「locked」 는 「칸을 직접 못 고친다」는 뜻이고 도급에서는 늘 참이다.
-                          그것을 이 단추에도 쓰는 바람에 도급에서는 잠금을 풀어도 「재고에서」가
-                          아예 안 그려졌다 — 통에 물건이 있어도 길이 없었다
-                          (2026-09-12 대표님 「입고 가져오는게 왜 안되냐」). */}
-                      {editMode && !skipped && short > 0 && stockOf(r) > 0 ? (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary pmat-pull-btn"
-                          disabled={!editMode}
-                          onClick={() => pullStock(r, got, short)}
-                          title={`창고 재고 ${stockOf(r)}개 중 ${Math.min(short, stockOf(r))}개를 이 호기로`}
-                        >
-                          재고에서 {Math.min(short, stockOf(r))}
-                        </button>
-                      ) : (
-                        <ReceiptChip
-                          got={got}
-                          need={Number(r.qty) || 0}
-                          skip={skipped}
-                          title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                        />
-                      )}
+                      <ReceiptChip
+                        got={got}
+                        need={Number(r.qty) || 0}
+                        skip={skipped}
+                        title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                      />
                     </td>
                     {hasMeta && (
                       <td className="pmat-meta">
