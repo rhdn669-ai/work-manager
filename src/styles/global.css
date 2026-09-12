@@ -24213,3 +24213,15 @@ body.has-editlock .main-content.expanded {
   opacity: 1; /* 잠겨 있어도 무슨 갈래인지는 또렷하게 */
   cursor: default;
 }
+
+/* 호기 자재 체크의 큰 갈래 탭 — 전장자재 | 가공품 (2026-09-12 대표님) */
+.pmat-kinds-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.pmat-kinds-top .pmat-kind-switch button {
+  font-size: 14px;
+  font-weight: 700;
+  padding-inline: 18px;
+}

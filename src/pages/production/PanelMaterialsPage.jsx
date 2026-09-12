@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import { useFillHeight } from '../../utils/useFillHeight';
@@ -33,6 +33,7 @@ import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBo
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { freeStockMoves } from '../../domain/freeStockSync';
 import { subscribePaidStock } from '../../services/paidStockService';
+import { MADE, ELEC, madeMainCodes, isMade } from '../../domain/itemKind';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -110,14 +111,49 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [company]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
+  // ── 큰 갈래: 전장자재 | 가공품 (2026-09-12 대표님) ──
+  // 갈래는 품목 대분류에 적어 둔 것을 따른다 — domain/itemKind 가 정한다.
+  const [kindTab, setKindTab] = useState(ELEC);
+  const madeMains = useMemo(() => madeMainCodes(master), [master]);
+  const inKind = useCallback(
+    (r) => (kindTab === MADE ? isMade(r, madeMains) : !isMade(r, madeMains)),
+    [kindTab, madeMains],
+  );
+
   // ── 이 호기의 입고 기록 ──
   useEffect(() => subscribePanelMaterials(panelId, setReceivedMap), [panelId]);
 
   // ── BOX ──
+  // 품목 정보를 붙인 BOM 줄 — 갈래(전장/가공)는 품목 코드로 가리므로 먼저 붙여야 한다
+  const bomRowsFull = useMemo(
+    () =>
+      bomRows.map((r) => {
+        const m = r.itemId ? masterMap[r.itemId] : null;
+        return {
+          ...r,
+          code: m?.code || r.code || '',
+          name: m?.name || r.name || '',
+          spec: m?.spec || r.spec || '',
+          drawingNo: m?.drawingNo || r.drawingNo || '',
+          kind: r.kind || m?.kind || '',
+        };
+      }),
+    [bomRows, masterMap],
+  );
+
+  // 이 호기에 그 갈래 줄이 있나 — 없는 갈래 탭은 올리지 않는다
+  const kindsWithRows = useMemo(() => {
+    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
+    const out = [];
+    if (forVariant.some((r) => !isMade(r, madeMains))) out.push(ELEC);
+    if (forVariant.some((r) => isMade(r, madeMains))) out.push(MADE);
+    return out.length ? out : [ELEC];
+  }, [bomRowsFull, link?.variantKey, madeMains]);
+
   const boxesWithRows = useMemo(() => {
-    const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
-    return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).length > 0);
-  }, [bomRows, link?.variantKey]);
+    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
+    return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).filter(inKind).length > 0);
+  }, [bomRowsFull, link?.variantKey, inKind]);
   const box = sp.get('box') || boxesWithRows[0] || CHECKABLE_BOXES[0];
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
   // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
@@ -129,18 +165,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
-    const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
-    return bomRowsForBox(forVariant, box).map((r) => {
-      const m = r.itemId ? masterMap[r.itemId] : null;
-      return {
-        ...r,
-        code: m?.code || r.code || '',
-        name: m?.name || r.name || '',
-        spec: m?.spec || r.spec || '',
-        drawingNo: m?.drawingNo || r.drawingNo || '',
-      };
-    });
-  }, [bomRows, link?.variantKey, box, masterMap]);
+    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
+    return bomRowsForBox(forVariant, box).filter(inKind);
+  }, [bomRowsFull, link?.variantKey, box, inKind]);
   const rec = received[box] || {};
   // 세트를 배정한 호기의 도급 수량은 세트가 정한다 — 손으로 못 고친다 (2026-09-03 대표님
   // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
@@ -157,14 +184,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
     const out = {};
     for (const b of CHECKABLE_BOXES) {
-      const list = bomRowsForBox(forVariant, b).filter((r) =>
-        supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r),
-      );
+      const list = bomRowsForBox(forVariant, b)
+        .filter(inKind)
+        .filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
       const got = received[b] || {};
       out[b] = list.filter((r) => !isSkipped(got, r.id) && shortageOf(r.qty, receivedQty(got, r.id)) > 0).length;
     }
     return out;
-  }, [bomRows, link?.variantKey, received, supplyTab]);
+  }, [bomRowsFull, link?.variantKey, received, supplyTab, inKind]);
 
   // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
   const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
@@ -578,6 +605,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       </div>
 
       {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만. 오른쪽 끝에 보기(전체·부족·완료) */}
+      {/* 큰 갈래 — 전장자재 | 가공품. 그 아래로 BOX·도급/사급이 이어진다
+          (2026-09-12 대표님 「기존 자재들은 대분류 전장자재로 묶고 아래에 가공품 박스별로」) */}
+      {kindsWithRows.length > 1 && (
+        <div className="pmat-kinds-top no-print">
+          <ViewSwitch
+            options={kindsWithRows.map((k) => ({ value: k, label: k }))}
+            value={kindTab}
+            onChange={setKindTab}
+            ariaLabel="자재 갈래"
+            className="pmat-kind-switch"
+          />
+        </div>
+      )}
+
       <div className="pmat-boxes no-print">
         <ViewSwitch
           options={(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({
