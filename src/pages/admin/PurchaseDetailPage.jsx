@@ -40,6 +40,7 @@ import {
   getPurchaseConfig,
   consumeItemStock,
   releasePurchaseStock,
+  deletePurchase,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
@@ -1404,6 +1405,10 @@ export default function PurchaseDetailPage() {
       // 발주서가 쥐고 있던 재고를 창고로 돌려준다 — 안 그러면 지운 만큼 재고가 사라진다
       const goneItems = formRef.current?.items || [];
       const tid = await trashPurchase(id, userProfile?.name || '');
+      // 휴지통에 넣었으면 원본도 지워야 한다. 이 줄이 없어 목록에 그대로 남았고,
+      // 다시 누를 때마다 휴지통에만 쌓였다 (2026-09-12 대표님 「삭제 했는데 아직 그대로 남아있네 계속」).
+      // 목록 화면의 삭제는 처음부터 둘 다 하고 있었다 — 상세 화면만 빠져 있었다.
+      await deletePurchase(id);
       await releasePurchaseStock(goneItems, {
         byName: userProfile?.name || '',
         note: `발주 삭제로 되돌림 · ${purchase.title || ''}`,
