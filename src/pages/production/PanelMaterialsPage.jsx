@@ -39,6 +39,7 @@ import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { freeStockMoves } from '../../domain/freeStockSync';
+import { subscribePaidStock } from '../../services/paidStockService';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -104,10 +105,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   useEffect(() => subscribePurchaseItems(setMaster), []);
   // 사급 재고 — 호기를 정하지 않고 들어온 고객사 물건 (2026-09-10 대표님)
   const [freeStock, setFreeStock] = useState({});
+  const [paidStock, setPaidStock] = useState({}); // 회사 도급 통 — 부족분을 여기서 끌어온다
   const company = panel?.회사 || '';
   useEffect(() => {
     if (!company) return undefined;
     return subscribeFreeStock(company, setFreeStock);
+  }, [company]);
+  useEffect(() => {
+    if (!company) return undefined;
+    return subscribePaidStock(company, setPaidStock);
   }, [company]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
@@ -404,10 +410,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   };
   // 부족한 도급 줄을 창고 재고에서 (2026-09-05 대표님 「부족한 거 재고에서 땡겨오는 버튼 없나」)
   // 도급은 창고 재고(우리가 산 물건), 사급은 사급 재고(고객사 물건)를 본다
+  // 도급은 그 회사 도급 통을 본다. 예전에는 창고 장부(purchaseItems.stockQty)를 봤는데,
+  // 도급 재고를 회사별 통으로 옮기면서 창고가 0 이 되어 「가져오기」가 먹통이 됐다
+  // (2026-09-12 대표님 「가져오기가 왜 안되지」).
   const stockOf = (r) => {
     if (supplyTab === 'free') return Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
-    const m = r.itemId ? masterMap[r.itemId] : null;
-    return m && m.stockQty !== undefined && m.stockQty !== null ? Math.max(0, Number(m.stockQty) || 0) : 0;
+    return Math.max(0, Number(paidStock[r.itemId]?.qty) || 0);
   };
   const pullStock = async (r, have, short) => {
     const n = Math.min(short, stockOf(r));

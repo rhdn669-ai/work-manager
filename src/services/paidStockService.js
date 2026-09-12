@@ -92,3 +92,25 @@ export async function setPaidStockTo(company, item, want, { base = 0, by = '' } 
   );
   return adjust;
 }
+
+/** 나감 — 호기로 가져갈 때. 통에 있는 것보다 많이 가져가지 않는다. */
+export async function takePaidStock(company, item, n, { by = '', note = '' } = {}) {
+  const want = Math.max(0, Number(n) || 0);
+  if (!want || !item?.itemId) return 0;
+  const have = await getPaidStockQty(company, item.itemId);
+  const take = Math.min(want, Math.max(0, have));
+  if (take <= 0) return 0;
+  await setDoc(
+    doc(ref, paidStockId(company, item.itemId)),
+    {
+      company,
+      itemId: item.itemId,
+      qty: increment(-take),
+      updatedAt: serverTimestamp(),
+      updatedBy: by,
+      log: arrayUnion({ at: new Date().toISOString(), by, kind: 'out', n: take, note }),
+    },
+    { merge: true },
+  );
+  return take;
+}

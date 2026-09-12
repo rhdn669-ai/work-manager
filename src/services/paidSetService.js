@@ -7,6 +7,7 @@ import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
 import { fillPlan } from '../domain/paidSets';
 import { setLotsOf } from '../utils/setLots';
+import { takePaidStock } from './paidStockService';
 import { consumeItemStock } from './purchaseService';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
@@ -258,7 +259,9 @@ export async function pullRowFromStock(panel, row, { box, have = 0, n = 0, by = 
   if (!qty || !row?.itemId) return 0;
   await setReceived(panel.id, box, row.id, (Number(have) || 0) + qty, by);
   await addFromStock(panel.id, box, row.id, qty, fromStock); // 기록에 「재고 N」
-  await consumeItemStock(row.itemId, qty, { byName: by, note: `도급 배정 · ${panel.프로젝트 || ''}` });
+  // 도급 자재는 회사마다 통이 따로다 — 창고 장부가 아니라 그 회사 도급 통에서 뺀다
+  // (2026-09-12 대표님 「메티스 디에이치 따로 별개의 프로젝트 재고통 따로」).
+  await takePaidStock(panel.회사 || '', row, qty, { by, note: `호기로 · ${panel.프로젝트 || ''}` });
   if (panel.paidSet) {
     const used = { ...(panel.paidSet.stockUsed || {}) };
     used[row.itemId] = (Number(used[row.itemId]) || 0) + qty;
