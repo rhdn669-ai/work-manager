@@ -182,20 +182,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   });
   const isMadeRow = useCallback((r) => isMade(r), []);
   const summary = useMemo(() => boxSummary(rows, rec, isMadeRow), [rows, rec, isMadeRow]);
-  // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽으로 옮긴다 — 빈 화면만 보고
-  // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님).
-  //
-  // 셈(useMemo)으로 바꾸려다 화면을 통째로 죽인 적이 있다 (2026-09-12). 줄(rows)이 탭으로
-  // 걸러지고, 요약(summary)이 그 줄에서 나오고, 탭이 그 요약을 보기 때문에 서로를 참조하는
-  // 고리가 된다. 효과(useEffect)는 그 고리를 «다음 그리기»로 끊어 준다 — 그래서 이대로 둔다.
-  useEffect(() => {
-    if (rows.length === 0) return;
-    const cur = supplyTab === 'free' ? summary.free.total : summary.paid.total;
-    if (cur > 0) return;
-    const other = supplyTab === 'free' ? summary.paid.total : summary.free.total;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 위 설명 참고: 고리를 끊는 유일한 자리
-    if (other > 0) setSupplyTab(supplyTab === 'free' ? 'paid' : 'free');
-  }, [box, rows.length, summary, supplyTab]);
+  // 줄이 없는 탭도 그대로 보여 준다 — 예전에는 줄 있는 쪽으로 저절로 옮겨 갔는데,
+  // 그러면 「이 BOX 에는 도급이 없다」를 확인할 길이 없었다
+  // (2026-09-12 대표님 「도급0/0이어도 눌러지게 해줘 다른박스 비어있는걸 못보니까」).
+  // 덤으로, 줄·요약·탭이 서로를 참조하던 고리도 사라졌다.
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
   const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
   // 비고 — 호기·줄마다 한 줄 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」)
@@ -613,7 +603,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             ? '부족한 줄이 없습니다.'
             : rowView === 'done'
               ? '완료된 줄이 없습니다.'
-              : `이 BOX 에 ${supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.`}
+              : `이 BOX 에 ${supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.`}
         </p>
       ) : (
         <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
