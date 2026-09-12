@@ -352,20 +352,6 @@ export default function PurchaseDetailPage() {
     };
   }, []);
 
-  // 현장을 골랐으면 BOM 도 붙어 있어야 한다 — 그 현장 BOM 이 하나뿐이면 손댈 것이 없다
-  // (2026-09-12 대표님 「발주서 등록할때 이미 프로젝트를 고르면 연결 되는거 아닌가」).
-  // 연결이 빠진 옛 발주서도 여는 순간 고쳐진다 — 「M 8월 1차」가 그래서 셈에서 빠져 있었다.
-  useEffect(() => {
-    if (isReadOnly || !form.siteId || form.bomProjectId) return;
-    const mine = bomProjects.filter((bp) => bp.siteId === form.siteId);
-    if (mine.length !== 1) return;
-    const bp = mine[0];
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 현장 하나에 BOM 하나면 물어볼 것이 없다
-    setForm((f) => (f.bomProjectId ? f : { ...f, bomProjectId: bp.id }));
-    scheduleAutoSave();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bomProjects, form.siteId, form.bomProjectId, isReadOnly]);
-
   async function openPanelPick() {
     setPanelPickOpen(true);
     if (bomProjects.length === 0) {
@@ -1202,6 +1188,26 @@ export default function PurchaseDetailPage() {
       persistPO();
     }, 700);
   }
+
+  // 현장을 골랐으면 BOM 도 붙어 있어야 한다 — 그 현장 BOM 이 하나뿐이면 손댈 것이 없다
+  // (2026-09-12 대표님 「발주서 등록할때 이미 프로젝트를 고르면 연결 되는거 아닌가」).
+  // 연결이 빠진 옛 발주서도 여는 순간 고쳐진다 — 「M 8월 1차」가 그래서 셈에서 빠져 있었다.
+  // ※ 이 자리는 isReadOnly·scheduleAutoSave 가 «선언된 뒤»여야 한다. 위에 두었다가
+  //   「Cannot access before initialization」으로 발주서 상세가 통째로 죽었다 (2026-09-12).
+  useEffect(() => {
+    if (isReadOnly || !form.siteId || form.bomProjectId) return;
+    // 세트로 산 발주서만 저절로 건다. 단품 구매(선결제·차단기 몇 개)까지 걸면 도급 통이
+    // 그것들까지 세게 되고, 손으로 넣어 둔 재고와 겹쳐 두 번 잡힌다 (2026-09-12).
+    const hasSet = (form.setLots || []).some((l) => Number(l?.count) > 0);
+    if (!hasSet) return;
+    const mine = bomProjects.filter((bp) => bp.siteId === form.siteId);
+    if (mine.length !== 1) return;
+    const bp = mine[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 현장 하나에 BOM 하나면 물어볼 것이 없다
+    setForm((f) => (f.bomProjectId ? f : { ...f, bomProjectId: bp.id }));
+    scheduleAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bomProjects, form.siteId, form.bomProjectId, form.setLots, isReadOnly]);
 
   async function flushAutoSave() {
     if (autoSaveRef.current) {
