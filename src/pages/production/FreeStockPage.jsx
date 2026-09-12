@@ -275,14 +275,14 @@ export default function FreeStockPage({ company }) {
                 <th scope="col" className="col-num">
                   1대당
                 </th>
-                <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
-                  가능 SET
-                </th>
                 <th scope="col" className="col-num" title="호기들에 이미 들어간 양">
                   나감
                 </th>
-                <th scope="col" className="col-num" title="통에 남아 있는 양">
+                <th scope="col" className="col-num" title="재고에 남아 있는 양">
                   남음
+                </th>
+                <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
+                  가능 SET
                 </th>
                 <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 남음에 더해집니다">
                   이번 입고
@@ -299,9 +299,6 @@ export default function FreeStockPage({ company }) {
                     {r.spec}
                   </td>
                   <td className="col-num">{won(r.perOne)}</td>
-                  <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
-                    {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
-                  </td>
                   <td className="col-num">{won(r.got)}</td>
                   <td className="col-num">
                     {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
@@ -326,6 +323,9 @@ export default function FreeStockPage({ company }) {
                         </button>
                       )}
                     </div>
+                  </td>
+                  <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
+                    {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
                   </td>
                   <td className="col-action">
                     <div className="fstock-in-cell">

@@ -434,7 +434,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         by: userProfile?.name || '',
         fromStock: Number(rec[r.id]?.fromStock) || 0,
       });
-      toast(`${r.code || r.name} ${n}개를 창고 재고에서 가져왔습니다 (재고 ${stockOf(r) - n} 남음)`, 'success', 0);
+      // 잠깐 알리고 사라진다 — 여러 줄을 잇달아 가져오면 알림이 쌓여 표를 가린다
+      // (2026-09-12 대표님 「토스트 2초후 지워지게」)
+      toast(`${r.code || r.name} ${n}개를 재고에서 가져왔습니다 (재고 ${stockOf(r) - n} 남음)`, 'success', 2000);
     } catch (err) {
       console.error(err);
       toast('재고에서 가져오기에 실패했습니다', 'error', 0);
@@ -486,12 +488,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     try {
       const r = await topUpPaidSet(panel, variantRows, { by: userProfile?.name || '', spareByItem, stockByItem });
       const n = Object.values(r.stockUsed || {}).reduce((a, b) => a + b, 0);
-      if (r.added === 0) toast('발주 여유도 창고 재고도 없어 채울 줄이 없습니다', 'error');
+      if (r.added === 0) toast('발주 여유도 재고도 없어 채울 줄이 없습니다', 'error');
       else
         toast(
           `${r.added}줄을 채웠습니다${n > 0 ? ` (재고에서 ${n}개)` : ''}${r.short > 0 ? ` — 아직 ${r.short}줄 부족` : ''}`,
           'success',
-          0,
+          2000,
         );
     } catch (err) {
       console.error(err);
@@ -805,13 +807,18 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {short > 0 ? short : ''}
                       {/* 통에 얼마 남았는지 늘 보인다 — 통을 거칠지 말지 여기서 바로 판단된다
                           (2026-09-11 대표님). 전에는 부족할 때 뜨는 버튼으로만 짐작했다 */}
-                      {supplyTab === 'free' && stockOf(r) > 0 && <span className="pmat-instock">통 {stockOf(r)}</span>}
+                      {/* 도급에도 보여 준다 — 통에 얼마 있는지 알아야 가져올지 정한다 (2026-09-12) */}
+                      {stockOf(r) > 0 && <span className="pmat-instock">재고 {stockOf(r)}</span>}
                     </td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
                       {/* 재고에서 채울 수 있으면 그 버튼이 입고 자리를 대신한다 — 「이 호기」 칸은
                           제외/포함만 (2026-09-05 대표님 「재고에서 위치가 이상함」) */}
-                      {!locked && !skipped && short > 0 && stockOf(r) > 0 ? (
+                      {/* 「locked」 는 「칸을 직접 못 고친다」는 뜻이고 도급에서는 늘 참이다.
+                          그것을 이 단추에도 쓰는 바람에 도급에서는 잠금을 풀어도 「재고에서」가
+                          아예 안 그려졌다 — 통에 물건이 있어도 길이 없었다
+                          (2026-09-12 대표님 「입고 가져오는게 왜 안되냐」). */}
+                      {editMode && !skipped && short > 0 && stockOf(r) > 0 ? (
                         <button
                           type="button"
                           className="btn btn-sm btn-primary pmat-pull-btn"
