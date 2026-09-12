@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
+import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
+import { useAuth } from '../../contexts/useAuth';
+import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
@@ -8,6 +11,7 @@ import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bo
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBom';
 import { receivedQty } from '../../domain/panelMaterials';
+import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../services/paidStockService';
 
 // 도급 재고 — 「우리가 사서 들어온 것 중 아직 어느 호기에도 안 간 양」.
 //
@@ -17,20 +21,44 @@ import { receivedQty } from '../../domain/panelMaterials';
 // 사급은 사급재고가 통이 되는거맞음?」).
 //
 // 사급 재고 화면과 같은 표로 보여 준다 — 두 통이 같은 모양이라야 헷갈리지 않는다.
-//   들어옴   이 BOM 으로 묶인 발주서들의 입고 수량 합
-//   나감     호기들에 이미 들어간 양
-//   남음     들어옴 − 나감
+//   들어옴   이 BOM 으로 묶인 발주서들의 입고 수량 합 + 손으로 적어 넣은 몫
+//   나감     호기들에 이미 들어간 양 (끝난 호기까지)
+//   남음     들어옴 − 나감 — 실물을 세어 바로 고칠 수 있다 (2026-09-12 대표님)
 //   1대당    호기 하나가 쓰는 개수 (BOX 합)
 //   가능 SET 남음 ÷ 1대당 (버림)
 const won = (n) => (Number(n) || 0).toLocaleString();
 
+// 기록에 적히는 말 — 사급 재고와 같은 말을 쓴다
+const LOG_LABEL = { in: '들어옴', fix: '손으로 맞춤' };
+const whenMs = (v) => {
+  if (!v) return 0;
+  const d = typeof v?.toDate === 'function' ? v.toDate() : new Date(v);
+  return d && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
+};
+const fmtWhen = (v) => {
+  const ms = whenMs(v);
+  if (!ms) return '';
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 export default function PaidStockPage({ company = '' }) {
+  const { userProfile } = useAuth();
+  const { toast, confirm } = useDialog();
+  const me = userProfile?.name || '';
+
   const [panels, setPanels] = useState([]);
   const [materials, setMaterials] = useState({});
   const [master, setMaster] = useState([]);
   const [bomByProject, setBomByProject] = useState({});
   const [received, setReceived] = useState({}); // { itemId: 들어온 합 }
   const [settings, setSettings] = useState({});
+  const [manual, setManual] = useState({}); // 손으로 적어 넣은 몫 { itemId: { qty, log } }
+  const [draft, setDraft] = useState({}); // 「이번 입고」 칸에 적는 중인 글자
+  const [saving, setSaving] = useState('');
+  const [fixing, setFixing] = useState(null); // { row, to }
+  const [logOf, setLogOf] = useState(null); // 기록을 펼쳐 볼 줄
   const [q, setQ] = useState('');
   const [view, setView] = useState('all'); // all | have
 
@@ -38,6 +66,7 @@ export default function PaidStockPage({ company = '' }) {
   useEffect(() => subscribeAllMaterials(setMaterials), []);
   useEffect(() => subscribePurchaseItems(setMaster), []);
   useEffect(() => subscribePaidSetSettings(setSettings), []);
+  useEffect(() => (company ? subscribePaidStock(company, setManual) : undefined), [company]);
 
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
@@ -126,11 +155,23 @@ export default function PaidStockPage({ company = '' }) {
     }
 
     const mapped = [...info.values()].map((it) => {
-      const gotIn = projectId || siteId ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
+      const fromPo = projectId || siteId ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
       const out = Math.max(0, gone.get(it.itemId) || 0);
-      const left = Math.max(0, gotIn - out);
+      const base = fromPo - out; // 발주서만으로 설명되는 남음
+      const adjust = Number(manual[it.itemId]?.qty) || 0; // 손으로 적어 넣은 몫
+      const left = Math.max(0, base + adjust);
       const one = perOne.get(it.itemId) || 0;
-      return { ...it, gotIn, out, left, perOne: one, sets: one > 0 ? Math.floor(left / one) : 0 };
+      return {
+        ...it,
+        gotIn: fromPo,
+        out,
+        base,
+        adjust,
+        left,
+        log: manual[it.itemId]?.log || [],
+        perOne: one,
+        sets: one > 0 ? Math.floor(left / one) : 0,
+      };
     });
 
     const kw = q.trim().toLowerCase();
@@ -150,7 +191,46 @@ export default function PaidStockPage({ company = '' }) {
         return a.localeCompare(b, 'ko') || (x.name || '').localeCompare(y.name || '', 'ko');
       });
     return { rows: filtered, allRows: mapped };
-  }, [all, mine, bomByProject, materials, masterMap, received, projectId, siteId, q, view]);
+  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view]);
+
+  // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
+  async function commitDraft(r) {
+    const raw = draft[r.itemId];
+    if (raw === undefined) return;
+    setDraft((d) => {
+      const nd = { ...d };
+      delete nd[r.itemId];
+      return nd;
+    });
+    const n = Math.max(0, Number(raw) || 0);
+    if (n <= 0) return;
+    setSaving(r.itemId);
+    try {
+      await receivePaidStock(company, r, n, { by: me });
+      toast(`${r.name || r.code} ${n}개 넣었습니다`, 'success');
+    } catch (err) {
+      console.error(err);
+      toast('저장에 실패했습니다', 'error');
+    } finally {
+      setSaving('');
+    }
+  }
+
+  async function onFix(e) {
+    e.preventDefault();
+    const { row, to } = fixing;
+    const t = Number(to) || 0;
+    if (t === row.left) return setFixing(null);
+    if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.left)} → ${won(t)} 으로 수정할까요?`))) return;
+    try {
+      await setPaidStockTo(company, row, t, { base: row.base, by: me });
+      setFixing(null);
+      toast('재고를 수정했습니다', 'success');
+    } catch (err) {
+      console.error(err);
+      toast('수정에 실패했습니다', 'error');
+    }
+  }
 
   const sums = useMemo(() => {
     let sets = null;
@@ -210,7 +290,7 @@ export default function PaidStockPage({ company = '' }) {
         <div className="table-scroll-x no-print">
           <table className="table pmat-table">
             <colgroup>
-              {['44px', '14%', '15%', null, '7%', '8%', '8%', '8%'].map((w, i) => (
+              {['44px', '13%', '14%', null, '6%', '8%', '7%', '9%', '11%'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -231,8 +311,11 @@ export default function PaidStockPage({ company = '' }) {
                 <th scope="col" className="col-num" title="호기들에 이미 들어간 양">
                   나감
                 </th>
-                <th scope="col" className="col-num" title="들어온 양 − 나간 양">
+                <th scope="col" className="col-num" title="들어온 양 − 나간 양 (손으로 적어 넣은 몫 포함)">
                   남음
+                </th>
+                <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 남음에 더해집니다">
+                  이번 입고
                 </th>
               </tr>
             </thead>
@@ -250,14 +333,118 @@ export default function PaidStockPage({ company = '' }) {
                     {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
                   </td>
                   <td className="col-num">{won(r.out)}</td>
+                  {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때 —
+                      고치는 대상(남음) 바로 옆에 둔다 (2026-09-11 대표님) */}
                   <td className="col-num">
-                    <b>{won(r.left)}</b>
+                    <button type="button" className="fstock-have" onClick={() => setLogOf(r)} title="오간 기록 보기">
+                      <b>{won(r.left)}</b>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-ghost fstock-fix"
+                      onClick={() => setFixing({ row: r, to: String(r.left) })}
+                      title="실제 개수로 수정"
+                    >
+                      수정
+                    </button>
+                  </td>
+                  <td className="col-action">
+                    <input
+                      type="number"
+                      className="input input-sm fstock-in"
+                      inputMode="numeric"
+                      min="0"
+                      value={draft[r.itemId] ?? ''}
+                      disabled={saving === r.itemId}
+                      onChange={(e) => setDraft((d) => ({ ...d, [r.itemId]: e.target.value }))}
+                      onBlur={() => commitDraft(r)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                      }}
+                      placeholder="0"
+                      aria-label={`${r.name || r.code} 이번 입고`}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* 오간 기록 — 지금 수량이 왜 이 숫자인지 여기서 다 보인다 */}
+      {logOf && (
+        <Modal isOpen onClose={() => setLogOf(null)} title={`${logOf.name || logOf.code} 기록`} size="lg">
+          <p className="field-hint">
+            지금 남음 <b>{won(logOf.left)}</b> · 발주서 입고 {won(logOf.gotIn)} − 호기로 나감 {won(logOf.out)}
+            {logOf.adjust ? ` · 손으로 적은 몫 ${won(logOf.adjust)}` : ''}
+          </p>
+          {(logOf.log || []).length === 0 ? (
+            <div className="empty-state">
+              <p>손으로 적어 넣은 기록이 없습니다 — 지금 수량은 발주서 입고와 호기 투입으로만 셈한 것입니다</p>
+            </div>
+          ) : (
+            <div className="table-scroll-x">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">언제</th>
+                    <th scope="col">무엇</th>
+                    <th scope="col" className="col-num">
+                      개수
+                    </th>
+                    <th scope="col">적은 사람</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...(logOf.log || [])]
+                    .sort((a, b) => whenMs(b.at) - whenMs(a.at))
+                    .map((l, i) => (
+                      <tr key={`${l.at}-${i}`}>
+                        <td>{fmtWhen(l.at)}</td>
+                        <td>{LOG_LABEL[l.kind] || l.kind || ''}</td>
+                        <td className="col-num">{l.kind === 'fix' ? `${won(l.to)} 으로` : won(l.n)}</td>
+                        <td>{l.by || ''}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setLogOf(null)}>
+              닫기
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {fixing && (
+        <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 수정">
+          <form onSubmit={onFix}>
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              <strong>{fixing.row.name || fixing.row.code}</strong> · 지금 {won(fixing.row.left)}
+            </p>
+            <div className="form-group">
+              <label>실제 수량</label>
+              <input
+                autoFocus
+                value={fixing.to}
+                onChange={(e) => setFixing((v) => ({ ...v, to: e.target.value.replace(/[^0-9]/g, '') }))}
+                inputMode="numeric"
+                aria-label="실제 수량"
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setFixing(null)}>
+                취소
+              </button>
+              <button type="submit" className="btn btn-primary">
+                수정
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
