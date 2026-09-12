@@ -1204,7 +1204,7 @@ export default function PurchaseDetailPage() {
     const mine = bomProjects.filter((bp) => bp.siteId === form.siteId);
     if (mine.length !== 1) return;
     const bp = mine[0];
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 현장 하나에 BOM 하나면 물어볼 것이 없다
+
     setForm((f) => (f.bomProjectId ? f : { ...f, bomProjectId: bp.id }));
     scheduleAutoSave();
     // eslint-disable-next-line react-hooks/exhaustive-deps

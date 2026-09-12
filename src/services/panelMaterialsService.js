@@ -115,8 +115,12 @@ export async function setAutoIn(panelId, box, bomItemId, n) {
   );
 }
 
+// 되돌릴 때는 음수로 부른다 — 재고로 돌려준 만큼 이 줄의 「재고에서 쓴 누계」도 줄어야 한다
+// (2026-09-12: 안 줄이면 다음에 지울 때 또 돌려주게 된다).
 export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {
-  const add = Math.max(0, Number(n) || 0);
+  const delta = Number(n) || 0;
+  if (!delta) return;
+  const add = Math.max(0, (Number(prev) || 0) + delta) - (Number(prev) || 0);
   if (!add) return;
   await setDoc(
     doc(ref, materialsDocId(panelId, box)),

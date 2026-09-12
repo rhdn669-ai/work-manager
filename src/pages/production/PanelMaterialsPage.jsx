@@ -11,13 +11,7 @@ import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import {
-  subscribeFreeStock,
-  takeFreeStock,
-  returnFreeStock,
-  receiveFreeStock,
-  getFreeStockQty,
-} from '../../services/freeStockService';
+import { subscribeFreeStock, takeFreeStock, returnFreeStock, getFreeStockQty } from '../../services/freeStockService';
 import {
   subscribePanelMaterials,
   setReceived,
@@ -25,7 +19,6 @@ import {
   setNote,
   setReceivedMany,
   addFromStock,
-  setAutoIn,
 } from '../../services/panelMaterialsService';
 import {
   pullRowFromStock,
@@ -259,37 +252,33 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     }
   };
 
-  // ── 사급은 «언제나» 재고 통을 거친다 (2026-09-11 대표님 「알아서 받은 걸로」) ──
+  // ── 사급 재고는 «재고에서 가져온 만큼만» 오간다 ──
   //
-  // 물건이 들어오는 모양이 그때그때 다르다. 세트로 호기 수 맞춰 오기도 하고, 같은 품목이
-  // 한 박스에 담겨 오기도 한다. 회사로 고를 수도 없다(반대 경우도 있다).
-  // 그래서 «어디에 적을지»를 사람이 고르지 않게 했다 — 호기에서 그냥 체크하면,
-  // 통에 없는 만큼은 「방금 들어온 것」으로 적히고 곧바로 이 호기로 나간다.
-  // 결과: 재고 통은 늘 실물과 같고, 어디로 갔는지도 다 남는다.
+  // 전에는 호기에서 수량을 적기만 해도 재고를 거치는 것으로 쳤다. 그래서 실물을 직접 받아
+  // 체크한 줄을 지우면 가져온 적도 없는 물건이 재고로 생겨났다
+  // (2026-09-12 대표님 「재고에서 가져온 수량이 아니면 다시 제거해도 재고로 채워지면 안되지」).
+  //
+  // 이제 재고에 있는 만큼만 꺼내 쓰고 그 양을 줄에 적어 두었다가(fromStock), 지울 때는
+  // 적어 둔 만큼만 돌려준다. 셈은 domain/freeStockSync 가 맡는다(그 셈만 따로 시험한다).
   const syncFree = async (r, before, after) => {
     if (supplyTab !== 'free' || !r.itemId || !company) return;
     const d = (Number(after) || 0) - (Number(before) || 0);
     if (d === 0) return;
     const who = by();
     const where = `${panel?.프로젝트 || ''} · ${box}`;
-    const auto = Math.max(0, Number(rec[r.id]?.autoIn) || 0);
+    const kept = Math.max(0, Number(rec[r.id]?.fromStock) || 0);
     try {
-      // 무엇을 얼마나 움직일지는 domain/freeStockSync 가 정한다 (그 셈만 따로 시험한다)
       const have = d > 0 ? await getFreeStockQty(company, r.itemId) : 0;
-      const mv = freeStockMoves({ before, after, have, autoIn: auto });
+      const mv = freeStockMoves({ before, after, have, fromStock: kept });
       if (!mv) return;
-      if (mv.receive > 0) {
-        // 통에 없던 만큼 — 호기에서 바로 체크한 물건이다
-        await receiveFreeStock(company, r, mv.receive, { by: who, note: `${where} 바로 체크` });
-      }
       if (mv.take > 0) {
         const took = await takeFreeStock(company, r.itemId, mv.take, { by: who, note: where });
-        if (took > 0) await addFromStock(panelId, box, r.id, took, Number(rec[r.id]?.fromStock) || 0);
+        if (took > 0) await addFromStock(panelId, box, r.id, took, kept);
       }
       if (mv.giveBack > 0) {
         await returnFreeStock(company, r.itemId, mv.giveBack, { by: who, note: `${where} 되돌림` });
+        await addFromStock(panelId, box, r.id, -mv.giveBack, kept);
       }
-      if (mv.autoIn !== auto) await setAutoIn(panelId, box, r.id, mv.autoIn);
     } catch (err) {
       console.error('[사급 재고] 맞추기 실패', err);
       toast('사급 재고를 맞추지 못했습니다 — 재고 화면에서 확인해 주세요', 'error');
@@ -420,7 +409,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-12 대표님 「가져오기가 왜 안되지」).
   const stockOf = (r) => {
     if (supplyTab === 'free') return Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
-    return Math.max(0, Number(paidStock[r.itemId]?.qty) || 0);
+    // 손으로 적어 둔 몫 + 발주 여유 — 「부족분 채우기」가 보는 것과 같은 곳을 본다.
+    // 여유를 안 보던 탓에, 발주로 넉넉히 들어왔어도 누가 수동으로 적지 않았으면
+    // 줄마다의 「재고에서」가 아예 안 떴다 (2026-09-12).
+    const kept = Math.max(0, Number(paidStock[r.itemId]?.qty) || 0);
+    const spare = Math.max(0, Number(spareByItem[r.itemId]) || 0);
+    return kept + spare;
   };
   const pullStock = async (r, have, short) => {
     const n = Math.min(short, stockOf(r));
@@ -636,16 +630,22 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           onChange={setSupplyTab}
           ariaLabel="도급 사급 구분"
         />
-        {locked && assigned ? (
+        {/* 「부족분 채우기」를 배정된 호기에만 보여 주고 있었다. 그런데 최초 배정을 만드는 길이
+            앱에 없어(assignPaidSet 은 부르는 곳이 없었다), 한 번도 배정 안 된 호기는 이 단추를
+            볼 방법이 아예 없었다 — 품목마다 하나씩 눌러야 했다 (2026-09-12 조사).
+            이제 도급 탭이면 배정 여부와 상관없이 보인다. */}
+        {locked ? (
           <span className="pmat-assigned-row">
-            <span
-              className="status-badge status-badge--done pmat-locked-badge"
-              title="발주 입고분이 이 호기에 들어온 상태"
-            >
-              <Icon name="lock" />
-              도급 배정 · {panel.paidSet.at}
-              {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
-            </span>
+            {assigned && (
+              <span
+                className="status-badge status-badge--done pmat-locked-badge"
+                title="발주 입고분이 이 호기에 들어온 상태"
+              >
+                <Icon name="lock" />
+                도급 배정 · {panel.paidSet.at}
+                {panel.paidSet.by ? ` · ${panel.paidSet.by}` : ''}
+              </span>
+            )}
             {summary.paid.done < summary.paid.total && canFillAll && (
               <button
                 type="button"
@@ -657,14 +657,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 부족분 채우기
               </button>
             )}
-            <button type="button" className="btn btn-sm btn-outline" disabled={!editMode} onClick={unassign}>
-              배정 취소
-            </button>
-          </span>
-        ) : locked ? (
-          <span className="pmat-hint pmat-hint-paid">
-            <Icon name="lock" />
-            도급 자재는 손으로 적지 않습니다 — 발주 상세 「생산 호기」에 이 호기를 걸어 두면 입고 때 자동으로 채워집니다
+            {assigned && (
+              <button type="button" className="btn btn-sm btn-outline" disabled={!editMode} onClick={unassign}>
+                배정 취소
+              </button>
+            )}
+            {/* 「발주 상세에 호기를 걸어 두면 자동으로 채워진다」고 안내하고 있었다. 호기 걸기는
+                2026-09-11 에 걷어냈고, 자동으로 채우는 코드도 처음부터 없었다 — 없는 기능을
+                시키면서 단추는 하나도 주지 않는 화면이었다 (2026-09-12 조사). */}
+            {!canFillAll && (
+              <span className="pmat-hint pmat-hint-paid">
+                <Icon name="lock" />
+                도급은 손으로 적지 않습니다 — 발주서를 입고하거나 도급 재고에 수량을 넣으면 여기서 채울 수 있습니다
+              </span>
+            )}
           </span>
         ) : (
           <span className="pmat-hint">수량을 누르면 필요 수량만큼 채워집니다 · 길게 누르면 직접 적습니다</span>
@@ -840,10 +846,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     {hasMeta && (
                       <td className="pmat-meta">
                         {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                        {/* 창고 재고에서 꺼내 채운 몫 (2026-09-05 대표님 「기록에 재고 사용한 건 추가 표시」) */}
+                        {/* 재고에서 꺼내 채운 몫 (2026-09-05 대표님 「기록에 재고 사용한 건 추가 표시」).
+                            「재고 2」라고만 적었더니 「지금 재고에 2개 있다」로 읽혔다
+                            (2026-09-12 대표님 「재고가 어디있다는거야?」) — 「재고에서」로 적는다. */}
                         {Number(meta?.fromStock) > 0 && (
-                          <span className="pmat-from-stock" title="창고 재고에서 가져온 개수">
-                            재고 {meta.fromStock}
+                          <span className="pmat-from-stock" title="재고에서 가져와 채운 개수">
+                            재고에서 {meta.fromStock}
                           </span>
                         )}
                       </td>

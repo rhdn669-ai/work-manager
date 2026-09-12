@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, query, where, setDoc, deleteField, serverTimestamp } from '../config/data';
+import { collection, doc, onSnapshot, query, where, deleteField } from '../config/data';
 import { db } from '../config/data';
 import { updatePanel } from './productionService';
 import { setReceivedMany, getPanelMaterials, setReceived, addFromStock } from './panelMaterialsService';
@@ -7,7 +7,6 @@ import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
 import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
 import { fillPlan } from '../domain/paidSets';
 import { setLotsOf } from '../utils/setLots';
-import { takePaidStock, givebackPaidStock } from './paidStockService';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
 //
@@ -23,27 +22,6 @@ const purchasesRef = collection(db, 'purchases');
 
 export function subscribePaidSetSettings(cb) {
   return onSnapshot(settingsRef, (snap) => cb(snap.exists() ? snap.data() : {}));
-}
-
-export async function savePaidSetSettings(company, patch) {
-  await setDoc(settingsRef, { [company]: patch, updatedAt: serverTimestamp() }, { merge: true });
-}
-
-/** 세트 셈에서 품목을 빼거나 되돌린다 — settings.[회사].excluded.[itemId] = true */
-export async function setPaidSetExcluded(company, itemId, excluded) {
-  await setDoc(
-    settingsRef,
-    { [company]: { excluded: { [itemId]: excluded ? true : deleteField() } }, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
-}
-
-/** 그 현장 발주서들의 품목별 입고 합 —
- *  cb({ [itemId]: qty }, { purchases, lines, noItem, setCount, lotsByName })
- *  setCount = 입고된 발주서에 적힌 세트 수 합(전 타입), lotsByName = 세트 이름(타입)별 합 — 화면은 이걸로 묶음마다 센다
- *  (2026-09-05 대표님 안 B 1단계: 타입을 무시하고 합산하던 버그 해소) */
-export function subscribeReceivedBySite(siteId, cb) {
-  return subscribeReceivedFor({ siteId }, cb);
 }
 
 /**
@@ -157,28 +135,6 @@ async function writePlan(panelId, plan, by) {
 }
 
 /**
- * 세트 하나를 이 호기에 — 도급 줄을 「있는 만큼만」 채우고, 다 찬 BOX 만 자재 도급 칸을 켠다.
- * spareByItem 이 없으면(예전 호출) 전부 BOM 수량대로. → 부족 줄 수를 돌려준다.
- */
-export async function assignPaidSet(panel, variantRows, { by = '', seq = 0, spareByItem = null, exclude = [] } = {}) {
-  const rows = Object.values(paidRowsByBox(variantRows)).flat();
-  const mats = await getPanelMaterials(panel.id);
-  const plan = fillPlan({
-    rows,
-    spareByItem: spareByItem || Object.fromEntries(rows.map((r) => [r.itemId, Infinity])),
-    exclude,
-    skipRows: skippedRows(rows, mats),
-  });
-  await writePlan(panel.id, plan, by);
-  await updatePanel(panel.id, {
-    ...matPatch(panel, plan.boxes),
-    paidSet: { seq, at: new Date().toISOString().slice(0, 10), by, short: plan.short },
-  });
-  // lines 는 자동 배분이 여유를 줄여 가려고 쓴다 (2026-09-05 안 B 4단계)
-  return { short: plan.short, lines: plan.lines };
-}
-
-/**
  * 나중에 들어온 부족분을 채운다 — 이미 있는 것은 두고 모자란 줄만, 있는 만큼만.
  * stockByItem 을 주면 발주 여유가 없는 줄은 창고 재고에서 꺼내 채우고, 재고 장부를 그만큼 줄인다
  * (이력 「도급 배정 · 호기」). 꺼낸 양은 paidSet.stockUsed 에 쌓아 두었다가 배정 취소 때 되돌린다.
@@ -210,13 +166,7 @@ export async function topUpPaidSet(
       ...(Object.keys(used).length ? { stockUsed: merged } : {}),
     },
   });
-  // 통에서 빼기 — 도급 자재는 회사마다 통이 따로다. 창고 장부를 깎으면 통은 그대로 남아
-  // 같은 물건을 두 번 쓰게 된다 (2026-09-12).
-  await Promise.all(
-    Object.entries(used).map(([id, n]) =>
-      takePaidStock(panel.회사 || '', { itemId: id }, n, { by, note: `호기로 · ${panel.프로젝트 || ''}` }),
-    ),
-  );
+  // 재고를 따로 깎지 않는다 — 위에서 늘어난 「나감」이 곧 재고가 줄어든 것이다 (위 설명 참고).
   return { added: changed.length, short: plan.short, stockUsed: used, lines: changed };
 }
 
@@ -238,18 +188,7 @@ export async function unassignPaidSet(panel, variantRows, { by = '' } = {}) {
     ...matPatch(panel, Object.fromEntries(boxes.map((b) => [b, false]))),
     paidSet: deleteField(),
   });
-  // 통에서 꺼내 채웠던 양은 그 회사 통으로 되돌린다 (뺀 곳과 같은 곳으로)
-  const used = panel.paidSet?.stockUsed || {};
-  await Promise.all(
-    Object.entries(used)
-      .filter(([, n]) => Number(n) > 0)
-      .map(([id, n]) =>
-        givebackPaidStock(panel.회사 || '', { itemId: id }, Number(n), {
-          by,
-          note: `배정 취소로 되돌림 · ${panel.프로젝트 || ''}`,
-        }),
-      ),
-  );
+  // 되돌릴 것도 없다 — 위에서 호기 수량을 0 으로 만들었으니 「나감」이 줄어 남음이 저절로 돌아온다.
 }
 
 /**
@@ -262,9 +201,9 @@ export async function pullRowFromStock(panel, row, { box, have = 0, n = 0, by = 
   if (!qty || !row?.itemId) return 0;
   await setReceived(panel.id, box, row.id, (Number(have) || 0) + qty, by);
   await addFromStock(panel.id, box, row.id, qty, fromStock); // 기록에 「재고 N」
-  // 도급 자재는 회사마다 통이 따로다 — 창고 장부가 아니라 그 회사 도급 통에서 뺀다
-  // (2026-09-12 대표님 「메티스 디에이치 따로 별개의 프로젝트 재고통 따로」).
-  await takePaidStock(panel.회사 || '', row, qty, { by, note: `호기로 · ${panel.프로젝트 || ''}` });
+  // 여기서 재고를 또 빼지 않는다. 도급 남음은 «발주 입고 + 손으로 적은 몫 − 나감»으로 세므로,
+  // 위에서 나감이 늘어난 것만으로 남음이 이미 줄었다. 재고에서 한 번 더 빼면 두 번 깎인다
+  // (2026-09-12 실측: 4개씩 네 번 가져왔는데 남음이 32 줄었다).
   if (panel.paidSet) {
     const used = { ...(panel.paidSet.stockUsed || {}) };
     used[row.itemId] = (Number(used[row.itemId]) || 0) + qty;
