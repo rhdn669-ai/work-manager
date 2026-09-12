@@ -106,13 +106,18 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [company]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
-  // ── 큰 갈래: 전장자재 | 가공품 (2026-09-12 대표님) ──
+  // ── 판금은 도급·사급과 나란한 네 번째 구분이다 (2026-09-12 대표님 「나 방식」) ──
   // 갈래는 품목 대분류에 적어 둔 것을 따른다 — domain/itemKind 가 정한다.
-  const [kindTab, setKindTab] = useState(ELEC);
   const madeMains = useMemo(() => madeMainCodes(master), [master]);
-  const inKind = useCallback(
-    (r) => (kindTab === MADE ? isMade(r, madeMains) : !isMade(r, madeMains)),
-    [kindTab, madeMains],
+  // 이 줄이 지금 고른 구분에 드는가 — 판금은 사급·도급보다 «먼저» 가른다.
+  // 판금으로 표시된 품목은 도급 탭에도 사급 탭에도 나오지 않는다.
+  const inTab = useCallback(
+    (r) => {
+      if (isMade(r, madeMains)) return supplyTab === MADE;
+      if (supplyTab === MADE) return false;
+      return supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r);
+    },
+    [supplyTab, madeMains],
   );
 
   // ── 이 호기의 입고 기록 ──
@@ -136,19 +141,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     [bomRows, masterMap],
   );
 
-  // 이 호기에 그 갈래 줄이 있나 — 없는 갈래 탭은 올리지 않는다
-  const kindsWithRows = useMemo(() => {
+  // 이 호기에 판금 줄이 있나 — 없으면 탭을 올리지 않는다
+  const hasMade = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    const out = [];
-    if (forVariant.some((r) => !isMade(r, madeMains))) out.push(ELEC);
-    if (forVariant.some((r) => isMade(r, madeMains))) out.push(MADE);
-    return out.length ? out : [ELEC];
+    return forVariant.some((r) => isMade(r, madeMains));
   }, [bomRowsFull, link?.variantKey, madeMains]);
 
   const boxesWithRows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).filter(inKind).length > 0);
-  }, [bomRowsFull, link?.variantKey, inKind]);
+    return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).length > 0);
+  }, [bomRowsFull, link?.variantKey]);
   const box = sp.get('box') || boxesWithRows[0] || CHECKABLE_BOXES[0];
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
   // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
@@ -161,8 +163,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    return bomRowsForBox(forVariant, box).filter(inKind);
-  }, [bomRowsFull, link?.variantKey, box, inKind]);
+    return bomRowsForBox(forVariant, box);
+  }, [bomRowsFull, link?.variantKey, box]);
   const rec = received[box] || {};
   // 세트를 배정한 호기의 도급 수량은 세트가 정한다 — 손으로 못 고친다 (2026-09-03 대표님
   // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
@@ -182,25 +184,22 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
     const out = {};
     for (const b of CHECKABLE_BOXES) {
-      const list = bomRowsForBox(forVariant, b)
-        .filter(inKind)
-        .filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
+      const list = bomRowsForBox(forVariant, b).filter(inTab);
       const got = received[b] || {};
       out[b] = list.filter((r) => !isSkipped(got, r.id) && shortageOf(r.qty, receivedQty(got, r.id)) > 0).length;
     }
     return out;
-  }, [bomRowsFull, link?.variantKey, received, supplyTab, inKind]);
+  }, [bomRowsFull, link?.variantKey, received, inTab]);
 
   // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
   const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
-  const shown = rows
-    .filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)))
-    .filter((r) => {
-      if (rowView === 'all') return true;
-      const done = rowDone(r, rec);
-      return rowView === 'done' ? done : !done;
-    });
-  const summary = useMemo(() => boxSummary(rows, rec), [rows, rec]);
+  const shown = rows.filter(inTab).filter((r) => {
+    if (rowView === 'all') return true;
+    const done = rowDone(r, rec);
+    return rowView === 'done' ? done : !done;
+  });
+  const isMadeRow = useCallback((r) => isMade(r, madeMains), [madeMains]);
+  const summary = useMemo(() => boxSummary(rows, rec, isMadeRow), [rows, rec, isMadeRow]);
   // 고른 BOX 에 이 탭(도급/사급) 줄이 없으면 줄이 있는 쪽으로 옮긴다 — 빈 화면만 보고
   // 「연결이 안 됐나」 하지 않게 (2026-09-05 대표님).
   //
@@ -242,23 +241,32 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 손으로 켜 둔 자재 칸이 「0개 입고」로 꺼지던 문제 (2026-09-03 대표님 「자재 칸 보호」)
     if (Object.keys(rec).length === 0) return;
     const cur = (panel.박스입고 || {})[box] || {};
-    const nextPaid = boxKindComplete(rows, rec, 'paid');
-    const nextFree = boxKindComplete(rows, rec, 'free');
-    if (!!cur.자재_도급 === nextPaid && !!cur.자재_사급 === nextFree) return; // 그대로면 쓰지 않는다
+    const nextPaid = boxKindComplete(rows, rec, 'paid', isMadeRow);
+    const nextFree = boxKindComplete(rows, rec, 'free', isMadeRow);
+    // 판금도 같은 방식으로 생산현황의 「판금」 칸과 그 입고일에 이어 준다
+    // (2026-09-12 대표님 「생산현황에 판금 입고일이랑 연동되면 됨」)
+    const nextMade = boxKindComplete(rows, rec, 'made', isMadeRow);
+    const hasMadeRow = rows.some(isMadeRow);
+    if (!!cur.자재_도급 === nextPaid && !!cur.자재_사급 === nextFree && (!hasMadeRow || !!cur.판금 === nextMade))
+      return; // 그대로면 쓰지 않는다
     const today = new Date().toISOString().slice(0, 10);
     const curDate = (panel.박스입고일자 || {})[box] || {};
     updatePanel(panel.id, {
-      박스입고: { ...(panel.박스입고 || {}), [box]: { ...cur, 자재_도급: nextPaid, 자재_사급: nextFree } },
+      박스입고: {
+        ...(panel.박스입고 || {}),
+        [box]: { ...cur, 자재_도급: nextPaid, 자재_사급: nextFree, ...(hasMadeRow ? { 판금: nextMade } : {}) },
+      },
       박스입고일자: {
         ...(panel.박스입고일자 || {}),
         [box]: {
           ...curDate,
           자재_도급: nextPaid ? curDate.자재_도급 || today : '',
           자재_사급: nextFree ? curDate.자재_사급 || today : '',
+          ...(hasMadeRow ? { 판금: nextMade ? curDate.판금 || today : '' } : {}),
         },
       },
     }).catch(() => toast('자재 칸 갱신에 실패했습니다', 'error'));
-  }, [panel, rows, rec, box, toast]);
+  }, [panel, rows, rec, box, toast, isMadeRow]);
 
   // ── 개수 저장 ──
   // 한 번 누르면 필요 수량만큼 채우고, 채워진 것을 다시 누르면 0 으로 되돌린다.
@@ -527,20 +535,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       </div>
 
       {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만. 오른쪽 끝에 보기(전체·부족·완료) */}
-      {/* 큰 갈래 — 전장자재 | 가공품. 그 아래로 BOX·도급/사급이 이어진다
-          (2026-09-12 대표님 「기존 자재들은 대분류 전장자재로 묶고 아래에 가공품 박스별로」) */}
-      {kindsWithRows.length > 1 && (
-        <div className="pmat-kinds-top no-print">
-          <ViewSwitch
-            options={kindsWithRows.map((k) => ({ value: k, label: k }))}
-            value={kindTab}
-            onChange={setKindTab}
-            ariaLabel="자재 갈래"
-            className="pmat-kind-switch"
-          />
-        </div>
-      )}
-
       <div className="pmat-boxes no-print">
         <ViewSwitch
           options={(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({
@@ -588,6 +582,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 </span>
               ),
             },
+            // 판금은 도급·사급과 나란한 네 번째 구분 (2026-09-12 대표님 「판금으로 명칭 하자」)
+            ...(hasMade
+              ? [
+                  {
+                    value: MADE,
+                    label: MADE,
+                    count: (
+                      <span className={summary.made.done < summary.made.total ? 'is-short' : ''}>
+                        {summary.made.done}/{summary.made.total}
+                      </span>
+                    ),
+                  },
+                ]
+              : []),
           ]}
           value={supplyTab}
           onChange={setSupplyTab}

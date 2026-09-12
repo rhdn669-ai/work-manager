@@ -24251,3 +24251,15 @@ body.has-editlock .main-content.expanded {
   flex: none;
   white-space: nowrap;
 }
+
+/* 재고 금액 — 남음 아래 (2026-09-12 대표님 「금액도 페이지에서 보고싶음」) */
+.fstock-amt {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-light, #3f4a5a);
+  white-space: nowrap;
+}

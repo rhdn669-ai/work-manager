@@ -35,17 +35,25 @@ export function rowDone(row, received) {
  * 해당 구분의 줄이 하나도 없으면 false — 아무것도 없는 것을 「다 들어왔다」고 하면
  * 자재 칸이 저절로 켜져 사람을 속인다.
  */
-export function boxKindComplete(rows, received, kind) {
-  const list = (rows || []).filter((r) => (kind === 'free' ? isFreeIssue(r) : !isFreeIssue(r)));
+// kind: 'paid' | 'free' | 'made'(판금)
+// 판금은 사급·도급보다 «먼저» 가른다 — 판금으로 표시된 품목은 도급·사급 어느 쪽도 아니다
+// (2026-09-12 대표님 「판금으로 명칭 하자」). isMadeRow 를 주지 않으면 판금은 없는 셈이다.
+export function boxKindComplete(rows, received, kind, isMadeRow = null) {
+  const made = (r) => (isMadeRow ? isMadeRow(r) : false);
+  const list = (rows || []).filter((r) => {
+    if (made(r)) return kind === 'made';
+    if (kind === 'made') return false;
+    return kind === 'free' ? isFreeIssue(r) : !isFreeIssue(r);
+  });
   if (list.length === 0) return false;
   return list.every((r) => rowDone(r, received));
 }
 
 /** 진행 요약 — 「도급 12/15 · 사급 3/3」 */
-export function boxSummary(rows, received) {
-  const s = { paid: { done: 0, total: 0 }, free: { done: 0, total: 0 } };
+export function boxSummary(rows, received, isMadeRow = null) {
+  const s = { paid: { done: 0, total: 0 }, free: { done: 0, total: 0 }, made: { done: 0, total: 0 } };
   for (const r of rows || []) {
-    const k = isFreeIssue(r) ? 'free' : 'paid';
+    const k = isMadeRow && isMadeRow(r) ? 'made' : isFreeIssue(r) ? 'free' : 'paid';
     s[k].total += 1;
     if (rowDone(r, received)) s[k].done += 1;
   }

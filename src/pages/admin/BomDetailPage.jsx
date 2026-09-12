@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import {
@@ -44,6 +44,7 @@ import ViewSwitch from '../../components/common/ViewSwitch';
 import Skeleton from '../../components/common/Skeleton';
 import PdfFabGroup from '../../components/common/PdfFabGroup';
 import { useDialog } from '../../components/common/useDialog';
+import { MADE, madeMainCodes, isMade } from '../../domain/itemKind';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { useEditLock } from '../../contexts/useEditLock';
@@ -434,8 +435,9 @@ export default function BomDetailPage() {
     if (boxFilter) {
       list = list.filter((it) => (it.box || '').trim() === (boxFilter === NO_BOX ? '' : boxFilter));
     }
-    if (supplyTab === 'paid') list = list.filter((it) => !isFreeIssue(it));
-    else if (supplyTab === 'free') list = list.filter(isFreeIssue);
+    if (supplyTab === MADE) list = list.filter(isMadeRow);
+    else if (supplyTab === 'paid') list = list.filter((it) => !isMadeRow(it) && !isFreeIssue(it));
+    else if (supplyTab === 'free') list = list.filter((it) => !isMadeRow(it) && isFreeIssue(it));
     const sorted = [...list];
     if (sortBy === 'code') {
       sorted.sort((a, b) => collator.compare(a.code || '', b.code || ''));
@@ -443,7 +445,7 @@ export default function BomDetailPage() {
       sorted.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
     }
     return sorted;
-  }, [displayItems, search, sortBy, supplierFilter, boxFilter, supplyTab]);
+  }, [displayItems, search, sortBy, supplierFilter, boxFilter, supplyTab, isMadeRow]);
 
   // BOX 가 하나라도 적혀 있으면 옵션을 기본으로 켠다 — 값이 없는 BOM 에서 빈 열만 늘리지 않게
   const hasBox = useMemo(() => bomItems.some((b) => (b.box || '').trim()), [bomItems]);
@@ -489,7 +491,7 @@ export default function BomDetailPage() {
   // (2026-09-02 대표님 「필터 걸어서 뽑을때 제목 옆에 박스명 적어줘」)
   const printTitle = [
     'BOM 리스트',
-    supplyTab === 'free' ? '(사급)' : supplyTab === 'paid' ? '(도급)' : '',
+    supplyTab === 'free' ? '(사급)' : supplyTab === 'paid' ? '(도급)' : supplyTab === MADE ? `(${MADE})` : '',
     boxFilter ? `— ${boxFilter}` : '',
   ]
     .filter(Boolean)
@@ -541,8 +543,16 @@ export default function BomDetailPage() {
 
   // 수량은 사급도 센다 — 실제로 쓰는 자재라 「몇 개 필요한가」는 그대로 유효하다.
   // 다만 갈라 보여 준다 (2026-09-02 대표님 「놓고 따로 센다」).
-  const freeCount = useMemo(() => displayItems.filter(isFreeIssue).length, [displayItems]);
-  const paidCount = displayItems.length - freeCount;
+  // 판금은 도급·사급과 나란한 네 번째 구분 — 품목 대분류에 적어 둔 것을 따른다
+  // (2026-09-12 대표님 「판금으로 명칭 하자 그러고 나 방식」)
+  const madeMains = useMemo(() => madeMainCodes(itemMaster), [itemMaster]);
+  const isMadeRow = useCallback((it) => isMade(it, madeMains), [madeMains]);
+  const madeCount = useMemo(() => displayItems.filter(isMadeRow).length, [displayItems, isMadeRow]);
+  const freeCount = useMemo(
+    () => displayItems.filter((it) => !isMadeRow(it) && isFreeIssue(it)).length,
+    [displayItems, isMadeRow],
+  );
+  const paidCount = displayItems.length - freeCount - madeCount;
 
   function updateField(id, patch) {
     if (!guard()) return;
@@ -1317,6 +1327,7 @@ export default function BomDetailPage() {
             { value: 'all', label: '전체', count: displayItems.length },
             { value: 'paid', label: '도급', count: paidCount },
             { value: 'free', label: '사급', count: freeCount },
+            ...(madeCount > 0 ? [{ value: MADE, label: MADE, count: madeCount }] : []),
           ]}
           value={supplyTab}
           onChange={setSupplyTab}

@@ -126,6 +126,8 @@ export default function FreeStockPage({ company }) {
             name: m?.name || r.name || '',
             spec: m?.spec || r.spec || '',
             drawingNo: m?.drawingNo || r.drawingNo || '',
+            // 재고에 얼마가 묶여 있는지 (2026-09-12 대표님 「금액도」)
+            unitPrice: Number(m?.unitPrice) || Number(m?.standardPrice) || 0,
           };
         });
         if (!oneBox.has(bx)) oneBox.set(bx, new Map());
@@ -159,6 +161,8 @@ export default function FreeStockPage({ company }) {
         have,
         // 「우리가 댄」 몫 — 고객사 것 = have − ours (2026-09-12 대표님)
         ours: Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have),
+        // 남은 것의 값어치 — 집계를 거치면 단가가 떨어져 나가 품목에서 바로 읽는다
+        amount: have * (Number(masterMap[a.itemId]?.unitPrice) || Number(masterMap[a.itemId]?.standardPrice) || 0),
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정 — BOX 몫으로 나누면 같은 재고인데 BOX 마다
         // 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
@@ -214,6 +218,8 @@ export default function FreeStockPage({ company }) {
     return {
       kinds: all.length,
       have: all.reduce((s, r) => s + r.have, 0),
+      amount: all.reduce((s, r) => s + (Number(r.amount) || 0), 0),
+      ours: all.reduce((s, r) => s + (Number(r.ours) || 0), 0),
       sets,
       worst,
     };
@@ -311,6 +317,14 @@ export default function FreeStockPage({ company }) {
           <span className="fstock-sum">
             남음 <b>{won(sums.have)}</b>
           </span>
+          <span className="fstock-sum" title="남은 것 × 단가">
+            금액 <b>{won(sums.amount)}원</b>
+          </span>
+          {sums.ours > 0 && (
+            <span className="fstock-sum" title="사급 품목이지만 우리가 댄 몫">
+              우리 것 <b>{won(sums.ours)}</b>
+            </span>
+          )}
           {/* 가장 모자란 품목이 전체 SET 수를 정한다 (2026-09-11 대표님) */}
           {sums.sets !== null && (
             <span className="fstock-sum fstock-sets">
@@ -456,6 +470,7 @@ export default function FreeStockPage({ company }) {
                             title={`${r.name || r.code} 들어오고 나간 기록 보기`}
                           >
                             <b>{won(r.have)}</b>
+                            {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
                           {r.have > 0 && (
                             <button

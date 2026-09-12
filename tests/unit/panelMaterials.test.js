@@ -50,11 +50,29 @@ describe('BOX 완료 판정', () => {
     expect(boxKindComplete([paid('a', 1)], { a: { qty: 1 } }, 'free')).toBe(false);
     expect(boxKindComplete([], {}, 'paid')).toBe(false);
   });
-  it('요약 — 도급 1/2 · 사급 1/1', () => {
+  it('요약 — 도급 1/2 · 사급 1/1 (판금은 따로 센다)', () => {
     expect(boxSummary(rows, { a: { qty: 2 }, c: { qty: 3 } })).toEqual({
       paid: { done: 1, total: 2 },
       free: { done: 1, total: 1 },
+      made: { done: 0, total: 0 },
     });
+  });
+
+  it('판금으로 표시된 줄은 도급·사급 어느 쪽도 아니다 (2026-09-12 대표님)', () => {
+    const 판금인가 = (r) => r.id === 'a';
+    expect(boxSummary(rows, { a: { qty: 2 }, c: { qty: 3 } }, 판금인가)).toEqual({
+      paid: { done: 0, total: 1 },
+      free: { done: 1, total: 1 },
+      made: { done: 1, total: 1 },
+    });
+  });
+
+  it('판금만 따로 다 찼는지 본다', () => {
+    const 판금인가 = (r) => r.id === 'a';
+    expect(boxKindComplete(rows, { a: { qty: 2 } }, 'made', 판금인가)).toBe(true);
+    expect(boxKindComplete(rows, {}, 'made', 판금인가)).toBe(false);
+    // 판금 줄은 도급 셈에서 빠진다
+    expect(boxKindComplete(rows, { a: { qty: 2 } }, 'paid', 판금인가)).toBe(false);
   });
 });
 

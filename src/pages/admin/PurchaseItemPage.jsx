@@ -1150,7 +1150,7 @@ export default function PurchaseItemPage() {
                                 }}
                                 disabled={!repItem}
                               />
-                              {/* 이 대분류가 가공품인가 — 한 번 켜 두면 아래 품목이 모두 가공품이 된다
+                              {/* 이 대분류가 판금인가 — 한 번 켜 두면 아래 품목이 모두 판금이 된다
                                   (2026-09-12 대표님 「내가 품목에 추가하고 알아서 넣을게 연동만 잘되게해줘」) */}
                               {(editMode || repItem?.kind === MADE) && (
                                 <button
@@ -1166,8 +1166,8 @@ export default function PurchaseItemPage() {
                                   }}
                                   title={
                                     repItem?.kind === MADE
-                                      ? '이 대분류는 가공품입니다 — 누르면 전장자재로'
-                                      : '누르면 이 대분류를 가공품으로 — 아래 품목이 모두 따라갑니다'
+                                      ? '이 대분류는 판금입니다 — 누르면 전장자재로'
+                                      : '누르면 이 대분류를 판금으로 — 아래 품목이 모두 따라갑니다'
                                   }
                                 >
                                   {repItem?.kind === MADE ? MADE : ELEC}

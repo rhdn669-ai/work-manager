@@ -167,6 +167,8 @@ export default function PaidStockPage({ company = '' }) {
               name: m?.name || r.name || '',
               spec: m?.spec || r.spec || '',
               drawingNo: m?.drawingNo || r.drawingNo || '',
+              // 재고에 얼마가 묶여 있는지 보려면 단가가 있어야 한다 (2026-09-12 대표님 「금액도」)
+              unitPrice: Number(m?.unitPrice) || Number(m?.standardPrice) || 0,
             });
           }
         }
@@ -194,6 +196,7 @@ export default function PaidStockPage({ company = '' }) {
         adjust,
         left,
         log: manual[it.itemId]?.log || [],
+        amount: left * (Number(it.unitPrice) || 0), // 남은 것의 값어치
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정한다. BOX 몫으로 나누면 같은 재고인데
         // BOX 마다 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
@@ -281,7 +284,13 @@ export default function PaidStockPage({ company = '' }) {
         worst = r;
       }
     }
-    return { kinds: allRows.length, left: allRows.reduce((s, r) => s + r.left, 0), sets, worst };
+    return {
+      kinds: allRows.length,
+      left: allRows.reduce((s, r) => s + r.left, 0),
+      amount: allRows.reduce((s, r) => s + (Number(r.amount) || 0), 0),
+      sets,
+      worst,
+    };
   }, [allRows]);
 
   return (
@@ -293,6 +302,9 @@ export default function PaidStockPage({ company = '' }) {
           </span>
           <span className="fstock-sum">
             남음 <b>{won(sums.left)}</b>
+          </span>
+          <span className="fstock-sum" title="남은 것 × 단가">
+            금액 <b>{won(sums.amount)}원</b>
           </span>
           {sums.sets !== null && (
             <span className="fstock-sum fstock-sets">
@@ -395,6 +407,7 @@ export default function PaidStockPage({ company = '' }) {
                             title={`${r.name || r.code} 들어오고 나간 기록 보기`}
                           >
                             <b>{won(r.left)}</b>
+                            {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
                           <button
                             type="button"

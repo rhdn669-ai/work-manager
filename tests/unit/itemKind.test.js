@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MADE, ELEC, mainCodeOf, isMainItem, madeMainCodes, isMade, kindLabel } from '../../src/domain/itemKind';
 
-describe('품목이 전장자재인가 가공품인가', () => {
+describe('품목이 전장자재인가 판금인가', () => {
   const 품목들 = [
     { code: 'IOPN-047', name: '브라켓', kind: MADE }, // 대분류에 표시
     { code: 'IOPN-047-1', name: 'BASE PLATE' },
@@ -21,7 +21,7 @@ describe('품목이 전장자재인가 가공품인가', () => {
     expect(isMainItem({ code: 'IOPN-014-19' })).toBe(false);
   });
 
-  it('대분류에 한 번 표시하면 그 아래 품목이 모두 가공품이 된다', () => {
+  it('대분류에 한 번 표시하면 그 아래 품목이 모두 판금이 된다', () => {
     // 대표님 「내가 품목에 추가하고 알아서 넣을게 연동만 잘되게해줘」
     expect(가공대분류).toEqual(new Set(['IOPN-047']));
     expect(isMade({ code: 'IOPN-047-1' }, 가공대분류)).toBe(true);
@@ -40,7 +40,7 @@ describe('품목이 전장자재인가 가공품인가', () => {
   });
 
   it('이름을 돌려준다', () => {
-    expect(kindLabel({ code: 'IOPN-047-1' }, 가공대분류)).toBe('가공품');
+    expect(kindLabel({ code: 'IOPN-047-1' }, 가공대분류)).toBe('판금');
     expect(kindLabel({ code: 'IOPN-014-19' }, 가공대분류)).toBe('전장자재');
   });
 });
