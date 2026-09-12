@@ -324,15 +324,48 @@ export default function PurchaseDetailPage() {
   const [panelPickOpen, setPanelPickOpen] = useState(false);
   // 옛 발주서(BOM 에서 안 가져온 것)도 자동 배분을 쓰게 — 창에서 BOM·타입을 골라 연결 (안 B 3단계)
   const [linkPick, setLinkPick] = useState('');
+  // 이 발주서의 현장 것만 보여 준다 — 메티스 발주서에 파크시스템스 BOM 까지 늘어놓을 까닭이 없다
+  // (2026-09-12 대표님 「프로버 메티스로 발주서를 골랐는데 다른 프로젝트꺼 전부 뜰필요가있나?」).
+  // 현장이 아직 안 적힌 BOM 은 남겨 둔다 — 안 그러면 고를 것이 하나도 없어진다.
   const bomLinkOptions = useMemo(() => {
+    const site = form.siteId || '';
+    const mine = site ? bomProjects.filter((bp) => !bp.siteId || bp.siteId === site) : bomProjects;
+    const list = mine.length > 0 ? mine : bomProjects;
     const out = [{ value: '', label: 'BOM 고르기' }];
-    for (const bp of bomProjects) {
+    for (const bp of list) {
       const vs = Array.isArray(bp.variants) ? bp.variants.filter((v) => v?.key) : [];
       if (vs.length === 0) out.push({ value: `${bp.id}|`, label: bp.name });
       for (const v of vs) out.push({ value: `${bp.id}|${v.key}`, label: `${bp.name} · ${v.label || v.key}` });
     }
     return out;
-  }, [bomProjects]);
+  }, [bomProjects, form.siteId]);
+  // BOM 목록을 화면 열 때 한 번 읽어 둔다 — 자동 연결과 거르기에 쓴다
+  useEffect(() => {
+    let alive = true;
+    getBomProjects()
+      .then((list) => {
+        if (alive) setBomProjects(list || []);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // 현장을 골랐으면 BOM 도 붙어 있어야 한다 — 그 현장 BOM 이 하나뿐이면 손댈 것이 없다
+  // (2026-09-12 대표님 「발주서 등록할때 이미 프로젝트를 고르면 연결 되는거 아닌가」).
+  // 연결이 빠진 옛 발주서도 여는 순간 고쳐진다 — 「M 8월 1차」가 그래서 셈에서 빠져 있었다.
+  useEffect(() => {
+    if (isReadOnly || !form.siteId || form.bomProjectId) return;
+    const mine = bomProjects.filter((bp) => bp.siteId === form.siteId);
+    if (mine.length !== 1) return;
+    const bp = mine[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 현장 하나에 BOM 하나면 물어볼 것이 없다
+    setForm((f) => (f.bomProjectId ? f : { ...f, bomProjectId: bp.id }));
+    scheduleAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bomProjects, form.siteId, form.bomProjectId, isReadOnly]);
+
   async function openPanelPick() {
     setPanelPickOpen(true);
     if (bomProjects.length === 0) {
@@ -2245,14 +2278,6 @@ export default function PurchaseDetailPage() {
               >
                 BOM 가져오기
               </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={openPanelPick}
-                title="이 발주가 어느 BOM 자재인지 알려 주기"
-              >
-                BOM 연결
-              </button>
             </>
           )}
           {!isReadOnly && saveState === 'error' && (
@@ -2372,6 +2397,21 @@ export default function PurchaseDetailPage() {
             hideAmount={false}
             showBox={false}
           />
+        </div>
+      )}
+
+      {/* BOM 이 안 걸린 발주서 — 입고해도 그 BOM 의 「들어온 양」으로 안 잡힌다. 조용히 빠지느니
+          여기서 한 번에 걸 수 있게 한다 (2026-09-12 대표님 「2번 진행하고」).
+          「M 8월 1차」가 세트 7 이 적혀 있는데도 연결이 비어 통째로 빠져 있었다. */}
+      {!isReadOnly && (form.items || []).length > 0 && !form.bomProjectId && (
+        <div className="purchase-nobom no-print">
+          <Icon name="alert" className="btn-ic" />
+          <span>
+            이 발주서는 <b>BOM 에 걸려 있지 않습니다</b> — 입고해도 도급 재고의 「들어온 양」으로 잡히지 않습니다.
+          </span>
+          <button type="button" className="btn btn-sm btn-primary" onClick={openPanelPick}>
+            BOM 연결
+          </button>
         </div>
       )}
 
@@ -3530,15 +3570,9 @@ export default function PurchaseDetailPage() {
           없습니다 — 생산 순서가 바뀌어도 그때그때 남은 양에서 나갑니다.
         </p>
         {!isReadOnly && (
-          <div className="stock-filters no-print" style={{ marginBottom: 8 }}>
-            <span className="stock-summary">BOM 연결</span>
-            <Select
-              value={linkPick}
-              onChange={applyBomLink}
-              options={bomLinkOptions}
-              className="stock-filter-select"
-              ariaLabel="BOM 연결"
-            />
+          <div className="form-group bomlink-pick no-print">
+            <label>BOM 연결</label>
+            <Select value={linkPick} onChange={applyBomLink} options={bomLinkOptions} ariaLabel="BOM 연결" />
             {bomLinksLabel(form.bomLinks) && <span className="stock-summary">{bomLinksLabel(form.bomLinks)}</span>}
           </div>
         )}

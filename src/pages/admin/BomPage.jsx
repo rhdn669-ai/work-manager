@@ -11,7 +11,10 @@ import {
   saveBomProjectsOrder,
   duplicateBomProject,
   getBomBySite,
+  setBomProjectSite,
 } from '../../services/bomService';
+import { getAllSites } from '../../services/siteService';
+import Select from '../../components/common/Select';
 import { getPurchaseItems } from '../../services/purchaseService';
 import { bomStats } from '../../domain/bomStats';
 // getBomProjects는 undo 복원 후 목록 갱신에도 사용
@@ -27,7 +30,7 @@ import { useEditLock } from '../../contexts/useEditLock';
 const won = (n) => `${Math.round(n || 0).toLocaleString()}원`;
 
 // 드래그 가능한 프로젝트 행 — 「순서·삭제」가 꺼져 있으면 끌 수도 고를 수도 없다
-function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCopy }) {
+function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCopy, sites, onSite }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: p.id,
     disabled: !editMode,
@@ -71,6 +74,21 @@ function SortableProjectRow({ p, stat, editMode, checked, onCheck, onOpen, onCop
         <strong className="u-ellipsis-1" title={p.name || ''}>
           {p.name}
         </strong>
+      </td>
+      {/* 어느 현장 것인지 — 발주서에서 BOM 을 고를 때 그 현장 것만 보이게 하는 근거가 된다
+          (2026-09-12 대표님) */}
+      <td data-label="현장" onClick={(e) => e.stopPropagation()}>
+        {editMode ? (
+          <Select
+            value={p.siteId || ''}
+            onChange={(v) => onSite(p, v)}
+            options={[{ value: '', label: '현장 없음' }, ...sites.map((s2) => ({ value: s2.id, label: s2.name }))]}
+            ariaLabel={`${p.name} 현장`}
+            native
+          />
+        ) : (
+          <span className={p.siteId ? '' : 'text-muted'}>{p.siteName || '현장 없음'}</span>
+        )}
       </td>
       <td data-label="품목 수" className="u-num">
         {stat ? `${stat.count.toLocaleString()}개` : '—'}
@@ -130,6 +148,7 @@ export default function BomPage() {
   const [pick, setPick] = useState(() => new Set()); // 골라 둔 프로젝트 id
   const editMode = useEditLock({ onLock: () => setPick(new Set()) });
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
   const [stats, setStats] = useState({}); // projectId → { count, qty, amount }
   const [loading, setLoading] = useState(true);
 
@@ -170,6 +189,26 @@ export default function BomPage() {
       setStats(Object.fromEntries(entries));
     } catch (err) {
       console.error('BOM 합계 계산 실패', err);
+    }
+  }
+
+  // 현장 목록 — BOM 마다 어느 현장 것인지 지정하는 데 쓴다 (2026-09-12 대표님)
+  useEffect(() => {
+    getAllSites()
+      .then((list) => setSites(list || []))
+      .catch(() => setSites([]));
+  }, []);
+
+  async function pickSite(project, siteId) {
+    const site = sites.find((s2) => s2.id === siteId);
+    const name = site?.name || '';
+    setProjects((list) => list.map((x) => (x.id === project.id ? { ...x, siteId, siteName: name } : x)));
+    try {
+      await setBomProjectSite(project.id, siteId, name);
+      toast(siteId ? `${project.name} → ${name}` : `${project.name} 현장을 비웠습니다`, 'success', 2000);
+    } catch {
+      toast('현장 지정에 실패했습니다', 'error');
+      setProjects(await getBomProjects());
     }
   }
 
@@ -308,6 +347,9 @@ export default function BomPage() {
                 <tr>
                   <th scope="col" style={{ width: editMode ? 62 : 36 }} aria-label="순서 변경"></th>
                   <th scope="col">프로젝트명</th>
+                  <th scope="col" style={{ width: 180 }}>
+                    현장
+                  </th>
                   <th scope="col" style={{ width: 90 }} className="u-num">
                     품목 수
                   </th>
@@ -334,6 +376,8 @@ export default function BomPage() {
                       onCheck={togglePick}
                       onOpen={(pp) => navigate(`/admin/purchase/bom/${pp.id}`)}
                       onCopy={openCopyProject}
+                      sites={sites}
+                      onSite={pickSite}
                     />
                   ))}
                 </tbody>

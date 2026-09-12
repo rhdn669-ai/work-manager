@@ -103,6 +103,12 @@ export function bomItemsForVariant(items, variantKey) {
 }
 
 // BOM 프로젝트 복사 — 프로젝트 문서 + 품목 전체(BOX·순서 포함)를 새 프로젝트로 복제
+/** 이 BOM 이 어느 현장 것인지 — 발주서에서 BOM 을 고를 때 그 현장 것만 보이게 한다
+ *  (2026-09-12 대표님 「프로버 메티스로 발주서를 골랐는데 다른 프로젝트꺼 전부 뜰필요가있나?」) */
+export async function setBomProjectSite(projectId, siteId, siteName) {
+  await updateDoc(doc(projectsRef, projectId), { siteId: siteId || '', siteName: siteName || '' });
+}
+
 export async function duplicateBomProject(projectId, newName) {
   const src = await getBomProjectById(projectId);
   if (!src) throw new Error('원본 프로젝트를 찾을 수 없습니다');

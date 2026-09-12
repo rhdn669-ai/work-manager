@@ -24140,3 +24140,25 @@ body.has-editlock .main-content.expanded {
 .fstock-preview b {
   color: var(--accent);
 }
+
+/* BOM 이 안 걸린 발주서 알림 — 조용히 셈에서 빠지느니 눈에 띄게 (2026-09-12 대표님) */
+.purchase-nobom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--warning-tint, #f5d9a8);
+  background: var(--warning-soft, #fff7e6);
+  border-radius: var(--radius-md, 10px);
+  font-size: 13px;
+  color: var(--text);
+}
+.purchase-nobom > span {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.purchase-nobom .btn {
+  flex: none;
+}
