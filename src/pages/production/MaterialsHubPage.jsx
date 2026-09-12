@@ -139,7 +139,7 @@ export default function MaterialsHubPage() {
               )}
             </div>
             <ul>
-              {list.map((p) => (
+              {list.map((p, i) => (
                 <li key={p.id}>
                   <button
                     type="button"
@@ -147,6 +147,8 @@ export default function MaterialsHubPage() {
                     onClick={() => patch({ panel: p.id })}
                     title={p.bomLink?.projectId ? '' : 'BOM 을 아직 연결하지 않은 호기'}
                   >
+                    {/* 몇 번째인지 — 긴 목록에서 위치를 잡는다 (2026-09-12 대표님 「앞에 no 표시」) */}
+                    <span className="mhub-item-no">{i + 1}</span>
                     <ProjectName name={nameOf(p)} className="mhub-item-name" />
                     {p.bomLink?.variantLabel && <span className="mhub-item-tag">{p.bomLink.variantLabel}</span>}
                     {(() => {

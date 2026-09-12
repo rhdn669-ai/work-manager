@@ -87,6 +87,9 @@ function buildProductionItems() {
   ];
 }
 
+// 순서·대분류를 한 줄 글자로 — 서버에 있는 것과 같은지 견주는 데만 쓴다
+const shapeOf = (order, groups) => JSON.stringify({ order: order || null, groups: groups || [] });
+
 export default function Sidebar({ isOpen }) {
   const { userProfile, isAdmin, canApproveLeave, canCreateSite, canViewArchive, canPurchase, canApproveAll } =
     useAuth();
@@ -101,6 +104,8 @@ export default function Sidebar({ isOpen }) {
   // - 이후 모든 변경은 Firestore가 source of truth (다른 PC/기기 실시간 반영)
   const migratedRef = useRef(false);
   const seedAttemptedRef = useRef(false);
+  // 서버에 있는 것과 같다고 아는 마지막 모양 — 되돌려 보내지 않으려고 둔다
+  const lastSyncedRef = useRef(null);
   // 계정(uid) 변경 시 편집모드·목록 리셋 — 이전 렌더 값 비교 패턴 (effect 내 동기 setState 회피)
   const uid = userProfile?.uid;
   const [prevUid, setPrevUid] = useState(uid);
@@ -123,11 +128,17 @@ export default function Sidebar({ isOpen }) {
     const unsub = subscribePreferences(uid, (data) => {
       let nextOrder = null;
       let nextGroups = [];
+      // 서버에서 온 모양을 적어 둔다 — 이 값 때문에 다시 저장하지 않기 위해서다.
+      // 적어 두지 않으면 「받으면 상태가 바뀌고 → 바뀌었으니 저장하고 → 저장했으니 다시
+      // 받는」 고리가 돌아, 1초마다 읽고 쓰기를 되풀이한다
+      // (2026-09-12 대표님 「태블릿에서 아직도 어플이 너무 느린데 왜그렇지」 —
+      //  12초에 읽기 24회·쓰기 12회가 이 고리였다).
 
       const sidebar = data?.sidebar;
       if (sidebar && (Array.isArray(sidebar.order) || Array.isArray(sidebar.groups))) {
         nextOrder = Array.isArray(sidebar.order) ? sidebar.order : null;
         nextGroups = Array.isArray(sidebar.groups) ? sidebar.groups : [];
+        lastSyncedRef.current = shapeOf(nextOrder, nextGroups);
         setOrder(nextOrder);
         setGroups(nextGroups);
         migratedRef.current = true;
@@ -226,15 +237,20 @@ export default function Sidebar({ isOpen }) {
     return sorted;
   }, [allItems, groups, order]);
 
-  // 순서/대분류 변경 시 Firestore에 디바운스 저장 (300ms) — 다른 기기에 실시간 전파
+  // 순서/대분류 변경 시 서버에 디바운스 저장 (300ms) — 다른 기기에 실시간 전파.
+  // 사람이 바꿨을 때만 저장한다. 서버에서 받아 넣은 값을 그대로 되돌려 보내면
+  // 읽기·쓰기가 서로를 부르는 고리가 된다 (위 구독 쪽 설명 참고).
   const saveTimerRef = useRef(null);
   useEffect(() => {
     const uid = userProfile?.uid;
     if (!uid || !migratedRef.current) return; // 최초 로드 전에는 저장 안 함 (덮어쓰기 방지)
+    const shape = shapeOf(order, groups);
+    if (shape === lastSyncedRef.current) return; // 서버에 있는 것과 같다 — 보낼 것이 없다
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      lastSyncedRef.current = shape;
       setSidebarPref(uid, { order: order || null, groups }).catch(() => {
-        /* 무시 */
+        lastSyncedRef.current = null; // 실패했으면 다음 변경 때 다시 보낸다
       });
     }, 300);
     return () => {

@@ -23027,15 +23027,35 @@ a.lib-row-name:hover {
   font-weight: 600;
   color: var(--text);
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 30px 1fr auto;
   grid-template-areas:
-    'name state'
-    'tag state';
+    'no name state'
+    'no tag state';
   align-items: center;
-  align-items: center;
-  column-gap: 6px;
+  column-gap: 10px;
   row-gap: 2px;
   cursor: pointer;
+}
+/* 몇 번째인지 — 표의 No 칸처럼 제 자리를 갖는다. 폭을 고정해 자릿수가 늘어도
+   이름 시작점이 흔들리지 않고, 오른쪽 실선으로 이름과 갈라 둔다
+   (2026-09-12 대표님 「앞에 no 표시」 → 「성의없이 표시해놨냐」). */
+.mhub-item-no {
+  grid-area: no;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 9px;
+  border-right: 1px solid var(--border, #e5e8eb);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text-light, #3f4a5a);
+}
+.mhub-item.on .mhub-item-no {
+  color: var(--primary);
+  border-right-color: var(--primary);
 }
 .mhub-item:hover {
   background: var(--grey-100, #f2f4f6);

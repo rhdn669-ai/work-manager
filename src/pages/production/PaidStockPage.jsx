@@ -333,37 +333,60 @@ export default function PaidStockPage({ company = '' }) {
                     {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
                   </td>
                   <td className="col-num">{won(r.out)}</td>
-                  {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때 —
-                      고치는 대상(남음) 바로 옆에 둔다 (2026-09-11 대표님) */}
                   <td className="col-num">
-                    <button type="button" className="fstock-have" onClick={() => setLogOf(r)} title="오간 기록 보기">
-                      <b>{won(r.left)}</b>
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-xs btn-ghost fstock-fix"
-                      onClick={() => setFixing({ row: r, to: String(r.left) })}
-                      title="실제 개수로 수정"
-                    >
-                      수정
-                    </button>
+                    {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
+                        사급 재고와 같은 자리·같은 모양으로 둔다 (2026-09-11 대표님) */}
+                    <div className="fstock-have-cell">
+                      <button
+                        type="button"
+                        className="fstock-have"
+                        onClick={() => setLogOf(r)}
+                        title={`${r.name || r.code} 들어오고 나간 기록 보기`}
+                      >
+                        <b>{won(r.left)}</b>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setFixing({ row: r, to: String(r.left) })}
+                        title="실제 개수로 수정"
+                      >
+                        수정
+                      </button>
+                    </div>
                   </td>
                   <td className="col-action">
-                    <input
-                      type="number"
-                      className="input input-sm fstock-in"
-                      inputMode="numeric"
-                      min="0"
-                      value={draft[r.itemId] ?? ''}
-                      disabled={saving === r.itemId}
-                      onChange={(e) => setDraft((d) => ({ ...d, [r.itemId]: e.target.value }))}
-                      onBlur={() => commitDraft(r)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') e.currentTarget.blur();
-                      }}
-                      placeholder="0"
-                      aria-label={`${r.name || r.code} 이번 입고`}
-                    />
+                    <div className="fstock-in-cell">
+                      {/* 들어온 개수를 칸에 바로 적는다 — 적고 Enter (창을 띄우지 않는다) */}
+                      <input
+                        className="num-input pmat-input"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        placeholder="0"
+                        disabled={saving === r.itemId}
+                        value={draft[r.itemId] ?? ''}
+                        onChange={(e) => setDraft((d) => ({ ...d, [r.itemId]: e.target.value }))}
+                        onBlur={() => commitDraft(r)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                          if (e.key === 'Escape')
+                            setDraft((d) => {
+                              const nd = { ...d };
+                              delete nd[r.itemId];
+                              return nd;
+                            });
+                        }}
+                        aria-label={`${r.name || r.code} 이번 입고 개수`}
+                      />
+                      {/* 누르기 전에 결과를 먼저 보여 준다 — 「더하기」인지 「맞추기」인지 헷갈려
+                          재고가 두 배로 불어난 일이 있었다 (2026-09-11 대표님) */}
+                      {Number(draft[r.itemId]) > 0 && (
+                        <span className="fstock-preview">
+                          {won(r.left)} → <b>{won(r.left + Number(draft[r.itemId]))}</b>
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
