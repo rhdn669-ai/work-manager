@@ -24239,3 +24239,15 @@ body.has-editlock .main-content.expanded {
 .fstock-owner-switch button {
   font-size: 12px;
 }
+
+/* 사급 → 도급 옮기기 (2026-09-12 대표님) */
+.fstock-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.fstock-move {
+  flex: none;
+  white-space: nowrap;
+}

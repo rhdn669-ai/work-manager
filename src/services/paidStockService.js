@@ -44,7 +44,7 @@ export async function getPaidStockQty(company, itemId) {
 }
 
 /** 들어옴 — 적은 수만큼 통에 더한다 */
-export async function receivePaidStock(company, item, n, { by = '' } = {}) {
+export async function receivePaidStock(company, item, n, { by = '', note = '' } = {}) {
   const add = Math.max(0, Number(n) || 0);
   if (!add || !item?.itemId) return 0;
   await setDoc(
@@ -59,7 +59,7 @@ export async function receivePaidStock(company, item, n, { by = '' } = {}) {
       qty: increment(add),
       updatedAt: serverTimestamp(),
       updatedBy: by,
-      log: arrayUnion({ at: new Date().toISOString(), by, kind: 'in', n: add }),
+      log: arrayUnion({ at: new Date().toISOString(), by, kind: 'in', n: add, note }),
     },
     { merge: true },
   );
