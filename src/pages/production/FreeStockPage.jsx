@@ -21,7 +21,7 @@ import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
-import { aggregateShortage } from '../../domain/panelMaterials';
+import { aggregateShortage, receivedQty } from '../../domain/panelMaterials';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
@@ -106,6 +106,7 @@ export default function FreeStockPage({ company }) {
     const entriesAll = [];
     const entriesByBox = new Map(); // box → entries[]
     const perOneByBox = new Map(); // box → Map(key → 개수)
+    const unitsByBox = new Map(); // box → Map(itemId → Set(호기)) — 「나간 SET」은 가져간 호기 수
 
     for (const p of mine) {
       const all0 = bomByProject[p.bomLink.projectId];
@@ -130,12 +131,20 @@ export default function FreeStockPage({ company }) {
         });
         if (!oneBox.has(bx)) oneBox.set(bx, new Map());
         const ob = oneBox.get(bx);
+        const rec = (materials[p.id] || {})[bx] || {};
+        if (!unitsByBox.has(bx)) unitsByBox.set(bx, new Map());
+        const u = unitsByBox.get(bx);
         for (const r of list) {
           const k = r.itemId || `row:${r.id}`;
           one.set(k, (one.get(k) || 0) + (Number(r.qty) || 0));
           ob.set(k, (ob.get(k) || 0) + (Number(r.qty) || 0));
+          // 하나라도 가져갔으면 그 호기는 「나간 SET」 하나 — 덜 넣었어도 센다
+          if (receivedQty(rec, r.id) > 0) {
+            if (!u.has(k)) u.set(k, new Set());
+            u.get(k).add(p.id);
+          }
         }
-        const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: (materials[p.id] || {})[bx] || {} };
+        const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: rec };
         entriesAll.push(entry);
         entriesByBox.set(bx, [...(entriesByBox.get(bx) || []), entry]);
       }
@@ -188,10 +197,18 @@ export default function FreeStockPage({ company }) {
       const es = entriesByBox.get(bx);
       if (!es) continue;
       const ob = perOneByBox.get(bx) || new Map();
+      const ub = unitsByBox.get(bx) || new Map();
       const list = aggregateShortage(es, { onlyShort: false })
         .map((a) => {
           const base = whole.get(a.itemId);
-          return base ? { ...base, perOne: ob.get(a.itemId || '') || 0, got: a.got } : null;
+          return base
+            ? {
+                ...base,
+                perOne: ob.get(a.itemId || '') || 0,
+                got: a.got,
+                outSets: ub.get(a.itemId || '')?.size || 0, // 가져간 호기 수
+              }
+            : null;
         })
         .filter(Boolean)
         .filter(keep)
@@ -392,10 +409,12 @@ export default function FreeStockPage({ company }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 개수 말고 몇 대분인지로 보여 준다 (2026-09-12 대표님 「나감 수량말고 세트로만 표시」).
-                      정확한 개수는 칸에 손을 올리면 나온다 — 1대당이 없는 품목은 개수 그대로. */}
-                      <td className="col-num" title={`${won(r.got)}개`}>
-                        {r.perOne > 0 ? `${won(Math.floor(r.got / r.perOne))} SET` : won(r.got)}
+                      {/* 「나감」은 개수÷1대당이 아니라 «가져간 호기 수»다. 개수로 나누면 한 호기가
+                          덜 넣었거나 BOX 마다 1대당이 달라 줄마다 8·4 SET 로 갈라진다 — 같은 9대가
+                          가져갔으면 9 로 읽혀야 한다 (2026-09-15 대표님 「나감 9set 로 통일해줘」).
+                          정확한 개수는 칸에 손을 올리면 나온다. */}
+                      <td className="col-num" title={`${won(r.got)}개 · ${won(r.outSets)}대가 가져감`}>
+                        {`${won(r.outSets)} SET`}
                       </td>
                       <td className="col-num">
                         {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.

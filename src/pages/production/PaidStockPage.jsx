@@ -124,9 +124,9 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
     const goneAll = new Map(); // 호기들에 들어간 총량
     const info = new Map();
-    const byBox = new Map(); // box → { perOne: Map, gone: Map }
+    const byBox = new Map(); // box → { perOne: Map, gone: Map, units: Map(itemId → Set(호기)) }
     const pick = (bx) => {
-      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map() });
+      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map(), units: new Map() });
       return byBox.get(bx);
     };
 
@@ -139,12 +139,17 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         const list = bomRowsForBox(forVariant, bx).filter((r) => inKindTab(r, kind));
         if (list.length === 0) continue;
         const rec = (materials[p.id] || {})[bx] || {};
-        const g = pick(bx).gone;
+        const { gone: g, units: u } = pick(bx);
         for (const r of list) {
           if (!r.itemId) continue;
           const got = receivedQty(rec, r.id);
           goneAll.set(r.itemId, (goneAll.get(r.itemId) || 0) + got);
           g.set(r.itemId, (g.get(r.itemId) || 0) + got);
+          // 하나라도 가져갔으면 그 호기는 「나간 SET」 하나 — 덜 넣었어도 센다
+          if (got > 0) {
+            if (!u.has(r.itemId)) u.set(r.itemId, new Set());
+            u.get(r.itemId).add(p.id);
+          }
         }
       }
     }
@@ -235,7 +240,14 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       const list = [...b.perOne.keys()]
         .map((itemId) => {
           const base = stockOfItem.get(itemId);
-          return base ? { ...base, perOne: b.perOne.get(itemId) || 0, out: b.gone.get(itemId) || 0 } : null;
+          return base
+            ? {
+                ...base,
+                perOne: b.perOne.get(itemId) || 0,
+                out: b.gone.get(itemId) || 0,
+                outSets: b.units.get(itemId)?.size || 0, // 가져간 호기 수
+              }
+            : null;
         })
         .filter(Boolean)
         .filter(keep)
@@ -419,10 +431,12 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 개수 말고 몇 대분인지로 보여 준다 (2026-09-12 대표님 「나감 수량말고 세트로만 표시」).
-                      정확한 개수는 칸에 손을 올리면 나온다 — 1대당이 없는 품목은 개수 그대로. */}
-                      <td className="col-num" title={`${won(r.out)}개`}>
-                        {r.perOne > 0 ? `${won(Math.floor(r.out / r.perOne))} SET` : won(r.out)}
+                      {/* 「나감」은 개수÷1대당이 아니라 «가져간 호기 수»다. 개수로 나누면 한 호기가
+                          덜 넣었거나 BOX 마다 1대당이 달라 줄마다 8·4 SET 로 갈라진다 — 같은 9대가
+                          가져갔으면 9 로 읽혀야 한다 (2026-09-15 대표님 「나감 9set 로 통일해줘」).
+                          정확한 개수는 칸에 손을 올리면 나온다. */}
+                      <td className="col-num" title={`${won(r.out)}개 · ${won(r.outSets)}대가 가져감`}>
+                        {`${won(r.outSets)} SET`}
                       </td>
                       <td className="col-num">
                         {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
