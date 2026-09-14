@@ -12,7 +12,7 @@ import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isMatStarted } from '../../domain/panelBom';
 import { aggregateShortage } from '../../domain/panelMaterials';
-import { consumedByItem } from '../../domain/paidSets';
+import { consumedByItem, panelShortageBySupply } from '../../domain/paidSets';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { specFontClass, localStamp } from '../../utils/printText';
 
@@ -32,6 +32,9 @@ const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
 // 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
 // 코드 열은 뺐다 — 생산 화면은 도번·품명으로 본다 (2026-09-08 대표님)
 const SHT_SCREEN_COLS = [44, 140, null, null, 76, 76, 76, 84, 84, 200];
+
+// 배정이 「다 끝났다」고 보려면 이 셋이 모두 채워져 있어야 한다
+const DONE_KINDS = ['paid', 'free', 'made'];
 
 const hogiOf = (p) =>
   [p.프로젝트, p.호기]
@@ -74,13 +77,13 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     () => panels.filter((p) => p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김' && hasBomLink(p)),
     [panels],
   );
-  const linked = useMemo(() => living.filter((p) => isMatStarted(materials[p.id])), [living, materials]);
+  const started = useMemo(() => living.filter((p) => isMatStarted(materials[p.id])), [living, materials]);
   // 아직 수량을 한 개도 안 적은 호기 — 계획만 있는 것이라 세지 않는다
-  const waiting = living.length - linked.length;
+  const waiting = living.length - started.length;
 
-  // ── 범위 안 호기가 쓰는 BOM 을 프로젝트별로 한 번씩만 읽는다 ──
+  // ── 호기가 쓰는 BOM 을 프로젝트별로 한 번씩만 읽는다 ──
   useEffect(() => {
-    const ids = [...new Set(linked.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
+    const ids = [...new Set(living.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
     if (ids.length === 0) return undefined;
     let alive = true;
     Promise.all(ids.map((id) => getBomBySite(id).then((rows) => [id, rows || []])))
@@ -94,7 +97,22 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     return () => {
       alive = false;
     };
-  }, [linked, bomByProject, toast]);
+  }, [living, bomByProject, toast]);
+
+  // ── 배정이 «다» 끝난 호기는 통째로 뺀다 ──
+  // 사급·도급·판금 중 하나라도 남았으면 아직 만드는 중이라 모든 탭에 그대로 둔다. 셋 다
+  // 채워졌을 때만 집계에서 내린다 (2026-09-14 대표님 「사도급 배정이 끝난 호기를 집계에서 제외」).
+  const doneIds = useMemo(() => {
+    const out = new Set();
+    for (const p of started) {
+      const rows0 = bomByProject[p.bomLink.projectId];
+      if (!rows0) continue;
+      const s0 = panelShortageBySupply(bomItemsForVariant(rows0, p.bomLink.variantKey || ''), materials[p.id] || {});
+      if (DONE_KINDS.every((k) => s0[k].total === 0 || s0[k].short === 0)) out.add(p.id);
+    }
+    return out;
+  }, [started, bomByProject, materials]);
+  const linked = useMemo(() => started.filter((p) => !doneIds.has(p.id)), [started, doneIds]);
 
   // ── 집계 ──
   const entries = useMemo(() => {
@@ -235,7 +253,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
       <div className="card sht-controls no-print">
         <div className="sht-range">
           <span className="sht-range-label">집계 대상</span>
-          <span className="sht-range-what">수량을 적기 시작한 호기 {linked.length}대</span>
+          <span className="sht-range-what">체크 중이고 아직 덜 채운 호기 {linked.length}대</span>
         </div>
         <div className="sht-kinds">
           <ViewSwitch
@@ -278,16 +296,16 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
             {linked.length}
             <span>개</span>
           </div>
-          <div className="admin-stat-sub">체크 진행 중</div>
+          <div className="admin-stat-sub">아직 채울 것이 남은 호기</div>
         </div>
         <div className="admin-stat">
-          <div className="admin-stat-label">아직 시작 안 함</div>
+          <div className="admin-stat-label">배정 완료</div>
           <div className="admin-stat-value">
-            {waiting}
+            {doneIds.size}
             <span>개</span>
           </div>
           <div className="admin-stat-sub">
-            {waiting > 0 ? '수량을 적으면 집계에 들어옵니다' : '남은 호기가 전부 집계 중'}
+            {waiting > 0 ? `집계에서 내림 · 아직 시작 안 함 ${waiting}대` : '집계에서 내림'}
           </div>
         </div>
       </div>
@@ -369,9 +387,11 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
           <Icon name="check" className="sht-empty-ic" />
           <strong>모자란 구성품이 없습니다</strong>
           <span>
-            {linked.length === 0
+            {started.length === 0
               ? '아직 수량을 적기 시작한 호기가 없습니다 — 호기 체크에서 수량을 적으면 여기에 모입니다'
-              : `체크 중인 ${linked.length}대의 ${supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 구성품이 전부 들어왔습니다`}
+              : linked.length === 0
+                ? `체크 중인 ${started.length}대가 모두 배정 완료입니다`
+                : `${linked.length}대의 ${supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 구성품이 전부 들어왔습니다`}
           </span>
         </div>
       )}
@@ -381,7 +401,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
         <div className="bom-print-page">
           <IopnDocBrand title={`부족 자재 · ${company || '전체'}`} titleClass="bom-list-title is-long" />
           <div className="bom-print-supplier-band">
-            {supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} · 체크 중인 호기 {linked.length}대 ·{' '}
+            {supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} · 덜 채운 호기 {linked.length}대 ·{' '}
             {stamp}
           </div>
           <table className="iopn-items-table sht-print-table">
