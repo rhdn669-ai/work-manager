@@ -18,8 +18,10 @@ export function useFillHeight(bottomGap = 12) {
     if (!el) return undefined;
     const fit = () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
-      // 떠 있는 「잠금」이 있으면 그만큼 더 줄인다 — 표 아래 스크롤바가 버튼에 가리지 않게
-      el.style.maxHeight = `calc(100dvh - ${Math.round(top)}px - ${bottomGap}px - var(--fab-clear, 0px))`;
+      // 떠 있는 「잠금」이 있으면 그만큼 더 줄인다 — 표 아래 스크롤바가 버튼에 가리지 않게.
+      // 글자판이 서서 화면이 반으로 줄어도 상자가 짜부라지지는 않게 바닥(220px)을 둔다 —
+      // 0 에 가까워지면 적는 줄을 굴려 보일 자리가 없다 (2026-09-14 태블릿).
+      el.style.maxHeight = `max(220px, calc(100dvh - ${Math.round(top)}px - ${bottomGap}px - var(--fab-clear, 0px)))`;
     };
     fit();
     window.addEventListener('resize', fit);

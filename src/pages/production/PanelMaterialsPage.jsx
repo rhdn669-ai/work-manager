@@ -249,19 +249,35 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 칸에 들어가는 순간 그 줄을 표 가운데로 올려 둔다 (2026-09-14 대표님 「비고입력할때 칸이 안보이고」).
   const keepInView = (el) => {
     if (!el) return;
-    // 글자판이 올라오면 표 상자가 그만큼 짧아진다(100dvh 기준). 그 «줄어든 상자» 안에서
-    // 위쪽 1/3 자리에 오도록 상자를 굴린다 — 그래야 적는 칸이 글자판에 안 가린다.
-    setTimeout(() => {
+    // 글자판이 올라오면 보이는 자리가 반으로 준다. 그 «보이는 자리» 안에 적는 칸이 오도록
+    // 두 단계로 굴린다 — ① 창을 굴려 표 상자를 화면 머리(고정 헤더 바로 밑)까지 올리고,
+    // ② 상자 안에서 그 줄을 보이는 높이의 1/3 자리에 둔다.
+    // 전에는 ②만 했다. 그런데 글자판이 서면 위쪽에 남는 자리가 제목·탭·요약 줄로 다 차서
+    // 상자 자체가 글자판 밑으로 내려가 있었다 — 상자 안에서 아무리 굴려도 안 보였다
+    // (2026-09-14 대표님 「아직 입력하는 칸이 키보드에 가려져 안보임」 태블릿 사진).
+    const 굴리기 = () => {
       try {
         const box = el.closest('.pmat-scroll');
         const row = el.closest('tr');
         if (!box || !row) return el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        // 보이는 높이 — 글자판이 가린 만큼 뺀 값. 창 크기가 줄지 않는 브라우저도 이건 맞게 준다
+        const 보임 = window.visualViewport?.height || window.innerHeight;
+        const 헤더 = document.querySelector('.header')?.getBoundingClientRect().bottom || 0;
+        // ① 창 — 상자 위 테두리를 헤더 바로 밑으로
+        const 상자위 = box.getBoundingClientRect().top;
+        const 창이동 = 상자위 - 헤더 - 8;
+        if (Math.abs(창이동) > 4) window.scrollBy({ top: 창이동, behavior: 'smooth' });
+        // ② 상자 — 줄을 «보이는» 상자 높이의 1/3 자리에
+        const 상자보임 = Math.max(120, Math.min(box.clientHeight, 보임 - (헤더 + 8)));
         const 머리 = box.querySelector('thead')?.offsetHeight || 0;
-        box.scrollTo({ top: Math.max(0, row.offsetTop - 머리 - box.clientHeight / 3), behavior: 'smooth' });
+        box.scrollTo({ top: Math.max(0, row.offsetTop - 머리 - 상자보임 / 3), behavior: 'smooth' });
       } catch {
         /* 오래된 브라우저는 그냥 둔다 */
       }
-    }, 300); // 글자판이 다 올라온 뒤에 재야 자리가 맞는다
+    };
+    // 글자판이 다 선 뒤에 재야 자리가 맞는다 — 기기마다 올라오는 속도가 달라 두 번 잰다
+    setTimeout(굴리기, 300);
+    setTimeout(굴리기, 800);
   };
 
   const by = () => userProfile?.name || '';
