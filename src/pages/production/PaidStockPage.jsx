@@ -198,7 +198,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       const out0 = Math.max(0, goneAll.get(it.itemId) || 0);
       const base = fromPo - out0;
       const adjust = Number(manual[it.itemId]?.qty) || 0;
-      const left = Math.max(0, base + adjust);
+      // 0 에서 자르지 않는다 — 들어온 것보다 많이 나갔으면 그 «모자란 만큼»이 진짜 숫자다.
+      // 0 으로 올려 두면 「없는데 있다」로 읽혀 발주할 양을 못 잡는다
+      // (2026-09-14 대표님 「도급 음수는?」).
+      const left = base + adjust;
       const one = perOneAll.get(it.itemId) || 0;
       stockOfItem.set(it.itemId, {
         ...it,
@@ -207,13 +210,13 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         adjust,
         left,
         log: manual[it.itemId]?.log || [],
-        amount: left * (Number(it.unitPrice) || 0), // 남은 것의 값어치
+        amount: Math.max(0, left) * (Number(it.unitPrice) || 0), // 남은 것의 값어치
         need: Math.max(0, needAll.get(it.itemId) || 0), // 세는 호기가 더 넣어야 할 양
         gap: left - Math.max(0, needAll.get(it.itemId) || 0), // 음수면 그만큼 모자란다
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정한다. BOX 몫으로 나누면 같은 재고인데
         // BOX 마다 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
-        sets: one > 0 ? Math.floor(left / one) : 0,
+        sets: one > 0 ? Math.max(0, Math.floor(left / one)) : 0,
       });
     }
 
@@ -423,10 +426,11 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                             onClick={() => setLogOf(r)}
                             title={`${r.name || r.code} 들어오고 나간 기록 보기`}
                           >
-                            <b>{won(r.left)}</b>
+                            <b className={r.left < 0 ? 'is-minus' : undefined}>{won(r.left)}</b>
                             {/* 세는 호기가 더 넣어야 할 양을 빼고 모자라면 그만큼 음수로
-                                (2026-09-14 대표님 「-수량표시」) */}
-                            {r.gap < 0 && (
+                                (2026-09-14 대표님 「-수량표시」). 더 넣을 것이 없으면 남음과
+                                같은 숫자라 적지 않는다 */}
+                            {r.need > 0 && r.gap < 0 && (
                               <em className="fstock-gap" title={`세는 호기에 ${won(r.need)}개가 더 들어가야 합니다`}>
                                 {won(r.gap)}
                               </em>

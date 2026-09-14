@@ -407,26 +407,28 @@ export default function FreeStockPage({ company }) {
                             onClick={() => setLogOf(r)}
                             title={`${r.name || r.code} 들어오고 나간 기록 보기`}
                           >
-                            <b>{won(r.have)}</b>
+                            <b className={r.have < 0 ? 'is-minus' : undefined}>{won(r.have)}</b>
                             {/* 세는 호기가 더 넣어야 할 양을 빼고 모자라면 그만큼 음수로
-                                (2026-09-14 대표님 「-수량표시」) */}
-                            {r.gap < 0 && (
+                                (2026-09-14 대표님 「-수량표시」). 더 넣을 것이 없으면 남음과
+                                같은 숫자라 적지 않는다 */}
+                            {r.need > 0 && r.gap < 0 && (
                               <em className="fstock-gap" title={`세는 호기에 ${won(r.need)}개가 더 들어가야 합니다`}>
                                 {won(r.gap)}
                               </em>
                             )}
                             {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
-                          {r.have > 0 && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={() => setFixing({ row: r, to: String(r.have) })}
-                              title="실제 개수로 수정"
-                            >
-                              수정
-                            </button>
-                          )}
+                          {/* 남음이 0 이어도 눌러진다 — 실물을 세어 맞출 때는 0 인 줄이 오히려
+                              더 자주 손이 간다. 도급 재고와 같은 자리·같은 모양으로 둔다
+                              (2026-09-14 대표님 「사급 재고에는 수정버튼 왜없지」) */}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setFixing({ row: r, to: String(r.have) })}
+                            title="실제 개수로 수정"
+                          >
+                            수정
+                          </button>
                         </div>
                       </td>
                       <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
