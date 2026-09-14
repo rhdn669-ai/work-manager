@@ -10,7 +10,7 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
-import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink, isMatStarted } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBom';
 import { inKindTab } from '../../domain/itemKind';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
@@ -118,10 +118,6 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   const { groups, allRows } = useMemo(() => {
     const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
     const goneAll = new Map(); // 호기들에 들어간 총량
-    // 지금 «세고 있는» 호기(수량을 하나라도 적은 호기)가 앞으로 더 넣어야 할 양.
-    // 아직 아무것도 안 적은 호기는 계획만 있는 것이라 세지 않는다
-    // (2026-09-14 대표님 「아직 계획만 있는 호기수량까지 포함되기엔 너무 많은데」).
-    const needAll = new Map();
     const info = new Map();
     const byBox = new Map(); // box → { perOne: Map, gone: Map }
     const pick = (bx) => {
@@ -139,16 +135,11 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         if (list.length === 0) continue;
         const rec = (materials[p.id] || {})[bx] || {};
         const g = pick(bx).gone;
-        const 세는중 = isMatStarted(materials[p.id]);
         for (const r of list) {
           if (!r.itemId) continue;
           const got = receivedQty(rec, r.id);
           goneAll.set(r.itemId, (goneAll.get(r.itemId) || 0) + got);
           g.set(r.itemId, (g.get(r.itemId) || 0) + got);
-          if (세는중 && !rec[r.id]?.skip) {
-            const 남은필요 = Math.max(0, (Number(r.qty) || 0) - got);
-            if (남은필요 > 0) needAll.set(r.itemId, (needAll.get(r.itemId) || 0) + 남은필요);
-          }
         }
       }
     }
@@ -211,8 +202,6 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         left,
         log: manual[it.itemId]?.log || [],
         amount: Math.max(0, left) * (Number(it.unitPrice) || 0), // 남은 것의 값어치
-        need: Math.max(0, needAll.get(it.itemId) || 0), // 세는 호기가 더 넣어야 할 양
-        gap: left - Math.max(0, needAll.get(it.itemId) || 0), // 음수면 그만큼 모자란다
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정한다. BOX 몫으로 나누면 같은 재고인데
         // BOX 마다 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
@@ -426,15 +415,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                             onClick={() => setLogOf(r)}
                             title={`${r.name || r.code} 들어오고 나간 기록 보기`}
                           >
+                            {/* 여기는 «배정하지 않은» 실물만 적는다 — 호기에 들어가야 할 부족분은
+                                「부족 집계」 탭에서 본다 (2026-09-14 대표님 「재고에는 배정안된
+                                실제 수량만 표시」) */}
                             <b className={r.left < 0 ? 'is-minus' : undefined}>{won(r.left)}</b>
-                            {/* 세는 호기가 더 넣어야 할 양을 빼고 모자라면 그만큼 음수로
-                                (2026-09-14 대표님 「-수량표시」). 더 넣을 것이 없으면 남음과
-                                같은 숫자라 적지 않는다 */}
-                            {r.need > 0 && r.gap < 0 && (
-                              <em className="fstock-gap" title={`세는 호기에 ${won(r.need)}개가 더 들어가야 합니다`}>
-                                {won(r.gap)}
-                              </em>
-                            )}
                             {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
                           <button

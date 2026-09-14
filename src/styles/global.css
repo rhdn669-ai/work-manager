@@ -22589,6 +22589,12 @@ a.lib-row-name:hover {
   flex: 0 0 220px;
   width: 220px;
 }
+/* 무엇을 세는지 한 줄 — 범위 고르기를 걷어낸 자리 (2026-09-14 대표님) */
+.sht-range-what {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
 .sht-range-tilde {
   color: var(--text-muted);
 }

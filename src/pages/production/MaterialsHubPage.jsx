@@ -11,18 +11,22 @@ import { panelShortageBySupply } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
 import { MADE } from '../../domain/itemKind';
 import PanelMaterialsPage from './PanelMaterialsPage';
+import ShortagePage from './ShortagePage';
 import FreeStockPage from './FreeStockPage';
 import PaidStockPage from './PaidStockPage';
 
 // 자재 허브 — 호기 자재 체크와 갈래별 재고를 한 화면의 탭으로
 // (2026-09-05 대표님 안 B 2단계 「자재 화면 3 → 1」). 옛 주소(/production/:id/materials,
 // /production/shortage, /production/paid-sets)는 라우터가 여기로 넘긴다.
-//   ?company=메티스&tab=check|freestock|paidstock|madestock&panel=<호기 id>
+//   ?company=메티스&tab=check|shortage|freestock|paidstock|madestock&panel=<호기 id>
 // 「도급 배정」 탭은 뺐다 — 발주서에 호기를 걸면 입고 때 자동 배정되므로 (2026-09-05 대표님)
-// 「부족 집계」 탭도 뺐다 — 부족한 양은 이제 각 재고 화면의 「남음」 아래 빨간 음수로 보인다
-// (2026-09-14 대표님 「부족집계를 없애고 고객사 사급재고,우리도급재고에 음수까지 표현하는건 어때?」)
+// 「부족 집계」는 잠시 걷었다가 되살렸다 — 재고 칸에 부족분을 겹쳐 적으니 「실물이 몇 개인지」와
+// 「얼마가 모자란지」가 한 칸에서 엉켰다. 재고는 배정 안 된 실물만, 부족은 이 탭에서 본다
+// (2026-09-14 대표님 「부족집계를 살려서 현재 체크 진행중인 호기의 배정된 부족수량을 표시하고
+// 재고에는 배정안된 실제 수량만 표시하자」)
 const TABS = [
   { value: 'check', label: '호기 체크' },
+  { value: 'shortage', label: '부족 집계' },
   // 호기를 정하지 않고 들어온 사급을 모아 두는 곳 (2026-09-10 대표님 「사급 재고를 따로」)
   { value: 'freestock', label: '사급 재고' },
   // 도급도 같은 모양으로 — 들어온 것 중 아직 호기에 안 간 양 (2026-09-11 대표님)
@@ -127,7 +131,9 @@ export default function MaterialsHubPage() {
         </div>
       </div>
 
-      {tab === 'freestock' ? (
+      {tab === 'shortage' ? (
+        <ShortagePage embedded company={company} />
+      ) : tab === 'freestock' ? (
         <FreeStockPage company={company} />
       ) : tab === 'paidstock' ? (
         <PaidStockPage company={company} kind="paid" />
