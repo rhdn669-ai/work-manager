@@ -9,7 +9,6 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
-import { isMatStarted, hasBomLink } from '../../domain/panelBom';
 import { MADE } from '../../domain/itemKind';
 import PanelMaterialsPage from './PanelMaterialsPage';
 import ShortagePage from './ShortagePage';
@@ -181,13 +180,6 @@ export default function MaterialsHubPage() {
                       );
                     })()}
                   </button>
-                  {/* 수량을 하나라도 넣으면 저절로 「세는 중」이 된다 — 누를 것이 없다
-                      (2026-09-14 대표님 「리스트에서 수량 입력하면 카운트하는걸로」) */}
-                  {hasBomLink(p) && !isMatStarted(materials[p.id]) && (
-                    <span className="mhub-wait" title="아직 수량을 적지 않아 재고·부족 셈에서 빠져 있습니다">
-                      대기
-                    </span>
-                  )}
                 </li>
               ))}
               {list.length === 0 && <li className="mhub-empty">호기가 없습니다</li>}
