@@ -210,15 +210,25 @@ export function setsForGroup(lotsByName, { variantKey, variantLabel, projectName
  * 한 호기의 도급·사급 부족 줄 수를 따로 센다 (2026-09-05 대표님 「사급 도급 각자 상태」).
  * → { paid: { short, total }, free: { short, total } } — total 은 체크 대상 줄 수
  */
+// 갈래는 셋 — 도급·사급·판금. entered 는 「그 갈래에 수량을 하나라도 적었나」로,
+// 아직 아무것도 안 적은 갈래는 「대기」로 보여 준다 (2026-09-14 대표님 「도급도 수량 하나도
+// 안넣은거 대기로」). 예전에는 도급만, 그것도 옛 배정 기록으로 「대기」를 판정했다.
 export function panelShortageBySupply(rows, materials) {
-  const out = { paid: { short: 0, total: 0 }, free: { short: 0, total: 0 } };
+  const out = {
+    paid: { short: 0, total: 0, entered: 0 },
+    free: { short: 0, total: 0, entered: 0 },
+    made: { short: 0, total: 0, entered: 0 },
+  };
   for (const r of rows || []) {
     if (!CHECKABLE_BOXES.includes(String(r.box || '').trim())) continue;
-    const k = isFreeIssue(r) ? 'free' : 'paid';
+    const t = r?.supplyType || '';
+    const k = t === 'made' ? 'made' : t === 'free' ? 'free' : 'paid';
     const rec = materials?.[r.box || '']?.[r.id];
     if (rec?.skip) continue; // 이 호기에서 일시 제외
     out[k].total += 1;
-    if ((Number(rec?.qty) || 0) < (Number(r.qty) || 0)) out[k].short += 1;
+    const got = Number(rec?.qty) || 0;
+    if (got > 0) out[k].entered += 1;
+    if (got < (Number(r.qty) || 0)) out[k].short += 1;
   }
   return out;
 }

@@ -10,6 +10,7 @@ import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
 import { isMatStarted, hasBomLink } from '../../domain/panelBom';
+import { MADE } from '../../domain/itemKind';
 import PanelMaterialsPage from './PanelMaterialsPage';
 import ShortagePage from './ShortagePage';
 import FreeStockPage from './FreeStockPage';
@@ -96,13 +97,16 @@ export default function MaterialsHubPage() {
     const s = panelShortageBySupply(rows, materials[p.id] || {});
     const one = (kind, k) => {
       if (s[k].total === 0) return { cls: 'is-none', label: '–', title: `${kind} 줄 없음` };
-      if (k === 'paid' && !p.paidSet)
-        return { cls: 'is-wait', label: '대기', title: '발주서에 이 호기를 걸면 입고 때 채워집니다' };
+      // 아직 아무것도 안 적었으면 「대기」 — 부족 숫자를 띄워 봤자 계획만 있는 호기다
+      // (2026-09-14 대표님 「도급도 수량 하나도안넣은거 대기로」)
+      if (s[k].entered === 0) return { cls: 'is-wait', label: '대기', title: `${kind} 수량을 아직 적지 않았습니다` };
       return s[k].short > 0
         ? { cls: 'is-short', label: String(s[k].short), title: `${kind} ${s[k].short}줄 부족` }
         : { cls: 'is-ok', label: '완료', title: `${kind} 자재 다 들어옴` };
     };
-    return { paid: one('도급', 'paid'), free: one('사급', 'free') };
+    const out = { paid: one('도급', 'paid'), free: one('사급', 'free') };
+    if (s.made.total > 0) out.made = one(MADE, 'made');
+    return out;
   };
   const nameOf = (p) => `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() || '(이름 없음)';
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
@@ -167,6 +171,12 @@ export default function MaterialsHubPage() {
                             <b>사급</b>
                             {st.free.label}
                           </span>
+                          {st.made && (
+                            <span className={`mhub-item-state ${st.made.cls}`} title={st.made.title}>
+                              <b>{MADE}</b>
+                              {st.made.label}
+                            </span>
+                          )}
                         </span>
                       );
                     })()}
