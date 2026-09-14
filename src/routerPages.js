@@ -37,7 +37,6 @@ export const QualityPage = lazyPage(() => import('./pages/admin/QualityPage'));
 export const QualitySheetPage = lazyPage(() => import('./pages/quality/QualitySheetPage'));
 export const ProductionPage = lazyPage(() => import('./pages/production/ProductionPage'));
 export const PanelMaterialsPage = lazyPage(() => import('./pages/production/PanelMaterialsPage'));
-export const ShortagePage = lazyPage(() => import('./pages/production/ShortagePage'));
 export const MaterialsHubPage = lazyPage(() => import('./pages/production/MaterialsHubPage'));
 export const WorkspaceSelectPage = lazyPage(() => import('./pages/WorkspaceSelectPage'));
 export const MailSendPage = lazyPage(() => import('./pages/admin/MailSendPage'));

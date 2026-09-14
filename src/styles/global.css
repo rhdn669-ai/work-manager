@@ -23358,6 +23358,19 @@ a.lib-row-name:hover {
   background: var(--grey-100, #f2f4f6);
   color: var(--text-light);
 }
+/* 우리가 댄 사급으로 채운 줄 — 고객사가 준 것과 색으로 갈린다 (2026-09-14 대표님).
+   초록·주황은 이미 「다 들어옴·일부」에 쓰므로 겹치지 않는 보라를 쓴다. */
+.recv-chip.has-ours {
+  background: #eceefb;
+  color: #3f47b8;
+}
+.recv-chip-ours {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
 .recv-chip-ic {
   width: 13px;
   height: 13px;

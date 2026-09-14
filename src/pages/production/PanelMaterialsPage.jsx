@@ -747,6 +747,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         got={got}
                         need={Number(r.qty) || 0}
                         skip={skipped}
+                        ours={rec[r.id]?.fromOurs}
                         title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
                       />
                     </td>

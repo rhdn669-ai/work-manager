@@ -80,7 +80,7 @@ const router = createBrowserRouter([
           // 자재 허브 — 호기 체크·도급 배정·부족 집계 한 화면 (2026-09-05 안 B 2단계). 옛 주소는 넘긴다
           { path: '/production/materials', element: <MaterialsHubPage /> },
           { path: '/production/:panelId/materials', element: <ToMaterialsHub tab="check" /> },
-          { path: '/production/shortage', element: <ToMaterialsHub tab="shortage" /> },
+          { path: '/production/shortage', element: <ToMaterialsHub tab="check" /> },
           { path: '/production/paid-sets', element: <ToMaterialsHub tab="check" /> },
           { path: '/quality', element: <QualityPage /> },
           { path: '/quality/sheet/:formKey/:id', element: <QualitySheetPage /> },
