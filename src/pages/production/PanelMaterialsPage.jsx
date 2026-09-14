@@ -245,6 +245,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 저장 뒤 몇 초 동안 「되돌리기」를 띄운다 — 한 번 누르기로 바뀌면서 잘못 누를 일이 생겼다 (2026-09-08 대표님)
   const undoable = (message, restore) =>
     toast({ message, type: 'success', duration: 6000, action: { label: '되돌리기', onClick: restore } });
+  // 태블릿에서 글자판이 올라오면 화면이 절반으로 줄어 적고 있는 칸이 가려진다.
+  // 칸에 들어가는 순간 그 줄을 표 가운데로 올려 둔다 (2026-09-14 대표님 「비고입력할때 칸이 안보이고」).
+  const keepInView = (el) => {
+    if (!el) return;
+    setTimeout(() => {
+      try {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } catch {
+        /* 오래된 브라우저는 그냥 둔다 */
+      }
+    }, 250); // 글자판이 올라온 뒤에 재야 자리가 맞는다
+  };
+
   const by = () => userProfile?.name || '';
   // 되돌리기는 «되돌린 양만큼» 재고도 되돌려야 한다.
   // 호기 수량만 되돌리고 통을 그대로 두면, 통에서 빠진 것이 사라진 채로 남는다 (2026-09-11).
@@ -578,8 +591,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             발주서를 입고하면 도급 재고에 쌓이고, 여기서 세트를 만들며 체크한 만큼 빠집니다
           </span>
         )}
-        {shown.length > 0 && !locked && (
-          <span className="pmat-fill">
+        {/* 잠겨 있어도 자리는 남긴다 — 잠금을 풀 때 단추가 «생겨나면» 줄이 늘어 표가 짧아진다
+            (2026-09-14 대표님 「잠금해제를 하면 보이는 리스트 수가 적어짐」) */}
+        {shown.length > 0 && (
+          <span className="pmat-fill" style={locked ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}>
             <button
               type="button"
               className="btn btn-sm btn-outline"
@@ -678,6 +693,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       ) : typing === r.id ? (
                         <input
                           className="num-input pmat-input"
+                          onFocus={(e) => keepInView(e.currentTarget)}
                           type="number"
                           min="0"
                           inputMode="numeric"
@@ -750,6 +766,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         placeholder={editMode ? '메모' : ''}
                         readOnly={!editMode}
                         title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
+                        onFocus={(e) => keepInView(e.currentTarget)}
                         onChange={(e) => setNoteDraft((d) => ({ ...d, [r.id]: e.target.value }))}
                         onBlur={() => commitNote(r)}
                         onKeyDown={(e) => {
