@@ -100,13 +100,14 @@ export default function FreeStockPage({ company }) {
   }, [mine, bomByProject]);
 
   // allRows 는 검색·보기를 거치지 않은 전체 — 위쪽 요약은 늘 전체를 봐야 한다.
-  const { groups, allRows } = useMemo(() => {
+  const { groups, allRows, outSetsAll } = useMemo(() => {
     // 「1대당」 — 호기 하나가 쓰는 개수. 호기마다 다르면 가장 큰 값을 쓴다.
     const perOneAll = new Map(); // 품목 전체 (가능 SET 용)
     const entriesAll = [];
     const entriesByBox = new Map(); // box → entries[]
     const perOneByBox = new Map(); // box → Map(key → 개수)
-    const unitsByBox = new Map(); // box → Map(itemId → Set(호기)) — 「나간 SET」은 가져간 호기 수
+    const unitsByBox = new Map(); // box → Map(itemId → Set(호기)) — 품목마다 몇 대가 가져갔나(툴팁)
+    const kindUnits = new Set(); // 사급 자재를 하나라도 가져간 호기 — 「나감 N SET」의 N
 
     for (const p of mine) {
       const all0 = bomByProject[p.bomLink.projectId];
@@ -142,6 +143,7 @@ export default function FreeStockPage({ company }) {
           if (receivedQty(rec, r.id) > 0) {
             if (!u.has(k)) u.set(k, new Set());
             u.get(k).add(p.id);
+            kindUnits.add(p.id);
           }
         }
         const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: rec };
@@ -215,7 +217,7 @@ export default function FreeStockPage({ company }) {
         .sort(byDrawing);
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
-    return { groups: out, allRows: [...whole.values()] };
+    return { groups: out, allRows: [...whole.values()], outSetsAll: kindUnits.size };
   }, [mine, bomByProject, materials, masterMap, stock, q, view]);
 
   const sums = useMemo(() => {
@@ -409,12 +411,12 @@ export default function FreeStockPage({ company }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 「나감」은 개수÷1대당이 아니라 «가져간 호기 수»다. 개수로 나누면 한 호기가
-                          덜 넣었거나 BOX 마다 1대당이 달라 줄마다 8·4 SET 로 갈라진다 — 같은 9대가
-                          가져갔으면 9 로 읽혀야 한다 (2026-09-15 대표님 「나감 9set 로 통일해줘」).
-                          정확한 개수는 칸에 손을 올리면 나온다. */}
-                      <td className="col-num" title={`${won(r.got)}개 · ${won(r.outSets)}대가 가져감`}>
-                        {`${won(r.outSets)} SET`}
+                      {/* 「나감」은 «세트가 몇 대분 나갔나»다 — 이 갈래 자재를 하나라도 가져간 호기 수를
+                          모든 줄에 같게 적는다. 품목마다 세면 한 줄만 아직 안 적은 호기 때문에 5 SET 로
+                          갈라져 「세트 9개 나갔다」로 안 읽힌다 (2026-09-15 대표님 「전부 9set 으로 표시」).
+                          그 품목을 실제로 몇 대가 가져갔는지·개수는 툴팁에 둔다 (v142.8). */}
+                      <td className="col-num" title={`${won(r.got)}개 · 이 품목은 ${won(r.outSets)}대가 가져감`}>
+                        {`${won(outSetsAll)} SET`}
                       </td>
                       <td className="col-num">
                         {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.

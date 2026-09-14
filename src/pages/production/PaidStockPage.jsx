@@ -120,9 +120,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     };
   }, [all, bomByProject]);
 
-  const { groups, allRows } = useMemo(() => {
+  const { groups, allRows, outSetsAll } = useMemo(() => {
     const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
     const goneAll = new Map(); // 호기들에 들어간 총량
+    const kindUnits = new Set(); // 이 갈래 자재를 하나라도 가져간 호기 — 「나감 N SET」의 N
     const info = new Map();
     const byBox = new Map(); // box → { perOne: Map, gone: Map, units: Map(itemId → Set(호기)) }
     const pick = (bx) => {
@@ -149,6 +150,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           if (got > 0) {
             if (!u.has(r.itemId)) u.set(r.itemId, new Set());
             u.get(r.itemId).add(p.id);
+            kindUnits.add(p.id);
           }
         }
       }
@@ -254,7 +256,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         .sort(byDrawing);
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
-    return { groups: out, allRows: [...stockOfItem.values()] };
+    return { groups: out, allRows: [...stockOfItem.values()], outSetsAll: kindUnits.size };
   }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view, kind]);
 
   // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
@@ -431,12 +433,12 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 「나감」은 개수÷1대당이 아니라 «가져간 호기 수»다. 개수로 나누면 한 호기가
-                          덜 넣었거나 BOX 마다 1대당이 달라 줄마다 8·4 SET 로 갈라진다 — 같은 9대가
-                          가져갔으면 9 로 읽혀야 한다 (2026-09-15 대표님 「나감 9set 로 통일해줘」).
-                          정확한 개수는 칸에 손을 올리면 나온다. */}
-                      <td className="col-num" title={`${won(r.out)}개 · ${won(r.outSets)}대가 가져감`}>
-                        {`${won(r.outSets)} SET`}
+                      {/* 「나감」은 «세트가 몇 대분 나갔나»다 — 이 갈래 자재를 하나라도 가져간 호기 수를
+                          모든 줄에 같게 적는다. 품목마다 세면 한 줄만 아직 안 적은 호기 때문에 5 SET 로
+                          갈라져 「세트 9개 나갔다」로 안 읽힌다 (2026-09-15 대표님 「전부 9set 으로 표시」).
+                          그 품목을 실제로 몇 대가 가져갔는지·개수는 툴팁에 둔다 (v142.8). */}
+                      <td className="col-num" title={`${won(r.out)}개 · 이 품목은 ${won(r.outSets)}대가 가져감`}>
+                        {`${won(outSetsAll)} SET`}
                       </td>
                       <td className="col-num">
                         {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
