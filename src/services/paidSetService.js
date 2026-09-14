@@ -46,6 +46,8 @@ export function subscribeReceivedFor({ siteId = '', bomProjectId = '' } = {}, cb
   };
   const parts = qs.map(() => null); // 구독마다 마지막 스냅샷의 문서들
   const emit = () => {
+    // 한 갈래만 온 채로 내면 절반 값이 잠깐 보인다 — 다 온 뒤에만 낸다 (2026-09-14)
+    if (parts.some((d) => d === null)) return;
     const byId = new Map();
     parts.forEach((docs) => (docs || []).forEach((d) => byId.set(d.id, d)));
     summarize([...byId.values()], cb);

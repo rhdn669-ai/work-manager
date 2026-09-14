@@ -23934,6 +23934,10 @@ a.lib-row-name:hover {
 }
 
 /* 사급 재고 화면 (2026-09-10 대표님 「사급 재고를 따로」) */
+/* 자료를 다 받기 전 — 표 자리에 한 줄만 (2026-09-14 잔상 조사) */
+.fstock-loading {
+  padding: 24px 4px;
+}
 .fstock-head {
   display: flex;
   align-items: center;

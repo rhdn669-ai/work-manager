@@ -17,6 +17,7 @@ import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/p
 import { subscribePaidStock } from '../../services/paidStockService';
 import { subscribeFreeStock } from '../../services/freeStockService';
 import { specFontClass, localStamp } from '../../utils/printText';
+import { useArrived } from '../../utils/useArrived';
 
 // 부족 집계 — «지금 체크하고 있는» 호기가 앞으로 더 넣어야 할 양
 // (2026-09-14 대표님 「부족집계를 살려서 현재 체크 진행중인 호기의 배정된 부족수량을 표시하고
@@ -57,7 +58,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
   const company = sp.get('company') || companyProp || '';
 
   const [panels, setPanels] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
   const [bomByProject, setBomByProject] = useState({}); // { projectId: rows[] }
   const [master, setMaster] = useState([]);
   const [materials, setMaterials] = useState({}); // { panelId: { box: items } }
@@ -65,14 +66,13 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
 
   useEffect(
     () =>
-      subscribePanels((rows) => {
-        setPanels(rows.filter((p) => !company || !p.회사 || p.회사 === company));
-        setLoaded(true);
-      }),
-    [company],
+      subscribePanels(
+        take('panels', (rows) => setPanels(rows.filter((p) => !company || !p.회사 || p.회사 === company))),
+      ),
+    [company, take],
   );
-  useEffect(() => subscribePurchaseItems(setMaster), []);
-  useEffect(() => subscribeAllMaterials(setMaterials), []);
+  useEffect(() => subscribePurchaseItems(take('master', setMaster)), [take]);
+  useEffect(() => subscribeAllMaterials(take('materials', setMaterials)), [take]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
   // 탭 값(도급·사급·판금)을 갈래 키로 — 여러 군데서 쓴다
@@ -162,20 +162,27 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
   const [settings, setSettings] = useState({});
   const [paidManual, setPaidManual] = useState({}); // 도급·판금 통의 손조정
   const [freeStock, setFreeStock] = useState({}); // 사급 통의 실제 값
-  useEffect(() => subscribePaidSetSettings(setSettings), []);
-  useEffect(() => (company ? subscribePaidStock(company, setPaidManual) : undefined), [company]);
-  useEffect(() => (company ? subscribeFreeStock(company, setFreeStock) : undefined), [company]);
+  useEffect(() => subscribePaidSetSettings(take('settings', setSettings)), [take]);
+  useEffect(
+    () => (company ? subscribePaidStock(company, take('paidManual', setPaidManual)) : undefined),
+    [company, take],
+  );
+  useEffect(
+    () => (company ? subscribeFreeStock(company, take('freeStock', setFreeStock)) : undefined),
+    [company, take],
+  );
   const projectIds = useMemo(() => [...new Set(withBom.map((p) => p.bomLink.projectId))].sort(), [withBom]);
   const siteId = settings?.[company]?.siteId || '';
   const [receivedByProject, setReceivedByProject] = useState({});
   useEffect(() => {
     const unsubs = projectIds.map((pid) =>
-      subscribeReceivedFor({ bomProjectId: pid, siteId }, (byItem) =>
-        setReceivedByProject((prev) => ({ ...prev, [pid]: byItem })),
+      subscribeReceivedFor(
+        { bomProjectId: pid, siteId },
+        take(`received:${pid}`, (byItem) => setReceivedByProject((prev) => ({ ...prev, [pid]: byItem }))),
       ),
     );
     return () => unsubs.forEach((u) => u());
-  }, [projectIds, siteId]);
+  }, [projectIds, siteId, take]);
   const receivedByItem = useMemo(() => {
     const out = {};
     const seenSite = new Set(); // 현장 발주서는 프로젝트마다 겹쳐 들어오니 한 번만
@@ -242,7 +249,14 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
   const docNo = `SHT${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
   const stamp = localStamp();
 
-  if (!loaded)
+  // 다 받기 전엔 그리지 않는다 — 호기만 보고 그리면 「모자란 구성품 없음」이 잠깐 떴다가
+  // 목록으로 바뀌고, 재고 열도 0 이었다가 채워진다 (2026-09-14 대표님 잔상 조사)
+  const ready =
+    has('panels', 'master', 'materials', 'settings') &&
+    (!company || has('paidManual', 'freeStock')) &&
+    withBom.every((p) => p.bomLink.projectId in bomByProject) &&
+    projectIds.every((pid) => has(`received:${pid}`));
+  if (!ready)
     return (
       <div className="page">
         <p className="text-muted">불러오는 중…</p>

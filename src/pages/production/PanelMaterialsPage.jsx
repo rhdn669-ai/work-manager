@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import { useFillHeight } from '../../utils/useFillHeight';
+import { useArrived } from '../../utils/useArrived';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import ReceiptChip from '../../components/common/ReceiptChip';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
@@ -49,6 +50,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [loadedPanels, setLoadedPanels] = useState(false);
   const [project, setProject] = useState(null);
   const [bomRows, setBomRows] = useState([]);
+  const [bomFor, setBomFor] = useState(''); // 어느 프로젝트의 BOM 을 받아 뒀는지
+  const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
   const [master, setMaster] = useState([]);
   const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
   const [supplyTab, setSupplyTab] = useState('paid'); // 'paid' | 'free'
@@ -81,6 +84,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         if (!alive) return;
         setProject(p || null);
         setBomRows(rows || []);
+        setBomFor(link.projectId);
       })
       .catch(() => {
         if (alive) toast('BOM 을 불러오지 못했습니다', 'error');
@@ -91,26 +95,26 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [link?.projectId, toast]);
 
   // ── 품목 마스터 (코드·품명·규격·도번은 여기서 읽는다) ──
-  useEffect(() => subscribePurchaseItems(setMaster), []);
+  useEffect(() => subscribePurchaseItems(take('master', setMaster)), [take]);
   // 사급 재고 — 호기를 정하지 않고 들어온 고객사 물건 (2026-09-10 대표님)
   const [freeStock, setFreeStock] = useState({});
   const [paidStock, setPaidStock] = useState({}); // 회사 도급 통 — 부족분을 여기서 끌어온다
   const company = panel?.회사 || '';
   useEffect(() => {
     if (!company) return undefined;
-    return subscribeFreeStock(company, setFreeStock);
-  }, [company]);
+    return subscribeFreeStock(company, take('freeStock', setFreeStock));
+  }, [company, take]);
   useEffect(() => {
     if (!company) return undefined;
-    return subscribePaidStock(company, setPaidStock);
-  }, [company]);
+    return subscribePaidStock(company, take('paidStock', setPaidStock));
+  }, [company, take]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
   // ── 갈래: 도급 · 사급 · 판금 — BOM 줄에 담긴 자리가 곧 구분이다 (2026-09-12 대표님) ──
   const inTab = useCallback((r) => inKindTab(r, supplyTab === MADE ? 'made' : supplyTab), [supplyTab]);
 
   // ── 이 호기의 입고 기록 ──
-  useEffect(() => subscribePanelMaterials(panelId, setReceivedMap), [panelId]);
+  useEffect(() => subscribePanelMaterials(panelId, take('received', setReceivedMap)), [panelId, take]);
 
   // ── BOX ──
   // 품목 정보를 붙인 BOM 줄 — 갈래(전장/가공)는 품목 코드로 가리므로 먼저 붙여야 한다
@@ -447,17 +451,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   };
   // 발주 여유 = 이 BOM 으로 들어온 입고 − 배정 호기들이 가져간 양 (부족 집계와 같은 셈)
   const [settings, setSettings] = useState({});
-  useEffect(() => subscribePaidSetSettings(setSettings), []);
+  useEffect(() => subscribePaidSetSettings(take('settings', setSettings)), [take]);
   const siteId = settings?.[panel?.회사 || '']?.siteId || '';
   const [receivedByItem, setReceivedByItem] = useState({});
   useEffect(() => {
     if (!link?.projectId) return undefined;
-    return subscribeReceivedFor({ bomProjectId: link.projectId, siteId }, (byItem) => setReceivedByItem(byItem));
-  }, [link?.projectId, siteId]);
+    return subscribeReceivedFor({ bomProjectId: link.projectId, siteId }, take('receivedByItem', setReceivedByItem));
+  }, [link?.projectId, siteId, take]);
   const [allMaterials, setAllMaterials] = useState({});
   const [allPanels, setAllPanels] = useState([]);
-  useEffect(() => subscribeAllMaterials(setAllMaterials), []);
-  useEffect(() => subscribePanels(setAllPanels), []);
+  useEffect(() => subscribeAllMaterials(take('allMaterials', setAllMaterials)), [take]);
+  useEffect(() => subscribePanels(take('allPanels', setAllPanels)), [take]);
   const spareByItem = useMemo(() => {
     if (!link?.projectId) return {};
     const assigned = allPanels.filter((p) => p.paidSet && p.bomLink?.projectId === link.projectId);
@@ -503,6 +507,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           <Icon name="chevronLeft" className="btn-ic" />
           생산현황
         </button>
+      </div>
+    );
+
+  // 다 받기 전엔 그리지 않는다 — 입고 기록이 오기 전에 그리면 요약이 「0/14」로 떴다가
+  // 「14/14」로 튀고, 「재고 N」도 나중에 붙는다 (2026-09-14 대표님 잔상 조사)
+  const ready =
+    bomFor === link.projectId &&
+    has('master', 'received', 'settings', 'receivedByItem', 'allMaterials', 'allPanels') &&
+    (!company || has('freeStock', 'paidStock'));
+  if (!ready)
+    return (
+      <div className="page">
+        <p className="text-muted">불러오는 중…</p>
       </div>
     );
 

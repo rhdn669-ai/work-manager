@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import ProjectName from '../../components/common/ProjectName';
 import ViewSwitch from '../../components/common/ViewSwitch';
+import { useArrived } from '../../utils/useArrived';
 import Select from '../../components/common/Select';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
@@ -41,11 +42,12 @@ export default function MaterialsHubPage() {
   const tab = TABS.some((t) => t.value === sp.get('tab')) ? sp.get('tab') : 'check';
   const panelId = sp.get('panel') || '';
   const [panels, setPanels] = useState([]);
-  useEffect(() => subscribePanels(setPanels), []);
+  const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
+  useEffect(() => subscribePanels(take('panels', setPanels)), [take]);
   // 호기 점 색 — 초록: 도급 다 들어옴 · 주황: 배정됐는데 부족 · 없음: 아직 발주에 안 걸림
   const [materials, setMaterials] = useState({});
   const [bomRowsByProject, setBomRowsByProject] = useState({});
-  useEffect(() => subscribeAllMaterials(setMaterials), []);
+  useEffect(() => subscribeAllMaterials(take('materials', setMaterials)), [take]);
 
   // 회사 — 주소에 없으면 고른 호기의 회사, 그것도 없으면 첫 회사
   const picked = panels.find((p) => p.id === panelId) || null;
@@ -96,6 +98,8 @@ export default function MaterialsHubPage() {
   // 도급·사급 상태를 따로 (2026-09-05 대표님 「사급 도급 열 만들어서 각자 상태도」)
   const stateOf = (p) => {
     if (!p.bomLink?.projectId) return null;
+    // BOM 이나 입고 기록이 아직 안 왔으면 셈하지 않는다 — 「–」가 떴다가 「대기」로 바뀌던 잔상
+    if (!has('materials') || !(p.bomLink.projectId in bomRowsByProject)) return 'loading';
     const rows = bomItemsForVariant(bomRowsByProject[p.bomLink.projectId] || [], p.bomLink.variantKey || '');
     const s = panelShortageBySupply(rows, materials[p.id] || {});
     const one = (kind, k) => {
@@ -172,6 +176,7 @@ export default function MaterialsHubPage() {
                     {(() => {
                       const st = stateOf(p);
                       if (!st) return <span className="mhub-item-state is-none">BOM 없음</span>;
+                      if (st === 'loading') return <span className="mhub-item-state is-none">…</span>;
                       return (
                         <span className="mhub-item-states">
                           <span className={`mhub-item-state ${st.paid.cls}`} title={st.paid.title}>

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
 import { useFillHeight } from '../../utils/useFillHeight';
+import { useArrived } from '../../utils/useArrived';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
@@ -69,11 +70,12 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   const [q, setQ] = useState('');
   const [view, setView] = useState('all'); // all | have
 
-  useEffect(() => subscribePanels(setPanels), []);
-  useEffect(() => subscribeAllMaterials(setMaterials), []);
-  useEffect(() => subscribePurchaseItems(setMaster), []);
-  useEffect(() => subscribePaidSetSettings(setSettings), []);
-  useEffect(() => (company ? subscribePaidStock(company, setManual) : undefined), [company]);
+  const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
+  useEffect(() => subscribePanels(take('panels', setPanels)), [take]);
+  useEffect(() => subscribeAllMaterials(take('materials', setMaterials)), [take]);
+  useEffect(() => subscribePurchaseItems(take('master', setMaster)), [take]);
+  useEffect(() => subscribePaidSetSettings(take('settings', setSettings)), [take]);
+  useEffect(() => (company ? subscribePaidStock(company, take('manual', setManual)) : undefined), [company, take]);
 
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
@@ -97,8 +99,11 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   const siteId = settings?.[company]?.siteId || '';
   useEffect(() => {
     if (!projectId && !siteId) return undefined;
-    return subscribeReceivedFor({ bomProjectId: projectId, siteId }, (byItem) => setReceived(byItem || {}));
-  }, [projectId, siteId]);
+    return subscribeReceivedFor(
+      { bomProjectId: projectId, siteId },
+      take('received', (byItem) => setReceived(byItem || {})),
+    );
+  }, [projectId, siteId, take]);
 
   // BOM 은 프로젝트마다 한 번만 읽는다
   useEffect(() => {
@@ -297,6 +302,20 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       worst,
     };
   }, [allRows]);
+
+  const ready =
+    has('panels', 'materials', 'master', 'settings') &&
+    (!company || has('manual')) &&
+    (!(projectId || siteId) || has('received')) &&
+    all.every((p) => p.bomLink.projectId in bomByProject);
+  // 다 받기 전엔 그리지 않는다 — 첫 자료만 보고 그리면 「0 − 나감」 같은 중간값이 잠깐 보이고,
+  // 표 상자도 위쪽 요약이 덜 그려진 채 높이를 재서 작았다 커진다 (2026-09-14 대표님 잔상 조사)
+  if (!ready)
+    return (
+      <div className="fstock">
+        <p className="text-muted fstock-loading">불러오는 중…</p>
+      </div>
+    );
 
   return (
     <div className="fstock">

@@ -25,6 +25,7 @@ import { aggregateShortage } from '../../domain/panelMaterials';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
+import { useArrived } from '../../utils/useArrived';
 
 const won = (n) => (Number(n) || 0).toLocaleString();
 const hasBomLink = (p) => !!p?.bomLink?.projectId;
@@ -71,10 +72,11 @@ export default function FreeStockPage({ company }) {
   const [draft, setDraft] = useState({}); // { [itemId]: '3' }
   const [saving, setSaving] = useState('');
 
-  useEffect(() => subscribePurchaseItems(setMaster), []);
-  useEffect(() => subscribePanels(setPanels), []);
-  useEffect(() => subscribeAllMaterials(setMaterials), []);
-  useEffect(() => subscribeFreeStock(company, setStock), [company]);
+  const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
+  useEffect(() => subscribePurchaseItems(take('master', setMaster)), [take]);
+  useEffect(() => subscribePanels(take('panels', setPanels)), [take]);
+  useEffect(() => subscribeAllMaterials(take('materials', setMaterials)), [take]);
+  useEffect(() => subscribeFreeStock(company, take('stock', setStock)), [company, take]);
 
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
@@ -263,6 +265,16 @@ export default function FreeStockPage({ company }) {
       toast('수정에 실패했습니다', 'error');
     }
   }
+
+  const ready = has('master', 'panels', 'materials', 'stock') && mine.every((p) => p.bomLink.projectId in bomByProject);
+  // 다 받기 전엔 그리지 않는다 — 첫 자료만 보고 그리면 「0 − 나감」 같은 중간값이 잠깐 보이고,
+  // 표 상자도 위쪽 요약이 덜 그려진 채 높이를 재서 작았다 커진다 (2026-09-14 대표님 잔상 조사)
+  if (!ready)
+    return (
+      <div className="fstock">
+        <p className="text-muted fstock-loading">불러오는 중…</p>
+      </div>
+    );
 
   return (
     <div className="fstock">
