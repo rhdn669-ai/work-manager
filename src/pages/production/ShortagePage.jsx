@@ -7,7 +7,8 @@ import Select from '../../components/common/Select';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels } from '../../services/productionService';
-import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
+import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { MADE, inKindTab } from '../../domain/itemKind';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
@@ -34,12 +35,14 @@ const hogiOf = (p) =>
     .join(' · ');
 
 // embedded: 자재 허브 탭 안 (2026-09-05 안 B 2단계)
-export default function ShortagePage({ embedded = false } = {}) {
+export default function ShortagePage({ embedded = false, company: companyProp = '' } = {}) {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useDialog();
   const scrollRef = useFillHeight();
-  const company = sp.get('company') || '';
+  // 주소에 회사가 없으면 화면(자재 허브)이 정한 회사를 쓴다 — 안 그러면 메티스·디에이치가
+  // 한 표에 합쳐진다 (2026-09-14 대표님 점검 요청)
+  const company = sp.get('company') || companyProp || '';
 
   const [panels, setPanels] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -109,7 +112,7 @@ export default function ShortagePage({ embedded = false } = {}) {
       const label = hogiOf(p) || p.id;
       for (const box of CHECKABLE_BOXES) {
         const rows = bomRowsForBox(forVariant, box)
-          .filter((r) => (supplyTab === 'free' ? isFreeIssue(r) : !isFreeIssue(r)))
+          .filter((r) => inKindTab(r, supplyTab === MADE ? 'made' : supplyTab))
           .map((r) => {
             const m = r.itemId ? masterMap[r.itemId] : null;
             return {
@@ -262,6 +265,8 @@ export default function ShortagePage({ embedded = false } = {}) {
             options={[
               { value: 'paid', label: '도급' },
               { value: 'free', label: '사급' },
+              // 판금도 나란히 — 안 넣으면 판금 줄이 도급 탭에 섞인다 (2026-09-14 대표님 점검)
+              { value: MADE, label: MADE },
             ]}
             value={supplyTab}
             onChange={setSupplyTab}
@@ -278,7 +283,9 @@ export default function ShortagePage({ embedded = false } = {}) {
             {list.length}
             <span>종</span>
           </div>
-          <div className="admin-stat-sub">{supplyTab === 'free' ? '사급 (고객사 제공)' : '도급'} 기준</div>
+          <div className="admin-stat-sub">
+            {supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 기준
+          </div>
         </div>
         <div className={`admin-stat${totalShort > 0 ? ' is-warning' : ''}`}>
           <div className="admin-stat-label">총 부족 수량</div>
@@ -385,7 +392,7 @@ export default function ShortagePage({ embedded = false } = {}) {
           <span>
             {linked.length === 0
               ? '범위 안에 BOM 을 연결한 호기가 없습니다'
-              : `${rangeLabel} · ${supplyTab === 'free' ? '사급' : '도급'} 구성품이 전부 들어왔습니다`}
+              : `${rangeLabel} · ${supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 구성품이 전부 들어왔습니다`}
           </span>
         </div>
       )}
@@ -395,7 +402,8 @@ export default function ShortagePage({ embedded = false } = {}) {
         <div className="bom-print-page">
           <IopnDocBrand title={`부족 자재 · ${rangeLabel}`} titleClass="bom-list-title is-long" />
           <div className="bom-print-supplier-band">
-            {company || '전체'} — {supplyTab === 'free' ? '사급 (고객사 제공)' : '도급'} · 호기 {inRange.length}개
+            {company || '전체'} — {supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} · 호기{' '}
+            {inRange.length}개
           </div>
           <table className="iopn-items-table sht-print-table">
             {/* 열 구성이 BOM 출력과 달라 폭은 여기서 준다 — BOM 출력 폭 규칙(:not 체인)이 클래스 규칙보다

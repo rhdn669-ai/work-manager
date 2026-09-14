@@ -4,11 +4,12 @@ import Icon from '../../components/common/Icon';
 import ProjectName from '../../components/common/ProjectName';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import Select from '../../components/common/Select';
-import { subscribePanels } from '../../services/productionService';
+import { subscribePanels, updatePanel } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
+import { isMatStarted, hasBomLink } from '../../domain/panelBom';
 import PanelMaterialsPage from './PanelMaterialsPage';
 import ShortagePage from './ShortagePage';
 import FreeStockPage from './FreeStockPage';
@@ -45,6 +46,21 @@ export default function MaterialsHubPage() {
   // 회사 — 주소에 없으면 고른 호기의 회사, 그것도 없으면 첫 회사
   const picked = panels.find((p) => p.id === panelId) || null;
   const company = sp.get('company') || picked?.회사 || COMPANIES[0];
+
+  // 자재를 세기 시작한다 — 이 호기부터 재고·부족 셈에 든다 (2026-09-14 대표님 「배정시작 누른 호기만」)
+  const [starting, setStarting] = useState('');
+  const toggleStart = async (p) => {
+    if (starting) return;
+    setStarting(p.id);
+    const on = isMatStarted(p);
+    try {
+      await updatePanel(p.id, { 자재착수일: on ? '' : new Date().toISOString().slice(0, 10) });
+    } catch {
+      /* 실패하면 화면이 그대로라 다시 누르면 된다 */
+    } finally {
+      setStarting('');
+    }
+  };
 
   const patch = (next) => {
     const q = new URLSearchParams(sp);
@@ -142,7 +158,7 @@ export default function MaterialsHubPage() {
             </div>
             <ul>
               {list.map((p, i) => (
-                <li key={p.id}>
+                <li key={p.id} className={isMatStarted(p) ? 'is-started' : undefined}>
                   <button
                     type="button"
                     className={`mhub-item${p.id === panelId ? ' on' : ''}${p.bomLink?.projectId ? '' : ' no-bom'}`}
@@ -169,6 +185,25 @@ export default function MaterialsHubPage() {
                         </span>
                       );
                     })()}
+                  </button>
+                  {/* 자재를 세기 시작할지 — 누르기 전에는 계획만 있는 호기로 보아 셈에서 뺀다 */}
+                  <button
+                    type="button"
+                    className={`mhub-start${isMatStarted(p) ? ' on' : ''}`}
+                    disabled={starting === p.id || !hasBomLink(p)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleStart(p);
+                    }}
+                    title={
+                      !hasBomLink(p)
+                        ? 'BOM 을 먼저 연결해야 합니다'
+                        : isMatStarted(p)
+                          ? `${p.자재착수일} 부터 세는 중 — 누르면 셈에서 뺍니다`
+                          : '누르면 이 호기부터 자재를 셉니다'
+                    }
+                  >
+                    {isMatStarted(p) ? '세는 중' : '시작'}
                   </button>
                 </li>
               ))}
@@ -202,7 +237,7 @@ export default function MaterialsHubPage() {
       ) : tab === 'madestock' ? (
         <PaidStockPage company={company} kind="made" />
       ) : (
-        <ShortagePage embedded />
+        <ShortagePage embedded company={company} />
       )}
     </div>
   );

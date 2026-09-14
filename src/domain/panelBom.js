@@ -103,3 +103,8 @@ export function variantOptionsFor(panel, bomProjects, defaultProjectId) {
 export function variantLabelOf(panel) {
   return panel?.bomLink?.variantLabel || panel?.자재 || '';
 }
+
+/** 자재를 세기 시작한 호기인가 — 빈 값이면 아직 계획만 있는 호기다 (2026-09-14 대표님) */
+export function isMatStarted(panel) {
+  return !!(panel?.자재착수일 || '').trim();
+}
