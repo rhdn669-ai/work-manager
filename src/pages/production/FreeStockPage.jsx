@@ -25,7 +25,6 @@ import { aggregateShortage } from '../../domain/panelMaterials';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
-import { receivePaidStock } from '../../services/paidStockService';
 
 const won = (n) => (Number(n) || 0).toLocaleString();
 const hasBomLink = (p) => !!p?.bomLink?.projectId;
@@ -67,9 +66,6 @@ export default function FreeStockPage({ company }) {
   const [fixing, setFixing] = useState(null); // { row, to }
   // 「이번 입고」가 고객사가 준 것인지 우리가 댄 것인지 — 평소엔 고객사 (2026-09-12 대표님)
   const [inOurs, setInOurs] = useState(false);
-  // 도급으로 넘길 품목 고르기 — 사급이던 것이 도급으로 바뀔 때 쓴다 (2026-09-12 대표님)
-  const [pick, setPick] = useState(() => new Set());
-  const [moving, setMoving] = useState(false);
   const [logOf, setLogOf] = useState(null); // 기록을 펼쳐 볼 줄
   // 표에서 바로 적는 입고 수량 — 창을 띄우지 않는다 (2026-09-11 대표님)
   const [draft, setDraft] = useState({}); // { [itemId]: '3' }
@@ -252,45 +248,6 @@ export default function FreeStockPage({ company }) {
     }
   }
 
-  // 사급 → 도급으로 옮기기.
-  //
-  // BOM 줄만 도급으로 바꾸면 숫자가 끊긴다. 도급 재고는 「발주 입고 + 손으로 적은 몫 − 나감」
-  // 인데, 예전에 사급으로 받아 쓴 것은 발주서가 없어 들어옴이 0 이고 나감만 따라와 남음이
-  // 음수가 된다. 그래서 «남은 양 + 지금까지 나간 양»을 도급 쪽에 얹어야 숫자가 이어진다
-  // (2026-09-12 대표님 「곧 사급품목도 도급으로변경 예정인 품목들이 있는데」).
-  //   옮긴 뒤 도급 남음 = 0 − 나간 양 + (남은 양 + 나간 양) = 남은 양  ← 옮기기 전과 같다
-  async function moveToPaid() {
-    const rows0 = allRows.filter((r) => pick.has(r.itemId));
-    if (rows0.length === 0) return;
-    const 총량 = rows0.reduce((s, r) => s + r.have + (Number(r.got) || 0), 0);
-    if (
-      !(await confirm(
-        `${rows0.length}개 품목을 도급 재고로 옮기시겠습니까?
-` +
-          `남은 양과 지금까지 나간 양을 합쳐 ${won(총량)}개가 도급으로 넘어가고, 사급 재고는 0 이 됩니다.
-` +
-          `옮긴 뒤 BOM 에서 그 줄을 도급으로 바꾸시면 숫자가 그대로 이어집니다.`,
-      ))
-    )
-      return;
-    setMoving(true);
-    try {
-      for (const r of rows0) {
-        const move = Math.max(0, r.have + (Number(r.got) || 0));
-        if (move > 0) await receivePaidStock(company, r, move, { by: me, note: '사급에서 옮김' });
-        // 우리가 댄 몫도 함께 간다 — 도급은 어차피 우리 것이다 (대표님 「ㅇㅇ」)
-        await setFreeStockQty(company, r, 0, { by: me, reason: '도급으로 옮김', ours: 0 });
-      }
-      setPick(new Set());
-      toast(`${rows0.length}개 품목을 도급 재고로 옮겼습니다`, 'success', 0);
-    } catch (err) {
-      console.error(err);
-      toast('옮기지 못했습니다 — 재고 화면에서 확인해 주세요', 'error', 0);
-    } finally {
-      setMoving(false);
-    }
-  }
-
   async function onFix(e) {
     e.preventDefault();
     const { row, to } = fixing;
@@ -333,17 +290,6 @@ export default function FreeStockPage({ company }) {
             </span>
           )}
         </div>
-        {pick.size > 0 && (
-          <button
-            type="button"
-            className="btn btn-sm btn-primary fstock-move"
-            onClick={moveToPaid}
-            disabled={moving}
-            title="고른 품목의 남은 양과 지금까지 나간 양을 도급 재고로 옮깁니다"
-          >
-            {moving ? '옮기는 중…' : `${pick.size}개 도급으로 옮기기`}
-          </button>
-        )}
         <input
           className="fstock-search"
           value={q}
@@ -427,27 +373,7 @@ export default function FreeStockPage({ company }) {
                   </tr>
                   {g.rows.map((r, i) => (
                     <tr key={r.itemId || r.code || i}>
-                      {/* 도급으로 넘길 품목 고르기 — 같은 품목이 여러 BOX 에 나오면 함께 켜진다
-                          (어차피 품목 하나가 통째로 넘어간다) (2026-09-12 대표님) */}
-                      <td className="col-no">
-                        <label className="fstock-pick" title={`${r.name || r.code} 고르기`}>
-                          <input
-                            type="checkbox"
-                            className="sel-check"
-                            checked={pick.has(r.itemId)}
-                            onChange={() =>
-                              setPick((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(r.itemId)) next.delete(r.itemId);
-                                else next.add(r.itemId);
-                                return next;
-                              })
-                            }
-                            aria-label={`${r.name || r.code} 고르기`}
-                          />
-                          <span>{i + 1}</span>
-                        </label>
-                      </td>
+                      <td className="col-no">{i + 1}</td>
                       <td className="pmat-drawing">{r.drawingNo}</td>
                       <td className="u-wrap">{r.name}</td>
                       <td className="pmat-spec u-wrap" title={r.spec}>
