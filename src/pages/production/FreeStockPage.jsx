@@ -22,7 +22,7 @@ import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { aggregateShortage } from '../../domain/panelMaterials';
-import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, bomRowsForBox, isMatStarted } from '../../domain/panelBom';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
 
@@ -102,6 +102,9 @@ export default function FreeStockPage({ company }) {
     // 「1대당」 — 호기 하나가 쓰는 개수. 호기마다 다르면 가장 큰 값을 쓴다.
     const perOneAll = new Map(); // 품목 전체 (가능 SET 용)
     const entriesAll = [];
+    // 지금 «세고 있는» 호기만 모은 것 — 「더 넣어야 할 양」은 이쪽으로 센다
+    // (2026-09-14 대표님 「아직 계획만 있는 호기수량까지 포함되기엔 너무 많은데」)
+    const entriesStarted = [];
     const entriesByBox = new Map(); // box → entries[]
     const perOneByBox = new Map(); // box → Map(key → 개수)
 
@@ -135,6 +138,7 @@ export default function FreeStockPage({ company }) {
         }
         const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: (materials[p.id] || {})[bx] || {} };
         entriesAll.push(entry);
+        if (isMatStarted(materials[p.id])) entriesStarted.push(entry);
         entriesByBox.set(bx, [...(entriesByBox.get(bx) || []), entry]);
       }
       // 호기마다 다르면 가장 큰 값 — 더하면 호기 수만큼 부풀어 「1대당 34」 같은 값이 나온다
@@ -145,6 +149,12 @@ export default function FreeStockPage({ company }) {
         const dst = perOneByBox.get(bx);
         for (const [k, v] of m0) dst.set(k, Math.max(dst.get(k) || 0, v));
       }
+    }
+
+    // 세는 호기가 앞으로 더 넣어야 할 양 — 품목마다
+    const needOf = new Map();
+    for (const a of aggregateShortage(entriesStarted, { onlyShort: false })) {
+      needOf.set(a.itemId, Math.max(0, Number(a.short) || 0));
     }
 
     // 품목마다의 재고·가능 SET — BOX 와 무관하게 하나다
@@ -163,6 +173,8 @@ export default function FreeStockPage({ company }) {
         // 「가능 SET」은 호기 한 대 기준으로 고정 — BOX 몫으로 나누면 같은 재고인데 BOX 마다
         // 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
         sets: one > 0 ? Math.floor(have / one) : 0,
+        need: Math.max(0, needOf.get(a.itemId) || 0),
+        gap: have - Math.max(0, needOf.get(a.itemId) || 0), // 음수면 그만큼 모자란다
         log: stock[a.itemId]?.log || [],
       });
     }
@@ -396,6 +408,13 @@ export default function FreeStockPage({ company }) {
                             title={`${r.name || r.code} 들어오고 나간 기록 보기`}
                           >
                             <b>{won(r.have)}</b>
+                            {/* 세는 호기가 더 넣어야 할 양을 빼고 모자라면 그만큼 음수로
+                                (2026-09-14 대표님 「-수량표시」) */}
+                            {r.gap < 0 && (
+                              <em className="fstock-gap" title={`세는 호기에 ${won(r.need)}개가 더 들어가야 합니다`}>
+                                {won(r.gap)}
+                              </em>
+                            )}
                             {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
                           {r.have > 0 && (
