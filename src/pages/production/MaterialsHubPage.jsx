@@ -4,7 +4,7 @@ import Icon from '../../components/common/Icon';
 import ProjectName from '../../components/common/ProjectName';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import Select from '../../components/common/Select';
-import { subscribePanels, updatePanel } from '../../services/productionService';
+import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { panelShortageBySupply } from '../../domain/paidSets';
@@ -46,21 +46,6 @@ export default function MaterialsHubPage() {
   // 회사 — 주소에 없으면 고른 호기의 회사, 그것도 없으면 첫 회사
   const picked = panels.find((p) => p.id === panelId) || null;
   const company = sp.get('company') || picked?.회사 || COMPANIES[0];
-
-  // 자재를 세기 시작한다 — 이 호기부터 재고·부족 셈에 든다 (2026-09-14 대표님 「배정시작 누른 호기만」)
-  const [starting, setStarting] = useState('');
-  const toggleStart = async (p) => {
-    if (starting) return;
-    setStarting(p.id);
-    const on = isMatStarted(p);
-    try {
-      await updatePanel(p.id, { 자재착수일: on ? '' : new Date().toISOString().slice(0, 10) });
-    } catch {
-      /* 실패하면 화면이 그대로라 다시 누르면 된다 */
-    } finally {
-      setStarting('');
-    }
-  };
 
   const patch = (next) => {
     const q = new URLSearchParams(sp);
@@ -158,7 +143,7 @@ export default function MaterialsHubPage() {
             </div>
             <ul>
               {list.map((p, i) => (
-                <li key={p.id} className={isMatStarted(p) ? 'is-started' : undefined}>
+                <li key={p.id}>
                   <button
                     type="button"
                     className={`mhub-item${p.id === panelId ? ' on' : ''}${p.bomLink?.projectId ? '' : ' no-bom'}`}
@@ -186,25 +171,13 @@ export default function MaterialsHubPage() {
                       );
                     })()}
                   </button>
-                  {/* 자재를 세기 시작할지 — 누르기 전에는 계획만 있는 호기로 보아 셈에서 뺀다 */}
-                  <button
-                    type="button"
-                    className={`mhub-start${isMatStarted(p) ? ' on' : ''}`}
-                    disabled={starting === p.id || !hasBomLink(p)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleStart(p);
-                    }}
-                    title={
-                      !hasBomLink(p)
-                        ? 'BOM 을 먼저 연결해야 합니다'
-                        : isMatStarted(p)
-                          ? `${p.자재착수일} 부터 세는 중 — 누르면 셈에서 뺍니다`
-                          : '누르면 이 호기부터 자재를 셉니다'
-                    }
-                  >
-                    {isMatStarted(p) ? '세는 중' : '시작'}
-                  </button>
+                  {/* 수량을 하나라도 넣으면 저절로 「세는 중」이 된다 — 누를 것이 없다
+                      (2026-09-14 대표님 「리스트에서 수량 입력하면 카운트하는걸로」) */}
+                  {hasBomLink(p) && !isMatStarted(materials[p.id]) && (
+                    <span className="mhub-wait" title="아직 수량을 적지 않아 재고·부족 셈에서 빠져 있습니다">
+                      대기
+                    </span>
+                  )}
                 </li>
               ))}
               {list.length === 0 && <li className="mhub-empty">호기가 없습니다</li>}

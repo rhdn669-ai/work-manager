@@ -104,7 +104,22 @@ export function variantLabelOf(panel) {
   return panel?.bomLink?.variantLabel || panel?.자재 || '';
 }
 
-/** 자재를 세기 시작한 호기인가 — 빈 값이면 아직 계획만 있는 호기다 (2026-09-14 대표님) */
-export function isMatStarted(panel) {
-  return !!(panel?.자재착수일 || '').trim();
+/**
+ * 자재를 세기 시작한 호기인가 — 수량을 하나라도 적어 넣었으면 세는 중이다.
+ *
+ * 처음에는 사람이 「시작」을 누르게 했는데, 이미 체크 중이거나 다 끝난 호기에도 그 단추가
+ * 떠서 이상했다 (2026-09-14 대표님 「사급 이미 체크중인것,완료된것도 시작버튼 왜띄움?」).
+ * 누르는 수고도 없앤다 — 리스트에서 수량을 넣는 순간 저절로 센다
+ * (대표님 「대기 버튼으로 해두고 리스트에서 수량 입력하면 카운트하는걸로」).
+ *
+ * @param mats 그 호기의 자재 기록 { [box]: { [줄id]: { qty } } }
+ */
+export function isMatStarted(mats) {
+  for (const box of Object.values(mats || {})) {
+    if (!box || typeof box !== 'object') continue;
+    for (const r of Object.values(box)) {
+      if (Number(r?.qty) > 0) return true;
+    }
+  }
+  return false;
 }

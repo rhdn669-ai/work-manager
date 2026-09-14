@@ -249,13 +249,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 칸에 들어가는 순간 그 줄을 표 가운데로 올려 둔다 (2026-09-14 대표님 「비고입력할때 칸이 안보이고」).
   const keepInView = (el) => {
     if (!el) return;
+    // 글자판이 올라오면 표 상자가 그만큼 짧아진다(100dvh 기준). 그 «줄어든 상자» 안에서
+    // 위쪽 1/3 자리에 오도록 상자를 굴린다 — 그래야 적는 칸이 글자판에 안 가린다.
     setTimeout(() => {
       try {
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const box = el.closest('.pmat-scroll');
+        const row = el.closest('tr');
+        if (!box || !row) return el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const 머리 = box.querySelector('thead')?.offsetHeight || 0;
+        box.scrollTo({ top: Math.max(0, row.offsetTop - 머리 - box.clientHeight / 3), behavior: 'smooth' });
       } catch {
         /* 오래된 브라우저는 그냥 둔다 */
       }
-    }, 250); // 글자판이 올라온 뒤에 재야 자리가 맞는다
+    }, 300); // 글자판이 다 올라온 뒤에 재야 자리가 맞는다
   };
 
   const by = () => userProfile?.name || '';
@@ -759,10 +765,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     )}
                     {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
                     <td className="pmat-note-cell">
+                      {/* 적는 동안에는 값을 React 가 쥐고 흔들지 않는다 — 1초마다 도는 새로고침이
+                          한글 조합 중인 글자를 건드려 「ㅎㅏㄴ」처럼 깨지고 순서가 뒤바뀌었다
+                          (2026-09-14 대표님 「비고 글 이상하게 입력이됨」).
+                          key 에 저장된 값을 넣어, 밖에서 값이 바뀔 때만 칸을 새로 그린다. */}
                       <input
+                        key={`${r.id}:${rec[r.id]?.note || ''}`}
                         type="text"
                         className="pmat-input pmat-note"
-                        value={noteDraft[r.id] !== undefined ? noteDraft[r.id] : rec[r.id]?.note || ''}
+                        defaultValue={rec[r.id]?.note || ''}
                         placeholder={editMode ? '메모' : ''}
                         readOnly={!editMode}
                         title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}

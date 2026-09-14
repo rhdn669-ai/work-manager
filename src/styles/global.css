@@ -24305,30 +24305,21 @@ body.has-editlock .main-content.expanded {
   margin-left: auto;
 }
 
-/* 호기 목록의 「시작 / 세는 중」 — 자재를 세기 시작할 호기 고르기 (2026-09-14 대표님) */
+/* 호기 목록의 「대기」 — 아직 수량을 안 적어 셈에서 빠져 있는 호기 (2026-09-14 대표님) */
 .mhub-list li {
   position: relative;
 }
-.mhub-start {
+.mhub-wait {
   position: absolute;
   right: 8px;
   bottom: 6px;
   z-index: 1;
-  padding: 2px 8px;
+  padding: 1px 8px;
   border: 1px solid var(--border, #e5e8eb);
   border-radius: 999px;
-  background: #fff;
+  background: var(--grey-100, #f2f4f6);
   font-size: 11px;
   font-weight: 700;
   color: var(--text-light, #3f4a5a);
-  cursor: pointer;
-}
-.mhub-start.on {
-  background: var(--success, #1f7a4d);
-  border-color: var(--success, #1f7a4d);
-  color: #fff;
-}
-.mhub-start:disabled {
-  opacity: 0.4;
-  cursor: default;
+  pointer-events: none;
 }
