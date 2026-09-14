@@ -23292,6 +23292,11 @@ a.lib-row-name:hover {
   color: var(--success, #1f7a4d);
   font-weight: 700;
 }
+/* 통이 0 밑으로 내려간 품목 — 들어온 것보다 많이 나갔다 */
+.sht-table td.is-minus {
+  color: var(--danger, #d92d20);
+  font-weight: 700;
+}
 
 /* 허브 호기 상태 칩 — 점 대신 글자 (2026-09-05 대표님) */
 .mhub-item-state {

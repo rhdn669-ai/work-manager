@@ -11,9 +11,11 @@ import { MADE, inKindTab } from '../../domain/itemKind';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isMatStarted } from '../../domain/panelBom';
-import { aggregateShortage } from '../../domain/panelMaterials';
-import { consumedByItem, panelShortageBySupply } from '../../domain/paidSets';
+import { aggregateShortage, receivedQty } from '../../domain/panelMaterials';
+import { panelShortageBySupply } from '../../domain/paidSets';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
+import { subscribePaidStock } from '../../services/paidStockService';
+import { subscribeFreeStock } from '../../services/freeStockService';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 부족 집계 — «지금 체크하고 있는» 호기가 앞으로 더 넣어야 할 양
@@ -31,7 +33,9 @@ import { specFontClass, localStamp } from '../../utils/printText';
 const SHT_PRINT_COLS = [5, 22, 12, 23, 6, 6, 6, 20];
 // 화면 열 폭 — 숫자·코드는 고정, 품명·규격이 남는 폭을 흡수(§28 「좌측부터 채운다」). null = 가변
 // 코드 열은 뺐다 — 생산 화면은 도번·품명으로 본다 (2026-09-08 대표님)
-const SHT_SCREEN_COLS = [44, 140, null, null, 76, 76, 76, 84, 84, 200];
+// 「발주 여유」 열은 걷어냈다 — 「재고」와 같은 것을 가리키면서 셈이 달라 숫자가 어긋났다
+// (2026-09-14 대표님 「발주여유를 빼고 도급재고만 표시해도 되는거아님?」)
+const SHT_SCREEN_COLS = [44, 140, null, null, 76, 76, 76, 84, 200];
 
 // 배정이 「다 끝났다」고 보려면 이 셋이 모두 채워져 있어야 한다
 const DONE_KINDS = ['paid', 'free', 'made'];
@@ -71,11 +75,16 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
   useEffect(() => subscribeAllMaterials(setMaterials), []);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
+  // 탭 값(도급·사급·판금)을 갈래 키로 — 여러 군데서 쓴다
+  const kindKey = supplyTab === MADE ? 'made' : supplyTab;
+
   // ── 집계 대상 — «지금 체크하고 있는» 호기만 ──
   // 끝난 호기는 뺀다(나갈 자재가 없다). 남은 호기 중 수량을 하나라도 적은 것이 「세는 호기」다.
+  // BOM 을 연결한 호기 «전부» — 끝난 호기도. 재고의 「나간 양」은 이쪽으로 센다.
+  const withBom = useMemo(() => panels.filter(hasBomLink), [panels]);
   const living = useMemo(
-    () => panels.filter((p) => p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김' && hasBomLink(p)),
-    [panels],
+    () => withBom.filter((p) => p.overallStatus !== '출고완료' && p.overallStatus !== '출고숨김'),
+    [withBom],
   );
   const started = useMemo(() => living.filter((p) => isMatStarted(materials[p.id])), [living, materials]);
   // 아직 수량을 한 개도 안 적은 호기 — 계획만 있는 것이라 세지 않는다
@@ -83,7 +92,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
 
   // ── 호기가 쓰는 BOM 을 프로젝트별로 한 번씩만 읽는다 ──
   useEffect(() => {
-    const ids = [...new Set(living.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
+    const ids = [...new Set(withBom.map((p) => p.bomLink.projectId))].filter((id) => !(id in bomByProject));
     if (ids.length === 0) return undefined;
     let alive = true;
     Promise.all(ids.map((id) => getBomBySite(id).then((rows) => [id, rows || []])))
@@ -97,7 +106,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     return () => {
       alive = false;
     };
-  }, [living, bomByProject, toast]);
+  }, [withBom, bomByProject, toast]);
 
   // ── 배정이 «다» 끝난 호기는 통째로 뺀다 ──
   // 사급·도급·판금 중 하나라도 남았으면 아직 만드는 중이라 모든 탭에 그대로 둔다. 셋 다
@@ -124,7 +133,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
       const label = hogiOf(p) || p.id;
       for (const box of CHECKABLE_BOXES) {
         const rows = bomRowsForBox(forVariant, box)
-          .filter((r) => inKindTab(r, supplyTab === MADE ? 'made' : supplyTab))
+          .filter((r) => inKindTab(r, kindKey))
           .map((r) => {
             const m = r.itemId ? masterMap[r.itemId] : null;
             return {
@@ -140,13 +149,23 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
       }
     }
     return out;
-  }, [linked, bomByProject, materials, masterMap, supplyTab]);
+  }, [linked, bomByProject, materials, masterMap, kindKey]);
   const list = useMemo(() => aggregateShortage(entries), [entries]);
 
-  // 부족 품목을 어디서 끌어올 수 있나 — 발주 여유(입고 − 배정 호기가 가져간 양) · 창고 재고 (2026-09-05 대표님)
+  // ── 재고 — 재고 화면과 «같은» 셈을 쓴다 ──
+  // 전에는 「발주 여유」(발주 입고 − 배정 호기가 가져간 양)와 품목에 적어 둔 「창고 재고」를
+  // 나란히 뒀는데, 앞엣것은 도급 재고와 같은 것을 가리키면서 셈이 달랐다 — 배정 없이 수량만
+  // 적은 호기를 안 빼고, 손으로 넣은 몫도 안 셌다. 두 화면 숫자가 어긋나면 어느 쪽을 믿고
+  // 발주할지 막힌다. 한 칸으로 합친다 (2026-09-14 대표님 「창고재고 열을 재고로」).
+  //   도급·판금  발주서 입고 + 손으로 적은 몫 − 호기가 가져간 양
+  //   사급       통에 적힌 실제 값
   const [settings, setSettings] = useState({});
+  const [paidManual, setPaidManual] = useState({}); // 도급·판금 통의 손조정
+  const [freeStock, setFreeStock] = useState({}); // 사급 통의 실제 값
   useEffect(() => subscribePaidSetSettings(setSettings), []);
-  const projectIds = useMemo(() => [...new Set(linked.map((p) => p.bomLink.projectId))].sort(), [linked]);
+  useEffect(() => (company ? subscribePaidStock(company, setPaidManual) : undefined), [company]);
+  useEffect(() => (company ? subscribeFreeStock(company, setFreeStock) : undefined), [company]);
+  const projectIds = useMemo(() => [...new Set(withBom.map((p) => p.bomLink.projectId))].sort(), [withBom]);
   const siteId = settings?.[company]?.siteId || '';
   const [receivedByProject, setReceivedByProject] = useState({});
   useEffect(() => {
@@ -157,31 +176,41 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     );
     return () => unsubs.forEach((u) => u());
   }, [projectIds, siteId]);
-  const spareByItem = useMemo(() => {
-    const received = {};
+  const receivedByItem = useMemo(() => {
+    const out = {};
     const seenSite = new Set(); // 현장 발주서는 프로젝트마다 겹쳐 들어오니 한 번만
     for (const pid of projectIds) {
       for (const [itemId, q] of Object.entries(receivedByProject[pid] || {})) {
         if (seenSite.has(itemId) && siteId) continue;
-        received[itemId] = (received[itemId] || 0) + q;
+        out[itemId] = (out[itemId] || 0) + q;
         if (siteId) seenSite.add(itemId);
       }
     }
-    const allRows = projectIds.flatMap((pid) => bomByProject[pid] || []);
-    const assigned = panels.filter(
-      (p) => p.paidSet && p.bomLink?.projectId && projectIds.includes(p.bomLink.projectId),
-    );
-    const consumed = consumedByItem(
-      allRows,
-      assigned.map((p) => materials[p.id] || {}),
-    );
-    const out = {};
-    for (const [itemId, q] of Object.entries(received)) out[itemId] = q - (consumed[itemId] || 0);
     return out;
-  }, [projectIds, receivedByProject, siteId, bomByProject, panels, materials]);
+  }, [projectIds, receivedByProject, siteId]);
+  // 나간 양 — 끝난 호기까지 «모든» 호기가 가져간 만큼. 출고했다고 자재가 통으로 돌아오지 않는다.
+  const goneByItem = useMemo(() => {
+    const out = {};
+    for (const p of withBom) {
+      const rows0 = bomByProject[p.bomLink.projectId];
+      if (!rows0) continue;
+      const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
+      for (const box of CHECKABLE_BOXES) {
+        const rec = (materials[p.id] || {})[box] || {};
+        for (const r of bomRowsForBox(forVariant, box)) {
+          if (!r.itemId || !inKindTab(r, kindKey)) continue;
+          out[r.itemId] = (out[r.itemId] || 0) + receivedQty(rec, r.id);
+        }
+      }
+    }
+    return out;
+  }, [withBom, bomByProject, materials, kindKey]);
   const stockOf = (itemId) => {
-    const m = itemId ? masterMap[itemId] : null;
-    return m && m.stockQty !== undefined && m.stockQty !== null ? Math.max(0, Number(m.stockQty) || 0) : null;
+    if (!itemId) return null;
+    if (kindKey === 'free') return Number(freeStock[itemId]?.qty) || 0;
+    return (
+      (Number(receivedByItem[itemId]) || 0) - (Number(goneByItem[itemId]) || 0) + (Number(paidManual[itemId]?.qty) || 0)
+    );
   };
   const totalShort = list.reduce((s, a) => s + a.short, 0);
 
@@ -336,11 +365,12 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
                 <th scope="col" className="pmat-num">
                   부족
                 </th>
-                <th scope="col" className="pmat-num" title="발주 입고분 중 아직 호기에 안 들어간 양">
-                  발주 여유
-                </th>
-                <th scope="col" className="pmat-num" title="창고 재고 (재고 화면에 올린 품목만)">
-                  창고 재고
+                <th
+                  scope="col"
+                  className="pmat-num"
+                  title="재고 화면의 「남음」과 같은 숫자 — 여기서 꺼내 쓸 수 있습니다"
+                >
+                  재고
                 </th>
                 <th scope="col">모자란 호기</th>
               </tr>
@@ -359,12 +389,14 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
                   <td className="pmat-num">
                     <span className="status-badge status-badge--cancel sht-short">{a.short}</span>
                   </td>
-                  <td className={`pmat-num${(spareByItem[a.itemId] || 0) > 0 ? ' is-have' : ''}`}>
-                    {a.itemId && spareByItem[a.itemId] !== undefined ? Math.max(0, spareByItem[a.itemId]) : '–'}
-                  </td>
-                  <td className={`pmat-num${(stockOf(a.itemId) || 0) > 0 ? ' is-have' : ''}`}>
-                    {stockOf(a.itemId) === null ? '–' : stockOf(a.itemId)}
-                  </td>
+                  {(() => {
+                    const have = stockOf(a.itemId);
+                    return (
+                      <td className={`pmat-num${have > 0 ? ' is-have' : have < 0 ? ' is-minus' : ''}`}>
+                        {have === null ? '–' : have}
+                      </td>
+                    );
+                  })()}
                   <td className="sht-panels">
                     {a.panels.slice(0, 3).map((h) => (
                       <span key={h} className="status-badge status-badge--wait">
