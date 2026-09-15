@@ -95,17 +95,13 @@ export default function IncidentsPage({ company = '' }) {
       note: x.inc.note || '',
     });
   const formPanel = form ? panelById[form.panelId] : null;
-  const formBoxes = useMemo(() => {
-    if (!formPanel) return [];
-    const rows0 = bomByProject[formPanel.bomLink.projectId] || [];
-    const rows = rowsForPanel(rows0, formPanel);
-    return CHECKABLE_BOXES.filter((b) => bomRowsForBox(rows, b).length > 0);
-  }, [formPanel, bomByProject]);
+  // 이 호기의 «모든 BOX» 줄 — BOX 를 따로 고르지 않고 한 번에 찾는다. 목록에 BOX 를 같이 적는다
+  // (2026-09-15 대표님 「여기도 박스 선택 말고 검색 하나로 하고 박스명 같이 푯기하는걸로」)
   const formRows = useMemo(() => {
-    if (!formPanel || !form?.box) return [];
-    const rows0 = bomByProject[formPanel.bomLink.projectId] || [];
-    return bomRowsForBox(rowsForPanel(rows0, formPanel), form.box);
-  }, [formPanel, form?.box, bomByProject]);
+    if (!formPanel) return [];
+    const rows = rowsForPanel(bomByProject[formPanel.bomLink.projectId] || [], formPanel);
+    return CHECKABLE_BOXES.flatMap((b) => bomRowsForBox(rows, b).map((r) => ({ ...r, box: b })));
+  }, [formPanel, bomByProject]);
   const [saving, setSaving] = useState(false);
 
   async function submit(e) {
@@ -354,28 +350,14 @@ export default function IncidentsPage({ company = '' }) {
             </div>
             {!form.editing && (
               <div className="form-group">
-                <label>BOX</label>
-                <Select
-                  value={form.box}
-                  onChange={(v) => setForm((f) => ({ ...f, box: v, rowId: '', q: '' }))}
-                  options={formBoxes.map((b) => ({ value: b, label: b }))}
-                  placeholder="BOX 선택"
-                  ariaLabel="BOX"
-                  native
-                />
-              </div>
-            )}
-            {!form.editing && (
-              <div className="form-group">
                 <label>품목</label>
-                {/* 검색해도 되고 목록에서 골라도 된다 — BOX 하나에 40줄이 넘어 드롭다운으로는 못 찾는다
-                  (2026-09-15 대표님 「박스 넣고 품목은 검색OR리스트」) */}
+                {/* BOX 를 따로 고르지 않는다 — 한 칸에서 찾고 목록에 BOX 를 같이 적는다
+                    (2026-09-15 대표님 「박스 선택 말고 검색 하나로 하고 박스명 같이 푯기」) */}
                 <input
                   type="text"
                   value={form.q || ''}
                   onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
-                  placeholder={form.box ? '도번·품명·규격으로 찾기' : 'BOX 를 먼저'}
-                  disabled={!form.box}
+                  placeholder="도번·품명·규격·BOX 로 찾기"
                   aria-label="품목 찾기"
                 />
                 <div className="inc-pick" role="listbox" aria-label="품목 목록">
@@ -384,25 +366,31 @@ export default function IncidentsPage({ company = '' }) {
                       const kw = (form.q || '').trim().toLowerCase();
                       if (!kw) return true;
                       const m = r.itemId ? masterMap[r.itemId] : null;
-                      return [itemDrawing(r), itemName(r), m?.spec || r.spec || '', m?.code || r.code || ''].some((v) =>
-                        String(v).toLowerCase().includes(kw),
-                      );
+                      return [
+                        r.box,
+                        itemDrawing(r),
+                        itemName(r),
+                        m?.spec || r.spec || '',
+                        m?.code || r.code || '',
+                      ].some((v) => String(v).toLowerCase().includes(kw));
                     })
+                    .slice(0, 80)
                     .map((r) => (
                       <button
                         type="button"
-                        key={r.id}
+                        key={`${r.box}:${r.id}`}
                         role="option"
                         aria-selected={form.rowId === r.id}
                         className={`inc-pick-item${form.rowId === r.id ? ' on' : ''}`}
-                        onClick={() => setForm((f) => ({ ...f, rowId: r.id }))}
+                        onClick={() => setForm((f) => ({ ...f, box: r.box, rowId: r.id }))}
                       >
+                        <span className="inc-pick-box">{r.box}</span>
                         <span className="inc-pick-dn">{itemDrawing(r)}</span>
                         <span className="inc-pick-name">{itemName(r)}</span>
                         <span className="inc-pick-spec">{(r.itemId && masterMap[r.itemId]?.spec) || r.spec || ''}</span>
                       </button>
                     ))}
-                  {form.box && formRows.length === 0 && <p className="field-hint">이 BOX 에 줄이 없습니다</p>}
+                  {formRows.length === 0 && <p className="field-hint">이 호기에 줄이 없습니다</p>}
                 </div>
               </div>
             )}
