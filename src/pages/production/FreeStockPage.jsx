@@ -411,7 +411,7 @@ export default function FreeStockPage({ company }) {
                           으로 (2026-09-15 대표님 「9set 으로 가야겠지 부족이니까」). 개수는 툴팁에. */}
                       <td
                         className="col-num"
-                        title={`${won(r.got)}개 · 다 채운 ${r.outSets.full}대 · 부족 ${r.outSets.short}대`}
+                        title={`${won(r.got)}개 · 다 채운 ${r.outSets.full}대 · 부족 ${won(r.outSets.short)}개`}
                       >
                         {outSetsLabel(r.outSets)}
                       </td>
