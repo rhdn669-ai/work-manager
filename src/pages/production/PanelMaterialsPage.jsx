@@ -15,7 +15,7 @@ import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { subscribeStock, takeStock, returnStock, getStockQty } from '../../services/stockService';
+import { subscribeStock, takeStock, returnStock, getStockQty, getStockSplit } from '../../services/stockService';
 import { ledgerOn, stockKindOf } from '../../domain/stockLedger';
 import {
   subscribePanelMaterials,
@@ -413,11 +413,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     let after = Math.max(0, Number(want) || 0);
     const kind = stockKindOf(r);
     if (ledger(r) && after > b) {
-      const have = await getStockQty(kind, company, r.itemId);
+      const { qty: have, ours } = await getStockSplit(kind, company, r.itemId);
       if (after - b > have) {
         const short = after - b - have;
         after = b + have;
         if (!quiet) toast(`${r.name} 재고에 ${short}개 부족 — 재고 화면에서 입고한 뒤 다시 적어 주세요`, 'error');
+      }
+      // 사급은 고객사 것부터 나간다 — 그것으로 모자라 «당사» 몫까지 쓰게 되면 한 번 묻는다
+      // (2026-09-15 대표님 「당사껄 사용하게되면 확인 문구 한번더」)
+      const need = after - b;
+      const fromOurs = kind === 'free' ? Math.max(0, need - (have - ours)) : 0;
+      if (fromOurs > 0 && !quiet) {
+        const ok = await confirm(`${r.name} ${fromOurs}개를 당사 재고에서 사용합니다. 계속할까요?`);
+        if (!ok) return b;
       }
     }
     if (after === b) return b;
