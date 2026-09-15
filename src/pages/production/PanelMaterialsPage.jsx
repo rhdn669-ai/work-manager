@@ -20,6 +20,7 @@ import { ledgerOn, stockKindOf } from '../../domain/stockLedger';
 import {
   subscribePanelMaterials,
   setReceived,
+  getPanelMaterials,
   setSkipped,
   setNote,
   addFromStock,
@@ -460,9 +461,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const kind = stockKindOf(r);
     const who = by();
     const where = `${panel?.프로젝트 || ''} · ${boxOf(r)}`;
-    const kept = Math.max(0, Number(rec[r.id]?.fromStock) || 0);
-    const keptOurs = Math.max(0, Number(rec[r.id]?.fromOurs) || 0); // 그중 「우리가 댄」 몫 (사급)
     try {
+      // 통에서 온 누계는 «저장된 값»으로 — 화면 값은 되돌리기처럼 연달아 고칠 때 한 박자 늦다 (2026-09-16)
+      const stored = (await getPanelMaterials(panelId))?.[boxOf(r)]?.[r.id] || {};
+      const kept = Math.max(0, Number(stored.fromStock) || 0);
+      const keptOurs = Math.max(0, Number(stored.fromOurs) || 0); // 그중 「우리가 댄」 몫 (사급)
       const have = d > 0 ? await getStockQty(kind, company, r.itemId) : 0;
       const mv = stockMoves({ before, after, have, fromStock: kept });
       if (!mv) return;

@@ -123,11 +123,21 @@ export async function setAutoIn(panelId, box, bomItemId, n) {
 
 /** 그 줄이 사급 재고의 «우리 몫»에서 꺼내 쓴 누계 — 되돌릴 때 우리 몫으로 얼마를 돌릴지 안다
  *  (2026-09-12 대표님 「고객사거 먼저」). 음수로 부르면 줄어든다. */
+// 누계는 «지금 저장된 값»에 더한다 — 화면이 기억한 값(prev)은 되돌리기처럼 연달아 저장할 때 한 박자
+// 늦어, 207 호기 줄이 통에서 1개만 가져왔는데 누계가 3으로 적혔다. 줄일 때 그 3이 통으로 돌아갔다
+// (2026-09-16 대표님 「재고가 없는 호기에서 끌어온 입고수량을 취소하니까 재고가 다시 생겨버리네」).
+async function storedTally(panelId, box, bomItemId, field) {
+  const mats = await getPanelMaterials(panelId);
+  return Math.max(0, Number(mats?.[box]?.[bomItemId]?.[field]) || 0);
+}
+
+// eslint-disable-next-line no-unused-vars
 export async function addFromOurs(panelId, box, bomItemId, n, prev = 0) {
   const delta = Number(n) || 0;
   if (!delta) return;
-  const next = Math.max(0, (Number(prev) || 0) + delta);
-  if (next === (Number(prev) || 0)) return;
+  const cur = await storedTally(panelId, box, bomItemId, 'fromOurs');
+  const next = Math.max(0, cur + delta);
+  if (next === cur) return;
   await setDoc(
     doc(ref, materialsDocId(panelId, box)),
     {
@@ -142,17 +152,19 @@ export async function addFromOurs(panelId, box, bomItemId, n, prev = 0) {
 
 // 되돌릴 때는 음수로 부른다 — 재고로 돌려준 만큼 이 줄의 「재고에서 쓴 누계」도 줄어야 한다
 // (2026-09-12: 안 줄이면 다음에 지울 때 또 돌려주게 된다).
+// eslint-disable-next-line no-unused-vars
 export async function addFromStock(panelId, box, bomItemId, n, prev = 0) {
   const delta = Number(n) || 0;
   if (!delta) return;
-  const add = Math.max(0, (Number(prev) || 0) + delta) - (Number(prev) || 0);
-  if (!add) return;
+  const cur = await storedTally(panelId, box, bomItemId, 'fromStock');
+  const next = Math.max(0, cur + delta);
+  if (next === cur) return;
   await setDoc(
     doc(ref, materialsDocId(panelId, box)),
     {
       panelId,
       box,
-      items: { [bomItemId]: { fromStock: (Number(prev) || 0) + add } },
+      items: { [bomItemId]: { fromStock: next } },
       updatedAt: serverTimestamp(),
     },
     { merge: true },
