@@ -8,7 +8,7 @@
 // 한 줄 = { id, kind, why, n, at, by, note, mate }
 //   kind  'out'  수량이 줄었다      why: 불량 · 파손 · 분실 · 차용해 줌 · 그냥 빼기
 //         'in'   수량이 늘었다      why: 구매 · 차용 · 수리 입고
-//         'why'  수량 그대로, 까닭만 why: 미입고 · 차용 · 불량 · 파손 · 분실
+//         'why'  수량 그대로, 까닭만 why: 미입고 · 뒤 호기가 가져감 · 불량 · 파손 · 분실
 //   mate  상대 호기 id — 차용일 때. 고객사에서 빌려간 경우처럼 상대가 호기가 아니면 비워 두고 비고에 적는다
 //
 // 짝 기록: 한쪽에서 차용을 고르면 상대 호기 줄에도 짝 한 줄이 같이 남고 수량도 앱이 맞춘다
@@ -18,7 +18,9 @@
 // (2026-09-15 대표님 「리스트에 불량도 하나 넣어줘」)
 export const OUT_WHYS = ['불량', '파손', '분실', '차용해 줌', '그냥 빼기'];
 export const IN_WHYS = ['구매', '차용', '수리 입고'];
-export const WHY_WHYS = ['미입고', '차용', '불량', '파손', '분실'];
+// 「차용」(받았다)은 채우는 창에만 둔다 — 모자란 까닭에 「받았나요」를 물으면 말이 안 된다
+// (2026-09-16 대표님 「왜 모자란가요 해놓고 어느호기에서 받았나요는 아니지않음?」)
+export const WHY_WHYS = ['미입고', '뒤 호기가 가져감', '불량', '파손', '분실'];
 
 /**
  * 상대 호기를 «고를 수 있는» 까닭인가 — 고르면 양쪽이 이어지고, 안 고르면 이 줄에만 남는다.
@@ -28,7 +30,7 @@ export const WHY_WHYS = ['미입고', '차용', '불량', '파손', '분실'];
 export function needsMate(kind, why) {
   if (kind === 'out') return why === '차용해 줌';
   if (kind === 'in') return why === '차용';
-  return why === '차용';
+  return why === '뒤 호기가 가져감';
 }
 
 /** 재고 통에서 실물이 나가야 하는 까닭인가 — 통이 비면 못 채운다 (대표님 「재고에서는 수량이 있어야」) */
@@ -61,10 +63,10 @@ export function mateLog(log, myPanelId) {
       pair: log.id,
     };
   }
-  if (log.kind === 'why' && log.why === '차용') {
-    // 수량은 안 건드리고 기록만 — 상대 호기에도 「가져갔다」를 남긴다
+  if (log.kind === 'why' && log.why === '뒤 호기가 가져감') {
+    // 수량은 안 건드리고 기록만 — 가져간 호기에도 「앞 호기에서 가져옴」을 남긴다
     return {
-      ...newLog({ kind: 'why', why: '뒤호기에 차용해 줌', n: log.n, mate: myPanelId, at: log.at, by: log.by }),
+      ...newLog({ kind: 'why', why: '앞 호기에서 가져옴', n: log.n, mate: myPanelId, at: log.at, by: log.by }),
       pair: log.id,
     };
   }
@@ -84,8 +86,8 @@ export function logLabel(log, name = (id) => id) {
   const who = log.mate ? name(log.mate) : '';
   if (log.kind === 'out' && log.why === '차용해 줌') return `${who}에 빌려줌 ${log.n}`;
   if (log.kind === 'in' && log.why === '차용') return `${who}에서 차용 ${log.n}`;
-  if (log.kind === 'why' && log.why === '차용') return who ? `${who} 차용` : '차용';
-  if (log.kind === 'why' && log.why === '뒤호기에 차용해 줌') return `${who}에 차용해 줌`;
+  if (log.kind === 'why' && log.why === '뒤 호기가 가져감') return who ? `${who}가 가져감` : '뒤 호기가 가져감';
+  if (log.kind === 'why' && log.why === '앞 호기에서 가져옴') return `${who}에서 가져옴`;
   if (log.kind === 'why') return log.why;
   return `${log.why} ${log.n}`;
 }

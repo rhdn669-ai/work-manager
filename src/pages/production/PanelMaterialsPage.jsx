@@ -1117,7 +1117,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {needsMate(logForm.kind, logForm.why) && (
               <div className="form-group">
                 <label>
-                  {logForm.kind === 'out' ? '어느 호기에 줬나요' : '어느 호기에서 받았나요'}
+                  {logForm.kind === 'out'
+                    ? '어느 호기에 줬나요'
+                    : logForm.kind === 'in'
+                      ? '어느 호기에서 받았나요'
+                      : '어느 호기가 가져갔나요'}
                   <span className="pmat-opt"> (고르지 않아도 됩니다)</span>
                 </label>
                 <Select
@@ -1131,7 +1135,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <p className="field-hint">
                   {logForm.kind === 'out'
                     ? '호기를 고르면 그 호기 줄이 그만큼 늘고 양쪽에 기록이 남습니다.'
-                    : '호기를 고르면 그 호기 줄이 그만큼 줄어(0 밑이면 빚) 부족 집계에 뜹니다.'}{' '}
+                    : logForm.kind === 'in'
+                      ? '호기를 고르면 그 호기 줄이 그만큼 줄어(0 밑이면 빚) 부족 집계에 뜹니다.'
+                      : '수량은 그대로 두고 양쪽에 기록만 남깁니다.'}{' '}
                   고객사처럼 호기가 아닌 곳이면 고르지 말고 비고에 적어 주세요.
                 </p>
               </div>
