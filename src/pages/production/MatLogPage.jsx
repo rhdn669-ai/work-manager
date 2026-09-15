@@ -9,7 +9,7 @@ import { subscribePurchaseItems } from '../../services/purchaseService';
 import { getBomBySite } from '../../services/bomService';
 import { removeMatLog } from '../../services/matLogService';
 import { hasBomLink, bomRowsForBox, rowsForPanel } from '../../domain/panelBom';
-import { allLogs, logLabel } from '../../domain/matLog';
+import { allLogs, logLabel, whyOf } from '../../domain/matLog';
 
 // 자재 이력 — 호기 줄에서 한 일(왜 없나 / 어떻게 채웠나)이 여기에 자동으로 쌓인다.
 // 적는 곳은 호기 체크 줄이고, 이 탭은 «보는 곳»이다 (2026-09-15 대표님 「이력 확인 용으로
@@ -72,7 +72,7 @@ export default function MatLogPage({ company = '' }) {
           itemDrawing(row),
           itemName(row),
           itemSpec(row),
-          x.log.why,
+          whyOf(x.log),
           x.log.note,
         ].some((v) =>
           String(v || '')
