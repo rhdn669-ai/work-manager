@@ -130,7 +130,20 @@ export async function restoreTrashItem(trashId) {
         { merge: true },
       );
       const took = Number(inc.took ?? 0) || 0;
-      if ((inc.status || 'open') === 'open' && took > 0) await shiftHole(inc.from || panelId, box, rowId, -took);
+      if ((inc.status || 'open') === 'open' && took > 0) {
+        const r = await shiftHole(inc.from || panelId, box, rowId, -took);
+        // 다시 뺀 양·줄인 몫을 사건에 새로 적는다 — 다음 삭제가 그만큼만 되돌리게
+        await setDoc(
+          doc(db, 'panelMaterials', materialsDocId(panelId, box)),
+          {
+            panelId,
+            box,
+            items: { [rowId]: { incidents: [...list, { ...inc, took: -r.moved, tookKept: r.kept }] } },
+            updatedAt: new Date(),
+          },
+          { merge: true },
+        );
+      }
     }
   } else if (t.collection) {
     // 범용(trashGeneric) 복원 — 원래 컬렉션에 원래 id로 되살림

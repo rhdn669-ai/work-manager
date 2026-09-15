@@ -825,9 +825,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 도급에도 보여 준다 — 통에 얼마 있는지 알아야 가져올지 정한다 (2026-09-12) */}
                       {/* 통이 실값인 갈래는 0 이어도 보인다 — 빨간 0 은 「이 줄은 지금 못 채운다」
                           (2026-09-15 설계, 대표님 「통에 없으면 안채워짐으로 가자 전부」) */}
-                      {(ledger(r) || stockOf(r) > 0) && (
-                        <span className={`pmat-instock${stockOf(r) <= 0 ? ' is-empty' : ''}`}>재고 {stockOf(r)}</span>
-                      )}
+                      {(ledger(r) || stockOf(r) > 0) &&
+                        (stockKindOf(r) === 'free' ? (
+                          // 사급은 고객사 통·우리 통을 따로 (2026-09-15 대표님 「우리것과 고객사 사급재고표시를 따로」)
+                          (() => {
+                            const all = Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
+                            const ours = Math.min(Math.max(0, Number(freeStock[r.itemId]?.ours) || 0), all);
+                            return (
+                              <span className={`pmat-instock${all <= 0 ? ' is-empty' : ''}`}>
+                                고객사 {all - ours} · 우리 {ours}
+                              </span>
+                            );
+                          })()
+                        ) : (
+                          <span className={`pmat-instock${stockOf(r) <= 0 ? ' is-empty' : ''}`}>재고 {stockOf(r)}</span>
+                        ))}
                     </td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
