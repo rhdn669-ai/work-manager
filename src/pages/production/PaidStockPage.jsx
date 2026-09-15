@@ -10,7 +10,7 @@ import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
-import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
+import { subscribeReceivedFor, subscribePaidSetSettings, enableStockLedger } from '../../services/paidSetService';
 import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBom';
 import { inKindTab } from '../../domain/itemKind';
 import { STOCK_COLS } from '../../domain/tableWidths';
@@ -62,7 +62,7 @@ const fmtWhen = (v) => {
 
 // kind: 'paid'(도급) | 'made'(판금) — 셈은 같고 어느 갈래 줄을 세느냐만 다르다 (2026-09-12 대표님)
 export default function PaidStockPage({ company = '', kind = 'paid' }) {
-  const { userProfile } = useAuth();
+  const { userProfile, isAdmin } = useAuth();
   const { toast, confirm } = useDialog();
   const me = userProfile?.name || '';
 
@@ -329,6 +329,33 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     }
   }
 
+  // 통을 0 으로 비우고 실값 규칙을 켠다 — 굳히기 대신 «0 에서 새로 시작» (2026-09-15 대표님
+  // 「도급재고 전체 0개로 해줘 실수량 다시 세어보고 넣게」). 관리자만, 켜지기 전에만 보인다.
+  // 도급·판금은 한 통(paidStock)을 쓰므로 이 회사의 통 전부를 비운다.
+  const [restarting, setRestarting] = useState(false);
+  async function restartFromZero() {
+    const rows = Object.values(manual).filter((v) => v?.itemId);
+    if (
+      !(await confirm(
+        `${company} 도급·판금 통 ${rows.length}줄을 모두 0 으로 비우고, 이제부터 통에 적힌 값을 그대로 남음으로 씁니다.
+실수량은 「이번 입고」 칸에 다시 적으시면 됩니다. 계속할까요?`,
+      ))
+    )
+      return;
+    setRestarting(true);
+    try {
+      for (const v of rows)
+        await setStockTo('paid', company, v, 0, { by: me, reason: '실수량 다시 세어 넣기 위해 0 으로 (통 실값 시작)' });
+      await enableStockLedger(company);
+      toast(`${rows.length}줄을 0 으로 비우고 실값 규칙을 켰습니다`, 'success', 0);
+    } catch (err) {
+      console.error(err);
+      toast('비우지 못했습니다 — 다시 시도해 주세요', 'error', 0);
+    } finally {
+      setRestarting(false);
+    }
+  }
+
   const sums = useMemo(() => {
     let sets = null;
     let worst = null;
@@ -398,6 +425,17 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           onChange={setView}
           ariaLabel="보기"
         />
+        {isAdmin && !ledgerOn(settings, company, kind) && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={restartFromZero}
+            disabled={restarting}
+            title="통을 전부 0 으로 비우고, 이제부터 통에 적힌 값을 그대로 남음으로 씁니다"
+          >
+            {restarting ? '비우는 중…' : '0에서 다시 시작'}
+          </button>
+        )}
       </div>
 
       {groups.length === 0 ? (

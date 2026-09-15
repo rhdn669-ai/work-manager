@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, onSnapshot, query, where, deleteField } from '../config/data';
+import { collection, doc, getDoc, onSnapshot, query, where, deleteField, setDoc } from '../config/data';
 import { db } from '../config/data';
 import { updatePanel } from './productionService';
 import { setReceivedMany, getPanelMaterials, setReceived, addFromStock } from './panelMaterialsService';
@@ -22,6 +22,19 @@ const purchasesRef = collection(db, 'purchases');
 
 export function subscribePaidSetSettings(cb) {
   return onSnapshot(settingsRef, (snap) => cb(snap.exists() ? snap.data() : {}));
+}
+
+/**
+ * 이 회사의 도급·판금 통을 「실값」 규칙으로 켠다 (2026-09-15 설계 「재고를 통 실값 하나로」).
+ * 켜지면 남음 = 통 값, 발주 입고 +, 호기 체크 −. 되돌리려면 이 플래그를 지운다.
+ */
+export async function enableStockLedger(company) {
+  if (!company) return;
+  await setDoc(
+    settingsRef,
+    { [company]: { stockLedger: { paid: true, made: true } }, updatedAt: new Date() },
+    { merge: true },
+  );
 }
 
 /** 한 번만 읽는다 — 입고 처리처럼 구독을 걸 자리가 아닌 곳에서 */
