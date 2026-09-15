@@ -192,7 +192,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // BOX 마다 이 탭(도급/사급)의 부족 줄 수 — 탭 오른쪽 배지로 보여 어느 BOX 가 모자란지 한눈에
   // (2026-09-05 대표님 「부족 떠있는 위치 확인이 안 되니 박스 우측에 부족 수량」)
   const shortByBox = useMemo(() => {
-    const forVariant = bomItemsForVariant(bomRows, link?.variantKey || '');
+    // 형제 셈들과 같은 bomRowsFull(품명·도번 보강판)을 쓴다 — 혼자 원본 bomRows 를 읽으면서
+    // 의존성만 bomRowsFull 이라 갱신이 어긋날 수 있었다 (2026-09-16 야간 조사 R9)
+    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
     const out = {};
     for (const b of CHECKABLE_BOXES) {
       const list = bomRowsForBox(forVariant, b).filter(inTab);

@@ -123,6 +123,13 @@ export async function restoreTrashItem(trashId) {
   const t = tSnap.data();
   if (t.type === 'purchase') {
     await setDoc(doc(db, 'purchases', t.refId), t.payload || {});
+    // 삭제할 때 창고로 돌려준 몫을 다시 뺀다 — 발주서가 되살아났으니 그 몫은 다시 «쥐고 있는» 것.
+    // 전에는 페이지의 「실행취소」에서만 해서, 전역 휴지통 복원은 재고가 두 배로 남았다
+    const items = t.payload?.items || [];
+    if (items.length) {
+      const { releasePurchaseStock } = await import('./purchaseService');
+      await releasePurchaseStock(items, { byName: '', note: '휴지통 복원', back: false }).catch(() => {});
+    }
   } else if (t.type === 'bomProject') {
     const batch = writeBatch(db);
     batch.set(doc(db, 'bomProjects', t.refId), t.payload || {});
