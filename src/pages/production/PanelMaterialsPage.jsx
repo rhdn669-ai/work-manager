@@ -30,7 +30,7 @@ import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatSta
 import { incidentsForRow, rowIncidentLabel } from '../../domain/incidents';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
-import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
+import { MADE, MADE_TYPE, isMade, inKindTab, kindOf } from '../../domain/itemKind';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -188,25 +188,51 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
   const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
-  // 도번·품명·규격으로 찾기 — BOX 하나에 30줄이 넘어 눈으로 훑기 어렵다
-  // (2026-09-15 대표님 「여기도 검색 기능 필요할듯」)
+  // 도번·품명·규격으로 찾기 — 이 호기 «전체»에서 찾고, 고르면 그 BOX·갈래 탭으로 옮겨 간다
+  // (2026-09-15 대표님 「전체리스트중에 검색 되고 해당 위치에 맞게 탭 움직이는걸로」)
   const [q, setQ] = useState('');
-  const shown = rows
-    .filter(inTab)
-    .filter((r) => {
-      if (rowView === 'all') return true;
-      const done = rowDone(r, rec);
-      return rowView === 'done' ? done : !done;
-    })
-    .filter((r) => {
-      const kw = q.trim().toLowerCase();
-      if (!kw) return true;
-      return [r.drawingNo, r.name, r.spec, r.code, rec[r.id]?.note].some((v) =>
-        String(v || '')
-          .toLowerCase()
-          .includes(kw),
-      );
-    });
+  const hit = (r) => {
+    const kw = q.trim().toLowerCase();
+    if (!kw) return false;
+    return [r.drawingNo, r.name, r.spec, r.code].some((v) =>
+      String(v || '')
+        .toLowerCase()
+        .includes(kw),
+    );
+  };
+  // 이 호기의 모든 BOX·모든 갈래에서 찾은 줄 — 지금 보고 있는 자리가 맨 위
+  const found = useMemo(() => {
+    if (!q.trim()) return [];
+    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
+    const out = [];
+    for (const b of boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES) {
+      for (const r of bomRowsForBox(forVariant, b)) {
+        if (!hit(r)) continue;
+        out.push({ row: r, box: b, kind: kindOf(r) });
+      }
+    }
+    return out.sort((a, c) => (a.box === box ? -1 : c.box === box ? 1 : 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, bomRowsFull, link?.variantKey, boxesWithRows, box]);
+  const goTo = (f) => {
+    setSupplyTab(f.kind === 'made' ? MADE : f.kind);
+    if (f.box !== box) setBox(f.box);
+    setQ('');
+    // 그 줄이 보이게 — 표가 다시 그려진 뒤에
+    setTimeout(() => {
+      const el = document.querySelector(`[data-row-id="${f.row.id}"]`);
+      if (el) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.classList.add('is-hit');
+        setTimeout(() => el.classList.remove('is-hit'), 1600);
+      }
+    }, 120);
+  };
+  const shown = rows.filter(inTab).filter((r) => {
+    if (rowView === 'all') return true;
+    const done = rowDone(r, rec);
+    return rowView === 'done' ? done : !done;
+  });
   const isMadeRow = useCallback((r) => isMade(r), []);
   const summary = useMemo(() => boxSummary(rows.filter(inScope), rec, isMadeRow), [rows, rec, isMadeRow, inScope]);
   // 줄이 없는 탭도 그대로 보여 준다 — 예전에는 줄 있는 쪽으로 저절로 옮겨 갔는데,
@@ -621,13 +647,40 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           ariaLabel="BOX"
           className="pmat-box-switch"
         />
-        <input
-          className="fstock-search pmat-search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="도번·품명·규격으로 찾기"
-          aria-label="자재 찾기"
-        />
+        <div className="pmat-search-wrap">
+          <input
+            className="fstock-search pmat-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="이 호기 전체에서 찾기 (도번·품명·규격)"
+            aria-label="자재 찾기"
+          />
+          {q.trim() && (
+            <div className="pmat-found" role="listbox" aria-label="찾은 자재">
+              {found.length === 0 ? (
+                <p className="field-hint">찾는 자재가 없습니다</p>
+              ) : (
+                found.slice(0, 40).map((f) => (
+                  <button
+                    type="button"
+                    key={`${f.box}:${f.row.id}`}
+                    className="pmat-found-item"
+                    onClick={() => goTo(f)}
+                  >
+                    <span className="pmat-found-box">{f.box}</span>
+                    <span className="pmat-found-kind">
+                      {f.kind === 'made' ? MADE : f.kind === 'free' ? '사급' : '도급'}
+                    </span>
+                    <span className="pmat-found-dn">{f.row.drawingNo}</span>
+                    <span className="pmat-found-name">{f.row.name}</span>
+                    <span className="pmat-found-spec">{f.row.spec}</span>
+                  </button>
+                ))
+              )}
+              {found.length > 40 && <p className="field-hint">외 {found.length - 40}줄 — 더 적어서 좁혀 주세요</p>}
+            </div>
+          )}
+        </div>
         <ViewSwitch
           className="pmat-rowview"
           options={[
@@ -772,6 +825,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 return (
                   <tr
                     key={r.id}
+                    data-row-id={r.id}
                     className={
                       outScope
                         ? 'is-scope-out'
