@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import { useFillHeight } from '../../utils/useFillHeight';
@@ -144,7 +144,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
     return CHECKABLE_BOXES.filter((b) => bomRowsForBox(forVariant, b).length > 0);
   }, [bomRowsFull, link?.variantKey]);
+  // 「전체」 — 모든 BOX 줄을 한 표에 BOX 구분줄과 함께 늘어놓는다. 저장은 줄마다 제 BOX 로 간다
+  // (2026-09-16 대표님 「준비작업 앞에 박스 전체 필터 하나만 걸어줘」)
+  const ALL_BOXES = '전체';
   const box = sp.get('box') || boxesWithRows[0] || CHECKABLE_BOXES[0];
+  const allBoxes = box === ALL_BOXES;
+  const boxList = allBoxes ? boxesWithRows : [box];
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
   // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
   const setBox = (b) => {
@@ -156,9 +161,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    return bomRowsForBox(forVariant, box);
-  }, [bomRowsFull, link?.variantKey, box]);
-  const rec = received[box] || {};
+    // 줄마다 제 BOX 를 붙여 둔다 — 「전체」에서는 여러 BOX 줄이 섞이므로 저장할 곳을 줄이 안다
+    return boxList.flatMap((b) => bomRowsForBox(forVariant, b).map((r) => ({ ...r, _box: b })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bomRowsFull, link?.variantKey, box, boxesWithRows]);
+  const boxOf = (r) => r?._box || box;
+  // BOM 줄 id 는 BOX 를 가리지 않고 하나뿐이라, 「전체」에서는 BOX 별 기록을 한 사전으로 합쳐 읽는다
+  const rec = useMemo(
+    () => (allBoxes ? Object.assign({}, ...boxList.map((b) => received[b] || {})) : received[box] || {}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allBoxes, box, boxesWithRows, received],
+  );
   // 정방향 제외 줄 — 이 호기(정)에는 안 오는 자재. 표에는 회색으로 두고 셈에서는 뺀다
   // (2026-09-15 대표님 「Bom에 정을 표시한것만 생산현황 호기 자재리스트에 회색처리」)
   const inScope = useCallback((r) => !isForwardExcluded(r, panel), [panel]);
@@ -225,7 +238,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     if (!f) return;
     setLogSaving(true);
     try {
-      await writeMatLog(panel, box, f.row, {
+      await writeMatLog(panel, boxOf(f.row), f.row, {
         kind: f.kind,
         why: f.why,
         n: Math.max(1, Number(f.n) || 1),
@@ -272,7 +285,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [q, bomRowsFull, link?.variantKey, boxesWithRows, box]);
   const goTo = (f) => {
     setSupplyTab(f.kind === 'made' ? MADE : f.kind);
-    if (f.box !== box) setBox(f.box);
+    if (!allBoxes && f.box !== box) setBox(f.box);
     setQ('');
     // 그 줄이 보이게 — 표가 다시 그려진 뒤에
     setTimeout(() => {
@@ -301,7 +314,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 칸은 글 길이에 맞춰 아래로 늘어난다 (MemoInput, 2026-09-15 대표님 「비고글이 짤리는데」)
   const saveNote = async (r, v) => {
     try {
-      await setNote(panelId, box, r.id, v);
+      await setNote(panelId, boxOf(r), r.id, v);
     } catch {
       toast('비고 저장에 실패했습니다', 'error');
     }
@@ -316,33 +329,38 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 이 호기에 수량을 하나라도 적기 전에는 판정하지 않는다 — 정방향 제외로 줄이 다 빠진 BOX 가
     // 「다 들어옴」으로 켜지면 안 된다 (2026-09-15 대표님 「하나라도 체크가 시작 되었을때 시작」)
     if (!isMatStarted(received)) return;
-    const scoped = rows.filter(inScope); // 정방향 제외 줄은 셈에 없다
-    const cur = (panel.박스입고 || {})[box] || {};
-    const nextPaid = boxKindComplete(scoped, rec, 'paid', isMadeRow);
-    const nextFree = boxKindComplete(scoped, rec, 'free', isMadeRow);
-    // 판금도 같은 방식으로 생산현황의 「판금」 칸과 그 입고일에 이어 준다
-    // (2026-09-12 대표님 「생산현황에 판금 입고일이랑 연동되면 됨」)
-    const nextMade = boxKindComplete(scoped, rec, 'made', isMadeRow);
-    const hasMadeRow = scoped.some(isMadeRow);
-    if (!!cur.자재_도급 === nextPaid && !!cur.자재_사급 === nextFree && (!hasMadeRow || !!cur.판금 === nextMade))
-      return; // 그대로면 쓰지 않는다
     const today = new Date().toISOString().slice(0, 10);
-    const curDate = (panel.박스입고일자 || {})[box] || {};
-    updatePanel(panel.id, {
-      박스입고: {
-        ...(panel.박스입고 || {}),
-        [box]: { ...cur, 자재_도급: nextPaid, 자재_사급: nextFree, ...(hasMadeRow ? { 판금: nextMade } : {}) },
-      },
-      박스입고일자: {
-        ...(panel.박스입고일자 || {}),
-        [box]: {
-          ...curDate,
-          자재_도급: nextPaid ? curDate.자재_도급 || today : '',
-          자재_사급: nextFree ? curDate.자재_사급 || today : '',
-          ...(hasMadeRow ? { 판금: nextMade ? curDate.판금 || today : '' } : {}),
-        },
-      },
-    }).catch(() => toast('자재 칸 갱신에 실패했습니다', 'error'));
+    const 박스입고 = { ...(panel.박스입고 || {}) };
+    const 박스입고일자 = { ...(panel.박스입고일자 || {}) };
+    let changed = false;
+    // BOX 마다 따로 판정한다 — 「전체」에서도 줄은 제 BOX 로 셈한다
+    for (const b of boxList) {
+      const scoped = rows.filter((r) => boxOf(r) === b).filter(inScope); // 정방향 제외 줄은 셈에 없다
+      if (scoped.length === 0) continue;
+      const recB = received[b] || {};
+      if (Object.keys(recB).length === 0) continue;
+      const cur = 박스입고[b] || {};
+      const nextPaid = boxKindComplete(scoped, recB, 'paid', isMadeRow);
+      const nextFree = boxKindComplete(scoped, recB, 'free', isMadeRow);
+      // 판금도 같은 방식으로 생산현황의 「판금」 칸과 그 입고일에 이어 준다
+      // (2026-09-12 대표님 「생산현황에 판금 입고일이랑 연동되면 됨」)
+      const nextMade = boxKindComplete(scoped, recB, 'made', isMadeRow);
+      const hasMadeRow = scoped.some(isMadeRow);
+      if (!!cur.자재_도급 === nextPaid && !!cur.자재_사급 === nextFree && (!hasMadeRow || !!cur.판금 === nextMade))
+        continue; // 그대로면 쓰지 않는다
+      const curDate = 박스입고일자[b] || {};
+      박스입고[b] = { ...cur, 자재_도급: nextPaid, 자재_사급: nextFree, ...(hasMadeRow ? { 판금: nextMade } : {}) };
+      박스입고일자[b] = {
+        ...curDate,
+        자재_도급: nextPaid ? curDate.자재_도급 || today : '',
+        자재_사급: nextFree ? curDate.자재_사급 || today : '',
+        ...(hasMadeRow ? { 판금: nextMade ? curDate.판금 || today : '' } : {}),
+      };
+      changed = true;
+    }
+    if (!changed) return;
+    updatePanel(panel.id, { 박스입고, 박스입고일자 }).catch(() => toast('자재 칸 갱신에 실패했습니다', 'error'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel, rows, rec, received, box, toast, isMadeRow, inScope]);
 
   // ── 개수 저장 ──
@@ -429,7 +447,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       }
     }
     if (after === b) return b;
-    await setReceived(panelId, box, r.id, after, by());
+    await setReceived(panelId, boxOf(r), r.id, after, by());
     await syncStock(r, b, after);
     return after;
   };
@@ -440,7 +458,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     if (d === 0) return;
     const kind = stockKindOf(r);
     const who = by();
-    const where = `${panel?.프로젝트 || ''} · ${box}`;
+    const where = `${panel?.프로젝트 || ''} · ${boxOf(r)}`;
     const kept = Math.max(0, Number(rec[r.id]?.fromStock) || 0);
     const keptOurs = Math.max(0, Number(rec[r.id]?.fromOurs) || 0); // 그중 「우리가 댄」 몫 (사급)
     try {
@@ -451,8 +469,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         // 사급은 고객사 것부터 나간다 — 우리 몫에서 나간 만큼만 따로 적어 둔다 (2026-09-12 대표님)
         const { take, fromOurs } = await takeStock(kind, company, r.itemId, mv.take, { by: who, note: where });
         if (take > 0) {
-          await addFromStock(panelId, box, r.id, take, kept);
-          if (fromOurs > 0) await addFromOurs(panelId, box, r.id, fromOurs, keptOurs);
+          await addFromStock(panelId, boxOf(r), r.id, take, kept);
+          if (fromOurs > 0) await addFromOurs(panelId, boxOf(r), r.id, fromOurs, keptOurs);
         }
       }
       if (mv.giveBack > 0) {
@@ -461,8 +479,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           note: `${where} 되돌림`,
           tookOurs: keptOurs,
         });
-        await addFromStock(panelId, box, r.id, -mv.giveBack, kept);
-        if (keptOurs > 0) await addFromOurs(panelId, box, r.id, -Math.min(mv.giveBack, keptOurs), keptOurs);
+        await addFromStock(panelId, boxOf(r), r.id, -mv.giveBack, kept);
+        if (keptOurs > 0) await addFromOurs(panelId, boxOf(r), r.id, -Math.min(mv.giveBack, keptOurs), keptOurs);
       }
     } catch (err) {
       console.error('[재고] 맞추기 실패', err);
@@ -536,7 +554,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const title = `${panel?.프로젝트 || ''}${panel?.호기 ? ` ${panel.호기}` : ''}`.trim() || '호기';
   const toggleSkip = async (r, on) => {
     try {
-      await setSkipped(panelId, box, r.id, on, userProfile?.name || '');
+      await setSkipped(panelId, boxOf(r), r.id, on, userProfile?.name || '');
     } catch {
       toast('저장에 실패했습니다', 'error');
     }
@@ -666,11 +684,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만. 오른쪽 끝에 보기(전체·부족·완료) */}
       <div className="pmat-boxes no-print">
         <ViewSwitch
-          options={(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({
-            value: b,
-            label: b,
-            count: shortByBox[b] > 0 ? shortByBox[b] : ' ',
-          }))}
+          options={[
+            {
+              value: ALL_BOXES,
+              label: ALL_BOXES,
+              count: (() => {
+                const n = boxesWithRows.reduce((a, b) => a + (shortByBox[b] || 0), 0);
+                return n > 0 ? n : ' ';
+              })(),
+            },
+            ...(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({
+              value: b,
+              label: b,
+              count: shortByBox[b] > 0 ? shortByBox[b] : ' ',
+            })),
+          ]}
           value={box}
           onChange={setBox}
           ariaLabel="BOX"
@@ -826,202 +854,216 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 const short = skipped || outScope ? 0 : shortageOf(r.qty, got);
                 const done = outScope || rowDone(r, rec);
                 const meta = rec[r.id];
+                // 「전체」— BOX 가 바뀌는 자리에 구분줄 (재고 표와 같은 모양)
+                const newBox = allBoxes && (i === 0 || boxOf(shown[i - 1]) !== boxOf(r));
+                const colCount = 9 + (hasMeta ? 1 : 0);
                 return (
-                  <tr
-                    key={r.id}
-                    data-row-id={r.id}
-                    className={
-                      outScope
-                        ? 'is-scope-out'
-                        : skipped
-                          ? 'is-skipped'
-                          : done
-                            ? 'is-done'
-                            : // 사유(미입고 말고)를 적었는데 아직 모자란 줄 — 줄 전체를 빨갛게
-                              // (2026-09-15 대표님 「사유를 입력한 수량 부족은 1번처럼 … 1줄 전체에 칠해줘」)
-                              (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
-                              ? 'is-flagged'
-                              : short > 0 && got > 0
-                                ? 'is-partial'
-                                : ''
-                    }
-                  >
-                    <td className="col-no">{i + 1}</td>
-                    <td className="pmat-drawing">{r.drawingNo}</td>
-                    {/* 긴 이름만 줄바꿈 — 코드·도번·기록은 한 줄로 (2026-09-05 대표님) */}
-                    <td className="u-wrap">{r.name}</td>
-                    <td className="pmat-spec u-wrap" title={r.spec}>
-                      {r.spec}
-                    </td>
-                    <td className="pmat-num">{Number(r.qty) || 0}</td>
-                    <td className="pmat-num">
-                      {outScope ? (
-                        <span className="pmat-locked-qty" title="정방향 호기에는 우리 손을 거치지 않는 자재">
-                          —
-                        </span>
-                      ) : locked ? (
-                        <span
-                          className={`pmat-locked-qty pmat-got${
-                            skipped
-                              ? ' is-skip'
-                              : rec[r.id]?.fromOurs > 0
-                                ? ' is-ours'
-                                : got >= (Number(r.qty) || 0)
-                                  ? ' is-full'
-                                  : got > 0
-                                    ? ' is-partial'
-                                    : ''
-                          }`}
-                          title={
-                            (skipped ? '이 호기에서 제외' : `${got || 0} / ${Number(r.qty) || 0}`) +
-                            (rec[r.id]?.fromOurs > 0 ? ` · 당사가 댄 몫 ${rec[r.id].fromOurs}개` : '') +
-                            (meta?.at ? ` · ${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : '')
-                          }
-                        >
-                          {got || 0}
-                        </span>
-                      ) : typing === r.id ? (
-                        <input
-                          className="num-input pmat-input"
-                          onFocus={(e) => keepInView(e.currentTarget)}
-                          type="number"
-                          min="0"
-                          inputMode="numeric"
-                          autoFocus
-                          value={draft[r.id] !== undefined ? draft[r.id] : got || ''}
-                          placeholder="0"
-                          onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
-                          onBlur={() => commit(r)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
-                            if (e.key === 'Escape') setTyping(null);
-                          }}
-                          aria-label={`${r.name} 입고 수량`}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className={`pmat-qty-btn${got > 0 ? ' is-filled' : ''}`}
-                          onPointerDown={() => startPress(r)}
-                          onPointerUp={() => endPress(r, got)}
-                          onPointerLeave={cancelPress}
-                          onPointerCancel={cancelPress}
-                          onContextMenu={(e) => e.preventDefault()}
-                          title={
-                            got > 0
-                              ? '누르면 0 으로 되돌립니다 · 길게 누르면 수량을 적습니다'
-                              : `누르면 ${Number(r.qty) || 0}개(필요 수량)로 채웁니다 · 길게 누르면 수량을 적습니다`
-                          }
-                          aria-label={`${r.name} 입고 수량 ${got || 0}`}
-                        >
-                          {got || 0}
-                        </button>
-                      )}
-                    </td>
-                    {/* 「부족」 열도 없앴다 — 필요·입고 수량에서 바로 읽히고, 모자란 줄은 입고 수량이
-                        주황·회색으로 보인다 (2026-09-15 대표님 「둘다」). 재고는 상태 칸으로 옮겼다 */}
-                    <td className="pmat-state">
-                      {got < (Number(r.qty) || 0) &&
-                        (ledger(r) || stockOf(r) > 0) &&
-                        (stockKindOf(r) === 'free' ? (
-                          // 사급은 고객사 통·우리 통을 따로 (2026-09-15 대표님 「우리것과 고객사 사급재고표시를 따로」)
-                          (() => {
-                            const all = Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
-                            const ours = Math.min(Math.max(0, Number(freeStock[r.itemId]?.ours) || 0), all);
-                            return (
-                              <span className={`pmat-instock${all <= 0 ? ' is-empty' : ''}`}>
-                                고객사 {all - ours} · 당사 {ours}
-                              </span>
-                            );
-                          })()
-                        ) : (
-                          <span className={`pmat-instock${stockOf(r) <= 0 ? ' is-empty' : ''}`}>재고 {stockOf(r)}</span>
-                        ))}
-                      {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
-                          자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
-                      {(() => {
-                        const s = rowSummary(rec[r.id]?.log || [], shortOfId);
-                        return s ? (
-                          <span className="pmat-incident" title={`${s} — 자재 이력 탭에서 볼 수 있습니다`}>
-                            {s}
-                          </span>
-                        ) : null;
-                      })()}
-                      {/* 옛 「분실·파손」 장부의 한 줄(「…에 빌려줌 1」)은 뺐다 — 지금은 자재 이력이
-                          그 자리를 쓴다 (2026-09-16 대표님 「저 빌려줌 문구 삭제」) */}
-                    </td>
-                    {hasMeta && (
-                      <td className="pmat-meta">
-                        {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                        {/* 「재고에서 N」은 뺐다 — 이제 채우는 길이 재고뿐이라 늘 같은 말이 된다
-                            (2026-09-15 대표님 「무조건 재고에서만 채울수있는데」) */}
-                      </td>
+                  <Fragment key={r.id}>
+                    {newBox && (
+                      <tr className="fstock-boxrow">
+                        <th scope="colgroup" colSpan={colCount}>
+                          {boxOf(r)}
+                          <em>{shown.filter((x) => boxOf(x) === boxOf(r)).length}품목</em>
+                        </th>
+                      </tr>
                     )}
-                    {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
-                    <td className="pmat-note-cell">
-                      <MemoInput
-                        value={rec[r.id]?.note || ''}
-                        readOnly={!editMode}
-                        title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
-                        ariaLabel={`${r.name} 비고`}
-                        onFocus={(e) => keepInView(e.currentTarget)}
-                        onCommit={(v) => saveNote(r, v)}
-                      />
-                    </td>
-                    {
-                      <td className="col-action pmat-act">
-                        {/* 「입고」는 사연이 있는 줄에만 — 아직 손 안 댄 미입고 줄에 붙으면 평소 채우는 법
-                            (수량 칸에 적기)과 겹쳐 헷갈린다 (2026-09-15 대표님 「배정 되기 전이라 미입고인것에
-                            입고 버튼이 있으면 헷갈리지않을까?」). 「미입고」로만 적은 줄도 평범한 상태라 안 붙는다 */}
-                        {!outScope &&
-                          !skipped &&
-                          got < (Number(r.qty) || 0) &&
-                          (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-primary pmat-act-btn"
-                              onClick={() => openLog(r, 'in', Math.max(1, (Number(r.qty) || 0) - got))}
-                              title="어떻게 채웠는지 적고 수량을 올립니다"
-                            >
-                              입고
-                            </button>
-                          )}
-                        {/* 사유를 아직 안 적은 줄은 「사유」, 적은 줄은 「입고」 옆에 「수정」 —
-                            사유를 다시 적을 수 있게 (2026-09-16 대표님 「입고 버튼 옆에 수정 버튼」) */}
-                        {!outScope && !skipped && got < (Number(r.qty) || 0) && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline pmat-act-btn"
-                            onClick={() => openLog(r, 'why')}
+                    <tr
+                      data-row-id={r.id}
+                      className={
+                        outScope
+                          ? 'is-scope-out'
+                          : skipped
+                            ? 'is-skipped'
+                            : done
+                              ? 'is-done'
+                              : // 사유(미입고 말고)를 적었는데 아직 모자란 줄 — 줄 전체를 빨갛게
+                                // (2026-09-15 대표님 「사유를 입력한 수량 부족은 1번처럼 … 1줄 전체에 칠해줘」)
+                                (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                ? 'is-flagged'
+                                : short > 0 && got > 0
+                                  ? 'is-partial'
+                                  : ''
+                      }
+                    >
+                      <td className="col-no">{i + 1}</td>
+                      <td className="pmat-drawing">{r.drawingNo}</td>
+                      {/* 긴 이름만 줄바꿈 — 코드·도번·기록은 한 줄로 (2026-09-05 대표님) */}
+                      <td className="u-wrap">{r.name}</td>
+                      <td className="pmat-spec u-wrap" title={r.spec}>
+                        {r.spec}
+                      </td>
+                      <td className="pmat-num">{Number(r.qty) || 0}</td>
+                      <td className="pmat-num">
+                        {outScope ? (
+                          <span className="pmat-locked-qty" title="정방향 호기에는 우리 손을 거치지 않는 자재">
+                            —
+                          </span>
+                        ) : locked ? (
+                          <span
+                            className={`pmat-locked-qty pmat-got${
+                              skipped
+                                ? ' is-skip'
+                                : rec[r.id]?.fromOurs > 0
+                                  ? ' is-ours'
+                                  : got >= (Number(r.qty) || 0)
+                                    ? ' is-full'
+                                    : got > 0
+                                      ? ' is-partial'
+                                      : ''
+                            }`}
                             title={
-                              (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
-                                ? '사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
-                                : '왜 모자란지만 적습니다 — 수량은 그대로'
+                              (skipped ? '이 호기에서 제외' : `${got || 0} / ${Number(r.qty) || 0}`) +
+                              (rec[r.id]?.fromOurs > 0 ? ` · 당사가 댄 몫 ${rec[r.id].fromOurs}개` : '') +
+                              (meta?.at ? ` · ${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : '')
                             }
                           >
-                            {(rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
-                              ? '수정'
-                              : '사유'}
+                            {got || 0}
+                          </span>
+                        ) : typing === r.id ? (
+                          <input
+                            className="num-input pmat-input"
+                            onFocus={(e) => keepInView(e.currentTarget)}
+                            type="number"
+                            min="0"
+                            inputMode="numeric"
+                            autoFocus
+                            value={draft[r.id] !== undefined ? draft[r.id] : got || ''}
+                            placeholder="0"
+                            onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
+                            onBlur={() => commit(r)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur();
+                              if (e.key === 'Escape') setTyping(null);
+                            }}
+                            aria-label={`${r.name} 입고 수량`}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className={`pmat-qty-btn${got > 0 ? ' is-filled' : ''}`}
+                            onPointerDown={() => startPress(r)}
+                            onPointerUp={() => endPress(r, got)}
+                            onPointerLeave={cancelPress}
+                            onPointerCancel={cancelPress}
+                            onContextMenu={(e) => e.preventDefault()}
+                            title={
+                              got > 0
+                                ? '누르면 0 으로 되돌립니다 · 길게 누르면 수량을 적습니다'
+                                : `누르면 ${Number(r.qty) || 0}개(필요 수량)로 채웁니다 · 길게 누르면 수량을 적습니다`
+                            }
+                            aria-label={`${r.name} 입고 수량 ${got || 0}`}
+                          >
+                            {got || 0}
                           </button>
                         )}
-                        {/* 「제외」는 없앴다 — 까닭 없이 줄을 셈에서 빼는 것이라 「왜 없나 / 어떻게 채웠나」를
+                      </td>
+                      {/* 「부족」 열도 없앴다 — 필요·입고 수량에서 바로 읽히고, 모자란 줄은 입고 수량이
+                        주황·회색으로 보인다 (2026-09-15 대표님 「둘다」). 재고는 상태 칸으로 옮겼다 */}
+                      <td className="pmat-state">
+                        {got < (Number(r.qty) || 0) &&
+                          (ledger(r) || stockOf(r) > 0) &&
+                          (stockKindOf(r) === 'free' ? (
+                            // 사급은 고객사 통·우리 통을 따로 (2026-09-15 대표님 「우리것과 고객사 사급재고표시를 따로」)
+                            (() => {
+                              const all = Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
+                              const ours = Math.min(Math.max(0, Number(freeStock[r.itemId]?.ours) || 0), all);
+                              return (
+                                <span className={`pmat-instock${all <= 0 ? ' is-empty' : ''}`}>
+                                  고객사 {all - ours} · 당사 {ours}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            <span className={`pmat-instock${stockOf(r) <= 0 ? ' is-empty' : ''}`}>
+                              재고 {stockOf(r)}
+                            </span>
+                          ))}
+                        {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
+                          자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
+                        {(() => {
+                          const s = rowSummary(rec[r.id]?.log || [], shortOfId);
+                          return s ? (
+                            <span className="pmat-incident" title={`${s} — 자재 이력 탭에서 볼 수 있습니다`}>
+                              {s}
+                            </span>
+                          ) : null;
+                        })()}
+                        {/* 옛 「분실·파손」 장부의 한 줄(「…에 빌려줌 1」)은 뺐다 — 지금은 자재 이력이
+                          그 자리를 쓴다 (2026-09-16 대표님 「저 빌려줌 문구 삭제」) */}
+                      </td>
+                      {hasMeta && (
+                        <td className="pmat-meta">
+                          {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                          {/* 「재고에서 N」은 뺐다 — 이제 채우는 길이 재고뿐이라 늘 같은 말이 된다
+                            (2026-09-15 대표님 「무조건 재고에서만 채울수있는데」) */}
+                        </td>
+                      )}
+                      {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
+                      <td className="pmat-note-cell">
+                        <MemoInput
+                          value={rec[r.id]?.note || ''}
+                          readOnly={!editMode}
+                          title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
+                          ariaLabel={`${r.name} 비고`}
+                          onFocus={(e) => keepInView(e.currentTarget)}
+                          onCommit={(v) => saveNote(r, v)}
+                        />
+                      </td>
+                      {
+                        <td className="col-action pmat-act">
+                          {/* 「입고」는 사연이 있는 줄에만 — 아직 손 안 댄 미입고 줄에 붙으면 평소 채우는 법
+                            (수량 칸에 적기)과 겹쳐 헷갈린다 (2026-09-15 대표님 「배정 되기 전이라 미입고인것에
+                            입고 버튼이 있으면 헷갈리지않을까?」). 「미입고」로만 적은 줄도 평범한 상태라 안 붙는다 */}
+                          {!outScope &&
+                            !skipped &&
+                            got < (Number(r.qty) || 0) &&
+                            (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary pmat-act-btn"
+                                onClick={() => openLog(r, 'in', Math.max(1, (Number(r.qty) || 0) - got))}
+                                title="어떻게 채웠는지 적고 수량을 올립니다"
+                              >
+                                입고
+                              </button>
+                            )}
+                          {/* 사유를 아직 안 적은 줄은 「사유」, 적은 줄은 「입고」 옆에 「수정」 —
+                            사유를 다시 적을 수 있게 (2026-09-16 대표님 「입고 버튼 옆에 수정 버튼」) */}
+                          {!outScope && !skipped && got < (Number(r.qty) || 0) && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline pmat-act-btn"
+                              onClick={() => openLog(r, 'why')}
+                              title={
+                                (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                  ? '사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
+                                  : '왜 모자란지만 적습니다 — 수량은 그대로'
+                              }
+                            >
+                              {(rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                ? '수정'
+                                : '사유'}
+                            </button>
+                          )}
+                          {/* 「제외」는 없앴다 — 까닭 없이 줄을 셈에서 빼는 것이라 「왜 없나 / 어떻게 채웠나」를
                             남기는 방향과 어긋난다 (2026-09-15 대표님 「그냥 제외 시키는건 컨셉에 안맞으니」).
                             BOM 에 안 들어가는 자재는 BOM 의 「정방향 제외」나 타입으로 가른다.
                             이미 제외해 둔 줄에만 「포함」을 남겨 되돌릴 수 있게 한다. */}
-                        {skipped && !outScope && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline pmat-act-btn"
-                            onClick={() => toggleSkip(r, false)}
-                            disabled={!editMode}
-                            title={editMode ? '이 호기에서 다시 넣기' : '오른쪽 아래 「잠금」을 푼 뒤에'}
-                          >
-                            포함
-                          </button>
-                        )}
-                      </td>
-                    }
-                  </tr>
+                          {skipped && !outScope && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline pmat-act-btn"
+                              onClick={() => toggleSkip(r, false)}
+                              disabled={!editMode}
+                              title={editMode ? '이 호기에서 다시 넣기' : '오른쪽 아래 「잠금」을 푼 뒤에'}
+                            >
+                              포함
+                            </button>
+                          )}
+                        </td>
+                      }
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -1103,7 +1145,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           <form onSubmit={submitLog}>
             <p className="field-hint" style={{ marginTop: 0 }}>
               <strong>{logForm.row.name || logForm.row.code}</strong>
-              {logForm.row.spec ? ` · ${logForm.row.spec}` : ''} · {box}
+              {logForm.row.spec ? ` · ${logForm.row.spec}` : ''} · {boxOf(logForm.row)}
             </p>
             <div className="form-group">
               <label>사유</label>
