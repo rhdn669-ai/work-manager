@@ -24007,6 +24007,11 @@ a.lib-row-name:hover {
   padding: 0 12px;
   font-size: 13px;
 }
+/* 호기 체크 찾기 칸 — BOX 탭 줄 오른쪽, 좁은 화면에선 한 줄 아래로 (2026-09-15 대표님) */
+.pmat-search {
+  flex: 0 1 240px;
+  min-width: 140px;
+}
 .fstock-search:focus {
   outline: none;
   border-color: var(--primary);

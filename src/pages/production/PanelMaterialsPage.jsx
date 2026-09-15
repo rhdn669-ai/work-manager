@@ -188,11 +188,25 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
   const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
-  const shown = rows.filter(inTab).filter((r) => {
-    if (rowView === 'all') return true;
-    const done = rowDone(r, rec);
-    return rowView === 'done' ? done : !done;
-  });
+  // 도번·품명·규격으로 찾기 — BOX 하나에 30줄이 넘어 눈으로 훑기 어렵다
+  // (2026-09-15 대표님 「여기도 검색 기능 필요할듯」)
+  const [q, setQ] = useState('');
+  const shown = rows
+    .filter(inTab)
+    .filter((r) => {
+      if (rowView === 'all') return true;
+      const done = rowDone(r, rec);
+      return rowView === 'done' ? done : !done;
+    })
+    .filter((r) => {
+      const kw = q.trim().toLowerCase();
+      if (!kw) return true;
+      return [r.drawingNo, r.name, r.spec, r.code, rec[r.id]?.note].some((v) =>
+        String(v || '')
+          .toLowerCase()
+          .includes(kw),
+      );
+    });
   const isMadeRow = useCallback((r) => isMade(r), []);
   const summary = useMemo(() => boxSummary(rows.filter(inScope), rec, isMadeRow), [rows, rec, isMadeRow, inScope]);
   // 줄이 없는 탭도 그대로 보여 준다 — 예전에는 줄 있는 쪽으로 저절로 옮겨 갔는데,
@@ -606,6 +620,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           onChange={setBox}
           ariaLabel="BOX"
           className="pmat-box-switch"
+        />
+        <input
+          className="fstock-search pmat-search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="도번·품명·규격으로 찾기"
+          aria-label="자재 찾기"
         />
         <ViewSwitch
           className="pmat-rowview"
