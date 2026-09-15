@@ -937,7 +937,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {(() => {
                         const s = rowSummary(rec[r.id]?.log || [], nameOfId);
                         return s ? (
-                          <span className="pmat-incident" title="자재 이력 탭에서 볼 수 있습니다">
+                          <span className="pmat-incident" title={`${s} — 자재 이력 탭에서 볼 수 있습니다`}>
                             {s}
                           </span>
                         ) : null;

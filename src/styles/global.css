@@ -23498,6 +23498,10 @@ a.lib-row-name:hover {
   width: auto;
   margin: 1px 0 1px 4px;
   white-space: nowrap;
+  /* 태블릿에서 「입고·사유」가 칸을 다 먹지 않게 작게 (2026-09-15 대표님) */
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
 }
 
 /* 공장 관리 창 — 입력칸을 다른 창과 같은 규격으로 (2026-09-05 대표님 「입력칸 이상함」) */
@@ -24333,6 +24337,15 @@ body.has-editlock .main-content.expanded {
   line-height: 1.35;
   padding-left: 8px;
   padding-right: 8px;
+}
+/* 상태 칸 안의 각 줄은 두 줄까지만 — 길면 말줄임, 전체는 손을 올려 툴팁으로
+   (2026-09-15 대표님 「상태 내용 2열까지만 허용」) */
+.pmat-table td.pmat-state .pmat-instock,
+.pmat-table td.pmat-state .pmat-incident {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 /* 「고객사 0 · 당사 0」은 좁으면 두 줄로 — 자르지 않는다 (2026-09-15 태블릿) */
 .pmat-table td.pmat-state .pmat-instock,
