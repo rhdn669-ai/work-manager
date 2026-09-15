@@ -24554,12 +24554,11 @@ body.has-editlock .main-content.expanded {
 
 /* 재고 표의 BOX 구분줄 — 한 페이지 안에서 BOX 를 가른다 (2026-09-12 대표님) */
 .fstock-boxrow th {
-  /* 머리줄 바로 아래에 붙어 「지금 어느 BOX 를 보는 중인지」가 늘 보이게 한다.
-     작고 흐리게 두었더니 줄 사이에 묻혔다 (2026-09-12 대표님 「눈에 안 띔」) —
-     글자를 키우고 왼쪽에 굵은 띠를 둘러 한눈에 걸리게 한다. */
-  position: sticky;
-  top: 37px;
-  z-index: 2;
+  /* 작고 흐리게 두었더니 줄 사이에 묻혔다 (2026-09-12 대표님 「눈에 안 띔」) —
+     글자를 키우고 왼쪽에 굵은 띠를 둘러 한눈에 걸리게 한다.
+     머리줄 밑에 붙여 두던 것(sticky)은 뺐다 — 표가 세로 스크롤 상자가 되자(v150.0) 구분줄이
+     머리줄 밑에 딸려 내려와 가렸다 (2026-09-16 대표님 「머리줄 아래에 칸하나가 딸려 내려옴」) */
+  position: static;
   text-align: left;
   padding: 11px 14px 10px;
   background: var(--primary-soft, #e7ebf2);
