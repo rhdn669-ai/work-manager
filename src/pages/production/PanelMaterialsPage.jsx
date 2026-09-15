@@ -1053,12 +1053,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               입고
                             </button>
                           )}
-                        {!outScope && !skipped && got <= 0 && (
+                        {/* 하나도 안 채운 줄뿐 아니라 «덜 채운» 줄에도 붙는다 — 4개 중 2개만 온 까닭도
+                            적어야 한다 (2026-09-15 대표님 「갯수가 4개인데 다 안채워진 경우에도」) */}
+                        {!outScope && !skipped && got < (Number(r.qty) || 0) && (
                           <button
                             type="button"
                             className="btn btn-sm btn-outline pmat-act-btn"
                             onClick={() => openLog(r, 'why')}
-                            title="왜 비어 있는지만 적습니다 — 수량은 그대로"
+                            title="왜 모자란지만 적습니다 — 수량은 그대로"
                           >
                             사유
                           </button>
@@ -1157,7 +1159,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         <Modal
           isOpen
           onClose={() => setLogForm(null)}
-          title={logForm.kind === 'in' ? '어떻게 채웠나요' : logForm.kind === 'out' ? '왜 줄었나요' : '왜 비어 있나요'}
+          title={logForm.kind === 'in' ? '어떻게 채웠나요' : logForm.kind === 'out' ? '왜 줄었나요' : '왜 모자란가요'}
         >
           <form onSubmit={submitLog}>
             <p className="field-hint" style={{ marginTop: 0 }}>
