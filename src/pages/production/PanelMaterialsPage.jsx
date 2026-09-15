@@ -427,10 +427,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 그 전의 도급·판금은 예전대로 통을 안 건드린다.
   const ledger = (r) => !!company && !!r?.itemId && ledgerOn(settings, company, stockKindOf(r));
 
-  /** 통과 줄을 함께 맞춘다 — 늘릴 때 통에 있는 만큼까지만. 실제로 적힌 수량을 돌려준다 */
-  const applyQty = async (r, before, want, { quiet = false } = {}) => {
-    const b = Number(before) || 0;
-    let after = Math.max(0, Number(want) || 0);
+  // 줄마다 한 번에 하나씩 — 빨리 누르면 앞 저장이 화면에 오기 전에 다음 클릭이 «옛 값»으로 계산돼
+  // 통에서 두 번 꺼내고 한 번만 돌려줬다 (2026-09-16 대표님 「빠르게 누르다보면 수량이 점점 줄어드는데」).
+  // 그래서 ① 같은 줄의 저장은 줄을 세워 차례로, ② 「지금 몇 개」는 화면이 아니라 저장된 값을 읽는다.
+  const rowQueue = useRef({});
+  const queued = (id, fn) => {
+    const prev = rowQueue.current[id] || Promise.resolve();
+    const next = prev.catch(() => {}).then(fn);
+    rowQueue.current[id] = next;
+    return next;
+  };
+
+  /** 통과 줄을 함께 맞춘다 — 늘릴 때 통에 있는 만큼까지만. { before, after } 를 돌려준다.
+   *  want 는 숫자이거나, 저장된 지금 값을 받아 목표를 정하는 함수(토글용) */
+  const applyQty = (r, before, want, opts = {}) => queued(r.id, () => applyQtyNow(r, before, want, opts));
+  const applyQtyNow = async (r, before, want, { quiet = false } = {}) => {
+    const stored = (await getPanelMaterials(panelId))?.[boxOf(r)]?.[r.id];
+    const b = Math.max(0, Number(stored?.qty ?? before) || 0);
+    let after = Math.max(0, Number(typeof want === 'function' ? want(b) : want) || 0);
     const kind = stockKindOf(r);
     if (ledger(r) && after > b) {
       const { qty: have, ours } = await getStockSplit(kind, company, r.itemId);
@@ -445,13 +459,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       const fromOurs = kind === 'free' ? Math.max(0, need - (have - ours)) : 0;
       if (fromOurs > 0 && !quiet) {
         const ok = await confirm(`${r.name} ${fromOurs}개를 당사 재고에서 사용합니다. 계속할까요?`);
-        if (!ok) return b;
+        if (!ok) return { before: b, after: b };
       }
     }
-    if (after === b) return b;
+    if (after === b) return { before: b, after: b };
     await setReceived(panelId, boxOf(r), r.id, after, by());
     await syncStock(r, b, after);
-    return after;
+    return { before: b, after };
   };
 
   const syncStock = async (r, before, after) => {
@@ -493,11 +507,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   };
 
   const toggleRow = async (r, got) => {
-    const want = got > 0 ? 0 : Number(r.qty) || 0;
+    const need = Number(r.qty) || 0;
     try {
-      const n = await applyQty(r, got, want);
-      if (n === got) return;
-      undoable(n > 0 ? `${r.name} ${n}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got, n));
+      // 목표는 «저장된 지금 값»으로 정한다 — 빨리 눌러도 0 ↔ 필요 수량이 정확히 번갈아 간다
+      const { before, after: n } = await applyQty(r, got, (b) => (b > 0 ? 0 : need));
+      if (n === before) return;
+      undoable(n > 0 ? `${r.name} ${n}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, before, n));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -547,9 +562,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return;
     }
     try {
-      const applied = await applyQty(r, before, n);
-      if (applied === before) return;
-      undoable(`${r.name} ${applied}개`, restoreOne(r, before, applied));
+      const { before: was, after: applied } = await applyQty(r, before, n);
+      if (applied === was) return;
+      undoable(`${r.name} ${applied}개`, restoreOne(r, was, applied));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
