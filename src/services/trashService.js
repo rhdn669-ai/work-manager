@@ -116,6 +116,21 @@ export async function restoreTrashItem(trashId) {
       batch.set(doc(db, 'bom', id), data);
     }
     await batch.commit();
+  } else if (t.type === 'panelIncidents') {
+    // 분실·파손 사건 — 호기 줄 기록(incidents[]) 안으로 되살리고, 열린 사건이면 빈자리도 다시 뺀다
+    const { panelId, box, rowId, inc } = t.payload || {};
+    if (panelId && box && rowId && inc) {
+      const { getPanelMaterials, materialsDocId } = await import('./panelMaterialsService');
+      const { shiftHole } = await import('./incidentService');
+      const mats = await getPanelMaterials(panelId);
+      const list = (mats?.[box]?.[rowId]?.incidents || []).filter((x) => x.id !== inc.id);
+      await setDoc(
+        doc(db, 'panelMaterials', materialsDocId(panelId, box)),
+        { panelId, box, items: { [rowId]: { incidents: [...list, inc] } }, updatedAt: new Date() },
+        { merge: true },
+      );
+      if ((inc.status || 'open') === 'open') await shiftHole(inc.from || panelId, box, rowId, -inc.n);
+    }
   } else if (t.collection) {
     // 범용(trashGeneric) 복원 — 원래 컬렉션에 원래 id로 되살림
     await setDoc(doc(db, t.collection, t.refId), t.payload || {});

@@ -24234,6 +24234,13 @@ body.has-editlock .main-content.expanded {
 .inc-pick-item.on .inc-pick-spec {
   color: rgba(255, 255, 255, 0.85);
 }
+/* 분실·파손 표 작업 열 — 버튼 셋 오른쪽 정렬 */
+.inc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 /* 분실·파손 등록 창 — 사유·수량 나란히 */
 .inc-form-row {
   display: flex;
