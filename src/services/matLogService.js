@@ -26,17 +26,21 @@ async function appendLog(panelId, box, rowId, log) {
  *  (2026-09-16 대표님 「1개 가져갔을때 -1로 안하기로 했지않나?」 — 없는 줄에서 가져가면 기록만 남는다) */
 async function shift(panelId, box, rowId, delta, by = '') {
   const d = Number(delta) || 0;
-  if (!d) return;
+  if (!d) return { moved: 0, released: 0 };
   const mats = await getPanelMaterials(panelId);
   const rec = mats?.[box]?.[rowId] || {};
   const before = Number(rec.qty) || 0;
   const after = Math.max(0, before + d);
-  if (after === before) return;
+  if (after === before) return { moved: 0, released: 0 };
   await setReceived(panelId, box, rowId, after, by);
+  let released = 0;
   if (after < before) {
     const kept = Math.max(0, Number(rec.fromStock) || 0);
-    if (kept > 0) await addFromStock(panelId, box, rowId, -Math.min(kept, before - after), kept);
+    released = Math.min(kept, before - after);
+    if (released > 0) await addFromStock(panelId, box, rowId, -released, kept);
   }
+  // moved 실제로 움직인 양 · released 그중 «통에서 온 몫»으로 놓아 준 양
+  return { moved: after - before, released };
 }
 
 /**
@@ -96,6 +100,7 @@ export async function writeMatLog(
 
   // 내 줄 — 'why' 는 수량을 안 건드린다
   const myDelta = kind === 'in' ? +log.n : kind === 'out' ? -log.n : 0;
+  let myReleased = 0;
   // 「그냥 빼기」는 실물이 통으로 돌아간다 — 통에서 가져온 몫까지만. 불량·파손·분실·가져감은 물건이
   // 없어졌거나 다른 호기로 갔으니 통에 안 돌아간다. 전에는 어느 사유든 안 돌려줘서, 수량을
   // 넣었다 뺐다 하면 통이 한 번씩 줄기만 했다 (2026-09-16 대표님 「재고 수량이 증발해버림」)
@@ -107,7 +112,7 @@ export async function writeMatLog(
     giveBack = Math.min(cut, Math.max(0, Number(cur.fromStock) || 0));
     tookOurs = Math.max(0, Number(cur.fromOurs) || 0);
   }
-  if (myDelta) await shift(panel.id, box, row.id, myDelta, by);
+  if (myDelta) myReleased = (await shift(panel.id, box, row.id, myDelta, by)).released;
   if (giveBack > 0) {
     await returnStock(stockKind, panel.회사 || '', row.itemId, giveBack, {
       by,
@@ -118,11 +123,20 @@ export async function writeMatLog(
   }
   await appendLog(panel.id, box, row.id, log);
 
-  // 상대 호기 — 짝 기록과 수량
+  // 상대 호기 — 짝 기록과 수량.
+  // 「통에서 온 몫」(fromStock)도 함께 옮긴다. 안 옮기면 받은 호기가 나중에 그만큼을 빼도
+  // 통으로 돌아갈 길이 없어 장부에서 사라졌다 (2026-09-16 야간 조사 S5).
   const pair = mateLog(log, panel.id);
   if (pair && log.mate) {
     const d = mateDelta(log);
-    if (d) await shift(log.mate, box, row.id, d, by);
+    if (d) {
+      const r = await shift(log.mate, box, row.id, d, by);
+      if (d > 0 && myReleased > 0) {
+        await addFromStock(log.mate, box, row.id, Math.min(myReleased, r.moved));
+      } else if (d < 0 && r.released > 0 && myDelta > 0) {
+        await addFromStock(panel.id, box, row.id, Math.min(r.released, myDelta));
+      }
+    }
     await appendLog(log.mate, box, row.id, pair);
   }
   return log;
