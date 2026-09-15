@@ -24276,7 +24276,7 @@ body.has-editlock .main-content.expanded {
 .pmat-table .pmat-instock {
   display: block;
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--grey-600);
   white-space: nowrap;
@@ -24321,10 +24321,11 @@ body.has-editlock .main-content.expanded {
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: anywhere;
-  font-size: 11px;
-  line-height: 1.3;
-  padding-left: 6px;
-  padding-right: 6px;
+  /* 너무 줄이면 읽히지 않는다 — 다른 칸과 비슷하게 (2026-09-15 대표님 「너무 작게 할필요는 없을거같음」) */
+  font-size: 13px;
+  line-height: 1.35;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 /* 「고객사 0 · 당사 0」은 좁으면 두 줄로 — 자르지 않는다 (2026-09-15 태블릿) */
 .pmat-table td.pmat-state .pmat-instock,
@@ -24335,7 +24336,7 @@ body.has-editlock .main-content.expanded {
 .pmat-table .pmat-incident {
   display: block;
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--accent-press, #b3521c);
   white-space: nowrap;
