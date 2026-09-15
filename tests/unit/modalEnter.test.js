@@ -16,7 +16,7 @@ const rule = readFileSync(join(here, '../../src/utils/enterKey.js'), 'utf8');
 describe('모달 Enter — 되돌릴 수 없는 일은 막는다', () => {
   it('주버튼을 고를 때 data-no-enter 를 뺀다', () => {
     // 이 선택자가 무너지면 메일 발송 버튼이 다시 Enter 로 눌린다
-    expect(src).toContain(".btn-primary:not([disabled]):not([data-no-enter])");
+    expect(src).toContain('.btn-primary:not([disabled]):not([data-no-enter])');
   });
 
   it('읽기 전용 칸에는 첫 포커스를 주지 않는다', () => {

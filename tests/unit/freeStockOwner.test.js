@@ -29,3 +29,15 @@ describe('사급 재고에서 고객사 것과 우리 것 가르기', () => {
     expect(returnOrder({ back: 5, tookOurs: 0 })).toEqual({ back: 5, toOurs: 0 });
   });
 });
+
+// 「수정」으로 남음을 줄일 때 우리 몫도 그 이하로 — 셈은 stockService 안에 있어 규칙을 글로 확인한다
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+describe('남음을 손으로 맞출 때 우리 몫이 남음을 넘지 않는다', () => {
+  it('stockService.setStockTo 가 ours 를 min(우리 몫, 남음) 으로 자른다', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(join(here, '../../src/services/stockService.js'), 'utf8');
+    expect(src).toContain('Math.min(ours === null ? hadOurs : Math.max(0, Number(ours) || 0), t)');
+  });
+});

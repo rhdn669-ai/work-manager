@@ -49,11 +49,9 @@ for (const pg of PAGES) {
       // ① 렌더 — 로그인/비번설정으로 튕기지 않고, 그 페이지의 실제 내용(마커)이 떠야 함
       await expect(page).not.toHaveURL(/login|set-password/, { timeout: 15000 });
       // 마커 기반 동적 대기 — 고정 sleep은 병렬 부하에서 플레이크 유발
-      await page.waitForFunction(
-        (src) => new RegExp(src).test(document.body.innerText),
-        pg.marker.source,
-        { timeout: 25000 },
-      ).catch(() => {});
+      await page
+        .waitForFunction((src) => new RegExp(src).test(document.body.innerText), pg.marker.source, { timeout: 25000 })
+        .catch(() => {});
       await page.waitForTimeout(800); // 아이콘·배지 마무리 렌더
       const bodyText = await page.evaluate(() => document.body.innerText);
       expect(bodyText, `페이지 마커(${pg.marker}) 미발견 — 엉뚱한 화면 렌더 의심`).toMatch(pg.marker);

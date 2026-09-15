@@ -29,7 +29,11 @@ describe('BOM 인쇄표 칸 폭', () => {
   it('조합마다 합이 정확히 100%', () => {
     const bad = [];
     for (const [sel, cols] of bomBlocks) {
-      const sum = Number(Object.values(cols).reduce((a, b) => a + b, 0).toFixed(1));
+      const sum = Number(
+        Object.values(cols)
+          .reduce((a, b) => a + b, 0)
+          .toFixed(1),
+      );
       if (sum !== 100) bad.push(`${sum}% ${sel}`);
     }
     expect(bad).toEqual([]);
@@ -94,11 +98,8 @@ describe('인쇄표 칸 정렬', () => {
     if (!body) return null;
     const i = body.indexOf(`${prop}:`);
     if (i < 0) return null;
-    return body
-      .slice(i + prop.length + 1, body.indexOf(';', i))
-      .trim();
+    return body.slice(i + prop.length + 1, body.indexOf(';', i)).trim();
   };
-
 
   it('수량은 가운데 — 어디서나', () => {
     expect(val('c-qty', 'text-align')).toBe('center');
@@ -132,4 +133,3 @@ describe('인쇄표 칸 정렬', () => {
     expect(bad).toEqual([]);
   });
 });
-

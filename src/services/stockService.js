@@ -131,13 +131,16 @@ export async function returnStock(kind, company, itemId, n, { by = '', note = ''
 /** 손으로 맞추기 — 실물을 세어 보고 그 값으로. ours 는 사급만 */
 export async function setStockTo(kind, company, item, to, { by = '', reason = '', ours = null } = {}) {
   const t = Math.max(0, Number(to) || 0);
-  const from = await getStockQty(kind, company, item.itemId);
+  const { qty: from, ours: hadOurs } = await getStockSplit(kind, company, item.itemId);
+  // 사급은 「우리가 댄 몫」도 남음을 넘지 못한다. 남음을 줄이면서 우리 몫을 그대로 두면
+  // 「남음 0 · 우리 것 3」 같은 헛장부가 남는다 (2026-09-15 ELCB, 대표님 「우리것없는데?」).
+  const nextOurs = kind === 'free' ? Math.min(ours === null ? hadOurs : Math.max(0, Number(ours) || 0), t) : null;
   await setDoc(
     docOf(kind, company, item.itemId),
     {
       ...itemFields(company, item),
       qty: t,
-      ...(kind === 'free' && ours !== null ? { ours: Math.min(Math.max(0, Number(ours) || 0), t) } : {}),
+      ...(nextOurs === null ? {} : { ours: nextOurs }),
       updatedAt: serverTimestamp(),
       updatedBy: by,
       log: arrayUnion({ at: new Date().toISOString(), by, kind: 'fix', from, n: t, note: reason }),

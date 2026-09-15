@@ -3,7 +3,10 @@ import { describe, it, expect } from 'vitest';
 import { bomStats, unitPriceOf } from '../../src/domain/bomStats';
 
 describe('BOM 합계', () => {
-  const price = new Map([['A', 100], ['Z', 0]]);
+  const price = new Map([
+    ['A', 100],
+    ['Z', 0],
+  ]);
   it('사급은 금액에서 빠지고 수량·품목 수에는 든다', () => {
     const s = bomStats(
       [

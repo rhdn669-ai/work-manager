@@ -4,13 +4,7 @@
 // 실제로 도번 열을 늘리며 발주서 배분을 안 늘려, 규격이 받을 17% 를 메이커가
 // 가져가고 규격은 83px 로 눌려 있었다 (2026-09-02).
 import { describe, it, expect } from 'vitest';
-import {
-  BOM_COLS_WITH_VARIANT,
-  BOM_COLS_NO_VARIANT,
-  PO_COLS,
-  STOCK_COLS,
-  sumOf,
-} from '../../src/domain/tableWidths';
+import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT, PO_COLS, STOCK_COLS, sumOf } from '../../src/domain/tableWidths';
 
 describe('품목 표 칸 폭', () => {
   it('BOM(타입 있음) 합이 100', () => {

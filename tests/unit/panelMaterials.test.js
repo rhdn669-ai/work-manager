@@ -25,8 +25,12 @@ describe('한 줄', () => {
   });
   it('그 호기에서 일시 제외한 줄은 찬 것으로 보고 집계에서도 빠진다', () => {
     expect(rowDone(paid('a', 2), { a: { qty: 0, skip: true } })).toBe(true);
-    expect(boxKindComplete([paid('a', 2), paid('b', 1)], { a: { qty: 0, skip: true }, b: { qty: 1 } }, 'paid')).toBe(true);
-    const out = aggregateShortage([{ panelLabel: '1호기', rows: [paid('a', 2)], received: { a: { qty: 0, skip: true } } }]);
+    expect(boxKindComplete([paid('a', 2), paid('b', 1)], { a: { qty: 0, skip: true }, b: { qty: 1 } }, 'paid')).toBe(
+      true,
+    );
+    const out = aggregateShortage([
+      { panelLabel: '1호기', rows: [paid('a', 2)], received: { a: { qty: 0, skip: true } } },
+    ]);
     expect(out).toEqual([]);
   });
   it('BOM 수량이 0 인 줄은 찬 것으로 본다 — 수량 미정을 부족으로 몰지 않는다', () => {
@@ -79,8 +83,16 @@ describe('BOX 완료 판정', () => {
 describe('호기 범위 부족 집계', () => {
   it('같은 품목은 호기가 달라도 한 줄로 합치고, 모자란 호기를 적는다', () => {
     const out = aggregateShortage([
-      { panelLabel: '5호기', rows: [paid('r1', 4, { itemId: 'M1', code: 'IOPN-1', name: 'Relay' })], received: { r1: { qty: 1 } } },
-      { panelLabel: '7호기', rows: [paid('r9', 4, { itemId: 'M1', code: 'IOPN-1', name: 'Relay' })], received: { r9: { qty: 4 } } },
+      {
+        panelLabel: '5호기',
+        rows: [paid('r1', 4, { itemId: 'M1', code: 'IOPN-1', name: 'Relay' })],
+        received: { r1: { qty: 1 } },
+      },
+      {
+        panelLabel: '7호기',
+        rows: [paid('r9', 4, { itemId: 'M1', code: 'IOPN-1', name: 'Relay' })],
+        received: { r9: { qty: 4 } },
+      },
       { panelLabel: '9호기', rows: [paid('r5', 2, { itemId: 'M1', code: 'IOPN-1', name: 'Relay' })], received: {} },
     ]);
     expect(out).toHaveLength(1);
