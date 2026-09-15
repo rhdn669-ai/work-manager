@@ -214,8 +214,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [logForm, setLogForm] = useState(null);
   const [logSaving, setLogSaving] = useState(false);
   const whyList = (k) => (k === 'out' ? OUT_WHYS : k === 'in' ? IN_WHYS : WHY_WHYS);
-  const openLog = (r, kind, n = 1) =>
+  const openLog = (r, kind, n = 1) => {
+    // 잠겨 있으면 창을 열지 않는다 — 수량 칸은 막아 두고 이 창만 열려 있어 잠금이 반쪽이었다
+    // (2026-09-16 야간 조사 L1)
+    if (locked) return toast('오른쪽 아래 「잠금」을 푼 뒤에 적을 수 있습니다', 'error');
     setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: rec[r.id]?.note || '' });
+  };
   const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
   const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
   const shortOfId = (id) => shortPanel(nameOfId(id));
@@ -1043,7 +1047,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                                 type="button"
                                 className="btn btn-sm btn-primary pmat-act-btn"
                                 onClick={() => openLog(r, 'in', Math.max(1, (Number(r.qty) || 0) - got))}
-                                title="어떻게 채웠는지 적고 수량을 올립니다"
+                                disabled={locked}
+                                title={
+                                  locked ? '오른쪽 아래 「잠금」을 푼 뒤에' : '어떻게 채웠는지 적고 수량을 올립니다'
+                                }
                               >
                                 입고
                               </button>
@@ -1055,10 +1062,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               type="button"
                               className="btn btn-sm btn-outline pmat-act-btn"
                               onClick={() => openLog(r, 'why')}
+                              disabled={locked}
                               title={
-                                (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
-                                  ? '사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
-                                  : '왜 모자란지만 적습니다 — 수량은 그대로'
+                                locked
+                                  ? '오른쪽 아래 「잠금」을 푼 뒤에'
+                                  : (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                    ? '사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
+                                    : '왜 모자란지만 적습니다 — 수량은 그대로'
                               }
                             >
                               {(rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))

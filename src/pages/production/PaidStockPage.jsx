@@ -6,6 +6,7 @@ import { useArrived } from '../../utils/useArrived';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
+import { useEditLock } from '../../contexts/useEditLock';
 import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
@@ -319,6 +320,9 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   // 「도급재고 전체 0개로 해줘 실수량 다시 세어보고 넣게」). 관리자만, 켜지기 전에만 보인다.
   // 도급·판금은 한 통(paidStock)을 쓰므로 이 회사의 통 전부를 비운다.
   const [restarting, setRestarting] = useState(false);
+  // 회사 통을 통째로 비우는 단추 — 같은 무게의 다른 단추(구매 「전체 삭제」·공수표 「초기화」)처럼
+  // 잠금을 풀어야 눌린다 (2026-09-16 야간 조사 L2)
+  const editMode = useEditLock();
   async function restartFromZero() {
     const rows = Object.values(manual).filter((v) => v?.itemId);
     if (
@@ -407,8 +411,12 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
             type="button"
             className="btn btn-sm btn-outline"
             onClick={restartFromZero}
-            disabled={restarting}
-            title="통을 전부 0 으로 비우고, 이제부터 통에 적힌 값을 그대로 남음으로 씁니다"
+            disabled={restarting || !editMode}
+            title={
+              editMode
+                ? '통을 전부 0 으로 비우고, 이제부터 통에 적힌 값을 그대로 남음으로 씁니다'
+                : '오른쪽 아래 「잠금」을 푼 뒤에'
+            }
           >
             {restarting ? '비우는 중…' : '0에서 다시 시작'}
           </button>
