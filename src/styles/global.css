@@ -24259,6 +24259,10 @@ body.has-editlock .main-content.expanded {
 }
 
 /* 사급 재고 — 「우리가 댄」 몫 (2026-09-12 대표님) */
+/* 반대 통 합계 — 본 통보다 한 톤 눌러서 (2026-09-15) */
+.fstock-sum-other b {
+  color: var(--text-light);
+}
 .fstock-ours {
   display: block;
   margin-top: 2px;

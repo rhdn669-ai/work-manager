@@ -160,26 +160,33 @@ export default function FreeStockPage({ company }) {
     for (const a of aggregateShortage(entriesAll, { onlyShort: false })) {
       const have = Math.max(0, Number(stock[a.itemId]?.qty) || 0);
       const one = perOneAll.get(a.itemId || '') || 0;
+      // 「우리가 댄」 몫 — 고객사 것 = have − ours (2026-09-12 대표님). 두 통은 «따로» 센다
+      // (2026-09-15 대표님 「고객사 우리것이 수량이 공유가안되어야하는데 공유되네」)
+      const ours = Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have);
+      const theirs = have - ours;
+      const main = inOurs ? ours : theirs;
       whole.set(a.itemId, {
         ...a,
         have,
-        // 「우리가 댄」 몫 — 고객사 것 = have − ours (2026-09-12 대표님). 두 숫자는 «따로» 보인다
-        // (2026-09-15 대표님 「고객사 우리것이 수량이 공유가안되어야하는데 공유되네」)
-        ours: Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have),
-        theirs: have - Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have),
+        ours,
+        theirs,
+        // «본 칸» = 지금 고른 통(고객사 / 우리 것). 셈은 통마다 따로 — 금액·가능 SET 도 그 통 것만
+        // (2026-09-15 대표님 「셈도 아예 분리해야함 수량은 본 칸에 입력하고 아래글자를 반대통 수량」)
+        main,
+        other: inOurs ? theirs : ours,
         // 남은 것의 값어치 — 집계를 거치면 단가가 떨어져 나가 품목에서 바로 읽는다
-        amount: have * (Number(masterMap[a.itemId]?.unitPrice) || Number(masterMap[a.itemId]?.standardPrice) || 0),
+        amount: main * (Number(masterMap[a.itemId]?.unitPrice) || Number(masterMap[a.itemId]?.standardPrice) || 0),
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정 — BOX 몫으로 나누면 같은 재고인데 BOX 마다
         // 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
-        sets: one > 0 ? Math.floor(have / one) : 0,
+        sets: one > 0 ? Math.floor(main / one) : 0,
         log: stock[a.itemId]?.log || [],
       });
     }
 
     const kw = q.trim().toLowerCase();
     const keep = (r) => {
-      if (view === 'have' && r.have <= 0) return false;
+      if (view === 'have' && r.main <= 0) return false;
       if (!kw) return true;
       return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
         String(v || '')
@@ -216,7 +223,7 @@ export default function FreeStockPage({ company }) {
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
     return { groups: out, allRows: [...whole.values()] };
-  }, [mine, bomByProject, materials, masterMap, stock, q, view]);
+  }, [mine, bomByProject, materials, masterMap, stock, q, view, inOurs]);
 
   const sums = useMemo(() => {
     const all = allRows;
@@ -232,10 +239,9 @@ export default function FreeStockPage({ company }) {
     }
     return {
       kinds: all.length,
-      have: all.reduce((s, r) => s + r.have, 0),
-      theirs: all.reduce((s, r) => s + (Number(r.theirs) || 0), 0),
+      main: all.reduce((s, r) => s + (Number(r.main) || 0), 0),
+      other: all.reduce((s, r) => s + (Number(r.other) || 0), 0),
       amount: all.reduce((s, r) => s + (Number(r.amount) || 0), 0),
-      ours: all.reduce((s, r) => s + (Number(r.ours) || 0), 0),
       sets,
       worst,
     };
@@ -271,18 +277,15 @@ export default function FreeStockPage({ company }) {
   async function onFix(e) {
     e.preventDefault();
     const { row } = fixing;
-    const theirs = Number(fixing.theirs) || 0;
-    const ours = Number(fixing.ours) || 0;
-    if (theirs === row.theirs && ours === row.ours) return setFixing(null);
-    if (
-      !(await confirm(
-        `${row.name || row.code} — 고객사 ${won(row.theirs)} → ${won(theirs)} · 우리 것 ${won(row.ours)} → ${won(ours)} 으로 수정할까요?`,
-      ))
-    )
-      return;
+    const t = Number(fixing.to) || 0;
+    if (t === row.main) return setFixing(null);
+    const who = inOurs ? '우리 것' : '고객사';
+    if (!(await confirm(`${row.name || row.code} ${who} 재고를 ${won(row.main)} → ${won(t)} 으로 수정할까요?`))) return;
     try {
-      // 통에는 합(qty)과 우리 몫(ours)으로 적힌다 — 고객사 것 = 합 − 우리 몫
-      await setFreeStockQty(company, row, theirs + ours, { by: me, ours });
+      // 통에는 합(qty)과 우리 몫(ours)으로 적힌다 — 고른 통만 바꾸고 반대 통은 그대로
+      const ours = inOurs ? t : row.ours;
+      const theirs = inOurs ? row.theirs : t;
+      await setFreeStockQty(company, row, theirs + ours, { by: me, ours, reason: `${who} 실물 세어 맞춤` });
       setFixing(null);
       toast('재고를 수정했습니다', 'success');
     } catch (err) {
@@ -308,11 +311,14 @@ export default function FreeStockPage({ company }) {
           <span className="fstock-sum">
             품목 <b>{sums.kinds}종</b>
           </span>
-          <span className="fstock-sum" title="고객사가 준 것 — 사급 본래 몫">
-            고객사 <b>{won(sums.theirs)}</b>
+          <span
+            className="fstock-sum"
+            title={inOurs ? '우리가 댄 몫 — 고객사 것과 따로 센다' : '고객사가 준 것 — 사급 본래 몫'}
+          >
+            {inOurs ? '우리 것' : '고객사'} <b>{won(sums.main)}</b>
           </span>
-          <span className="fstock-sum" title="사급 품목이지만 우리가 댄 몫 — 고객사 것과 따로 센다">
-            우리 것 <b>{won(sums.ours)}</b>
+          <span className="fstock-sum fstock-sum-other" title="반대 통에 있는 양">
+            {inOurs ? '고객사' : '우리 것'} <b>{won(sums.other)}</b>
           </span>
           <span className="fstock-sum" title="남은 것 × 단가">
             금액 <b>{won(sums.amount)}원</b>
@@ -341,8 +347,8 @@ export default function FreeStockPage({ company }) {
           onChange={setView}
           ariaLabel="보기"
         />
-        {/* 「이번 입고」에 적는 것이 누구 물건인지 — 평소엔 고객사, 우리 것을 넣을 때만 바꾼다
-            (2026-09-12 대표님 「사급 품목중에 우리가 보유하고있는 품목」) */}
+        {/* 어느 통을 보고 적는지 — 고객사 통 / 우리 통. 본 칸·금액·가능 SET·「이번 입고」·「수정」이
+            모두 이 통 기준이고, 줄 아래 작은 글자가 반대 통 (2026-09-15 대표님 「셈도 아예 분리」) */}
         <ViewSwitch
           options={[
             { value: 'them', label: '고객사' },
@@ -350,7 +356,7 @@ export default function FreeStockPage({ company }) {
           ]}
           value={inOurs ? 'ours' : 'them'}
           onChange={(v) => setInOurs(v === 'ours')}
-          ariaLabel="이번 입고가 누구 물건인지"
+          ariaLabel="어느 통을 볼지 — 고객사 / 우리 것"
           className="fstock-owner-switch"
         />
       </div>
@@ -436,10 +442,12 @@ export default function FreeStockPage({ company }) {
                             {/* 여기는 «배정하지 않은» 실물만 적는다 — 호기에 들어가야 할 부족분은
                                 「부족 집계」 탭에서 본다 (2026-09-14 대표님 「재고에는 배정안된
                                 실제 수량만 표시」) */}
-                            {/* 고객사 것과 우리 것은 «따로» — 한 숫자로 합치면 어느 쪽 물건인지 안 보인다
-                                (2026-09-15 대표님 「고객사 우리것이 수량이 공유가안되어야하는데」) */}
-                            <b className={r.theirs < 0 ? 'is-minus' : undefined}>{won(r.theirs)}</b>
-                            {r.ours > 0 && <em className="fstock-ours">우리 {won(r.ours)}</em>}
+                            {/* 본 칸 = 고른 통, 아래 작은 글자 = 반대 통. 셈은 통마다 따로
+                                (2026-09-15 대표님 「수량은 본 칸에 입력하고 아래글자를 반대통 수량」) */}
+                            <b>{won(r.main)}</b>
+                            <em className="fstock-ours">
+                              {inOurs ? '고객사' : '우리'} {won(r.other)}
+                            </em>
                             {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
                           {/* 남음이 0 이어도 눌러진다 — 실물을 세어 맞출 때는 0 인 줄이 오히려
@@ -448,7 +456,7 @@ export default function FreeStockPage({ company }) {
                           <button
                             type="button"
                             className="btn btn-sm btn-outline"
-                            onClick={() => setFixing({ row: r, theirs: String(r.theirs), ours: String(r.ours) })}
+                            onClick={() => setFixing({ row: r, to: String(r.main) })}
                             title="실제 개수로 수정"
                           >
                             수정
@@ -553,26 +561,17 @@ export default function FreeStockPage({ company }) {
         <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 수정">
           <form onSubmit={onFix}>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              <strong>{fixing.row.name || fixing.row.code}</strong> · 지금 고객사 {won(fixing.row.theirs)} · 우리 것{' '}
-              {won(fixing.row.ours)}
+              <strong>{fixing.row.name || fixing.row.code}</strong> · {inOurs ? '우리 것' : '고객사'} 지금{' '}
+              {won(fixing.row.main)} (반대 통 {won(fixing.row.other)})
             </p>
             <div className="form-group">
-              <label>고객사 것 (실제 수량)</label>
+              <label>{inOurs ? '우리 것' : '고객사'} 실제 수량</label>
               <input
                 autoFocus
-                value={fixing.theirs}
-                onChange={(e) => setFixing((s) => ({ ...s, theirs: e.target.value.replace(/[^0-9]/g, '') }))}
+                value={fixing.to}
+                onChange={(e) => setFixing((s) => ({ ...s, to: e.target.value.replace(/[^0-9]/g, '') }))}
                 inputMode="numeric"
-                aria-label="고객사 것 실제 수량"
-              />
-            </div>
-            <div className="form-group">
-              <label>우리 것 (실제 수량)</label>
-              <input
-                value={fixing.ours}
-                onChange={(e) => setFixing((s) => ({ ...s, ours: e.target.value.replace(/[^0-9]/g, '') }))}
-                inputMode="numeric"
-                aria-label="우리 것 실제 수량"
+                aria-label="실제 수량"
               />
             </div>
             <div className="modal-actions">
