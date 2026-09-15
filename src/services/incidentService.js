@@ -24,12 +24,13 @@ export async function shiftHole(panelId, box, rowId, delta, by = '') {
   // (2026-09-15 대표님 「아직 호기에 배정을 안했는데 어떻게 차용이 가능하지?」)
   if (d < 0 && before < -d) throw new Error(`그 호기 줄에는 ${before}개뿐이라 ${-d}개를 빌려 올 수 없습니다`);
   const after = Math.max(0, before + d);
-  if (after === before) return;
+  if (after === before) return 0;
   await setReceived(panelId, box, rowId, after, by);
   if (d < 0) {
     const kept = Math.max(0, Number(rec.fromStock) || 0);
     if (kept > 0) await addFromStock(panelId, box, rowId, -Math.min(kept, before - after), kept);
   }
+  return after - before; // 실제로 움직인 양 (빌려 갔으면 음수)
 }
 
 async function writeIncidents(panelId, box, rowId, incidents) {
@@ -50,8 +51,10 @@ async function writeIncidents(panelId, box, rowId, incidents) {
 export async function addIncident(panel, box, row, { reason, n = 1, from = '', by = '', note = '' } = {}) {
   if (!panel?.id || !box || !row?.id) throw new Error('호기·BOX·품목이 필요합니다');
   const inc = newIncident({ reason, n, from, by, note });
-  // 빈자리부터 뺀다 — 못 빼면(그 호기에 부품이 없음) 사건도 안 적는다
-  await shiftHole(from || panel.id, box, row.id, -inc.n, by);
+  // 빈자리부터 뺀다 — 못 빼면(그 호기에 부품이 없음) 사건도 안 적는다.
+  // 실제로 뺀 양(took)을 적어 두어, 되돌림·수리 입고가 «그만큼만» 움직이게 한다
+  // (2026-09-15 대표님 「배정 안한 상태에서 차용했다가 입고됨 체크를 하면 없는 수량이 늘어나게되는거아님?」)
+  inc.took = -(await shiftHole(from || panel.id, box, row.id, -inc.n, by));
   const mats = await getPanelMaterials(panel.id);
   const cur = mats?.[box]?.[row.id] || {};
   await writeIncidents(panel.id, box, row.id, [...(cur.incidents || []), inc]);
@@ -73,18 +76,19 @@ export async function updateIncident(panelId, box, rowId, incidentId, patch, { b
     from: patch.from ?? old.from ?? '',
     note: String(patch.note ?? old.note ?? '').trim(),
   };
+  const oldHole = old.from || panelId;
+  const newHole = next.from || panelId;
+  if (oldHole !== newHole || old.n !== next.n) {
+    const tookBefore = Number(old.took ?? 0) || 0; // 옛 기록(took 없음)은 실제로 뺀 적이 없는 것으로
+    if (tookBefore > 0) await shiftHole(oldHole, box, rowId, +tookBefore, by);
+    next.took = -(await shiftHole(newHole, box, rowId, -next.n, by));
+  }
   await writeIncidents(
     panelId,
     box,
     rowId,
     list.map((x) => (x.id === incidentId ? next : x)),
   );
-  const oldHole = old.from || panelId;
-  const newHole = next.from || panelId;
-  if (oldHole !== newHole || old.n !== next.n) {
-    await shiftHole(oldHole, box, rowId, +old.n, by);
-    await shiftHole(newHole, box, rowId, -next.n, by);
-  }
   return next;
 }
 
@@ -112,7 +116,8 @@ export async function removeIncident(panelId, box, rowId, incidentId, { by = '',
     rowId,
     list.filter((x) => x.id !== incidentId),
   );
-  if (isOpen(inc)) await shiftHole(inc.from || panelId, box, rowId, +inc.n, by);
+  const took = Number(inc.took ?? 0) || 0; // 옛 기록(took 없음)은 실제로 뺀 적이 없는 것으로
+  if (isOpen(inc) && took > 0) await shiftHole(inc.from || panelId, box, rowId, +took, by);
   return inc;
 }
 
@@ -132,8 +137,11 @@ export async function closeIncident(panelId, box, rowId, incidentId, { by = '', 
     rowId,
     list.map((x) => (x.id === incidentId ? done : x)),
   );
-  if (inc.reason === '파손' && stock?.kind && stock?.company && stock?.itemId) {
-    await returnStock(stock.kind, stock.company, stock.itemId, inc.n, { by, note: '수리 입고' });
+  // 통에는 «실제로 호기에서 나갔던 만큼만» — 배정 전 호기에서 빌린 것으로 적힌 옛 기록(took 없음)은
+  // 실물이 통에서 나간 적이 없으니 더하지 않는다 (2026-09-15 대표님)
+  const back = Number(inc.took ?? 0) || 0;
+  if (inc.reason === '파손' && back > 0 && stock?.kind && stock?.company && stock?.itemId) {
+    await returnStock(stock.kind, stock.company, stock.itemId, back, { by, note: '수리 입고' });
   }
-  return done;
+  return { ...done, restocked: inc.reason === '파손' ? back : 0 };
 }

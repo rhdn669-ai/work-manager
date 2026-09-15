@@ -169,11 +169,18 @@ export default function IncidentsPage({ company = '' }) {
       : `${itemName(row)} 재구매분이 들어왔습니까? 이 사건을 닫습니다 (통은 발주 입고가 이미 올렸습니다).`;
     if (!(await confirm(msg))) return;
     try {
-      await closeIncident(x.panelId, x.box, x.rowId, x.inc.id, {
+      const r = await closeIncident(x.panelId, x.box, x.rowId, x.inc.id, {
         by: me,
         stock: 파손 && row?.itemId ? { kind: stockKindOf(row), company, itemId: row.itemId } : null,
       });
-      toast(파손 ? '수리 입고로 닫았습니다 — 재고 통에 더했습니다' : '입고됨으로 닫았습니다', 'success');
+      toast(
+        파손
+          ? r?.restocked > 0
+            ? `수리 입고로 닫았습니다 — 재고 통에 ${r.restocked}개 더했습니다`
+            : '수리 입고로 닫았습니다 — 실제로 나간 부품이 없어 통은 그대로입니다'
+          : '입고됨으로 닫았습니다',
+        'success',
+      );
     } catch (err) {
       console.error(err);
       toast('닫지 못했습니다', 'error');
@@ -235,7 +242,9 @@ export default function IncidentsPage({ company = '' }) {
         <div className="table-scroll-x no-print" ref={scrollRef}>
           <table className="table pmat-table inc-table">
             <colgroup>
-              {['44px', '84px', '13%', '9%', '12%', null, '7%', '6%', '11%', '10%', '14%', '190px'].map((w, i) => (
+              {/* 작업 열은 버튼 셋(입고·수정·삭제)이 늘 한 줄 — 두 줄로 늘어나지 않게 폭을 고정한다
+                  (2026-09-15 대표님 「쓸데없이 2열로 늘어나는거 나 정말 싫어하는데」) */}
+              {['44px', '92px', '11%', '8%', '11%', null, '6%', '5%', '10%', '9%', '11%', '232px'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>

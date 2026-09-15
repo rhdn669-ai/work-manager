@@ -129,7 +129,8 @@ export async function restoreTrashItem(trashId) {
         { panelId, box, items: { [rowId]: { incidents: [...list, inc] } }, updatedAt: new Date() },
         { merge: true },
       );
-      if ((inc.status || 'open') === 'open') await shiftHole(inc.from || panelId, box, rowId, -inc.n);
+      const took = Number(inc.took ?? 0) || 0;
+      if ((inc.status || 'open') === 'open' && took > 0) await shiftHole(inc.from || panelId, box, rowId, -took);
     }
   } else if (t.collection) {
     // 범용(trashGeneric) 복원 — 원래 컬렉션에 원래 id로 되살림

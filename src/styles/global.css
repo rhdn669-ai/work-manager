@@ -24239,7 +24239,15 @@ body.has-editlock .main-content.expanded {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* 버튼 셋은 늘 한 줄 — 열 폭(232px)이 보장한다 */
+}
+.inc-table {
+  table-layout: fixed;
+}
+.inc-table .inc-actions .btn {
+  padding: 0 10px;
+  min-width: 0;
+  white-space: nowrap;
 }
 /* 분실·파손 등록 창 — 사유·수량 나란히 */
 .inc-form-row {
