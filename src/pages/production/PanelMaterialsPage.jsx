@@ -1117,11 +1117,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {needsMate(logForm.kind, logForm.why) && (
               <div className="form-group">
                 <label>
-                  {logForm.kind === 'out'
-                    ? '어느 호기에 줬나요'
-                    : logForm.kind === 'in'
-                      ? '어느 호기에서 받았나요'
-                      : '어느 호기가 가져갔나요'}
+                  {logForm.kind === 'in' ? '어느 호기에서 가져왔나요' : '어느 호기가 가져갔나요'}
                   <span className="pmat-opt"> (고르지 않아도 됩니다)</span>
                 </label>
                 <Select
