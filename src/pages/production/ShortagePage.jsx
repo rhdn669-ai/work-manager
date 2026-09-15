@@ -18,6 +18,7 @@ import { subscribePaidStock } from '../../services/paidStockService';
 import { subscribeFreeStock } from '../../services/freeStockService';
 import { specFontClass, localStamp } from '../../utils/printText';
 import { useArrived } from '../../utils/useArrived';
+import { ledgerOn } from '../../domain/stockLedger';
 
 // 부족 집계 — «지금 체크하고 있는» 호기가 앞으로 더 넣어야 할 양
 // (2026-09-14 대표님 「부족집계를 살려서 현재 체크 진행중인 호기의 배정된 부족수량을 표시하고
@@ -215,6 +216,8 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
   const stockOf = (itemId) => {
     if (!itemId) return null;
     if (kindKey === 'free') return Number(freeStock[itemId]?.qty) || 0;
+    // 통이 실값이면(굳힌 뒤) 통 값 그대로 (2026-09-15 설계)
+    if (ledgerOn(settings, company, kindKey)) return Number(paidManual[itemId]?.qty) || 0;
     return (
       (Number(receivedByItem[itemId]) || 0) - (Number(goneByItem[itemId]) || 0) + (Number(paidManual[itemId]?.qty) || 0)
     );

@@ -17,6 +17,8 @@ import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
 import { outTally, tallyOut, outSetsOf, outSetsLabel } from '../../domain/outSets';
 import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../services/paidStockService';
+import { setStockTo } from '../../services/stockService';
+import { ledgerOn } from '../../domain/stockLedger';
 
 // 도급 재고 — 「우리가 사서 들어온 것 중 아직 어느 호기에도 안 간 양」.
 //
@@ -202,15 +204,19 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     }
 
     // 품목마다의 재고·가능 SET — BOX 와 무관하게 하나다
+    // 통이 실값이면(굳힌 뒤) 남음 = 통 값. 아니면 예전 셈 — 발주 입고 + 손조정 − 나감.
+    // (2026-09-15 설계 「재고를 통 실값 하나로」; 대표님 「도급재고 전체 0개로 해줘 실수량 다시 세어보고 넣게」
+    //  — 굳히기 대신 0 에서 새로 시작한다)
+    const ledger = ledgerOn(settings, company, kind);
     const stockOfItem = new Map();
     for (const it of info.values()) {
-      const fromPo = projectId || siteId ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
-      const out0 = Math.max(0, goneAll.get(it.itemId) || 0);
+      const fromPo = !ledger && (projectId || siteId) ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
+      const out0 = ledger ? 0 : Math.max(0, goneAll.get(it.itemId) || 0);
       const base = fromPo - out0;
       const adjust = Number(manual[it.itemId]?.qty) || 0;
       // 0 에서 자르지 않는다 — 들어온 것보다 많이 나갔으면 그 «모자란 만큼»이 진짜 숫자다.
       // 0 으로 올려 두면 「없는데 있다」로 읽혀 발주할 양을 못 잡는다
-      // (2026-09-14 대표님 「도급 음수는?」).
+      // (2026-09-14 대표님 「도급 음수는?」). 통이 실값이면 base 가 0 이라 left = 통 값.
       const left = base + adjust;
       const one = perOneAll.get(it.itemId) || 0;
       stockOfItem.set(it.itemId, {
@@ -264,7 +270,22 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
     return { groups: out, allRows: [...stockOfItem.values()] };
-  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view, kind]);
+  }, [
+    all,
+    mine,
+    bomByProject,
+    materials,
+    masterMap,
+    received,
+    manual,
+    projectId,
+    siteId,
+    q,
+    view,
+    kind,
+    settings,
+    company,
+  ]);
 
   // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
   async function commitDraft(r) {
@@ -296,7 +317,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     if (t === row.left) return setFixing(null);
     if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.left)} → ${won(t)} 으로 수정할까요?`))) return;
     try {
-      await setPaidStockTo(company, row, t, { base: row.base, by: me });
+      // 통이 실값이면 그 값으로 바로, 아니면 조정치를 셈해서 (굳히기 전)
+      if (ledgerOn(settings, company, kind))
+        await setStockTo(kind, company, row, t, { by: me, reason: '실물 세어 맞춤' });
+      else await setPaidStockTo(company, row, t, { base: row.base, by: me });
       setFixing(null);
       toast('재고를 수정했습니다', 'success');
     } catch (err) {
@@ -523,8 +547,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       {logOf && (
         <Modal isOpen onClose={() => setLogOf(null)} title={`${logOf.name || logOf.code} 기록`} size="lg">
           <p className="field-hint">
-            지금 남음 <b>{won(logOf.left)}</b> · 발주서 입고 {won(logOf.gotIn)} − 호기로 나감 {won(logOf.out)}
-            {logOf.adjust ? ` · 손으로 적은 몫 ${won(logOf.adjust)}` : ''}
+            지금 남음 <b>{won(logOf.left)}</b>
+            {ledgerOn(settings, company, kind)
+              ? ' · 통에 적힌 실제 값 — 발주 입고는 +, 호기로 나감은 −'
+              : ` · 발주서 입고 ${won(logOf.gotIn)} − 호기로 나감 ${won(logOf.out)}${logOf.adjust ? ` · 손으로 적은 몫 ${won(logOf.adjust)}` : ''}`}
           </p>
           {(logOf.log || []).length === 0 ? (
             <div className="empty-state">
