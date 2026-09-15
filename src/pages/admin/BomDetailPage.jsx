@@ -1326,14 +1326,14 @@ export default function BomDetailPage() {
                         return (
                           <tr key={r}>
                             <td className="c-no">{startNo + r + 1}</td>
-                            {printShowBox && <td className={`c-box ${specFontClass(it.box, 16)}`}>{it.box || ''}</td>}
-                            <td className={`c-name ${specFontClass(it.name, 13)}`}>{it.name || ''}</td>
+                            {printShowBox && <td className={`c-box ${specFontClass(it.box, 10)}`}>{it.box || ''}</td>}
+                            <td className={`c-name ${specFontClass(it.name, 11)}`}>{it.name || ''}</td>
                             {printShowDrawing && (
-                              <td className={`c-drawing ${specFontClass(it.drawingNo, 12)}`}>{it.drawingNo || ''}</td>
+                              <td className={`c-drawing ${specFontClass(it.drawingNo, 10)}`}>{it.drawingNo || ''}</td>
                             )}
                             <td className="c-qty">{Number(it.qty) ? Number(it.qty).toLocaleString() : ''}</td>
-                            <td className={`c-maker ${specFontClass(it.maker, 12)}`}>{it.maker || ''}</td>
-                            <td className={`c-spec ${specFontClass(it.spec, 36)}`}>{it.spec || ''}</td>
+                            <td className={`c-maker ${specFontClass(it.maker, 8)}`}>{it.maker || ''}</td>
+                            <td className={`c-spec ${specFontClass(it.spec, 26)}`}>{it.spec || ''}</td>
                             {showAmount &&
                               (isFreeIssue(it) ? (
                                 /* 사급은 고객사가 대준다 — 숫자 대신 이유를 적는다 (2026-09-02 대표님) */
