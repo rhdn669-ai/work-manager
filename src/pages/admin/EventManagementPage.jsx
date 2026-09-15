@@ -145,7 +145,7 @@ export default function EventManagementPage() {
       setShowModal(false);
       await loadData();
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
   }
 

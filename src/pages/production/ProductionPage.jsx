@@ -235,10 +235,10 @@ export default function ProductionPage() {
 
   async function handleRemove(e, p) {
     e.stopPropagation();
-    const name = `${p.프로젝트 || '이 판넬'}${p.호기 ? ` · ${p.호기}` : ''}`;
+    const name = `${p.프로젝트 || '이 호기'}${p.호기 ? ` · ${p.호기}` : ''}`;
     if (
       !(await confirm({
-        title: '판넬 삭제',
+        title: '호기 삭제',
         message: `"${name}"을(를) 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
       }))
     )
@@ -256,14 +256,14 @@ export default function ProductionPage() {
     });
   }
 
-  // 모바일 카드에서 고른 판넬을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 카드별 삭제 버튼 폐지)
+  // 모바일 카드에서 고른 호기을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 카드별 삭제 버튼 폐지)
   async function deletePickedMobile() {
     const targets = filtered.filter((p) => pick.has(p.id));
     if (targets.length === 0) return;
     if (
       !(await confirm({
-        title: '판넬 삭제',
-        message: `고른 판넬 ${targets.length}대를 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
+        title: '호기 삭제',
+        message: `고른 호기 ${targets.length}대를 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
       }))
     )
       return;
@@ -444,7 +444,7 @@ export default function ProductionPage() {
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleAdd}>
                 <Icon name="plus" className="btn-ic" />
-                판넬 추가
+                호기 추가
               </button>
             </>
           )}
@@ -513,7 +513,7 @@ export default function ProductionPage() {
           ) : filtered.length === 0 ? (
             <div className="empty">
               <Icon name="list" style={{ width: 40, height: 40 }} />
-              <div>표시할 판넬이 없습니다</div>
+              <div>표시할 호기가 없습니다</div>
             </div>
           ) : (
             <>

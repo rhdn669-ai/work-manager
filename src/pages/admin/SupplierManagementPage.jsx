@@ -148,7 +148,7 @@ export default function SupplierManagementPage() {
       }
     } catch {
       setPdfStatus('');
-      toast('PDF 처리 중 오류가 발생했습니다', 'error');
+      toast('PDF 처리 중 오류가 발생했습니다', 'error', 0);
     } finally {
       setPdfBusy(false);
     }

@@ -101,7 +101,7 @@ export default function StockPage() {
     try {
       await setItemStock(it.id, { from, to, byName: userProfile?.name || '' });
     } catch {
-      toast('재고 저장 중 오류가 발생했습니다', 'error');
+      toast('재고 저장 중 오류가 발생했습니다', 'error', 0);
     } finally {
       setSaving('');
     }

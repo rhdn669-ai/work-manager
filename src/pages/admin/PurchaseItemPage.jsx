@@ -582,7 +582,7 @@ export default function PurchaseItemPage() {
         await updatePurchaseItem(id, data);
       }
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
   }
 

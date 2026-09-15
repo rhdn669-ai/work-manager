@@ -490,7 +490,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                           으로 (2026-09-15 대표님 「9set 으로 가야겠지 부족이니까」). 개수는 툴팁에. */}
                       <td
                         className="col-num"
-                        title={`${won(r.out)}개 · 다 채운 ${r.outSets.full}대 · 부족 ${r.outSets.short}대`}
+                        title={`${won(r.out)}개 · 다 채운 ${r.outSets.full}대 · 부족 ${won(r.outSets.short)}개`}
                       >
                         {outSetsLabel(r.outSets)}
                       </td>
@@ -600,6 +600,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                     <th scope="col" className="col-num">
                       개수
                     </th>
+                    <th scope="col">메모</th>
                     <th scope="col">적은 사람</th>
                   </tr>
                 </thead>
@@ -610,7 +611,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                       <tr key={`${l.at}-${i}`}>
                         <td>{fmtWhen(l.at)}</td>
                         <td>{logLabel(l)}</td>
-                        <td className="col-num">{l.kind === 'fix' ? `${won(l.to)} 으로` : won(l.n)}</td>
+                        <td className="col-num">
+                          {l.kind === 'fix' ? `${won(l.from)} → ${won(l.n ?? l.to)}` : won(l.n)}
+                        </td>
+                        <td className="u-wrap">{l.note || ''}</td>
                         <td>{l.by || ''}</td>
                       </tr>
                     ))}

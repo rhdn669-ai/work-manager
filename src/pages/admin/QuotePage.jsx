@@ -58,7 +58,7 @@ export default function QuotePage() {
       setSettingsOpen(false);
       toast('견적서·발주서·BOM 양식에 공통 반영되었습니다.');
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     } finally {
       setSavingSettings(false);
     }

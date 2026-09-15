@@ -640,7 +640,7 @@ export default function BomDetailPage() {
       const { id: _, createdAt: __, updatedAt: ___, ...data } = item;
       await updateBomItem(id, data);
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
   }
 

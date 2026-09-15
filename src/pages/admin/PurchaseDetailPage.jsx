@@ -2025,7 +2025,7 @@ export default function PurchaseDetailPage() {
           setPrintAccountMode(false);
         }
         if (attachments.length === 0) {
-          toast('발주서 PDF 생성에 실패했습니다. (배포 환경에서만 동작)', 'error');
+          toast('발주서 PDF 생성에 실패했습니다. (배포 환경에서만 동작)', 'error', 0);
           clearPct();
           return;
         }
@@ -2090,7 +2090,7 @@ export default function PurchaseDetailPage() {
           '메일 발송',
         );
         setPct(100);
-        toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`);
+        toast(`"${supplierName}" 발주서(PDF 첨부)를 발송했습니다.`, 'success', 0);
         // 발송 이력에도 남긴다. 지금까지는 발주서 안에만 「발송 완료」 표시가 있어
         // 「이 업체에 언제 뭘 보냈더라」를 메일 발송 화면에서 볼 수 없었다
         // (2026-09-01 대표님). 실패해도 메일은 이미 나갔으니 삼킨다.

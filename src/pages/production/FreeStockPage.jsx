@@ -268,7 +268,7 @@ export default function FreeStockPage({ company }) {
         by: me,
         ours: inOurs,
       });
-      toast(`${r.name || r.code} ${n}개 ${inOurs ? '당사 것으로 ' : ''}받았습니다`, 'success', 2000);
+      toast(`${r.name || r.code} ${n}개 ${inOurs ? '당사 것으로 ' : ''}받았습니다`, 'success');
     } catch (err) {
       console.error(err);
       toast('저장에 실패했습니다', 'error');

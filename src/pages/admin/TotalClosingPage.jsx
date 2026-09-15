@@ -87,7 +87,7 @@ export default function TotalClosingPage() {
       await saveFixedExpenses(year, month, next);
     } catch (err) {
       console.error(err);
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     } finally {
       setFixedSaving(false);
     }

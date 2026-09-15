@@ -258,8 +258,8 @@ export default function ProductionMatrix({
     if (picked.length === 0 || removing) return;
     if (
       !(await confirm({
-        title: '판넬 삭제',
-        message: `고른 판넬 ${picked.length}대를 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
+        title: '호기 삭제',
+        message: `고른 호기 ${picked.length}대를 삭제할까요?\n삭제해도 휴지통에서 복원할 수 있습니다.`,
       }))
     )
       return;
@@ -267,7 +267,7 @@ export default function ProductionMatrix({
     try {
       for (const p of picked) await trashPanel(p, checkerName);
       setSel(new Set());
-      toast(`판넬 ${picked.length}대를 휴지통으로 보냈습니다`);
+      toast(`호기 ${picked.length}대를 휴지통으로 보냈습니다`);
     } catch (err) {
       console.error(err);
       toast('삭제 중 오류가 발생했습니다', 'error', 0);
@@ -544,7 +544,7 @@ export default function ProductionMatrix({
       const n = updates.length + creates.length;
       toast(
         `${isDateField(field) ? field : field} ${n}개 행에 붙여넣었습니다` +
-          (creates.length ? ` (판넬 ${creates.length}대 추가)` : ''),
+          (creates.length ? ` (호기 ${creates.length}대 추가)` : ''),
       );
     } catch (err) {
       console.error(err);
@@ -868,7 +868,7 @@ const MatrixRow = memo(function MatrixRow({
                   className="sel-check"
                   checked={checked}
                   onChange={() => api.toggleCheck(p.id)}
-                  aria-label={`${p.프로젝트 || '이 판넬'} 고르기`}
+                  aria-label={`${p.프로젝트 || '이 호기'} 고르기`}
                 />
               )}
               {idx + 1}

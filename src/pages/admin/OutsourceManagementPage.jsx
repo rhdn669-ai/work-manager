@@ -311,7 +311,7 @@ export default function OutsourceManagementPage() {
       }
     } catch {
       setPdfStatus('');
-      toast('PDF 처리 중 오류가 발생했습니다', 'error');
+      toast('PDF 처리 중 오류가 발생했습니다', 'error', 0);
     } finally {
       setPdfBusy(false);
     }
@@ -344,7 +344,7 @@ export default function OutsourceManagementPage() {
       setPdfFiles([]);
       await loadAll();
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
       setSubmitting(false);
       return;
     }

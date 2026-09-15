@@ -231,7 +231,7 @@ export default function MailSendPage() {
         );
       }
     } catch (err) {
-      toast('발송 오류: ' + (err.message || err), 'error');
+      toast('발송 오류: ' + (err.message || err), 'error', 0);
     } finally {
       setSending(false);
       setProgress(null);

@@ -204,7 +204,7 @@ export default function QuoteFormPage() {
         setQuote(updated);
         setIsEditing(false);
         setPick(new Set());
-        toast('저장되었습니다.');
+        toast('저장되었습니다.', 'success', 0);
       }
     } catch {
       toast('처리 중 오류가 발생했습니다', 'error');

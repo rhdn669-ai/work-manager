@@ -520,7 +520,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       if (n === before) return;
       undoable(n > 0 ? `${r.name} ${n}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, before, n));
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
   };
 
@@ -575,7 +575,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       if (applied === was) return;
       undoable(`${r.name} ${applied}개`, restoreOne(r, was, applied));
     } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
+      toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
   };
   // 이 호기에서만 줄을 일시 제외/복귀 — 기본 BOM 은 그대로 (세트 배정 호기의 도급 탭에서)
@@ -638,7 +638,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   if (!panel)
     return (
       <div className="page">
-        <p className="text-muted">판넬을 찾을 수 없습니다.</p>
+        <p className="text-muted">호기를 찾을 수 없습니다.</p>
         {/* (2026-09-05 뒤로가기 표준) */}
         <button type="button" className="btn btn-sm btn-outline" onClick={back}>
           <Icon name="chevronLeft" className="btn-ic" />
