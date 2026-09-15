@@ -841,8 +841,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '13%', '13%', null, '6%', '6%', '4.5%', '7%', hasMeta ? '10%' : null, '7%', '11%']
-                .filter((_, i) => hasMeta || i !== 9)
+              {['44px', '14%', '14%', null, '6.5%', '6.5%', '13%', hasMeta ? '10%' : null, '8%', '11%']
+                .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
                 ))}
@@ -861,12 +861,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col" className="pmat-num">
                   입고 수량
                 </th>
-                <th scope="col" className="pmat-num">
-                  부족
-                </th>
-                <th scope="col" className="pmat-ok">
-                  입고
-                </th>
+                <th scope="col">상태</th>
                 {hasMeta && <th scope="col">기록</th>}
                 <th scope="col">비고</th>
                 {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상. 작업 열이라 맨 오른쪽·좁게
@@ -914,7 +909,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           —
                         </span>
                       ) : locked ? (
-                        <span className="pmat-locked-qty" title="고치려면 오른쪽 아래 「잠금」을 푸세요">
+                        <span
+                          className={`pmat-locked-qty pmat-got${
+                            skipped
+                              ? ' is-skip'
+                              : rec[r.id]?.fromOurs > 0
+                                ? ' is-ours'
+                                : got >= (Number(r.qty) || 0)
+                                  ? ' is-full'
+                                  : got > 0
+                                    ? ' is-partial'
+                                    : ''
+                          }`}
+                          title={
+                            (skipped ? '이 호기에서 제외' : `${got || 0} / ${Number(r.qty) || 0}`) +
+                            (rec[r.id]?.fromOurs > 0 ? ` · 당사가 댄 몫 ${rec[r.id].fromOurs}개` : '') +
+                            (meta?.at ? ` · ${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : '')
+                          }
+                        >
                           {got || 0}
                         </span>
                       ) : typing === r.id ? (
@@ -955,13 +967,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         </button>
                       )}
                     </td>
-                    <td className={`pmat-num${short > 0 ? ' is-short' : ''}`}>
-                      {short > 0 ? short : ''}
-                      {/* 통에 얼마 남았는지 늘 보인다 — 통을 거칠지 말지 여기서 바로 판단된다
-                          (2026-09-11 대표님). 전에는 부족할 때 뜨는 버튼으로만 짐작했다 */}
-                      {/* 도급에도 보여 준다 — 통에 얼마 있는지 알아야 가져올지 정한다 (2026-09-12) */}
-                      {/* 통이 실값인 갈래는 0 이어도 보인다 — 빨간 0 은 「이 줄은 지금 못 채운다」
-                          (2026-09-15 설계, 대표님 「통에 없으면 안채워짐으로 가자 전부」) */}
+                    {/* 「부족」 열도 없앴다 — 필요·입고 수량에서 바로 읽히고, 모자란 줄은 입고 수량이
+                        주황·회색으로 보인다 (2026-09-15 대표님 「둘다」). 재고는 상태 칸으로 옮겼다 */}
+                    <td className="pmat-state">
                       {(ledger(r) || stockOf(r) > 0) &&
                         (stockKindOf(r) === 'free' ? (
                           // 사급은 고객사 통·우리 통을 따로 (2026-09-15 대표님 「우리것과 고객사 사급재고표시를 따로」)
@@ -977,22 +985,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         ) : (
                           <span className={`pmat-instock${stockOf(r) <= 0 ? ' is-empty' : ''}`}>재고 {stockOf(r)}</span>
                         ))}
-                    </td>
-                    {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
-                    <td className="pmat-ok">
-                      {outScope ? (
-                        <span className="recv-chip is-skip" title="BOM 에서 「정방향 제외」로 표시한 자재">
-                          정방향 제외
-                        </span>
-                      ) : (
-                        <ReceiptChip
-                          got={got}
-                          need={Number(r.qty) || 0}
-                          skip={skipped}
-                          ours={rec[r.id]?.fromOurs}
-                          title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                        />
-                      )}
                       {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
                           자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
                       {(() => {
