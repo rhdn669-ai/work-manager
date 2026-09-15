@@ -24341,14 +24341,15 @@ body.has-editlock .main-content.expanded {
   padding-left: 8px;
   padding-right: 8px;
 }
-/* 상태 칸 안의 각 줄은 두 줄까지만 — 길면 말줄임, 전체는 손을 올려 툴팁으로
-   (2026-09-15 대표님 「상태 내용 2열까지만 허용」) */
+/* 상태 칸 안의 각 줄은 «한 줄»씩 — 재고 한 줄 + 이력 한 줄이면 칸은 두 줄이다.
+   길면 말줄임하고 전체는 손을 올려 툴팁으로 (2026-09-16 대표님 「상태 3열x」) */
 .pmat-table td.pmat-state .pmat-instock,
 .pmat-table td.pmat-state .pmat-incident {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  white-space: normal;
 }
 /* 「고객사 0 · 당사 0」은 좁으면 두 줄로 — 자르지 않는다 (2026-09-15 태블릿) */
 .pmat-table td.pmat-state .pmat-instock,

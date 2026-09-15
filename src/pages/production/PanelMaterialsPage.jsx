@@ -784,7 +784,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '15%', '15%', null, '6.5%', '6.5%', '9%', hasMeta ? '9%' : null, '8%', '124px']
+              {['44px', '11%', '13%', null, '6.5%', '6.5%', '10%', hasMeta ? '10%' : null, '8%', '124px']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -917,7 +917,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     {/* 「부족」 열도 없앴다 — 필요·입고 수량에서 바로 읽히고, 모자란 줄은 입고 수량이
                         주황·회색으로 보인다 (2026-09-15 대표님 「둘다」). 재고는 상태 칸으로 옮겼다 */}
                     <td className="pmat-state">
-                      {(ledger(r) || stockOf(r) > 0) &&
+                      {got < (Number(r.qty) || 0) &&
+                        (ledger(r) || stockOf(r) > 0) &&
                         (stockKindOf(r) === 'free' ? (
                           // 사급은 고객사 통·우리 통을 따로 (2026-09-15 대표님 「우리것과 고객사 사급재고표시를 따로」)
                           (() => {
