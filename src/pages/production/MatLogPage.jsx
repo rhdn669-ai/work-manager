@@ -57,6 +57,7 @@ export default function MatLogPage({ company = '' }) {
   const itemOf = (row) => (row?.itemId ? masterMap[row.itemId] : null);
   const itemName = (row) => itemOf(row)?.name || row?.name || row?.code || '(품목)';
   const itemDrawing = (row) => itemOf(row)?.drawingNo || row?.drawingNo || '';
+  const itemSpec = (row) => itemOf(row)?.spec || row?.spec || '';
 
   const list = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -65,7 +66,15 @@ export default function MatLogPage({ company = '' }) {
       .filter((x) => {
         if (!kw) return true;
         const row = rowOf(panelById[x.panelId], x.box, x.rowId);
-        return [nameOf(panelById[x.panelId]), x.box, itemDrawing(row), itemName(row), x.log.why, x.log.note].some((v) =>
+        return [
+          nameOf(panelById[x.panelId]),
+          x.box,
+          itemDrawing(row),
+          itemName(row),
+          itemSpec(row),
+          x.log.why,
+          x.log.note,
+        ].some((v) =>
           String(v || '')
             .toLowerCase()
             .includes(kw),
@@ -128,7 +137,7 @@ export default function MatLogPage({ company = '' }) {
         <div className="table-scroll-x no-print" ref={scrollRef}>
           <table className="table pmat-table inc-table">
             <colgroup>
-              {['44px', '92px', '13%', '9%', '12%', null, '7%', '16%', '13%', '96px'].map((w, i) => (
+              {['44px', '88px', '12%', '8%', '11%', '15%', null, '6%', '14%', '11%', '88px'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -142,6 +151,7 @@ export default function MatLogPage({ company = '' }) {
                 <th scope="col">BOX</th>
                 <th scope="col">도번</th>
                 <th scope="col">품명</th>
+                <th scope="col">규격</th>
                 <th scope="col">구분</th>
                 <th scope="col">내용</th>
                 <th scope="col">비고</th>
@@ -168,6 +178,9 @@ export default function MatLogPage({ company = '' }) {
                     <td>{x.box}</td>
                     <td className="pmat-drawing">{itemDrawing(row)}</td>
                     <td className="u-wrap">{itemName(row)}</td>
+                    <td className="pmat-spec u-wrap" title={itemSpec(row)}>
+                      {itemSpec(row)}
+                    </td>
                     <td>
                       <span className={`status-badge ${cls}`}>{KIND_LABEL[x.log.kind] || x.log.kind}</span>
                     </td>
