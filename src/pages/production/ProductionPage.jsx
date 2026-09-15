@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { getBomProjects, getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { getBomProjects, getBomBySite } from '../../services/bomService';
+import { rowsForPanel } from '../../domain/panelBom';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import Icon from '../../components/common/Icon';
@@ -333,7 +334,7 @@ export default function ProductionPage() {
     for (const p of companyPanels) {
       const pid = p.bomLink?.projectId;
       if (!pid || p.출고완료 || p.강제종결) continue;
-      const rows = bomItemsForVariant(bomRowsByProject[pid] || [], p.bomLink.variantKey || '');
+      const rows = rowsForPanel(bomRowsByProject[pid] || [], p);
       const s = panelShortageBySupply(rows, materials[p.id] || {});
       // 배정 안 한 호기의 도급은 「미배정」으로 센다 — 부족이 아니다
       const paidShort = p.paidSet ? s.paid.short : 0;

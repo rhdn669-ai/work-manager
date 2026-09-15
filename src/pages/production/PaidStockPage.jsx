@@ -9,9 +9,9 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { getBomBySite } from '../../services/bomService';
 import { subscribeReceivedFor, subscribePaidSetSettings, enableStockLedger } from '../../services/paidSetService';
-import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink, rowsForPanel } from '../../domain/panelBom';
 import { inKindTab } from '../../domain/itemKind';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
@@ -148,7 +148,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     for (const p of all) {
       const rows0 = bomByProject[p.bomLink.projectId];
       if (!rows0) continue;
-      const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
+      const forVariant = rowsForPanel(rows0, p);
       for (const bx of CHECKABLE_BOXES) {
         const list = bomRowsForBox(forVariant, bx).filter((r) => inKindTab(r, kind));
         if (list.length === 0) continue;
@@ -169,7 +169,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     for (const p of mine) {
       const rows0 = bomByProject[p.bomLink.projectId];
       if (!rows0) continue;
-      const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
+      const forVariant = rowsForPanel(rows0, p);
       const one = new Map();
       const oneBox = new Map(); // box → Map(itemId → 개수)
       for (const bx of CHECKABLE_BOXES) {

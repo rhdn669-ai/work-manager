@@ -564,6 +564,14 @@ export default function BomDetailPage() {
   // 사급 → 도급으로 바꿀 때는 재고도 함께 옮길지 묻는다. BOM 만 바꾸면 사급 통에 남은 양이
   // 갈 곳을 잃고, 도급 쪽은 들어옴이 0 이라 남음이 음수가 된다
   // (2026-09-12 대표님 「bom에서 버튼눌러서 그냥 옮기면안됨?」).
+  // 정방향 호기에는 우리 손을 안 거치는 자재 — 줄에 표시만 해 두면 정방향 호기 화면에 회색으로
+  // 보이고 셈에서 빠진다 (2026-09-15 대표님). 켜고 끄는 것뿐이라 묻지 않는다.
+  function toggleForwardSkip(it) {
+    const next = { skipForward: !it.skipForward };
+    updateField(it.id, next);
+    flushItem(it.id, next);
+  }
+
   async function toggleSupply(it) {
     const nextType = nextKind(it); // 도급 → 사급 → 판금 → 도급 (대표님 「누를 때마다 돌아가게」)
     const apply = () => {
@@ -1707,6 +1715,19 @@ export default function BomDetailPage() {
                                   }
                                 >
                                   {kindLabel(it)}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`bom-scope-btn${it.skipForward ? ' on' : ''}`}
+                                  onClick={() => toggleForwardSkip(it)}
+                                  title={
+                                    it.skipForward
+                                      ? '정방향 호기에는 우리 손을 안 거치는 자재 — 눌러서 되돌리기'
+                                      : '정방향 호기에서 이 자재를 회색(셈 제외)으로 — 눌러서 켜기'
+                                  }
+                                  aria-pressed={!!it.skipForward}
+                                >
+                                  정방향 제외
                                 </button>
                               </td>
                               <td data-label="수량">

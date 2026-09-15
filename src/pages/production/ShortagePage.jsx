@@ -6,11 +6,11 @@ import ViewSwitch from '../../components/common/ViewSwitch';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useDialog } from '../../components/common/useDialog';
 import { subscribePanels } from '../../services/productionService';
-import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { getBomBySite } from '../../services/bomService';
 import { MADE, inKindTab } from '../../domain/itemKind';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
-import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isMatStarted } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isMatStarted, rowsForPanel } from '../../domain/panelBom';
 import { aggregateShortage, receivedQty } from '../../domain/panelMaterials';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
@@ -117,7 +117,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     for (const p of started) {
       const rows0 = bomByProject[p.bomLink.projectId];
       if (!rows0) continue;
-      const s0 = panelShortageBySupply(bomItemsForVariant(rows0, p.bomLink.variantKey || ''), materials[p.id] || {});
+      const s0 = panelShortageBySupply(rowsForPanel(rows0, p), materials[p.id] || {});
       if (DONE_KINDS.every((k) => s0[k].total === 0 || s0[k].short === 0)) out.add(p.id);
     }
     return out;
@@ -130,7 +130,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     for (const p of linked) {
       const all = bomByProject[p.bomLink.projectId];
       if (!all) continue;
-      const forVariant = bomItemsForVariant(all, p.bomLink.variantKey || '');
+      const forVariant = rowsForPanel(all, p);
       const label = hogiOf(p) || p.id;
       for (const box of CHECKABLE_BOXES) {
         const rows = bomRowsForBox(forVariant, box)
@@ -202,7 +202,7 @@ export default function ShortagePage({ embedded = false, company: companyProp = 
     for (const p of withBom) {
       const rows0 = bomByProject[p.bomLink.projectId];
       if (!rows0) continue;
-      const forVariant = bomItemsForVariant(rows0, p.bomLink.variantKey || '');
+      const forVariant = rowsForPanel(rows0, p);
       for (const box of CHECKABLE_BOXES) {
         const rec = (materials[p.id] || {})[box] || {};
         for (const r of bomRowsForBox(forVariant, box)) {

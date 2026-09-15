@@ -57,6 +57,27 @@ export function siblingsForCopy(panels, me) {
 }
 
 /** BOM 줄 가운데 이 판넬의 이 BOX 에 해당하는 것 — 타입은 bomItemsForVariant 가 거른 뒤 */
+// ── 정방향 제외 (2026-09-15 대표님) ──
+// 정방향 호기에는 고객사가 어떤 사급·판금 자재를 우리 손을 거치지 않고 다른 협력사로 직접
+// 보낸다. BOM 줄에 「정방향 제외」(skipForward)를 붙여 두면 정방향 호기(정역 = '정')의 자재
+// 목록에 «회색으로 보이되 셈에는 없는» 줄이 된다 — 완료 판정·부족 집계·나감 SET·재고 통 모두.
+// (「넘기기보다 우리쪽으로 아예 입고가 안될거라」 → 숨기지 않고 회색, 「제외」 버튼은 안 먹음)
+export function isForwardExcluded(row, panel) {
+  return !!row?.skipForward && String(panel?.정역 || '').trim() === '정';
+}
+
+/** 이 호기가 실제로 쓰는 줄 — 타입(형번)에 맞고, 정방향 제외가 아닌 것 */
+export function rowsForPanel(rows, panel) {
+  const key = panel?.bomLink?.variantKey || '';
+  return (rows || []).filter((r) => {
+    if (key) {
+      const ks = Array.isArray(r.variantKeys) ? r.variantKeys : [];
+      if (ks.length > 0 && !ks.includes(key)) return false;
+    }
+    return !isForwardExcluded(r, panel);
+  });
+}
+
 export function bomRowsForBox(rows, box) {
   const b = String(box || '').trim();
   return (rows || []).filter((r) => String(r.box || '').trim() === b);

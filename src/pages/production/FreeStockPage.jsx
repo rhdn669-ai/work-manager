@@ -20,10 +20,10 @@ import { useDialog } from '../../components/common/useDialog';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
-import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
+import { getBomBySite, isFreeIssue } from '../../services/bomService';
 import { aggregateShortage, receivedQty } from '../../domain/panelMaterials';
 import { outTally, tallyOut, outSetsOf, outSetsLabel } from '../../domain/outSets';
-import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, bomRowsForBox, rowsForPanel } from '../../domain/panelBom';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
 import { useArrived } from '../../utils/useArrived';
@@ -112,7 +112,7 @@ export default function FreeStockPage({ company }) {
     for (const p of mine) {
       const all0 = bomByProject[p.bomLink.projectId];
       if (!all0) continue;
-      const forVariant = bomItemsForVariant(all0, p.bomLink.variantKey || '');
+      const forVariant = rowsForPanel(all0, p); // 타입 + 정방향 제외까지 거른 줄
       const one = new Map();
       const oneBox = new Map(); // 이 호기의 BOX 별 개수 — 호기마다 새로 센다
       for (const bx of CHECKABLE_BOXES) {

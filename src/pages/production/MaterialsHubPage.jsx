@@ -7,7 +7,8 @@ import { useArrived } from '../../utils/useArrived';
 import Select from '../../components/common/Select';
 import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
-import { getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { getBomBySite } from '../../services/bomService';
+import { rowsForPanel } from '../../domain/panelBom';
 import { panelShortageBySupply } from '../../domain/paidSets';
 import { COMPANIES } from '../../domain/production';
 import { MADE } from '../../domain/itemKind';
@@ -100,7 +101,7 @@ export default function MaterialsHubPage() {
     if (!p.bomLink?.projectId) return null;
     // BOM 이나 입고 기록이 아직 안 왔으면 셈하지 않는다 — 「–」가 떴다가 「대기」로 바뀌던 잔상
     if (!has('materials') || !(p.bomLink.projectId in bomRowsByProject)) return 'loading';
-    const rows = bomItemsForVariant(bomRowsByProject[p.bomLink.projectId] || [], p.bomLink.variantKey || '');
+    const rows = rowsForPanel(bomRowsByProject[p.bomLink.projectId] || [], p);
     const s = panelShortageBySupply(rows, materials[p.id] || {});
     const one = (kind, k) => {
       if (s[k].total === 0) return { cls: 'is-none', label: '–', title: `${kind} 줄 없음` };

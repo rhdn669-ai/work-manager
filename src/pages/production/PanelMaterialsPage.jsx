@@ -25,7 +25,7 @@ import {
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
-import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
 import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
@@ -154,6 +154,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return bomRowsForBox(forVariant, box);
   }, [bomRowsFull, link?.variantKey, box]);
   const rec = received[box] || {};
+  // 정방향 제외 줄 — 이 호기(정)에는 안 오는 자재. 표에는 회색으로 두고 셈에서는 뺀다
+  // (2026-09-15 대표님 「Bom에 정을 표시한것만 생산현황 호기 자재리스트에 회색처리」)
+  const inScope = useCallback((r) => !isForwardExcluded(r, panel), [panel]);
   // 세트를 배정한 호기의 도급 수량은 세트가 정한다 — 손으로 못 고친다 (2026-09-03 대표님
   // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
   // 도급은 «항상» 읽기 전용 — 우리가 사서 넣는 자재라 「도급 세트」 배정으로만 채운다
@@ -174,10 +177,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     for (const b of CHECKABLE_BOXES) {
       const list = bomRowsForBox(forVariant, b).filter(inTab);
       const got = received[b] || {};
-      out[b] = list.filter((r) => !isSkipped(got, r.id) && shortageOf(r.qty, receivedQty(got, r.id)) > 0).length;
+      out[b] = list.filter(
+        (r) => inScope(r) && !isSkipped(got, r.id) && shortageOf(r.qty, receivedQty(got, r.id)) > 0,
+      ).length;
     }
     return out;
-  }, [bomRowsFull, link?.variantKey, received, inTab]);
+  }, [bomRowsFull, link?.variantKey, received, inTab, inScope]);
 
   // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
   const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
@@ -187,7 +192,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return rowView === 'done' ? done : !done;
   });
   const isMadeRow = useCallback((r) => isMade(r), []);
-  const summary = useMemo(() => boxSummary(rows, rec, isMadeRow), [rows, rec, isMadeRow]);
+  const summary = useMemo(() => boxSummary(rows.filter(inScope), rec, isMadeRow), [rows, rec, isMadeRow, inScope]);
   // 줄이 없는 탭도 그대로 보여 준다 — 예전에는 줄 있는 쪽으로 저절로 옮겨 갔는데,
   // 그러면 「이 BOX 에는 도급이 없다」를 확인할 길이 없었다
   // (2026-09-12 대표님 「도급0/0이어도 눌러지게 해줘 다른박스 비어있는걸 못보니까」).
@@ -218,13 +223,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 기록이 하나도 없는 BOX 는 건드리지 않는다 — BOM 만 연결하고 페이지를 연 것만으로
     // 손으로 켜 둔 자재 칸이 「0개 입고」로 꺼지던 문제 (2026-09-03 대표님 「자재 칸 보호」)
     if (Object.keys(rec).length === 0) return;
+    // 이 호기에 수량을 하나라도 적기 전에는 판정하지 않는다 — 정방향 제외로 줄이 다 빠진 BOX 가
+    // 「다 들어옴」으로 켜지면 안 된다 (2026-09-15 대표님 「하나라도 체크가 시작 되었을때 시작」)
+    if (!isMatStarted(received)) return;
+    const scoped = rows.filter(inScope); // 정방향 제외 줄은 셈에 없다
     const cur = (panel.박스입고 || {})[box] || {};
-    const nextPaid = boxKindComplete(rows, rec, 'paid', isMadeRow);
-    const nextFree = boxKindComplete(rows, rec, 'free', isMadeRow);
+    const nextPaid = boxKindComplete(scoped, rec, 'paid', isMadeRow);
+    const nextFree = boxKindComplete(scoped, rec, 'free', isMadeRow);
     // 판금도 같은 방식으로 생산현황의 「판금」 칸과 그 입고일에 이어 준다
     // (2026-09-12 대표님 「생산현황에 판금 입고일이랑 연동되면 됨」)
-    const nextMade = boxKindComplete(rows, rec, 'made', isMadeRow);
-    const hasMadeRow = rows.some(isMadeRow);
+    const nextMade = boxKindComplete(scoped, rec, 'made', isMadeRow);
+    const hasMadeRow = scoped.some(isMadeRow);
     if (!!cur.자재_도급 === nextPaid && !!cur.자재_사급 === nextFree && (!hasMadeRow || !!cur.판금 === nextMade))
       return; // 그대로면 쓰지 않는다
     const today = new Date().toISOString().slice(0, 10);
@@ -244,7 +253,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         },
       },
     }).catch(() => toast('자재 칸 갱신에 실패했습니다', 'error'));
-  }, [panel, rows, rec, box, toast, isMadeRow]);
+  }, [panel, rows, rec, received, box, toast, isMadeRow, inScope]);
 
   // ── 개수 저장 ──
   // 한 번 누르면 필요 수량만큼 채우고, 채워진 것을 다시 누르면 0 으로 되돌린다.
@@ -421,13 +430,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       ))
     )
       return;
-    const before = shown.map((r) => ({ id: r.id, qty: receivedQty(rec, r.id) }));
+    const targets = shown.filter(inScope); // 정방향 제외 줄은 건너뛴다
+    const before = targets.map((r) => ({ id: r.id, qty: receivedQty(rec, r.id) }));
     try {
       // 한 줄씩 차례로 — 통에 있는 만큼까지만 채워지고(같은 품목이 겹쳐도 셈이 안 엉키게),
       // 못 채운 줄은 세어 두었다가 한 번에 알린다
       const applied = [];
       let shortRows = 0;
-      for (const r of shown) {
+      for (const r of targets) {
         const b = before.find((x) => x.id === r.id)?.qty || 0;
         const want = toBom ? Number(r.qty) || 0 : 0;
         const n = await applyQty(r, b, want, { quiet: true });
@@ -437,11 +447,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       if (shortRows > 0)
         toast(`${shortRows}줄은 재고가 모자라 다 못 채웠습니다 — 재고 화면에서 입고한 뒤 다시`, 'error', 0);
       undoable(
-        toBom ? `${shown.length - shortRows}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
+        toBom
+          ? `${targets.length - shortRows}건을 필요 수량대로 채웠습니다`
+          : `${targets.length}건을 0 으로 되돌렸습니다`,
         async () => {
           try {
             // 통도 함께 되돌린다 — 한 줄씩 차례로
-            for (const r of shown) {
+            for (const r of targets) {
               const b = before.find((x) => x.id === r.id)?.qty || 0;
               const a = applied.find((x) => x.id === r.id)?.qty || 0;
               await applyQty(r, a, b, { quiet: true });
@@ -737,14 +749,25 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             <tbody>
               {shown.map((r, i) => {
                 const got = receivedQty(rec, r.id);
+                const outScope = !inScope(r); // 정방향 제외 — 회색, 셈 없음
                 const skipped = isSkipped(rec, r.id);
-                const short = skipped ? 0 : shortageOf(r.qty, got);
-                const done = rowDone(r, rec);
+                const short = skipped || outScope ? 0 : shortageOf(r.qty, got);
+                const done = outScope || rowDone(r, rec);
                 const meta = rec[r.id];
                 return (
                   <tr
                     key={r.id}
-                    className={skipped ? 'is-skipped' : done ? 'is-done' : short > 0 && got > 0 ? 'is-partial' : ''}
+                    className={
+                      outScope
+                        ? 'is-scope-out'
+                        : skipped
+                          ? 'is-skipped'
+                          : done
+                            ? 'is-done'
+                            : short > 0 && got > 0
+                              ? 'is-partial'
+                              : ''
+                    }
                   >
                     <td className="col-no">{i + 1}</td>
                     <td className="pmat-drawing">{r.drawingNo}</td>
@@ -755,7 +778,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     </td>
                     <td className="pmat-num">{Number(r.qty) || 0}</td>
                     <td className="pmat-num">
-                      {locked ? (
+                      {outScope ? (
+                        <span className="pmat-locked-qty" title="정방향 호기에는 우리 손을 거치지 않는 자재">
+                          —
+                        </span>
+                      ) : locked ? (
                         <span className="pmat-locked-qty" title="고치려면 오른쪽 아래 「잠금」을 푸세요">
                           {got || 0}
                         </span>
@@ -810,13 +837,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     </td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">
-                      <ReceiptChip
-                        got={got}
-                        need={Number(r.qty) || 0}
-                        skip={skipped}
-                        ours={rec[r.id]?.fromOurs}
-                        title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                      />
+                      {outScope ? (
+                        <span className="recv-chip is-skip" title="BOM 에서 「정방향 제외」로 표시한 자재">
+                          정방향 제외
+                        </span>
+                      ) : (
+                        <ReceiptChip
+                          got={got}
+                          need={Number(r.qty) || 0}
+                          skip={skipped}
+                          ours={rec[r.id]?.fromOurs}
+                          title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                        />
+                      )}
                     </td>
                     {hasMeta && (
                       <td className="pmat-meta">
@@ -860,13 +893,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           type="button"
                           className="btn btn-sm btn-outline"
                           onClick={() => toggleSkip(r, !skipped)}
-                          disabled={!editMode}
+                          disabled={!editMode || outScope}
                           title={
-                            editMode
-                              ? skipped
-                                ? '이 호기에서 다시 넣기'
-                                : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
-                              : '오른쪽 아래 「잠금」을 푼 뒤에'
+                            outScope
+                              ? 'BOM 에서 정방향 제외로 정한 줄 — 여기서는 못 바꿉니다'
+                              : editMode
+                                ? skipped
+                                  ? '이 호기에서 다시 넣기'
+                                  : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
+                                : '오른쪽 아래 「잠금」을 푼 뒤에'
                           }
                         >
                           {skipped ? '포함' : '제외'}

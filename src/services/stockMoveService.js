@@ -11,8 +11,8 @@ import { getFreeStockSplit, setFreeStockQty } from './freeStockService';
 import { receivePaidStock } from './paidStockService';
 import { getPanelMaterials } from './panelMaterialsService';
 import { subscribePanels } from './productionService';
-import { getBomBySite, bomItemsForVariant } from './bomService';
-import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
+import { getBomBySite } from './bomService';
+import { CHECKABLE_BOXES, bomRowsForBox, rowsForPanel } from '../domain/panelBom';
 import { receivedQty } from '../domain/panelMaterials';
 
 /** 구독을 한 번만 받아 끊는다 — 목록을 그때그때 읽을 때 쓴다 */
@@ -43,7 +43,7 @@ export async function goneByItem(company, itemIds) {
   for (const p of mine) {
     const pid = p.bomLink.projectId;
     if (!bomCache.has(pid)) bomCache.set(pid, (await getBomBySite(pid)) || []);
-    const forVariant = bomItemsForVariant(bomCache.get(pid), p.bomLink.variantKey || '');
+    const forVariant = rowsForPanel(bomCache.get(pid), p);
     const mats = await getPanelMaterials(p.id);
     for (const box of CHECKABLE_BOXES) {
       const rec = mats?.[box] || {};
