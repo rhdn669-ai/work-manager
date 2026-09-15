@@ -80,7 +80,7 @@ export default function IncidentsPage({ company = '' }) {
   // ── 등록 창 ──
   const [form, setForm] = useState(null); // { panelId, box, rowId, reason, n, from, note }
   const openForm = () =>
-    setForm({ panelId: living[0]?.id || '', box: '', rowId: '', reason: '파손', n: '1', from: '', note: '' });
+    setForm({ panelId: living[0]?.id || '', box: '', rowId: '', q: '', reason: '파손', n: '1', from: '', note: '' });
   const formPanel = form ? panelById[form.panelId] : null;
   const formBoxes = useMemo(() => {
     if (!formPanel) return [];
@@ -266,7 +266,7 @@ export default function IncidentsPage({ company = '' }) {
               <label>BOX</label>
               <Select
                 value={form.box}
-                onChange={(v) => setForm((f) => ({ ...f, box: v, rowId: '' }))}
+                onChange={(v) => setForm((f) => ({ ...f, box: v, rowId: '', q: '' }))}
                 options={formBoxes.map((b) => ({ value: b, label: b }))}
                 placeholder="BOX 선택"
                 ariaLabel="BOX"
@@ -275,17 +275,42 @@ export default function IncidentsPage({ company = '' }) {
             </div>
             <div className="form-group">
               <label>품목</label>
-              <Select
-                value={form.rowId}
-                onChange={(v) => setForm((f) => ({ ...f, rowId: v }))}
-                options={formRows.map((r) => ({
-                  value: r.id,
-                  label: `${itemDrawing(r) ? `${itemDrawing(r)} · ` : ''}${itemName(r)}`,
-                }))}
-                placeholder={form.box ? '품목 선택' : 'BOX 를 먼저'}
-                ariaLabel="품목"
-                native
+              {/* 검색해도 되고 목록에서 골라도 된다 — BOX 하나에 40줄이 넘어 드롭다운으로는 못 찾는다
+                  (2026-09-15 대표님 「박스 넣고 품목은 검색OR리스트」) */}
+              <input
+                type="text"
+                value={form.q || ''}
+                onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
+                placeholder={form.box ? '도번·품명·규격으로 찾기' : 'BOX 를 먼저'}
+                disabled={!form.box}
+                aria-label="품목 찾기"
               />
+              <div className="inc-pick" role="listbox" aria-label="품목 목록">
+                {formRows
+                  .filter((r) => {
+                    const kw = (form.q || '').trim().toLowerCase();
+                    if (!kw) return true;
+                    const m = r.itemId ? masterMap[r.itemId] : null;
+                    return [itemDrawing(r), itemName(r), m?.spec || r.spec || '', m?.code || r.code || ''].some((v) =>
+                      String(v).toLowerCase().includes(kw),
+                    );
+                  })
+                  .map((r) => (
+                    <button
+                      type="button"
+                      key={r.id}
+                      role="option"
+                      aria-selected={form.rowId === r.id}
+                      className={`inc-pick-item${form.rowId === r.id ? ' on' : ''}`}
+                      onClick={() => setForm((f) => ({ ...f, rowId: r.id }))}
+                    >
+                      <span className="inc-pick-dn">{itemDrawing(r)}</span>
+                      <span className="inc-pick-name">{itemName(r)}</span>
+                      <span className="inc-pick-spec">{(r.itemId && masterMap[r.itemId]?.spec) || r.spec || ''}</span>
+                    </button>
+                  ))}
+                {form.box && formRows.length === 0 && <p className="field-hint">이 BOX 에 줄이 없습니다</p>}
+              </div>
             </div>
             <div className="form-group inc-form-row">
               <div>

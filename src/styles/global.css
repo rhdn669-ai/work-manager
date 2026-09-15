@@ -24183,6 +24183,57 @@ body.has-editlock .main-content.expanded {
   color: var(--accent-press, #b3521c);
   white-space: nowrap;
 }
+/* 분실·파손 등록 창 — 품목 목록: 검색칸 밑에 스크롤 목록, 고른 줄은 네이비 */
+.inc-pick {
+  margin-top: 6px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.inc-pick-item {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.inc-pick-item:last-child {
+  border-bottom: 0;
+}
+.inc-pick-item:hover {
+  background: var(--bg-subtle);
+}
+.inc-pick-item.on {
+  background: var(--primary);
+  color: #fff;
+}
+.inc-pick-dn {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.inc-pick-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inc-pick-spec {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inc-pick-item.on .inc-pick-spec {
+  color: rgba(255, 255, 255, 0.85);
+}
 /* 분실·파손 등록 창 — 사유·수량 나란히 */
 .inc-form-row {
   display: flex;
