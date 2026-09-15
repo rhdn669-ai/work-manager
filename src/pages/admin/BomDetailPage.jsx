@@ -1726,8 +1726,10 @@ export default function BomDetailPage() {
                                       : '정방향 호기에서 이 자재를 회색(셈 제외)으로 — 눌러서 켜기'
                                   }
                                   aria-pressed={!!it.skipForward}
+                                  aria-label="정방향 제외"
                                 >
-                                  정방향 제외
+                                  {/* 켠 줄만 문구가 보인다 — 안 켠 줄은 작은 ＋ 점만 (대표님 「Bom에서 누른거만 제외문구 떠야지」) */}
+                                  {it.skipForward ? '정방향 제외' : '＋'}
                                 </button>
                               </td>
                               <td data-label="수량">

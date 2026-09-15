@@ -22298,18 +22298,22 @@ a.lib-row-name:hover {
 /* 「정방향 제외」 칩 — 꺼져 있으면 옅게, 켜지면 회색 채움 (2026-09-15 대표님) */
 .bom-scope-btn {
   margin-left: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px dashed var(--border);
   border-radius: 999px;
   background: transparent;
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;
+  line-height: 20px;
   color: var(--text-light);
   cursor: pointer;
   white-space: nowrap;
 }
 .bom-scope-btn.on {
+  border-style: solid;
   border-color: var(--grey-500, #6b7684);
   background: var(--grey-500, #6b7684);
   color: #fff;
