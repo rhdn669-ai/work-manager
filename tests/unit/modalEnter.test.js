@@ -10,6 +10,8 @@ import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, '../../src/components/common/Modal.jsx'), 'utf8');
+// Enter 판정은 utils/enterKey 로 옮겨 갔다 (2026-09-15 두 번 저장 정리) — 규칙은 그 파일에서 읽는다
+const rule = readFileSync(join(here, '../../src/utils/enterKey.js'), 'utf8');
 
 describe('모달 Enter — 되돌릴 수 없는 일은 막는다', () => {
   it('주버튼을 고를 때 data-no-enter 를 뺀다', () => {
@@ -22,14 +24,19 @@ describe('모달 Enter — 되돌릴 수 없는 일은 막는다', () => {
     expect(src).toMatch(/!el\.classList\.contains\('modal-close'\) && !el\.readOnly/);
   });
 
-  it('textarea·버튼·셀렉트는 여전히 제외한다 — 본문 줄바꿈이 발송이 되면 안 된다', () => {
-    expect(src).toContain("t.tagName === 'TEXTAREA'");
-    expect(src).toContain("t.tagName === 'BUTTON'");
-    expect(src).toContain("t.tagName === 'SELECT'");
+  it('모달은 Enter 판정을 공용 규칙(isSubmitEnter)에 맡긴다', () => {
+    expect(src).toContain("import { isSubmitEnter } from '../../utils/enterKey'");
+    expect(src).toContain('if (!isSubmitEnter(e)) return;');
   });
 
-  it('한글 입력 조합 중에는 반응하지 않는다', () => {
-    expect(src).toContain('e.isComposing');
+  it('textarea·버튼·셀렉트는 여전히 제외한다 — 본문 줄바꿈이 발송이 되면 안 된다', () => {
+    expect(rule).toContain("tag === 'TEXTAREA'");
+    expect(rule).toContain("tag === 'BUTTON'");
+    expect(rule).toContain("tag === 'SELECT'");
+  });
+
+  it('한글 입력 조합 중에는 반응하지 않는다 — nativeEvent 에서 읽는다', () => {
+    expect(rule).toContain('e.nativeEvent?.isComposing');
   });
 });
 
