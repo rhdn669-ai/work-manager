@@ -24172,8 +24172,14 @@ body.has-editlock .main-content.expanded {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: nowrap;
+  gap: 6px;
+  flex-wrap: wrap; /* 좁으면 「수정」이 숫자 밑으로 — 글자를 자르지 않는다 (2026-09-15 태블릿 「글도짤리는게보이고」) */
+}
+/* 단추는 기본으로 넘치는 글자를 잘라 버린다 — 숫자·금액이 다 보이게 */
+.fstock-have {
+  min-width: 0;
+  overflow: visible;
+  text-align: right;
 }
 
 /* 사급 재고 요약 — 「지금 재고로 N SET」 (2026-09-11 대표님) */
@@ -24362,7 +24368,8 @@ body.has-editlock .main-content.expanded {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-light, #3f4a5a);
-  white-space: nowrap;
+  white-space: normal; /* 좁으면 줄을 바꾼다 — 자르지 않는다 */
+  word-break: keep-all;
 }
 
 /* BOX 탭이 많아 태블릿에서 오른쪽으로 삐져나갔다 — 줄을 바꿔 다 보이게
