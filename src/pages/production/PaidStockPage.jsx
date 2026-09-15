@@ -17,7 +17,7 @@ import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
 import { outTally, tallyOut, outSetsOf, outSetsLabel } from '../../domain/outSets';
 import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../services/paidStockService';
-import { setStockTo } from '../../services/stockService';
+import { setStockTo, setStockMemo } from '../../services/stockService';
 import { ledgerOn } from '../../domain/stockLedger';
 
 // 도급 재고 — 「우리가 사서 들어온 것 중 아직 어느 호기에도 안 간 양」.
@@ -226,6 +226,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         adjust,
         left,
         log: manual[it.itemId]?.log || [],
+        memo: manual[it.itemId]?.memo || '',
         amount: Math.max(0, left) * (Number(it.unitPrice) || 0), // 남은 것의 값어치
         perOneAll: one,
         // 「가능 SET」은 호기 한 대 기준으로 고정한다. BOX 몫으로 나누면 같은 재고인데
@@ -476,6 +477,9 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                 <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
                   가능 SET
                 </th>
+                <th scope="col" title="품목마다 한 줄 메모 — 적고 칸을 나가면 저장">
+                  비고
+                </th>
                 <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 남음에 더해집니다">
                   이번 입고
                 </th>
@@ -538,6 +542,28 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                       </td>
                       <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
                         {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
+                      </td>
+                      {/* 비고 — 적는 동안 React 가 값을 안 흔들게 key 에 저장값을 넣는다 (호기 체크 비고와 같은 방식) */}
+                      <td className="pmat-note-cell">
+                        <input
+                          key={`${r.itemId}:${r.memo || ''}`}
+                          type="text"
+                          className="pmat-input pmat-note"
+                          defaultValue={r.memo || ''}
+                          placeholder="메모"
+                          title={r.memo || ''}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v === (r.memo || '')) return;
+                            setStockMemo(kind, company, r, v, { by: me }).catch(() =>
+                              toast('비고를 저장하지 못했습니다', 'error'),
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                          }}
+                          aria-label={`${r.name || r.code} 비고`}
+                        />
                       </td>
                       <td className="col-action">
                         <div className="fstock-in-cell">

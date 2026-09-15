@@ -33,7 +33,7 @@ describe('품목 표 칸 폭', () => {
 
   it('재고 표 폭은 한 벌뿐 — 사급·도급이 같은 값을 쓴다 (2026-09-12 대표님)', () => {
     // 따로 적어 두었더니 남음 칸이 9% 와 13% 로 어긋나 있었다.
-    expect(STOCK_COLS).toHaveLength(9);
+    expect(STOCK_COLS).toHaveLength(10);
     // 「남은 공간 전부」는 규격 한 칸뿐 — 둘이면 브라우저가 제멋대로 나눈다
     expect(STOCK_COLS.filter((w) => w === null)).toHaveLength(1);
     const pct = STOCK_COLS.filter((w) => typeof w === 'string' && w.endsWith('%')).map((w) => parseFloat(w));

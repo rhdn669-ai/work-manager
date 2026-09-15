@@ -27,6 +27,7 @@ import { CHECKABLE_BOXES, bomRowsForBox, rowsForPanel } from '../../domain/panel
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
 import { useArrived } from '../../utils/useArrived';
+import { setStockMemo } from '../../services/stockService';
 
 const won = (n) => (Number(n) || 0).toLocaleString();
 const hasBomLink = (p) => !!p?.bomLink?.projectId;
@@ -181,6 +182,7 @@ export default function FreeStockPage({ company }) {
         // 다른 SET 이 나와 헷갈린다 (2026-09-12 대표님 「나누니 셋트 숫자가 이상해지네」).
         sets: one > 0 ? Math.floor(main / one) : 0,
         log: stock[a.itemId]?.log || [],
+        memo: stock[a.itemId]?.memo || '',
       });
     }
 
@@ -395,6 +397,9 @@ export default function FreeStockPage({ company }) {
                 <th scope="col" className="col-num" title="지금 남은 것으로 몇 대분이 되나">
                   가능 SET
                 </th>
+                <th scope="col" title="품목마다 한 줄 메모 — 적고 칸을 나가면 저장">
+                  비고
+                </th>
                 <th scope="col" className="col-action" title="이번에 들어온 개수 — 지금 남음에 더해집니다">
                   이번 입고
                 </th>
@@ -465,6 +470,28 @@ export default function FreeStockPage({ company }) {
                       </td>
                       <td className={`col-num${r.perOne > 0 && r.sets === 0 ? ' is-short' : ''}`}>
                         {r.perOne > 0 ? `${won(r.sets)} SET` : ''}
+                      </td>
+                      {/* 비고 — 적는 동안 React 가 값을 안 흔들게 key 에 저장값을 넣는다 (호기 체크 비고와 같은 방식) */}
+                      <td className="pmat-note-cell">
+                        <input
+                          key={`${r.itemId}:${r.memo || ''}`}
+                          type="text"
+                          className="pmat-input pmat-note"
+                          defaultValue={r.memo || ''}
+                          placeholder="메모"
+                          title={r.memo || ''}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v === (r.memo || '')) return;
+                            setStockMemo('free', company, r, v, { by: me }).catch(() =>
+                              toast('비고를 저장하지 못했습니다', 'error'),
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                          }}
+                          aria-label={`${r.name || r.code} 비고`}
+                        />
                       </td>
                       <td className="col-action">
                         <div className="fstock-in-cell">

@@ -150,6 +150,16 @@ export async function setStockTo(kind, company, item, to, { by = '', reason = ''
   return t;
 }
 
+/** 통 줄의 비고 — 품목마다 한 줄 메모 (2026-09-15 대표님 「사급도급 재고창고에 비고란도넣어줘」) */
+export async function setStockMemo(kind, company, item, memo, { by = '' } = {}) {
+  if (!item?.itemId) return;
+  await setDoc(
+    docOf(kind, company, item.itemId),
+    { ...itemFields(company, item), memo: String(memo || '').trim(), updatedAt: serverTimestamp(), updatedBy: by },
+    { merge: true },
+  );
+}
+
 /**
  * 발주서 입고가 통에 닿는 자리 (설계 3절 「발주서 입고 체크 → 통 +」).
  * apply 가 false 면(굳히기 전) 기록만 남기고 qty 는 건드리지 않는다 — 그동안 도급 남음은
