@@ -5,8 +5,8 @@
 // 재고 통은 「구매」·「수리 입고」일 때만 −n 한다 — 실물이 있어야 채울 수 있다.
 import { doc, setDoc, serverTimestamp } from '../config/data';
 import { db } from '../config/data';
-import { getPanelMaterials, materialsDocId, setReceived, addFromStock } from './panelMaterialsService';
-import { takeStock } from './stockService';
+import { getPanelMaterials, materialsDocId, setReceived, addFromStock, addFromOurs } from './panelMaterialsService';
+import { takeStock, returnStock } from './stockService';
 import { newLog, mateLog, mateDelta, needsStock, whyOf } from '../domain/matLog';
 
 const ref = (panelId, box) => doc(db, 'panelMaterials', materialsDocId(panelId, box));
@@ -81,7 +81,26 @@ export async function writeMatLog(
 
   // 내 줄 — 'why' 는 수량을 안 건드린다
   const myDelta = kind === 'in' ? +log.n : kind === 'out' ? -log.n : 0;
+  // 「그냥 빼기」는 실물이 통으로 돌아간다 — 통에서 가져온 몫까지만. 불량·파손·분실·가져감은 물건이
+  // 없어졌거나 다른 호기로 갔으니 통에 안 돌아간다. 전에는 어느 사유든 안 돌려줘서, 수량을
+  // 넣었다 뺐다 하면 통이 한 번씩 줄기만 했다 (2026-09-16 대표님 「재고 수량이 증발해버림」)
+  let giveBack = 0;
+  let tookOurs = 0;
+  if (kind === 'out' && why === '그냥 빼기' && row.itemId) {
+    const cur = (await getPanelMaterials(panel.id))?.[box]?.[row.id] || {};
+    const cut = Math.min(log.n, Math.max(0, Number(cur.qty) || 0));
+    giveBack = Math.min(cut, Math.max(0, Number(cur.fromStock) || 0));
+    tookOurs = Math.max(0, Number(cur.fromOurs) || 0);
+  }
   if (myDelta) await shift(panel.id, box, row.id, myDelta, by);
+  if (giveBack > 0) {
+    await returnStock(stockKind, panel.회사 || '', row.itemId, giveBack, {
+      by,
+      note: `${panel.프로젝트 || panel.id} · ${box} 되돌림`,
+      tookOurs,
+    });
+    if (tookOurs > 0) await addFromOurs(panel.id, box, row.id, -Math.min(giveBack, tookOurs));
+  }
   await appendLog(panel.id, box, row.id, log);
 
   // 상대 호기 — 짝 기록과 수량
