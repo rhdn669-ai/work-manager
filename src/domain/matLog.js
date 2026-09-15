@@ -41,6 +41,12 @@ const OLD_WHY = {
 };
 export const whyOf = (log) => OLD_WHY[log?.kind]?.[log?.why] || log?.why;
 
+/** 이력 한 줄에 쓰는 짧은 호기 이름 — 「YS-TEPS0926468」 → 「468」 (2026-09-16 대표님 「호기수 뒷 3자리만 표시」) */
+export function shortPanel(name) {
+  const m = String(name || '').match(/(\d{3})$/);
+  return m ? m[1] : String(name || '');
+}
+
 /**
  * 상대 호기를 «고를 수 있는» 까닭인가 — 고르면 양쪽이 이어지고, 안 고르면 이 줄에만 남는다.
  * 고객사에서 빌려 간 경우처럼 상대가 호기가 아닐 수 있어 고르기를 강요하지 않는다

@@ -29,7 +29,7 @@ import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/p
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
-import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary } from '../../domain/matLog';
+import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary, shortPanel } from '../../domain/matLog';
 import { writeMatLog } from '../../services/matLogService';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
@@ -203,6 +203,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: rec[r.id]?.note || '' });
   const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
   const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
+  const shortOfId = (id) => shortPanel(nameOfId(id));
   // 상대 호기 목록 — 창을 열 때 셈한다. 여기서 바로 allPanels 를 읽으면 그 선언보다 위라 TDZ 다
   // (2026-09-15 「Cannot access before initialization」)
   const mateList = () =>
@@ -939,7 +940,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
                           자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
                       {(() => {
-                        const s = rowSummary(rec[r.id]?.log || [], nameOfId);
+                        const s = rowSummary(rec[r.id]?.log || [], shortOfId);
                         return s ? (
                           <span className="pmat-incident" title={`${s} — 자재 이력 탭에서 볼 수 있습니다`}>
                             {s}
