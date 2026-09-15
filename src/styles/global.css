@@ -23880,8 +23880,11 @@ a.lib-row-name:hover {
   padding-right: 4px;
 }
 /* 「이 호기」 버튼도 칸을 채운다 */
+/* 「이 호기」 버튼은 글자만큼만 — 칸 폭을 꽉 채우면 PC 에서도 쓸데없이 커 보인다
+   (2026-09-15 대표님 「피씨에서도 입고 버튼이 클 이유가 없는듯」).
+   전에는 버튼이 하나(제외)뿐이라 칸을 채웠지만, 지금은 「입고·사유」가 나란히 선다. */
 .pmat-table td.pmat-act .btn {
-  width: 100%;
+  width: auto;
   justify-content: center;
 }
 

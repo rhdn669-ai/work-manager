@@ -784,7 +784,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '14%', '14%', null, '6.5%', '6.5%', '9%', hasMeta ? '9%' : null, '8%', '11%']
+              {['44px', '15%', '15%', null, '6.5%', '6.5%', '9%', hasMeta ? '9%' : null, '8%', '124px']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
