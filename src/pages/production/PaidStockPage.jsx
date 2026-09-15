@@ -34,7 +34,17 @@ import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../serv
 const won = (n) => (Number(n) || 0).toLocaleString();
 
 // 기록에 적히는 말 — 사급 재고와 같은 말을 쓴다
-const LOG_LABEL = { in: '들어옴', fix: '손으로 맞춤' };
+// po-in·po-cancel 은 발주서 입고 체크가 남긴 자국 — 굳히기 전에는 기록만이라 「(기록만)」을 붙인다
+const LOG_LABEL = {
+  in: '들어옴',
+  out: '호기로',
+  back: '되돌림',
+  fix: '손으로 맞춤',
+  'po-in': '발주 입고',
+  'po-cancel': '발주 입고 취소',
+};
+const logLabel = (l) =>
+  `${LOG_LABEL[l.kind] || l.kind || ''}${l.kind?.startsWith('po-') && !l.applied ? ' (기록만)' : ''}`;
 const whenMs = (v) => {
   if (!v) return 0;
   const d = typeof v?.toDate === 'function' ? v.toDate() : new Date(v);
@@ -538,7 +548,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                     .map((l, i) => (
                       <tr key={`${l.at}-${i}`}>
                         <td>{fmtWhen(l.at)}</td>
-                        <td>{LOG_LABEL[l.kind] || l.kind || ''}</td>
+                        <td>{logLabel(l)}</td>
                         <td className="col-num">{l.kind === 'fix' ? `${won(l.to)} 으로` : won(l.n)}</td>
                         <td>{l.by || ''}</td>
                       </tr>
