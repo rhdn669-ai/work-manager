@@ -22813,6 +22813,13 @@ a.lib-row-name:hover {
   color: var(--text-muted);
   background: var(--bg-subtle, #f7f8fa);
 }
+/* 사유가 적힌 채 아직 모자란 줄 — 줄 전체를 옅은 빨강으로 (2026-09-15 대표님) */
+.pmat-table tr.is-flagged > td {
+  background: var(--danger-soft, #fdeceb);
+}
+.pmat-table tr.is-flagged:hover > td {
+  background: #fbe1df;
+}
 /* 정방향 제외 — 회색이되 줄은 그대로 읽힌다 (취소선 없음) */
 .pmat-table tr.is-scope-out > td {
   opacity: 0.7;

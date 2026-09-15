@@ -833,9 +833,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           ? 'is-skipped'
                           : done
                             ? 'is-done'
-                            : short > 0 && got > 0
-                              ? 'is-partial'
-                              : ''
+                            : // 사유(미입고 말고)를 적었는데 아직 모자란 줄 — 줄 전체를 빨갛게
+                              // (2026-09-15 대표님 「사유를 입력한 수량 부족은 1번처럼 … 1줄 전체에 칠해줘」)
+                              (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                              ? 'is-flagged'
+                              : short > 0 && got > 0
+                                ? 'is-partial'
+                                : ''
                     }
                   >
                     <td className="col-no">{i + 1}</td>
