@@ -521,52 +521,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       toast('저장 중 오류가 발생했습니다', 'error');
     }
   };
-  // 이 탭의 줄을 한 번에 — 통째로 들어온 날은 필요 수량대로, 잘못 채웠을 땐 0 으로
-  const fillAllTo = async (toBom) => {
-    if (
-      !toBom &&
-      !(await confirm(
-        `${supplyTab === 'free' ? '사급' : '도급'} ${shown.length}건의 입고 수량을 모두 0 으로 되돌리시겠습니까?`,
-      ))
-    )
-      return;
-    const targets = shown.filter(inScope); // 정방향 제외 줄은 건너뛴다
-    const before = targets.map((r) => ({ id: r.id, qty: receivedQty(rec, r.id) }));
-    try {
-      // 한 줄씩 차례로 — 통에 있는 만큼까지만 채워지고(같은 품목이 겹쳐도 셈이 안 엉키게),
-      // 못 채운 줄은 세어 두었다가 한 번에 알린다
-      const applied = [];
-      let shortRows = 0;
-      for (const r of targets) {
-        const b = before.find((x) => x.id === r.id)?.qty || 0;
-        const want = toBom ? Number(r.qty) || 0 : 0;
-        const n = await applyQty(r, b, want, { quiet: true });
-        applied.push({ id: r.id, qty: n });
-        if (toBom && n < want) shortRows += 1;
-      }
-      if (shortRows > 0)
-        toast(`${shortRows}줄은 재고가 모자라 다 못 채웠습니다 — 재고 화면에서 입고한 뒤 다시`, 'error', 0);
-      undoable(
-        toBom
-          ? `${targets.length - shortRows}건을 필요 수량대로 채웠습니다`
-          : `${targets.length}건을 0 으로 되돌렸습니다`,
-        async () => {
-          try {
-            // 통도 함께 되돌린다 — 한 줄씩 차례로
-            for (const r of targets) {
-              const b = before.find((x) => x.id === r.id)?.qty || 0;
-              const a = applied.find((x) => x.id === r.id)?.qty || 0;
-              await applyQty(r, a, b, { quiet: true });
-            }
-          } catch {
-            toast('되돌리지 못했습니다', 'error');
-          }
-        },
-      );
-    } catch {
-      toast('저장 중 오류가 발생했습니다', 'error');
-    }
-  };
   // 이 호기에서만 줄을 일시 제외/복귀 — 기본 BOM 은 그대로 (세트 배정 호기의 도급 탭에서)
   const title = `${panel?.프로젝트 || ''}${panel?.호기 ? ` ${panel.호기}` : ''}`.trim() || '호기';
   const toggleSkip = async (r, on) => {
@@ -806,28 +760,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             발주서를 입고하면 도급 재고에 쌓이고, 여기서 세트를 만들며 체크한 만큼 빠집니다
           </span>
         )}
-        {/* 잠겨 있어도 자리는 남긴다 — 잠금을 풀 때 단추가 «생겨나면» 줄이 늘어 표가 짧아진다
-            (2026-09-14 대표님 「잠금해제를 하면 보이는 리스트 수가 적어짐」) */}
-        {shown.length > 0 && (
-          <span className="pmat-fill" style={locked ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={clearAll}
-              title="이 탭의 입고 수량을 전부 0 으로"
-            >
-              전부 비움
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={fillAll}
-              title="이 탭의 줄을 전부 필요 수량대로"
-            >
-              전부 들어옴
-            </button>
-          </span>
-        )}
+        {/* 「전부 비움·전부 들어옴」은 없앴다 — 줄마다 «왜 없나 / 어떻게 채웠나»를 남기는 방향과
+            어긋나고, 한 번에 밀면 사유가 통째로 비게 된다 (2026-09-15 대표님) */}
       </div>
 
       {shown.length === 0 ? (
@@ -845,7 +779,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '14%', '14%', null, '6.5%', '6.5%', '13%', hasMeta ? '10%' : null, '8%', '11%']
+              {['44px', '15%', '15%', null, '6.5%', '6.5%', '9%', hasMeta ? '10%' : null, '8%', '11%']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
