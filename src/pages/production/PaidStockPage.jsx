@@ -134,6 +134,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   const { groups, allRows } = useMemo(() => {
     const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
     const goneAll = new Map(); // 호기들에 들어간 총량
+    const started = new Set(); // 이 갈래 자재를 하나라도 가져간 호기 — 「N SET」의 N
     const info = new Map();
     const byBox = new Map(); // box → { perOne: Map, gone: Map, out: 나감 SET 집계 }
     const pick = (bx) => {
@@ -156,7 +157,8 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           const got = receivedQty(rec, r.id);
           goneAll.set(r.itemId, (goneAll.get(r.itemId) || 0) + got);
           g.set(r.itemId, (g.get(r.itemId) || 0) + got);
-          tallyOut(o, r.itemId, p.id, got, Number(r.qty) || 0);
+          if (got > 0) started.add(p.id);
+          tallyOut(o, r.itemId, p.id, got, Number(r.qty) || 0, !!rec[r.id]?.skip);
         }
       }
     }
@@ -252,7 +254,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                 ...base,
                 perOne: b.perOne.get(itemId) || 0,
                 out: b.gone.get(itemId) || 0,
-                outSets: outSetsOf(b.out, itemId), // { full 다 채운 호기, part 덜 채운 호기 }
+                outSets: outSetsOf(b.out, itemId, started), // { sets, full, short }
               }
             : null;
         })
@@ -438,12 +440,11 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 「나감」은 줄마다 «다 채운 호기 수» SET, 덜 채운 호기는 「· M대 일부」
-                          (2026-09-15 대표님 「안나간 품목은 set 표시를 안올려야 맞는거아님?」).
-                          정확한 개수는 툴팁에. */}
+                      {/* 「나감」 = 이 갈래를 시작한 호기 수 SET, 그중 이 줄을 다 못 채운 대수를 「부족」
+                          으로 (2026-09-15 대표님 「9set 으로 가야겠지 부족이니까」). 개수는 툴팁에. */}
                       <td
                         className="col-num"
-                        title={`${won(r.out)}개 · 다 채운 ${r.outSets.full}대 · 일부 ${r.outSets.part}대`}
+                        title={`${won(r.out)}개 · 다 채운 ${r.outSets.full}대 · 부족 ${r.outSets.short}대`}
                       >
                         {outSetsLabel(r.outSets)}
                       </td>

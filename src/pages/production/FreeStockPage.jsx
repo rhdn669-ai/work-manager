@@ -107,7 +107,8 @@ export default function FreeStockPage({ company }) {
     const entriesAll = [];
     const entriesByBox = new Map(); // box → entries[]
     const perOneByBox = new Map(); // box → Map(key → 개수)
-    const outByBox = new Map(); // box → 나감 SET 집계 (줄마다 다 채운 호기 · 덜 채운 호기)
+    const outByBox = new Map(); // box → 나감 SET 집계 (줄마다 다 채운 호기 · 부족 호기)
+    const started = new Set(); // 사급 자재를 하나라도 가져간 호기 — 「N SET」의 N
 
     for (const p of mine) {
       const all0 = bomByProject[p.bomLink.projectId];
@@ -139,7 +140,9 @@ export default function FreeStockPage({ company }) {
           const k = r.itemId || `row:${r.id}`;
           one.set(k, (one.get(k) || 0) + (Number(r.qty) || 0));
           ob.set(k, (ob.get(k) || 0) + (Number(r.qty) || 0));
-          tallyOut(o, k, p.id, receivedQty(rec, r.id), Number(r.qty) || 0);
+          const got = receivedQty(rec, r.id);
+          if (got > 0) started.add(p.id);
+          tallyOut(o, k, p.id, got, Number(r.qty) || 0, !!rec[r.id]?.skip);
         }
         const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: rec };
         entriesAll.push(entry);
@@ -203,7 +206,7 @@ export default function FreeStockPage({ company }) {
                 ...base,
                 perOne: ob.get(a.itemId || '') || 0,
                 got: a.got,
-                outSets: outSetsOf(ob2, a.itemId || ''), // { full 다 채운 호기, part 덜 채운 호기 }
+                outSets: outSetsOf(ob2, a.itemId || '', started), // { sets, full, short }
               }
             : null;
         })
@@ -406,12 +409,11 @@ export default function FreeStockPage({ company }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 「나감」은 줄마다 «다 채운 호기 수» SET, 덜 채운 호기는 「· M대 일부」
-                          (2026-09-15 대표님 「안나간 품목은 set 표시를 안올려야 맞는거아님?」).
-                          정확한 개수는 툴팁에. */}
+                      {/* 「나감」 = 이 갈래를 시작한 호기 수 SET, 그중 이 줄을 다 못 채운 대수를 「부족」
+                          으로 (2026-09-15 대표님 「9set 으로 가야겠지 부족이니까」). 개수는 툴팁에. */}
                       <td
                         className="col-num"
-                        title={`${won(r.got)}개 · 다 채운 ${r.outSets.full}대 · 일부 ${r.outSets.part}대`}
+                        title={`${won(r.got)}개 · 다 채운 ${r.outSets.full}대 · 부족 ${r.outSets.short}대`}
                       >
                         {outSetsLabel(r.outSets)}
                       </td>
