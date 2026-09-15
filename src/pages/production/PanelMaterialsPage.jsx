@@ -204,9 +204,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: '' });
   const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
   const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
-  const mates = allPanels
-    .filter((p) => p.id !== panelId && (!p.회사 || p.회사 === company) && p.bomLink?.projectId === link?.projectId)
-    .map((p) => ({ value: p.id, label: panelName(p) }));
+  // 상대 호기 목록 — 창을 열 때 셈한다. 여기서 바로 allPanels 를 읽으면 그 선언보다 위라 TDZ 다
+  // (2026-09-15 「Cannot access before initialization」)
+  const mateList = () =>
+    allPanels
+      .filter((p) => p.id !== panelId && (!p.회사 || p.회사 === company) && p.bomLink?.projectId === link?.projectId)
+      .map((p) => ({ value: p.id, label: panelName(p) }));
   async function submitLog(e) {
     e.preventDefault();
     const f = logForm;
@@ -1168,7 +1171,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <Select
                   value={logForm.mate}
                   onChange={(v) => setLogForm((f) => ({ ...f, mate: v }))}
-                  options={mates}
+                  options={mateList()}
                   placeholder="호기 선택"
                   ariaLabel="상대 호기"
                   native
