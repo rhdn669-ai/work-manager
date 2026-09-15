@@ -7,7 +7,7 @@ import { doc, setDoc, serverTimestamp } from '../config/data';
 import { db } from '../config/data';
 import { getPanelMaterials, materialsDocId, setReceived, addFromStock } from './panelMaterialsService';
 import { takeStock } from './stockService';
-import { newLog, mateLog, mateDelta, needsStock } from '../domain/matLog';
+import { newLog, mateLog, mateDelta, needsStock, whyOf } from '../domain/matLog';
 
 const ref = (panelId, box) => doc(db, 'panelMaterials', materialsDocId(panelId, box));
 
@@ -52,6 +52,17 @@ export async function writeMatLog(
 ) {
   if (!panel?.id || !box || !row?.id || !kind || !why) throw new Error('호기·품목·사유가 필요합니다');
   const log = newLog({ kind, why, n, mate, by, note });
+
+  // 같은 일을 양쪽에서 적으면 두 번 남는다 — 상대 호기에서 이미 적어 짝이 내 줄에 와 있으면 막는다
+  // (2026-09-16 대표님 「209호기에서 468호기 차용했다고 걸었는데 468호기에서 209호기에 줬다고
+  //  두번 해버리니까 이런 오류가 생기는데?」). 한쪽만 적으면 앱이 상대 쪽 짝을 만든다.
+  if (log.mate) {
+    const mine = (await getPanelMaterials(panel.id))?.[box]?.[row.id]?.log || [];
+    const dup = mine.find(
+      (l) => l.pair && l.mate === log.mate && l.at === log.at && whyOf(l) === whyOf({ kind, why }),
+    );
+    if (dup) throw new Error('상대 호기에서 이미 적혀 있습니다 — 한쪽에서만 적으면 됩니다');
+  }
 
   // 통에서 꺼내야 하는 까닭이면 «있는 만큼만» — 없으면 아무것도 안 한다
   if (needsStock(kind, why)) {
