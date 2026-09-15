@@ -21,17 +21,20 @@ async function appendLog(panelId, box, rowId, log) {
   );
 }
 
-/** 그 호기 줄 수량을 delta 만큼 — 음수도 허용한다(빚). 통에서 온 몫은 뺄 때만 같이 줄인다 */
+/** 그 호기 줄 수량을 delta 만큼 — 0 밑으로는 안 내려간다. 통에서 온 몫은 뺄 때만 같이 줄인다
+ *  (2026-09-16 대표님 「1개 가져갔을때 -1로 안하기로 했지않나?」 — 없는 줄에서 가져가면 기록만 남는다) */
 async function shift(panelId, box, rowId, delta, by = '') {
   const d = Number(delta) || 0;
   if (!d) return;
   const mats = await getPanelMaterials(panelId);
   const rec = mats?.[box]?.[rowId] || {};
   const before = Number(rec.qty) || 0;
-  await setReceived(panelId, box, rowId, before + d, by, { allowNegative: true });
-  if (d < 0) {
+  const after = Math.max(0, before + d);
+  if (after === before) return;
+  await setReceived(panelId, box, rowId, after, by);
+  if (after < before) {
     const kept = Math.max(0, Number(rec.fromStock) || 0);
-    if (kept > 0) await addFromStock(panelId, box, rowId, -Math.min(kept, -d), kept);
+    if (kept > 0) await addFromStock(panelId, box, rowId, -Math.min(kept, before - after), kept);
   }
 }
 
