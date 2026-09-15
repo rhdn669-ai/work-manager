@@ -494,7 +494,7 @@ export default function FreeStockPage({ company }) {
                           재고가 두 배로 불어난 일이 있었다 (2026-09-11 대표님) */}
                           {Number(draft[r.itemId]) > 0 && (
                             <span className="fstock-preview">
-                              {won(r.have)} → <b>{won(r.have + Number(draft[r.itemId]))}</b>
+                              {won(r.main)} → <b>{won(r.main + Number(draft[r.itemId]))}</b>
                             </span>
                           )}
                         </div>
