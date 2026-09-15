@@ -362,7 +362,7 @@ export default function FreeStockPage({ company }) {
           <span>BOM 에 사급으로 표시된 품목이 여기에 모입니다.</span>
         </div>
       ) : (
-        <div className="table-scroll-x no-print" ref={scrollRef}>
+        <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
           <table className="table pmat-table">
             <colgroup>
               {STOCK_COLS.map((w, i) => (

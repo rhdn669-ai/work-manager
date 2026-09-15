@@ -422,7 +422,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           <span>BOM 에 도급으로 표시된 품목이 여기에 모입니다. 발주서를 BOM 에 연결해야 들어온 양이 잡힙니다.</span>
         </div>
       ) : (
-        <div className="table-scroll-x no-print" ref={scrollRef}>
+        <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
           <table className="table pmat-table">
             <colgroup>
               {STOCK_COLS.map((w, i) => (

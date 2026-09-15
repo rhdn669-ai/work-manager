@@ -134,7 +134,7 @@ export default function MatLogPage({ company = '' }) {
           <span>호기 체크 줄에서 수량을 줄이거나 「입고」·「사유」를 누르면 여기에 남습니다.</span>
         </div>
       ) : (
-        <div className="table-scroll-x no-print" ref={scrollRef}>
+        <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
           <table className="table pmat-table inc-table">
             <colgroup>
               {['44px', '88px', '12%', '8%', '11%', '15%', null, '6%', '14%', '11%', '88px'].map((w, i) => (
