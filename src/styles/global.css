@@ -24263,6 +24263,13 @@ body.has-editlock .main-content.expanded {
   color: var(--grey-600);
   white-space: nowrap;
 }
+/* 창 라벨 옆 「고르지 않아도 됩니다」 */
+.pmat-opt {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
 /* 입고 수량 숫자의 색 — 「입고」 칩 열을 없애고 여기로 옮겼다 (2026-09-15 대표님)
    초록=다 참 · 주황=일부 · 보라=당사 몫으로 채움 · 회색=제외 */
 .pmat-table .pmat-got.is-full {

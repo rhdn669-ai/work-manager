@@ -223,10 +223,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     e.preventDefault();
     const f = logForm;
     if (!f) return;
-    if (needsMate(f.kind, f.why) && !f.mate) {
-      toast('어느 호기인지 골라 주세요', 'error');
-      return;
-    }
     setLogSaving(true);
     try {
       await writeMatLog(panel, box, f.row, {
@@ -1180,19 +1176,23 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             </div>
             {needsMate(logForm.kind, logForm.why) && (
               <div className="form-group">
-                <label>{logForm.kind === 'out' ? '어느 호기에 줬나요' : '어느 호기에서 받았나요'}</label>
+                <label>
+                  {logForm.kind === 'out' ? '어느 호기에 줬나요' : '어느 호기에서 받았나요'}
+                  <span className="pmat-opt"> (고르지 않아도 됩니다)</span>
+                </label>
                 <Select
                   value={logForm.mate}
                   onChange={(v) => setLogForm((f) => ({ ...f, mate: v }))}
-                  options={mateList()}
+                  options={[{ value: '', label: '호기 아님 — 비고에 적기' }, ...mateList()]}
                   placeholder="호기 선택"
                   ariaLabel="상대 호기"
                   native
                 />
                 <p className="field-hint">
                   {logForm.kind === 'out'
-                    ? '그 호기 줄이 그만큼 늘고, 양쪽에 기록이 남습니다.'
-                    : '그 호기 줄이 그만큼 줄어(0 밑이면 빚) 부족 집계에 뜹니다.'}
+                    ? '호기를 고르면 그 호기 줄이 그만큼 늘고 양쪽에 기록이 남습니다.'
+                    : '호기를 고르면 그 호기 줄이 그만큼 줄어(0 밑이면 빚) 부족 집계에 뜹니다.'}{' '}
+                  고객사처럼 호기가 아닌 곳이면 고르지 말고 비고에 적어 주세요.
                 </p>
               </div>
             )}
@@ -1224,7 +1224,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 취소
               </button>
               <button type="submit" className="btn btn-primary" disabled={logSaving}>
-                {logSaving ? '적는 중…' : '적기'}
+                {logSaving ? '저장 중…' : '저장'}
               </button>
             </div>
           </form>

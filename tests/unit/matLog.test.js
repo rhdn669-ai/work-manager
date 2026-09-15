@@ -9,7 +9,7 @@ describe('자재 이력 — 왜 없나 / 어떻게 채웠나', () => {
     expect(needsMate('out', '파손')).toBe(false);
     expect(needsMate('in', '차용')).toBe(true);
     expect(needsMate('in', '구매')).toBe(false);
-    expect(needsMate('why', '앞호기 차용')).toBe(true);
+    expect(needsMate('why', '차용')).toBe(true);
     expect(needsMate('why', '미입고')).toBe(false);
   });
 
@@ -34,7 +34,7 @@ describe('자재 이력 — 왜 없나 / 어떻게 채웠나', () => {
   });
 
   it('0 인 줄 사유는 기록만 — 상대 수량은 안 건드린다', () => {
-    const why = newLog({ id: 'L3', kind: 'why', why: '앞호기 차용', n: 1, mate: 'p207', at: '2026-09-15' });
+    const why = newLog({ id: 'L3', kind: 'why', why: '차용', n: 1, mate: 'p207', at: '2026-09-15' });
     expect(mateDelta(why)).toBe(0);
     expect(mateLog(why, 'p209')).toMatchObject({ kind: 'why', why: '뒤호기에 차용해 줌', mate: 'p209' });
     expect(mateLog(newLog({ kind: 'why', why: '미입고' }), 'p209')).toBeNull();
@@ -49,7 +49,7 @@ describe('자재 이력 — 왜 없나 / 어떻게 채웠나', () => {
 
   it('줄 상태 — 왜 없나 → 어떻게 채웠나', () => {
     const logs = [
-      newLog({ id: 'a', kind: 'why', why: '앞호기 차용', mate: 'p207', at: '2026-09-14' }),
+      newLog({ id: 'a', kind: 'why', why: '차용', mate: 'p207', at: '2026-09-14' }),
       newLog({ id: 'b', kind: 'in', why: '구매', at: '2026-09-16' }),
     ];
     expect(rowSummary(logs, name)).toBe('207 차용 → 구매 1');
