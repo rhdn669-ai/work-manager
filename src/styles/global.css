@@ -24185,12 +24185,37 @@ body.has-editlock .main-content.expanded {
 }
 
 /* 사급 재고 「이번 입고」 — 적는 동안 결과를 미리 보여 준다 (2026-09-11 대표님) */
+/* 재고 표 — 열 폭은 colgroup(STOCK_COLS)이 정한다. 「이번 입고」 머리칸에 걸려 있던 140px 고정폭이
+   비고 열이 들어오며 표를 밀어 칸이 무너졌다 (2026-09-15 대표님 태블릿 사진 「입고칸이 무너짐」) */
+.fstock .pmat-table {
+  table-layout: fixed;
+}
+.fstock .pmat-table th.col-action {
+  width: auto;
+  padding-right: 12px;
+}
+.fstock .pmat-table td.col-action {
+  padding-right: 12px;
+}
 .fstock-in-cell {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: nowrap;
+  gap: 6px;
+  flex-wrap: wrap; /* 좁으면 미리보기(12 → 15)가 입력칸 밑으로 내려간다 */
+}
+/* 입력칸은 칸 폭에 맞춰 줄되 숫자 세 자리는 늘 들어가게 — 테두리를 살짝 두어 칸으로 읽히게 */
+.fstock .pmat-table .fstock-in-cell .pmat-input {
+  width: 100%;
+  min-width: 56px;
+  max-width: 84px;
+  border-color: var(--border);
+  text-align: right;
+}
+/* 비고 칸도 칸으로 읽히게 밑줄만 */
+.fstock .pmat-table .pmat-note {
+  border-bottom-color: var(--border);
+  border-radius: 0;
 }
 .fstock-preview {
   font-size: 12px;
