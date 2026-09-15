@@ -147,7 +147,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 「전체」 — 모든 BOX 줄을 한 표에 BOX 구분줄과 함께 늘어놓는다. 저장은 줄마다 제 BOX 로 간다
   // (2026-09-16 대표님 「준비작업 앞에 박스 전체 필터 하나만 걸어줘」)
   const ALL_BOXES = '전체';
-  const box = sp.get('box') || boxesWithRows[0] || CHECKABLE_BOXES[0];
+  // 처음 열면 「전체」 — BOX 를 고르기 전에 호기 전체가 한눈에 (2026-09-16 대표님 「첫 호기체크 화면은 박스 전체 보이게」)
+  const box = sp.get('box') || ALL_BOXES;
   const allBoxes = box === ALL_BOXES;
   const boxList = allBoxes ? boxesWithRows : [box];
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
