@@ -22,6 +22,7 @@ import { subscribePanels } from '../../services/productionService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
 import { aggregateShortage, receivedQty } from '../../domain/panelMaterials';
+import { outTally, tallyOut, outSetsOf, outSetsLabel } from '../../domain/outSets';
 import { CHECKABLE_BOXES, bomRowsForBox } from '../../domain/panelBom';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { subscribeFreeStock, receiveFreeStock, setFreeStockQty } from '../../services/freeStockService';
@@ -100,14 +101,13 @@ export default function FreeStockPage({ company }) {
   }, [mine, bomByProject]);
 
   // allRows 는 검색·보기를 거치지 않은 전체 — 위쪽 요약은 늘 전체를 봐야 한다.
-  const { groups, allRows, outSetsAll } = useMemo(() => {
+  const { groups, allRows } = useMemo(() => {
     // 「1대당」 — 호기 하나가 쓰는 개수. 호기마다 다르면 가장 큰 값을 쓴다.
     const perOneAll = new Map(); // 품목 전체 (가능 SET 용)
     const entriesAll = [];
     const entriesByBox = new Map(); // box → entries[]
     const perOneByBox = new Map(); // box → Map(key → 개수)
-    const unitsByBox = new Map(); // box → Map(itemId → Set(호기)) — 품목마다 몇 대가 가져갔나(툴팁)
-    const kindUnits = new Set(); // 사급 자재를 하나라도 가져간 호기 — 「나감 N SET」의 N
+    const outByBox = new Map(); // box → 나감 SET 집계 (줄마다 다 채운 호기 · 덜 채운 호기)
 
     for (const p of mine) {
       const all0 = bomByProject[p.bomLink.projectId];
@@ -133,18 +133,13 @@ export default function FreeStockPage({ company }) {
         if (!oneBox.has(bx)) oneBox.set(bx, new Map());
         const ob = oneBox.get(bx);
         const rec = (materials[p.id] || {})[bx] || {};
-        if (!unitsByBox.has(bx)) unitsByBox.set(bx, new Map());
-        const u = unitsByBox.get(bx);
+        if (!outByBox.has(bx)) outByBox.set(bx, outTally());
+        const o = outByBox.get(bx);
         for (const r of list) {
           const k = r.itemId || `row:${r.id}`;
           one.set(k, (one.get(k) || 0) + (Number(r.qty) || 0));
           ob.set(k, (ob.get(k) || 0) + (Number(r.qty) || 0));
-          // 하나라도 가져갔으면 그 호기는 「나간 SET」 하나 — 덜 넣었어도 센다
-          if (receivedQty(rec, r.id) > 0) {
-            if (!u.has(k)) u.set(k, new Set());
-            u.get(k).add(p.id);
-            kindUnits.add(p.id);
-          }
+          tallyOut(o, k, p.id, receivedQty(rec, r.id), Number(r.qty) || 0);
         }
         const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: rec };
         entriesAll.push(entry);
@@ -199,7 +194,7 @@ export default function FreeStockPage({ company }) {
       const es = entriesByBox.get(bx);
       if (!es) continue;
       const ob = perOneByBox.get(bx) || new Map();
-      const ub = unitsByBox.get(bx) || new Map();
+      const ob2 = outByBox.get(bx) || outTally();
       const list = aggregateShortage(es, { onlyShort: false })
         .map((a) => {
           const base = whole.get(a.itemId);
@@ -208,7 +203,7 @@ export default function FreeStockPage({ company }) {
                 ...base,
                 perOne: ob.get(a.itemId || '') || 0,
                 got: a.got,
-                outSets: ub.get(a.itemId || '')?.size || 0, // 가져간 호기 수
+                outSets: outSetsOf(ob2, a.itemId || ''), // { full 다 채운 호기, part 덜 채운 호기 }
               }
             : null;
         })
@@ -217,7 +212,7 @@ export default function FreeStockPage({ company }) {
         .sort(byDrawing);
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
-    return { groups: out, allRows: [...whole.values()], outSetsAll: kindUnits.size };
+    return { groups: out, allRows: [...whole.values()] };
   }, [mine, bomByProject, materials, masterMap, stock, q, view]);
 
   const sums = useMemo(() => {
@@ -411,12 +406,14 @@ export default function FreeStockPage({ company }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 「나감」은 «세트가 몇 대분 나갔나»다 — 이 갈래 자재를 하나라도 가져간 호기 수를
-                          모든 줄에 같게 적는다. 품목마다 세면 한 줄만 아직 안 적은 호기 때문에 5 SET 로
-                          갈라져 「세트 9개 나갔다」로 안 읽힌다 (2026-09-15 대표님 「전부 9set 으로 표시」).
-                          그 품목을 실제로 몇 대가 가져갔는지·개수는 툴팁에 둔다 (v142.8). */}
-                      <td className="col-num" title={`${won(r.got)}개 · 이 품목은 ${won(r.outSets)}대가 가져감`}>
-                        {`${won(outSetsAll)} SET`}
+                      {/* 「나감」은 줄마다 «다 채운 호기 수» SET, 덜 채운 호기는 「· M대 일부」
+                          (2026-09-15 대표님 「안나간 품목은 set 표시를 안올려야 맞는거아님?」).
+                          정확한 개수는 툴팁에. */}
+                      <td
+                        className="col-num"
+                        title={`${won(r.got)}개 · 다 채운 ${r.outSets.full}대 · 일부 ${r.outSets.part}대`}
+                      >
+                        {outSetsLabel(r.outSets)}
                       </td>
                       <td className="col-num">
                         {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.

@@ -15,6 +15,7 @@ import { CHECKABLE_BOXES, bomRowsForBox, hasBomLink } from '../../domain/panelBo
 import { inKindTab } from '../../domain/itemKind';
 import { STOCK_COLS } from '../../domain/tableWidths';
 import { receivedQty } from '../../domain/panelMaterials';
+import { outTally, tallyOut, outSetsOf, outSetsLabel } from '../../domain/outSets';
 import { subscribePaidStock, receivePaidStock, setPaidStockTo } from '../../services/paidStockService';
 
 // 도급 재고 — 「우리가 사서 들어온 것 중 아직 어느 호기에도 안 간 양」.
@@ -120,14 +121,13 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     };
   }, [all, bomByProject]);
 
-  const { groups, allRows, outSetsAll } = useMemo(() => {
+  const { groups, allRows } = useMemo(() => {
     const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
     const goneAll = new Map(); // 호기들에 들어간 총량
-    const kindUnits = new Set(); // 이 갈래 자재를 하나라도 가져간 호기 — 「나감 N SET」의 N
     const info = new Map();
-    const byBox = new Map(); // box → { perOne: Map, gone: Map, units: Map(itemId → Set(호기)) }
+    const byBox = new Map(); // box → { perOne: Map, gone: Map, out: 나감 SET 집계 }
     const pick = (bx) => {
-      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map(), units: new Map() });
+      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map(), out: outTally() });
       return byBox.get(bx);
     };
 
@@ -140,18 +140,13 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         const list = bomRowsForBox(forVariant, bx).filter((r) => inKindTab(r, kind));
         if (list.length === 0) continue;
         const rec = (materials[p.id] || {})[bx] || {};
-        const { gone: g, units: u } = pick(bx);
+        const { gone: g, out: o } = pick(bx);
         for (const r of list) {
           if (!r.itemId) continue;
           const got = receivedQty(rec, r.id);
           goneAll.set(r.itemId, (goneAll.get(r.itemId) || 0) + got);
           g.set(r.itemId, (g.get(r.itemId) || 0) + got);
-          // 하나라도 가져갔으면 그 호기는 「나간 SET」 하나 — 덜 넣었어도 센다
-          if (got > 0) {
-            if (!u.has(r.itemId)) u.set(r.itemId, new Set());
-            u.get(r.itemId).add(p.id);
-            kindUnits.add(p.id);
-          }
+          tallyOut(o, r.itemId, p.id, got, Number(r.qty) || 0);
         }
       }
     }
@@ -247,7 +242,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                 ...base,
                 perOne: b.perOne.get(itemId) || 0,
                 out: b.gone.get(itemId) || 0,
-                outSets: b.units.get(itemId)?.size || 0, // 가져간 호기 수
+                outSets: outSetsOf(b.out, itemId), // { full 다 채운 호기, part 덜 채운 호기 }
               }
             : null;
         })
@@ -256,7 +251,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
         .sort(byDrawing);
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
-    return { groups: out, allRows: [...stockOfItem.values()], outSetsAll: kindUnits.size };
+    return { groups: out, allRows: [...stockOfItem.values()] };
   }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, view, kind]);
 
   // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
@@ -433,12 +428,14 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                         {r.spec}
                       </td>
                       <td className="col-num">{won(r.perOne)}</td>
-                      {/* 「나감」은 «세트가 몇 대분 나갔나»다 — 이 갈래 자재를 하나라도 가져간 호기 수를
-                          모든 줄에 같게 적는다. 품목마다 세면 한 줄만 아직 안 적은 호기 때문에 5 SET 로
-                          갈라져 「세트 9개 나갔다」로 안 읽힌다 (2026-09-15 대표님 「전부 9set 으로 표시」).
-                          그 품목을 실제로 몇 대가 가져갔는지·개수는 툴팁에 둔다 (v142.8). */}
-                      <td className="col-num" title={`${won(r.out)}개 · 이 품목은 ${won(r.outSets)}대가 가져감`}>
-                        {`${won(outSetsAll)} SET`}
+                      {/* 「나감」은 줄마다 «다 채운 호기 수» SET, 덜 채운 호기는 「· M대 일부」
+                          (2026-09-15 대표님 「안나간 품목은 set 표시를 안올려야 맞는거아님?」).
+                          정확한 개수는 툴팁에. */}
+                      <td
+                        className="col-num"
+                        title={`${won(r.out)}개 · 다 채운 ${r.outSets.full}대 · 일부 ${r.outSets.part}대`}
+                      >
+                        {outSetsLabel(r.outSets)}
                       </td>
                       <td className="col-num">
                         {/* 숫자를 누르면 오간 기록, 옆의 「수정」은 실물을 세어 맞출 때.
