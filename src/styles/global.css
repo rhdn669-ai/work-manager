@@ -23787,6 +23787,18 @@ a.lib-row-name:hover {
   padding: 4px 6px;
   height: 28px;
 }
+/* 늘어나는 메모칸 — 글 길이만큼 아래로, 손으로 늘리는 손잡이는 없앤다 */
+.pmat-table .pmat-memo {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  height: auto;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .pmat-table .pmat-note[readonly] {
   cursor: default;
   color: var(--text-light);

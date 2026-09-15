@@ -12,6 +12,7 @@
 //   남음     통에 쌓여 있는 양 — 「이번 입고」로 늘고, 호기에서 「재고에서 N」으로 줄어든다
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
+import MemoInput from '../../components/common/MemoInput';
 import { useFillHeight } from '../../utils/useFillHeight';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
@@ -473,24 +474,14 @@ export default function FreeStockPage({ company }) {
                       </td>
                       {/* 비고 — 적는 동안 React 가 값을 안 흔들게 key 에 저장값을 넣는다 (호기 체크 비고와 같은 방식) */}
                       <td className="pmat-note-cell">
-                        <input
-                          key={`${r.itemId}:${r.memo || ''}`}
-                          type="text"
-                          className="pmat-input pmat-note"
-                          defaultValue={r.memo || ''}
-                          placeholder="메모"
-                          title={r.memo || ''}
-                          onBlur={(e) => {
-                            const v = e.target.value.trim();
-                            if (v === (r.memo || '')) return;
+                        <MemoInput
+                          value={r.memo || ''}
+                          ariaLabel={`${r.name || r.code} 비고`}
+                          onCommit={(v) =>
                             setStockMemo('free', company, r, v, { by: me }).catch(() =>
                               toast('비고를 저장하지 못했습니다', 'error'),
-                            );
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
-                          }}
-                          aria-label={`${r.name || r.code} 비고`}
+                            )
+                          }
                         />
                       </td>
                       <td className="col-action">

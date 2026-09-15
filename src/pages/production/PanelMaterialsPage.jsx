@@ -5,6 +5,7 @@ import { useFillHeight } from '../../utils/useFillHeight';
 import { useArrived } from '../../utils/useArrived';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import ReceiptChip from '../../components/common/ReceiptChip';
+import MemoInput from '../../components/common/MemoInput';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -199,17 +200,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 덤으로, 줄·요약·탭이 서로를 참조하던 고리도 사라졌다.
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
   const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
-  // 비고 — 호기·줄마다 한 줄 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」)
-  const [noteDraft, setNoteDraft] = useState({}); // { [rowId]: '입력 중' }
-  const commitNote = async (r) => {
-    const v = noteDraft[r.id];
-    if (v === undefined) return;
-    setNoteDraft((d) => {
-      const n = { ...d };
-      delete n[r.id];
-      return n;
-    });
-    if (v.trim() === String(rec[r.id]?.note || '')) return;
+  // 비고 — 호기·줄마다 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」).
+  // 칸은 글 길이에 맞춰 아래로 늘어난다 (MemoInput, 2026-09-15 대표님 「비고글이 짤리는데」)
+  const saveNote = async (r, v) => {
     try {
       await setNote(panelId, box, r.id, v);
     } catch {
@@ -866,25 +859,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     )}
                     {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
                     <td className="pmat-note-cell">
-                      {/* 적는 동안에는 값을 React 가 쥐고 흔들지 않는다 — 1초마다 도는 새로고침이
-                          한글 조합 중인 글자를 건드려 「ㅎㅏㄴ」처럼 깨지고 순서가 뒤바뀌었다
-                          (2026-09-14 대표님 「비고 글 이상하게 입력이됨」).
-                          key 에 저장된 값을 넣어, 밖에서 값이 바뀔 때만 칸을 새로 그린다. */}
-                      <input
-                        key={`${r.id}:${rec[r.id]?.note || ''}`}
-                        type="text"
-                        className="pmat-input pmat-note"
-                        defaultValue={rec[r.id]?.note || ''}
-                        placeholder={editMode ? '메모' : ''}
+                      <MemoInput
+                        value={rec[r.id]?.note || ''}
                         readOnly={!editMode}
                         title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
+                        ariaLabel={`${r.name} 비고`}
                         onFocus={(e) => keepInView(e.currentTarget)}
-                        onChange={(e) => setNoteDraft((d) => ({ ...d, [r.id]: e.target.value }))}
-                        onBlur={() => commitNote(r)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                        }}
-                        aria-label={`${r.name} 비고`}
+                        onCommit={(v) => saveNote(r, v)}
                       />
                     </td>
                     {
