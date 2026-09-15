@@ -64,7 +64,6 @@ export default function FreeStockPage({ company }) {
   // 위에 붙는다 (2026-09-12 대표님 「위에 줄은 스크롤해도 고정으로 내려가게」).
   const scrollRef = useFillHeight();
   const [q, setQ] = useState('');
-  const [view, setView] = useState('all'); // all | have
   // 잠금은 두지 않는다 — 이 화면에서 하는 일은 「들어온 개수 적기」와 「실제 개수로 맞추기」뿐이고,
   // 둘 다 잠가 둘 이유가 없다. 잠금 뒤에 숨겨 두었더니 수정하는 길을 못 찾으셨다 (2026-09-11 대표님).
   const [fixing, setFixing] = useState(null); // { row, to }
@@ -189,9 +188,8 @@ export default function FreeStockPage({ company }) {
 
     const kw = q.trim().toLowerCase();
     const keep = (r) => {
-      // 「남은 것」 — 고객사·우리 어느 통에든 있으면 보인다. 보는 통만 걸렀더니 고객사 통이 비고
-      // 우리 통에만 있을 때 화면이 통째로 비었다 (2026-09-15 대표님 「여기 왜 비어버리냐」)
-      if (view === 'have' && r.main <= 0 && r.other <= 0) return false;
+      // 「남은 것」 거르기는 없앴다 — 통이 비어 있어도 목록은 전부 보여야 한다
+      // (2026-09-15 대표님 「아무것도 없어도 리스트전체는 나와야함」)
       if (!kw) return true;
       return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
         String(v || '')
@@ -228,7 +226,7 @@ export default function FreeStockPage({ company }) {
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
     return { groups: out, allRows: [...whole.values()] };
-  }, [mine, bomByProject, materials, masterMap, stock, q, view, inOurs]);
+  }, [mine, bomByProject, materials, masterMap, stock, q, inOurs]);
 
   const sums = useMemo(() => {
     const all = allRows;
@@ -343,15 +341,6 @@ export default function FreeStockPage({ company }) {
           placeholder="도번·품명·규격으로 찾기"
           aria-label="사급 재고 검색"
         />
-        <ViewSwitch
-          options={[
-            { value: 'have', label: '남은 것' },
-            { value: 'all', label: '전체' },
-          ]}
-          value={view}
-          onChange={setView}
-          ariaLabel="보기"
-        />
         {/* 어느 통을 보고 적는지 — 고객사 통 / 우리 통. 본 칸·금액·가능 SET·「이번 입고」·「수정」이
             모두 이 통 기준이고, 줄 아래 작은 글자가 반대 통 (2026-09-15 대표님 「셈도 아예 분리」) */}
         <ViewSwitch
@@ -369,7 +358,7 @@ export default function FreeStockPage({ company }) {
       {groups.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
-          <p>{view === 'have' ? '고객사·우리 통 모두 남은 사급 자재가 없습니다' : `${company} 사급 품목이 없습니다`}</p>
+          <p>{`${company} 사급 품목이 없습니다`}</p>
           <span>BOM 에 사급으로 표시된 품목이 여기에 모입니다.</span>
         </div>
       ) : (
