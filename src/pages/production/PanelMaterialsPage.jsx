@@ -784,7 +784,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '15%', '15%', null, '6.5%', '6.5%', '9%', hasMeta ? '10%' : null, '8%', '11%']
+              {['44px', '15%', '15%', null, '6.5%', '6.5%', '6.5%', hasMeta ? '9%' : null, '8%', '11%']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -953,14 +953,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     {hasMeta && (
                       <td className="pmat-meta">
                         {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
-                        {/* 재고에서 꺼내 채운 몫 (2026-09-05 대표님 「기록에 재고 사용한 건 추가 표시」).
-                            「재고 2」라고만 적었더니 「지금 재고에 2개 있다」로 읽혔다
-                            (2026-09-12 대표님 「재고가 어디있다는거야?」) — 「재고에서」로 적는다. */}
-                        {Number(meta?.fromStock) > 0 && (
-                          <span className="pmat-from-stock" title="재고에서 가져와 채운 개수">
-                            재고에서 {meta.fromStock}
-                          </span>
-                        )}
+                        {/* 「재고에서 N」은 뺐다 — 이제 채우는 길이 재고뿐이라 늘 같은 말이 된다
+                            (2026-09-15 대표님 「무조건 재고에서만 채울수있는데」) */}
                       </td>
                     )}
                     {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
