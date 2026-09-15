@@ -29,7 +29,6 @@ import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/p
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
-import { incidentsForRow, rowIncidentLabel } from '../../domain/incidents';
 import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary } from '../../domain/matLog';
 import { writeMatLog } from '../../services/matLogService';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
@@ -947,17 +946,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           </span>
                         ) : null;
                       })()}
-                      {(() => {
-                        const label = rowIncidentLabel(incidentsForRow(allMaterials, box, r.id, panelId), (id) => {
-                          const p = allPanels.find((x) => x.id === id);
-                          return p ? `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() : id;
-                        });
-                        return label ? (
-                          <span className="pmat-incident" title="분실·파손 탭에서 운용합니다">
-                            {label}
-                          </span>
-                        ) : null;
-                      })()}
+                      {/* 옛 「분실·파손」 장부의 한 줄(「…에 빌려줌 1」)은 뺐다 — 지금은 자재 이력이
+                          그 자리를 쓴다 (2026-09-16 대표님 「저 빌려줌 문구 삭제」) */}
                     </td>
                     {hasMeta && (
                       <td className="pmat-meta">
