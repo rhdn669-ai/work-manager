@@ -208,7 +208,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-15 「Cannot access before initialization」)
   const mateList = () =>
     allPanels
-      .filter((p) => p.id !== panelId && (!p.회사 || p.회사 === company) && p.bomLink?.projectId === link?.projectId)
+      .filter(
+        (p) =>
+          p.id !== panelId &&
+          (!p.회사 || p.회사 === company) &&
+          p.bomLink?.projectId === link?.projectId &&
+          // 끝난 호기는 뺀다 — 이미 출고된 호기에서 빌려 올 수는 없다
+          // (2026-09-15 대표님 「가져간 호기 끝난호기는 미포함」)
+          p.overallStatus !== '출고완료' &&
+          p.overallStatus !== '출고숨김',
+      )
       .map((p) => ({ value: p.id, label: panelName(p) }));
   async function submitLog(e) {
     e.preventDefault();
@@ -961,7 +970,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                             const ours = Math.min(Math.max(0, Number(freeStock[r.itemId]?.ours) || 0), all);
                             return (
                               <span className={`pmat-instock${all <= 0 ? ' is-empty' : ''}`}>
-                                고객사 {all - ours} · 우리 {ours}
+                                고객사 {all - ours} · 당사 {ours}
                               </span>
                             );
                           })()

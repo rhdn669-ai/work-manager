@@ -24,7 +24,7 @@ export default function ReceiptChip({
   const state = skip ? 'skip' : g <= 0 ? 'none' : g >= n ? 'full' : 'partial';
   const label = skip ? '제외' : state === 'none' ? '미입고' : `${g}/${n}`;
   const mine = !skip && g > 0 && o > 0;
-  const tip = [mine ? `우리가 댄 몫 ${o}개` : '', title].filter(Boolean).join(' · ');
+  const tip = [mine ? `당사가 댄 몫 ${o}개` : '', title].filter(Boolean).join(' · ');
   return (
     <span className={`recv-chip is-${state}${mine ? ' has-ours' : ''} ${className}`} title={tip || undefined}>
       {state === 'full' && <Icon name="check" className="recv-chip-ic" />}

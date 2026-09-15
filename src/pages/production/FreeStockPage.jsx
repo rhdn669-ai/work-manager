@@ -268,7 +268,7 @@ export default function FreeStockPage({ company }) {
         by: me,
         ours: inOurs,
       });
-      toast(`${r.name || r.code} ${n}개 ${inOurs ? '우리 것으로 ' : ''}받았습니다`, 'success', 2000);
+      toast(`${r.name || r.code} ${n}개 ${inOurs ? '당사 것으로 ' : ''}받았습니다`, 'success', 2000);
     } catch (err) {
       console.error(err);
       toast('저장에 실패했습니다', 'error');
@@ -282,7 +282,7 @@ export default function FreeStockPage({ company }) {
     const { row } = fixing;
     const t = Number(fixing.to) || 0;
     if (t === row.main) return setFixing(null);
-    const who = inOurs ? '우리 것' : '고객사';
+    const who = inOurs ? '당사' : '고객사';
     if (!(await confirm(`${row.name || row.code} ${who} 재고를 ${won(row.main)} → ${won(t)} 으로 수정할까요?`))) return;
     try {
       // 통에는 합(qty)과 우리 몫(ours)으로 적힌다 — 고른 통만 바꾸고 반대 통은 그대로
@@ -316,12 +316,12 @@ export default function FreeStockPage({ company }) {
           </span>
           <span
             className="fstock-sum"
-            title={inOurs ? '우리가 댄 몫 — 고객사 것과 따로 센다' : '고객사가 준 것 — 사급 본래 몫'}
+            title={inOurs ? '당사가 댄 몫 — 고객사 것과 따로 센다' : '고객사가 준 것 — 사급 본래 몫'}
           >
-            {inOurs ? '우리 것' : '고객사'} <b>{won(sums.main)}</b>
+            {inOurs ? '당사' : '고객사'} <b>{won(sums.main)}</b>
           </span>
           <span className="fstock-sum fstock-sum-other" title="반대 통에 있는 양">
-            {inOurs ? '고객사' : '우리 것'} <b>{won(sums.other)}</b>
+            {inOurs ? '고객사' : '당사'} <b>{won(sums.other)}</b>
           </span>
           <span className="fstock-sum" title="남은 것 × 단가">
             금액 <b>{won(sums.amount)}원</b>
@@ -346,11 +346,11 @@ export default function FreeStockPage({ company }) {
         <ViewSwitch
           options={[
             { value: 'them', label: '고객사' },
-            { value: 'ours', label: '우리 것' },
+            { value: 'ours', label: '당사' },
           ]}
           value={inOurs ? 'ours' : 'them'}
           onChange={(v) => setInOurs(v === 'ours')}
-          ariaLabel="어느 통을 볼지 — 고객사 / 우리 것"
+          ariaLabel="어느 통을 볼지 — 고객사 / 당사"
           className="fstock-owner-switch"
         />
       </div>
@@ -443,7 +443,7 @@ export default function FreeStockPage({ company }) {
                                 (2026-09-15 대표님 「수량은 본 칸에 입력하고 아래글자를 반대통 수량」) */}
                             <b>{won(r.main)}</b>
                             <em className="fstock-ours">
-                              {inOurs ? '고객사' : '우리'} {won(r.other)}
+                              {inOurs ? '고객사' : '당사'} {won(r.other)}
                             </em>
                             {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
@@ -570,11 +570,11 @@ export default function FreeStockPage({ company }) {
         <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 수정">
           <form onSubmit={onFix}>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              <strong>{fixing.row.name || fixing.row.code}</strong> · {inOurs ? '우리 것' : '고객사'} 지금{' '}
+              <strong>{fixing.row.name || fixing.row.code}</strong> · {inOurs ? '당사' : '고객사'} 지금{' '}
               {won(fixing.row.main)} (반대 통 {won(fixing.row.other)})
             </p>
             <div className="form-group">
-              <label>{inOurs ? '우리 것' : '고객사'} 실제 수량</label>
+              <label>{inOurs ? '당사' : '고객사'} 실제 수량</label>
               <input
                 autoFocus
                 value={fixing.to}

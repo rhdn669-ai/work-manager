@@ -8,21 +8,21 @@
 // 한 줄 = { id, kind, why, n, at, by, note, mate }
 //   kind  'out'  수량이 줄었다      why: 파손 · 분실 · 차용해 줌 · 그냥 빼기
 //         'in'   수량이 늘었다      why: 구매 · 차용 · 수리 입고
-//         'why'  수량 그대로, 까닭만 why: 미입고 · 앞 호기가 가져감 · 파손 · 분실
-//   mate  상대 호기 id — 차용·빌려줌·앞 호기가 가져감일 때
+//         'why'  수량 그대로, 까닭만 why: 미입고 · 앞호기 차용 · 파손 · 분실
+//   mate  상대 호기 id — 차용·빌려줌·앞호기 차용일 때
 //
 // 짝 기록: 한쪽에서 차용을 고르면 상대 호기 줄에도 짝 한 줄이 같이 남고 수량도 앱이 맞춘다
 // (대표님 「둘중 하나만 체크가 되어도 둘다 기록이 남는것 이게맞나?」 → 그렇다).
 
 export const OUT_WHYS = ['파손', '분실', '차용해 줌', '그냥 빼기'];
 export const IN_WHYS = ['구매', '차용', '수리 입고'];
-export const WHY_WHYS = ['미입고', '앞 호기가 가져감', '파손', '분실'];
+export const WHY_WHYS = ['미입고', '앞호기 차용', '파손', '분실'];
 
 /** 상대 호기를 골라야 하는 까닭인가 */
 export function needsMate(kind, why) {
   if (kind === 'out') return why === '차용해 줌';
   if (kind === 'in') return why === '차용';
-  return why === '앞 호기가 가져감';
+  return why === '앞호기 차용';
 }
 
 /** 재고 통에서 실물이 나가야 하는 까닭인가 — 통이 비면 못 채운다 (대표님 「재고에서는 수량이 있어야」) */
@@ -55,10 +55,10 @@ export function mateLog(log, myPanelId) {
       pair: log.id,
     };
   }
-  if (log.kind === 'why' && log.why === '앞 호기가 가져감') {
+  if (log.kind === 'why' && log.why === '앞호기 차용') {
     // 수량은 안 건드리고 기록만 — 상대 호기에도 「가져갔다」를 남긴다
     return {
-      ...newLog({ kind: 'why', why: '뒤 호기에서 가져옴', n: log.n, mate: myPanelId, at: log.at, by: log.by }),
+      ...newLog({ kind: 'why', why: '뒤호기에 차용해 줌', n: log.n, mate: myPanelId, at: log.at, by: log.by }),
       pair: log.id,
     };
   }
@@ -78,8 +78,8 @@ export function logLabel(log, name = (id) => id) {
   const who = log.mate ? name(log.mate) : '';
   if (log.kind === 'out' && log.why === '차용해 줌') return `${who}에 빌려줌 ${log.n}`;
   if (log.kind === 'in' && log.why === '차용') return `${who}에서 차용 ${log.n}`;
-  if (log.kind === 'why' && log.why === '앞 호기가 가져감') return `${who}가 가져감`;
-  if (log.kind === 'why' && log.why === '뒤 호기에서 가져옴') return `${who}에서 가져옴`;
+  if (log.kind === 'why' && log.why === '앞호기 차용') return `${who} 차용`;
+  if (log.kind === 'why' && log.why === '뒤호기에 차용해 줌') return `${who}에 차용해 줌`;
   if (log.kind === 'why') return log.why;
   return `${log.why} ${log.n}`;
 }
