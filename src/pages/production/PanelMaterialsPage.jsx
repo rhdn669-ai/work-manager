@@ -27,6 +27,7 @@ import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/p
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
+import { incidentsForRow, rowIncidentLabel } from '../../domain/incidents';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
 import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
@@ -843,6 +844,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           title={meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
                         />
                       )}
+                      {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
+                          자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
+                      {(() => {
+                        const label = rowIncidentLabel(incidentsForRow(allMaterials, box, r.id, panelId), (id) => {
+                          const p = allPanels.find((x) => x.id === id);
+                          return p ? `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() : id;
+                        });
+                        return label ? (
+                          <span className="pmat-incident" title="분실·파손 탭에서 운용합니다">
+                            {label}
+                          </span>
+                        ) : null;
+                      })()}
                     </td>
                     {hasMeta && (
                       <td className="pmat-meta">

@@ -24174,6 +24174,24 @@ body.has-editlock .main-content.expanded {
   color: var(--grey-600);
   white-space: nowrap;
 }
+/* 분실·파손 표시 — 입고 칩 밑 한 줄, 주황 (2026-09-15 대표님) */
+.pmat-table .pmat-incident {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-press, #b3521c);
+  white-space: nowrap;
+}
+/* 분실·파손 등록 창 — 사유·수량 나란히 */
+.inc-form-row {
+  display: flex;
+  gap: 12px;
+}
+.inc-form-row > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
 /* 통이 비어 지금 못 채우는 줄 (2026-09-15) */
 .pmat-table .pmat-instock.is-empty {
   color: var(--danger, #d92d20);
