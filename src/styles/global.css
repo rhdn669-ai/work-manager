@@ -23631,16 +23631,27 @@ a.lib-row-name:hover {
   font-weight: 700;
   line-height: 17px;
 }
-/* 「전체·부족·완료」 — 자주 쓰는 스위치라 크게 (2026-09-15 대표님 「좀더 키워줘」) */
+/* 「전체·부족·완료」 — 자주 쓰는 스위치라 크게, 고른 쪽은 «채워서» 한눈에
+   (2026-09-15 대표님 「좀더 키워줘」 → 「아직도 눈에 안띔」) */
+.pmat-rowview {
+  margin-left: auto;
+  padding: 4px;
+}
 .pmat-rowview .view-switch-item {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 0 16px;
-  height: 34px;
-  line-height: 34px;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0 20px;
+  height: 38px;
+  line-height: 38px;
 }
 .pmat-rowview .view-switch-item.on {
+  background: var(--primary);
+  color: #fff;
   font-weight: 800;
+  box-shadow: none;
+}
+.pmat-rowview .view-switch-item.on:hover {
+  background: var(--primary);
 }
 
 /* 숫자 칸 — 입력칸이 칸보다 넓어 「…」가 찍히던 것 (2026-09-05 대표님) */
