@@ -58,9 +58,7 @@ export async function writeMatLog(
   //  두번 해버리니까 이런 오류가 생기는데?」). 한쪽만 적으면 앱이 상대 쪽 짝을 만든다.
   if (log.mate) {
     const mine = (await getPanelMaterials(panel.id))?.[box]?.[row.id]?.log || [];
-    const dup = mine.find(
-      (l) => l.pair && l.mate === log.mate && l.at === log.at && whyOf(l) === whyOf({ kind, why }),
-    );
+    const dup = mine.find((l) => l.pair && l.mate === log.mate && l.at === log.at && whyOf(l) === whyOf({ kind, why }));
     if (dup) throw new Error('상대 호기에서 이미 적혀 있습니다 — 한쪽에서만 적으면 됩니다');
   }
 
