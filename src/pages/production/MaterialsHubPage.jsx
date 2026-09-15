@@ -16,7 +16,7 @@ import PanelMaterialsPage from './PanelMaterialsPage';
 import ShortagePage from './ShortagePage';
 import FreeStockPage from './FreeStockPage';
 import PaidStockPage from './PaidStockPage';
-import IncidentsPage from './IncidentsPage';
+import MatLogPage from './MatLogPage';
 
 // 자재 허브 — 호기 자재 체크와 갈래별 재고를 한 화면의 탭으로
 // (2026-09-05 대표님 안 B 2단계 「자재 화면 3 → 1」). 옛 주소(/production/:id/materials,
@@ -36,8 +36,8 @@ const TABS = [
   { value: 'paidstock', label: '도급 재고' },
   // 판금도 같은 모양으로 — BOM 판금 탭에 담은 줄만 센다 (2026-09-12 대표님 「판금 재고 탭을 따로」)
   { value: 'madestock', label: '판금 재고' },
-  // 파손·분실로 뒤 호기에서 빌려 온 사건 장부 (2026-09-15 대표님 「분실 파손 이력 탭하나」)
-  { value: 'incidents', label: '분실·파손' },
+  // 호기 줄에서 한 일(왜 없나 / 어떻게 채웠나)이 자동으로 쌓이는 이력 (2026-09-15 대표님)
+  { value: 'matlog', label: '자재 이력' },
 ];
 
 export default function MaterialsHubPage() {
@@ -147,8 +147,8 @@ export default function MaterialsHubPage() {
         <PaidStockPage company={company} kind="paid" />
       ) : tab === 'madestock' ? (
         <PaidStockPage company={company} kind="made" />
-      ) : tab === 'incidents' ? (
-        <IncidentsPage company={company} />
+      ) : tab === 'matlog' ? (
+        <MatLogPage company={company} />
       ) : (
         <div className="mhub-body">
           {/* 호기 목록 — PC 는 왼쪽 세로, 모바일은 위쪽 선택 상자 */}

@@ -8,7 +8,9 @@ import { isFreeIssue } from '../services/bomService';
 
 export function receivedQty(received, bomItemId) {
   const r = received && received[bomItemId];
-  return Math.max(0, Number(r && r.qty) || 0);
+  // 음수도 그대로 — 뒤 호기에 빌려준 줄은 0 밑으로 내려가고(빚), 부족이 그만큼 늘어난다
+  // (2026-09-15 대표님 「-1/1 이면 부족 2」)
+  return Number(r && r.qty) || 0;
 }
 
 /** 이 호기에서만 일시 제외한 줄인가 — 기본 BOM 은 그대로 두고 그 호기에서만 뺀다

@@ -28,8 +28,14 @@ export function subscribePanelMaterials(panelId, cb) {
 }
 
 /** 구성품 하나의 들어온 개수를 적는다 — 문서를 통째로 다시 쓰지 않고 그 줄만 */
-export async function setReceived(panelId, box, bomItemId, qty, by) {
-  const n = Math.max(0, Number(qty) || 0);
+/**
+ * 이 호기·이 줄에 들어온 개수.
+ * allowNegative — 음수(빚)를 허용한다. 뒤 호기에 빌려주면 그 줄이 0 밑으로 내려가고, 부족은
+ * 「필요 − 들어옴」이라 저절로 늘어난다 (2026-09-15 대표님 「그 호기 수량은 자연스래 - 수량이 되니」)
+ */
+export async function setReceived(panelId, box, bomItemId, qty, by, { allowNegative = false } = {}) {
+  const raw = Number(qty) || 0;
+  const n = allowNegative ? raw : Math.max(0, raw);
   const today = new Date().toISOString().slice(0, 10);
   await setDoc(
     doc(ref, materialsDocId(panelId, box)),

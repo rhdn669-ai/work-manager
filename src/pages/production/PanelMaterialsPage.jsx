@@ -6,6 +6,8 @@ import { useArrived } from '../../utils/useArrived';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import ReceiptChip from '../../components/common/ReceiptChip';
 import MemoInput from '../../components/common/MemoInput';
+import Modal from '../../components/common/Modal';
+import Select from '../../components/common/Select';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -28,6 +30,8 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
 import { incidentsForRow, rowIncidentLabel } from '../../domain/incidents';
+import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary } from '../../domain/matLog';
+import { writeMatLog } from '../../services/matLogService';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
 import { MADE, MADE_TYPE, isMade, inKindTab, kindOf } from '../../domain/itemKind';
@@ -191,6 +195,46 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 도번·품명·규격으로 찾기 — 이 호기 «전체»에서 찾고, 고르면 그 BOX·갈래 탭으로 옮겨 간다
   // (2026-09-15 대표님 「전체리스트중에 검색 되고 해당 위치에 맞게 탭 움직이는걸로」)
   const [q, setQ] = useState('');
+  // 줄에서 한 일을 적는 창 — kind 'out'(줄임) | 'in'(채움) | 'why'(0 인 줄 까닭)
+  // (2026-09-15 대표님 「없는 이유가 남아야하고 그걸 채우면 어떻게 채웠는지가 남아야」)
+  const [logForm, setLogForm] = useState(null);
+  const [logSaving, setLogSaving] = useState(false);
+  const whyList = (k) => (k === 'out' ? OUT_WHYS : k === 'in' ? IN_WHYS : WHY_WHYS);
+  const openLog = (r, kind, n = 1) =>
+    setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: '' });
+  const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
+  const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
+  const mates = allPanels
+    .filter((p) => p.id !== panelId && (!p.회사 || p.회사 === company) && p.bomLink?.projectId === link?.projectId)
+    .map((p) => ({ value: p.id, label: panelName(p) }));
+  async function submitLog(e) {
+    e.preventDefault();
+    const f = logForm;
+    if (!f) return;
+    if (needsMate(f.kind, f.why) && !f.mate) {
+      toast('어느 호기인지 골라 주세요', 'error');
+      return;
+    }
+    setLogSaving(true);
+    try {
+      await writeMatLog(panel, box, f.row, {
+        kind: f.kind,
+        why: f.why,
+        n: Math.max(1, Number(f.n) || 1),
+        mate: f.mate,
+        by: by(),
+        note: f.note,
+        stockKind: stockKindOf(f.row),
+      });
+      setLogForm(null);
+      toast('기록했습니다', 'success');
+    } catch (err) {
+      console.error(err);
+      toast(err?.message || '기록하지 못했습니다', 'error', 0);
+    } finally {
+      setLogSaving(false);
+    }
+  }
   const hit = (r) => {
     const kw = q.trim().toLowerCase();
     if (!kw) return false;
@@ -447,6 +491,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     setTyping(null);
     const before = receivedQty(rec, r.id);
     if (n === before) return;
+    // 줄어들면 「왜 줄었나」를 묻는다 — 창에서 적으면 수량도 거기서 내려간다
+    // (2026-09-15 대표님 「-수량으로 입력하게 되면 사유를 선택하고 남는 방식」)
+    if (n < before) {
+      setLogForm({ row: r, kind: 'out', why: OUT_WHYS[0], n: String(before - n), mate: '', note: '' });
+      return;
+    }
     try {
       const applied = await applyQty(r, before, n);
       if (applied === before) return;
@@ -934,6 +984,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
                           자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
                       {(() => {
+                        const s = rowSummary(rec[r.id]?.log || [], nameOfId);
+                        return s ? (
+                          <span className="pmat-incident" title="자재 이력 탭에서 볼 수 있습니다">
+                            {s}
+                          </span>
+                        ) : null;
+                      })()}
+                      {(() => {
                         const label = rowIncidentLabel(incidentsForRow(allMaterials, box, r.id, panelId), (id) => {
                           const p = allPanels.find((x) => x.id === id);
                           return p ? `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() : id;
@@ -971,9 +1029,29 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     </td>
                     {
                       <td className="col-action pmat-act">
+                        {!outScope && !skipped && got < (Number(r.qty) || 0) && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary pmat-act-btn"
+                            onClick={() => openLog(r, 'in', Math.max(1, (Number(r.qty) || 0) - got))}
+                            title="어떻게 채웠는지 적고 수량을 올립니다"
+                          >
+                            입고
+                          </button>
+                        )}
+                        {!outScope && !skipped && got <= 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline pmat-act-btn"
+                            onClick={() => openLog(r, 'why')}
+                            title="왜 비어 있는지만 적습니다 — 수량은 그대로"
+                          >
+                            사유
+                          </button>
+                        )}
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline"
+                          className="btn btn-sm btn-outline pmat-act-btn"
                           onClick={() => toggleSkip(r, !skipped)}
                           disabled={!editMode || outScope}
                           title={
@@ -1061,6 +1139,81 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           </div>
         </div>
       </div>
+
+      {/* 줄에서 한 일을 적는 창 — 왜 줄었나 / 어떻게 채웠나 / 왜 비어 있나 (2026-09-15 대표님) */}
+      {logForm && (
+        <Modal
+          isOpen
+          onClose={() => setLogForm(null)}
+          title={logForm.kind === 'in' ? '어떻게 채웠나요' : logForm.kind === 'out' ? '왜 줄었나요' : '왜 비어 있나요'}
+        >
+          <form onSubmit={submitLog}>
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              <strong>{logForm.row.name || logForm.row.code}</strong>
+              {logForm.row.spec ? ` · ${logForm.row.spec}` : ''} · {box}
+            </p>
+            <div className="form-group">
+              <label>사유</label>
+              <Select
+                value={logForm.why}
+                onChange={(v) => setLogForm((f) => ({ ...f, why: v, mate: needsMate(f.kind, v) ? f.mate : '' }))}
+                options={whyList(logForm.kind).map((w) => ({ value: w, label: w }))}
+                ariaLabel="사유"
+                native
+              />
+            </div>
+            {needsMate(logForm.kind, logForm.why) && (
+              <div className="form-group">
+                <label>{logForm.kind === 'out' ? '어느 호기에 줬나요' : '어느 호기에서 받았나요'}</label>
+                <Select
+                  value={logForm.mate}
+                  onChange={(v) => setLogForm((f) => ({ ...f, mate: v }))}
+                  options={mates}
+                  placeholder="호기 선택"
+                  ariaLabel="상대 호기"
+                  native
+                />
+                <p className="field-hint">
+                  {logForm.kind === 'out'
+                    ? '그 호기 줄이 그만큼 늘고, 양쪽에 기록이 남습니다.'
+                    : '그 호기 줄이 그만큼 줄어(0 밑이면 빚) 부족 집계에 뜹니다.'}
+                </p>
+              </div>
+            )}
+            {logForm.kind !== 'why' && (
+              <div className="form-group">
+                <label>개수</label>
+                <input
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  value={logForm.n}
+                  onChange={(e) => setLogForm((f) => ({ ...f, n: e.target.value.replace(/[^0-9]/g, '') }))}
+                  aria-label="개수"
+                />
+              </div>
+            )}
+            <div className="form-group">
+              <label>비고</label>
+              <input
+                type="text"
+                value={logForm.note}
+                onChange={(e) => setLogForm((f) => ({ ...f, note: e.target.value }))}
+                placeholder="예) 커넥터 깨짐"
+                aria-label="비고"
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setLogForm(null)}>
+                취소
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={logSaving}>
+                {logSaving ? '적는 중…' : '적기'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
