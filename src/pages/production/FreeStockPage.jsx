@@ -189,7 +189,9 @@ export default function FreeStockPage({ company }) {
 
     const kw = q.trim().toLowerCase();
     const keep = (r) => {
-      if (view === 'have' && r.main <= 0) return false;
+      // 「남은 것」 — 고객사·우리 어느 통에든 있으면 보인다. 보는 통만 걸렀더니 고객사 통이 비고
+      // 우리 통에만 있을 때 화면이 통째로 비었다 (2026-09-15 대표님 「여기 왜 비어버리냐」)
+      if (view === 'have' && r.main <= 0 && r.other <= 0) return false;
       if (!kw) return true;
       return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
         String(v || '')
@@ -367,7 +369,7 @@ export default function FreeStockPage({ company }) {
       {groups.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
-          <p>{view === 'have' ? '남은 사급 자재가 없습니다' : `${company} 사급 품목이 없습니다`}</p>
+          <p>{view === 'have' ? '고객사·우리 통 모두 남은 사급 자재가 없습니다' : `${company} 사급 품목이 없습니다`}</p>
           <span>BOM 에 사급으로 표시된 품목이 여기에 모입니다.</span>
         </div>
       ) : (
