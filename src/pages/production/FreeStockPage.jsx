@@ -163,8 +163,10 @@ export default function FreeStockPage({ company }) {
       whole.set(a.itemId, {
         ...a,
         have,
-        // 「우리가 댄」 몫 — 고객사 것 = have − ours (2026-09-12 대표님)
+        // 「우리가 댄」 몫 — 고객사 것 = have − ours (2026-09-12 대표님). 두 숫자는 «따로» 보인다
+        // (2026-09-15 대표님 「고객사 우리것이 수량이 공유가안되어야하는데 공유되네」)
         ours: Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have),
+        theirs: have - Math.min(Math.max(0, Number(stock[a.itemId]?.ours) || 0), have),
         // 남은 것의 값어치 — 집계를 거치면 단가가 떨어져 나가 품목에서 바로 읽는다
         amount: have * (Number(masterMap[a.itemId]?.unitPrice) || Number(masterMap[a.itemId]?.standardPrice) || 0),
         perOneAll: one,
@@ -231,6 +233,7 @@ export default function FreeStockPage({ company }) {
     return {
       kinds: all.length,
       have: all.reduce((s, r) => s + r.have, 0),
+      theirs: all.reduce((s, r) => s + (Number(r.theirs) || 0), 0),
       amount: all.reduce((s, r) => s + (Number(r.amount) || 0), 0),
       ours: all.reduce((s, r) => s + (Number(r.ours) || 0), 0),
       sets,
@@ -267,12 +270,19 @@ export default function FreeStockPage({ company }) {
 
   async function onFix(e) {
     e.preventDefault();
-    const { row, to } = fixing;
-    const t = Number(to) || 0;
-    if (t === row.have) return setFixing(null);
-    if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.have)} → ${won(t)} 으로 수정할까요?`))) return;
+    const { row } = fixing;
+    const theirs = Number(fixing.theirs) || 0;
+    const ours = Number(fixing.ours) || 0;
+    if (theirs === row.theirs && ours === row.ours) return setFixing(null);
+    if (
+      !(await confirm(
+        `${row.name || row.code} — 고객사 ${won(row.theirs)} → ${won(theirs)} · 우리 것 ${won(row.ours)} → ${won(ours)} 으로 수정할까요?`,
+      ))
+    )
+      return;
     try {
-      await setFreeStockQty(company, row, t, { by: me });
+      // 통에는 합(qty)과 우리 몫(ours)으로 적힌다 — 고객사 것 = 합 − 우리 몫
+      await setFreeStockQty(company, row, theirs + ours, { by: me, ours });
       setFixing(null);
       toast('재고를 수정했습니다', 'success');
     } catch (err) {
@@ -298,17 +308,15 @@ export default function FreeStockPage({ company }) {
           <span className="fstock-sum">
             품목 <b>{sums.kinds}종</b>
           </span>
-          <span className="fstock-sum">
-            남음 <b>{won(sums.have)}</b>
+          <span className="fstock-sum" title="고객사가 준 것 — 사급 본래 몫">
+            고객사 <b>{won(sums.theirs)}</b>
+          </span>
+          <span className="fstock-sum" title="사급 품목이지만 우리가 댄 몫 — 고객사 것과 따로 센다">
+            우리 것 <b>{won(sums.ours)}</b>
           </span>
           <span className="fstock-sum" title="남은 것 × 단가">
             금액 <b>{won(sums.amount)}원</b>
           </span>
-          {sums.ours > 0 && (
-            <span className="fstock-sum" title="사급 품목이지만 우리가 댄 몫">
-              우리 것 <b>{won(sums.ours)}</b>
-            </span>
-          )}
           {/* 가장 모자란 품목이 전체 SET 수를 정한다 (2026-09-11 대표님) */}
           {sums.sets !== null && (
             <span className="fstock-sum fstock-sets">
@@ -428,7 +436,10 @@ export default function FreeStockPage({ company }) {
                             {/* 여기는 «배정하지 않은» 실물만 적는다 — 호기에 들어가야 할 부족분은
                                 「부족 집계」 탭에서 본다 (2026-09-14 대표님 「재고에는 배정안된
                                 실제 수량만 표시」) */}
-                            <b className={r.have < 0 ? 'is-minus' : undefined}>{won(r.have)}</b>
+                            {/* 고객사 것과 우리 것은 «따로» — 한 숫자로 합치면 어느 쪽 물건인지 안 보인다
+                                (2026-09-15 대표님 「고객사 우리것이 수량이 공유가안되어야하는데」) */}
+                            <b className={r.theirs < 0 ? 'is-minus' : undefined}>{won(r.theirs)}</b>
+                            {r.ours > 0 && <em className="fstock-ours">우리 {won(r.ours)}</em>}
                             {r.amount > 0 && <em className="fstock-amt">{won(r.amount)}원</em>}
                           </button>
                           {/* 남음이 0 이어도 눌러진다 — 실물을 세어 맞출 때는 0 인 줄이 오히려
@@ -437,7 +448,7 @@ export default function FreeStockPage({ company }) {
                           <button
                             type="button"
                             className="btn btn-sm btn-outline"
-                            onClick={() => setFixing({ row: r, to: String(r.have) })}
+                            onClick={() => setFixing({ row: r, theirs: String(r.theirs), ours: String(r.ours) })}
                             title="실제 개수로 수정"
                           >
                             수정
@@ -542,16 +553,26 @@ export default function FreeStockPage({ company }) {
         <Modal isOpen onClose={() => setFixing(null)} title="재고 수량 수정">
           <form onSubmit={onFix}>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              <strong>{fixing.row.name || fixing.row.code}</strong> · 지금 {won(fixing.row.have)}
+              <strong>{fixing.row.name || fixing.row.code}</strong> · 지금 고객사 {won(fixing.row.theirs)} · 우리 것{' '}
+              {won(fixing.row.ours)}
             </p>
             <div className="form-group">
-              <label>실제 수량</label>
+              <label>고객사 것 (실제 수량)</label>
               <input
                 autoFocus
-                value={fixing.to}
-                onChange={(e) => setFixing((s) => ({ ...s, to: e.target.value.replace(/[^0-9]/g, '') }))}
+                value={fixing.theirs}
+                onChange={(e) => setFixing((s) => ({ ...s, theirs: e.target.value.replace(/[^0-9]/g, '') }))}
                 inputMode="numeric"
-                aria-label="실제 수량"
+                aria-label="고객사 것 실제 수량"
+              />
+            </div>
+            <div className="form-group">
+              <label>우리 것 (실제 수량)</label>
+              <input
+                value={fixing.ours}
+                onChange={(e) => setFixing((s) => ({ ...s, ours: e.target.value.replace(/[^0-9]/g, '') }))}
+                inputMode="numeric"
+                aria-label="우리 것 실제 수량"
               />
             </div>
             <div className="modal-actions">
