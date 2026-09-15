@@ -130,7 +130,58 @@ function optimistic(name, id, change) {
   }
 }
 
-function applyFresh(name, rows) {
+// 방금 쓴 줄이 이 조회 조건(where)에 맞는지 — 맞지 않는 줄을 끼워 넣으면 «다른 호기 문서»가
+// 조회 결과에 섞여 든다. 실제로 그렇게 209 호기의 이력이 468 호기 줄에 통째로 복사됐다
+// (2026-09-16 대표님 「남은 이력이 이상함」). 판정 못 하는 조건이면 끼워 넣지 않는다.
+function valueAt(data, field) {
+  return String(field || '')
+    .split('.')
+    .reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), data);
+}
+function matchesWhere(id, data, cs) {
+  for (const c of cs || []) {
+    if (c.__kind !== 'where') continue;
+    const v = c.field === '__id' ? id : valueAt(data, c.field);
+    const w = toPlain(c.value);
+    switch (c.op) {
+      case '==':
+        if (v !== w) return false;
+        break;
+      case '!=':
+        if (v === w) return false;
+        break;
+      case 'in':
+        if (!(Array.isArray(w) && w.includes(v))) return false;
+        break;
+      case 'not-in':
+        if (Array.isArray(w) && w.includes(v)) return false;
+        break;
+      case 'array-contains':
+        if (!(Array.isArray(v) && v.includes(w))) return false;
+        break;
+      case 'array-contains-any':
+        if (!(Array.isArray(v) && Array.isArray(w) && w.some((x) => v.includes(x)))) return false;
+        break;
+      case '<':
+        if (!(v < w)) return false;
+        break;
+      case '<=':
+        if (!(v <= w)) return false;
+        break;
+      case '>':
+        if (!(v > w)) return false;
+        break;
+      case '>=':
+        if (!(v >= w)) return false;
+        break;
+      default:
+        return false;
+    }
+  }
+  return true;
+}
+
+function applyFresh(name, rows, cs = []) {
   const now = Date.now();
   const out = rows.map((r) => {
     const hit = justWritten.get(freshKey(name, r.id));
@@ -145,7 +196,7 @@ function applyFresh(name, rows) {
       continue;
     }
     const [n, id] = [k.slice(0, k.indexOf('/')), k.slice(k.indexOf('/') + 1)];
-    if (n === name && v.data && !have.has(id)) out.push({ id, data: v.data });
+    if (n === name && v.data && !have.has(id) && matchesWhere(id, v.data, cs)) out.push({ id, data: v.data });
   }
   return out.filter(Boolean);
 }
@@ -367,7 +418,7 @@ export async function getDocs(refOrQuery) {
   const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
   const { data, error } = await sharedFetch(queryKey(name, cs), () => build(name, cs).limit(10000));
   if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-  const rows = finish(name, cs, applyFresh(name, data || []));
+  const rows = finish(name, cs, applyFresh(name, data || [], cs));
   return snapshotOf(
     rows.map((r) => wrap(r, name)),
     rows,
@@ -725,7 +776,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
         const { data, error } = await sharedFetch(queryKey(name, cs), () => build(name, cs).limit(10000));
         if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-        const rows = finish(name, cs, applyFresh(name, data || []));
+        const rows = finish(name, cs, applyFresh(name, data || [], cs));
         noteRows(name, rows);
         v = snapshotOf(
           rows.map((r) => wrap(r, name)),
