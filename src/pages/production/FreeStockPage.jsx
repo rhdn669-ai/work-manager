@@ -412,7 +412,7 @@ export default function FreeStockPage({ company }) {
               {groups.map((g) => (
                 <Fragment key={g.box}>
                   <tr className="fstock-boxrow">
-                    <th scope="colgroup" colSpan={9}>
+                    <th scope="colgroup" colSpan={STOCK_COLS.length}>
                       {g.box}
                       <em>{g.rows.length}품목</em>
                     </th>
