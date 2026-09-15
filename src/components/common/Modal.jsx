@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { isSubmitEnter } from '../../utils/enterKey';
 import { lockBodyScroll, unlockBodyScroll } from './bodyScrollLock';
 
 // 포커스를 줄 수 있는 것들 — 순서는 화면에 놓인 순서 그대로다
@@ -76,10 +77,11 @@ export default function Modal({ isOpen, onClose, title, children, size }) {
   //
   // 되돌릴 수 없는 버튼(메일 발송 등)은 data-no-enter 를 달아 이 편의에서 뺀다.
   // 저장은 다시 고치면 되지만, 나간 메일은 되돌릴 수 없다 (2026-09-01 대표님).
+  //
+  // 모달 안 입력칸은 Enter 를 따로 다루지 않는다 — 여기서 한 번만 누른다. 입력칸이 제 손으로
+  // 저장하고 이 처리까지 이어지면 두 번 저장된다 (2026-09-15 자료실 폴더가 둘 생김, 12곳 정리).
   const onEnterSubmit = (e) => {
-    if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
-    const t = e.target;
-    if (t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'SELECT') return;
+    if (!isSubmitEnter(e)) return;
     const primary = boxRef.current?.querySelector('.btn-primary:not([disabled]):not([data-no-enter])');
     if (primary) {
       e.preventDefault();

@@ -518,9 +518,6 @@ export default function StockPage() {
                 className="num-input"
                 value={addForm.stockQty}
                 onChange={(e) => setAddForm((f) => ({ ...f, stockQty: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && addForm.name.trim()) submitAdd();
-                }}
                 placeholder="0"
                 style={{ maxWidth: 160 }}
                 autoFocus={!!addForm.existingId}

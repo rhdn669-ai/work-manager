@@ -451,9 +451,6 @@ export default function Sidebar({ isOpen }) {
             type="text"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && groupName.trim()) confirmAddGroup();
-            }}
             placeholder="예: 관리, 일반, 외부"
             autoFocus
             maxLength={20}

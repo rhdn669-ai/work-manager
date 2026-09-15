@@ -3564,9 +3564,6 @@ export default function SiteClosingPage() {
                     onChange={(e) => setDirectInputModal({ ...directInputModal, name: e.target.value })}
                     placeholder={`${isDaily ? '일용직' : '프리랜서'} 이름`}
                     autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') submitDirectInput();
-                    }}
                   />
                 </label>
                 <label className="direct-input-row">
@@ -3577,9 +3574,6 @@ export default function SiteClosingPage() {
                     value={directInputModal.vendor}
                     onChange={(e) => setDirectInputModal({ ...directInputModal, vendor: e.target.value })}
                     placeholder="없으면 비워두세요"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') submitDirectInput();
-                    }}
                   />
                 </label>
                 {canViewSalary && (

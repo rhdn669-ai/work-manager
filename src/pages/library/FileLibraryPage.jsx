@@ -1116,9 +1116,6 @@ export default function FileLibraryPage() {
             type="text"
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && folderName.trim()) handleCreateFolder();
-            }}
             placeholder={selectedFolderId ? '예: 양식, 규정, 교육자료' : '예: 인사자료, 현장자료, 계약서'}
             autoFocus
           />
@@ -1145,9 +1142,6 @@ export default function FileLibraryPage() {
             type="text"
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && renameName.trim()) handleRename();
-            }}
             autoFocus
           />
         </div>
@@ -1169,9 +1163,6 @@ export default function FileLibraryPage() {
               type="text"
               value={fileRenameBase}
               onChange={(e) => setFileRenameBase(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && fileRenameBase.trim()) handleFileRename();
-              }}
               autoFocus
               style={{ flex: 1 }}
             />

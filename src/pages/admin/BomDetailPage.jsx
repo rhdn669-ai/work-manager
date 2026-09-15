@@ -1986,9 +1986,6 @@ export default function BomDetailPage() {
             type="text"
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && nameInput.trim()) saveName();
-            }}
             placeholder="프로젝트명 입력"
             autoFocus
             maxLength={60}
@@ -2129,9 +2126,6 @@ export default function BomDetailPage() {
               type="text"
               value={newVariant}
               onChange={(e) => setNewVariant(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newVariant.trim()) addVariant();
-              }}
               placeholder="예) T5391 / MT8311"
               maxLength={40}
               aria-label="새 타입 이름"

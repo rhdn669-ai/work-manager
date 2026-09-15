@@ -986,7 +986,7 @@ export default function MarginClosingPage() {
               onChange={(e) => setReasonModal((p) => ({ ...p, reason: e.target.value }))}
               placeholder="예) 단가 인하 반영, 반품 2개 차감"
               onKeyDown={(e) => {
-                if (e.key !== 'Enter' || e.isComposing) return;
+                if (e.key !== 'Enter' || e.nativeEvent?.isComposing) return;
                 // 여기서 멈추지 않으면 모달의 Enter 처리까지 이어져 두 번 저장된다
                 e.stopPropagation();
                 e.preventDefault();

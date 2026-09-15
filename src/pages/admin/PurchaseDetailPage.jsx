@@ -3876,9 +3876,6 @@ export default function PurchaseDetailPage() {
                 autoFocus
                 value={qtyModal.value}
                 onChange={(e) => setQtyModal({ ...qtyModal, value: e.target.value.replace(/[^\d]/g, '') })}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveQtyModal();
-                }}
                 placeholder="0"
               />
               {qtyModal.receivedQty > 0 && (

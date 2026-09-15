@@ -396,9 +396,6 @@ export default function BomPage() {
             value={newProjectName}
             placeholder="예: 2026 공장동 신축"
             onChange={(e) => setNewProjectName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submitAddProject();
-            }}
             autoFocus
           />
         </div>
@@ -431,9 +428,6 @@ export default function BomPage() {
                 type="text"
                 value={copyTarget.name}
                 onChange={(e) => setCopyTarget((t) => ({ ...t, name: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submitCopyProject();
-                }}
                 autoFocus
               />
             </div>
