@@ -832,7 +832,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '15%', '14%', null, '6.5%', '6.5%', '4.5%', '7%', hasMeta ? '11%' : null, '7.5%', '5.5%']
+              {['44px', '13%', '13%', null, '6%', '6%', '4.5%', '7%', hasMeta ? '10%' : null, '7%', '11%']
                 .filter((_, i) => hasMeta || i !== 9)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -1032,16 +1032,22 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     </td>
                     {
                       <td className="col-action pmat-act">
-                        {!outScope && !skipped && got < (Number(r.qty) || 0) && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary pmat-act-btn"
-                            onClick={() => openLog(r, 'in', Math.max(1, (Number(r.qty) || 0) - got))}
-                            title="어떻게 채웠는지 적고 수량을 올립니다"
-                          >
-                            입고
-                          </button>
-                        )}
+                        {/* 「입고」는 사연이 있는 줄에만 — 아직 손 안 댄 미입고 줄에 붙으면 평소 채우는 법
+                            (수량 칸에 적기)과 겹쳐 헷갈린다 (2026-09-15 대표님 「배정 되기 전이라 미입고인것에
+                            입고 버튼이 있으면 헷갈리지않을까?」). 「미입고」로만 적은 줄도 평범한 상태라 안 붙는다 */}
+                        {!outScope &&
+                          !skipped &&
+                          got < (Number(r.qty) || 0) &&
+                          (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary pmat-act-btn"
+                              onClick={() => openLog(r, 'in', Math.max(1, (Number(r.qty) || 0) - got))}
+                              title="어떻게 채웠는지 적고 수량을 올립니다"
+                            >
+                              입고
+                            </button>
+                          )}
                         {!outScope && !skipped && got <= 0 && (
                           <button
                             type="button"
@@ -1052,23 +1058,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                             사유
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline pmat-act-btn"
-                          onClick={() => toggleSkip(r, !skipped)}
-                          disabled={!editMode || outScope}
-                          title={
-                            outScope
-                              ? 'BOM 에서 정방향 제외로 정한 줄 — 여기서는 못 바꿉니다'
-                              : editMode
-                                ? skipped
-                                  ? '이 호기에서 다시 넣기'
-                                  : '이 호기에서만 빼기 — 기본 BOM 은 그대로'
-                                : '오른쪽 아래 「잠금」을 푼 뒤에'
-                          }
-                        >
-                          {skipped ? '포함' : '제외'}
-                        </button>
+                        {/* 「제외」는 없앴다 — 까닭 없이 줄을 셈에서 빼는 것이라 「왜 없나 / 어떻게 채웠나」를
+                            남기는 방향과 어긋난다 (2026-09-15 대표님 「그냥 제외 시키는건 컨셉에 안맞으니」).
+                            BOM 에 안 들어가는 자재는 BOM 의 「정방향 제외」나 타입으로 가른다.
+                            이미 제외해 둔 줄에만 「포함」을 남겨 되돌릴 수 있게 한다. */}
+                        {skipped && !outScope && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline pmat-act-btn"
+                            onClick={() => toggleSkip(r, false)}
+                            disabled={!editMode}
+                            title={editMode ? '이 호기에서 다시 넣기' : '오른쪽 아래 「잠금」을 푼 뒤에'}
+                          >
+                            포함
+                          </button>
+                        )}
                       </td>
                     }
                   </tr>

@@ -23469,11 +23469,24 @@ a.lib-row-name:hover {
   -webkit-line-clamp: 3; /* 규격은 세 줄까지 (2026-09-05 대표님) */
 }
 /* 「이 호기」 칸은 재고 버튼이 있든 없든 같은 폭 — 탭을 옮겨도 표가 흔들리지 않는다 */
+/* 작업 열 — 버튼을 자르지 않는다. 좁으면 줄을 바꿔서라도 다 보이게
+   (2026-09-15 대표님 「입고 버튼 뒤에 ... 제거」 — 잘린 자리가 말줄임으로 보였다) */
 .pmat-table.no-fit td.col-action {
-  overflow: hidden;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 .pmat-table.no-fit td.col-action .btn {
   padding: 0 8px;
+}
+.pmat-table td.pmat-act {
+  white-space: normal;
+}
+.pmat-table td.pmat-act .pmat-act-btn {
+  display: inline-flex;
+  width: auto;
+  margin: 1px 0 1px 4px;
+  white-space: nowrap;
 }
 
 /* 공장 관리 창 — 입력칸을 다른 창과 같은 규격으로 (2026-09-05 대표님 「입력칸 이상함」) */
