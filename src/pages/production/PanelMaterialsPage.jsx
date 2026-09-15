@@ -201,7 +201,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [logSaving, setLogSaving] = useState(false);
   const whyList = (k) => (k === 'out' ? OUT_WHYS : k === 'in' ? IN_WHYS : WHY_WHYS);
   const openLog = (r, kind, n = 1) =>
-    setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: '' });
+    setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: rec[r.id]?.note || '' });
   const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
   const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
   // 상대 호기 목록 — 창을 열 때 셈한다. 여기서 바로 allPanels 를 읽으면 그 선언보다 위라 TDZ 다
@@ -234,13 +234,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         note: f.note,
         stockKind: stockKindOf(f.row),
       });
-      // 창에 적은 비고를 줄 비고에도 — 표에서 바로 읽히게 (2026-09-15 대표님
-      // 「사유 모달에 비고에 입력한 내용이 리스트 비고로 입력 되게해줘」)
+      // 창의 비고가 곧 줄 비고 — «덮어쓴다». 이어 붙였더니 「미입고 · 미입고로 차용중 · ㅊ」처럼
+      // 쌓이기만 하고 고칠 수가 없었다 (2026-09-16 대표님 「비고내용이 수정이 안되고 자꾸 쌓이네」)
       const memo = String(f.note || '').trim();
-      if (memo) {
-        const cur = String(rec[f.row.id]?.note || '').trim();
-        if (!cur.includes(memo)) await saveNote(f.row, cur ? `${cur} · ${memo}` : memo);
-      }
+      if (memo !== String(rec[f.row.id]?.note || '').trim()) await saveNote(f.row, memo);
       setLogForm(null);
       toast('기록했습니다', 'success');
     } catch (err) {
@@ -517,7 +514,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 줄어들면 「왜 줄었나」를 묻는다 — 창에서 적으면 수량도 거기서 내려간다
     // (2026-09-15 대표님 「-수량으로 입력하게 되면 사유를 선택하고 남는 방식」)
     if (n < before) {
-      setLogForm({ row: r, kind: 'out', why: OUT_WHYS[0], n: String(before - n), mate: '', note: '' });
+      setLogForm({
+        row: r,
+        kind: 'out',
+        why: OUT_WHYS[0],
+        n: String(before - n),
+        mate: '',
+        note: rec[r.id]?.note || '',
+      });
       return;
     }
     try {
