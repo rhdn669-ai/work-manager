@@ -285,10 +285,13 @@ export default function FreeStockPage({ company }) {
     const who = inOurs ? '당사' : '고객사';
     if (!(await confirm(`${row.name || row.code} ${who} 재고를 ${won(row.main)} → ${won(t)} 으로 수정할까요?`))) return;
     try {
-      // 통에는 합(qty)과 우리 몫(ours)으로 적힌다 — 고른 통만 바꾸고 반대 통은 그대로
-      const ours = inOurs ? t : row.ours;
-      const theirs = inOurs ? row.theirs : t;
-      await setFreeStockQty(company, row, theirs + ours, { by: me, ours, reason: `${who} 실물 세어 맞춤` });
+      // 고른 통 하나만 넘긴다 — 반대 통은 서비스가 «저장된 값»으로 채운다. 화면 값을 같이
+      // 써 넣던 때는 창을 열어 둔 사이 호기가 꺼내 간 몫이 되살아났다 (2026-09-16 조사 S9)
+      await setFreeStockQty(company, row, t, {
+        by: me,
+        side: inOurs ? 'ours' : 'theirs',
+        reason: `${who} 실물 세어 맞춤`,
+      });
       setFixing(null);
       toast('재고를 수정했습니다', 'success');
     } catch (err) {

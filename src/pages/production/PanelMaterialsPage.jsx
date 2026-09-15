@@ -552,7 +552,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return nd;
     });
     setTyping(null);
-    const before = receivedQty(rec, r.id);
+    // 「지금 몇 개」는 저장된 값으로 — 화면 값은 한 박자 늦어, 창에 뜨는 「몇 개 줄었나」와
+    // 통에 돌려줄 양이 어긋났다 (2026-09-16 야간 조사 S8. v151.1 은 applyQty 만 고쳤다)
+    const stored = (await getPanelMaterials(panelId))?.[boxOf(r)]?.[r.id];
+    const before = Math.max(0, Number(stored?.qty ?? receivedQty(rec, r.id)) || 0);
     if (n === before) return;
     // 줄어들면 「왜 줄었나」를 묻는다 — 창에서 적으면 수량도 거기서 내려간다
     // (2026-09-15 대표님 「-수량으로 입력하게 되면 사유를 선택하고 남는 방식」)

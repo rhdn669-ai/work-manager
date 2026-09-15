@@ -128,10 +128,23 @@ export async function returnStock(kind, company, itemId, n, { by = '', note = ''
   return back;
 }
 
-/** 손으로 맞추기 — 실물을 세어 보고 그 값으로. ours 는 사급만 */
-export async function setStockTo(kind, company, item, to, { by = '', reason = '', ours = null } = {}) {
-  const t = Math.max(0, Number(to) || 0);
+/** 손으로 맞추기 — 실물을 세어 보고 그 값으로. ours 는 사급만.
+ *  side 를 주면 to 는 «그 통 하나»의 값이고, 반대 통은 저장된 값을 그대로 쓴다.
+ *  전에는 화면이 기억한 반대 통 값을 같이 써 넣어, 창을 열어 둔 사이 호기가 꺼내 간 만큼이
+ *  되살아났다 (2026-09-16 야간 조사 S9). side: 'ours'(당사) | 'theirs'(고객사) */
+export async function setStockTo(kind, company, item, to, { by = '', reason = '', ours = null, side = null } = {}) {
   const { qty: from, ours: hadOurs } = await getStockSplit(kind, company, item.itemId);
+  let t = Math.max(0, Number(to) || 0);
+  if (kind === 'free' && side) {
+    const theirsHad = Math.max(0, from - hadOurs);
+    if (side === 'ours') {
+      ours = t;
+      t += theirsHad;
+    } else {
+      ours = hadOurs;
+      t += hadOurs;
+    }
+  }
   // 사급은 「우리가 댄 몫」도 남음을 넘지 못한다. 남음을 줄이면서 우리 몫을 그대로 두면
   // 「남음 0 · 우리 것 3」 같은 헛장부가 남는다 (2026-09-15 ELCB, 대표님 「우리것없는데?」).
   const nextOurs = kind === 'free' ? Math.min(ours === null ? hadOurs : Math.max(0, Number(ours) || 0), t) : null;
