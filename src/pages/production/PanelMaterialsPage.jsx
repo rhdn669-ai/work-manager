@@ -990,18 +990,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               입고
                             </button>
                           )}
-                        {/* 하나도 안 채운 줄뿐 아니라 «덜 채운» 줄에도 붙는다 — 4개 중 2개만 온 까닭도
-                            적어야 한다 (2026-09-15 대표님 「갯수가 4개인데 다 안채워진 경우에도」) */}
-                        {!outScope && !skipped && got < (Number(r.qty) || 0) && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline pmat-act-btn"
-                            onClick={() => openLog(r, 'why')}
-                            title="왜 모자란지만 적습니다 — 수량은 그대로"
-                          >
-                            사유
-                          </button>
-                        )}
+                        {/* 사유를 아직 안 적은 부족 줄에만 — 적고 나면 그 자리를 「입고」가 쓴다.
+                            둘을 같이 두면 무엇을 눌러야 할지 헷갈린다 (2026-09-15 대표님 「버튼 두개는 뭐임」) */}
+                        {!outScope &&
+                          !skipped &&
+                          got < (Number(r.qty) || 0) &&
+                          !(rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline pmat-act-btn"
+                              onClick={() => openLog(r, 'why')}
+                              title="왜 모자란지만 적습니다 — 수량은 그대로"
+                            >
+                              사유
+                            </button>
+                          )}
                         {/* 「제외」는 없앴다 — 까닭 없이 줄을 셈에서 빼는 것이라 「왜 없나 / 어떻게 채웠나」를
                             남기는 방향과 어긋난다 (2026-09-15 대표님 「그냥 제외 시키는건 컨셉에 안맞으니」).
                             BOM 에 안 들어가는 자재는 BOM 의 「정방향 제외」나 타입으로 가른다.
