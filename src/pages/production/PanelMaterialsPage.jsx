@@ -248,6 +248,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         by: by(),
         note: f.note,
         stockKind: stockKindOf(f.row),
+        // 굳히기 전 도급·판금은 통을 안 건드린다 — 남음이 두 번 깎인다 (2026-09-16 조사 S3)
+        useStock: ledger(f.row),
       });
       // 창의 비고가 곧 줄 비고 — «덮어쓴다». 이어 붙였더니 「미입고 · 미입고로 차용중 · ㅊ」처럼
       // 쌓이기만 하고 고칠 수가 없었다 (2026-09-16 대표님 「비고내용이 수정이 안되고 자꾸 쌓이네」)

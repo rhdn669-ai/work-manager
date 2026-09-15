@@ -7,6 +7,7 @@ import { doc, setDoc, serverTimestamp } from '../config/data';
 import { db } from '../config/data';
 import { getPanelMaterials, materialsDocId, setReceived, addFromStock, addFromOurs } from './panelMaterialsService';
 import { takeStock, returnStock } from './stockService';
+import { trashMatLog } from './trashService';
 import { newLog, mateLog, mateDelta, needsStock, whyOf } from '../domain/matLog';
 
 const ref = (panelId, box) => doc(db, 'panelMaterials', materialsDocId(panelId, box));
@@ -42,13 +43,17 @@ async function shift(panelId, box, rowId, delta, by = '') {
  * 줄에서 한 일을 적는다.
  * @param panel { id, 회사 }
  * @param row   { id, itemId, … } · kind 'out'|'in'|'why' · why 사유 · n 개수 · mate 상대 호기 id
- * @param opts  { by, note, stockKind }  stockKind 는 구매·수리 입고일 때 통 갈래
+ * @param opts  { by, note, stockKind, useStock }
+ *   stockKind  구매·수리 입고일 때 통 갈래
+ *   useStock   통(재고)을 건드릴지 — 굳히기 전(ledger off) 도급·판금은 «남음 = 발주입고 − 나감»
+ *              이라 통까지 깎으면 두 번 깎인다. 호기 체크 화면은 예전부터 막고 있었는데
+ *              이 창만 빠져 있었다 (2026-09-16 야간 조사 S3)
  */
 export async function writeMatLog(
   panel,
   box,
   row,
-  { kind, why, n = 1, mate = '', by = '', note = '', stockKind = 'paid' } = {},
+  { kind, why, n = 1, mate = '', by = '', note = '', stockKind = 'paid', useStock = true } = {},
 ) {
   if (!panel?.id || !box || !row?.id || !kind || !why) throw new Error('호기·품목·사유가 필요합니다');
   const log = newLog({ kind, why, n, mate, by, note });
@@ -63,13 +68,23 @@ export async function writeMatLog(
   }
 
   // 통에서 꺼내야 하는 까닭이면 «있는 만큼만» — 없으면 아무것도 안 한다
-  if (needsStock(kind, why)) {
+  if (useStock && needsStock(kind, why)) {
     if (!row.itemId) throw new Error('품목이 재고와 이어져 있지 않습니다');
     const { take } = await takeStock(stockKind, panel.회사 || '', row.itemId, log.n, {
       by,
       note: `${why} · ${panel.프로젝트 || panel.id} · ${box}`,
     });
-    if (take < log.n) throw new Error(`재고에 ${take}개뿐이라 ${log.n}개를 채울 수 없습니다`);
+    if (take < log.n) {
+      // 모자라면 «꺼낸 만큼 도로 넣고» 멈춘다 — 전에는 꺼낸 뒤 그냥 던져서 그 몫이 증발했다
+      // (2026-09-16 야간 조사 S2)
+      if (take > 0) {
+        await returnStock(stockKind, panel.회사 || '', row.itemId, take, {
+          by,
+          note: `${why} · ${panel.프로젝트 || panel.id} · ${box} 되돌림`,
+        });
+      }
+      throw new Error(`재고에 ${take}개뿐이라 ${log.n}개를 채울 수 없습니다`);
+    }
     await addFromStock(
       panel.id,
       box,
@@ -86,7 +101,7 @@ export async function writeMatLog(
   // 넣었다 뺐다 하면 통이 한 번씩 줄기만 했다 (2026-09-16 대표님 「재고 수량이 증발해버림」)
   let giveBack = 0;
   let tookOurs = 0;
-  if (kind === 'out' && why === '그냥 빼기' && row.itemId) {
+  if (useStock && kind === 'out' && why === '그냥 빼기' && row.itemId) {
     const cur = (await getPanelMaterials(panel.id))?.[box]?.[row.id] || {};
     const cut = Math.min(log.n, Math.max(0, Number(cur.qty) || 0));
     giveBack = Math.min(cut, Math.max(0, Number(cur.fromStock) || 0));
@@ -113,12 +128,24 @@ export async function writeMatLog(
   return log;
 }
 
-/** 이력 한 줄 지우기 — 수량은 되돌리지 않는다(지금 수량이 실물이다). 짝도 함께 지운다 */
-export async function removeMatLog(panelId, box, rowId, logId) {
+/** 이력 한 줄 지우기 — 수량은 되돌리지 않는다(지금 수량이 실물이다). 짝도 함께 지운다.
+ *  지우기 전에 휴지통에 한 벌 담는다 — 앱에서 유일하게 휴지통을 안 거치던 삭제였다
+ *  (2026-09-16 야간 조사 T1) */
+export async function removeMatLog(panelId, box, rowId, logId, by = '') {
   const mats = await getPanelMaterials(panelId);
   const list = mats?.[box]?.[rowId]?.log || [];
   const log = list.find((x) => x.id === logId);
   if (!log) return null;
+  let mateSnap = null;
+  if (log.mate) {
+    const mMats0 = await getPanelMaterials(log.mate);
+    const pair = (mMats0?.[box]?.[rowId]?.log || []).find((x) => x.pair === log.id);
+    if (pair) mateSnap = { panelId: log.mate, log: pair };
+  }
+  await trashMatLog(
+    { panelId, box, rowId, log, mate: mateSnap, title: `${box} 자재 이력`, summary: `${log.kind} · ${log.why}` },
+    by,
+  ).catch(() => null);
   await setDoc(
     ref(panelId, box),
     { panelId, box, items: { [rowId]: { log: list.filter((x) => x.id !== logId) } }, updatedAt: serverTimestamp() },

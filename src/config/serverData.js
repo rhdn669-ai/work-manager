@@ -428,7 +428,10 @@ export async function getDocs(refOrQuery) {
 export async function getDoc(ref) {
   const { data, error } = await sb.from(tableOf(ref.name)).select('id,data').eq('id', ref.id).maybeSingle();
   if (error) throw new Error(`${ref.name} 조회 실패: ${error.message}`);
-  const [row] = applyFresh(ref.name, data ? [data] : []);
+  // 「방금 쓴 줄 끼워 넣기」를 이 문서 하나로 가둔다 — 조건 없이 부르면 6초 안에 저장한
+  // «남의 문서»가 딸려 와, 통이 아직 없는 품목을 읽을 때 다른 품목의 수량이 돌아왔다
+  // (2026-09-16 야간 조사 S1. 목록 조회는 v150.3 에서 이미 막았다)
+  const [row] = applyFresh(ref.name, data ? [data] : [], [{ __kind: 'where', field: '__id', op: '==', value: ref.id }]);
   if (!row) return { id: ref.id, exists: () => false, data: () => undefined };
   return wrap(row, ref.name);
 }

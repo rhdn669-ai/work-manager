@@ -101,6 +101,21 @@ export async function trashBomProject(projectId, deletedByName = '') {
   return trashDocRef.id;
 }
 
+/** 자재 이력 한 줄 — 지우기 전 스냅샷. 짝 기록(mate)까지 한 벌로 담는다 (2026-09-16) */
+export async function trashMatLog({ panelId, box, rowId, log, mate = null, title = '', summary = '' }, by = '') {
+  if (!panelId || !box || !rowId || !log?.id) return null;
+  const ref = await addDoc(trashRef, {
+    type: 'matLog',
+    refId: `${panelId}__${box}__${rowId}__${log.id}`,
+    title: title || '자재 이력',
+    summary,
+    payload: { panelId, box, rowId, log, mate },
+    deletedAt: new Date(),
+    deletedByName: by,
+  });
+  return ref.id;
+}
+
 // 휴지통 항목 복원 — 원래 id 그대로 컬렉션에 되살림
 export async function restoreTrashItem(trashId) {
   const tSnap = await getDoc(doc(db, 'trash', trashId));
@@ -144,6 +159,23 @@ export async function restoreTrashItem(trashId) {
           { merge: true },
         );
       }
+    }
+  } else if (t.type === 'matLog') {
+    // 자재 이력 한 줄 — 그 호기 줄의 기록으로 되살린다. 수량은 건드리지 않는다(지금 수량이 실물)
+    const { panelId, box, rowId, log, mate } = t.payload || {};
+    if (panelId && box && rowId && log?.id) {
+      const { getPanelMaterials, materialsDocId } = await import('./panelMaterialsService');
+      const put = async (pid, one) => {
+        const mats = await getPanelMaterials(pid);
+        const rest = (mats?.[box]?.[rowId]?.log || []).filter((x) => x.id !== one.id);
+        await setDoc(
+          doc(db, 'panelMaterials', materialsDocId(pid, box)),
+          { panelId: pid, box, items: { [rowId]: { log: [...rest, one] } }, updatedAt: new Date() },
+          { merge: true },
+        );
+      };
+      await put(panelId, log);
+      if (mate?.panelId && mate?.log?.id) await put(mate.panelId, mate.log);
     }
   } else if (t.collection) {
     // 범용(trashGeneric) 복원 — 원래 컬렉션에 원래 id로 되살림

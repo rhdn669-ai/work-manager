@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
 import { useDialog } from '../../components/common/useDialog';
+import { useAuth } from '../../contexts/useAuth';
 import { useArrived } from '../../utils/useArrived';
 import { useFillHeight } from '../../utils/useFillHeight';
 import { subscribePanels } from '../../services/productionService';
@@ -19,6 +20,7 @@ const KIND_LABEL = { out: '빠짐', in: '채움', why: '사유' };
 
 export default function MatLogPage({ company = '' }) {
   const { toast, confirm } = useDialog();
+  const { userProfile } = useAuth();
   const scrollRef = useFillHeight();
   const { take, has } = useArrived();
 
@@ -93,7 +95,7 @@ export default function MatLogPage({ company = '' }) {
     )
       return;
     try {
-      await removeMatLog(x.panelId, x.box, x.rowId, x.log.id);
+      await removeMatLog(x.panelId, x.box, x.rowId, x.log.id, userProfile?.name || '');
       toast('기록을 지웠습니다', 'success');
     } catch (err) {
       console.error(err);
