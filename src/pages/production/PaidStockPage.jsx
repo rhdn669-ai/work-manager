@@ -82,7 +82,6 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   // 위에 붙는다 (2026-09-12 대표님 「위에 줄은 스크롤해도 고정으로 내려가게」).
   const scrollRef = useFillHeight();
   const [q, setQ] = useState('');
-  const [view, setView] = useState('all'); // all | have
 
   const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
   useEffect(() => subscribePanels(take('panels', setPanels)), [take]);
@@ -238,7 +237,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
 
     const kw = q.trim().toLowerCase();
     const keep = (r) => {
-      if (view === 'have' && r.left <= 0) return false;
+      // 「남은 것」 거르기는 없앴다 — 통이 비어 있어도 목록은 전부 보여야 한다 (2026-09-15 대표님)
       if (!kw) return true;
       return [r.code, r.name, r.spec, r.drawingNo].some((v) =>
         String(v || '')
@@ -272,22 +271,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       if (list.length > 0) out.push({ box: bx, rows: list });
     }
     return { groups: out, allRows: [...stockOfItem.values()] };
-  }, [
-    all,
-    mine,
-    bomByProject,
-    materials,
-    masterMap,
-    received,
-    manual,
-    projectId,
-    siteId,
-    q,
-    view,
-    kind,
-    settings,
-    company,
-  ]);
+  }, [all, mine, bomByProject, materials, masterMap, received, manual, projectId, siteId, q, kind, settings, company]);
 
   // 칸에 적은 수를 그대로 통에 더한다 — 사급 재고와 같은 방식
   async function commitDraft(r) {
@@ -418,15 +402,6 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           placeholder="도번·품명·규격으로 찾기"
           aria-label="도급 재고 검색"
         />
-        <ViewSwitch
-          options={[
-            { value: 'have', label: '남은 것' },
-            { value: 'all', label: '전체' },
-          ]}
-          value={view}
-          onChange={setView}
-          ariaLabel="보기"
-        />
         {isAdmin && !ledgerOn(settings, company, kind) && (
           <button
             type="button"
@@ -443,11 +418,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
       {groups.length === 0 ? (
         <div className="empty-state">
           <Icon name="box" />
-          <p>
-            {view === 'have'
-              ? '남은 도급 자재가 없습니다'
-              : `${company} ${kind === 'made' ? '판금' : '도급'} 품목이 없습니다`}
-          </p>
+          <p>{`${company} ${kind === 'made' ? '판금' : '도급'} 품목이 없습니다`}</p>
           <span>BOM 에 도급으로 표시된 품목이 여기에 모입니다. 발주서를 BOM 에 연결해야 들어온 양이 잡힙니다.</span>
         </div>
       ) : (
