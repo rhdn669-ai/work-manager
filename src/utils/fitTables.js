@@ -85,6 +85,18 @@ function cellNeed(td) {
       }
     });
     need = sum;
+    // 여러 줄로 접히는 칸(상태)은 가장 긴 조각만큼은 있어야 글자가 안 잘린다 (2026-09-15)
+    if (td.classList.contains('pmat-state') && ctx) {
+      const cs2 = getComputedStyle(td);
+      ctx.font = `${cs2.fontWeight} ${cs2.fontSize} ${cs2.fontFamily}`;
+      let longest = 0;
+      td.querySelectorAll('span').forEach((el) => {
+        (el.textContent || '').split('·').forEach((piece) => {
+          longest = Math.max(longest, ctx.measureText(piece.trim()).width);
+        });
+      });
+      need = Math.max(need, longest + 10);
+    }
   }
   return need + pad + CELL_SLACK;
 }

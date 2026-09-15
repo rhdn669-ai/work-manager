@@ -23022,7 +23022,9 @@ a.lib-row-name:hover {
 }
 .mhub-body {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  /* 호기 이름·상태 칩이 겹치지 않을 만큼만 — 남는 폭은 표가 가져간다
+     (2026-09-15 대표님 「안에 글자가 겹치지 않을 정도로만 폭 좀 줄여줘」) */
+  grid-template-columns: 216px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -24306,8 +24308,17 @@ body.has-editlock .main-content.expanded {
 .pmat-table td.pmat-state {
   text-align: left;
   white-space: normal;
-  font-size: 11.5px;
-  line-height: 1.35;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.3;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+/* 「고객사 0 · 당사 0」은 좁으면 두 줄로 — 자르지 않는다 (2026-09-15 태블릿) */
+.pmat-table td.pmat-state .pmat-instock,
+.pmat-table td.pmat-state .pmat-incident {
+  white-space: normal;
 }
 /* 분실·파손 표시 — 입고 칩 밑 한 줄, 주황 (2026-09-15 대표님) */
 .pmat-table .pmat-incident {
