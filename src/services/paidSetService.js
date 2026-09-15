@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, query, where, deleteField } from '../config/data';
+import { collection, doc, getDoc, onSnapshot, query, where, deleteField } from '../config/data';
 import { db } from '../config/data';
 import { updatePanel } from './productionService';
 import { setReceivedMany, getPanelMaterials, setReceived, addFromStock } from './panelMaterialsService';
@@ -22,6 +22,12 @@ const purchasesRef = collection(db, 'purchases');
 
 export function subscribePaidSetSettings(cb) {
   return onSnapshot(settingsRef, (snap) => cb(snap.exists() ? snap.data() : {}));
+}
+
+/** 한 번만 읽는다 — 입고 처리처럼 구독을 걸 자리가 아닌 곳에서 */
+export async function getPaidSetSettings() {
+  const snap = await getDoc(settingsRef);
+  return snap.exists() ? snap.data() || {} : {};
 }
 
 /**

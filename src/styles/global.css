@@ -24133,6 +24133,10 @@ body.has-editlock .main-content.expanded {
   color: var(--grey-600);
   white-space: nowrap;
 }
+/* 통이 비어 지금 못 채우는 줄 (2026-09-15) */
+.pmat-table .pmat-instock.is-empty {
+  color: var(--danger, #d92d20);
+}
 
 /* 사급 재고의 「재고」 칸 — 숫자(기록 열기)와 「수정」이 나란히 (2026-09-11 대표님) */
 .fstock-have-cell {

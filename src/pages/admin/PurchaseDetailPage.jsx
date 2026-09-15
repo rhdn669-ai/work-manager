@@ -45,6 +45,7 @@ import {
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getBomProjects, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
+import { recordPurchaseIntake } from '../../services/stockIntake';
 import {} from '../../services/productionService';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -1298,18 +1299,38 @@ export default function PurchaseDetailPage() {
     setReceiveModal({ lineIdx, line });
   }
 
+  // 입고가 끝나면 그 회사의 도급·판금 통에 적는다 (2026-09-15 설계 「발주서 입고 체크 → 통 +」).
+  // 통은 백그라운드 — 실패해도 입고는 이미 끝났으니 알림만 남긴다.
+  const noteIntake = (prevItems, nextItems) => {
+    recordPurchaseIntake(purchaseRef.current, prevItems, nextItems, { by: userProfile?.name || '' })
+      .then((r) => {
+        if (r?.missingCompany)
+          toast(
+            `BOM 프로젝트「${r.projectName}」에 회사가 없어 재고에 적지 못했습니다 — BOM 화면에서 회사를 정해 주세요`,
+            'error',
+            0,
+          );
+      })
+      .catch((err) => {
+        console.error('[재고] 발주 입고 기록 실패', err);
+        toast('재고에 입고를 적지 못했습니다 — 재고 화면에서 확인해 주세요', 'error', 0);
+      });
+  };
+
   // 입고 처리 뒤 걸린 호기에 도급 자재를 자동 배분한다 (2026-09-05 대표님 안 B 4단계).
   // 배분은 백그라운드 — 실패해도 입고는 이미 끝났으니 알림만 남긴다.
   async function submitReceive(e) {
     e.preventDefault();
     if (!receiveModal) return;
     try {
-      await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
+      const prevItems = purchaseRef.current?.items || [];
+      const res = await receivePurchaseLine(purchaseRef.current, receiveModal.lineIdx, {
         qty: receiveForm.qty,
         date: receiveForm.date,
         note: receiveForm.note,
         receivedBy: userProfile?.name || '',
       });
+      noteIntake(prevItems, res.items);
       setReceiveModal(null);
       await loadData({ silent: true });
     } catch {
@@ -1343,12 +1364,14 @@ export default function PurchaseDetailPage() {
         : `잔여 ${remainingCount}개 라인을 동일 입고일로 일괄 입고 처리하시겠습니까?`;
     if (!(await confirm(msg))) return;
     try {
-      await bulkReceivePurchase(purchaseRef.current, {
+      const prevItems = purchaseRef.current?.items || [];
+      const res = await bulkReceivePurchase(purchaseRef.current, {
         mode,
         date: bulkForm.date,
         note: bulkForm.note,
         receivedBy: userProfile?.name || '',
       });
+      noteIntake(prevItems, res.items);
       setBulkModal(null);
       await loadData({ silent: true });
     } catch {
@@ -1360,12 +1383,14 @@ export default function PurchaseDetailPage() {
     await flushAutoSave();
     if (!(await confirm('이 라인의 입고 기록을 취소하시겠습니까?'))) return;
     try {
-      await receivePurchaseLine(purchaseRef.current, lineIdx, {
+      const prevItems = purchaseRef.current?.items || [];
+      const res = await receivePurchaseLine(purchaseRef.current, lineIdx, {
         qty: 0,
         date: null,
         note: '',
         receivedBy: '',
       });
+      noteIntake(prevItems, res.items);
       await loadData({ silent: true });
     } catch {
       toast('입고 취소 중 오류가 발생했습니다', 'error');

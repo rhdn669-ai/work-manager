@@ -12,13 +12,13 @@ import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant } from '../../services/bomService';
 import { subscribePurchaseItems } from '../../services/purchaseService';
-import { subscribeFreeStock, takeFreeStock, returnFreeStock, getFreeStockQty } from '../../services/freeStockService';
+import { subscribeStock, takeStock, returnStock, getStockQty } from '../../services/stockService';
+import { ledgerOn, stockKindOf } from '../../domain/stockLedger';
 import {
   subscribePanelMaterials,
   setReceived,
   setSkipped,
   setNote,
-  setReceivedMany,
   addFromStock,
   addFromOurs,
 } from '../../services/panelMaterialsService';
@@ -27,8 +27,7 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox } from '../../domain/panelBom';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
-import { freeStockMoves } from '../../domain/freeStockSync';
-import { subscribePaidStock } from '../../services/paidStockService';
+import { stockMoves } from '../../domain/stockSync';
 import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
 import { specFontClass, localStamp } from '../../utils/printText';
 
@@ -100,13 +99,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [freeStock, setFreeStock] = useState({});
   const [paidStock, setPaidStock] = useState({}); // 회사 도급 통 — 부족분을 여기서 끌어온다
   const company = panel?.회사 || '';
+  // 설정 — 옛 현장 발주서(siteId)와 「굳히기」 플래그(stockLedger). 아래 여러 곳이 보므로 먼저 둔다
+  const [settings, setSettings] = useState({});
+  useEffect(() => subscribePaidSetSettings(take('settings', setSettings)), [take]);
   useEffect(() => {
     if (!company) return undefined;
-    return subscribeFreeStock(company, take('freeStock', setFreeStock));
+    return subscribeStock('free', company, take('freeStock', setFreeStock));
   }, [company, take]);
   useEffect(() => {
     if (!company) return undefined;
-    return subscribePaidStock(company, take('paidStock', setPaidStock));
+    return subscribeStock('paid', company, take('paidStock', setPaidStock));
   }, [company, take]);
   const masterMap = useMemo(() => Object.fromEntries(master.map((m) => [m.id, m])), [master]);
 
@@ -289,62 +291,84 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 호기 수량만 되돌리고 통을 그대로 두면, 통에서 빠진 것이 사라진 채로 남는다 (2026-09-11).
   const restoreOne = (r, prevQty, appliedQty) => async () => {
     try {
-      await setReceived(panelId, box, r.id, prevQty, by());
-      await syncFree(r, appliedQty, prevQty);
+      await applyQty(r, appliedQty, prevQty, { quiet: true });
     } catch {
       toast('되돌리지 못했습니다', 'error');
     }
   };
 
-  // ── 사급 재고는 «재고에서 가져온 만큼만» 오간다 ──
+  // ── 호기에 있는 자재는 전부 통을 거친 것 ──
   //
-  // 전에는 호기에서 수량을 적기만 해도 재고를 거치는 것으로 쳤다. 그래서 실물을 직접 받아
-  // 체크한 줄을 지우면 가져온 적도 없는 물건이 재고로 생겨났다
-  // (2026-09-12 대표님 「재고에서 가져온 수량이 아니면 다시 제거해도 재고로 채워지면 안되지」).
-  //
-  // 이제 재고에 있는 만큼만 꺼내 쓰고 그 양을 줄에 적어 두었다가(fromStock), 지울 때는
-  // 적어 둔 만큼만 돌려준다. 셈은 domain/freeStockSync 가 맡는다(그 셈만 따로 시험한다).
-  const syncFree = async (r, before, after) => {
-    if (supplyTab !== 'free' || !r.itemId || !company) return;
+  // 규칙 (2026-09-15 설계 「재고를 통 실값 하나로」, 대표님 「통에 없으면 안채워짐으로 가자 전부」):
+  //   · 수량을 늘리면 통에 있는 만큼까지만 적힌다. 5 를 적었는데 통에 3 이면 3 만 들어가고
+  //     「재고에 2개 부족」을 알린다 — 먼저 재고 화면에서 입고한 뒤 다시 적는다.
+  //   · 줄이면 통에서 꺼냈던 만큼 돌아간다(옛 줄에 통을 안 거친 몫이 섞여 있으면 그만큼은 안 간다
+  //     — domain/stockSync 가 fromStock 으로 가른다).
+  // 이 규칙은 통이 실값인 갈래에만 켜진다: 사급은 늘, 도급·판금은 굳힌 뒤(ledgerOn).
+  // 그 전의 도급·판금은 예전대로 통을 안 건드린다.
+  const ledger = (r) => !!company && !!r?.itemId && ledgerOn(settings, company, stockKindOf(r));
+
+  /** 통과 줄을 함께 맞춘다 — 늘릴 때 통에 있는 만큼까지만. 실제로 적힌 수량을 돌려준다 */
+  const applyQty = async (r, before, want, { quiet = false } = {}) => {
+    const b = Number(before) || 0;
+    let after = Math.max(0, Number(want) || 0);
+    const kind = stockKindOf(r);
+    if (ledger(r) && after > b) {
+      const have = await getStockQty(kind, company, r.itemId);
+      if (after - b > have) {
+        const short = after - b - have;
+        after = b + have;
+        if (!quiet) toast(`${r.name} 재고에 ${short}개 부족 — 재고 화면에서 입고한 뒤 다시 적어 주세요`, 'error');
+      }
+    }
+    if (after === b) return b;
+    await setReceived(panelId, box, r.id, after, by());
+    await syncStock(r, b, after);
+    return after;
+  };
+
+  const syncStock = async (r, before, after) => {
+    if (!ledger(r)) return;
     const d = (Number(after) || 0) - (Number(before) || 0);
     if (d === 0) return;
+    const kind = stockKindOf(r);
     const who = by();
     const where = `${panel?.프로젝트 || ''} · ${box}`;
     const kept = Math.max(0, Number(rec[r.id]?.fromStock) || 0);
-    const keptOurs = Math.max(0, Number(rec[r.id]?.fromOurs) || 0); // 그중 「우리가 댄」 몫
+    const keptOurs = Math.max(0, Number(rec[r.id]?.fromOurs) || 0); // 그중 「우리가 댄」 몫 (사급)
     try {
-      const have = d > 0 ? await getFreeStockQty(company, r.itemId) : 0;
-      const mv = freeStockMoves({ before, after, have, fromStock: kept });
+      const have = d > 0 ? await getStockQty(kind, company, r.itemId) : 0;
+      const mv = stockMoves({ before, after, have, fromStock: kept });
       if (!mv) return;
       if (mv.take > 0) {
-        // 고객사 것부터 나간다 — 우리 몫에서 나간 만큼만 따로 적어 둔다 (2026-09-12 대표님)
-        const { take, fromOurs } = await takeFreeStock(company, r.itemId, mv.take, { by: who, note: where });
+        // 사급은 고객사 것부터 나간다 — 우리 몫에서 나간 만큼만 따로 적어 둔다 (2026-09-12 대표님)
+        const { take, fromOurs } = await takeStock(kind, company, r.itemId, mv.take, { by: who, note: where });
         if (take > 0) {
           await addFromStock(panelId, box, r.id, take, kept);
           if (fromOurs > 0) await addFromOurs(panelId, box, r.id, fromOurs, keptOurs);
         }
       }
       if (mv.giveBack > 0) {
-        await returnFreeStock(company, r.itemId, mv.giveBack, {
+        await returnStock(kind, company, r.itemId, mv.giveBack, {
           by: who,
           note: `${where} 되돌림`,
           tookOurs: keptOurs,
         });
         await addFromStock(panelId, box, r.id, -mv.giveBack, kept);
-        await addFromOurs(panelId, box, r.id, -Math.min(mv.giveBack, keptOurs), keptOurs);
+        if (keptOurs > 0) await addFromOurs(panelId, box, r.id, -Math.min(mv.giveBack, keptOurs), keptOurs);
       }
     } catch (err) {
-      console.error('[사급 재고] 맞추기 실패', err);
-      toast('사급 재고를 맞추지 못했습니다 — 재고 화면에서 확인해 주세요', 'error');
+      console.error('[재고] 맞추기 실패', err);
+      toast('재고를 맞추지 못했습니다 — 재고 화면에서 확인해 주세요', 'error');
     }
   };
 
   const toggleRow = async (r, got) => {
     const want = got > 0 ? 0 : Number(r.qty) || 0;
     try {
-      await setReceived(panelId, box, r.id, want, by());
-      await syncFree(r, got, want);
-      undoable(want > 0 ? `${r.name} ${want}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got, want));
+      const n = await applyQty(r, got, want);
+      if (n === got) return;
+      undoable(n > 0 ? `${r.name} ${n}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, got, n));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -381,9 +405,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const before = receivedQty(rec, r.id);
     if (n === before) return;
     try {
-      await setReceived(panelId, box, r.id, n, by());
-      await syncFree(r, before, n);
-      undoable(`${r.name} ${n}개`, restoreOne(r, before, n));
+      const applied = await applyQty(r, before, n);
+      if (applied === before) return;
+      undoable(`${r.name} ${applied}개`, restoreOne(r, before, applied));
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error');
     }
@@ -399,23 +423,28 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       return;
     const before = shown.map((r) => ({ id: r.id, qty: receivedQty(rec, r.id) }));
     try {
-      await Promise.all(
-        shown.map((r) => setReceived(panelId, box, r.id, toBom ? Number(r.qty) || 0 : 0, userProfile?.name || '')),
-      );
-      // 사급이면 재고 통도 함께 맞춘다 — 한 줄씩 차례로(같은 품목이 겹쳐도 셈이 안 엉키게)
+      // 한 줄씩 차례로 — 통에 있는 만큼까지만 채워지고(같은 품목이 겹쳐도 셈이 안 엉키게),
+      // 못 채운 줄은 세어 두었다가 한 번에 알린다
+      const applied = [];
+      let shortRows = 0;
       for (const r of shown) {
         const b = before.find((x) => x.id === r.id)?.qty || 0;
-        await syncFree(r, b, toBom ? Number(r.qty) || 0 : 0);
+        const want = toBom ? Number(r.qty) || 0 : 0;
+        const n = await applyQty(r, b, want, { quiet: true });
+        applied.push({ id: r.id, qty: n });
+        if (toBom && n < want) shortRows += 1;
       }
+      if (shortRows > 0)
+        toast(`${shortRows}줄은 재고가 모자라 다 못 채웠습니다 — 재고 화면에서 입고한 뒤 다시`, 'error', 0);
       undoable(
-        toBom ? `${shown.length}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
+        toBom ? `${shown.length - shortRows}건을 필요 수량대로 채웠습니다` : `${shown.length}건을 0 으로 되돌렸습니다`,
         async () => {
           try {
-            await setReceivedMany(panelId, box, before, by());
             // 통도 함께 되돌린다 — 한 줄씩 차례로
             for (const r of shown) {
               const b = before.find((x) => x.id === r.id)?.qty || 0;
-              await syncFree(r, toBom ? Number(r.qty) || 0 : 0, b);
+              const a = applied.find((x) => x.id === r.id)?.qty || 0;
+              await applyQty(r, a, b, { quiet: true });
             }
           } catch {
             toast('되돌리지 못했습니다', 'error');
@@ -441,8 +470,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 도급 재고를 회사별 통으로 옮기면서 창고가 0 이 되어 「가져오기」가 먹통이 됐다
   // (2026-09-12 대표님 「가져오기가 왜 안되지」).
   const stockOf = (r) => {
-    if (supplyTab === 'free') return Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
-    // 손으로 적어 둔 몫 + 발주 여유 — 「부족분 채우기」가 보는 것과 같은 곳을 본다.
+    const kind = stockKindOf(r);
+    if (kind === 'free') return Math.max(0, Number(freeStock[r.itemId]?.qty) || 0);
+    // 굳힌 도급·판금은 통 값 그대로 (2026-09-15 설계)
+    if (ledgerOn(settings, company, kind)) return Math.max(0, Number(paidStock[r.itemId]?.qty) || 0);
+    // 굳히기 전 — 손으로 적어 둔 몫 + 발주 여유 (「부족분 채우기」가 보는 것과 같은 곳).
     // 여유를 안 보던 탓에, 발주로 넉넉히 들어왔어도 누가 수동으로 적지 않았으면
     // 줄마다의 「재고에서」가 아예 안 떴다 (2026-09-12).
     const kept = Math.max(0, Number(paidStock[r.itemId]?.qty) || 0);
@@ -450,8 +482,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return kept + spare;
   };
   // 발주 여유 = 이 BOM 으로 들어온 입고 − 배정 호기들이 가져간 양 (부족 집계와 같은 셈)
-  const [settings, setSettings] = useState({});
-  useEffect(() => subscribePaidSetSettings(take('settings', setSettings)), [take]);
   const siteId = settings?.[panel?.회사 || '']?.siteId || '';
   const [receivedByItem, setReceivedByItem] = useState({});
   useEffect(() => {
@@ -772,7 +802,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 통에 얼마 남았는지 늘 보인다 — 통을 거칠지 말지 여기서 바로 판단된다
                           (2026-09-11 대표님). 전에는 부족할 때 뜨는 버튼으로만 짐작했다 */}
                       {/* 도급에도 보여 준다 — 통에 얼마 있는지 알아야 가져올지 정한다 (2026-09-12) */}
-                      {stockOf(r) > 0 && <span className="pmat-instock">재고 {stockOf(r)}</span>}
+                      {/* 통이 실값인 갈래는 0 이어도 보인다 — 빨간 0 은 「이 줄은 지금 못 채운다」
+                          (2026-09-15 설계, 대표님 「통에 없으면 안채워짐으로 가자 전부」) */}
+                      {(ledger(r) || stockOf(r) > 0) && (
+                        <span className={`pmat-instock${stockOf(r) <= 0 ? ' is-empty' : ''}`}>재고 {stockOf(r)}</span>
+                      )}
                     </td>
                     {/* 입고 상태는 앱 공통 칩 하나로 (2026-09-05 대표님) */}
                     <td className="pmat-ok">

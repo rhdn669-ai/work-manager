@@ -39,6 +39,7 @@ import {
 import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
+import { COMPANIES } from '../../domain/production';
 import Icon from '../../components/common/Icon';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import Skeleton from '../../components/common/Skeleton';
@@ -202,6 +203,8 @@ export default function BomDetailPage() {
   const [pasteResult, setPasteResult] = useState(null); // { added, already:[], notFound:[] }
   // 프로젝트명 수정
   const [nameModalOpen, setNameModalOpen] = useState(false);
+  // 발주서 입고가 어느 회사 통으로 갈지 — 프로젝트에 한 번만 정한다 (2026-09-15 설계 2단계)
+  const [companyInput, setCompanyInput] = useState('');
   const [nameInput, setNameInput] = useState('');
   // 타입(형번) — 같은 제품의 형번별 차이를 BOM 한 벌로 관리한다
   const [variantModalOpen, setVariantModalOpen] = useState(false);
@@ -874,14 +877,15 @@ export default function BomDetailPage() {
   // 프로젝트명 수정
   function openNameModal() {
     setNameInput(project?.name || '');
+    setCompanyInput(project?.회사 || '');
     setNameModalOpen(true);
   }
   async function saveName() {
     const n = nameInput.trim();
     if (!n) return;
     try {
-      await updateBomProject(projectId, n);
-      setProject((p) => ({ ...p, name: n }));
+      await updateBomProject(projectId, { name: n, 회사: companyInput });
+      setProject((p) => ({ ...p, name: n, 회사: companyInput }));
       setNameModalOpen(false);
     } catch {
       toast('프로젝트명 수정 중 오류가 발생했습니다', 'error');
@@ -1032,13 +1036,16 @@ export default function BomDetailPage() {
             <Icon name="chevronLeft" className="btn-ic" />
             구매
           </button>
-          <h2>{project.name}</h2>
+          <h2>
+            {project.name}
+            {project.회사 && <span className="pmat-title-sub"> · {project.회사}</span>}
+          </h2>
           <button
             type="button"
             className="btn btn-sm btn-outline"
             onClick={openNameModal}
-            title="프로젝트명 수정"
-            aria-label="프로젝트명 수정"
+            title="프로젝트 수정"
+            aria-label="프로젝트 수정"
           >
             <Icon name="edit" className="btn-ic" />
             수정
@@ -1971,7 +1978,7 @@ export default function BomDetailPage() {
         </form>
       </Modal>
 
-      <Modal isOpen={nameModalOpen} onClose={() => setNameModalOpen(false)} title="프로젝트명 수정">
+      <Modal isOpen={nameModalOpen} onClose={() => setNameModalOpen(false)} title="프로젝트 수정">
         <div className="form-group">
           <label>프로젝트명</label>
           <input
@@ -1986,6 +1993,17 @@ export default function BomDetailPage() {
             autoFocus
             maxLength={60}
           />
+        </div>
+        <div className="form-group">
+          <label>회사</label>
+          <Select
+            value={companyInput}
+            onChange={setCompanyInput}
+            options={COMPANIES.map((c) => ({ value: c, label: c }))}
+            placeholder="회사 선택"
+            ariaLabel="회사"
+          />
+          <p className="field-hint">이 BOM 에 걸린 발주서의 입고가 어느 회사 도급·판금 재고로 들어갈지 정합니다.</p>
         </div>
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setNameModalOpen(false)}>

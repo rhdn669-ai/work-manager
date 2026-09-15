@@ -56,11 +56,17 @@ export async function addBomProject(name) {
   });
 }
 
-export async function updateBomProject(projectId, name) {
-  await updateDoc(doc(db, 'bomProjects', projectId), {
-    name: String(name || '').trim(),
-    updatedAt: new Date(),
-  });
+/**
+ * 프로젝트 수정 — 이름(문자열) 또는 { name, 회사 } 묶음.
+ * 「회사」는 발주서 입고가 어느 회사의 도급·판금 통으로 갈지 정한다
+ * (2026-09-15 설계 「발주 입고가 어느 회사 통으로 가나」).
+ */
+export async function updateBomProject(projectId, patch) {
+  const p = typeof patch === 'string' ? { name: patch } : patch || {};
+  const data = { updatedAt: new Date() };
+  if (p.name !== undefined) data.name = String(p.name || '').trim();
+  if (p.회사 !== undefined) data.회사 = String(p.회사 || '').trim();
+  await updateDoc(doc(db, 'bomProjects', projectId), data);
 }
 
 // ---- 타입(형번) ----
