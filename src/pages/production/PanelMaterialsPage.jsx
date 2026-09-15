@@ -234,6 +234,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         note: f.note,
         stockKind: stockKindOf(f.row),
       });
+      // 창에 적은 비고를 줄 비고에도 — 표에서 바로 읽히게 (2026-09-15 대표님
+      // 「사유 모달에 비고에 입력한 내용이 리스트 비고로 입력 되게해줘」)
+      const memo = String(f.note || '').trim();
+      if (memo) {
+        const cur = String(rec[f.row.id]?.note || '').trim();
+        if (!cur.includes(memo)) await saveNote(f.row, cur ? `${cur} · ${memo}` : memo);
+      }
       setLogForm(null);
       toast('기록했습니다', 'success');
     } catch (err) {
@@ -569,8 +576,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     for (const [itemId, q] of Object.entries(receivedByItem)) out[itemId] = q - (consumed[itemId] || 0);
     return out;
   }, [link?.projectId, allPanels, bomRows, allMaterials, receivedByItem]);
-  const fillAll = () => fillAllTo(true);
-  const clearAll = () => fillAllTo(false);
 
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
 
