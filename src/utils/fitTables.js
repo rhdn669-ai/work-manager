@@ -28,7 +28,7 @@ function cellNeed(td) {
   const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
   let need = 0;
   const controls = td.querySelectorAll(
-    ':scope > input, :scope > select, :scope > button, :scope > .ds-select, :scope > span, :scope > div',
+    ':scope > input, :scope > textarea, :scope > select, :scope > button, :scope > .ds-select, :scope > span, :scope > div',
   );
   if (controls.length === 0) {
     // 글자 칸 — canvas 로 잰다. Range.getBoundingClientRect 는 칸마다 레이아웃을 다시 돌려
@@ -51,7 +51,17 @@ function cellNeed(td) {
         sum += (ctx ? ctx.measureText(txt).width : 60) + 44; // 화살표·안쪽 여백
         return;
       }
-      if (c.tagName === 'INPUT' && (c.type === 'text' || c.type === 'number')) {
+      if (c.tagName === 'TEXTAREA') {
+        // 늘어나는 메모칸(MemoInput) — 글자 폭을 재되 적을 자리는 늘 남긴다. 전에는 이 칸을
+        // 글자 칸으로 보고 textContent('')를 재서 폭이 0 이 됐다 — 태블릿에서 「메」만 보였다
+        // (2026-09-15 대표님 「메모칸이 너무작은데」)
+        const f = getComputedStyle(c);
+        if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
+        const longest = String(c.value || '')
+          .split(/\r?\n/)
+          .reduce((m, line) => Math.max(m, ctx ? ctx.measureText(line).width : 0), 0);
+        sum += Math.max(140, Math.min(longest + 16, 320));
+      } else if (c.tagName === 'INPUT' && (c.type === 'text' || c.type === 'number')) {
         const f = getComputedStyle(c);
         if (ctx) ctx.font = `${f.fontWeight} ${f.fontSize} ${f.fontFamily}`;
         const w = ctx ? ctx.measureText(String(c.value || c.placeholder || '')).width : c.clientWidth;
