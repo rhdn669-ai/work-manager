@@ -108,7 +108,6 @@ export default function FreeStockPage({ company }) {
     const entriesByBox = new Map(); // box → entries[]
     const perOneByBox = new Map(); // box → Map(key → 개수)
     const outByBox = new Map(); // box → 나감 SET 집계 (줄마다 다 채운 호기 · 부족 호기)
-    const started = new Set(); // 사급 자재를 하나라도 가져간 호기 — 「N SET」의 N
 
     for (const p of mine) {
       const all0 = bomByProject[p.bomLink.projectId];
@@ -140,9 +139,7 @@ export default function FreeStockPage({ company }) {
           const k = r.itemId || `row:${r.id}`;
           one.set(k, (one.get(k) || 0) + (Number(r.qty) || 0));
           ob.set(k, (ob.get(k) || 0) + (Number(r.qty) || 0));
-          const got = receivedQty(rec, r.id);
-          if (got > 0) started.add(p.id);
-          tallyOut(o, k, p.id, got, Number(r.qty) || 0, !!rec[r.id]?.skip);
+          tallyOut(o, k, p.id, receivedQty(rec, r.id), Number(r.qty) || 0, !!rec[r.id]?.skip);
         }
         const entry = { panelLabel: p.프로젝트 || p.id, rows: list, received: rec };
         entriesAll.push(entry);
@@ -206,7 +203,8 @@ export default function FreeStockPage({ company }) {
                 ...base,
                 perOne: ob.get(a.itemId || '') || 0,
                 got: a.got,
-                outSets: outSetsOf(ob2, a.itemId || '', started), // { sets, full, short }
+                // 사급은 체크 기준 — 이 줄에 실제로 넣은 호기만 (대표님 「체크된 호기에 한해서」)
+                outSets: outSetsOf(ob2, a.itemId || ''), // { sets, full, short }
               }
             : null;
         })
