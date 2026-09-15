@@ -8,7 +8,7 @@
 // 한 줄 = { id, kind, why, n, at, by, note, mate }
 //   kind  'out'  수량이 줄었다      why: 불량 · 파손 · 분실 · 가져감 · 그냥 빼기
 //         'in'   수량이 늘었다      why: 구매 · 가져옴 · 수리 입고
-//         'why'  수량 그대로, 까닭만 why: 미입고 · 뒤 호기가 가져감 · 불량 · 파손 · 분실
+//         'why'  수량 그대로, 까닭만 why: 미입고 · 가져감 · 불량 · 파손 · 분실   (짝: 가져옴)
 //   mate  상대 호기 id — 가져감·가져옴일 때. 고객사에서 가져간 경우처럼 상대가 호기가 아니면 비워 두고 비고에 적는다
 //
 // 낱말은 「가져감 / 가져옴」으로 통일 — 「차용」은 받은 쪽·준 쪽이 헷갈렸다
@@ -24,13 +24,20 @@ export const OUT_WHYS = ['불량', '파손', '분실', '가져감', '그냥 빼�
 export const IN_WHYS = ['구매', '가져옴', '수리 입고'];
 // 「가져옴」(받았다)은 채우는 창에만 둔다 — 모자란 까닭에 「받았나요」를 물으면 말이 안 된다
 // (2026-09-16 대표님 「왜 모자란가요 해놓고 어느호기에서 받았나요는 아니지않음?」)
-export const WHY_WHYS = ['미입고', '뒤 호기가 가져감', '불량', '파손', '분실'];
+// 「뒤 호기가 가져감」이라 길게 적지 않는다 — 그냥 「가져감」 (2026-09-16 대표님)
+export const WHY_WHYS = ['미입고', '가져감', '불량', '파손', '분실'];
 
 // 옛 낱말 — 이미 저장된 기록에 남아 있어 «읽을 때만» 새 낱말로 맞춘다. 기록 자체는 고치지 않는다.
 const OLD_WHY = {
   out: { '차용해 줌': '가져감' },
   in: { 차용: '가져옴' },
-  why: { 차용: '뒤 호기가 가져감', '앞호기 차용': '뒤 호기가 가져감', '뒤호기에 차용해 줌': '앞 호기에서 가져옴' },
+  why: {
+    차용: '가져감',
+    '앞호기 차용': '가져감',
+    '뒤 호기가 가져감': '가져감',
+    '뒤호기에 차용해 줌': '가져옴',
+    '앞 호기에서 가져옴': '가져옴',
+  },
 };
 export const whyOf = (log) => OLD_WHY[log?.kind]?.[log?.why] || log?.why;
 
@@ -43,7 +50,7 @@ export function needsMate(kind, why) {
   const w = whyOf({ kind, why });
   if (kind === 'out') return w === '가져감';
   if (kind === 'in') return w === '가져옴';
-  return w === '뒤 호기가 가져감';
+  return w === '가져감';
 }
 
 /** 재고 통에서 실물이 나가야 하는 까닭인가 — 통이 비면 못 채운다 (대표님 「재고에서는 수량이 있어야」) */
@@ -80,10 +87,10 @@ export function mateLog(log, myPanelId) {
       pair: log.id,
     };
   }
-  if (log.kind === 'why' && w === '뒤 호기가 가져감') {
-    // 수량은 안 건드리고 기록만 — 가져간 호기에도 「앞 호기에서 가져옴」을 남긴다
+  if (log.kind === 'why' && w === '가져감') {
+    // 수량은 안 건드리고 기록만 — 가져간 호기에도 「가져옴」을 남긴다
     return {
-      ...newLog({ kind: 'why', why: '앞 호기에서 가져옴', n: log.n, mate: myPanelId, at: log.at, by: log.by }),
+      ...newLog({ kind: 'why', why: '가져옴', n: log.n, mate: myPanelId, at: log.at, by: log.by }),
       pair: log.id,
     };
   }
@@ -105,8 +112,8 @@ export function logLabel(log, name = (id) => id) {
   const w = whyOf(log);
   if (log.kind === 'out' && w === '가져감') return who ? `${who}가 가져감 ${log.n}` : `가져감 ${log.n}`;
   if (log.kind === 'in' && w === '가져옴') return who ? `${who}에서 가져옴 ${log.n}` : `가져옴 ${log.n}`;
-  if (log.kind === 'why' && w === '뒤 호기가 가져감') return who ? `${who}가 가져감` : '뒤 호기가 가져감';
-  if (log.kind === 'why' && w === '앞 호기에서 가져옴') return `${who}에서 가져옴`;
+  if (log.kind === 'why' && w === '가져감') return who ? `${who}가 가져감` : '가져감';
+  if (log.kind === 'why' && w === '가져옴') return who ? `${who}에서 가져옴` : '가져옴';
   if (log.kind === 'why') return w;
   return `${w} ${log.n}`;
 }
