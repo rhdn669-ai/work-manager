@@ -383,26 +383,26 @@ export default function VehicleLogPage() {
                   <th scope="col" style={{ padding: '7px 6px', height: 36 }}>
                     차량번호
                   </th>
-                  <th scope="col" className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                  <th scope="col" className="col-num">
                     월 금액
                   </th>
                   <th
                     scope="col"
-                    className="num-col"
+                    className="col-num"
                     title="이전월 누적"
                     style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}
                   >
                     이전월 누적
                   </th>
-                  <th scope="col" className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                  <th scope="col" className="col-num">
                     이번월 누적
                   </th>
-                  <th scope="col" className="num-col" style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}>
+                  <th scope="col" className="col-num">
                     운행 km
                   </th>
                   <th
                     scope="col"
-                    className="num-col"
+                    className="col-num"
                     title="전월 대비"
                     style={{ textAlign: 'right', padding: '7px 6px', height: 36 }}
                   >
@@ -470,7 +470,7 @@ export default function VehicleLogPage() {
                         {r.plate || <span className="text-muted">-</span>}
                       </td>
                       <td
-                        className="num-col"
+                        className="col-num"
                         style={{
                           textAlign: 'right',
                           fontVariantNumeric: 'tabular-nums',
@@ -481,7 +481,7 @@ export default function VehicleLogPage() {
                         {r.monthlyCost > 0 ? fmtMoney(r.monthlyCost) : <span className="text-muted">-</span>}
                       </td>
                       <td
-                        className="num-col"
+                        className="col-num"
                         style={{
                           textAlign: 'right',
                           fontVariantNumeric: 'tabular-nums',
@@ -492,7 +492,7 @@ export default function VehicleLogPage() {
                         {fmt(r.prevOdometer)}
                       </td>
                       <td
-                        className="num-col"
+                        className="col-num"
                         style={{
                           textAlign: 'right',
                           fontVariantNumeric: 'tabular-nums',
@@ -507,7 +507,7 @@ export default function VehicleLogPage() {
                         )}
                       </td>
                       <td
-                        className="num-col"
+                        className="col-num"
                         style={{
                           textAlign: 'right',
                           fontVariantNumeric: 'tabular-nums',
@@ -518,7 +518,7 @@ export default function VehicleLogPage() {
                         {r.hasInput ? fmt(r.drivenKm) : '-'}
                       </td>
                       <td
-                        className="num-col"
+                        className="col-num"
                         style={{
                           textAlign: 'right',
                           color: dColor,
