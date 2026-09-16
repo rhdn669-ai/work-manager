@@ -63,7 +63,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
   const [master, setMaster] = useState([]);
   const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
-  const [supplyTab, setSupplyTab] = useState('paid'); // 'paid' | 'free'
+  // 갈래는 주소에 둔다 — 호기를 바꾸면 이 화면이 통째로 새로 만들어져(key={panelId}) 화면 안에
+  // 담아 두면 늘 도급으로 돌아갔다 (2026-09-16 대표님 「사급을 보다가 넘기면 도급으로 넘어감」)
   const [draft, setDraft] = useState({}); // 입력 중인 개수 { [bomItemId]: '3' }
   // 숫자를 직접 적는 칸은 «길게 누를 때»만 연다 — 100번 중 96번은 필요 수량 그대로 들어오기 때문
   // (2026-09-08 대표님 「자동 채우기 버튼으로, 한 번 더 누르면 수량 입력」 → 실측 후 A안 확정)
@@ -175,11 +176,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const boxList = allBoxes ? boxesWithRows : [box];
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
   // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
-  const setBox = (b) => {
+  const setBox = (b) => putParam('box', b);
+  const putParam = (k, v) => {
     const q = new URLSearchParams(sp);
-    q.set('box', b);
+    q.set(k, v);
     setSp(q, { replace: true });
   };
+  const supplyTab = sp.get('sup') || 'paid'; // 'paid' | 'free' | MADE
+  const setSupplyTab = (v) => putParam('sup', v);
+  const rowView = sp.get('view') || 'all'; // 'all' | 'short' | 'done'
+  const setRowView = (v) => putParam('view', v);
 
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
@@ -227,7 +233,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [bomRowsFull, link?.variantKey, received, inTab, inScope]);
 
   // 완료 / 부족만 보기 (2026-09-05 대표님 「완료 부족 토글」)
-  const [rowView, setRowView] = useState('all'); // 'all' | 'short' | 'done'
+  // 보기(전체·부족·완료)도 같은 까닭으로 주소에 둔다
   // 도번·품명·규격으로 찾기 — 이 호기 «전체»에서 찾고, 고르면 그 BOX·갈래 탭으로 옮겨 간다
   // (2026-09-15 대표님 「전체리스트중에 검색 되고 해당 위치에 맞게 탭 움직이는걸로」)
   const [q, setQ] = useState('');
