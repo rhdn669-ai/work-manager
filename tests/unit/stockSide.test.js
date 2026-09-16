@@ -1,6 +1,6 @@
 // 사급 기록을 고객사 칸 / 당사 칸으로 가르기 (2026-09-16 대표님 「공유x」)
 import { describe, it, expect } from 'vitest';
-import { sideShare, logsForSide } from '../../src/domain/stockSide';
+import { sideShare, logsForSide, fixSideOf } from '../../src/domain/stockSide';
 
 describe('칸 몫', () => {
   it('당사 것으로 들어온 줄은 당사 칸에만 온전히 뜬다', () => {
@@ -72,5 +72,28 @@ describe('칸별 목록', () => {
 
   it('칸을 안 주면 전부 그대로', () => {
     expect(logsForSide(logs).length).toBe(5);
+  });
+});
+
+describe('옛 손맞춤의 칸 — 앱이 박아 둔 비고로 찾기', () => {
+  it('「고객사 실물 세어 맞춤」은 고객사 칸', () => {
+    const l = { kind: 'fix', from: 4, n: 0, note: '고객사 실물 세어 맞춤' };
+    expect(fixSideOf(l)).toBe('theirs');
+    expect(sideShare(l, 'ours').skip).toBe(true);
+    expect(sideShare(l, 'theirs')).toMatchObject({ n: 0, whole: true });
+  });
+
+  it('「당사」·옛 문구 「우리 것」 둘 다 당사 칸', () => {
+    expect(fixSideOf({ kind: 'fix', note: '당사 실물 세어 맞춤' })).toBe('ours');
+    expect(fixSideOf({ kind: 'fix', note: '우리 것 실물 세어 맞춤' })).toBe('ours');
+  });
+
+  it('적힌 side 가 비고보다 앞선다', () => {
+    expect(fixSideOf({ kind: 'fix', side: 'ours', note: '고객사 실물 세어 맞춤' })).toBe('ours');
+  });
+
+  it('짐작할 글귀가 없으면 끝내 모른다 — 꾸며 내지 않는다', () => {
+    expect(fixSideOf({ kind: 'fix', note: '' })).toBe(null);
+    expect(fixSideOf({ kind: 'fix', note: '재고 정리' })).toBe(null);
   });
 });

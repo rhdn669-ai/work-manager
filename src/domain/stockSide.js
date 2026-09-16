@@ -11,6 +11,22 @@
 //   발주 입고(po-*)   당사 몫을 안 건드리므로 고객사 칸
 //   손으로 맞춤(fix)  side 가 적힌 줄은 그 칸만. 옛 줄에는 side 가 없어 «어느 칸인지 모른다»
 
+// 손맞춤에 칸을 남기기 시작한 것은 2026-09-16 부터다. 그 전 줄에도 앱이 적어 둔 비고
+// (「고객사 실물 세어 맞춤」 · 「당사 실물 세어 맞춤」 · 옛 문구 「우리 것 …」)가 있어,
+// 그 글귀로 제 칸을 찾아 준다. 사람이 쓴 글이 아니라 앱이 박은 고정 문구라 어긋나지 않는다.
+const NOTE_SIDE = [
+  [/^고객사\s/, 'theirs'],
+  [/^(당사|우리 것)\s/, 'ours'],
+];
+
+/** 손맞춤 줄이 어느 칸 것인가 — 적혀 있으면 그대로, 없으면 비고로 찾고, 그래도 없으면 null */
+export function fixSideOf(l) {
+  if (l?.side === 'ours' || l?.side === 'theirs') return l.side;
+  const note = String(l?.note || '').trim();
+  for (const [re, side] of NOTE_SIDE) if (re.test(note)) return side;
+  return null;
+}
+
 /** 이 줄에서 그 칸이 가진 몫. 칸을 안 주면(도급·판금) 줄 전체를 그대로 돌려준다. */
 export function sideShare(l, side = null) {
   if (!side) return { n: Number(l?.n) || 0, whole: true };
@@ -31,9 +47,10 @@ export function sideShare(l, side = null) {
   }
   if (kind.startsWith('po-')) return { n: ours ? 0 : n, whole: true };
   if (kind === 'fix') {
-    // side 가 적힌 줄은 그 칸 이야기. 안 적힌 옛 줄은 두 칸 합계를 고친 것이라 몫을 못 가른다.
-    if (!l?.side) return { n, whole: false };
-    return { n: l.side === side ? n : 0, whole: true, skip: l.side !== side };
+    // 칸을 알아낸 줄은 그 칸 이야기. 끝내 모르는 줄은 두 칸 합계를 고친 것이라 몫을 못 가른다.
+    const mine = fixSideOf(l);
+    if (!mine) return { n, whole: false };
+    return { n: mine === side ? n : 0, whole: true, skip: mine !== side };
   }
   return { n: 0, whole: true };
 }

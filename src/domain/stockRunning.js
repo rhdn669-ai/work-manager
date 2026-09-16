@@ -13,7 +13,7 @@
 //
 // 앱을 거치지 않고 고친 값이 있으면 아래쪽이 어긋날 수 있다 — 그때 음수가 나와 눈에 띈다.
 
-import { sideShare } from './stockSide';
+import { sideShare, fixSideOf } from './stockSide';
 
 /** 이 줄이 통을 얼마나 움직였나 (기록만 한 것은 0, 덮어쓴 줄은 null) */
 export function deltaOf(l, side = null) {
@@ -44,7 +44,7 @@ export function withRunning(logs, now, side = null) {
     if (lost) continue;
     if (String(l?.kind) === 'fix') {
       // 칸을 모르는 옛 줄은 두 칸 합계를 고친 것이라 이 칸 수량을 못 집어낸다 — 여기서 끊는다
-      if (side && !l?.side) {
+      if (side && !fixSideOf(l)) {
         lost = true;
         continue;
       }
