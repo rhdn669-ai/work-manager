@@ -1793,7 +1793,7 @@ body {
   padding: 0 14px;
   font-size: 13px;
   line-height: 1;
-  border-radius: 9px;
+  border-radius: var(--radius-sm); /* 버튼 라운드 통일 — 9px 이라 기본 버튼과 달랐다 (2026-09-16) */
   box-shadow: none; /* 채움/아웃라인/.btn-sm 형제가 모두 동일 크기로 보이게 */
 }
 /* ≤360px — .btn-sm 미디어쿼리(32px)와 보조를 맞춰 형제 모두 동일 축소 */
@@ -3937,7 +3937,7 @@ body {
 
 /* ===== 폼 ===== */
 .form-group {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3); /* 12px — 12/14/10/16 4종이었다 (2026-09-16) */
 }
 
 /* 날짜 입력 칸 전체를 클릭 영역으로 — 라벨까지 함께 클릭하면 날짜 선택기 오픈
@@ -13425,7 +13425,7 @@ tr.is-newly-added > td {
   padding: 4px 8px;
   font-size: 13px;
   line-height: 1.2;
-  border-radius: 6px;
+  border-radius: var(--radius-sm); /* 버튼 라운드 통일 (2026-09-16) */
 }
 
 /* 고정지출 입력 폼 */
