@@ -1289,14 +1289,11 @@ export default function BomDetailPage() {
                             구매처
                           </th>
                         )}
-                        {/* 비고 자리를 반으로 갈라 배선 양끝을 적는다 — 종이에 손으로
-                            쓰는 칸이라 값은 비워 둔다 (2026-09-03 대표님 「비고란을 반으로
-                            나눠서 from to 로 표기」) */}
-                        <th scope="col" className="c-from">
-                          FROM
-                        </th>
-                        <th scope="col" className="c-to">
-                          TO
+                        {/* 손으로 적는 칸 — 값은 비워 둔다. FROM·TO 로 반을 갈랐다가
+                            다시 「비고」 한 칸으로 합쳤다 (2026-09-16 대표님 「프롬 투 나눈거
+                            다시 그냥 비고로 합쳐줘」) */}
+                        <th scope="col" className="c-note">
+                          비고
                         </th>
                       </tr>
                     </thead>
@@ -1319,8 +1316,7 @@ export default function BomDetailPage() {
                                 </>
                               )}
                               {printShowSupplier && <td className="c-supplier"></td>}
-                              <td className="c-from"></td>
-                              <td className="c-to"></td>
+                              <td className="c-note"></td>
                             </tr>
                           );
                         return (
@@ -1355,8 +1351,7 @@ export default function BomDetailPage() {
                             {printShowSupplier && (
                               <td className={`c-supplier ${specFontClass(it.supplier, 18)}`}>{it.supplier || ''}</td>
                             )}
-                            <td className="c-from"></td>
-                            <td className="c-to"></td>
+                            <td className="c-note"></td>
                           </tr>
                         );
                       })}

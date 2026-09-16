@@ -1155,7 +1155,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col" className="c-qty">
                   부족
                 </th>
-                <th scope="col" className="c-from">
+                <th scope="col" className="c-check">
                   확인
                 </th>
               </tr>
@@ -1172,7 +1172,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     <td className="c-qty">{Number(r.qty) || 0}</td>
                     <td className="c-qty">{got || ''}</td>
                     <td className="c-qty">{shortageOf(r.qty, got) || ''}</td>
-                    <td className="c-from"></td>
+                    <td className="c-check"></td>
                   </tr>
                 );
               })}
