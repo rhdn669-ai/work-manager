@@ -51,6 +51,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const params = useParams();
   const panelId = panelIdProp || params.panelId;
   const [sp, setSp] = useSearchParams();
+  // 주소에 담는 값들 — 화면 안에 담으면 호기를 바꿀 때(key={panelId}) 기본값으로 돌아간다.
+  // 아래쪽 어디서든 쓰이므로 «맨 위»에 둔다 (2026-09-16: 아래에 두었다가 선언 전 참조로 화면이 안 떴다)
+  const putParam = (k, v) => {
+    const q = new URLSearchParams(sp);
+    q.set(k, v);
+    setSp(q, { replace: true });
+  };
+  const supplyTab = sp.get('sup') || 'paid'; // 'paid' | 'free' | MADE
+  const setSupplyTab = (v) => putParam('sup', v);
+  const rowView = sp.get('view') || 'all'; // 'all' | 'short' | 'done'
+  const setRowView = (v) => putParam('view', v);
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { toast, confirm } = useDialog();
@@ -177,15 +188,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
   // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
   const setBox = (b) => putParam('box', b);
-  const putParam = (k, v) => {
-    const q = new URLSearchParams(sp);
-    q.set(k, v);
-    setSp(q, { replace: true });
-  };
-  const supplyTab = sp.get('sup') || 'paid'; // 'paid' | 'free' | MADE
-  const setSupplyTab = (v) => putParam('sup', v);
-  const rowView = sp.get('view') || 'all'; // 'all' | 'short' | 'done'
-  const setRowView = (v) => putParam('view', v);
 
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
