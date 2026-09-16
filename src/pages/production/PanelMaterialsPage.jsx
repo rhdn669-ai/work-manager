@@ -79,20 +79,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     },
     [fillRef],
   );
-  // 자리를 계속 기억해 둔다 — 호기가 바뀌면 상자가 새로 그려지므로 «바뀌기 전»에 담아야 한다
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return undefined;
-    const note = () => {
-      keepRef.current = { top: el.scrollTop, left: el.scrollLeft, win: window.scrollY };
-    };
-    el.addEventListener('scroll', note, { passive: true });
-    window.addEventListener('scroll', note, { passive: true });
-    return () => {
-      el.removeEventListener('scroll', note);
-      window.removeEventListener('scroll', note);
-    };
-  }, [panelId, box, supplyTab]);
 
   // ── 판넬 ──
   useEffect(() => {
@@ -339,6 +325,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   });
   // 줄이 실제로 그려졌는지 알려 주는 열쇠 — 이것이 바뀐 뒤에 자리를 되돌린다
   const shownKey = `${shown.length}:${box}:${supplyTab}`;
+  // 자리를 계속 기억해 둔다 — 호기가 바뀌면 상자가 새로 그려지므로 «바뀌기 전»에 담아야 한다
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const note = () => {
+      keepRef.current = { top: el.scrollTop, left: el.scrollLeft, win: window.scrollY };
+    };
+    el.addEventListener('scroll', note, { passive: true });
+    window.addEventListener('scroll', note, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', note);
+      window.removeEventListener('scroll', note);
+    };
+  }, [panelId, shownKey]);
   const isMadeRow = useCallback((r) => isMade(r), []);
   // 새 호기의 줄이 그려지면 기억해 둔 자리로 되돌린다. 줄 수가 달라 그 자리가 없으면 끝까지만.
   useEffect(() => {
