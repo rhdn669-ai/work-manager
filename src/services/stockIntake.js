@@ -10,7 +10,7 @@ import { noteOrderIntake } from './stockService';
 import { ledgerOn, stockKindOf } from '../domain/stockLedger';
 
 /** 발주서가 걸린 BOM 프로젝트 — 직결(bomProjectId)이 먼저, 없으면 연결 목록의 첫 것 */
-export function projectIdOfPurchase(purchase) {
+function projectIdOfPurchase(purchase) {
   return purchase?.bomProjectId || purchase?.bomLinks?.[0]?.projectId || '';
 }
 

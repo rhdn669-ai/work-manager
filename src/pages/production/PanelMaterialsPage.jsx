@@ -168,12 +168,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bomRowsFull, link?.variantKey, box, boxesWithRows]);
   const boxOf = (r) => r?._box || box;
-  // BOM 줄 id 는 BOX 를 가리지 않고 하나뿐이라, 「전체」에서는 BOX 별 기록을 한 사전으로 합쳐 읽는다
-  const rec = useMemo(
-    () => (allBoxes ? Object.assign({}, ...boxList.map((b) => received[b] || {})) : received[box] || {}),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allBoxes, box, boxesWithRows, received],
-  );
+  // 줄 기록은 «그 줄이 속한 BOX» 에서 읽는다. 「전체」에서 BOX 들을 한 사전으로 합쳤더니,
+  // 같은 품목이 두 BOX 에 쓰이면 뒤 BOX 가 이겨 앞 BOX 의 수량·통 누계가 화면에서 사라졌다
+  // (2026-09-16 야간 조사 S23). rec 는 «지금 고른 BOX» 용으로 남기고, 줄마다 recOf(r) 를 쓴다.
+  const rec = received[box] || {};
+  const recOf = (r) => received[boxOf(r)] || rec;
   // 정방향 제외 줄 — 이 호기(정)에는 안 오는 자재. 표에는 회색으로 두고 셈에서는 뺀다
   // (2026-09-15 대표님 「Bom에 정을 표시한것만 생산현황 호기 자재리스트에 회색처리」)
   const inScope = useCallback((r) => !isForwardExcluded(r, panel), [panel]);
@@ -220,7 +219,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 잠겨 있으면 창을 열지 않는다 — 수량 칸은 막아 두고 이 창만 열려 있어 잠금이 반쪽이었다
     // (2026-09-16 야간 조사 L1)
     if (locked) return toast('오른쪽 아래 「잠금」을 푼 뒤에 적을 수 있습니다', 'error');
-    setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: rec[r.id]?.note || '' });
+    setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: recOf(r)[r.id]?.note || '' });
   };
   const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
   const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
@@ -260,7 +259,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       // 창의 비고가 곧 줄 비고 — «덮어쓴다». 이어 붙였더니 「미입고 · 미입고로 차용중 · ㅊ」처럼
       // 쌓이기만 하고 고칠 수가 없었다 (2026-09-16 대표님 「비고내용이 수정이 안되고 자꾸 쌓이네」)
       const memo = String(f.note || '').trim();
-      if (memo !== String(rec[f.row.id]?.note || '').trim()) await saveNote(f.row, memo);
+      if (memo !== String(recOf(f.row)[f.row.id]?.note || '').trim()) await saveNote(f.row, memo);
       setLogForm(null);
       toast('기록했습니다', 'success');
     } catch (err) {
@@ -309,17 +308,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   };
   const shown = rows.filter(inTab).filter((r) => {
     if (rowView === 'all') return true;
-    const done = rowDone(r, rec);
+    const done = rowDone(r, recOf(r));
     return rowView === 'done' ? done : !done;
   });
   const isMadeRow = useCallback((r) => isMade(r), []);
-  const summary = useMemo(() => boxSummary(rows.filter(inScope), rec, isMadeRow), [rows, rec, isMadeRow, inScope]);
+  const summary = useMemo(
+    () => boxSummary(rows.filter(inScope), recOf, isMadeRow),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, received, box, isMadeRow, inScope],
+  );
   // 줄이 없는 탭도 그대로 보여 준다 — 예전에는 줄 있는 쪽으로 저절로 옮겨 갔는데,
   // 그러면 「이 BOX 에는 도급이 없다」를 확인할 길이 없었다
   // (2026-09-12 대표님 「도급0/0이어도 눌러지게 해줘 다른박스 비어있는걸 못보니까」).
   // 덤으로, 줄·요약·탭이 서로를 참조하던 고리도 사라졌다.
   // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
-  const hasMeta = shown.some((r) => rec[r.id]?.at || rec[r.id]?.fromStock);
+  const hasMeta = shown.some((r) => recOf(r)[r.id]?.at || recOf(r)[r.id]?.fromStock);
   // 비고 — 호기·줄마다 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」).
   // 칸은 글 길이에 맞춰 아래로 늘어난다 (MemoInput, 2026-09-15 대표님 「비고글이 짤리는데」)
   const saveNote = async (r, v) => {
@@ -335,7 +338,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     if (!panel || rows.length === 0) return;
     // 기록이 하나도 없는 BOX 는 건드리지 않는다 — BOM 만 연결하고 페이지를 연 것만으로
     // 손으로 켜 둔 자재 칸이 「0개 입고」로 꺼지던 문제 (2026-09-03 대표님 「자재 칸 보호」)
-    if (Object.keys(rec).length === 0) return;
+    if (!boxList.some((b) => Object.keys(received[b] || {}).length)) return;
     // 이 호기에 수량을 하나라도 적기 전에는 판정하지 않는다 — 정방향 제외로 줄이 다 빠진 BOX 가
     // 「다 들어옴」으로 켜지면 안 된다 (2026-09-15 대표님 「하나라도 체크가 시작 되었을때 시작」)
     if (!isMatStarted(received)) return;
@@ -418,9 +421,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 호기 수량만 되돌리고 통을 그대로 두면, 통에서 빠진 것이 사라진 채로 남는다 (2026-09-11).
   const restoreOne = (r, prevQty, appliedQty) => async () => {
     try {
-      await applyQty(r, appliedQty, prevQty, { quiet: true });
+      // quiet 라 부족 알림이 안 뜬다 — 반쪽만 되돌아갔으면 여기서 알린다 (2026-09-16 조사 S19)
+      const { after } = await applyQty(r, appliedQty, prevQty, { quiet: true });
+      if (after !== Number(prevQty)) {
+        toast(`${r.name} 재고가 모자라 ${after}개까지만 되돌렸습니다`, 'error', 0);
+      }
     } catch {
-      toast('되돌리지 못했습니다', 'error');
+      toast('되돌리지 못했습니다', 'error', 0);
     }
   };
 
@@ -472,14 +479,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     }
     if (after === b) return { before: b, after: b };
     await setReceived(panelId, boxOf(r), r.id, after, by());
-    await syncStock(r, b, after);
+    const synced = await syncStock(r, b, after);
+    if (synced === false) {
+      // 통을 못 맞췄으면 줄도 되돌린다 — 한쪽만 움직이면 그만큼이 장부에서 어긋난다
+      await setReceived(panelId, boxOf(r), r.id, b, by());
+      return { before: b, after: b };
+    }
     return { before: b, after };
   };
 
+  /** 통을 줄에 맞춘다 — 맞췄으면 true, 못 맞췄으면 false (부르는 쪽이 줄을 되돌린다) */
   const syncStock = async (r, before, after) => {
-    if (!ledger(r)) return;
+    if (!ledger(r)) return true;
     const d = (Number(after) || 0) - (Number(before) || 0);
-    if (d === 0) return;
+    if (d === 0) return true;
     const kind = stockKindOf(r);
     const who = by();
     const where = `${panel?.프로젝트 || ''} · ${boxOf(r)}`;
@@ -490,7 +503,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       const keptOurs = Math.max(0, Number(stored.fromOurs) || 0); // 그중 「우리가 댄」 몫 (사급)
       const have = d > 0 ? await getStockQty(kind, company, r.itemId) : 0;
       const mv = stockMoves({ before, after, have, fromStock: kept });
-      if (!mv) return;
+      if (!mv) return true;
       if (mv.take > 0) {
         // 사급은 고객사 것부터 나간다 — 우리 몫에서 나간 만큼만 따로 적어 둔다 (2026-09-12 대표님)
         const { take, fromOurs } = await takeStock(kind, company, r.itemId, mv.take, { by: who, note: where });
@@ -508,9 +521,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         await addFromStock(panelId, boxOf(r), r.id, -mv.giveBack, kept);
         if (keptOurs > 0) await addFromOurs(panelId, boxOf(r), r.id, -Math.min(mv.giveBack, keptOurs), keptOurs);
       }
+      return true;
     } catch (err) {
       console.error('[재고] 맞추기 실패', err);
-      toast('재고를 맞추지 못했습니다 — 재고 화면에서 확인해 주세요', 'error');
+      toast('재고를 맞추지 못해 이 줄을 되돌렸습니다 — 재고 화면에서 확인해 주세요', 'error', 0);
+      return false;
     }
   };
 
@@ -557,7 +572,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 「지금 몇 개」는 저장된 값으로 — 화면 값은 한 박자 늦어, 창에 뜨는 「몇 개 줄었나」와
     // 통에 돌려줄 양이 어긋났다 (2026-09-16 야간 조사 S8. v151.1 은 applyQty 만 고쳤다)
     const stored = (await getPanelMaterials(panelId))?.[boxOf(r)]?.[r.id];
-    const before = Math.max(0, Number(stored?.qty ?? receivedQty(rec, r.id)) || 0);
+    const before = Math.max(0, Number(stored?.qty ?? receivedQty(recOf(r), r.id)) || 0);
     if (n === before) return;
     // 줄어들면 「왜 줄었나」를 묻는다 — 창에서 적으면 수량도 거기서 내려간다
     // (2026-09-15 대표님 「-수량으로 입력하게 되면 사유를 선택하고 남는 방식」)
@@ -568,7 +583,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         why: OUT_WHYS[0],
         n: String(before - n),
         mate: '',
-        note: rec[r.id]?.note || '',
+        note: recOf(r)[r.id]?.note || '',
       });
       return;
     }
@@ -878,12 +893,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             </thead>
             <tbody>
               {shown.map((r, i) => {
-                const got = receivedQty(rec, r.id);
+                const got = receivedQty(recOf(r), r.id);
                 const outScope = !inScope(r); // 정방향 제외 — 회색, 셈 없음
-                const skipped = isSkipped(rec, r.id);
+                const skipped = isSkipped(recOf(r), r.id);
                 const short = skipped || outScope ? 0 : shortageOf(r.qty, got);
-                const done = outScope || rowDone(r, rec);
-                const meta = rec[r.id];
+                const done = outScope || rowDone(r, recOf(r));
+                const meta = recOf(r)[r.id];
                 // 「전체」— BOX 가 바뀌는 자리에 구분줄 (재고 표와 같은 모양)
                 const newBox = allBoxes && (i === 0 || boxOf(shown[i - 1]) !== boxOf(r));
                 const colCount = 9 + (hasMeta ? 1 : 0);
@@ -908,7 +923,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               ? 'is-done'
                               : // 사유(미입고 말고)를 적었는데 아직 모자란 줄 — 줄 전체를 빨갛게
                                 // (2026-09-15 대표님 「사유를 입력한 수량 부족은 1번처럼 … 1줄 전체에 칠해줘」)
-                                (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
                                 ? 'is-flagged'
                                 : short > 0 && got > 0
                                   ? 'is-partial'
@@ -933,7 +948,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                             className={`pmat-locked-qty pmat-got${
                               skipped
                                 ? ' is-skip'
-                                : rec[r.id]?.fromOurs > 0
+                                : recOf(r)[r.id]?.fromOurs > 0
                                   ? ' is-ours'
                                   : got >= (Number(r.qty) || 0)
                                     ? ' is-full'
@@ -943,7 +958,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                             }`}
                             title={
                               (skipped ? '이 호기에서 제외' : `${got || 0} / ${Number(r.qty) || 0}`) +
-                              (rec[r.id]?.fromOurs > 0 ? ` · 당사가 댄 몫 ${rec[r.id].fromOurs}개` : '') +
+                              (recOf(r)[r.id]?.fromOurs > 0 ? ` · 당사가 댄 몫 ${recOf(r)[r.id].fromOurs}개` : '') +
                               (meta?.at ? ` · ${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : '')
                             }
                           >
@@ -1011,7 +1026,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         {/* 분실·파손 장부에 걸린 줄 — 「파손 1 · 수리 대기」 / 「207에 빌려줌 1」. 운용은
                           자재 허브의 「분실·파손」 탭에서 (2026-09-15 대표님 「글자만」) */}
                         {(() => {
-                          const s = rowSummary(rec[r.id]?.log || [], shortOfId);
+                          const s = rowSummary(recOf(r)[r.id]?.log || [], shortOfId);
                           return s ? (
                             <span className="pmat-incident" title={`${s} — 자재 이력 탭에서 볼 수 있습니다`}>
                               {s}
@@ -1031,9 +1046,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
                       <td className="pmat-note-cell">
                         <MemoInput
-                          value={rec[r.id]?.note || ''}
+                          value={recOf(r)[r.id]?.note || ''}
                           readOnly={!editMode}
-                          title={rec[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
+                          title={recOf(r)[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
                           ariaLabel={`${r.name} 비고`}
                           onFocus={(e) => keepInView(e.currentTarget)}
                           onCommit={(v) => saveNote(r, v)}
@@ -1047,7 +1062,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           {!outScope &&
                             !skipped &&
                             got < (Number(r.qty) || 0) &&
-                            (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
+                            (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
                               <button
                                 type="button"
                                 className="btn btn-sm btn-primary pmat-act-btn"
@@ -1071,12 +1086,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               title={
                                 locked
                                   ? '오른쪽 아래 「잠금」을 푼 뒤에'
-                                  : (rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                  : (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
                                     ? '사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
                                     : '왜 모자란지만 적습니다 — 수량은 그대로'
                               }
                             >
-                              {(rec[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                              {(recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
                                 ? '수정'
                                 : '사유'}
                             </button>
@@ -1147,7 +1162,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             </thead>
             <tbody>
               {shown.map((r, i) => {
-                const got = receivedQty(rec, r.id);
+                const got = receivedQty(recOf(r), r.id);
                 return (
                   <tr key={r.id}>
                     <td className="c-no">{i + 1}</td>

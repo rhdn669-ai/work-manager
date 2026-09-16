@@ -1,11 +1,5 @@
-import { collection, doc, getDoc, onSnapshot, query, where, deleteField, setDoc } from '../config/data';
+import { collection, doc, getDoc, onSnapshot, query, where, setDoc } from '../config/data';
 import { db } from '../config/data';
-import { updatePanel } from './productionService';
-import { setReceivedMany, getPanelMaterials, setReceived, addFromStock } from './panelMaterialsService';
-import { isFreeIssue } from './bomService';
-import { CHECKABLE_BOXES, bomRowsForBox } from '../domain/panelBom';
-import { boxMat, boxMatDate, deriveBoxStatus } from '../domain/production';
-import { fillPlan } from '../domain/paidSets';
 import { setLotsOf } from '../utils/setLots';
 
 // 도급 세트 (2026-09-03 대표님) — 우리가 사서 넣는 도급 자재를 세트로 세고 호기에 배정한다.
@@ -116,119 +110,17 @@ function summarize(docs, cb) {
   cb(out, { purchases: docs.length, lines, noItem, setCount, lotsByName });
 }
 
-// 호기의 BOX 별 도급 줄 — { box: rows[] } (줄 없는 BOX 는 뺀다)
-function paidRowsByBox(variantRows) {
-  const out = {};
-  for (const box of CHECKABLE_BOXES) {
-    const rows = bomRowsForBox(variantRows, box).filter((r) => !isFreeIssue(r));
-    if (rows.length) out[box] = rows;
-  }
-  return out;
-}
-
-// 자재 도급 칸을 켜거나 끄는 patch — 박스입고·박스입고일자·부품상태 (표의 toggleBoxMat 와 같은 모양)
-// onByBox: { [box]: true|false } — 도급 줄이 전부 찬 BOX 만 켠다
-function matPatch(panel, onByBox) {
-  const today = new Date().toISOString().slice(0, 10);
-  const 박스입고 = { ...(panel.박스입고 || {}) };
-  const 박스입고일자 = { ...(panel.박스입고일자 || {}) };
-  const 부품상태 = { ...(panel.부품상태 || {}) };
-  for (const [box, on] of Object.entries(onByBox)) {
-    if (!CHECKABLE_BOXES.includes(box)) continue;
-    const mat = { ...boxMat(panel, box), 자재_도급: !!on };
-    박스입고[box] = mat;
-    박스입고일자[box] = { ...boxMatDate(panel, box), 자재_도급: on ? today : '' };
-    부품상태[box] = deriveBoxStatus(panel, box, panel.검수, mat);
-  }
-  return { 박스입고, 박스입고일자, 부품상태 };
-}
-
-// 이 호기에서 일시 제외한 줄 id 들
-function skippedRows(rows, mats) {
-  return rows.filter((r) => mats?.[r.box || '']?.[r.id]?.skip).map((r) => r.id);
-}
-
-// 계획대로 BOX 별 기록을 쓴다 — 줄의 total 을 그대로
-async function writePlan(panelId, plan, by) {
-  const byBox = {};
-  for (const l of plan.lines) (byBox[l.box] ||= []).push({ id: l.id, qty: l.total });
-  await Promise.all(Object.entries(byBox).map(([box, entries]) => setReceivedMany(panelId, box, entries, by)));
-}
-
 /**
  * 나중에 들어온 부족분을 채운다 — 이미 있는 것은 두고 모자란 줄만, 있는 만큼만.
  * stockByItem 을 주면 발주 여유가 없는 줄은 창고 재고에서 꺼내 채우고, 재고 장부를 그만큼 줄인다
  * (이력 「도급 배정 · 호기」). 꺼낸 양은 paidSet.stockUsed 에 쌓아 두었다가 배정 취소 때 되돌린다.
  * 돌려주는 값: { added 채운 줄 수, short 남은 부족 줄 수, stockUsed { itemId: n } }
  */
-export async function topUpPaidSet(
-  panel,
-  variantRows,
-  { by = '', spareByItem = {}, exclude = [], stockByItem = null } = {},
-) {
-  const rows = Object.values(paidRowsByBox(variantRows)).flat();
-  const mats = await getPanelMaterials(panel.id);
-  const current = {};
-  for (const r of rows) current[r.id] = Number(mats?.[r.box || '']?.[r.id]?.qty) || 0;
-  const plan = fillPlan({ rows, spareByItem, exclude, current, skipRows: skippedRows(rows, mats), stockByItem });
-  const changed = plan.lines.filter((l) => l.add > 0);
-  if (changed.length === 0) return { added: 0, short: plan.short, stockUsed: {}, lines: [] };
-  await writePlan(panel.id, { lines: changed }, by);
-  const used = plan.stockUsed || {};
-  const prev = panel.paidSet?.stockUsed || {};
-  const merged = { ...prev };
-  for (const [id, n] of Object.entries(used)) merged[id] = (Number(merged[id]) || 0) + n;
-  await updatePanel(panel.id, {
-    ...matPatch(panel, plan.boxes),
-    paidSet: {
-      ...(panel.paidSet || {}),
-      short: plan.short,
-      toppedAt: new Date().toISOString().slice(0, 10),
-      ...(Object.keys(used).length ? { stockUsed: merged } : {}),
-    },
-  });
-  // 재고를 따로 깎지 않는다 — 위에서 늘어난 「나감」이 곧 재고가 줄어든 것이다 (위 설명 참고).
-  return { added: changed.length, short: plan.short, stockUsed: used, lines: changed };
-}
 
 /** 배정 취소 — 도급 줄 수량 0 + 자재 도급 칸 끔 + 배정 기록 지움 */
-export async function unassignPaidSet(panel, variantRows, { by = '' } = {}) {
-  const byBox = paidRowsByBox(variantRows);
-  const boxes = Object.keys(byBox);
-  await Promise.all(
-    boxes.map((box) =>
-      setReceivedMany(
-        panel.id,
-        box,
-        byBox[box].map((r) => ({ id: r.id, qty: 0 })),
-        by,
-      ),
-    ),
-  );
-  await updatePanel(panel.id, {
-    ...matPatch(panel, Object.fromEntries(boxes.map((b) => [b, false]))),
-    paidSet: deleteField(),
-  });
-  // 되돌릴 것도 없다 — 위에서 호기 수량을 0 으로 만들었으니 「나감」이 줄어 남음이 저절로 돌아온다.
-}
 
 /**
  * 부족한 줄 하나를 창고 재고에서 끌어와 채운다 (2026-09-05 대표님 「부족한 거 재고에서 땡겨오는 버튼」).
  * 들어온 개수를 n 만큼 올리고 재고 장부를 n 줄인다(이력 「도급 배정 · 호기」). 세트 배정 호기면
  * paidSet.stockUsed 에 쌓아 두어 배정 취소 때 되돌린다. BOX 자재 칸은 자재 체크 화면 연동이 맞춘다.
  */
-export async function pullRowFromStock(panel, row, { box, have = 0, n = 0, by = '', fromStock = 0 } = {}) {
-  const qty = Math.max(0, Number(n) || 0);
-  if (!qty || !row?.itemId) return 0;
-  await setReceived(panel.id, box, row.id, (Number(have) || 0) + qty, by);
-  await addFromStock(panel.id, box, row.id, qty, fromStock); // 기록에 「재고 N」
-  // 여기서 재고를 또 빼지 않는다. 도급 남음은 «발주 입고 + 손으로 적은 몫 − 나감»으로 세므로,
-  // 위에서 나감이 늘어난 것만으로 남음이 이미 줄었다. 재고에서 한 번 더 빼면 두 번 깎인다
-  // (2026-09-12 실측: 4개씩 네 번 가져왔는데 남음이 32 줄었다).
-  if (panel.paidSet) {
-    const used = { ...(panel.paidSet.stockUsed || {}) };
-    used[row.itemId] = (Number(used[row.itemId]) || 0) + qty;
-    await updatePanel(panel.id, { paidSet: { ...panel.paidSet, stockUsed: used } });
-  }
-  return qty;
-}

@@ -37,5 +37,3 @@ export function returnOrder({ back = 0, tookOurs = 0 } = {}) {
 }
 
 /** 화면에 쓰는 갈래 */
-export const THEIRS = 'customer';
-export const OURS = 'ours';

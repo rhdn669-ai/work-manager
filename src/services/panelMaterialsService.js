@@ -29,13 +29,12 @@ export function subscribePanelMaterials(panelId, cb) {
 
 /** 구성품 하나의 들어온 개수를 적는다 — 문서를 통째로 다시 쓰지 않고 그 줄만 */
 /**
- * 이 호기·이 줄에 들어온 개수.
- * allowNegative — 음수(빚)를 허용한다. 뒤 호기에 빌려주면 그 줄이 0 밑으로 내려가고, 부족은
- * 「필요 − 들어옴」이라 저절로 늘어난다 (2026-09-15 대표님 「그 호기 수량은 자연스래 - 수량이 되니」)
+ * 이 호기·이 줄에 들어온 개수. 0 밑으로는 안 내려간다.
+ * (옛 allowNegative 인자는 뺐다 — 「없는 줄에서 가져가면 기록만 남고 −1 은 안 만든다」로
+ *  정해지면서 부르는 곳이 하나도 없었다. 2026-09-16 야간 조사 S22)
  */
-export async function setReceived(panelId, box, bomItemId, qty, by, { allowNegative = false } = {}) {
-  const raw = Number(qty) || 0;
-  const n = allowNegative ? raw : Math.max(0, raw);
+export async function setReceived(panelId, box, bomItemId, qty, by) {
+  const n = Math.max(0, Number(qty) || 0);
   const today = new Date().toISOString().slice(0, 10);
   await setDoc(
     doc(ref, materialsDocId(panelId, box)),
@@ -108,18 +107,6 @@ export function subscribeAllMaterials(cb) {
 /** 사급을 「없는데 바로 체크」해서 통에 없던 만큼 받은 걸로 적은 양 — 되돌릴 때 그만큼은
  *  통으로 돌려주지 않고 «없던 일»로 만든다. 안 그러면 없던 재고가 생긴다
  *  (2026-09-12 대표님 「없는 수량을 넣었다가 다시빼면 없던 재고가 생겨버림」). */
-export async function setAutoIn(panelId, box, bomItemId, n) {
-  await setDoc(
-    doc(ref, materialsDocId(panelId, box)),
-    {
-      panelId,
-      box,
-      items: { [bomItemId]: { autoIn: Math.max(0, Number(n) || 0) } },
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
-}
 
 /** 그 줄이 사급 재고의 «우리 몫»에서 꺼내 쓴 누계 — 되돌릴 때 우리 몫으로 얼마를 돌릴지 안다
  *  (2026-09-12 대표님 「고객사거 먼저」). 음수로 부르면 줄어든다. */

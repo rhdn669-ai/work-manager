@@ -52,12 +52,15 @@ export function boxKindComplete(rows, received, kind, isMadeRow = null) {
 }
 
 /** 진행 요약 — 「도급 12/15 · 사급 3/3」 */
+// received 는 기록 사전이거나, 「줄을 주면 그 줄의 BOX 기록을 돌려주는 함수」다 —
+// BOX 「전체」 보기에서는 줄마다 속한 BOX 가 달라 사전 하나로는 셀 수 없다 (2026-09-16)
 export function boxSummary(rows, received, isMadeRow = null) {
   const s = { paid: { done: 0, total: 0 }, free: { done: 0, total: 0 }, made: { done: 0, total: 0 } };
+  const recOf = typeof received === 'function' ? received : () => received;
   for (const r of rows || []) {
     const k = isMadeRow && isMadeRow(r) ? 'made' : isFreeIssue(r) ? 'free' : 'paid';
     s[k].total += 1;
-    if (rowDone(r, received)) s[k].done += 1;
+    if (rowDone(r, recOf(r))) s[k].done += 1;
   }
   return s;
 }
