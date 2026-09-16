@@ -43,6 +43,10 @@ import { specFontClass, localStamp } from '../../utils/printText';
 // 기록은 호기마다 따로(panelMaterials). 같은 BOM 을 여러 호기가 쓰므로 BOM 에 적으면
 // 섞인다. 구성품이 전부 차면 생산현황의 「자재 도급 / 자재 사급」 칸이 저절로 켜진다.
 // embedded: 자재 허브(MaterialsHubPage) 탭 안에서 그릴 때 — 뒤로 버튼·큰 제목 없이 (2026-09-05 안 B 2단계)
+// 보고 있던 자리 — 호기를 바꾸면 이 화면은 key={panelId} 로 «통째로 다시» 만들어져서
+// 화면 안에 담아 두면 같이 지워진다. 그래서 화면 밖(모듈)에 둔다 (2026-09-16 대표님).
+const keepScroll = { top: 0, left: 0, win: 0 };
+
 export default function PanelMaterialsPage({ embedded = false, panelId: panelIdProp = '' } = {}) {
   const params = useParams();
   const panelId = panelIdProp || params.panelId;
@@ -71,7 +75,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 많은데 매번 맨 위로 튀어 다시 찾아 내려가야 했다 (2026-09-16 대표님 「내가 보고있는 화면
   // 위치 그대로 다른호기 눌러도 유지좀 되게해줘」).
   const boxRef = useRef(null);
-  const keepRef = useRef({ top: 0, left: 0, win: 0 });
   const scrollRef = useCallback(
     (node) => {
       boxRef.current = node;
@@ -330,7 +333,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const el = boxRef.current;
     if (!el) return undefined;
     const note = () => {
-      keepRef.current = { top: el.scrollTop, left: el.scrollLeft, win: window.scrollY };
+      keepScroll.top = el.scrollTop;
+      keepScroll.left = el.scrollLeft;
+      keepScroll.win = window.scrollY;
     };
     el.addEventListener('scroll', note, { passive: true });
     window.addEventListener('scroll', note, { passive: true });
@@ -344,7 +349,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return;
-    const { top, left, win } = keepRef.current;
+    const { top, left, win } = keepScroll;
     if (!top && !left && !win) return;
     const put = () => {
       if (!boxRef.current) return;
