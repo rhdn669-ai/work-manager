@@ -25,6 +25,7 @@ import {
   deleteBomItem,
   restoreBomItem,
   getBomProjectById,
+  getBomProjects,
   updateBomProject,
   saveBomItemsOrder,
   setBomVariants,
@@ -38,6 +39,7 @@ import {
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
+import { diffBomRows, rowToCopy } from '../../domain/bomDiff';
 import Select from '../../components/common/Select';
 import { COMPANIES } from '../../domain/production';
 import Icon from '../../components/common/Icon';
@@ -237,6 +239,15 @@ export default function BomDetailPage() {
 
   // ── 수정 이력: 수정 «직전» 스냅샷을 남긴다. 몇 분 안의 같은 종류 수정은 한 건으로 묶는다 ──
   const [historyOpen, setHistoryOpen] = useState(false);
+  // ── 다른 BOM 과 맞대기 (2026-09-16 대표님 「도급사급 기준은 다르지만 나머지 리스트는 동일해야」) ──
+  // 짝은 «품목 + BOX». 구분(도급·사급)은 회사마다 다른 것이 정상이라 차이로 보지 않는다.
+  const [cmpOpen, setCmpOpen] = useState(false);
+  const [cmpId, setCmpId] = useState(''); // 맞댈 BOM 프로젝트 id
+  const [cmpRows, setCmpRows] = useState([]); // 그 BOM 의 줄
+  const [cmpProject, setCmpProject] = useState(null);
+  const [cmpBusy, setCmpBusy] = useState('');
+  const [cmpDone, setCmpDone] = useState(() => new Set()); // 적용해 치운 줄 (창을 닫을 때까지)
+  const [projects, setProjects] = useState([]);
   const [history, setHistory] = useState(null); // null = 아직 안 읽음
   const [historyBusy, setHistoryBusy] = useState('');
   const lastHistRef = useRef(null); // { id, label, startedAt, count }
@@ -261,6 +272,97 @@ export default function BomDetailPage() {
       })
       .catch((e) => console.error('[BOM 이력] 저장 실패', e));
   }
+  // 「프로버 (메티스)」 ↔ 「프로버 (디에이치)」 처럼 괄호 앞이 같은 BOM 을 짝으로 본다
+  const guessTwin = (list, me) => {
+    const head = (n) =>
+      String(n || '')
+        .split('(')[0]
+        .trim();
+    const h = head(me?.name);
+    return h ? (list || []).find((p) => head(p.name) === h) : null;
+  };
+
+  // 맞댈 BOM 고르기 — 이 BOM 말고 나머지. 처음 열면 이름이 가장 비슷한 것을 고른다
+  useEffect(() => {
+    getBomProjects()
+      .then((list) => setProjects(list.filter((p) => p.id !== projectId)))
+      .catch(() => setProjects([]));
+  }, [projectId]);
+
+  const openCompare = async () => {
+    setCmpOpen(true);
+    setCmpDone(new Set());
+    const pick = cmpId || guessTwin(projects, project)?.id || projects[0]?.id || '';
+    if (pick !== cmpId) setCmpId(pick);
+    await loadCompare(pick);
+  };
+
+  async function loadCompare(id) {
+    if (!id) {
+      setCmpRows([]);
+      setCmpProject(null);
+      return;
+    }
+    setCmpBusy('load');
+    try {
+      const [rowsB, proj] = await Promise.all([getBomBySite(id), getBomProjectById(id)]);
+      setCmpRows(rowsB || []);
+      setCmpProject(proj || null);
+    } catch {
+      toast('맞댈 BOM 을 불러오지 못했습니다', 'error', 0);
+      setCmpRows([]);
+    } finally {
+      setCmpBusy('');
+    }
+  }
+
+  // 차이 한 줄 적용 — 「가져오기」는 내 BOM 에, 「보내기」는 상대 BOM 에 넣는다.
+  // 수량이 다를 때는 어느 쪽 값으로 맞출지 고른다. 적용한 줄은 목록에서 사라진다.
+  async function applyDiff(d, dir) {
+    if (!guard()) return;
+    setCmpBusy(d.key);
+    try {
+      const mineV = project?.variants || [];
+      const theirV = cmpProject?.variants || [];
+      if (d.kind === 'onlyTheirs' && dir === 'pull') {
+        pushBomUndo('맞대기 가져오기');
+        let n = Math.max(0, ...bomItems.map((r) => Number(r.order) || 0)) + 1;
+        for (const src of d.theirRows)
+          await addBomItem(
+            projectId,
+            rowToCopy(src, { toRows: bomItems, fromVariants: theirV, toVariants: mineV, order: n++ }),
+          );
+        setBomItems(await getBomBySite(projectId));
+      } else if (d.kind === 'onlyMine' && dir === 'push') {
+        let n = Math.max(0, ...cmpRows.map((r) => Number(r.order) || 0)) + 1;
+        for (const src of d.mineRows)
+          await addBomItem(
+            cmpId,
+            rowToCopy(src, { toRows: cmpRows, fromVariants: mineV, toVariants: theirV, order: n++ }),
+          );
+        await loadCompare(cmpId);
+      } else if (d.kind === 'qty' && dir === 'pull') {
+        pushBomUndo('맞대기 수량 맞춤');
+        const to = d.theirQty;
+        const first = d.mineRows[0];
+        await updateBomItem(first.id, { qty: to - (d.mineQty - (Number(first.qty) || 0)) });
+        setBomItems(await getBomBySite(projectId));
+      } else if (d.kind === 'qty' && dir === 'push') {
+        const to = d.mineQty;
+        const first = d.theirRows[0];
+        await updateBomItem(first.id, { qty: to - (d.theirQty - (Number(first.qty) || 0)) });
+        await loadCompare(cmpId);
+      }
+      setCmpDone((prev) => new Set(prev).add(d.key));
+      toast('맞췄습니다', 'success');
+    } catch (err) {
+      console.error(err);
+      toast(err?.message || '적용하지 못했습니다', 'error', 0);
+    } finally {
+      setCmpBusy('');
+    }
+  }
+
   async function openHistory() {
     setHistoryOpen(true);
     try {
@@ -1139,6 +1241,15 @@ export default function BomDetailPage() {
               </>
             }
           />
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={openCompare}
+            title="같아야 하는 다른 BOM 과 맞대어 빠진 줄·수량 차이를 찾습니다"
+          >
+            <Icon name="doc" className="btn-ic" />
+            다름 찾기
+          </button>
           <button
             type="button"
             className="btn btn-sm btn-outline"
@@ -2089,6 +2200,129 @@ export default function BomDetailPage() {
             </table>
           </div>
         )}
+      </Modal>
+
+      {/* 다른 BOM 과 맞대기 — 빠진 줄·수량 차이만. 구분(도급·사급)은 회사마다 다른 것이 정상이라
+          차이로 보지 않는다 (2026-09-16 대표님) */}
+      <Modal isOpen={cmpOpen} onClose={() => setCmpOpen(false)} title="다름 찾기" size="lg">
+        <div className="form-group">
+          <label>어느 BOM 과 맞댈까요</label>
+          <select
+            className="form-control"
+            value={cmpId}
+            onChange={(e) => {
+              setCmpId(e.target.value);
+              setCmpDone(new Set());
+              loadCompare(e.target.value);
+            }}
+          >
+            <option value="">— 고르세요 —</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <p className="field-hint">
+            짝은 «품목 + BOX» 로 맞춥니다. 도급·사급 구분은 회사마다 다른 것이 정상이라 차이로 보지 않습니다. 가져온
+            줄의 구분은 이 BOM 에 같은 품목이 있으면 그 구분을, 없으면 도급으로 들어갑니다.
+          </p>
+        </div>
+        {cmpBusy === 'load' ? (
+          <p className="text-muted">맞대는 중…</p>
+        ) : !cmpId ? (
+          <p className="text-muted">맞댈 BOM 을 골라 주세요.</p>
+        ) : (
+          (() => {
+            const list = diffBomRows(bomItems, cmpRows).filter((d) => !cmpDone.has(d.key));
+            if (list.length === 0)
+              return (
+                <div className="empty-state">
+                  <p>다른 곳이 없습니다 — 두 BOM 의 줄과 수량이 같습니다.</p>
+                </div>
+              );
+            return (
+              <div className="table-scroll-x">
+                <table className="table cards-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col">무엇</th>
+                      <th scope="col">BOX</th>
+                      <th scope="col">품명</th>
+                      <th scope="col">규격</th>
+                      <th scope="col" className="col-num">
+                        이 BOM
+                      </th>
+                      <th scope="col" className="col-num">
+                        {cmpProject?.name || '상대'}
+                      </th>
+                      <th scope="col" className="col-action">
+                        맞추기
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map((d) => (
+                      <tr key={d.key}>
+                        <td data-label="무엇">
+                          {d.kind === 'onlyTheirs'
+                            ? '이 BOM 에 없음'
+                            : d.kind === 'onlyMine'
+                              ? '상대에 없음'
+                              : '수량 다름'}
+                        </td>
+                        <td data-label="BOX">{d.box}</td>
+                        <td data-label="품명" className="u-wrap">
+                          {d.name}
+                        </td>
+                        <td data-label="규격" className="u-wrap">
+                          {d.spec}
+                        </td>
+                        <td data-label="이 BOM" className="col-num">
+                          {d.mineQty || '—'}
+                        </td>
+                        <td data-label="상대" className="col-num">
+                          {d.theirQty || '—'}
+                        </td>
+                        <td className="col-action">
+                          <div className="btn-group">
+                            {d.kind !== 'onlyMine' && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                disabled={!!cmpBusy}
+                                onClick={() => applyDiff(d, 'pull')}
+                                title="이 BOM 을 상대에 맞춥니다"
+                              >
+                                {d.kind === 'qty' ? `이 BOM 을 ${d.theirQty} 로` : '가져오기'}
+                              </button>
+                            )}
+                            {d.kind !== 'onlyTheirs' && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline"
+                                disabled={!!cmpBusy}
+                                onClick={() => applyDiff(d, 'push')}
+                                title="상대를 이 BOM 에 맞춥니다"
+                              >
+                                {d.kind === 'qty' ? `상대를 ${d.mineQty} 로` : '보내기'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()
+        )}
+        <div className="modal-actions">
+          <button type="button" className="btn btn-outline" onClick={() => setCmpOpen(false)}>
+            닫기
+          </button>
+        </div>
       </Modal>
 
       <Modal isOpen={variantModalOpen} onClose={() => setVariantModalOpen(false)} title="타입 관리">
