@@ -108,13 +108,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // subscribePanels 를 하나 더 걸었더니 같은 표를 두 번씩 읽고 두 번씩 셈해 화면이 무거워졌다
   // (2026-09-16 대표님 「어플이 갑자기 느려짐」).
   useEffect(() => {
-    const unsub = subscribePanels((rows) => {
-      setPanel(rows.find((p) => p.id === panelId) || null);
-      setAllPanels(rows);
-      setLoadedPanels(true);
-    });
+    const unsub = subscribePanels(
+      take('allPanels', (rows) => {
+        setPanel(rows.find((p) => p.id === panelId) || null);
+        setAllPanels(rows);
+        setLoadedPanels(true);
+      }),
+    );
     return unsub;
-  }, [panelId]);
+  }, [panelId, take]);
 
   const link = panel?.bomLink || null;
 
