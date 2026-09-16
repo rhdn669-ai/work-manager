@@ -1676,7 +1676,7 @@ body {
 }
 
 .card-body {
-  padding: 11px;
+  padding: 16px; /* §8 카드 내부 16px — 11px 이라 문서와 맞는 곳이 한 곳도 없었다 (2026-09-16) */
 }
 
 .card-danger {

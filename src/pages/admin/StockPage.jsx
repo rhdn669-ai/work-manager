@@ -540,7 +540,7 @@ export default function StockPage() {
                 disabled={!addForm.name.trim() || adding}
                 onClick={submitAdd}
               >
-                {adding ? '추가하는 중...' : '추가'}
+                {adding ? '추가하는 중…' : '추가'}
               </button>
             </div>
           </>

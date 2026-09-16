@@ -579,17 +579,13 @@ export default function UserManagementPage() {
                   <td data-label="부서" title={deptMap[u.departmentId] || ''} style={{ minHeight: 36 }}>
                     {deptMap[u.departmentId] || '-'}
                   </td>
-                  <td data-label="고정비용" style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, minHeight: 36 }}>
+                  <td data-label="고정비용" className="col-num" style={{ fontSize: 12 }}>
                     {u.fixedCost ? Number(u.fixedCost).toLocaleString() + '원' : '-'}
                   </td>
                   <td
                     data-label="시급"
-                    style={{
-                      fontVariantNumeric: 'tabular-nums',
-                      fontSize: 12,
-                      minHeight: 36,
-                      ...(isSmall ? { display: 'none' } : {}),
-                    }}
+                    className="col-num"
+                    style={{ fontSize: 12, ...(isSmall ? { display: 'none' } : {}) }}
                   >
                     {u.hourlyRate ? Number(u.hourlyRate).toLocaleString() + '원' : '-'}
                   </td>
@@ -629,7 +625,7 @@ export default function UserManagementPage() {
                       '-'
                     )}
                   </td>
-                  <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', padding: '6px 8px' }}>
+                  <td className="col-action" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       className="impersonate-btn"

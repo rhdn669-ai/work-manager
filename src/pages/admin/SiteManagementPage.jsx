@@ -173,7 +173,7 @@ export default function SiteManagementPage() {
             {sites.length === 0 && (
               <tr>
                 <td colSpan="4">
-                  <div className="text-muted text-center">등록된 프로젝트이 없습니다.</div>
+                  <div className="text-muted text-center">등록된 프로젝트가 없습니다.</div>
                 </td>
               </tr>
             )}

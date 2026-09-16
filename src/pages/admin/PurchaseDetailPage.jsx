@@ -4009,7 +4009,7 @@ export default function PurchaseDetailPage() {
                         aria-label="첨부 제거"
                         title="제거"
                       >
-                        ×
+                        <Icon name="close" className="btn-ic" />
                       </button>
                     </li>
                   ))}
