@@ -689,21 +689,31 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [allPanels, setAllPanels] = useState([]);
   useEffect(() => subscribeAllMaterials(take('allMaterials', setAllMaterials)), [take]);
   useEffect(() => subscribePanels(take('allPanels', setAllPanels)), [take]);
-  // 상대 호기 목록. 「가져온 호기」는 그 자재를 «실제로 가진» 호기만 — 없는 호기에서 가져올 수는
-  // 없다 (2026-09-16 대표님 「가져오기는 해당 자재가 배정된 호기만 뜨는걸로하자」).
+  // 상대 호기 목록.
+  // 「가져온 호기」는 두 가지로 좁힌다 —
+  //   ① 그 자재를 «실제로 가진» 호기만. 없는 호기에서 가져올 수는 없다
+  //      (2026-09-16 대표님 「가져오기는 해당 자재가 배정된 호기만 뜨는걸로하자」)
+  //   ② 목록에서 «내 뒤»에 있는 호기만. 앞 호기는 이미 채워 나가는 중이라 빼 오면 안 된다
+  //      (2026-09-16 대표님 「더 앞에 리스트에 위치해있는 호기수에선 가져오면안되는데」)
   // 끝난 호기는 언제나 뺀다 (2026-09-15 대표님 「끝난호기는 미포함」).
-  const mateList = (row = null, onlyHaving = false) =>
-    allPanels
-      .filter(
-        (p) =>
-          p.id !== panelId &&
-          (!p.회사 || p.회사 === company) &&
-          p.bomLink?.projectId === link?.projectId &&
-          p.overallStatus !== '출고완료' &&
-          p.overallStatus !== '출고숨김' &&
-          (!onlyHaving || !row ? true : (Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0) > 0),
-      )
+  const mateList = (row = null, onlyLater = false) => {
+    const mates = allPanels.filter(
+      (p) =>
+        (!p.회사 || p.회사 === company) &&
+        p.bomLink?.projectId === link?.projectId &&
+        p.overallStatus !== '출고완료' &&
+        p.overallStatus !== '출고숨김',
+    );
+    const myAt = mates.findIndex((p) => p.id === panelId);
+    return mates
+      .filter((p, i) => {
+        if (p.id === panelId) return false;
+        if (!onlyLater) return true;
+        if (myAt >= 0 && i < myAt) return false; // 앞 호기에서는 안 가져온다
+        return !row || (Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0) > 0;
+      })
       .map((p) => ({ value: p.id, label: panelName(p) }));
+  };
   const spareByItem = useMemo(() => {
     if (!link?.projectId) return {};
     const assigned = allPanels.filter((p) => p.paidSet && p.bomLink?.projectId === link.projectId);
