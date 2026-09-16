@@ -21,7 +21,12 @@ export function useFillHeight(bottomGap = 12) {
       // 떠 있는 「잠금」이 있으면 그만큼 더 줄인다 — 표 아래 스크롤바가 버튼에 가리지 않게.
       // 글자판이 서서 화면이 반으로 줄어도 상자가 짜부라지지는 않게 바닥(220px)을 둔다 —
       // 0 에 가까워지면 적는 줄을 굴려 보일 자리가 없다 (2026-09-14 태블릿).
-      el.style.maxHeight = `max(220px, calc(100dvh - ${Math.round(top)}px - ${bottomGap}px - var(--fab-clear, 0px)))`;
+      // 높이를 «못 넘게»만 두면 줄이 적은 BOX 에서 상자가 내용만큼 줄어, BOX 를 옮길 때마다
+      // 보이는 줄 수와 표 끝선이 달라졌다. 언제나 화면 아래까지 채워 한 기준으로 맞춘다
+      // (2026-09-16 대표님 「박스마다 보여주는 리스트 갯수가 다름 최대 기준으로 통일」)
+      const h = `max(220px, calc(100dvh - ${Math.round(top)}px - ${bottomGap}px - var(--fab-clear, 0px)))`;
+      el.style.maxHeight = h;
+      el.style.height = h;
     };
     fit();
     window.addEventListener('resize', fit);
