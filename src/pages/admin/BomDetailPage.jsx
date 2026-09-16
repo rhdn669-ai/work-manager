@@ -2204,7 +2204,7 @@ export default function BomDetailPage() {
 
       {/* 다른 BOM 과 맞대기 — 빠진 줄·수량 차이만. 구분(도급·사급)은 회사마다 다른 것이 정상이라
           차이로 보지 않는다 (2026-09-16 대표님) */}
-      <Modal isOpen={cmpOpen} onClose={() => setCmpOpen(false)} title="다름 찾기" size="lg">
+      <Modal isOpen={cmpOpen} onClose={() => setCmpOpen(false)} title="다름 찾기" size="xl">
         <div className="form-group">
           <label>어느 BOM 과 맞댈까요</label>
           <select
@@ -2243,7 +2243,12 @@ export default function BomDetailPage() {
               );
             return (
               <div className="table-scroll-x">
-                <table className="table cards-sm">
+                <table className="table cards-sm bom-diff-table">
+                  <colgroup>
+                    {['11%', '9%', '14%', null, '7%', '9%', '204px'].map((w, i) => (
+                      <col key={i} style={w ? { width: w } : undefined} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr>
                       <th scope="col">무엇</th>

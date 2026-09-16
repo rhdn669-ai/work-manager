@@ -16726,6 +16726,23 @@ td.mx-dc {
   padding-right: 4px;
 }
 
+/* BOM 「다름 찾기」 표 — 규격이 길어 세로로 깨지지 않게 넉넉히, 맞추기 단추는 한 줄로
+   (2026-09-16 대표님 「모달 사이즈좀 어케해봐」) */
+.bom-diff-table {
+  table-layout: fixed;
+}
+.bom-diff-table td,
+.bom-diff-table th {
+  white-space: normal;
+  word-break: break-word;
+}
+.bom-diff-table td.col-action .btn-group {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+.bom-diff-table td.col-action .btn {
+  white-space: nowrap;
+}
 /* 호기 자재 체크 출력물의 「확인」 칸 — 손으로 표시하는 자리 (BOM 의 FROM 칸 서식을 빌려
    쓰다가 그 칸이 없어져 제 클래스를 준다, 2026-09-16) */
 .pmat-print-table .c-check {
