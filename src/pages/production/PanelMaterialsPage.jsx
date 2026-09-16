@@ -77,6 +77,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const boxRef = useRef(null);
   const scrollRef = useCallback(
     (node) => {
+      // 화면이 사라지는 순간(node=null) 자리를 담는다 — 스크롤 이벤트만 믿으면 놓치는 때가 있다
+      if (!node && boxRef.current) {
+        keepScroll.top = boxRef.current.scrollTop;
+        keepScroll.left = boxRef.current.scrollLeft;
+        keepScroll.win = window.scrollY;
+      }
       boxRef.current = node;
       fillRef(node);
     },
