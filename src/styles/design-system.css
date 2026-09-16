@@ -202,10 +202,13 @@ body {
 /* =========================================================
    토스트 — 결과 알림 (성공 회색 / 실패 빨강)
    ========================================================= */
+/* 알림은 화면 «위»에 뜬다 — 아래는 떠 있는 「잠금」과 표 마지막 줄이 있어 거슬렸다
+   (2026-09-16 대표님 「토스트위치 가운데 아래에 뜨니까 거슬림 상단으로 옮겨줘」).
+   머리줄 바로 밑에서 시작해 내용을 가리지 않는다. */
 .toast-viewport {
   position: fixed;
   left: 50%;
-  bottom: calc(24px + env(safe-area-inset-bottom));
+  top: calc(var(--header-height, 60px) + 12px + env(safe-area-inset-top));
   transform: translateX(-50%);
   z-index: 1200;
   display: flex;
@@ -228,7 +231,7 @@ body {
   background: var(--grey-900);
   color: #fff;
   box-shadow: var(--shadow-lg);
-  animation: toast-up var(--dur-slow) var(--ease-out);
+  animation: toast-down var(--dur-slow) var(--ease-out);
   pointer-events: auto;
   max-width: 100%;
 }
@@ -277,9 +280,9 @@ body {
     var(--shadow-lg),
     0 0 0 1px rgba(255, 255, 255, 0.18) inset;
 }
-@keyframes toast-up {
+@keyframes toast-down {
   from {
-    transform: translateY(16px);
+    transform: translateY(-16px);
     opacity: 0;
   }
   to {
