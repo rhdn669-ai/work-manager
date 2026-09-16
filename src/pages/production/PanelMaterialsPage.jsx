@@ -66,7 +66,51 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [typing, setTyping] = useState(null); // 지금 숫자를 적고 있는 줄 id
   const pressRef = useRef({ timer: 0, long: false });
   // 표 상자를 화면 아래까지 늘려 그 안에서 스크롤 — 머리줄·도번 열을 붙여 두기 위해 (2026-09-08 대표님)
-  const scrollRef = useFillHeight();
+  const fillRef = useFillHeight();
+  // 호기를 바꿔도 «보고 있던 자리»를 그대로 둔다 — 같은 BOX 를 여러 호기에서 잇달아 보는 일이
+  // 많은데 매번 맨 위로 튀어 다시 찾아 내려가야 했다 (2026-09-16 대표님 「내가 보고있는 화면
+  // 위치 그대로 다른호기 눌러도 유지좀 되게해줘」).
+  const boxRef = useRef(null);
+  const keepRef = useRef({ top: 0, left: 0, win: 0 });
+  const scrollRef = useCallback(
+    (node) => {
+      boxRef.current = node;
+      fillRef(node);
+    },
+    [fillRef],
+  );
+  // 자리를 계속 기억해 둔다 — 호기가 바뀌면 상자가 새로 그려지므로 «바뀌기 전»에 담아야 한다
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const note = () => {
+      keepRef.current = { top: el.scrollTop, left: el.scrollLeft, win: window.scrollY };
+    };
+    el.addEventListener('scroll', note, { passive: true });
+    window.addEventListener('scroll', note, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', note);
+      window.removeEventListener('scroll', note);
+    };
+  }, [panelId, box, supplyTab]);
+
+  // 새 호기의 줄이 그려지면 기억해 둔 자리로 되돌린다. 줄 수가 달라 그 자리가 없으면 끝까지만.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const { top, left, win } = keepRef.current;
+    if (!top && !left && !win) return;
+    const put = () => {
+      if (!boxRef.current) return;
+      boxRef.current.scrollTop = Math.min(top, boxRef.current.scrollHeight - boxRef.current.clientHeight);
+      boxRef.current.scrollLeft = left;
+      if (win) window.scrollTo({ top: win });
+    };
+    put();
+    const t = setTimeout(put, 120); // 표가 폭을 잰 뒤 한 번 더 (fitTables 가 늦게 그린다)
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelId, shownKey]);
 
   // ── 판넬 ──
   useEffect(() => {
@@ -311,6 +355,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const done = rowDone(r, recOf(r));
     return rowView === 'done' ? done : !done;
   });
+  // 줄이 실제로 그려졌는지 알려 주는 열쇠 — 이것이 바뀐 뒤에 자리를 되돌린다
+  const shownKey = `${shown.length}:${box}:${supplyTab}`;
   const isMadeRow = useCallback((r) => isMade(r), []);
   const summary = useMemo(
     () => boxSummary(rows.filter(inScope), recOf, isMadeRow),
