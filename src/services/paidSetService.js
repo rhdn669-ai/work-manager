@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, onSnapshot, query, where, setDoc } from '../config/data';
+import { collection, doc, getDoc, onSnapshot, setDoc } from '../config/data';
 import { db } from '../config/data';
 import { setLotsOf } from '../utils/setLots';
 
@@ -42,10 +42,7 @@ export async function getPaidSetSettings() {
  * (옛 방식) 설정한 현장의 발주서를 합쳐 센다. 둘 다 없으면 아무것도 안 한다.
  */
 export function subscribeReceivedFor({ siteId = '', bomProjectId = '' } = {}, cb) {
-  const qs = [];
-  if (bomProjectId) qs.push(query(purchasesRef, where('bomProjectId', '==', bomProjectId)));
-  if (siteId) qs.push(query(purchasesRef, where('siteId', '==', siteId)));
-  if (qs.length === 0) return () => {};
+  if (!bomProjectId && !siteId) return () => {};
 
   // 그 현장에서 산 것이면 무엇이든 세면 세트와 무관한 단품까지 통에 섞인다 — 「매니아 9월
   // 선결제」 63개가 그렇게 들어왔다 (2026-09-12 대표님 「9월선결제 아직 입고전임」).
@@ -57,29 +54,24 @@ export function subscribeReceivedFor({ siteId = '', bomProjectId = '' } = {}, cb
     if (bomProjectId && v?.bomProjectId === bomProjectId) return true;
     return setLotsOf(v).some((l) => Number(l.count) > 0);
   };
-  const parts = qs.map(() => null); // 구독마다 마지막 스냅샷의 문서들
-  const emit = () => {
-    // 한 갈래만 온 채로 내면 절반 값이 잠깐 보인다 — 다 온 뒤에만 낸다 (2026-09-14)
-    if (parts.some((d) => d === null)) return;
-    const byId = new Map();
-    parts.forEach((docs) => (docs || []).forEach((d) => byId.set(d.id, d)));
-    summarize([...byId.values()], cb);
-  };
-  const unsubs = qs.map((q, i) =>
-    onSnapshot(
-      q,
-      (snap) => {
-        parts[i] = snap.docs.map((d) => ({ id: d.id, data: d.data() })).filter((d) => counted(d.data));
-        emit();
-      },
-      (err) => {
-        console.error('[도급 배정] 발주 입고 구독 오류:', err);
-        parts[i] = [];
-        emit();
-      },
-    ),
+  // 내 것인가 — 전에는 조건마다 서버에 따로 물어 화면 하나가 발주서 표를 두 번씩 읽었다.
+  // 세 화면이 이 구독을 쓰므로 여는 순간 여섯 번이 나갔는데, 사내 서버가 인터넷을 돌아
+  // 들어오느라 왕복이 0.3초씩 걸려 그대로 「화면이 바로 안 뜸」이 됐다
+  // (2026-09-17 대표님 「로그인이 느려지고 화면들이 바로 뜨지않음」).
+  // 발주서는 스무 줄 남짓이라 통째로 한 번 받아 여기서 고르는 편이 훨씬 빠르고, 조건이 없어
+  // 세 화면이 같은 조회를 나눠 쓴다.
+  const mine = (v) => (!!bomProjectId && v?.bomProjectId === bomProjectId) || (!!siteId && v?.siteId === siteId);
+  return onSnapshot(
+    purchasesRef,
+    (snap) => {
+      const docs = snap.docs.map((d) => ({ id: d.id, data: d.data() })).filter((d) => mine(d.data) && counted(d.data));
+      summarize(docs, cb);
+    },
+    (err) => {
+      console.error('[도급 배정] 발주 입고 구독 오류:', err);
+      summarize([], cb);
+    },
   );
-  return () => unsubs.forEach((u) => u());
 }
 
 function summarize(docs, cb) {
