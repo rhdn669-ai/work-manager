@@ -255,19 +255,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const shortOfId = (id) => shortPanel(nameOfId(id));
   // 상대 호기 목록 — 창을 열 때 셈한다. 여기서 바로 allPanels 를 읽으면 그 선언보다 위라 TDZ 다
   // (2026-09-15 「Cannot access before initialization」)
-  const mateList = () =>
-    allPanels
-      .filter(
-        (p) =>
-          p.id !== panelId &&
-          (!p.회사 || p.회사 === company) &&
-          p.bomLink?.projectId === link?.projectId &&
-          // 끝난 호기는 뺀다 — 이미 출고된 호기에서 빌려 올 수는 없다
-          // (2026-09-15 대표님 「가져간 호기 끝난호기는 미포함」)
-          p.overallStatus !== '출고완료' &&
-          p.overallStatus !== '출고숨김',
-      )
-      .map((p) => ({ value: p.id, label: panelName(p) }));
   async function submitLog(e) {
     e.preventDefault();
     const f = logForm;
@@ -702,6 +689,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [allPanels, setAllPanels] = useState([]);
   useEffect(() => subscribeAllMaterials(take('allMaterials', setAllMaterials)), [take]);
   useEffect(() => subscribePanels(take('allPanels', setAllPanels)), [take]);
+  // 상대 호기 목록. 「가져온 호기」는 그 자재를 «실제로 가진» 호기만 — 없는 호기에서 가져올 수는
+  // 없다 (2026-09-16 대표님 「가져오기는 해당 자재가 배정된 호기만 뜨는걸로하자」).
+  // 끝난 호기는 언제나 뺀다 (2026-09-15 대표님 「끝난호기는 미포함」).
+  const mateList = (row = null, onlyHaving = false) =>
+    allPanels
+      .filter(
+        (p) =>
+          p.id !== panelId &&
+          (!p.회사 || p.회사 === company) &&
+          p.bomLink?.projectId === link?.projectId &&
+          p.overallStatus !== '출고완료' &&
+          p.overallStatus !== '출고숨김' &&
+          (!onlyHaving || !row ? true : (Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0) > 0),
+      )
+      .map((p) => ({ value: p.id, label: panelName(p) }));
   const spareByItem = useMemo(() => {
     if (!link?.projectId) return {};
     const assigned = allPanels.filter((p) => p.paidSet && p.bomLink?.projectId === link.projectId);
@@ -1287,7 +1289,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <Select
                   value={logForm.mate}
                   onChange={(v) => setLogForm((f) => ({ ...f, mate: v }))}
-                  options={[{ value: '', label: '호기 아님 — 비고에 적기' }, ...mateList()]}
+                  options={[
+                    { value: '', label: '호기 아님 — 비고에 적기' },
+                    ...mateList(logForm.row, logForm.kind === 'in'),
+                  ]}
                   placeholder="호기 선택"
                   ariaLabel="상대 호기"
                   native
@@ -1332,7 +1337,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     ? '예) 구매처 직납'
                     : logForm.kind === 'out'
                       ? '예) 커넥터 깨짐'
-                      : '예) 발주 지연 · 앞 호기에서 먼저 씀'
+                      : '예) 발주 지연 · 다른 호기에서 먼저 씀'
                 }
                 aria-label="비고"
               />
