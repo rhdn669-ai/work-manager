@@ -64,6 +64,8 @@ const fmtWhen = (v) => {
 };
 
 // kind: 'paid'(도급) | 'made'(판금) — 셈은 같고 어느 갈래 줄을 세느냐만 다르다 (2026-09-12 대표님)
+const ALL_BOX = '전체';
+
 export default function PaidStockPage({ company = '', kind = 'paid' }) {
   const { userProfile, isAdmin } = useAuth();
   const { toast, confirm } = useDialog();
@@ -84,6 +86,9 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
   // 위에 붙는다 (2026-09-12 대표님 「위에 줄은 스크롤해도 고정으로 내려가게」).
   const scrollRef = useFillHeight();
   const [q, setQ] = useState('');
+  // 어느 BOX 를 볼지 — 품목이 여러 BOX 에 걸쳐 있어 한 통씩 세려면 갈라 봐야 한다
+  // (2026-09-16 대표님 「사도급 재고에도 필터 걸어주고」)
+  const [boxTab, setBoxTab] = useState(ALL_BOX);
 
   const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
   useEffect(() => subscribePanels(take('panels', setPanels)), [take]);
@@ -347,6 +352,9 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     }
   }
 
+  // 고른 BOX 만 — 「전체」면 그대로. 셈(위 숫자)은 늘 전체 기준이라 건드리지 않는다
+  const shownGroups = boxTab === ALL_BOX ? groups : groups.filter((g) => g.box === boxTab);
+
   const sums = useMemo(() => {
     let sets = null;
     let worst = null;
@@ -393,12 +401,6 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           <span className="fstock-sum" title="남은 것 × 단가">
             금액 <b>{won(sums.amount)}원</b>
           </span>
-          {sums.sets !== null && (
-            <span className="fstock-sum fstock-sets">
-              지금 남은 것으로 <b className={sums.sets === 0 ? 'is-short' : ''}>{won(sums.sets)} SET</b>
-              {sums.worst ? <em>모자란 것 · {sums.worst.name || sums.worst.code}</em> : null}
-            </span>
-          )}
         </div>
         <input
           className="fstock-search"
@@ -423,6 +425,23 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           </button>
         )}
       </div>
+
+      {/* BOX 탭 — 품목이 있는 BOX 만. 재고도 BOX 로 갈라 봐야 한 통씩 세기 좋다
+        (2026-09-16 대표님 「사도급 재고에도 필터 걸어주고」). 자재 허브와 같은 탭이다 */}
+      {groups.length > 1 && (
+        <div className="fstock-boxtabs no-print">
+          <ViewSwitch
+            options={[
+              { value: ALL_BOX, label: ALL_BOX, count: groups.reduce((a, g) => a + g.rows.length, 0) },
+              ...groups.map((g) => ({ value: g.box, label: g.box, count: g.rows.length })),
+            ]}
+            value={boxTab}
+            onChange={setBoxTab}
+            ariaLabel="BOX"
+            className="fstock-box-switch"
+          />
+        </div>
+      )}
 
       {groups.length === 0 ? (
         <div className="empty-state">
@@ -470,7 +489,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
               {/* BOX 마다 구분줄을 놓고 그 아래 그 BOX 품목을 늘어놓는다. 한 품목이 여러 BOX 에
                   쓰이면 여러 번 나온다 — 1대당·나감은 그 BOX 몫이고, 남음·가능 SET 은 품목
                   하나에 하나뿐이라 어느 줄에서나 같다 (2026-09-12 대표님 「구분선으로 박스명」). */}
-              {groups.map((g) => (
+              {shownGroups.map((g) => (
                 <Fragment key={g.box}>
                   <tr className="fstock-boxrow">
                     <th scope="colgroup" colSpan={STOCK_COLS.length}>

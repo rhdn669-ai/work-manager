@@ -695,8 +695,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   //      (2026-09-16 대표님 「가져오기는 해당 자재가 배정된 호기만 뜨는걸로하자」)
   //   ② 목록에서 «내 뒤»에 있는 호기만. 앞 호기는 이미 채워 나가는 중이라 빼 오면 안 된다
   //      (2026-09-16 대표님 「더 앞에 리스트에 위치해있는 호기수에선 가져오면안되는데」)
+  // 「가져간 호기」는 거꾸로 «내 앞»에 있는 호기만 — 내 것을 빼 간 쪽은 늘 앞 호기다
+  // (2026-09-16 대표님 「ㅇㅇ그게 이치에맞지」). 뒤 호기가 내 걸 가져갈 일은 없다.
   // 끝난 호기는 언제나 뺀다 (2026-09-15 대표님 「끝난호기는 미포함」).
-  const mateList = (row = null, onlyLater = false) => {
+  // dir: 'later' 가져온 호기 · 'earlier' 가져간 호기 · null 가리지 않음
+  const mateList = (row = null, dir = null) => {
     const mates = allPanels.filter(
       (p) =>
         (!p.회사 || p.회사 === company) &&
@@ -708,8 +711,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return mates
       .filter((p, i) => {
         if (p.id === panelId) return false;
-        if (!onlyLater) return true;
-        if (myAt >= 0 && i < myAt) return false; // 앞 호기에서는 안 가져온다
+        if (!dir || myAt < 0) return true;
+        if (dir === 'earlier') return i < myAt; // 내 것을 가져간 쪽은 앞 호기
+        if (i < myAt) return false; // 앞 호기에서는 안 가져온다
         return !row || (Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0) > 0;
       })
       .map((p) => ({ value: p.id, label: panelName(p) }));
@@ -1301,7 +1305,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                   onChange={(v) => setLogForm((f) => ({ ...f, mate: v }))}
                   options={[
                     { value: '', label: '호기 아님 — 비고에 적기' },
-                    ...mateList(logForm.row, logForm.kind === 'in'),
+                    ...mateList(logForm.row, logForm.kind === 'in' ? 'later' : 'earlier'),
                   ]}
                   placeholder="호기 선택"
                   ariaLabel="상대 호기"

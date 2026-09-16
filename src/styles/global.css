@@ -24668,3 +24668,13 @@ body.has-editlock .main-content.expanded {
   color: var(--danger, #d92d20);
   white-space: nowrap;
 }
+
+/* 재고 화면 BOX 탭 — 자재 허브와 같은 탭을 쓴다. 품목 수를 세어 보여 주되 부족 표시가
+   아니므로 빨강을 입히지 않는다 (2026-09-16 대표님 「사도급 재고에도 필터 걸어주고」) */
+.fstock-boxtabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-3);
+}
