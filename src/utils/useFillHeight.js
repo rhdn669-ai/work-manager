@@ -24,9 +24,12 @@ export function useFillHeight(bottomGap = 12) {
       // 높이를 «못 넘게»만 두면 줄이 적은 BOX 에서 상자가 내용만큼 줄어, BOX 를 옮길 때마다
       // 보이는 줄 수와 표 끝선이 달라졌다. 언제나 화면 아래까지 채워 한 기준으로 맞춘다
       // (2026-09-16 대표님 「박스마다 보여주는 리스트 갯수가 다름 최대 기준으로 통일」)
-      const h = `max(220px, calc(100dvh - ${Math.round(top)}px - ${bottomGap}px - var(--fab-clear, 0px)))`;
+      const h = `max(220px, calc(100dvh - ${Math.round(top)}px - ${bottomGap}px))`;
       el.style.maxHeight = h;
       el.style.height = h;
+      // 떠 있는 「잠금」은 상자를 줄이는 대신 «안쪽 여백»으로 피한다 — 상자를 줄이면 왼쪽
+      // 호기 목록보다 표가 짧아진다 (2026-09-16 대표님)
+      el.style.paddingBottom = 'var(--fab-clear, 0px)';
     };
     fit();
     window.addEventListener('resize', fit);

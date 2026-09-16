@@ -23008,7 +23008,8 @@ a.lib-row-name:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius-md, 10px);
   padding: 8px;
-  max-height: calc(100vh - 140px);
+  /* 표와 같은 기준으로 끝선을 맞춘다 — vh 는 태블릿 주소창 때문에 표(dvh)와 어긋났다 (2026-09-16) */
+  max-height: calc(100dvh - 140px);
   overflow: auto;
 }
 .mhub-list-title {
