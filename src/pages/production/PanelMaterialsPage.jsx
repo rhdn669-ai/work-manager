@@ -345,22 +345,26 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     };
   }, [panelId, shownKey]);
   const isMadeRow = useCallback((r) => isMade(r), []);
-  // 새 호기의 줄이 그려지면 기억해 둔 자리로 되돌린다. 줄 수가 달라 그 자리가 없으면 끝까지만.
+  // 새 호기의 줄이 그려지면 기억해 둔 자리로 되돌린다.
+  // 줄은 구독으로 «나중에» 도착하므로 한 번만 시도하면 그때는 표가 비어 있어 0 으로 끝난다.
+  // 그래서 자리가 잡힐 때까지 몇 번 나눠 시도한다 (2026-09-16 대표님).
   useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return;
     const { top, left, win } = keepScroll;
-    if (!top && !left && !win) return;
+    if (!top && !left && !win) return undefined;
+    const timers = [];
     const put = () => {
-      if (!boxRef.current) return;
-      boxRef.current.scrollTop = Math.min(top, boxRef.current.scrollHeight - boxRef.current.clientHeight);
-      boxRef.current.scrollLeft = left;
+      const el = boxRef.current;
+      if (!el) return false;
+      const max = el.scrollHeight - el.clientHeight;
+      if (max <= 0) return false; // 아직 줄이 안 그려졌다
+      el.scrollTop = Math.min(top, max);
+      el.scrollLeft = left;
       if (win) window.scrollTo({ top: win });
+      return Math.abs(el.scrollTop - Math.min(top, max)) < 2;
     };
-    put();
-    const t = setTimeout(put, 120); // 표가 폭을 잰 뒤 한 번 더 (fitTables 가 늦게 그린다)
-    return () => clearTimeout(t);
-  }, [panelId, shownKey]);
+    if (!put()) for (const ms of [60, 150, 320, 600, 1000]) timers.push(setTimeout(put, ms));
+    return () => timers.forEach(clearTimeout);
+  }, [panelId]);
 
   const summary = useMemo(
     () => boxSummary(rows.filter(inScope), recOf, isMadeRow),
