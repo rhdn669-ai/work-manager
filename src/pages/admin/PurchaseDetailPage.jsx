@@ -316,30 +316,23 @@ export default function PurchaseDetailPage() {
 
   // BOM 가져오기
   const [bomModalOpen, setBomModalOpen] = useState(false);
+  // 단추 둘(「BOM 가져오기」·「BOM 연결」)을 하나로 합쳤다 — 고르는 과정은 같고 「줄도 채울까」만
+  // 달랐다 (2026-09-16 대표님 「한가지 버튼으로 합칠수는 없어?」).
+  // 줄이 비어 있으면 채우는 상황, 이미 있으면 연결만 거는 상황이 기본이다.
+  const [bomAlsoImport, setBomAlsoImport] = useState(true);
   const [bomSetCount, setBomSetCount] = useState(1); // BOM 가져올 때 세트 수량(배수)
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [itemPickerSearch, setItemPickerSearch] = useState('');
   const [itemPicked, setItemPicked] = useState(new Map()); // itemId -> 수량
   const [itemPickerTargetIdx, setItemPickerTargetIdx] = useState(null); // null=추가 모드, 숫자=그 행 품목 교체 모드
   const [bomProjects, setBomProjects] = useState([]);
-  // 이 발주가 어느 생산 호기 것인지 — 여러 대에 걸칠 수 있다(입고는 한 번에 되므로 발주서 단위로 건다)
-  const [panelPickOpen, setPanelPickOpen] = useState(false);
-  // 옛 발주서(BOM 에서 안 가져온 것)도 자동 배분을 쓰게 — 창에서 BOM·타입을 골라 연결 (안 B 3단계)
-  const [linkPick, setLinkPick] = useState('');
   // 이 발주서의 현장 것만 보여 준다 — 메티스 발주서에 파크시스템스 BOM 까지 늘어놓을 까닭이 없다
   // (2026-09-12 대표님 「프로버 메티스로 발주서를 골랐는데 다른 프로젝트꺼 전부 뜰필요가있나?」).
   // 현장이 아직 안 적힌 BOM 은 남겨 둔다 — 안 그러면 고를 것이 하나도 없어진다.
-  const bomLinkOptions = useMemo(() => {
+  const bomPickList = useMemo(() => {
     const site = form.siteId || '';
     const mine = site ? bomProjects.filter((bp) => !bp.siteId || bp.siteId === site) : bomProjects;
-    const list = mine.length > 0 ? mine : bomProjects;
-    const out = [{ value: '', label: 'BOM 고르기' }];
-    for (const bp of list) {
-      const vs = Array.isArray(bp.variants) ? bp.variants.filter((v) => v?.key) : [];
-      if (vs.length === 0) out.push({ value: `${bp.id}|`, label: bp.name });
-      for (const v of vs) out.push({ value: `${bp.id}|${v.key}`, label: `${bp.name} · ${v.label || v.key}` });
-    }
-    return out;
+    return mine.length > 0 ? mine : bomProjects;
   }, [bomProjects, form.siteId]);
   // BOM 목록을 화면 열 때 한 번 읽어 둔다 — 자동 연결과 거르기에 쓴다
   useEffect(() => {
@@ -354,18 +347,8 @@ export default function PurchaseDetailPage() {
     };
   }, []);
 
-  async function openPanelPick() {
-    setPanelPickOpen(true);
-    if (bomProjects.length === 0) {
-      try {
-        setBomProjects(await getBomProjects());
-      } catch {
-        /* 목록 못 불러오면 연결 선택만 비어 있다 */
-      }
-    }
-  }
+  /** 이 발주서를 BOM(·타입)에 건다 — v 는 「프로젝트id|타입키」 */
   function applyBomLink(v) {
-    setLinkPick(v);
     if (!v) return;
     const [projectId, variantKey] = v.split('|');
     const bp = bomProjects.find((x) => x.id === projectId);
@@ -377,7 +360,6 @@ export default function PurchaseDetailPage() {
       bomProjectId: f.bomProjectId || bp.id,
     }));
     scheduleAutoSave();
-    setLinkPick('');
   }
   // 세트 내역 고치기 — BOM으로 담을 땐 저절로 쌓이지만, 옛 발주서나 잘못 담은 건 손으로 맞춘다
   const [setLotsDraft, setSetLotsDraft] = useState(null); // null = 닫힘
@@ -910,8 +892,9 @@ export default function PurchaseDetailPage() {
   }
 
   // BOM 가져오기 모달 열기 (프로젝트 목록 지연 로드)
-  async function openBomModal() {
+  async function openBomModal({ alsoImport } = {}) {
     setBomSetCount(1);
+    setBomAlsoImport(alsoImport ?? (form.items || []).length === 0);
     setBomModalOpen(true);
     if (bomProjects.length === 0) {
       setBomLoading(true);
@@ -929,6 +912,20 @@ export default function PurchaseDetailPage() {
   // 선택한 BOM의 품목을 발주 라인으로 불러오기 (수량·단가는 그대로, 이후 수정 가능)
   // variantKey 를 주면 그 타입(형번)에 들어가는 품목만 — 공통 + 그 타입 전용 — 가져온다.
   async function importBom(bp, variantKey = '') {
+    // 체크를 끄면 연결만 건다 — 줄은 그대로 둔다
+    if (!bomAlsoImport) {
+      applyBomLink(`${bp.id}|${variantKey}`);
+      setBomModalOpen(false);
+      toast(`${bp.name} 에 걸었습니다 — 입고하면 그 BOM 의 「들어온 양」으로 잡힙니다`, 'success', 0);
+      return;
+    }
+    // 이미 줄이 있는데 또 부으면 수량이 겹친다 — 한 번 묻는다
+    if ((form.items || []).length > 0) {
+      const ok = await confirm(
+        `이 발주서에 이미 ${(form.items || []).length}줄이 있습니다. ${bp.name} 의 품목을 더 넣을까요?`,
+      );
+      if (!ok) return;
+    }
     const setCount = Math.max(1, Number(bomSetCount) || 1);
     setBomImporting(true);
     try {
@@ -2316,11 +2313,15 @@ export default function PurchaseDetailPage() {
               <button
                 type="button"
                 className="btn btn-sm btn-outline"
-                onClick={openBomModal}
+                onClick={() => openBomModal()}
                 disabled={cellsLocked}
-                title={cellsLocked ? '오른쪽 아래 「잠금」을 풀어야 불러올 수 있습니다' : ''}
+                title={
+                  cellsLocked
+                    ? '오른쪽 아래 「잠금」을 풀어야 불러올 수 있습니다'
+                    : '이 발주서를 BOM 에 걸고, 원하면 그 품목까지 불러옵니다'
+                }
               >
-                BOM 가져오기
+                BOM
               </button>
             </>
           )}
@@ -2453,8 +2454,8 @@ export default function PurchaseDetailPage() {
           <span>
             이 발주서는 <b>BOM 에 걸려 있지 않습니다</b> — 입고해도 도급 재고의 「들어온 양」으로 잡히지 않습니다.
           </span>
-          <button type="button" className="btn btn-sm btn-primary" onClick={openPanelPick}>
-            BOM 연결
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => openBomModal({ alsoImport: false })}>
+            BOM 에 걸기
           </button>
         </div>
       )}
@@ -3607,32 +3608,33 @@ export default function PurchaseDetailPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={panelPickOpen} onClose={() => setPanelPickOpen(false)} title="BOM 연결">
-        <p className="field-hint" style={{ marginBottom: 12 }}>
-          이 발주가 어느 BOM 자재인지 알려 줍니다. 연결해 두면 입고한 수량이 그 BOM 의 「들어온 양」으로 잡히고, 호기
-          자재 체크에서 <strong>「도급 세트 배정」</strong>을 누를 때 그만큼 채워집니다. 호기를 미리 고를 필요는
-          없습니다 — 생산 순서가 바뀌어도 그때그때 남은 양에서 나갑니다.
-        </p>
-        {!isReadOnly && (
-          <div className="form-group bomlink-pick no-print">
-            <label>BOM 연결</label>
-            <Select value={linkPick} onChange={applyBomLink} options={bomLinkOptions} ariaLabel="BOM 연결" />
-            {bomLinksLabel(form.bomLinks) && <span className="stock-summary">{bomLinksLabel(form.bomLinks)}</span>}
-          </div>
-        )}
-        <div className="modal-actions">
-          <button type="button" className="btn btn-outline" onClick={() => setPanelPickOpen(false)}>
-            닫기
-          </button>
-        </div>
-      </Modal>
-
-      <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM에서 품목 가져오기">
+      <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM">
         <p className="field-hint">
-          선택한 BOM(프로젝트)의 품목·수량·단가를 이 발주에 불러옵니다. 불러온 뒤 목록·수량·단가(금액)를 수정할 수 있고,
-          저장해야 반영됩니다.
+          이 발주가 어느 BOM 자재인지 겁니다. 걸어 두면 입고한 수량이 그 BOM 의 「들어온 양」으로 잡히고, 호기 자재
+          체크에서 <strong>「도급 세트 배정」</strong>을 누를 때 그만큼 채워집니다. 호기를 미리 고를 필요는 없습니다.
         </p>
+        {bomLinksLabel(form.bomLinks) && (
+          <p className="field-hint">
+            지금 걸린 곳 — <strong>{bomLinksLabel(form.bomLinks)}</strong>
+          </p>
+        )}
         <div className="form-group">
+          <label className="toggle-row">
+            <span className="toggle-row-main">
+              <span className="toggle-row-title">품목도 불러오기</span>
+              <small className="text-muted">
+                {bomAlsoImport
+                  ? '그 BOM 의 품목·수량·단가를 이 발주서에 담습니다 (사급은 뺍니다)'
+                  : '줄은 그대로 두고 소속만 겁니다'}
+              </small>
+            </span>
+            <span className="toggle-switch">
+              <input type="checkbox" checked={bomAlsoImport} onChange={(e) => setBomAlsoImport(e.target.checked)} />
+              <span className="toggle-slider" />
+            </span>
+          </label>
+        </div>
+        <div className="form-group" hidden={!bomAlsoImport}>
           <label>세트 수량 (배수)</label>
           <input
             aria-label="세트 수량 (배수)"
@@ -3648,11 +3650,11 @@ export default function PurchaseDetailPage() {
         </div>
         {bomLoading ? (
           <p className="purchase-empty">불러오는 중...</p>
-        ) : bomProjects.length === 0 ? (
+        ) : bomPickList.length === 0 ? (
           <p className="purchase-empty">등록된 BOM 프로젝트가 없습니다. (프로젝트별 BOM에서 먼저 만드세요)</p>
         ) : (
           <div className="bom-import-list">
-            {bomProjects.map((bp) => {
+            {bomPickList.map((bp) => {
               const vs = Array.isArray(bp.variants) ? bp.variants : [];
               // 타입이 있는 BOM은 어느 형번으로 발주할지 먼저 고른다
               if (vs.length > 0) {
