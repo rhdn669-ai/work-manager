@@ -15,6 +15,7 @@ import Icon from '../../components/common/Icon';
 import MemoInput from '../../components/common/MemoInput';
 import { useFillHeight } from '../../utils/useFillHeight';
 import { withRunning } from '../../domain/stockRunning';
+import { logsForSide } from '../../domain/stockSide';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useAuth } from '../../contexts/useAuth';
@@ -523,14 +524,21 @@ export default function FreeStockPage({ company }) {
 
       {/* 오간 기록 — 지금 수량이 왜 이 숫자인지 여기서 다 보인다 */}
       {logOf && (
-        <Modal isOpen onClose={() => setLogOf(null)} title={`${logOf.name || logOf.code} 기록`} size="lg">
+        <Modal
+          isOpen
+          onClose={() => setLogOf(null)}
+          title={`${logOf.name || logOf.code} · ${inOurs ? '당사' : '고객사'} 기록`}
+          size="lg"
+        >
+          {/* 보고 있는 칸의 기록만 — 두 칸이 한 목록을 같이 쓰던 때는 고객사 칸을 보는데 당사가
+            받은 것까지 떠서 읽을 수가 없었다 (2026-09-16 대표님 「사급재고 기록 고객사와당사 공유x」) */}
           <p className="field-hint">
-            지금 재고 <b>{won(logOf.have)}</b>
-            {logOf.spec ? ` · ${logOf.spec}` : ''}
+            {inOurs ? '당사' : '고객사'} 재고 <b>{won(logOf.main)}</b>
+            {logOf.spec ? ` · ${logOf.spec}` : ''} · {inOurs ? '고객사' : '당사'} 칸 기록은 위에서 칸을 바꿔 보세요
           </p>
-          {(logOf.log || []).length === 0 ? (
+          {logsForSide(logOf.log || [], inOurs ? 'ours' : 'theirs').length === 0 ? (
             <div className="empty-state">
-              <p>아직 오간 기록이 없습니다</p>
+              <p>이 칸에는 아직 오간 기록이 없습니다</p>
             </div>
           ) : (
             <div className="table-scroll-x">
@@ -552,14 +560,21 @@ export default function FreeStockPage({ company }) {
                 </thead>
                 <tbody>
                   {withRunning(
-                    [...(logOf.log || [])].sort((a, b) => whenMs(b.at) - whenMs(a.at)),
-                    logOf.have,
+                    logsForSide(logOf.log || [], inOurs ? 'ours' : 'theirs').sort(
+                      (a, b) => whenMs(b.at) - whenMs(a.at),
+                    ),
+                    logOf.main,
+                    inOurs ? 'ours' : 'theirs',
                   ).map((l, i) => (
                     <tr key={`${l.at}-${i}`}>
                       <td>{fmtWhen(l.at)}</td>
-                      <td>{LOG_LABEL[l.kind] || l.kind || ''}</td>
-                      <td className="col-num">{l.kind === 'fix' ? `${won(l.from)} → ${won(l.n)}` : won(l.n)}</td>
-                      <td className="col-num">{won(l.after)}</td>
+                      <td>
+                        {LOG_LABEL[l.kind] || l.kind || ''}
+                        {/* 어느 칸인지 안 적힌 옛 손맞춤 — 두 칸 합계를 고친 것이라 몫을 못 가른다 */}
+                        {l.whole === false && <span className="field-hint"> · 두 칸 합계</span>}
+                      </td>
+                      <td className="col-num">{l.kind === 'fix' ? `${won(l.from)} → ${won(l.n)}` : won(l.share)}</td>
+                      <td className="col-num">{l.after === null ? '—' : won(l.after)}</td>
                       <td className="u-wrap">{l.note || ''}</td>
                       <td>{l.by || ''}</td>
                     </tr>

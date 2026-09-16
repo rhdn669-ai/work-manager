@@ -54,3 +54,42 @@ describe('뒤 수량', () => {
     expect(withRunning(l, 0)[0].after).toBe(0);
   });
 });
+
+describe('칸별 뒤 수량 — 사급', () => {
+  // 최신순. 당사 칸은 지금 5
+  const logs = [
+    { at: '4', kind: 'out', n: 5, fromOurs: 2 }, // 당사 −2 · 고객사 −3
+    { at: '3', kind: 'in', n: 7, ours: true }, // 당사 +7
+    { at: '2', kind: 'in', n: 4 }, // 고객사 +4
+  ];
+
+  it('당사 칸은 당사 몫으로만 되짚는다', () => {
+    expect(withRunning(logs, 5, 'ours').map((l) => l.after)).toEqual([5, 7, 0]);
+  });
+
+  it('고객사 칸은 고객사 몫으로만', () => {
+    expect(withRunning(logs, 1, 'theirs').map((l) => l.after)).toEqual([1, 4, 4]);
+  });
+
+  it('줄마다 그 칸 몫을 같이 돌려준다 — 5 나간 줄이 당사 칸에선 2', () => {
+    expect(withRunning(logs, 5, 'ours')[0].share).toBe(2);
+    expect(withRunning(logs, 1, 'theirs')[0].share).toBe(3);
+  });
+
+  it('칸 모르는 옛 손맞춤 밑으로는 뒤 수량을 비운다 — 꾸며 내지 않는다', () => {
+    const l = [
+      { at: '3', kind: 'in', n: 2, ours: true },
+      { at: '2', kind: 'fix', from: 9, n: 5 },
+      { at: '1', kind: 'in', n: 9, ours: true },
+    ];
+    expect(withRunning(l, 7, 'ours').map((x) => x.after)).toEqual([7, 5, null]);
+  });
+
+  it('칸이 적힌 손맞춤은 그대로 이어 간다', () => {
+    const l = [
+      { at: '2', kind: 'fix', from: 3, n: 6, side: 'ours' },
+      { at: '1', kind: 'in', n: 3, ours: true },
+    ];
+    expect(withRunning(l, 6, 'ours').map((x) => x.after)).toEqual([6, 3]);
+  });
+});

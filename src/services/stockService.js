@@ -135,8 +135,14 @@ export async function returnStock(kind, company, itemId, n, { by = '', note = ''
 export async function setStockTo(kind, company, item, to, { by = '', reason = '', ours = null, side = null } = {}) {
   const { qty: from, ours: hadOurs } = await getStockSplit(kind, company, item.itemId);
   let t = Math.max(0, Number(to) || 0);
+  // 기록에 적을 값 — 칸 하나를 고쳤으면 «그 칸» 이야기로 남겨야 한다. 합계로 적으면 고객사
+  // 칸을 보는데 당사 몫까지 더해진 숫자가 떠 읽을 수가 없다
+  // (2026-09-16 대표님 「사급재고 기록 고객사와당사 공유x」)
+  let logFrom = from;
+  const logTo = t;
   if (kind === 'free' && side) {
     const theirsHad = Math.max(0, from - hadOurs);
+    logFrom = side === 'ours' ? hadOurs : theirsHad;
     if (side === 'ours') {
       ours = t;
       t += theirsHad;
@@ -156,7 +162,15 @@ export async function setStockTo(kind, company, item, to, { by = '', reason = ''
       ...(nextOurs === null ? {} : { ours: nextOurs }),
       updatedAt: serverTimestamp(),
       updatedBy: by,
-      log: arrayUnion({ at: new Date().toISOString(), by, kind: 'fix', from, n: t, note: reason }),
+      log: arrayUnion({
+        at: new Date().toISOString(),
+        by,
+        kind: 'fix',
+        from: logFrom,
+        n: logTo,
+        note: reason,
+        ...(kind === 'free' && side ? { side } : {}),
+      }),
     },
     { merge: true },
   );
