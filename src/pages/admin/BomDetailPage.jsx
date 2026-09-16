@@ -39,7 +39,7 @@ import {
 } from '../../services/bomService';
 import { subscribePurchaseItems, getSuppliers, updatePurchaseItem } from '../../services/purchaseService';
 import Modal from '../../components/common/Modal';
-import { diffBomRows, rowToCopy } from '../../domain/bomDiff';
+import { diffBomRows, rowToCopy, mapVariantKeys } from '../../domain/bomDiff';
 import Select from '../../components/common/Select';
 import { COMPANIES } from '../../domain/production';
 import Icon from '../../components/common/Icon';
@@ -347,6 +347,20 @@ export default function BomDetailPage() {
         const first = d.mineRows[0];
         await updateBomItem(first.id, { qty: to - (d.mineQty - (Number(first.qty) || 0)) });
         setBomItems(await getBomBySite(projectId));
+      } else if (d.kind === 'variant') {
+        // 타입만 다른 줄 — 받는 쪽 줄의 타입을 주는 쪽 라벨에 맞춘다
+        const pull = dir === 'pull';
+        if (pull) pushBomUndo('맞대기 타입 맞춤');
+        const srcRows = pull ? d.theirRows : d.mineRows;
+        const dstRows = pull ? d.mineRows : d.theirRows;
+        const keys = mapVariantKeys(
+          [...new Set(srcRows.flatMap((r) => (Array.isArray(r.variantKeys) ? r.variantKeys : [])))],
+          pull ? theirV : mineV,
+          pull ? mineV : theirV,
+        );
+        for (const r of dstRows) await updateBomItem(r.id, { variantKeys: keys });
+        if (pull) setBomItems(await getBomBySite(projectId));
+        else await loadCompare(cmpId);
       } else if (d.kind === 'qty' && dir === 'push') {
         const to = d.mineQty;
         const first = d.theirRows[0];
@@ -2234,7 +2248,10 @@ export default function BomDetailPage() {
           <p className="text-muted">맞댈 BOM 을 골라 주세요.</p>
         ) : (
           (() => {
-            const list = diffBomRows(bomItems, cmpRows).filter((d) => !cmpDone.has(d.key));
+            const list = diffBomRows(bomItems, cmpRows, {
+              mineVariants: variants,
+              theirVariants: cmpProject?.variants || [],
+            }).filter((d) => !cmpDone.has(d.key));
             if (list.length === 0)
               return (
                 <div className="empty-state">
@@ -2245,7 +2262,7 @@ export default function BomDetailPage() {
               <div className="table-scroll-x">
                 <table className="table cards-sm bom-diff-table">
                   <colgroup>
-                    {['11%', '9%', '14%', null, '7%', '9%', '204px'].map((w, i) => (
+                    {['9%', '7%', '11%', null, '12%', '6%', '8%', '230px'].map((w, i) => (
                       <col key={i} style={w ? { width: w } : undefined} />
                     ))}
                   </colgroup>
@@ -2255,6 +2272,7 @@ export default function BomDetailPage() {
                       <th scope="col">BOX</th>
                       <th scope="col">품명</th>
                       <th scope="col">규격</th>
+                      <th scope="col">타입</th>
                       <th scope="col" className="col-num">
                         이 BOM
                       </th>
@@ -2274,7 +2292,9 @@ export default function BomDetailPage() {
                             ? '이 BOM 에 없음'
                             : d.kind === 'onlyMine'
                               ? '상대에 없음'
-                              : '수량 다름'}
+                              : d.kind === 'qty'
+                                ? '수량 다름'
+                                : '타입 다름'}
                         </td>
                         <td data-label="BOX">{d.box}</td>
                         <td data-label="품명" className="u-wrap">
@@ -2282,6 +2302,13 @@ export default function BomDetailPage() {
                         </td>
                         <td data-label="규격" className="u-wrap">
                           {d.spec}
+                        </td>
+                        {/* 타입은 프로젝트마다 키가 달라(vM7H ↔ vmtwa6plx) 라벨로 견주고, 옮길 때도 라벨로 짝짓는다 */}
+                        <td data-label="타입" className="u-wrap">
+                          {(d.mineVariants || []).join(', ') || '—'}
+                          {(d.theirVariants || []).join(', ') !== (d.mineVariants || []).join(', ') && (
+                            <span className="text-muted"> ↔ {(d.theirVariants || []).join(', ') || '—'}</span>
+                          )}
                         </td>
                         <td data-label="이 BOM" className="col-num">
                           {d.mineQty || '—'}
@@ -2299,7 +2326,11 @@ export default function BomDetailPage() {
                                 onClick={() => applyDiff(d, 'pull')}
                                 title="이 BOM 을 상대에 맞춥니다"
                               >
-                                {d.kind === 'qty' ? `이 BOM 을 ${d.theirQty} 로` : '가져오기'}
+                                {d.kind === 'qty'
+                                  ? `이 BOM 을 ${d.theirQty} 로`
+                                  : d.kind === 'variant'
+                                    ? '타입 맞추기'
+                                    : '가져오기'}
                               </button>
                             )}
                             {d.kind !== 'onlyTheirs' && (
@@ -2310,7 +2341,11 @@ export default function BomDetailPage() {
                                 onClick={() => applyDiff(d, 'push')}
                                 title="상대를 이 BOM 에 맞춥니다"
                               >
-                                {d.kind === 'qty' ? `상대를 ${d.mineQty} 로` : '보내기'}
+                                {d.kind === 'qty'
+                                  ? `상대를 ${d.mineQty} 로`
+                                  : d.kind === 'variant'
+                                    ? '상대 타입 맞추기'
+                                    : '보내기'}
                               </button>
                             )}
                           </div>

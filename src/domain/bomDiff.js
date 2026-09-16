@@ -31,6 +31,21 @@ function groupByKey(rows) {
 const qtyOf = (r) => Number(r?.qty) || 0;
 const sumQty = (list) => list.reduce((a, r) => a + qtyOf(r), 0);
 
+/** 줄들이 걸린 타입을 «라벨» 로 모은다 — 키는 프로젝트마다 달라 라벨로만 견줄 수 있다.
+ *  타입을 안 건 줄(공통)은 「공통」으로 센다 (2026-09-16 대표님 「타입도 같이 가져와야」) */
+export function variantLabels(list, variants) {
+  const byKey = new Map((variants || []).map((v) => [v.key, String(v.label || '').trim()]));
+  const out = new Set();
+  for (const r of list || []) {
+    const ks = Array.isArray(r?.variantKeys) ? r.variantKeys : [];
+    if (ks.length === 0) out.add('공통');
+    for (const k of ks) out.add(byKey.get(k) || k);
+  }
+  return [...out].sort();
+}
+
+const sameLabels = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
 /**
  * 차이 목록.
  * @param mine   내 BOM 줄
@@ -40,10 +55,12 @@ const sumQty = (list) => list.reduce((a, r) => a + qtyOf(r), 0);
  *        'onlyTheirs' 상대에만 있다 → 내 쪽에 가져오면 같아진다
  *        'qty'        양쪽 다 있는데 수량이 다르다
  */
-export function diffBomRows(mine, theirs) {
+export function diffBomRows(mine, theirs, { mineVariants = [], theirVariants = [] } = {}) {
   const a = groupByKey(mine);
   const b = groupByKey(theirs);
   const out = [];
+  const vm = (list) => variantLabels(list, mineVariants);
+  const vt = (list) => variantLabels(list, theirVariants);
   const label = (list) => {
     const r = list[0] || {};
     return {
@@ -63,19 +80,27 @@ export function diffBomRows(mine, theirs) {
         ...label(list),
         mineQty: sumQty(list),
         theirQty: 0,
+        mineVariants: vm(list),
+        theirVariants: [],
         mineRows: list,
         theirRows: [],
       });
       continue;
     }
     const other = b.get(k);
-    if (sumQty(list) !== sumQty(other)) {
+    const mv = vm(list);
+    const tv = vt(other);
+    const qtyDiff = sumQty(list) !== sumQty(other);
+    const varDiff = !sameLabels(mv, tv);
+    if (qtyDiff || varDiff) {
       out.push({
-        kind: 'qty',
+        kind: qtyDiff ? 'qty' : 'variant',
         key: k,
         ...label(list),
         mineQty: sumQty(list),
         theirQty: sumQty(other),
+        mineVariants: mv,
+        theirVariants: tv,
         mineRows: list,
         theirRows: other,
       });
@@ -89,12 +114,14 @@ export function diffBomRows(mine, theirs) {
         ...label(list),
         mineQty: 0,
         theirQty: sumQty(list),
+        mineVariants: [],
+        theirVariants: vt(list),
         mineRows: [],
         theirRows: list,
       });
     }
   }
-  const order = { onlyTheirs: 0, onlyMine: 1, qty: 2 };
+  const order = { onlyTheirs: 0, onlyMine: 1, qty: 2, variant: 3 };
   return out.sort(
     (x, y) =>
       order[x.kind] - order[y.kind] || String(x.box).localeCompare(y.box) || String(x.name).localeCompare(y.name),

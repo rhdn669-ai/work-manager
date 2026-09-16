@@ -88,3 +88,33 @@ describe('복사해 넣을 줄', () => {
     expect(rowToCopy(src, { toRows: [] })).toMatchObject({ box: 'MP', qty: 7, drawingNo: '3603-002513', spec: 'X' });
   });
 });
+
+describe('타입(variant)까지 맞대기', () => {
+  const mineV = [{ key: 'vM7H', label: 'M7H' }];
+  const theirV = [{ key: 'vmtwa6plx', label: 'M7H' }];
+
+  it('라벨이 같으면 타입이 같은 것으로 본다 — 키가 달라도', () => {
+    const mine = [row({ itemId: 'I1', box: 'MP', qty: 1, variantKeys: ['vM7H'] })];
+    const theirs = [row({ itemId: 'I1', box: 'MP', qty: 1, variantKeys: ['vmtwa6plx'] })];
+    expect(diffBomRows(mine, theirs, { mineVariants: mineV, theirVariants: theirV })).toEqual([]);
+  });
+
+  it('한쪽만 타입이 걸려 있으면 「타입 다름」으로 잡는다', () => {
+    const mine = [row({ itemId: 'I1', box: 'MP', qty: 1, variantKeys: ['vM7H'] })];
+    const theirs = [row({ itemId: 'I1', box: 'MP', qty: 1, variantKeys: [] })];
+    const d = diffBomRows(mine, theirs, { mineVariants: mineV, theirVariants: theirV });
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ kind: 'variant', mineVariants: ['M7H'], theirVariants: ['공통'] });
+  });
+
+  it('수량과 타입이 둘 다 다르면 수량 차이로 먼저 잡는다', () => {
+    const mine = [row({ itemId: 'I1', box: 'MP', qty: 2, variantKeys: ['vM7H'] })];
+    const theirs = [row({ itemId: 'I1', box: 'MP', qty: 1, variantKeys: [] })];
+    expect(diffBomRows(mine, theirs, { mineVariants: mineV, theirVariants: theirV })[0].kind).toBe('qty');
+  });
+
+  it('가져오는 줄은 타입도 상대 키로 바꿔 달고 온다', () => {
+    const src = { itemId: 'I1', box: 'MP', qty: 4, variantKeys: ['vmtwa6plx'] };
+    expect(rowToCopy(src, { toRows: [], fromVariants: theirV, toVariants: mineV }).variantKeys).toEqual(['vM7H']);
+  });
+});

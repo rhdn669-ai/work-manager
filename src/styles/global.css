@@ -16731,6 +16731,11 @@ td.mx-dc {
 .bom-diff-table {
   table-layout: fixed;
 }
+/* 맞대기 창만 더 넓게 — 규격·타입·맞추기 단추가 한 줄에 들어가야 한다
+   (2026-09-16 대표님 「모달 가로 사이즈 더 늘려야겠는데」) */
+.modal.modal-xl:has(.bom-diff-table) {
+  max-width: min(1440px, 96vw);
+}
 .bom-diff-table td,
 .bom-diff-table th {
   white-space: normal;
