@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
 import MemoInput from '../../components/common/MemoInput';
 import { useFillHeight } from '../../utils/useFillHeight';
+import { withRunning } from '../../domain/stockRunning';
 import { useArrived } from '../../utils/useArrived';
 import Modal from '../../components/common/Modal';
 import ViewSwitch from '../../components/common/ViewSwitch';
@@ -600,24 +601,30 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                     <th scope="col" className="col-num">
                       개수
                     </th>
+                    {/* 통장처럼 그 줄 뒤의 통 수량 — 지금 수량에서 거꾸로 되짚는다 (2026-09-16 대표님) */}
+                    <th scope="col" className="col-num">
+                      뒤 수량
+                    </th>
                     <th scope="col">메모</th>
                     <th scope="col">적은 사람</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...(logOf.log || [])]
-                    .sort((a, b) => whenMs(b.at) - whenMs(a.at))
-                    .map((l, i) => (
-                      <tr key={`${l.at}-${i}`}>
-                        <td>{fmtWhen(l.at)}</td>
-                        <td>{logLabel(l)}</td>
-                        <td className="col-num">
-                          {l.kind === 'fix' ? `${won(l.from)} → ${won(l.n ?? l.to)}` : won(l.n)}
-                        </td>
-                        <td className="u-wrap">{l.note || ''}</td>
-                        <td>{l.by || ''}</td>
-                      </tr>
-                    ))}
+                  {withRunning(
+                    [...(logOf.log || [])].sort((a, b) => whenMs(b.at) - whenMs(a.at)),
+                    logOf.left,
+                  ).map((l, i) => (
+                    <tr key={`${l.at}-${i}`}>
+                      <td>{fmtWhen(l.at)}</td>
+                      <td>{logLabel(l)}</td>
+                      <td className="col-num">
+                        {l.kind === 'fix' ? `${won(l.from)} → ${won(l.n ?? l.to)}` : won(l.n)}
+                      </td>
+                      <td className="col-num">{won(l.after)}</td>
+                      <td className="u-wrap">{l.note || ''}</td>
+                      <td>{l.by || ''}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
