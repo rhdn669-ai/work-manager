@@ -94,24 +94,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     };
   }, [panelId, box, supplyTab]);
 
-  // 새 호기의 줄이 그려지면 기억해 둔 자리로 되돌린다. 줄 수가 달라 그 자리가 없으면 끝까지만.
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return;
-    const { top, left, win } = keepRef.current;
-    if (!top && !left && !win) return;
-    const put = () => {
-      if (!boxRef.current) return;
-      boxRef.current.scrollTop = Math.min(top, boxRef.current.scrollHeight - boxRef.current.clientHeight);
-      boxRef.current.scrollLeft = left;
-      if (win) window.scrollTo({ top: win });
-    };
-    put();
-    const t = setTimeout(put, 120); // 표가 폭을 잰 뒤 한 번 더 (fitTables 가 늦게 그린다)
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelId, shownKey]);
-
   // ── 판넬 ──
   useEffect(() => {
     const unsub = subscribePanels((rows) => {
@@ -358,6 +340,23 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 줄이 실제로 그려졌는지 알려 주는 열쇠 — 이것이 바뀐 뒤에 자리를 되돌린다
   const shownKey = `${shown.length}:${box}:${supplyTab}`;
   const isMadeRow = useCallback((r) => isMade(r), []);
+  // 새 호기의 줄이 그려지면 기억해 둔 자리로 되돌린다. 줄 수가 달라 그 자리가 없으면 끝까지만.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const { top, left, win } = keepRef.current;
+    if (!top && !left && !win) return;
+    const put = () => {
+      if (!boxRef.current) return;
+      boxRef.current.scrollTop = Math.min(top, boxRef.current.scrollHeight - boxRef.current.clientHeight);
+      boxRef.current.scrollLeft = left;
+      if (win) window.scrollTo({ top: win });
+    };
+    put();
+    const t = setTimeout(put, 120); // 표가 폭을 잰 뒤 한 번 더 (fitTables 가 늦게 그린다)
+    return () => clearTimeout(t);
+  }, [panelId, shownKey]);
+
   const summary = useMemo(
     () => boxSummary(rows.filter(inScope), recOf, isMadeRow),
     // eslint-disable-next-line react-hooks/exhaustive-deps
