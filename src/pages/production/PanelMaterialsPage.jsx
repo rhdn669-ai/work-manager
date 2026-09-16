@@ -68,6 +68,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   const [panel, setPanel] = useState(null);
   const [loadedPanels, setLoadedPanels] = useState(false);
+  // 전체 호기 — 같은 구독에서 함께 받는다 (아래 「판넬」 구독 참고)
+  const [allPanels, setAllPanels] = useState([]);
   const [project, setProject] = useState(null);
   const [bomRows, setBomRows] = useState([]);
   const [bomFor, setBomFor] = useState(''); // 어느 프로젝트의 BOM 을 받아 뒀는지
@@ -102,9 +104,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   );
 
   // ── 판넬 ──
+  // 한 번만 구독하고 «이 호기»와 «전체»를 같이 받는다. 「가져온 호기」를 넣으며 아래쪽에
+  // subscribePanels 를 하나 더 걸었더니 같은 표를 두 번씩 읽고 두 번씩 셈해 화면이 무거워졌다
+  // (2026-09-16 대표님 「어플이 갑자기 느려짐」).
   useEffect(() => {
     const unsub = subscribePanels((rows) => {
       setPanel(rows.find((p) => p.id === panelId) || null);
+      setAllPanels(rows);
       setLoadedPanels(true);
     });
     return unsub;
@@ -686,9 +692,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     return subscribeReceivedFor({ bomProjectId: link.projectId, siteId }, take('receivedByItem', setReceivedByItem));
   }, [link?.projectId, siteId, take]);
   const [allMaterials, setAllMaterials] = useState({});
-  const [allPanels, setAllPanels] = useState([]);
   useEffect(() => subscribeAllMaterials(take('allMaterials', setAllMaterials)), [take]);
-  useEffect(() => subscribePanels(take('allPanels', setAllPanels)), [take]);
   // 상대 호기 목록.
   // 「가져온 호기」는 두 가지로 좁힌다 —
   //   ① 그 자재를 «실제로 가진» 호기만. 없는 호기에서 가져올 수는 없다

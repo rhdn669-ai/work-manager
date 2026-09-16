@@ -365,8 +365,9 @@ function finish(name, cs, rows) {
 
 // 조회 결과 묶음. 지난번과 견주어 «무엇이 바뀌었는지»(docChanges) 도 알려 준다 —
 // 화면이 바뀐 줄만 다시 그리도록 만들어져 있기 때문이다.
-function snapshotOf(docs, rows, prev) {
-  const now = new Map(rows.map((r) => [r.id, JSON.stringify(r.data || {})]));
+/** 가공까지 끝난 줄을 지난번과 견주어 «무엇이 바뀌었나»를 붙인다.
+ *  now(줄마다의 글자본)는 여러 구독이 나눠 쓰므로 여기서 고치지 않는다 — 읽기만 한다. */
+function diffOf({ docs, now }, prev) {
   const changes = [];
   if (prev) {
     for (const d of docs) {
@@ -390,6 +391,10 @@ function snapshotOf(docs, rows, prev) {
   };
 }
 
+function snapshotOf(docs, rows, prev) {
+  return diffOf({ docs, now: new Map(rows.map((r) => [r.id, JSON.stringify(r.data || {})])) }, prev);
+}
+
 const wrap = (row, name) => ({
   id: row.id,
   exists: () => true,
@@ -411,6 +416,28 @@ function sharedFetch(key, run) {
   // 그대로 쓰면 조회가 시작하자마자 터진다 — 반드시 Promise 로 감싼다.
   const pr = Promise.resolve(run()).finally(() => setTimeout(() => inflight.delete(key), 60));
   inflight.set(key, pr);
+  return pr;
+}
+
+// 조회뿐 아니라 «가공»까지 나눠 쓴다. 같은 표를 보는 구독이 둘만 돼도 전체 줄을 두 번씩
+// 다듬고 두 번씩 글자본을 떠서(JSON.stringify) 화면이 무거워진다 — 자재 허브는 껍데기와 그
+// 안의 탭이 같은 표를 함께 보므로 늘 겹친다 (2026-09-16 대표님 「어플이 갑자기 느려짐」).
+const shaping = new Map();
+function sharedShape(name, cs) {
+  const key = queryKey(name, cs);
+  const hit = shaping.get(key);
+  if (hit) return hit;
+  const pr = (async () => {
+    const { data, error } = await sharedFetch(key, () => build(name, cs).limit(10000));
+    if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
+    const rows = finish(name, cs, applyFresh(name, data || [], cs));
+    noteRows(name, rows);
+    return {
+      docs: rows.map((r) => wrap(r, name)),
+      now: new Map(rows.map((r) => [r.id, JSON.stringify(r.data || {})])),
+    };
+  })().finally(() => setTimeout(() => shaping.delete(key), 60));
+  shaping.set(key, pr);
   return pr;
 }
 
@@ -777,15 +804,7 @@ export function onSnapshot(refOrQuery, onNext, onError) {
         v = await getDoc(refOrQuery);
       } else {
         const { name, cs } = refOrQuery.__kind === 'query' ? refOrQuery : { name: refOrQuery.name, cs: [] };
-        const { data, error } = await sharedFetch(queryKey(name, cs), () => build(name, cs).limit(10000));
-        if (error) throw new Error(`${name} 조회 실패: ${error.message}`);
-        const rows = finish(name, cs, applyFresh(name, data || [], cs));
-        noteRows(name, rows);
-        v = snapshotOf(
-          rows.map((r) => wrap(r, name)),
-          rows,
-          prev,
-        );
+        v = diffOf(await sharedShape(name, cs), prev);
         prev = v.__state;
       }
       if (!stopped) onNext(v);
