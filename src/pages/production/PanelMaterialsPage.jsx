@@ -1157,8 +1157,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                                 locked
                                   ? '오른쪽 아래 「잠금」을 푼 뒤에'
                                   : (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
-                                    ? '사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
-                                    : '왜 모자란지만 적습니다 — 수량은 그대로'
+                                    ? '부족 사유를 다시 적습니다 — 수량은 그대로, 옛 기록은 자재 이력에 남습니다'
+                                    : '부족 사유만 적습니다 — 수량은 그대로'
                               }
                             >
                               {(recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
@@ -1261,7 +1261,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         <Modal
           isOpen
           onClose={() => setLogForm(null)}
-          title={logForm.kind === 'in' ? '어떻게 채웠나요' : logForm.kind === 'out' ? '왜 줄었나요' : '왜 모자란가요'}
+          title={logForm.kind === 'in' ? '입고 기록' : logForm.kind === 'out' ? '감소 사유' : '부족 사유'}
         >
           <form onSubmit={submitLog}>
             <p className="field-hint" style={{ marginTop: 0 }}>
@@ -1281,7 +1281,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             {needsMate(logForm.kind, logForm.why) && (
               <div className="form-group">
                 <label>
-                  {logForm.kind === 'in' ? '어느 호기에서 가져왔나요' : '어느 호기가 가져갔나요'}
+                  {logForm.kind === 'in' ? '가져온 호기' : '가져간 호기'}
                   <span className="pmat-opt"> (고르지 않아도 됩니다)</span>
                 </label>
                 <Select
@@ -1327,7 +1327,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 type="text"
                 value={logForm.note}
                 onChange={(e) => setLogForm((f) => ({ ...f, note: e.target.value }))}
-                placeholder="예) 커넥터 깨짐"
+                placeholder={
+                  logForm.kind === 'in'
+                    ? '예) 구매처 직납'
+                    : logForm.kind === 'out'
+                      ? '예) 커넥터 깨짐'
+                      : '예) 발주 지연 · 앞 호기에서 먼저 씀'
+                }
                 aria-label="비고"
               />
             </div>
