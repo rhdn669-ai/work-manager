@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { needsMate, needsStock, newLog, mateLog, mateDelta, logLabel, rowSummary, allLogs } from '../../src/domain/matLog';
+import { needsMate, needsStock, newLog, mateLog, mateDelta, logLabel, rowSummary, allLogs, whyOf, OUT_WHYS, WHY_WHYS } from '../../src/domain/matLog';
 
 const name = (id) => ({ p207: '207', p209: '209', p213: '213' })[id] || id;
 
@@ -65,5 +65,14 @@ describe('자재 이력 — 왜 없나 / 어떻게 채웠나', () => {
       p209: { MP: { rowA: { log: [newLog({ id: 'b', kind: 'in', why: '구매', at: '2026-09-16' })] } } },
     };
     expect(allLogs(all).map((x) => x.log.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('감소 창 낱말 통일 (2026-09-17)', () => {
+  it('옛 「그냥 빼기」는 「미입고」로 읽힌다 — 실물이 통으로 돌아가는 같은 뜻', () => {
+    expect(whyOf({ kind: 'out', why: '그냥 빼기' })).toBe('미입고');
+  });
+  it('감소 창 선택지는 사유 창과 같다', () => {
+    expect(OUT_WHYS).toEqual(WHY_WHYS);
   });
 });

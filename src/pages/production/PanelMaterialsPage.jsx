@@ -284,7 +284,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         useStock: ledger(f.row),
       });
       // 「제외」를 고르면 그 줄을 이 호기 셈에서 뺀다 — 기록은 위에 남고 줄은 회색이 된다
-      if (f.kind === 'why' && f.why === '제외') await toggleSkip(f.row, true);
+      if ((f.kind === 'why' || f.kind === 'out') && f.why === '제외') await toggleSkip(f.row, true);
       // 창의 비고가 곧 줄 비고 — «덮어쓴다». 이어 붙였더니 「미입고 · 미입고로 차용중 · ㅊ」처럼
       // 쌓이기만 하고 고칠 수가 없었다 (2026-09-16 대표님 「비고내용이 수정이 안되고 자꾸 쌓이네」)
       const memo = String(f.note || '').trim();
@@ -1125,6 +1125,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           {/* 「입고」는 사연이 있는 줄에만 — 아직 손 안 댄 미입고 줄에 붙으면 평소 채우는 법
                             (수량 칸에 적기)과 겹쳐 헷갈린다 (2026-09-15 대표님 「배정 되기 전이라 미입고인것에
                             입고 버튼이 있으면 헷갈리지않을까?」). 「미입고」로만 적은 줄도 평범한 상태라 안 붙는다 */}
+                          {/* 「빼기」 — 입고된 것을 다시 빼며 까닭을 남긴다. 수량 칸에서 줄여도 같은 창이 뜨지만
+                            태블릿에서는 단추가 눈에 띈다 (2026-09-17 대표님 「입고가 된것도 우측에 빼기 버튼」) */}
+                          {!outScope && !skipped && got > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline pmat-act-btn"
+                              onClick={() => openLog(r, 'out', 1)}
+                              disabled={locked}
+                              title={
+                                locked ? '오른쪽 아래 「잠금」을 푼 뒤에' : '입고된 것을 뺍니다 — 왜 빼는지 고릅니다'
+                              }
+                            >
+                              빼기
+                            </button>
+                          )}
                           {!outScope &&
                             !skipped &&
                             got < (Number(r.qty) || 0) &&
@@ -1301,10 +1316,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 </p>
               </div>
             )}
-            {logForm.kind === 'why' && logForm.why === '제외' && (
+            {(logForm.kind === 'why' || logForm.kind === 'out') && logForm.why === '제외' && (
               <p className="field-hint">
                 이 줄을 <strong>이 호기 셈에서 뺍니다</strong> — 회색으로 바뀌고 부족에도 안 잡힙니다. 기본 BOM 은
                 그대로고, 되돌리려면 그 줄의 「포함」을 누르세요.
+              </p>
+            )}
+            {logForm.kind === 'out' && logForm.why === '미입고' && (
+              <p className="field-hint">
+                안 들어온 것을 채운 걸로 잘못 표시했던 경우 — 뺀 만큼 <strong>실물은 재고 통으로 돌아갑니다</strong>.
               </p>
             )}
             {logForm.kind !== 'why' && (
@@ -1330,7 +1350,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                   logForm.kind === 'in'
                     ? '예) 구매처 직납'
                     : logForm.kind === 'out'
-                      ? '예) 커넥터 깨짐'
+                      ? '예) 잘못 체크함 · 289호기가 먼저 씀'
                       : '예) 발주 지연 · 다른 호기에서 먼저 씀'
                 }
                 aria-label="비고"

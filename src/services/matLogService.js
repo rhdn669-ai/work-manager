@@ -101,12 +101,13 @@ export async function writeMatLog(
   // 내 줄 — 'why' 는 수량을 안 건드린다
   const myDelta = kind === 'in' ? +log.n : kind === 'out' ? -log.n : 0;
   let myReleased = 0;
-  // 「그냥 빼기」는 실물이 통으로 돌아간다 — 통에서 가져온 몫까지만. 불량·파손·분실·가져감은 물건이
+  // 「미입고」는 실물이 통으로 돌아간다 — 통에서 가져온 몫까지만. 가져감·제외는 물건이
   // 없어졌거나 다른 호기로 갔으니 통에 안 돌아간다. 전에는 어느 사유든 안 돌려줘서, 수량을
   // 넣었다 뺐다 하면 통이 한 번씩 줄기만 했다 (2026-09-16 대표님 「재고 수량이 증발해버림」)
   let giveBack = 0;
   let tookOurs = 0;
-  if (useStock && kind === 'out' && why === '그냥 빼기' && row.itemId) {
+  // 「미입고」(옛 낱말 「그냥 빼기」) = 잘못 채운 것 — 실물은 통에 그대로 있으니 돌려준다
+  if (useStock && kind === 'out' && (why === '미입고' || why === '그냥 빼기') && row.itemId) {
     const cur = (await getPanelMaterials(panel.id))?.[box]?.[row.id] || {};
     const cut = Math.min(log.n, Math.max(0, Number(cur.qty) || 0));
     giveBack = Math.min(cut, Math.max(0, Number(cur.fromStock) || 0));
