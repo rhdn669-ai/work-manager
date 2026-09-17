@@ -188,8 +188,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [bomRowsFull, link?.variantKey]);
   // 「전체」 — 모든 BOX 줄을 한 표에 BOX 구분줄과 함께 늘어놓는다. 저장은 줄마다 제 BOX 로 간다
   // (2026-09-16 대표님 「준비작업 앞에 박스 전체 필터 하나만 걸어줘」)
-  // 검색어 — 표를 거르는 열쇠. boxList 가 먼저 쓰므로 여기서 선언한다 (TDZ 주의)
-  const [q, setQ] = useState('');
+  // 검색어 — 표를 거르는 열쇠. boxList 가 먼저 쓰므로 여기서 선언한다 (TDZ 주의).
+  // 주소(URL)에 싣는다 — 호기를 바꿔도 검색이 그대로 남는다. 탭·BOX 와 같은 방식
+  // (2026-09-17 대표님 「검색한 입력내용 그대로 다른호기눌러도 유지되게」)
+  const q = sp.get('q') || '';
+  const setQ = (v) => {
+    const n = new URLSearchParams(sp);
+    if (String(v || '').trim()) n.set('q', v);
+    else n.delete('q');
+    setSp(n, { replace: true });
+  };
   const searching = !!q.trim();
   const ALL_BOXES = '전체';
   // 처음 열면 「전체」 — BOX 를 고르기 전에 호기 전체가 한눈에 (2026-09-16 대표님 「첫 호기체크 화면은 박스 전체 보이게」)

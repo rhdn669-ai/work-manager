@@ -24016,9 +24016,9 @@ a.lib-row-name:hover {
 /* 호기 체크 찾기 칸 — BOX 탭 줄 오른쪽, 좁은 화면에선 한 줄 아래로 (2026-09-15 대표님) */
 .pmat-search-wrap {
   position: relative;
-  flex: 1 1 160px;
-  min-width: 140px;
-  max-width: 320px;
+  /* 갈래 탭과 보기 스위치 사이 남는 폭을 다 쓴다 (2026-09-17 대표님 「검색칸을 늘리고」) */
+  flex: 1 1 200px;
+  min-width: 200px;
   margin-left: auto;
 }
 .pmat-search {
