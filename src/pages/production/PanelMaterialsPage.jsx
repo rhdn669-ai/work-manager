@@ -31,7 +31,16 @@ import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/p
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
-import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary, shortPanel } from '../../domain/matLog';
+import {
+  OUT_WHYS,
+  OUT_WHYS_STRAY,
+  IN_WHYS,
+  WHY_WHYS,
+  TYPE_CHANGE,
+  needsMate,
+  rowSummary,
+  shortPanel,
+} from '../../domain/matLog';
 import { writeMatLog, resetMatRow } from '../../services/matLogService';
 import { undoPlan } from '../../domain/matUndo';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
@@ -276,12 +285,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 「취소」 창 — { row, plan, mode: 'all' | 'move', mate }
   const [undoForm, setUndoForm] = useState(null);
   const [undoSaving, setUndoSaving] = useState(false);
-  const whyList = (k) => (k === 'out' ? OUT_WHYS : k === 'in' ? IN_WHYS : WHY_WHYS);
+  // 보라 줄(지금 타입에 없는 줄)은 「타입 변경」·「가져감」만 — 미입고·제외는 뜻이 안 맞는다
+  // (2026-09-17 대표님 「보라 줄에서만」)
+  const whyList = (k, r = null) =>
+    k === 'out' ? (r?._stray ? OUT_WHYS_STRAY : OUT_WHYS) : k === 'in' ? IN_WHYS : WHY_WHYS;
   const openLog = (r, kind, n = 1) => {
     // 잠겨 있으면 창을 열지 않는다 — 수량 칸은 막아 두고 이 창만 열려 있어 잠금이 반쪽이었다
     // (2026-09-16 야간 조사 L1)
     if (locked) return toast('오른쪽 아래 「잠금」을 푼 뒤에 적을 수 있습니다', 'error');
-    setLogForm({ row: r, kind, why: whyList(kind)[0], n: String(n), mate: '', note: recOf(r)[r.id]?.note || '' });
+    setLogForm({ row: r, kind, why: whyList(kind, r)[0], n: String(n), mate: '', note: recOf(r)[r.id]?.note || '' });
   };
   const panelName = (p) => `${p?.프로젝트 || ''}${p?.호기 ? ` ${p.호기}` : ''}`.trim() || p?.id || '';
   const nameOfId = (id) => panelName(allPanels.find((x) => x.id === id));
@@ -1007,7 +1019,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
               {/* 1340px 태블릿에서 도번(6715-000911)·상태(고객사 0 · 당사 0)가 잘렸다 — 도번·상태를
                   늘리고 품명·기록을 줄인다. 규격은 남는 자리라 두 줄이 될 수 있다 (2026-09-17 대표님) */}
-              {['44px', '13%', '12%', null, '6.5%', '6.5%', '15%', hasMeta ? '7%' : null, '8%', '124px']
+              {/* 작업 칸 — 단추가 최대 4개(취소·빼기·입고·수정). 실측 4개 = 190px 라 196px 로 잡는다.
+                  「가」(큰 글자)는 안 쓰는 기준이므로 고정 px 로 둔다
+                  (2026-09-17 대표님 「입고버튼 조건 은보이게 칸을좀더 늘려」) */}
+              {['44px', '12%', '10.5%', null, '6.5%', '6.5%', '15%', hasMeta ? '5.5%' : null, '6%', '196px']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -1249,10 +1264,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                               빼기
                             </button>
                           )}
+                          {/* 「입고」는 손 안 댄 미입고 줄에만 안 붙인다 — 평소 채우는 법(수량 칸에 적기)과
+                            겹쳐 헷갈리기 때문 (2026-09-15 대표님). 이미 일부라도 들어온 줄은 손댄 줄이므로
+                            붙는다 (2026-09-17 대표님 「입고버튼 조건 은보이게」) */}
                           {!outScope &&
                             !skipped &&
                             got < (Number(r.qty) || 0) &&
-                            (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고')) && (
+                            (got > 0 ||
+                              (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))) && (
                               <button
                                 type="button"
                                 className="btn btn-sm btn-primary pmat-act-btn"
@@ -1393,7 +1412,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               <Select
                 value={logForm.why}
                 onChange={(v) => setLogForm((f) => ({ ...f, why: v, mate: needsMate(f.kind, v) ? f.mate : '' }))}
-                options={whyList(logForm.kind).map((w) => ({ value: w, label: w }))}
+                options={whyList(logForm.kind, logForm.row).map((w) => ({ value: w, label: w }))}
                 ariaLabel="사유"
                 native
               />
