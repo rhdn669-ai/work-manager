@@ -975,7 +975,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
               {/* 1340px 태블릿에서 도번(6715-000911)·상태(고객사 0 · 당사 0)가 잘렸다 — 도번·상태를
                   늘리고 품명·기록을 줄인다. 규격은 남는 자리라 두 줄이 될 수 있다 (2026-09-17 대표님) */}
-              {['44px', '13%', '12%', null, '6.5%', '6.5%', '15%', hasMeta ? '7%' : null, '8%', '124px']
+              {['44px', '13%', '12%', null, '6.5%', '6.5%', '14%', hasMeta ? '6%' : null, '7%', '150px']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
