@@ -31,7 +31,8 @@ import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
 import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
 import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary, shortPanel } from '../../domain/matLog';
-import { writeMatLog } from '../../services/matLogService';
+import { writeMatLog, resetMatRow } from '../../services/matLogService';
+import { undoPlan } from '../../domain/matUndo';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
 import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
@@ -262,6 +263,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-15 대표님 「없는 이유가 남아야하고 그걸 채우면 어떻게 채웠는지가 남아야」)
   const [logForm, setLogForm] = useState(null);
   const [logSaving, setLogSaving] = useState(false);
+  // 「취소」 창 — { row, plan, mode: 'all' | 'move', mate }
+  const [undoForm, setUndoForm] = useState(null);
+  const [undoSaving, setUndoSaving] = useState(false);
   const whyList = (k) => (k === 'out' ? OUT_WHYS : k === 'in' ? IN_WHYS : WHY_WHYS);
   const openLog = (r, kind, n = 1) => {
     // 잠겨 있으면 창을 열지 않는다 — 수량 칸은 막아 두고 이 창만 열려 있어 잠금이 반쪽이었다
@@ -274,6 +278,46 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const shortOfId = (id) => shortPanel(nameOfId(id));
   // 상대 호기 목록 — 창을 열 때 셈한다. 여기서 바로 allPanels 를 읽으면 그 선언보다 위라 TDZ 다
   // (2026-09-15 「Cannot access before initialization」)
+  // 「취소」 — 줄을 처음 상태로. 다른 호기에서 가져온 것이면 «다른 호기로 바꾸기»도 고를 수 있다
+  const openUndo = (r) => {
+    if (locked) return toast('오른쪽 아래 「잠금」을 푼 뒤에 할 수 있습니다', 'error');
+    const plan = undoPlan(recOf(r)[r.id] || {});
+    setUndoForm({ row: r, plan, mode: 'all', mate: '' });
+  };
+  async function submitUndo(e) {
+    e.preventDefault();
+    const f = undoForm;
+    if (!f) return;
+    if (f.mode === 'move' && !f.mate) return toast('바꿀 호기를 고르세요', 'error');
+    setUndoSaving(true);
+    try {
+      await resetMatRow(panel, boxOf(f.row), f.row, {
+        by: by(),
+        stockKind: stockKindOf(f.row),
+        useStock: ledger(f.row),
+      });
+      if (f.mode === 'move') {
+        // 되돌린 뒤 곧바로 새 호기에서 가져온 것으로 — 양쪽 수량·기록이 그 길로 다시 잡힌다
+        await writeMatLog(panel, boxOf(f.row), f.row, {
+          kind: 'in',
+          why: '가져옴',
+          n: Math.max(1, f.plan.tookFromMates || 1),
+          mate: f.mate,
+          by: by(),
+          note: '',
+          stockKind: stockKindOf(f.row),
+          useStock: ledger(f.row),
+        });
+      }
+      setUndoForm(null);
+      toast(f.mode === 'move' ? '다른 호기에서 가져온 것으로 바꿨습니다' : '처음 상태로 되돌렸습니다', 'success');
+    } catch (err) {
+      console.error(err);
+      toast(err?.message || '되돌리지 못했습니다', 'error', 0);
+    } finally {
+      setUndoSaving(false);
+    }
+  }
   async function submitLog(e) {
     e.preventDefault();
     const f = logForm;
@@ -1137,6 +1181,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                             입고 버튼이 있으면 헷갈리지않을까?」). 「미입고」로만 적은 줄도 평범한 상태라 안 붙는다 */}
                           {/* 「빼기」 — 입고된 것을 다시 빼며 까닭을 남긴다. 수량 칸에서 줄여도 같은 창이 뜨지만
                             태블릿에서는 단추가 눈에 띈다 (2026-09-17 대표님 「입고가 된것도 우측에 빼기 버튼」) */}
+                          {/* 「취소」 — 입고든 사유든 손댄 줄을 처음 상태(미입고·사유 없음)로.
+                            (2026-09-17 대표님 「취소 하나 만들고 누르면 처음 대기상태로」) */}
+                          {!outScope && (got > 0 || (recOf(r)[r.id]?.log || []).length > 0) && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline pmat-act-btn"
+                              onClick={() => openUndo(r)}
+                              disabled={locked}
+                              title={locked ? '오른쪽 아래 「잠금」을 푼 뒤에' : '이 줄을 처음 상태로 되돌립니다'}
+                            >
+                              취소
+                            </button>
+                          )}
                           {!outScope && !skipped && got > 0 && (
                             <button
                               type="button"
@@ -1372,6 +1429,78 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               </button>
               <button type="submit" className="btn btn-primary" disabled={logSaving}>
                 {logSaving ? '저장 중…' : '저장'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {undoForm && (
+        <Modal isOpen onClose={() => setUndoForm(null)} title="처음 상태로 되돌리기" size="md">
+          <form onSubmit={submitUndo}>
+            <p className="field-hint">
+              <strong>{undoForm.row.name || undoForm.row.drawingNo}</strong>
+              {undoForm.row.spec ? ` · ${undoForm.row.spec}` : ''} · {boxOf(undoForm.row)}
+            </p>
+            <p>
+              입고 <b>{undoForm.plan.qty}</b>개와 기록 <b>{undoForm.plan.logs.length}</b>건을 지우고
+              <strong> 미입고 · 사유 없음</strong>으로 되돌립니다.
+            </p>
+            <ul className="pmat-undo-list">
+              {undoForm.plan.toStock > 0 && (
+                <li>
+                  통에서 온 <b>{undoForm.plan.toStock}</b>개는 재고 통으로 돌아갑니다
+                  {undoForm.plan.tookOurs > 0 ? ` (그중 당사 몫 ${undoForm.plan.tookOurs})` : ''}
+                </li>
+              )}
+              {undoForm.plan.toMates.map((m) => (
+                <li key={m.mate}>
+                  <b>{shortOfId(m.mate)}</b>호기에서 가져온 <b>{m.n}</b>개는 그 호기로 돌아갑니다
+                </li>
+              ))}
+              {undoForm.plan.kept.map((m) => (
+                <li key={`k${m.mate}`} className="is-muted">
+                  이 줄에서 <b>{shortOfId(m.mate)}</b>호기로 보낸 {m.n}개는 그대로 둡니다 (실물이 거기 있습니다)
+                </li>
+              ))}
+            </ul>
+            {undoForm.plan.toMates.length > 0 && (
+              <div className="form-group">
+                <label className="pmat-undo-opt">
+                  <input
+                    type="radio"
+                    name="undo-mode"
+                    checked={undoForm.mode === 'all'}
+                    onChange={() => setUndoForm({ ...undoForm, mode: 'all' })}
+                  />{' '}
+                  전부 취소 — 처음 상태로만
+                </label>
+                <label className="pmat-undo-opt">
+                  <input
+                    type="radio"
+                    name="undo-mode"
+                    checked={undoForm.mode === 'move'}
+                    onChange={() => setUndoForm({ ...undoForm, mode: 'move' })}
+                  />{' '}
+                  다른 호기에서 가져온 것으로 바꾸기
+                </label>
+                {undoForm.mode === 'move' && (
+                  <Select
+                    value={undoForm.mate}
+                    onChange={(v) => setUndoForm({ ...undoForm, mate: v })}
+                    options={[{ value: '', label: '호기 선택' }, ...mateList(undoForm.row, 'later')]}
+                    placeholder="호기 선택"
+                    ariaLabel="바꿀 호기"
+                    native
+                  />
+                )}
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setUndoForm(null)}>
+                닫기
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={undoSaving}>
+                {undoSaving ? '되돌리는 중…' : undoForm.mode === 'move' ? '바꾸기' : '되돌리기'}
               </button>
             </div>
           </form>

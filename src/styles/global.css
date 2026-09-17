@@ -24634,3 +24634,18 @@ body.has-editlock .main-content.expanded {
   line-height: 1.5;
   vertical-align: middle;
 }
+
+/* 자재 체크 「취소」 창 — 무엇이 어디로 가는지 목록 (2026-09-17) */
+.pmat-undo-list {
+  margin: 0 0 var(--space-3);
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.pmat-undo-list .is-muted {
+  color: var(--text-muted);
+}
+.pmat-undo-opt {
+  display: block;
+  padding: 6px 0;
+  cursor: pointer;
+}

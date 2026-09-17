@@ -9,6 +9,7 @@ import { getPanelMaterials, materialsDocId, setReceived, addFromStock, addFromOu
 import { takeStock, returnStock } from './stockService';
 import { trashMatLog } from './trashService';
 import { newLog, mateLog, mateDelta, needsStock, whyOf } from '../domain/matLog';
+import { undoPlan } from '../domain/matUndo';
 
 const ref = (panelId, box) => doc(db, 'panelMaterials', materialsDocId(panelId, box));
 
@@ -179,4 +180,43 @@ export async function removeMatLog(panelId, box, rowId, logId, by = '') {
     }
   }
   return log;
+}
+
+/**
+ * 줄을 «처음 상태»로 — 입고 0 · 기록 없음 (2026-09-17 대표님 「취소 … 처음 대기상태로」).
+ * 무엇이 어디로 가는지는 domain/matUndo 의 undoPlan 이 정한다:
+ *   다른 호기에서 가져온 몫 → 그 호기로(통에서 온 몫 표시까지) · 남은 통 몫 → 통으로 · 기록 → 휴지통.
+ * 이 줄에서 남에게 보낸 것은 실물이 거기 있으니 두고, 그 사실만 plan.kept 로 돌려준다.
+ */
+export async function resetMatRow(panel, box, row, { by = '', stockKind = 'paid', useStock = true } = {}) {
+  if (!panel?.id || !box || !row?.id) throw new Error('호기·품목이 필요합니다');
+  const rec = (await getPanelMaterials(panel.id))?.[box]?.[row.id] || {};
+  const plan = undoPlan(rec);
+  // ① 다른 호기에서 가져온 몫 → 그 호기로
+  for (const m of plan.toMates) {
+    await shift(m.mate, box, row.id, m.n, by);
+    if (m.fromStock > 0) await addFromStock(m.mate, box, row.id, m.fromStock);
+  }
+  // ② 남은 통 몫 → 통으로 (당사가 댄 몫은 그만큼 당사로)
+  if (useStock && plan.toStock > 0 && row.itemId) {
+    await returnStock(stockKind, panel.회사 || '', row.itemId, plan.toStock, {
+      by,
+      note: `${panel.프로젝트 || panel.id} · ${box} 취소`,
+      tookOurs: plan.tookOurs,
+    });
+  }
+  // ③ 기록 전부 휴지통으로 — 짝(상대 호기 쪽)도 같이 정리된다
+  for (const l of plan.logs) await removeMatLog(panel.id, box, row.id, l.id, by);
+  // ④ 줄 초기화 — 「제외」 표시와 비고는 건드리지 않는다
+  await setDoc(
+    ref(panel.id, box),
+    {
+      panelId: panel.id,
+      box,
+      items: { [row.id]: { qty: 0, fromStock: 0, fromOurs: 0, at: new Date().toISOString().slice(0, 10), by } },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+  return plan;
 }
