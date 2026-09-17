@@ -1465,24 +1465,18 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             </ul>
             {undoForm.plan.toMates.length > 0 && (
               <div className="form-group">
-                <label className="pmat-undo-opt">
-                  <input
-                    type="radio"
-                    name="undo-mode"
-                    checked={undoForm.mode === 'all'}
-                    onChange={() => setUndoForm({ ...undoForm, mode: 'all' })}
-                  />{' '}
-                  전부 취소 — 처음 상태로만
-                </label>
-                <label className="pmat-undo-opt">
-                  <input
-                    type="radio"
-                    name="undo-mode"
-                    checked={undoForm.mode === 'move'}
-                    onChange={() => setUndoForm({ ...undoForm, mode: 'move' })}
-                  />{' '}
-                  다른 호기에서 가져온 것으로 바꾸기
-                </label>
+                {/* 라디오는 이 앱이 안 쓰는 요소다 — 전역 input 규칙에 걸려 동그라미가 부푼다.
+                  세그먼트(ViewSwitch)가 앱 표준 (2026-09-17 대표님 「디자인왜이러냐」) */}
+                <label>어떻게 할까요</label>
+                <ViewSwitch
+                  options={[
+                    { value: 'all', label: '전부 취소' },
+                    { value: 'move', label: '다른 호기로 바꾸기' },
+                  ]}
+                  value={undoForm.mode}
+                  onChange={(v) => setUndoForm({ ...undoForm, mode: v })}
+                  ariaLabel="되돌리는 방법"
+                />
                 {undoForm.mode === 'move' && (
                   <Select
                     value={undoForm.mate}

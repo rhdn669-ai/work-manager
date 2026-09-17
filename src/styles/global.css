@@ -24644,8 +24644,6 @@ body.has-editlock .main-content.expanded {
 .pmat-undo-list .is-muted {
   color: var(--text-muted);
 }
-.pmat-undo-opt {
-  display: block;
-  padding: 6px 0;
-  cursor: pointer;
+.pmat-undo-list b {
+  font-weight: 700;
 }
