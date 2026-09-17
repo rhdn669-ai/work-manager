@@ -24526,7 +24526,10 @@ body.has-editlock .main-content.expanded {
      머리줄 밑에 붙여 두던 것(sticky)은 뺐다 — 표가 세로 스크롤 상자가 되자(v150.0) 구분줄이
      머리줄 밑에 딸려 내려와 가렸다 (2026-09-16 대표님 「머리줄 아래에 칸하나가 딸려 내려옴」) */
   position: static;
-  text-align: left;
+  /* 가운데로 통일 — 호기 자재 체크에서는 다른 규칙이 이겨 가운데로 나오고 재고 화면만 왼쪽이라
+     같은 구분줄이 화면마다 달라 보였다 (2026-09-17 대표님 「박스 분류 하는 글이 첫번째사진처럼
+     가운데로 위치하게 통일해줘」). 여기서 못 박아 두 화면이 같은 자리에 오게 한다 */
+  text-align: center;
   padding: 11px 14px 10px;
   background: var(--primary-soft, #e7ebf2);
   border-top: 2px solid var(--primary, #0f285f);
