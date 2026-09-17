@@ -762,7 +762,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         if (dir === 'earlier') {
           if (i >= myAt) return false;
           const ks = Array.isArray(row?.variantKeys) ? row.variantKeys : [];
-          return ks.length === 0 || ks.includes(p.bomLink?.variantKey || '');
+          if (ks.length > 0 && !ks.includes(p.bomLink?.variantKey || '')) return false;
+          // 이미 다 채운 호기는 뺀다 — 줄 까닭이 없다
+          // (2026-09-17 대표님 「앞 호기에 입고 수량이 다찬건 리스트에 안뜨게해」)
+          if (!row) return true;
+          const need = Number(row.qty) || 0;
+          const has = Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0;
+          return need <= 0 || has < need;
         }
         if (i < myAt) return false; // 앞 호기에서는 안 가져온다
         return !row || (Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0) > 0;
