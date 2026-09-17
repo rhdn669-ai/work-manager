@@ -23460,24 +23460,14 @@ a.lib-row-name:hover {
 .pmat-table td.pmat-act {
   white-space: normal;
 }
-.pmat-table td.pmat-act {
-  /* 단추가 늘면(취소·빼기·입고·수정 최대 4개) 한 줄에 다 못 든다 — 넘치는 것을 숨기지 말고
-     아래로 흘린다. 전에는 잘려서 단추 하나가 아예 안 보였다
-     (2026-09-17 대표님 「버튼하나가 안보임」) */
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 3px;
-  align-items: center;
-}
 .pmat-table td.pmat-act .pmat-act-btn {
   display: inline-flex;
   width: auto;
-  margin: 0;
+  margin: 1px 0 1px 4px;
   white-space: nowrap;
   /* 태블릿에서 「입고·사유」가 칸을 다 먹지 않게 작게 (2026-09-15 대표님) */
   height: 28px;
-  padding: 0 7px;
+  padding: 0 10px;
   font-size: 12.5px;
 }
 
