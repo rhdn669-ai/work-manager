@@ -24650,3 +24650,33 @@ body.has-editlock .main-content.expanded {
 .pmat-undo-list b {
   font-weight: 700;
 }
+
+/* 타입이 바뀌어 «지금 타입 밖»이 된 줄 — 보라. 다른 색(완료 초록·부족 빨강·일부 주황·제외 회색)과
+   겹치지 않는 자리라 한눈에 구분된다 (2026-09-17 대표님 「보라색 띠로 표시」) */
+.pmat-table tr.is-stray > td {
+  background: #f3efff;
+}
+.pmat-table tr.is-stray:hover > td {
+  background: #ebe4ff;
+}
+.pmat-table tr.is-stray > td:first-child {
+  box-shadow: inset 3px 0 0 #7c3aed;
+}
+.pmat-stray-tag {
+  display: block;
+  color: #7c3aed;
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+/* 타입 미지정 호기 안내 */
+.pmat-novariant {
+  margin: 0 0 var(--space-3);
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  background: #f3efff;
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  color: #5b21b6;
+  font-size: 13px;
+  line-height: 1.5;
+}

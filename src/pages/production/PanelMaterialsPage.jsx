@@ -14,6 +14,7 @@ import { useDialog } from '../../components/common/useDialog';
 import { useEditLock } from '../../contexts/useEditLock';
 import { subscribePanels, updatePanel } from '../../services/productionService';
 import { getBomProjectById, getBomBySite, bomItemsForVariant } from '../../services/bomService';
+import { strayRows } from '../../domain/variantShift';
 import { subscribePurchaseItems } from '../../services/purchaseService';
 import { subscribeStock, takeStock, returnStock, getStockQty, getStockSplit } from '../../services/stockService';
 import { ledgerOn, stockKindOf } from '../../domain/stockLedger';
@@ -213,10 +214,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    // 줄마다 제 BOX 를 붙여 둔다 — 「전체」에서는 여러 BOX 줄이 섞이므로 저장할 곳을 줄이 안다
-    return boxList.flatMap((b) => bomRowsForBox(forVariant, b).map((r) => ({ ...r, _box: b })));
+    const mine = boxList.flatMap((b) => bomRowsForBox(forVariant, b).map((r) => ({ ...r, _box: b })));
+    // 타입이 바뀌어 «지금 타입 밖»이 됐는데 체크는 남아 있는 줄 — 숨기면 통에서 가져온 몫이
+    // 어느 집계에도 안 잡혀 조용히 증발한다. 보라 띠로 계속 보여 정리할 수 있게 한다
+    // (2026-09-17 대표님 「초과·부족 수량은 보라색 띠로 표시」).
+    const seen = new Set(mine.map((r) => `${r._box}:${r.id}`));
+    const stray = boxList.flatMap((b) =>
+      strayRows(bomRowsForBox(bomRowsFull, b), link?.variantKey || '', (r) => received[b]?.[r.id]?.qty || 0)
+        .map((r) => ({ ...r, _box: b, _stray: true }))
+        .filter((r) => !seen.has(`${r._box}:${r.id}`)),
+    );
+    return [...mine, ...stray];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bomRowsFull, link?.variantKey, box, boxesWithRows]);
+  }, [bomRowsFull, link?.variantKey, box, boxesWithRows, received]);
   const boxOf = (r) => r?._box || box;
   // 줄 기록은 «그 줄이 속한 BOX» 에서 읽는다. 「전체」에서 BOX 들을 한 사전으로 합쳤더니,
   // 같은 품목이 두 BOX 에 쓰이면 뒤 BOX 가 이겨 앞 BOX 의 수량·통 누계가 화면에서 사라졌다
@@ -894,6 +904,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         />
       </div>
 
+      {/* 타입을 안 정한 호기는 M7H·T5391 전용 자재를 «둘 다» 보게 된다 — 같은 품목이 두 줄로
+        보여 수량이 부풀어 읽힌다. 체크는 막지 않고 알리기만 한다
+        (2026-09-17 대표님 「경고만 표시」) */}
+      {!link?.variantKey && boxesWithRows.length > 0 && (
+        <p className="pmat-novariant no-print">
+          이 호기는 <strong>타입(형번)이 정해지지 않았습니다</strong> — 타입 전용 자재가 모두 보여 같은 품목이 두 줄로
+          나올 수 있습니다. 생산현황에서 타입을 먼저 정해 주세요.
+        </p>
+      )}
+
       {/* 도급 / 사급 탭 + 진행 */}
       <div className="pmat-kinds no-print">
         <ViewSwitch
@@ -1041,19 +1061,21 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     <tr
                       data-row-id={r.id}
                       className={
-                        outScope
-                          ? 'is-scope-out'
-                          : skipped
-                            ? 'is-skipped'
-                            : done
-                              ? 'is-done'
-                              : // 사유(미입고 말고)를 적었는데 아직 모자란 줄 — 줄 전체를 빨갛게
-                                // (2026-09-15 대표님 「사유를 입력한 수량 부족은 1번처럼 … 1줄 전체에 칠해줘」)
-                                (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
-                                ? 'is-flagged'
-                                : short > 0 && got > 0
-                                  ? 'is-partial'
-                                  : ''
+                        r._stray
+                          ? 'is-stray'
+                          : outScope
+                            ? 'is-scope-out'
+                            : skipped
+                              ? 'is-skipped'
+                              : done
+                                ? 'is-done'
+                                : // 사유(미입고 말고)를 적었는데 아직 모자란 줄 — 줄 전체를 빨갛게
+                                  // (2026-09-15 대표님 「사유를 입력한 수량 부족은 1번처럼 … 1줄 전체에 칠해줘」)
+                                  (recOf(r)[r.id]?.log || []).some((l) => !(l.kind === 'why' && l.why === '미입고'))
+                                  ? 'is-flagged'
+                                  : short > 0 && got > 0
+                                    ? 'is-partial'
+                                    : ''
                       }
                     >
                       <td className="col-no">{i + 1}</td>
@@ -1131,6 +1153,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 「부족」 열도 없앴다 — 필요·입고 수량에서 바로 읽히고, 모자란 줄은 입고 수량이
                         주황·회색으로 보인다 (2026-09-15 대표님 「둘다」). 재고는 상태 칸으로 옮겼다 */}
                       <td className="pmat-state">
+                        {r._stray && (
+                          <span
+                            className="pmat-stray-tag"
+                            title="호기 타입이 바뀌어 지금 타입에는 없는 줄입니다. 「취소」로 재고 통에 돌려주거나 「빼기 → 가져감」으로 다른 호기에 넘기세요"
+                          >
+                            타입 바뀜 · 지금 타입에 없는 줄
+                          </span>
+                        )}
                         {got < (Number(r.qty) || 0) &&
                           (ledger(r) || stockOf(r) > 0) &&
                           (stockKindOf(r) === 'free' ? (

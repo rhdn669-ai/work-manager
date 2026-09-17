@@ -18,6 +18,9 @@ import { CSS } from '@dnd-kit/utilities';
 import Icon from '../../components/common/Icon';
 import ProjectName from '../../components/common/ProjectName';
 import { useDialog } from '../../components/common/useDialog';
+import { getBomBySite } from '../../services/bomService';
+import { getPanelMaterials } from '../../services/panelMaterialsService';
+import { variantChangePlan } from '../../domain/variantShift';
 import { bulkWritePanels, updatePanel, savePanelOrder, trashPanel } from '../../services/productionService';
 import { misorderedIds } from '../../domain/panelOrder';
 import { moveMany, applyVisibleOrder } from '../../domain/moveMany';
@@ -430,7 +433,7 @@ export default function ProductionMatrix({
     () => defaultBomProjectId(orderPool || panels, bomProjects, company),
     [orderPool, panels, bomProjects, company],
   );
-  const pickVariant = (p) => {
+  const pickVariant = async (p) => {
     if (!canEditCells) return;
     const { project, options } = variantOptionsFor(p, bomProjects, defaultProjectId);
     if (!project || options.length === 0) return;
@@ -438,6 +441,34 @@ export default function ProductionMatrix({
     const keys = ['', ...options.map((o) => o.key)];
     const nextKey = keys[(keys.indexOf(curKey) + 1) % keys.length];
     const v = options.find((o) => o.key === nextKey) || null;
+    // 타입을 바꾸면 그 타입 전용 줄이 화면에서 사라진다. 체크가 남아 있으면 통에서 가져온 몫이
+    // 어느 집계에도 안 잡혀 조용히 증발하므로, 무엇이 사라지는지 먼저 알린다. 수량은 건드리지
+    // 않고 자재 체크 화면에 보라 띠로 남는다 (2026-09-17 대표님 「그대로 두고 보라색 표시만」).
+    // 필요한 자료는 «누를 때만» 읽는다 — 표에 상시 구독을 더하면 무거워진다.
+    try {
+      const [rows, mats] = await Promise.all([getBomBySite(project.id), getPanelMaterials(p.id)]);
+      const plan = variantChangePlan(rows, curKey, nextKey, (r) => mats?.[r.box]?.[r.id]?.qty || 0);
+      if (plan.leaving.length > 0) {
+        const cur = options.find((o) => o.key === curKey)?.label || '타입 없음';
+        const next = v ? v.label : '타입 없음';
+        const list = plan.leaving
+          .slice(0, 5)
+          .map((x) => `· ${x.row.name || x.row.drawingNo} ${x.got}개 (${x.row.box})`)
+          .join('\n');
+        const more = plan.leaving.length > 5 ? `\n… 그 밖 ${plan.leaving.length - 5}줄` : '';
+        const ok = await confirm(
+          `${p.프로젝트 || '이 호기'} 의 타입을 「${cur}」 → 「${next}」 로 바꿉니다.\n\n` +
+            `체크된 줄 ${plan.leaving.length}개(합 ${plan.leavingQty}개)가 지금 타입에서 빠집니다:\n${list}${more}\n\n` +
+            `수량은 그대로 두고 자재 체크 화면에 보라색으로 표시됩니다. ` +
+            `거기서 「취소」로 재고 통에 돌려주거나 「빼기 → 가져감」으로 다른 호기에 넘기세요.\n\n계속할까요?`,
+        );
+        if (!ok) return;
+      }
+    } catch (err) {
+      console.error('[타입 변경] 영향 확인 실패', err);
+      // 확인을 못 해도 바꾸는 것 자체는 막지 않는다 — 다만 알린다
+      toast('바뀌는 줄을 확인하지 못했습니다 — 자재 체크 화면에서 보라색 줄을 확인해 주세요', 'error');
+    }
     setField(p, {
       자재: v ? v.label : '',
       bomLink: makeBomLink({
