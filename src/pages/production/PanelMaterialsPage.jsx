@@ -812,13 +812,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               label: ALL_BOXES,
               count: (() => {
                 const n = boxesWithRows.reduce((a, b) => a + (shortByBox[b] || 0), 0);
-                return n > 0 ? n : ' ';
+                return n > 0 ? n : undefined;
               })(),
             },
             ...(boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES).map((b) => ({
               value: b,
               label: b,
-              count: shortByBox[b] > 0 ? shortByBox[b] : ' ',
+              count: shortByBox[b] > 0 ? shortByBox[b] : undefined,
             })),
           ]}
           value={searching ? ALL_BOXES : box}
@@ -835,17 +835,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             aria-label="자재 찾기"
           />
         </div>
-        <ViewSwitch
-          className="pmat-rowview"
-          options={[
-            { value: 'all', label: '전체' },
-            { value: 'short', label: '부족' },
-            { value: 'done', label: '완료' },
-          ]}
-          value={rowView}
-          onChange={setRowView}
-          ariaLabel="줄 보기"
-        />
       </div>
 
       {/* 도급 / 사급 탭 + 진행 */}
@@ -890,10 +879,25 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             둘을 함께 두면 줄이 하나 늘어 표가 그만큼 짧아졌다
             (2026-09-12 대표님 「잠금해제를하면 리스트가 다시작아짐」). */}
         {supplyTab === 'paid' && locked && (
-          <span className="pmat-hint pmat-hint-paid">
-            발주서를 입고하면 도급 재고에 쌓이고, 여기서 세트를 만들며 체크한 만큼 빠집니다
+          <span
+            className="pmat-hint pmat-hint-paid"
+            title="발주서를 입고하면 도급 재고에 쌓이고, 여기서 세트를 만들며 체크한 만큼 빠집니다"
+            aria-label="도급 재고 설명"
+          >
+            ⓘ
           </span>
         )}
+        <ViewSwitch
+          className="pmat-rowview"
+          options={[
+            { value: 'all', label: '전체' },
+            { value: 'short', label: '부족' },
+            { value: 'done', label: '완료' },
+          ]}
+          value={rowView}
+          onChange={setRowView}
+          ariaLabel="줄 보기"
+        />
         {/* 「전부 비움·전부 들어옴」은 없앴다 — 줄마다 «왜 없나 / 어떻게 채웠나»를 남기는 방향과
             어긋나고, 한 번에 밀면 사유가 통째로 비게 된다 (2026-09-15 대표님) */}
       </div>
@@ -915,7 +919,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 오른쪽에 빈 공간이 남지 않는다 (2026-09-05 대표님) */}
             <colgroup>
               {/* 코드 열은 뺐다 — 현장에서는 도번·품명으로 찾는다 (2026-09-08 대표님) */}
-              {['44px', '11%', '13%', null, '6.5%', '6.5%', '10%', hasMeta ? '10%' : null, '8%', '124px']
+              {/* 1340px 태블릿에서 도번(6715-000911)·상태(고객사 0 · 당사 0)가 잘렸다 — 도번·상태를
+                  늘리고 품명·기록을 줄인다. 규격은 남는 자리라 두 줄이 될 수 있다 (2026-09-17 대표님) */}
+              {['44px', '13%', '12%', null, '6.5%', '6.5%', '13%', hasMeta ? '7%' : null, '8%', '124px']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
@@ -930,10 +936,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
                 <th scope="col" className="pmat-num">
-                  필요 수량
+                  필요
                 </th>
                 <th scope="col" className="pmat-num">
-                  입고 수량
+                  입고
                 </th>
                 <th scope="col">상태</th>
                 {hasMeta && <th scope="col">기록</th>}
@@ -941,7 +947,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상. 작업 열이라 맨 오른쪽·좁게
                     (2026-09-05 대표님 「폭을 줄이고 맨 우측으로」) */}
                 <th scope="col" className="col-action pmat-act">
-                  이 호기
+                  작업
                 </th>
               </tr>
             </thead>
@@ -1092,7 +1098,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       </td>
                       {hasMeta && (
                         <td className="pmat-meta">
-                          {meta?.at ? `${meta.at}${meta.by ? ` · ${meta.by}` : ''}` : ''}
+                          {meta?.at ? (
+                            <span title={`${meta.at}${meta.by ? ` · ${meta.by}` : ''}`}>
+                              {String(meta.at).length >= 10 ? String(meta.at).slice(5, 10) : meta.at}
+                              {meta.by ? ` · ${meta.by}` : ''}
+                            </span>
+                          ) : (
+                            ''
+                          )}
                           {/* 「재고에서 N」은 뺐다 — 이제 채우는 길이 재고뿐이라 늘 같은 말이 된다
                             (2026-09-15 대표님 「무조건 재고에서만 채울수있는데」) */}
                         </td>

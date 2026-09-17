@@ -22387,12 +22387,6 @@ a.lib-row-name:hover {
   background: var(--bg-subtle, #f2f4f6);
   color: var(--text-muted);
 }
-.pmat-boxes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 12px 0 10px;
-}
 .pmat-box-tab {
   padding: 7px 14px;
   border: 1px solid var(--border);
@@ -22412,13 +22406,19 @@ a.lib-row-name:hover {
 .pmat-kinds {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
   margin: 0 0 10px;
 }
 .pmat-hint {
   margin-left: 6px;
   font-size: 13px;
   color: var(--text-muted);
+}
+.pmat-hint-paid {
+  cursor: help;
+  font-size: 15px;
+  line-height: 1;
 }
 .pmat-fill {
   margin-left: auto;
@@ -23515,12 +23515,6 @@ a.lib-row-name:hover {
   margin-left: auto;
 }
 /* BOX 마다 부족 수량 — 자리(폭)를 늘 비워 두어 탭 간격이 흔들리지 않게 */
-.pmat-box-switch .view-switch-count {
-  min-width: 20px;
-  justify-content: center;
-  background: transparent;
-  color: transparent;
-}
 .pmat-box-switch .view-switch-item .view-switch-count:not(:empty) {
   background: var(--danger-soft, #fbe9e7);
   color: var(--danger, #b3261e);
@@ -24022,8 +24016,8 @@ a.lib-row-name:hover {
 /* 호기 체크 찾기 칸 — BOX 탭 줄 오른쪽, 좁은 화면에선 한 줄 아래로 (2026-09-15 대표님) */
 .pmat-search-wrap {
   position: relative;
-  flex: 0 1 260px;
-  min-width: 150px;
+  flex: 0 1 200px;
+  min-width: 140px;
 }
 .pmat-search {
   width: 100%;
@@ -24469,7 +24463,6 @@ body.has-editlock .main-content.expanded {
   background: var(--primary-soft, #e7ebf2);
   border-top: 2px solid var(--primary, #0f285f);
   border-bottom: 1px solid var(--primary, #0f285f);
-  border-left: 5px solid var(--primary, #0f285f);
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.01em;
@@ -24615,4 +24608,9 @@ body.has-editlock .main-content.expanded {
   gap: var(--space-2);
   flex-wrap: wrap;
   margin: 0 0 var(--space-3);
+}
+
+/* 자재 체크 머리줄의 No — 네이비 위에 회색(--text-light)이라 안 보였다 (2026-09-17) */
+.pmat-table thead th.col-no {
+  color: rgba(255, 255, 255, 0.75);
 }
