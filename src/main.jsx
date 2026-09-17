@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { isServer } from './config/data';
+import { isServer, chooseNearestServer } from './config/data';
 import './styles/global.css';
 import { bootUiScale } from './utils/uiScale';
 import './styles/design-system.css';
@@ -38,6 +38,10 @@ try {
 // 있고, 그쪽은 쓰는 순간 ensureAnonymousAuth 를 부른다
 // (2026-09-12 대표님 「걷어낼까요?」 → 「ㅇㅇ」).
 bootUiScale();
+// 사내에서는 사내 길로 붙는다 — 서버가 옆방에 있는데 요청이 인터넷을 돌아 들어와 화면이
+// 늦게 떴다 (2026-09-17 대표님 「로그인이 느려지고 화면들이 바로 뜨지않음」).
+// 길을 고르는 데 사내에서는 0.03초, 밖에서는 최대 0.7초가 들고 그마저 탭마다 한 번뿐이다.
+await chooseNearestServer().catch(() => {});
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

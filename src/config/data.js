@@ -54,3 +54,6 @@ export const callSendEmail = isServer ? serverMail.callSendEmail : fbMail.callSe
 // 아래 둘은 Firebase 의 로컬 캐시를 비우는 기능이라 서버 모드에는 없다 — 부르면 조용히 넘어간다.
 export const terminate = isServer ? async () => {} : fb.terminate;
 export const clearIndexedDbPersistence = isServer ? async () => {} : fb.clearIndexedDbPersistence;
+
+// 사내 길 고르기 — 서버 모드에서만 뜻이 있다. 구글 모드에서는 아무것도 안 한다.
+export const chooseNearestServer = isServer ? server.chooseNearestServer : async () => '';

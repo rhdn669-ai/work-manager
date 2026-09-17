@@ -8,9 +8,21 @@
 // 자주 찾는 값(현장·사용자·사번 등)만 «따라 만들어지는 열»로 뽑혀 색인이 걸려 있다.
 import { createClient } from '@supabase/supabase-js';
 import { removeRow } from '../services/serverDocDelete';
+import { pickServer } from './nearestServer';
 
 const URL = import.meta.env.VITE_SB_URL || '';
 const ANON = import.meta.env.VITE_SB_ANON_KEY || '';
+// 사내에서 곧장 갈 수 있는 주소 — 적어 두지 않으면 이 기능은 통째로 꺼진 것과 같다
+const NEAR = import.meta.env.VITE_SB_URL_LOCAL || '';
+
+// 앱이 켜질 때 한 번 골라 여기에 담는다 (nearestServer.js 참고)
+let picked = '';
+/** 사내 길이 열려 있으면 그 길로 붙게 해 둔다. 접속을 만들기 «전»에 불러야 한다. */
+export async function chooseNearestServer() {
+  if (client || !NEAR || !URL || !ANON) return URL;
+  picked = await pickServer(URL, NEAR, ANON);
+  return picked;
+}
 
 // 접속 준비는 «실제로 부를 때» 한다. 파일을 읽는 순간 만들면, 서버를 쓰지 않는 곳
 // (예: 계산 로직만 확인하는 단위 시험)에서도 서버 주소가 없다고 멈춰 버린다.
@@ -19,7 +31,7 @@ function connect() {
   if (client) return client;
   if (!URL || !ANON)
     throw new Error('사내 서버 주소나 열쇠가 설정되지 않았습니다 (.env 의 VITE_SB_URL · VITE_SB_ANON_KEY)');
-  client = createClient(URL, ANON, {
+  client = createClient(picked || URL, ANON, {
     auth: { persistSession: true, autoRefreshToken: true, storageKey: 'wmServerAuth' },
     db: { schema: 'wm' },
   });
