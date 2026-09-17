@@ -24616,3 +24616,17 @@ body.has-editlock .main-content.expanded {
 .pmat-table thead th.col-no {
   color: rgba(255, 255, 255, 0.75);
 }
+
+/* 재고 표 — 타입 전용 품목 배지 (무채색, 작게). 자재 체크와 재고의 개수 차이 이유가 바로 보이게 (2026-09-17) */
+.stock-variant {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--grey-100, #f1f3f5);
+  color: var(--text-muted, #6b7280);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: middle;
+}

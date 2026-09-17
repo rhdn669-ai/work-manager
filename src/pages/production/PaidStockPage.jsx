@@ -140,6 +140,15 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     };
   }, [all, bomByProject]);
 
+  // 타입 열쇠(vM7H) → 라벨(M7H). 호기의 BOM 연결에 스냅샷이 있어 따로 안 읽는다
+  const variantLabel = useMemo(() => {
+    const m = {};
+    for (const p of panels) {
+      const k = p.bomLink?.variantKey;
+      if (k && !m[k]) m[k] = p.bomLink?.variantLabel || String(k).replace(/^v/, '');
+    }
+    return m;
+  }, [panels]);
   const { groups, allRows } = useMemo(() => {
     const perOneAll = new Map(); // 호기 한 대가 쓰는 총량 — 「가능 SET」은 늘 이걸로 센다
     const goneAll = new Map(); // 호기들에 들어간 총량
@@ -199,8 +208,15 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
               drawingNo: m?.drawingNo || r.drawingNo || '',
               // 재고에 얼마가 묶여 있는지 보려면 단가가 있어야 한다 (2026-09-12 대표님 「금액도」)
               unitPrice: Number(m?.unitPrice) || Number(m?.standardPrice) || 0,
+              // 타입 전용 품목 표시용 (사급 재고의 aggregateShortage 와 같은 규칙)
+              _anyCommon: false,
+              _vk: new Set(),
             });
           }
+          const vkInfo = info.get(r.itemId);
+          const vk = Array.isArray(r.variantKeys) ? r.variantKeys : [];
+          if (vk.length === 0) vkInfo._anyCommon = true;
+          else vk.forEach((k) => vkInfo._vk.add(k));
         }
       }
       for (const [k, v] of one) perOneAll.set(k, Math.max(perOneAll.get(k) || 0, v));
@@ -216,7 +232,8 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     //  — 굳히기 대신 0 에서 새로 시작한다)
     const ledger = ledgerOn(settings, company, kind);
     const stockOfItem = new Map();
-    for (const it of info.values()) {
+    for (const it0 of info.values()) {
+      const it = { ...it0, variantKeys: it0._anyCommon ? [] : [...it0._vk].sort() };
       const fromPo = !ledger && (projectId || siteId) ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
       const out0 = ledger ? 0 : Math.max(0, goneAll.get(it.itemId) || 0);
       const base = fromPo - out0;
@@ -501,7 +518,16 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                     <tr key={`${g.box}-${r.itemId}`}>
                       <td className="col-no">{i + 1}</td>
                       <td className="pmat-drawing">{r.drawingNo}</td>
-                      <td className="u-wrap">{r.name}</td>
+                      <td className="u-wrap">
+                        {r.name}
+                        {/* 타입 전용 품목 — 자재 체크(그 호기 타입만)와 재고(전 타입)의 개수 차이가 여기서
+                          난다 (2026-09-17 대표님 「호기체크 MP 갯수와 사급재고 MP 갯수가 다름?」) */}
+                        {(r.variantKeys || []).map((k) => (
+                          <span key={k} className="stock-variant" title="이 타입 호기에만 쓰이는 품목">
+                            {variantLabel[k] || String(k).replace(/^v/, '')}
+                          </span>
+                        ))}
+                      </td>
                       <td className="pmat-spec u-wrap" title={r.spec}>
                         {r.spec}
                       </td>

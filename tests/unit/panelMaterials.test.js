@@ -117,3 +117,27 @@ describe('호기 범위 부족 집계', () => {
     expect(out[0].short).toBe(1);
   });
 });
+
+describe('타입 전용 품목 표시 (2026-09-17)', () => {
+  const entries = (rows) => [{ panelLabel: 'p', rows, received: {} }];
+  it('어느 줄이라도 타입 제한이 없으면 공통', () => {
+    const out = aggregateShortage(
+      entries([
+        { id: 'a', itemId: 'X', qty: 1, variantKeys: ['vM7H'] },
+        { id: 'b', itemId: 'X', qty: 1, variantKeys: [] },
+      ]),
+      { onlyShort: false },
+    );
+    expect(out[0].variantKeys).toEqual([]);
+  });
+  it('전부 제한이면 합집합', () => {
+    const out = aggregateShortage(
+      entries([
+        { id: 'a', itemId: 'X', qty: 1, variantKeys: ['vM7H'] },
+        { id: 'b', itemId: 'X', qty: 1, variantKeys: ['vT5391'] },
+      ]),
+      { onlyShort: false },
+    );
+    expect(out[0].variantKeys).toEqual(['vM7H', 'vT5391']);
+  });
+});

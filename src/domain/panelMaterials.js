@@ -95,9 +95,16 @@ export function aggregateShortage(entries, { onlyShort = true } = {}) {
           got: 0,
           short: 0,
           panels: [],
+          // 타입 전용 품목 표시용 — 어느 줄이라도 타입 제한이 없으면 공통(빈 배열), 전부 제한이면 합집합
+          variantKeys: [],
+          _anyCommon: false,
+          _vk: new Set(),
         });
       }
       const a = map.get(key);
+      const vk = Array.isArray(r.variantKeys) ? r.variantKeys : [];
+      if (vk.length === 0) a._anyCommon = true;
+      else vk.forEach((k) => a._vk.add(k));
       a.need += need;
       a.got += got;
       a.short += short;
@@ -105,6 +112,7 @@ export function aggregateShortage(entries, { onlyShort = true } = {}) {
     }
   }
   return [...map.values()]
+    .map(({ _anyCommon, _vk, ...a }) => ({ ...a, variantKeys: _anyCommon ? [] : [..._vk].sort() }))
     .filter((a) => !onlyShort || a.short > 0)
     .sort((x, y) => y.short - x.short || x.code.localeCompare(y.code));
 }

@@ -109,6 +109,15 @@ export default function FreeStockPage({ company }) {
   }, [mine, bomByProject]);
 
   // allRows 는 검색·보기를 거치지 않은 전체 — 위쪽 요약은 늘 전체를 봐야 한다.
+  // 타입 열쇠(vM7H) → 라벨(M7H). 호기의 BOM 연결에 스냅샷이 있어 따로 안 읽는다
+  const variantLabel = useMemo(() => {
+    const m = {};
+    for (const p of panels) {
+      const k = p.bomLink?.variantKey;
+      if (k && !m[k]) m[k] = p.bomLink?.variantLabel || String(k).replace(/^v/, '');
+    }
+    return m;
+  }, [panels]);
   const { groups, allRows } = useMemo(() => {
     // 「1대당」 — 호기 하나가 쓰는 개수. 호기마다 다르면 가장 큰 값을 쓴다.
     const perOneAll = new Map(); // 품목 전체 (가능 SET 용)
@@ -436,7 +445,16 @@ export default function FreeStockPage({ company }) {
                     <tr key={r.itemId || r.code || i}>
                       <td className="col-no">{i + 1}</td>
                       <td className="pmat-drawing">{r.drawingNo}</td>
-                      <td className="u-wrap">{r.name}</td>
+                      <td className="u-wrap">
+                        {r.name}
+                        {/* 타입 전용 품목 — 자재 체크(그 호기 타입만)와 재고(전 타입)의 개수 차이가 여기서
+                          난다 (2026-09-17 대표님 「호기체크 MP 갯수와 사급재고 MP 갯수가 다름?」) */}
+                        {(r.variantKeys || []).map((k) => (
+                          <span key={k} className="stock-variant" title="이 타입 호기에만 쓰이는 품목">
+                            {variantLabel[k] || String(k).replace(/^v/, '')}
+                          </span>
+                        ))}
+                      </td>
                       <td className="pmat-spec u-wrap" title={r.spec}>
                         {r.spec}
                       </td>
