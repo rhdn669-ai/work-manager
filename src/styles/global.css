@@ -22446,7 +22446,11 @@ a.lib-row-name:hover {
 /* 입고 수량 — 누르면 필요 수량만큼 채우고, 다시 누르면 0. 길게 누르면 숫자를 적는다
    (2026-09-08 대표님. 실측상 100건 중 96건이 필요 수량 그대로 들어온다) */
 .pmat-table .pmat-qty-btn {
-  width: 72px;
+  /* 72px 은 입고 칸(약 56px)보다 넓어 좌우가 잘리고 있었다 — 칸을 꽉 채우되 넘지 않게
+     (2026-09-17 실측: 필요 99px vs 칸 55px) */
+  width: 100%;
+  max-width: 72px;
+  min-width: 40px;
   height: 32px;
   border: 1px solid transparent;
   border-radius: 6px;

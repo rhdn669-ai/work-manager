@@ -1022,7 +1022,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               {/* 작업 칸 — 단추가 최대 4개(취소·빼기·입고·수정). 실측 4개 = 190px 라 196px 로 잡는다.
                   「가」(큰 글자)는 안 쓰는 기준이므로 고정 px 로 둔다
                   (2026-09-17 대표님 「입고버튼 조건 은보이게 칸을좀더 늘려」) */}
-              {['44px', '12%', '10.5%', null, '6.5%', '6.5%', '15%', hasMeta ? '5.5%' : null, '6%', '196px']
+              {['44px', '12.5%', '10.5%', null, '7.5%', '7.5%', '15%', hasMeta ? '6%' : null, '6%', '196px']
                 .filter((_, i) => hasMeta || i !== 7)
                 .map((w, i) => (
                   <col key={i} style={w ? { width: w } : undefined} />
