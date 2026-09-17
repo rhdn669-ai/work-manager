@@ -229,6 +229,9 @@ export default function FreeStockPage({ company }) {
           return base
             ? {
                 ...base,
+                // 타입 전용 표시는 «이 BOX 줄» 기준 — 품목 단위로 보면 다른 BOX 의 공통 줄에 묻혀
+                // MP 의 M7H 전용 Relay 에 배지가 안 붙었다 (2026-09-17)
+                variantKeys: a.variantKeys,
                 perOne: ob.get(a.itemId || '') || 0,
                 got: a.got,
                 // 사급은 체크 기준 — 이 줄에 실제로 넣은 호기만 (대표님 「체크된 호기에 한해서」)

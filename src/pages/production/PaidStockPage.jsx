@@ -156,7 +156,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     const info = new Map();
     const byBox = new Map(); // box → { perOne: Map, gone: Map, out: 나감 SET 집계 }
     const pick = (bx) => {
-      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map(), out: outTally() });
+      if (!byBox.has(bx)) byBox.set(bx, { perOne: new Map(), gone: new Map(), out: outTally(), vk: new Map() });
       return byBox.get(bx);
     };
 
@@ -208,15 +208,15 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
               drawingNo: m?.drawingNo || r.drawingNo || '',
               // 재고에 얼마가 묶여 있는지 보려면 단가가 있어야 한다 (2026-09-12 대표님 「금액도」)
               unitPrice: Number(m?.unitPrice) || Number(m?.standardPrice) || 0,
-              // 타입 전용 품목 표시용 (사급 재고의 aggregateShortage 와 같은 규칙)
-              _anyCommon: false,
-              _vk: new Set(),
             });
           }
-          const vkInfo = info.get(r.itemId);
+          // 타입 전용 표시는 «이 BOX 줄» 기준 — 어느 줄이라도 제한이 없으면 공통, 전부 제한이면 합집합
+          const bv = pick(bx).vk;
+          if (!bv.has(r.itemId)) bv.set(r.itemId, { common: false, keys: new Set() });
+          const e = bv.get(r.itemId);
           const vk = Array.isArray(r.variantKeys) ? r.variantKeys : [];
-          if (vk.length === 0) vkInfo._anyCommon = true;
-          else vk.forEach((k) => vkInfo._vk.add(k));
+          if (vk.length === 0) e.common = true;
+          else vk.forEach((k) => e.keys.add(k));
         }
       }
       for (const [k, v] of one) perOneAll.set(k, Math.max(perOneAll.get(k) || 0, v));
@@ -232,8 +232,7 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     //  — 굳히기 대신 0 에서 새로 시작한다)
     const ledger = ledgerOn(settings, company, kind);
     const stockOfItem = new Map();
-    for (const it0 of info.values()) {
-      const it = { ...it0, variantKeys: it0._anyCommon ? [] : [...it0._vk].sort() };
+    for (const it of info.values()) {
       const fromPo = !ledger && (projectId || siteId) ? Math.max(0, Number(received[it.itemId]) || 0) : 0;
       const out0 = ledger ? 0 : Math.max(0, goneAll.get(it.itemId) || 0);
       const base = fromPo - out0;
@@ -283,6 +282,10 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
           return base
             ? {
                 ...base,
+                variantKeys: (() => {
+                  const e = b.vk.get(itemId);
+                  return !e || e.common ? [] : [...e.keys].sort();
+                })(),
                 perOne: b.perOne.get(itemId) || 0,
                 out: b.gone.get(itemId) || 0,
                 outSets: outSetsOf(b.out, itemId, started), // { sets, full, short }
