@@ -24244,7 +24244,10 @@ body.has-editlock .main-content.expanded {
 .pmat-table td.pmat-state .pmat-instock,
 .pmat-table td.pmat-state .pmat-incident {
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  /* 한 줄로 자르니 「467에서 가져옴 1」 같은 글이 「…」로 끊겼다. 태블릿은 손가락이라 툴팁도 안 뜬다 —
+     두 줄까지 허용한다. 「상태 3열x」(2026-09-16) 는 세 줄 금지이므로 두 줄은 지킨다
+     (2026-09-17 대표님 「상태 글 짤림」) */
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
