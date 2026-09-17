@@ -201,7 +201,10 @@ export default function Layout() {
           </button>
         </div>
       )}
-      <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <Header
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        canToggleSidebar={!defectOnly && (isAdmin || !isMobile)}
+      />
       <div className="app-body">
         {/* 사이드바 표시 조건:
             - 관리자: 항상 (PC는 기본 열림, 모바일은 햄버거로 토글)

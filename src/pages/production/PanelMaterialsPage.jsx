@@ -755,9 +755,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       .filter((p, i) => {
         if (p.id === panelId) return false;
         if (!dir || myAt < 0) return true;
-        // 내 것을 가져간 쪽은 앞 호기 — 그리고 «같은 타입»이어야 한다. 타입이 다르면 BOM 구성이 달라
-        // 그 줄이 없는 호기에 수량이 생겨 화면엔 안 보이는 유령 수량이 된다 (2026-09-17)
-        if (dir === 'earlier') return i < myAt && (p.bomLink?.variantKey || '') === (link?.variantKey || '');
+        // 내 것을 가져간 쪽은 앞 호기. 다만 «그 자재를 쓰는» 호기여야 한다 — 안 쓰는 호기에 수량이
+        // 생기면 화면엔 안 보이는 유령 수량이 된다. 처음엔 «같은 타입»으로 막았는데 너무 넓게 막혔다:
+        // 공통 자재(variantKeys 가 빈 줄)는 타입이 달라도 함께 쓰므로 뜨는 게 맞다
+        // (2026-09-17 대표님 「209 호기 120AA 한개 … 467호기에서 왜 리스트가안뜨냐」)
+        if (dir === 'earlier') {
+          if (i >= myAt) return false;
+          const ks = Array.isArray(row?.variantKeys) ? row.variantKeys : [];
+          return ks.length === 0 || ks.includes(p.bomLink?.variantKey || '');
+        }
         if (i < myAt) return false; // 앞 호기에서는 안 가져온다
         return !row || (Number(allMaterials[p.id]?.[boxOf(row)]?.[row.id]?.qty) || 0) > 0;
       })

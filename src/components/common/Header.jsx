@@ -7,7 +7,7 @@ import Icon from './Icon';
 import UiScaleToggle from './UiScaleToggle';
 import { formatRelativeKo } from '../../utils/dateUtils';
 
-export default function Header({ onToggleSidebar }) {
+export default function Header({ onToggleSidebar, canToggleSidebar }) {
   const { userProfile, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -27,8 +27,11 @@ export default function Header({ onToggleSidebar }) {
   return (
     <header className="header">
       <div className="header-left">
-        {isAdmin && (
-          <button className="menu-toggle" onClick={onToggleSidebar} aria-label="메뉴">
+        {/* 옆 메뉴를 접는 단추 — 전에는 관리자에게만 보였다. 직원도 같은 옆 메뉴를 보는데
+          접을 수가 없어 좁은 태블릿에서 표가 그만큼 좁았다. 옆 메뉴가 실제로 그려지는
+          경우와 같은 조건으로 맞춘다 (2026-09-17 대표님 「직원들도 생산모드 사이드탭 접는 버튼」) */}
+        {(canToggleSidebar === undefined ? isAdmin : canToggleSidebar) && (
+          <button className="menu-toggle" onClick={onToggleSidebar} aria-label="메뉴 접기·펼치기">
             <Icon name="list" />
           </button>
         )}
