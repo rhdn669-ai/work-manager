@@ -34,7 +34,7 @@ import { OUT_WHYS, IN_WHYS, WHY_WHYS, needsMate, rowSummary, shortPanel } from '
 import { writeMatLog } from '../../services/matLogService';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
-import { MADE, MADE_TYPE, isMade, inKindTab, kindOf } from '../../domain/itemKind';
+import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
 import { specFontClass, localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
@@ -188,11 +188,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [bomRowsFull, link?.variantKey]);
   // 「전체」 — 모든 BOX 줄을 한 표에 BOX 구분줄과 함께 늘어놓는다. 저장은 줄마다 제 BOX 로 간다
   // (2026-09-16 대표님 「준비작업 앞에 박스 전체 필터 하나만 걸어줘」)
+  // 검색어 — 표를 거르는 열쇠. boxList 가 먼저 쓰므로 여기서 선언한다 (TDZ 주의)
+  const [q, setQ] = useState('');
+  const searching = !!q.trim();
   const ALL_BOXES = '전체';
   // 처음 열면 「전체」 — BOX 를 고르기 전에 호기 전체가 한눈에 (2026-09-16 대표님 「첫 호기체크 화면은 박스 전체 보이게」)
   const box = sp.get('box') || ALL_BOXES;
   const allBoxes = box === ALL_BOXES;
-  const boxList = allBoxes ? boxesWithRows : [box];
+  // 검색 중엔 BOX 를 가리지 않는다 — 「이 호기 전체에서 찾기」 (2026-09-17 대표님 「재고통처럼 바로 리스트」)
+  const boxList = allBoxes || searching ? boxesWithRows : [box];
   // 주소의 다른 값(고른 호기·탭)은 그대로 두고 box 만 바꾼다 —
   // 예전엔 통째로 갈아 끼워 BOX 를 누르면 첫 호기로 튀었다 (2026-09-05 대표님)
   const setBox = (b) => putParam('box', b);
@@ -246,7 +250,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 보기(전체·부족·완료)도 같은 까닭으로 주소에 둔다
   // 도번·품명·규격으로 찾기 — 이 호기 «전체»에서 찾고, 고르면 그 BOX·갈래 탭으로 옮겨 간다
   // (2026-09-15 대표님 「전체리스트중에 검색 되고 해당 위치에 맞게 탭 움직이는걸로」)
-  const [q, setQ] = useState('');
   // 줄에서 한 일을 적는 창 — kind 'out'(줄임) | 'in'(채움) | 'why'(0 인 줄 까닭)
   // (2026-09-15 대표님 「없는 이유가 남아야하고 그걸 채우면 어떻게 채웠는지가 남아야」)
   const [logForm, setLogForm] = useState(null);
@@ -305,40 +308,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     );
   };
   // 이 호기의 모든 BOX·모든 갈래에서 찾은 줄 — 지금 보고 있는 자리가 맨 위
-  const found = useMemo(() => {
-    if (!q.trim()) return [];
-    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    const out = [];
-    for (const b of boxesWithRows.length ? boxesWithRows : CHECKABLE_BOXES) {
-      for (const r of bomRowsForBox(forVariant, b)) {
-        if (!hit(r)) continue;
-        out.push({ row: r, box: b, kind: kindOf(r) });
-      }
-    }
-    return out.sort((a, c) => (a.box === box ? -1 : c.box === box ? 1 : 0));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, bomRowsFull, link?.variantKey, boxesWithRows, box]);
-  const goTo = (f) => {
-    setSupplyTab(f.kind === 'made' ? MADE : f.kind);
-    if (!allBoxes && f.box !== box) setBox(f.box);
-    setQ('');
-    // 그 줄이 보이게 — 표가 다시 그려진 뒤에
-    setTimeout(() => {
-      const el = document.querySelector(`[data-row-id="${f.row.id}"]`);
-      if (el) {
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        el.classList.add('is-hit');
-        setTimeout(() => el.classList.remove('is-hit'), 1600);
-      }
-    }, 120);
-  };
+  // 검색어가 있으면 그 줄만 — 아래로 펼치는 목록 대신 표 자체가 걸러진다 (2026-09-17 대표님).
+  // 글자판이 화면 절반을 먹는 태블릿에서 펼침 목록은 그 위에 끼어 세 줄밖에 안 보였다.
+  const hitElsewhere = searching ? rows.filter((r) => hit(r) && !inTab(r)).length : 0;
   const shown = rows.filter(inTab).filter((r) => {
+    if (searching && !hit(r)) return false;
     if (rowView === 'all') return true;
     const done = rowDone(r, recOf(r));
     return rowView === 'done' ? done : !done;
   });
   // 줄이 실제로 그려졌는지 알려 주는 열쇠 — 이것이 바뀐 뒤에 자리를 되돌린다
-  const shownKey = `${shown.length}:${box}:${supplyTab}`;
+  const shownKey = `${shown.length}:${box}:${supplyTab}:${q}`;
   // 자리를 계속 기억해 둔다 — 호기가 바뀌면 상자가 새로 그려지므로 «바뀌기 전»에 담아야 한다
   useEffect(() => {
     const el = boxRef.current;
@@ -376,6 +356,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     if (!put()) for (const ms of [60, 150, 320, 600, 1000]) timers.push(setTimeout(put, ms));
     return () => timers.forEach(clearTimeout);
   }, [panelId]);
+
+  // 검색어가 바뀌면 걸러진 첫 줄부터 보이게 맨 위로
+  useEffect(() => {
+    if (searching && boxRef.current) boxRef.current.scrollTop = 0;
+  }, [q, searching]);
 
   const summary = useMemo(
     () => boxSummary(rows.filter(inScope), recOf, isMadeRow),
@@ -836,7 +821,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               count: shortByBox[b] > 0 ? shortByBox[b] : ' ',
             })),
           ]}
-          value={box}
+          value={searching ? ALL_BOXES : box}
           onChange={setBox}
           ariaLabel="BOX"
           className="pmat-box-switch"
@@ -849,31 +834,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             placeholder="이 호기 전체에서 찾기 (도번·품명·규격)"
             aria-label="자재 찾기"
           />
-          {q.trim() && (
-            <div className="pmat-found" role="listbox" aria-label="찾은 자재">
-              {found.length === 0 ? (
-                <p className="field-hint">찾는 자재가 없습니다</p>
-              ) : (
-                found.slice(0, 40).map((f) => (
-                  <button
-                    type="button"
-                    key={`${f.box}:${f.row.id}`}
-                    className="pmat-found-item"
-                    onClick={() => goTo(f)}
-                  >
-                    <span className="pmat-found-box">{f.box}</span>
-                    <span className="pmat-found-kind">
-                      {f.kind === 'made' ? MADE : f.kind === 'free' ? '사급' : '도급'}
-                    </span>
-                    <span className="pmat-found-dn">{f.row.drawingNo}</span>
-                    <span className="pmat-found-name">{f.row.name}</span>
-                    <span className="pmat-found-spec">{f.row.spec}</span>
-                  </button>
-                ))
-              )}
-              {found.length > 40 && <p className="field-hint">외 {found.length - 40}줄 — 더 적어서 좁혀 주세요</p>}
-            </div>
-          )}
         </div>
         <ViewSwitch
           className="pmat-rowview"
@@ -940,11 +900,13 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
       {shown.length === 0 ? (
         <p className="purchase-empty no-print">
-          {rowView === 'short'
-            ? '부족한 줄이 없습니다.'
-            : rowView === 'done'
-              ? '완료된 줄이 없습니다.'
-              : `이 BOX 에 ${supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.`}
+          {searching
+            ? `「${q.trim()}」에 맞는 자재가 없습니다.${hitElsewhere ? ` 다른 갈래(도급·사급·판금)에 ${hitElsewhere}줄 있습니다.` : ''}`
+            : rowView === 'short'
+              ? '부족한 줄이 없습니다.'
+              : rowView === 'done'
+                ? '완료된 줄이 없습니다.'
+                : `이 BOX 에 ${supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'} 구성품이 없습니다.`}
         </p>
       ) : (
         <div className="table-scroll-x pmat-scroll no-print" ref={scrollRef}>
