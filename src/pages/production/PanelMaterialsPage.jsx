@@ -826,15 +826,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           ariaLabel="BOX"
           className="pmat-box-switch"
         />
-        <div className="pmat-search-wrap">
-          <input
-            className="fstock-search pmat-search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="이 호기 전체에서 찾기 (도번·품명·규격)"
-            aria-label="자재 찾기"
-          />
-        </div>
       </div>
 
       {/* 도급 / 사급 탭 + 진행 */}
@@ -887,6 +878,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             ⓘ
           </span>
         )}
+        <div className="pmat-search-wrap">
+          <input
+            className="fstock-search pmat-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="찾기 (도번·품명·규격)"
+            aria-label="자재 찾기"
+          />
+        </div>
         <ViewSwitch
           className="pmat-rowview"
           options={[
@@ -1101,7 +1101,6 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           {meta?.at ? (
                             <span title={`${meta.at}${meta.by ? ` · ${meta.by}` : ''}`}>
                               {String(meta.at).length >= 10 ? String(meta.at).slice(5, 10) : meta.at}
-                              {meta.by ? ` · ${meta.by}` : ''}
                             </span>
                           ) : (
                             ''
