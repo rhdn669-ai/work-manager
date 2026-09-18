@@ -1452,7 +1452,6 @@ export default function PurchaseItemPage() {
                                                         ? it.unit || ''
                                                         : '수량/단위를 바꾸려면 「잠금」을 푸세요'
                                                     }
-                                                    placeholder="개·m·2/개·roll/610m·박스 24개·10EA"
                                                     readOnly={!editMode}
                                                     onChange={(e) => {
                                                       if (!editMode) return;
