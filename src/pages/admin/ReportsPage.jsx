@@ -443,7 +443,9 @@ export function EmployeeDetailModal({
   const [editForm, setEditForm] = useState({});
   const [busy, setBusy] = useState(false);
   // 잠금 — 풀었을 때만 체크박스 + 「선택 삭제」 (2026-09-04 대표님 「잠금」 통일)
-  const [editMode, setEditMode] = useState(false);
+  const [unlocked, setEditMode] = useState(false);
+  // 마우스 PC 에서는 늘 풀려 있다 — 떠 있는 자물쇠와 같은 기준 (2026-09-18 대표님 「pc 에서는 잠금버튼 없애자」)
+  const editMode = isFinePointer() || unlocked;
   const [pick, setPick] = useState(() => new Set());
 
   function startEdit(row) {
@@ -551,7 +553,7 @@ export function EmployeeDetailModal({
             {user.name} · {year}년 {month}월 {tab === 'overtime' ? '잔업' : '연차'}
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {canEdit && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
+            {canEdit && !isFinePointer() && <EditModeButton on={editMode} onToggle={toggleEditMode} />}
             <button className="modal-close" onClick={onClose}>
               ×
             </button>
@@ -838,6 +840,7 @@ export function EmployeeDetailModal({
 
 import { LEAVE_TYPE_LABELS } from '../../utils/constants';
 import { isRealStaff } from '../../utils/workspace';
+import { isFinePointer } from '../../utils/finePointer';
 
 function leaveTypeLabel(type) {
   return LEAVE_TYPE_LABELS[type] || type || '-';

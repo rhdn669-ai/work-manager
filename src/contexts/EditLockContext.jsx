@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { EditLockContext } from './useEditLock';
 import Icon from '../components/common/Icon';
+import { isFinePointer } from '../utils/finePointer';
 
 // 「잠금」을 앱 전체가 하나로 쓴다 — 화면 오른쪽 아래에 떠 있어 표를 내려봐도 따라온다.
 // 화면을 나가면 다시 잠긴다(예전과 같다). 잠금을 쓰는 화면에서만 자물쇠가 보인다.
@@ -12,7 +13,10 @@ export function EditLockProvider({ children }) {
   const [users, setUsers] = useState(0); // 지금 화면이 잠금을 쓰는가
   const { pathname } = useLocation();
 
-  const on = lock.on && lock.path === pathname;
+  // 마우스 PC 에서는 늘 풀려 있고 자물쇠도 안 보인다 — 잠금은 터치로 스치는 실수를 막는 것이라
+  // 마우스에서는 군더더기였다 (2026-09-18 대표님 「pc 에서는 잠금버튼 없애자」)
+  const pc = isFinePointer();
+  const on = pc || (lock.on && lock.path === pathname);
   const toggle = useCallback(
     () => setLock((s) => ({ path: pathname, on: !(s.on && s.path === pathname) })),
     [pathname],
@@ -20,9 +24,9 @@ export function EditLockProvider({ children }) {
 
   // 잠금이 뜨는 화면에는 본문 아래에 버튼만큼 자리를 비운다 (CSS 가 --fab-clear 로 받는다)
   useEffect(() => {
-    document.body.classList.toggle('has-editlock', users > 0);
+    document.body.classList.toggle('has-editlock', users > 0 && !pc);
     return () => document.body.classList.remove('has-editlock');
-  }, [users]);
+  }, [users, pc]);
 
   const register = useCallback(() => {
     setUsers((n) => n + 1);
@@ -34,14 +38,14 @@ export function EditLockProvider({ children }) {
   return (
     <EditLockContext.Provider value={value}>
       {/* 「수정 중」 띠는 글 흐름 안에 둔다 — 띄워 두면 화면 제목을 덮는다 */}
-      {users > 0 && on && (
+      {users > 0 && on && !pc && (
         <div className="editlock-bar" role="status">
           <Icon name="unlock" className="editlock-bar-ic" />
           수정 중 — 끌어서 옮기고, 골라서 지울 수 있습니다
         </div>
       )}
       {children}
-      {users > 0 && (
+      {users > 0 && !pc && (
         <>
           <button
             type="button"
