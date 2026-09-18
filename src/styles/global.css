@@ -23159,17 +23159,23 @@ a.lib-row-name:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 .pstrip {
+  /* 화면을 내려도 호기 줄은 위에 붙어 있다 (2026-09-18 대표님 「호기를 화면을 내려도 볼수있게 고정」) */
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  padding-top: 4px;
+  background: var(--bg);
 }
 .pstrip-scroll {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  gap: 6px;
-  padding: 3px 28px 6px 2px;
+  gap: 5px;
+  padding: 2px 28px 4px 2px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
@@ -23181,18 +23187,20 @@ a.lib-row-name:hover {
 .pstrip-scroll::-webkit-scrollbar {
   display: none;
 }
+/* 칩 두 줄 — 윗줄 번호·호기, 아랫줄 타입·도급/사급. 타입을 옆에 두면 칩이 길어져 몇 개 못 본다
+   (2026-09-18 대표님 「타입표기를 아래로 내려서 가로를 좀더 짧게」) */
 .pstrip-chip {
   flex: none;
   display: grid;
-  grid-template-columns: auto auto auto;
+  grid-template-columns: auto auto;
   grid-template-areas:
-    'no name tag'
-    'no dots dots';
+    'no name'
+    'no sub';
   align-items: center;
-  column-gap: 6px;
-  row-gap: 2px;
+  column-gap: 7px;
+  row-gap: 3px;
   min-height: 46px;
-  padding: 5px 11px 5px 9px;
+  padding: 4px 9px 5px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 12px);
   background: var(--bg-card, #fff);
@@ -23222,7 +23230,8 @@ a.lib-row-name:hover {
 }
 .pstrip-name {
   grid-area: name;
-  font-size: 12.5px;
+  justify-self: start;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
@@ -23234,42 +23243,44 @@ a.lib-row-name:hover {
   letter-spacing: -0.01em;
   margin-left: 1px;
 }
+.pstrip-sub {
+  grid-area: sub;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 15px;
+}
 .pstrip-tag {
-  grid-area: tag;
-  padding: 1px 6px;
+  padding: 0 5px;
   border-radius: 999px;
   background: var(--bg-subtle, #f2f4f6);
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
+  line-height: 15px;
   color: var(--text-light);
   white-space: nowrap;
 }
-.pstrip-dots {
-  grid-area: dots;
-  display: flex;
-  gap: 4px;
-  min-height: 7px;
+/* 도급·사급 알약 — 완료 초록, 부족 주황(줄 수), 대기 회색 (DESIGN-SYSTEM §4 상태 배지 톤) */
+.pstrip-st {
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 15px;
+  white-space: nowrap;
+  background: var(--bg-subtle, #f2f4f6);
+  color: var(--text-light);
 }
-.pstrip-dots i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1.5px solid var(--border-strong, #c9d0da);
+.pstrip-st.is-ok {
+  background: #e6f4ea;
+  color: var(--success);
 }
-.pstrip-dots i.is-wait {
-  border-color: var(--border-strong, #c9d0da);
+.pstrip-st.is-short {
+  background: #fff3e0;
+  color: var(--warning);
 }
-.pstrip-dots i.is-short {
-  background: var(--warning);
-  border-color: var(--warning);
-}
-.pstrip-dots i.is-ok {
-  background: var(--success);
-  border-color: var(--success);
-}
-.pstrip-dots i.is-none {
-  visibility: hidden;
+.pstrip-st.is-none {
+  display: none;
 }
 .pstrip-chip.on {
   background: var(--primary);
@@ -23291,8 +23302,9 @@ a.lib-row-name:hover {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
-.pstrip-chip.on .pstrip-dots i {
-  border-color: rgba(255, 255, 255, 0.45);
+.pstrip-chip.on .pstrip-st.is-wait {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
 }
 .pstrip-chip.is-done:not(.on) {
   opacity: 0.5;

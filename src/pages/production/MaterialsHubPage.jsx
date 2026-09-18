@@ -170,7 +170,12 @@ export default function MaterialsHubPage() {
               <div className="pstrip-scroll" ref={stripRef} role="tablist" aria-label="호기">
                 {list.map((p, i) => {
                   const st = stateOf(p);
-                  const dots = st && st !== 'loading' ? [st.paid, st.free, ...(st.made ? [st.made] : [])] : [];
+                  // 도급·사급(·판금) 상태를 이름 붙은 알약으로 — 점만 있으면 어느 쪽인지 안 읽힌다
+                  // (2026-09-18 대표님 「동그라미를 사급 도급 토글로 잘보이게」)
+                  const states =
+                    st && st !== 'loading'
+                      ? [['도급', st.paid], ['사급', st.free], ...(st.made ? [[MADE, st.made]] : [])]
+                      : [];
                   return (
                     <button
                       key={p.id}
@@ -185,10 +190,19 @@ export default function MaterialsHubPage() {
                     >
                       <span className="pstrip-no">{i + 1}</span>
                       <ProjectName name={nameOf(p)} className="pstrip-name" />
-                      {p.bomLink?.variantLabel && <span className="pstrip-tag">{p.bomLink.variantLabel}</span>}
-                      <span className="pstrip-dots" aria-hidden="true">
-                        {dots.map((d, k) => (
-                          <i key={k} className={d.cls} title={d.title} />
+                      {/* 아랫줄: 타입 + 도급/사급 상태 — 타입을 옆에 두면 칩이 길어져 한 화면에 몇 개 못 본다 */}
+                      <span className="pstrip-sub">
+                        {/* 타입은 앞 토막만 — 「T5391 / MT8311」을 다 적으면 그 칩만 50px 더 길어진다 */}
+                        {p.bomLink?.variantLabel && (
+                          <span className="pstrip-tag" title={p.bomLink.variantLabel}>
+                            {String(p.bomLink.variantLabel).split('/')[0].trim()}
+                          </span>
+                        )}
+                        {states.map(([kind, d]) => (
+                          <span key={kind} className={`pstrip-st ${d.cls}`} title={d.title}>
+                            {kind}
+                            {d.cls === 'is-short' ? ` ${d.label}` : ''}
+                          </span>
                         ))}
                       </span>
                     </button>
