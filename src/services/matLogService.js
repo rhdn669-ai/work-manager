@@ -8,7 +8,7 @@ import { db } from '../config/data';
 import { getPanelMaterials, materialsDocId, setReceived, addFromStock, addFromOurs } from './panelMaterialsService';
 import { takeStock, returnStock } from './stockService';
 import { trashMatLog } from './trashService';
-import { newLog, mateLog, mateDelta, needsStock, whyOf, TYPE_CHANGE } from '../domain/matLog';
+import { newLog, mateLog, mateDelta, needsStock, whyOf, TYPE_CHANGE, QTY_DOWN } from '../domain/matLog';
 import { undoPlan } from '../domain/matUndo';
 
 const ref = (panelId, box) => doc(db, 'panelMaterials', materialsDocId(panelId, box));
@@ -108,7 +108,12 @@ export async function writeMatLog(
   let giveBack = 0;
   let tookOurs = 0;
   // 「미입고」(옛 낱말 「그냥 빼기」) = 잘못 채운 것 — 실물은 통에 그대로 있으니 돌려준다
-  if (useStock && kind === 'out' && (why === '미입고' || why === '그냥 빼기' || why === TYPE_CHANGE) && row.itemId) {
+  if (
+    useStock &&
+    kind === 'out' &&
+    (why === '미입고' || why === '그냥 빼기' || why === TYPE_CHANGE || why === QTY_DOWN) &&
+    row.itemId
+  ) {
     const cur = (await getPanelMaterials(panel.id))?.[box]?.[row.id] || {};
     const cut = Math.min(log.n, Math.max(0, Number(cur.qty) || 0));
     giveBack = Math.min(cut, Math.max(0, Number(cur.fromStock) || 0));

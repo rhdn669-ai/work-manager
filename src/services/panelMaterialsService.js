@@ -90,6 +90,20 @@ export async function setReceivedMany(panelId, box, entries, by) {
 }
 
 /** 모든 호기의 기록을 한 번에 — cb({ [panelId]: { [box]: items } }). 구간 부족 집계용 */
+/** 모든 호기의 체크 기록을 «한 번만» 읽는다 — { [panelId]: { [box]: items } }.
+ *  BOM 줄을 지우기 전에 딸린 몫을 세는 것처럼, 상시 구독할 것 없이 그때만 볼 때 쓴다. */
+export async function getAllMaterials() {
+  const snap = await getDocs(ref);
+  const out = {};
+  snap.docs.forEach((d) => {
+    const v = d.data();
+    if (!v.panelId) return;
+    if (!out[v.panelId]) out[v.panelId] = {};
+    out[v.panelId][v.box] = v.items || {};
+  });
+  return out;
+}
+
 export function subscribeAllMaterials(cb) {
   return onSnapshot(ref, (snap) => {
     const out = {};

@@ -24669,6 +24669,23 @@ body.has-editlock .main-content.expanded {
 .pmat-table tr.is-stray > td:first-child {
   box-shadow: inset 3px 0 0 #7c3aed;
 }
+/* 당사 통에서 댄 몫이 있는 줄 — 왼쪽 파란 띠. 배경은 상태 색을 가리지 않게 그대로 둔다
+   (2026-09-18 대표님 「사급재고 당사꺼 사용한 곳은 파란색 줄표기」).
+   보라 띠(지금 타입에 없는 줄)가 있으면 그쪽이 먼저다 — 한 자리에 띠는 하나만 선다. */
+.pmat-table tr[data-ours='1']:not(.is-stray) > td:first-child {
+  box-shadow: inset 4px 0 0 #3f47b8;
+}
+/* BOM 수량이 줄어 넘치게 체크된 줄 — 주황 띠. 보라(타입 바뀜)·파랑(당사 몫)과 뜻이 달라 색을 나눈다 */
+.pmat-table tr[data-over='1']:not(.is-stray) > td:first-child {
+  box-shadow: inset 4px 0 0 #d97706;
+}
+.pmat-over-tag {
+  display: block;
+  color: #b45309;
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
 .pmat-stray-tag {
   display: block;
   color: #7c3aed;

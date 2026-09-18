@@ -54,6 +54,7 @@ import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { useEditLock } from '../../contexts/useEditLock';
 import { trashGeneric } from '../../services/trashService';
+import { getAllMaterials } from '../../services/panelMaterialsService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
 import { BOX_OPTIONS } from '../../domain/boxes';
@@ -800,9 +801,49 @@ export default function BomDetailPage() {
     if (!guard()) return;
     const ids = [...delPick].filter((id) => rows.some((r) => r.id === id));
     if (ids.length === 0) return;
+    // 지우려는 줄이 이미 호기에 체크돼 있으면 먼저 알린다. 줄을 지워도 그 체크와, 그 줄로
+    // 통에서 빼 간 자재는 남는데 주인이 없어져 어느 집계에도 안 잡히고 통으로도 안 돌아간다
+    // (2026-09-18 대표님 「A B 전부 ㄱㄱ」).
+    let warn = '';
+    try {
+      const mats = await getAllMaterials();
+      const hits = [];
+      for (const id of ids) {
+        let qty = 0;
+        const panels = new Set();
+        for (const [pid, boxes] of Object.entries(mats)) {
+          for (const items of Object.values(boxes)) {
+            const n = Number(items?.[id]?.qty) || 0;
+            if (n > 0) {
+              qty += n;
+              panels.add(pid);
+            }
+          }
+        }
+        if (qty > 0) hits.push({ id, qty, panels: panels.size });
+      }
+      if (hits.length > 0) {
+        const total = hits.reduce((a, h) => a + h.qty, 0);
+        const list = hits
+          .slice(0, 5)
+          .map((h) => {
+            const d = displayItems.find((x) => x.id === h.id);
+            return `· ${[d?.name, d?.spec].filter(Boolean).join(' ') || '(이름 없음)'} — ${h.panels}개 호기에 ${h.qty}개`;
+          })
+          .join('\n');
+        const more = hits.length > 5 ? `\n… 그 밖 ${hits.length - 5}줄` : '';
+        warn =
+          `\n\n⚠ 이 중 ${hits.length}줄은 이미 호기에 체크돼 있습니다 (합 ${total}개):\n${list}${more}\n` +
+          `지우면 그 체크와, 그 줄로 재고 통에서 빼 간 자재가 주인을 잃습니다 — 통으로 돌아가지 않습니다.\n` +
+          `먼저 자재 체크 화면에서 「빼기 → 수량 줄어듦」으로 통에 돌려주는 편이 안전합니다.`;
+      }
+    } catch (err) {
+      console.error('[BOM 삭제] 호기 체크 확인 실패', err);
+      warn = '\n\n⚠ 호기에 체크된 몫을 확인하지 못했습니다 — 자재 체크 화면을 먼저 살펴 주세요.';
+    }
     if (
       !(await confirm(`고른 ${ids.length}건을 BOM 에서 삭제하시겠습니까?
-(휴지통에서 되살릴 수 있습니다)`))
+(휴지통에서 되살릴 수 있습니다)${warn}`))
     )
       return;
     pushBomUndo('선택 삭제');

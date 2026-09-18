@@ -34,6 +34,7 @@ import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatSta
 import {
   OUT_WHYS,
   OUT_WHYS_STRAY,
+  OUT_WHYS_OVER,
   IN_WHYS,
   WHY_WHYS,
   TYPE_CHANGE,
@@ -269,6 +270,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const k = optKey(r);
     return k in optimistic ? optimistic[k] : receivedQty(recOf(r), r.id);
   };
+  /** 필요 수량보다 몇 개 넘게 체크돼 있나 — BOM 수량이 나중에 줄면 생긴다 (0 이면 정상) */
+  const overOf = (r) => {
+    const need = Number(r?.qty) || 0;
+    if (need <= 0) return 0; // 수량 미정인 줄은 넘침을 따지지 않는다
+    return Math.max(0, shownQty(r) - need);
+  };
   const setOpt = (r, v) => setOptimistic((o) => ({ ...o, [optKey(r)]: v }));
   const clearOpt = (r) =>
     setOptimistic((o) => {
@@ -322,8 +329,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const [undoSaving, setUndoSaving] = useState(false);
   // 보라 줄(지금 타입에 없는 줄)은 「타입 변경」·「가져감」만 — 미입고·제외는 뜻이 안 맞는다
   // (2026-09-17 대표님 「보라 줄에서만」)
+  // 넘치게 체크된 줄에는 「수량 줄어듦」을 준다 — 「미입고」로 빼면 부족 집계에 잡혀 뜻이 어긋난다
   const whyList = (k, r = null) =>
-    k === 'out' ? (r?._stray ? OUT_WHYS_STRAY : OUT_WHYS) : k === 'in' ? IN_WHYS : WHY_WHYS;
+    k === 'out'
+      ? r?._stray
+        ? OUT_WHYS_STRAY
+        : overOf(r) > 0
+          ? OUT_WHYS_OVER
+          : OUT_WHYS
+      : k === 'in'
+        ? IN_WHYS
+        : WHY_WHYS;
   const openLog = (r, kind, n = 1) => {
     // 잠겨 있으면 창을 열지 않는다 — 수량 칸은 막아 두고 이 창만 열려 있어 잠금이 반쪽이었다
     // (2026-09-16 야간 조사 L1)
@@ -524,11 +540,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         continue; // 그대로면 쓰지 않는다
       const curDate = 박스입고일자[b] || {};
       박스입고[b] = { ...cur, 자재_도급: nextPaid, 자재_사급: nextFree, ...(hasMadeRow ? { 판금: nextMade } : {}) };
+      // 완료가 풀려도 «입고일자»는 지우지 않는다. 전에는 빈칸으로 덮어써서, BOM 수량을
+      // 한 번 올리는 것만으로 몇 달 전에 찍힌 자재 입고일이 조용히 사라졌다. 다시 채우면
+      // 그날이 아니라 «그때» 날짜로 새로 찍혀 실제 완료일을 영영 알 수 없게 된다
+      // (2026-09-18 대표님 「A B 전부 ㄱㄱ」). 손으로 끄는 것(생산현황 칸)은 예전 그대로 지운다.
       박스입고일자[b] = {
         ...curDate,
-        자재_도급: nextPaid ? curDate.자재_도급 || today : '',
-        자재_사급: nextFree ? curDate.자재_사급 || today : '',
-        ...(hasMadeRow ? { 판금: nextMade ? curDate.판금 || today : '' } : {}),
+        자재_도급: curDate.자재_도급 || (nextPaid ? today : ''),
+        자재_사급: curDate.자재_사급 || (nextFree ? today : ''),
+        ...(hasMadeRow ? { 판금: curDate.판금 || (nextMade ? today : '') } : {}),
       };
       changed = true;
     }
@@ -693,10 +713,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const toggleRow = async (r, got) => {
     const need = Number(r.qty) || 0;
     // 화면부터 바꾼다 — 서버 왕복을 기다리면 태블릿에서 1초 넘게 멍하니 있게 된다
-    setOpt(r, got > 0 ? 0 : need);
+    setOpt(r, got >= need ? 0 : need);
     try {
-      // 목표는 «저장된 지금 값»으로 정한다 — 빨리 눌러도 0 ↔ 필요 수량이 정확히 번갈아 간다
-      const { before, after: n } = await applyQty(r, got, (b) => (b > 0 ? 0 : need));
+      // 목표는 «저장된 지금 값»으로 정한다 — 빨리 눌러도 정확히 번갈아 간다.
+      // 「다 찼으면 0, 아니면 끝까지 채우기」다. 전에는 «조금이라도 들어왔으면 0»이라,
+      // BOM 수량이 늘어 5/8 이 된 줄을 누르면 부족분 3 이 아니라 0 으로 비워지고 통에 5 개가
+      // 반납됐다가 다시 8 개가 나가 이력이 지저분해졌다. 0 으로 되돌리는 일은 「취소」가 한다
+      // (2026-09-18 대표님 「A B 전부 ㄱㄱ」).
+      const { before, after: n } = await applyQty(r, got, (b) => (b >= need ? 0 : need));
       // 서버가 정한 값이 내가 보여 준 것과 다를 수 있다(재고 부족 등) — 그 값으로 맞춘다
       setOpt(r, n);
       if (n === before) return;
@@ -1115,6 +1139,11 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                     )}
                     <tr
                       data-row-id={r.id}
+                      // 사급인데 «당사» 통에서 댄 몫이 있는 줄은 왼쪽에 파란 띠를 세운다. 상태 색(다 참·
+                      // 부족·사유)은 그대로 두고 띠만 더해, 나중에 고객사에 청구할 줄을 한눈에 고른다
+                      // (2026-09-18 대표님 「사급재고 당사꺼 사용한 곳은 파란색 줄표기」)
+                      data-ours={recOf(r)[r.id]?.fromOurs > 0 ? '1' : undefined}
+                      data-over={overOf(r) > 0 ? '1' : undefined}
                       className={
                         r._stray
                           ? 'is-stray'
@@ -1208,6 +1237,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       {/* 「부족」 열도 없앴다 — 필요·입고 수량에서 바로 읽히고, 모자란 줄은 입고 수량이
                         주황·회색으로 보인다 (2026-09-15 대표님 「둘다」). 재고는 상태 칸으로 옮겼다 */}
                       <td className="pmat-state">
+                        {/* BOM 수량이 줄어 넘치게 체크된 줄 — 그냥 두면 초과분이 어느 집계에도 안 잡혀
+                          실물이 장부에서 증발한다. 「빼기 → 수량 줄어듦」으로 통에 돌려준다
+                          (2026-09-18 대표님 「A B 전부 ㄱㄱ」) */}
+                        {overOf(r) > 0 && (
+                          <span
+                            className="pmat-over-tag"
+                            title="BOM 필요 수량이 줄어 체크가 넘칩니다. 「빼기 → 수량 줄어듦」으로 재고 통에 돌려주세요"
+                          >
+                            초과 {overOf(r)}개 · 통에 돌려주세요
+                          </span>
+                        )}
                         {r._stray && (
                           <span
                             className="pmat-stray-tag"
