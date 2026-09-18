@@ -1,3 +1,4 @@
+import { byBoxThenOrder } from '../../domain/boxes';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel, isPrepaidTerm, prepaidBasisOf } from '../../utils/paymentTerms';
@@ -944,7 +945,7 @@ export default function PurchaseDetailPage() {
         return;
       }
       const newLines = [...items]
-        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+        .sort(byBoxThenOrder) // BOM 화면과 같은 순서 — BOX 로 모은 뒤 손 순서
         .map((b) => {
           const m = b.itemId ? itemMaster.find((x) => x.id === b.itemId) : null;
           return {

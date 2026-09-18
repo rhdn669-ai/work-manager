@@ -1,7 +1,15 @@
 // BOX 이름 통일 (2026-09-03 대표님 「1대1 매칭을 완벽하게」).
 // 옛 이름으로 저장된 판넬을 읽을 때 새 이름으로 바꿔 읽는다 — 일괄 변환 없이.
 import { describe, it, expect } from 'vitest';
-import { PANEL_BOXES, BOX_OPTIONS, canonBox, renameBoxKeys, normalizeBoxKeys } from '../../src/domain/boxes';
+import {
+  PANEL_BOXES,
+  BOX_OPTIONS,
+  canonBox,
+  renameBoxKeys,
+  normalizeBoxKeys,
+  boxRank,
+  byBoxThenOrder,
+} from '../../src/domain/boxes';
 
 describe('BOX 이름', () => {
   it('판넬 BOX 는 BOM 쪽 이름이다', () => {
@@ -54,5 +62,23 @@ describe('판넬 키 정규화', () => {
   it('이미 새 이름이면 원본 그대로', () => {
     const p = { 박스입고: { 'P/W BOX': {} }, 부품상태: { MP: '대기' } };
     expect(normalizeBoxKeys(p)).toBe(p);
+  });
+});
+
+describe('BOM 줄 정렬 — BOX 순으로 모은 뒤 손 순서', () => {
+  it('BOX 가 먼저, 같은 BOX 안에서는 order', () => {
+    const rows = [
+      { id: 'a', box: 'ROBOT', order: 1 },
+      { id: 'b', box: 'P/W BOX', order: 9 },
+      { id: 'c', box: 'ROBOT', order: 0 },
+      { id: 'd', box: '', order: 0 },
+      { id: 'e', box: 'LOCAL', order: 5 },
+    ];
+    expect([...rows].sort(byBoxThenOrder).map((r) => r.id)).toEqual(['b', 'c', 'a', 'e', 'd']);
+  });
+  it('빈칸·모르는 BOX 는 맨 뒤', () => {
+    expect(boxRank('')).toBe(BOX_OPTIONS.length);
+    expect(boxRank('이상한 BOX')).toBe(BOX_OPTIONS.length);
+    expect(boxRank('P/W BOX')).toBe(0);
   });
 });

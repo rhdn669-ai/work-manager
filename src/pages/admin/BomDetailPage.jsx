@@ -60,7 +60,7 @@ import { useEditLock } from '../../contexts/useEditLock';
 import { getAllMaterials } from '../../services/panelMaterialsService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
-import { BOX_OPTIONS } from '../../domain/boxes';
+import { BOX_OPTIONS, byBoxThenOrder } from '../../domain/boxes';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
 // 되돌리기가 맞추는 칸 — 수량·단가·비고·순서·품목·BOX·도급/사급·도번
@@ -588,7 +588,8 @@ export default function BomDetailPage() {
     if (sortBy === 'code') {
       sorted.sort((a, b) => collator.compare(a.code || '', b.code || ''));
     } else {
-      sorted.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+      // BOX 순으로 먼저 모으고 그 안에서만 손 순서 — 새 줄·BOX 바뀐 줄이 저절로 제 묶음으로
+      sorted.sort(byBoxThenOrder);
     }
     return sorted;
   }, [displayItems, search, sortBy, supplierFilter, boxFilter, supplyTab, isMadeRow]);
@@ -614,6 +615,12 @@ export default function BomDetailPage() {
   async function handleRowDragEnd(event) {
     const { active, over } = event;
     if (!canDragRows || !over || active.id === over.id) return;
+    // 표가 BOX 순으로 모이므로 다른 BOX 로 끌어도 제자리로 돌아온다 — 미리 막고 알린다
+    const boxOf = (id) => (rows.find((r) => r.id === id)?.box || '').trim();
+    if (boxOf(active.id) !== boxOf(over.id)) {
+      toast('같은 BOX 안에서만 옮길 수 있습니다 — BOX 를 바꾸려면 그 줄의 BOX 칸을 고치세요', 'error');
+      return;
+    }
     if (!guard()) return;
     const orderedIds = rows.map((it) => it.id);
     const oldIndex = orderedIds.indexOf(active.id);
@@ -1745,8 +1752,27 @@ export default function BomDetailPage() {
                         const isGroupStart = groupBySupplier && sup !== prevSup;
                         const isGroupEnd = groupBySupplier && sup !== nextSup;
                         const grp = isGroupEnd ? supplierGroups.find((g) => g.name === sup) : null;
+                        // BOX 가 바뀌는 자리에 구분줄 — 코드순·구매처별·BOX 필터 중엔 뜻이 없어 안 건다
+                        const boxName = (it.box || '').trim() || '(BOX 없음)';
+                        const prevBoxName = idx > 0 ? (arr[idx - 1].box || '').trim() || '(BOX 없음)' : null;
+                        const isBoxStart =
+                          !groupBySupplier &&
+                          sortBy !== 'code' &&
+                          !boxFilter &&
+                          boxOptions.length > 1 &&
+                          boxName !== prevBoxName;
                         return (
                           <Fragment key={it.id}>
+                            {isBoxStart && (
+                              <tr className="bom-supplier-header bom-box-header">
+                                <td className="bom-spacer-col" aria-hidden="true"></td>
+                                <td colSpan={15} title={boxName}>
+                                  <span className="bom-supplier-header-text" style={{ padding: '6px 8px' }}>
+                                    {boxName}
+                                  </span>
+                                </td>
+                              </tr>
+                            )}
                             {isGroupStart && (
                               <tr className="bom-supplier-header">
                                 <td className="bom-spacer-col" aria-hidden="true"></td>

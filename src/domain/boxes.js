@@ -17,6 +17,19 @@ export const EXTRA_BOXES = ['LOCAL', '준비작업'];
 /** BOM 의 BOX 칸에서 고르는 목록 */
 export const BOX_OPTIONS = [...PANEL_BOXES, ...EXTRA_BOXES];
 
+/** BOX 의 자리 — 목록 순서대로, 모르는 이름·빈칸은 맨 뒤 */
+export function boxRank(box) {
+  const i = BOX_OPTIONS.indexOf(String(box || '').trim());
+  return i < 0 ? BOX_OPTIONS.length : i;
+}
+
+/** BOM 줄 정렬 — BOX 순으로 먼저 모으고, 같은 BOX 안에서만 손으로 끈 순서(order).
+ *  새 줄이나 BOX 가 바뀐 줄이 저절로 제 묶음으로 간다. 화면·인쇄·발주서 가져오기가 같은 규칙을 쓴다
+ *  (2026-09-18 대표님 「BOM에 자동으로 박스끼리 순서대로 모이게는 안되냐」). */
+export function byBoxThenOrder(a, b) {
+  return boxRank(a?.box) - boxRank(b?.box) || (Number(a?.order) || 0) - (Number(b?.order) || 0);
+}
+
 /** 옛 이름 → 새 이름 */
 export const LEGACY_BOX = {
   'H/T상': 'H/T BOX 상',
