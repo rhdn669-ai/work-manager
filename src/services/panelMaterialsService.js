@@ -104,6 +104,39 @@ export async function getAllMaterials() {
   return out;
 }
 
+/** BOM 줄의 BOX 가 바뀌었을 때 — 모든 호기에서 그 줄의 체크 기록을 옛 BOX 문서에서 새 BOX 문서로
+ *  통째로 옮긴다(수량·통에서 가져온 몫·당사 몫·이력·비고·제외·날짜·적은 사람).
+ *
+ *  기록은 「호기 × BOX」 문서에 살기 때문에, 줄의 BOX 만 바꾸면 기록이 옛 문서에 주인 없이 남고
+ *  새 BOX 에서는 0 으로 보여 다시 채우게 된다 — 그러면 통에서 한 번 더 빠진다
+ *  (2026-09-18 대표님 「기존에 체크 해둔것들은 … 그 수량을 가지고 넘어가야 하는거 아님?」).
+ *  새 자리에 먼저 쓰고 그다음 옛 자리를 비운다 — 중간에 끊겨도 옛 자리가 남아 되돌릴 수 있다.
+ *  @returns 옮긴 호기 수 */
+export async function moveMaterialsBox(bomItemId, fromBox, toBox) {
+  if (!bomItemId || !fromBox || !toBox || fromBox === toBox) return 0;
+  const all = await getAllMaterials();
+  let moved = 0;
+  for (const [panelId, boxes] of Object.entries(all)) {
+    const entry = boxes?.[fromBox]?.[bomItemId];
+    if (!entry) continue;
+    await setDoc(
+      doc(db, 'panelMaterials', materialsDocId(panelId, toBox)),
+      { panelId, box: toBox, items: { [bomItemId]: entry }, updatedAt: new Date() },
+      { merge: true },
+    );
+    const rest = { ...boxes[fromBox] };
+    delete rest[bomItemId];
+    await setDoc(doc(db, 'panelMaterials', materialsDocId(panelId, fromBox)), {
+      panelId,
+      box: fromBox,
+      items: rest,
+      updatedAt: new Date(),
+    });
+    moved += 1;
+  }
+  return moved;
+}
+
 export function subscribeAllMaterials(cb) {
   return onSnapshot(ref, (snap) => {
     const out = {};

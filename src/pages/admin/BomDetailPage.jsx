@@ -755,7 +755,8 @@ export default function BomDetailPage() {
     recordHistory('칸 수정');
     try {
       const { id: _, createdAt: __, updatedAt: ___, ...data } = item;
-      await updateBomItem(id, data);
+      const moved = await updateBomItem(id, data);
+      if (moved > 0) toast(`${moved}개 호기의 체크 기록을 「${data.box}」 로 옮겼습니다`, 'success');
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error', 0);
     }

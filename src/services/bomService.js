@@ -217,9 +217,21 @@ export async function saveBomItemsOrder(orderedIds) {
   await batch.commit();
 }
 
+/** @returns BOX 가 바뀌어 체크 기록을 옮긴 호기 수 (안 바뀌었으면 0) */
 export async function updateBomItem(id, data) {
   clearBomCache();
+  // BOX 가 바뀌면 호기의 체크 기록도 함께 옮긴다 — 어느 길(칸 수정·이력 되돌리기·품목 바꾸기)로
+  // 고치든 다 여기를 지나므로 여기서 한 번만 잡는다 (2026-09-18 대표님)
+  let move = null;
+  if (typeof data?.box === 'string') {
+    const snap = await getDoc(doc(db, 'bom', id));
+    const prevBox = snap.exists() ? snap.data()?.box || '' : '';
+    if (prevBox && prevBox !== data.box) move = { from: prevBox, to: data.box };
+  }
   await updateDoc(doc(db, 'bom', id), { ...data, updatedAt: new Date() });
+  if (!move) return 0;
+  const { moveMaterialsBox } = await import('./panelMaterialsService');
+  return moveMaterialsBox(id, move.from, move.to);
 }
 
 export async function deleteBomItem(id) {
