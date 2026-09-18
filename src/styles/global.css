@@ -22428,6 +22428,13 @@ a.lib-row-name:hover {
   display: inline-flex;
   gap: 6px;
 }
+/* 칸 폭은 colgroup 이 정한 대로 «고정». 평소(auto)에는 내용이 칸을 밀 수 있어서,
+   단추가 하나 나타나거나 글자가 길어지는 것만으로 표 전체가 출렁이고 방금 누르려던
+   자리가 옆으로 도망갔다 (2026-09-18 대표님 「입고버튼을 누르면 전체적으로 칸크기가
+   바뀌는데 안바뀌게못하나」). 넘치는 글자는 이미 줄바꿈·말줄임으로 다룬다. */
+.pmat-table {
+  table-layout: fixed;
+}
 .pmat-table .pmat-no {
   width: 44px;
   text-align: center;

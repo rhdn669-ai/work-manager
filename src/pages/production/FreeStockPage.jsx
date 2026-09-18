@@ -571,14 +571,31 @@ export default function FreeStockPage({ company }) {
           size="lg"
         >
           {/* 보고 있는 칸의 기록만 — 두 칸이 한 목록을 같이 쓰던 때는 고객사 칸을 보는데 당사가
-            받은 것까지 떠서 읽을 수가 없었다 (2026-09-16 대표님 「사급재고 기록 고객사와당사 공유x」) */}
+            받은 것까지 떠서 읽을 수가 없었다 (2026-09-16 대표님 「사급재고 기록 고객사와당사 공유x」).
+            대신 창 «안»에서 칸을 바꿀 수 있어야 한다 — 빈 칸을 보고 「기록이 사라졌다」고 놀란 적이
+            있어, 반대 칸에 몇 건이 있는지도 단추에 함께 적는다 (2026-09-18 대표님 「A B 전부 ㄱㄱ」) */}
+          <ViewSwitch
+            options={[
+              { value: 'them', label: '고객사', count: logsForSide(logOf.log || [], 'theirs').length },
+              { value: 'ours', label: '당사', count: logsForSide(logOf.log || [], 'ours').length },
+            ]}
+            value={inOurs ? 'ours' : 'them'}
+            onChange={(v) => setInOurs(v === 'ours')}
+            ariaLabel="어느 칸의 기록을 볼지 — 고객사 / 당사"
+          />
           <p className="field-hint">
             {inOurs ? '당사' : '고객사'} 재고 <b>{won(logOf.main)}</b>
-            {logOf.spec ? ` · ${logOf.spec}` : ''} · {inOurs ? '고객사' : '당사'} 칸 기록은 위에서 칸을 바꿔 보세요
+            {logOf.spec ? ` · ${logOf.spec}` : ''}
           </p>
           {logsForSide(logOf.log || [], inOurs ? 'ours' : 'theirs').length === 0 ? (
             <div className="empty-state">
               <p>이 칸에는 아직 오간 기록이 없습니다</p>
+              {logsForSide(logOf.log || [], inOurs ? 'theirs' : 'ours').length > 0 && (
+                <span>
+                  {inOurs ? '고객사' : '당사'} 칸에 {logsForSide(logOf.log || [], inOurs ? 'theirs' : 'ours').length}
+                  건이 있습니다 — 위에서 칸을 바꿔 보세요
+                </span>
+              )}
             </div>
           ) : (
             <div className="table-scroll-x">

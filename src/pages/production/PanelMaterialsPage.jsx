@@ -501,7 +501,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-18 대표님 「입고를 체크하면 칸 위치가 바뀌는데 기록칸을 기본으로 넣어줘」).
   // 오른쪽이 조금 비는 것보다, 누르는 자리가 안 움직이는 쪽이 낫다 — 2026-09-05 「우측 공백 X」를 뒤집는다.
   // 비고 — 호기·줄마다 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」).
-  // 칸은 글 길이에 맞춰 아래로 늘어난다 (MemoInput, 2026-09-15 대표님 「비고글이 짤리는데」)
+  // 표에는 글자만 보이고, 누르면 창이 열린다 (MemoCell, 2026-09-18 대표님 「비고는 입력할때 모달로」)
   const saveNote = async (r, v) => {
     try {
       await setNote(panelId, boxOf(r), r.id, v);
