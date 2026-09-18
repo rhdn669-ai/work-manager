@@ -32,7 +32,10 @@ export function DialogProvider({ children }) {
       const dur = opts.duration ?? duration;
       const sticky = opts.sticky === true || dur === 0;
       const action = opts.action && typeof opts.action.onClick === 'function' ? opts.action : null;
-      setToasts((list) => [...list, { id, message, type: ttype, sticky, action }]);
+      // 새 알림이 뜨면 «저절로 사라질» 이전 알림은 바로 치운다 — 빨리 여러 번 누르면 쌓여서
+      // 화면을 가렸다 (2026-09-18 대표님 「들어옴 토스트가 쌓이니 … 이전껀 지워지게」).
+      // sticky(저장·업로드 결과)는 X 를 눌러야 닫히는 것이라 남긴다.
+      setToasts((list) => [...list.filter((t) => t.sticky), { id, message, type: ttype, sticky, action }]);
       if (!sticky) setTimeout(() => removeToast(id), dur);
       return id;
     },
