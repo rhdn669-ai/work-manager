@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { isSubmitEnter } from '../../utils/enterKey';
 import { lockBodyScroll, unlockBodyScroll } from './bodyScrollLock';
 
@@ -91,7 +92,16 @@ export default function Modal({ isOpen, onClose, title, children, size }) {
 
   if (!isOpen) return null;
 
-  return (
+  // 창은 «놓인 자리»가 아니라 문서 맨 위에 그린다.
+  //
+  // 전에는 창을 띄운 그 자리(표 칸 안, 카드 안)에 그대로 그려져서, 그 자리에 걸린 CSS 가
+  // 창 안까지 따라 들어왔다. 표 전용 규칙 「.pmat-table .pmat-input { width: 72px }」가
+  // 비고 창의 입력칸을 72px 로 찌부러뜨린 것이 그 예다. 같은 뿌리로 라디오가 부풀고
+  // 글자가 가운데로 몰리는 일이 세 번 반복됐다 (2026-09-18 대표님 「칸 이상하다 이런문제
+  // 디자인 자꾸나오는데」). 문서 맨 위로 옮기면 바깥 CSS 가 닿지 않아 이 부류가 사라진다.
+  //
+  // React 쪽 사건 전달(onClick 등)은 그대로라, 창을 연 화면의 처리는 전과 똑같이 동작한다.
+  return createPortal(
     <div
       className="modal-overlay"
       onMouseDown={(e) => {
@@ -120,6 +130,7 @@ export default function Modal({ isOpen, onClose, title, children, size }) {
         </div>
         <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
