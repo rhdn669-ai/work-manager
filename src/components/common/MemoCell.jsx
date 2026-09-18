@@ -40,8 +40,10 @@ export default function MemoCell({ value = '', onSave, readOnly = false, title =
           <form onSubmit={save}>
             <div className="form-group">
               <label>내용</label>
+              {/* 표 전용 클래스(pmat-input)를 쓰면 안 된다 — 창이 표 <td> 안에 그려지는 탓에
+                  「.pmat-table .pmat-input { width: 72px }」가 그대로 먹어 칸이 찌부러진다
+                  (2026-09-18 대표님 「칸 이상하다」). 창 안은 앱 표준 .form-group 규칙에 맡긴다. */}
               <textarea
-                className="pmat-input"
                 rows={3}
                 value={text}
                 onChange={(e) => setText(e.target.value)}

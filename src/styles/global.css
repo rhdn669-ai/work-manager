@@ -4274,6 +4274,9 @@ body {
 }
 
 .modal {
+  /* 창은 놓인 자리의 정렬을 물려받지 않는다 — 가운데 정렬한 표 칸 안에서 열리면
+     이름표·단추까지 따라 가운데로 몰렸다 (2026-09-18 대표님 「칸 이상하다」) */
+  text-align: left;
   background: var(--bg-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);

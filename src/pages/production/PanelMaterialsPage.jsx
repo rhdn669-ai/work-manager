@@ -480,8 +480,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // 그러면 「이 BOX 에는 도급이 없다」를 확인할 길이 없었다
   // (2026-09-12 대표님 「도급0/0이어도 눌러지게 해줘 다른박스 비어있는걸 못보니까」).
   // 덤으로, 줄·요약·탭이 서로를 참조하던 고리도 사라졌다.
-  // 기록이 하나도 없는 탭에서는 「기록」 열을 빼서 오른쪽이 비지 않게 (2026-09-05 대표님 「우측 공백 X」)
-  const hasMeta = shown.some((r) => recOf(r)[r.id]?.at || recOf(r)[r.id]?.fromStock);
+  // 「기록」 열은 비어 있어도 늘 세운다. 전에는 기록이 하나도 없으면 열을 뺐는데, 한 줄을
+  // 체크하는 순간 열이 생기면서 표 전체의 칸 폭이 밀려 방금 누르려던 단추가 옆으로 도망갔다
+  // (2026-09-18 대표님 「입고를 체크하면 칸 위치가 바뀌는데 기록칸을 기본으로 넣어줘」).
+  // 오른쪽이 조금 비는 것보다, 누르는 자리가 안 움직이는 쪽이 낫다 — 2026-09-05 「우측 공백 X」를 뒤집는다.
   // 비고 — 호기·줄마다 메모. 잠금을 풀어야 적는다 (2026-09-05 대표님 「비고란도 하나 만들어줘」).
   // 칸은 글 길이에 맞춰 아래로 늘어난다 (MemoInput, 2026-09-15 대표님 「비고글이 짤리는데」)
   const saveNote = async (r, v) => {
@@ -1062,11 +1064,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               {/* 작업 칸 — 단추가 최대 4개(취소·빼기·입고·수정). 실측 4개 = 190px 라 196px 로 잡는다.
                   「가」(큰 글자)는 안 쓰는 기준이므로 고정 px 로 둔다
                   (2026-09-17 대표님 「입고버튼 조건 은보이게 칸을좀더 늘려」) */}
-              {['44px', '12.5%', '9.5%', null, '6.5%', '8%', '15%', hasMeta ? '6%' : null, '5.5%', '196px']
-                .filter((_, i) => hasMeta || i !== 7)
-                .map((w, i) => (
-                  <col key={i} style={w ? { width: w } : undefined} />
-                ))}
+              {['44px', '12.5%', '9.5%', null, '6.5%', '8%', '15%', '6%', '5.5%', '196px'].map((w, i) => (
+                <col key={i} style={w ? { width: w } : undefined} />
+              ))}
             </colgroup>
             <thead>
               <tr>
@@ -1083,7 +1083,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                   입고
                 </th>
                 <th scope="col">상태</th>
-                {hasMeta && <th scope="col">기록</th>}
+                <th scope="col">기록</th>
                 <th scope="col">비고</th>
                 {/* 제외/포함은 사급·도급, 배정 전후 가리지 않고 항상. 작업 열이라 맨 오른쪽·좁게
                     (2026-09-05 대표님 「폭을 줄이고 맨 우측으로」) */}
@@ -1102,7 +1102,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 const meta = recOf(r)[r.id];
                 // 「전체」— BOX 가 바뀌는 자리에 구분줄 (재고 표와 같은 모양)
                 const newBox = allBoxes && (i === 0 || boxOf(shown[i - 1]) !== boxOf(r));
-                const colCount = 9 + (hasMeta ? 1 : 0);
+                const colCount = 10;
                 return (
                   <Fragment key={r.id}>
                     {newBox && (
@@ -1247,19 +1247,18 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                         {/* 옛 「분실·파손」 장부의 한 줄(「…에 빌려줌 1」)은 뺐다 — 지금은 자재 이력이
                           그 자리를 쓴다 (2026-09-16 대표님 「저 빌려줌 문구 삭제」) */}
                       </td>
-                      {hasMeta && (
-                        <td className="pmat-meta">
-                          {meta?.at ? (
-                            <span title={`${meta.at}${meta.by ? ` · ${meta.by}` : ''}`}>
-                              {String(meta.at).length >= 10 ? String(meta.at).slice(5, 10) : meta.at}
-                            </span>
-                          ) : (
-                            ''
-                          )}
-                          {/* 「재고에서 N」은 뺐다 — 이제 채우는 길이 재고뿐이라 늘 같은 말이 된다
-                            (2026-09-15 대표님 「무조건 재고에서만 채울수있는데」) */}
-                        </td>
-                      )}
+                      {/* 아직 기록이 없으면 빈 칸 — 열 자체는 늘 서 있어야 칸이 안 밀린다 */}
+                      <td className="pmat-meta">
+                        {meta?.at ? (
+                          <span title={`${meta.at}${meta.by ? ` · ${meta.by}` : ''}`}>
+                            {String(meta.at).length >= 10 ? String(meta.at).slice(5, 10) : meta.at}
+                          </span>
+                        ) : (
+                          ''
+                        )}
+                        {/* 「재고에서 N」은 뺐다 — 이제 채우는 길이 재고뿐이라 늘 같은 말이 된다
+                          (2026-09-15 대표님 「무조건 재고에서만 채울수있는데」) */}
+                      </td>
                       {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
                       <td className="pmat-note-cell">
                         <MemoCell
