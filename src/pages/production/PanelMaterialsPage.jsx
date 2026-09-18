@@ -87,6 +87,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const { take, has } = useArrived(); // 어느 구독이 첫 값을 줬는지
   const [master, setMaster] = useState([]);
   const [received, setReceivedMap] = useState({}); // { [box]: { [bomItemId]: {qty,at,by} } }
+  // 누르는 «즉시» 보여 줄 값 — 서버 왕복(0.3초×4)을 기다리지 않는다. 서버 일이 끝나면 지운다
+  // (2026-09-18 대표님 「입고체크되는 반응이 너무 느린데」)
+  const [optimistic, setOptimistic] = useState({});
   // 갈래는 주소에 둔다 — 호기를 바꾸면 이 화면이 통째로 새로 만들어져(key={panelId}) 화면 안에
   // 담아 두면 늘 도급으로 돌아갔다 (2026-09-16 대표님 「사급을 보다가 넘기면 도급으로 넘어감」)
   const [draft, setDraft] = useState({}); // 입력 중인 개수 { [bomItemId]: '3' }
@@ -175,6 +178,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   // ── 이 호기의 입고 기록 ──
   useEffect(() => subscribePanelMaterials(panelId, take('received', setReceivedMap)), [panelId, take]);
+  // 서버 값이 내가 보여 준 값과 같아지면 낙관적 표시를 거둔다 (BOX 이름엔 「:」가 없다)
+  useEffect(() => {
+    setOptimistic((o) => {
+      const keys = Object.keys(o);
+      if (keys.length === 0) return o;
+      const next = { ...o };
+      let changed = false;
+      for (const k of keys) {
+        const at = k.indexOf(':');
+        const srv = receivedQty(received[k.slice(0, at)] || {}, k.slice(at + 1));
+        if (srv === o[k]) {
+          delete next[k];
+          changed = true;
+        }
+      }
+      return changed ? next : o;
+    });
+  }, [received]);
 
   // ── BOX ──
   // 품목 정보를 붙인 BOM 줄 — 갈래(전장/가공)는 품목 코드로 가리므로 먼저 붙여야 한다
@@ -242,6 +263,20 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // (2026-09-16 야간 조사 S23). rec 는 «지금 고른 BOX» 용으로 남기고, 줄마다 recOf(r) 를 쓴다.
   const rec = received[box] || {};
   const recOf = (r) => received[boxOf(r)] || rec;
+  const optKey = (r) => `${boxOf(r)}:${r.id}`;
+  /** 화면에 보일 입고 수량 — 방금 누른 값이 있으면 그것, 없으면 저장된 값 */
+  const shownQty = (r) => {
+    const k = optKey(r);
+    return k in optimistic ? optimistic[k] : receivedQty(recOf(r), r.id);
+  };
+  const setOpt = (r, v) => setOptimistic((o) => ({ ...o, [optKey(r)]: v }));
+  const clearOpt = (r) =>
+    setOptimistic((o) => {
+      if (!(optKey(r) in o)) return o;
+      const n = { ...o };
+      delete n[optKey(r)];
+      return n;
+    });
   // 정방향 제외 줄 — 이 호기(정)에는 안 오는 자재. 표에는 회색으로 두고 셈에서는 뺀다
   // (2026-09-15 대표님 「Bom에 정을 표시한것만 생산현황 호기 자재리스트에 회색처리」)
   const inScope = useCallback((r) => !isForwardExcluded(r, panel), [panel]);
@@ -655,12 +690,17 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
   const toggleRow = async (r, got) => {
     const need = Number(r.qty) || 0;
+    // 화면부터 바꾼다 — 서버 왕복을 기다리면 태블릿에서 1초 넘게 멍하니 있게 된다
+    setOpt(r, got > 0 ? 0 : need);
     try {
       // 목표는 «저장된 지금 값»으로 정한다 — 빨리 눌러도 0 ↔ 필요 수량이 정확히 번갈아 간다
       const { before, after: n } = await applyQty(r, got, (b) => (b > 0 ? 0 : need));
+      // 서버가 정한 값이 내가 보여 준 것과 다를 수 있다(재고 부족 등) — 그 값으로 맞춘다
+      setOpt(r, n);
       if (n === before) return;
       undoable(n > 0 ? `${r.name} ${n}개 들어옴` : `${r.name} 0 으로`, restoreOne(r, before, n));
     } catch {
+      clearOpt(r);
       toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
   };
@@ -1054,7 +1094,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             </thead>
             <tbody>
               {shown.map((r, i) => {
-                const got = receivedQty(recOf(r), r.id);
+                const got = shownQty(r);
                 const outScope = !inScope(r); // 정방향 제외 — 회색, 셈 없음
                 const skipped = isSkipped(recOf(r), r.id);
                 const short = skipped || outScope ? 0 : shortageOf(r.qty, got);
