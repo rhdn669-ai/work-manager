@@ -56,7 +56,7 @@ const ALL_BOX = '전체';
 
 export default function FreeStockPage({ company }) {
   const { userProfile } = useAuth();
-  const { toast, confirm } = useDialog();
+  const { toast } = useDialog();
   const me = userProfile?.name || '';
 
   const [master, setMaster] = useState([]);
@@ -305,7 +305,8 @@ export default function FreeStockPage({ company }) {
     const t = Number(fixing.to) || 0;
     if (t === row.main) return setFixing(null);
     const who = inOurs ? '당사' : '고객사';
-    if (!(await confirm(`${row.name || row.code} ${who} 재고를 ${won(row.main)} → ${won(t)} 으로 수정할까요?`))) return;
+    // 「수정할까요?」를 한 번 더 묻지 않는다 — 창에 «지금 N → 실제 수량»이 이미 보이고 「수정」 단추가
+    // 곧 확인이다. 마우스로는 창이 둘 겹쳐 두 번 눌러야 했다 (2026-09-18 대표님 「수정 버튼 한번이나 엔터로 끝나게」)
     try {
       // 고른 통 하나만 넘긴다 — 반대 통은 서비스가 «저장된 값»으로 채운다. 화면 값을 같이
       // 써 넣던 때는 창을 열어 둔 사이 호기가 꺼내 간 몫이 되살아났다 (2026-09-16 조사 S9)

@@ -328,7 +328,8 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
     const { row, to } = fixing;
     const t = Number(to) || 0;
     if (t === row.left) return setFixing(null);
-    if (!(await confirm(`${row.name || row.code} 재고를 ${won(row.left)} → ${won(t)} 으로 수정할까요?`))) return;
+    // 「수정할까요?」를 한 번 더 묻지 않는다 — 창에 «지금 N → 실제 수량»이 이미 보이고 「수정」 단추가
+    // 곧 확인이다. 마우스로는 창이 둘 겹쳐 두 번 눌러야 했다 (2026-09-18 대표님 「수정 버튼 한번이나 엔터로 끝나게」)
     try {
       // 통이 실값이면 그 값으로 바로, 아니면 조정치를 셈해서 (굳히기 전)
       if (ledgerOn(settings, company, kind))
