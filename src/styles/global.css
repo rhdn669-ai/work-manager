@@ -24684,3 +24684,34 @@ body.has-editlock .main-content.expanded {
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* 표 안의 비고 — 눌러야 창이 열린다. 늘 입력 상태였을 때는 옆 칸에 숫자를 적다 잘못 들어갔다
+   (2026-09-18 대표님 「비고는 입력할때 모달로」) */
+.memo-cell {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  cursor: pointer;
+}
+.memo-cell.has-text {
+  color: var(--text-primary);
+}
+.memo-cell:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--bg-subtle);
+}
+.memo-cell:disabled {
+  cursor: default;
+  color: var(--text-muted);
+}

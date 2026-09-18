@@ -5,7 +5,7 @@ import { useFillHeight } from '../../utils/useFillHeight';
 import { useArrived } from '../../utils/useArrived';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import ReceiptChip from '../../components/common/ReceiptChip';
-import MemoInput from '../../components/common/MemoInput';
+import MemoCell from '../../components/common/MemoCell';
 import Modal from '../../components/common/Modal';
 import Select from '../../components/common/Select';
 import IopnDocBrand from '../../components/admin/IopnDocBrand';
@@ -1262,13 +1262,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       )}
                       {/* 비고 — 호기·줄마다 한 줄 메모, 잠금을 풀어야 적는다 (2026-09-05 대표님) */}
                       <td className="pmat-note-cell">
-                        <MemoInput
+                        <MemoCell
                           value={recOf(r)[r.id]?.note || ''}
                           readOnly={!editMode}
-                          title={recOf(r)[r.id]?.note || (r.note ? `BOM 비고: ${r.note}` : '')}
+                          title={`${r.name} 비고`}
                           ariaLabel={`${r.name} 비고`}
-                          onFocus={(e) => keepInView(e.currentTarget)}
-                          onCommit={(v) => saveNote(r, v)}
+                          onSave={(v) => saveNote(r, v)}
                         />
                       </td>
                       {

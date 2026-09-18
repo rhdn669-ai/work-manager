@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import Icon from '../../components/common/Icon';
-import MemoInput from '../../components/common/MemoInput';
+import MemoCell from '../../components/common/MemoCell';
 import { useFillHeight } from '../../utils/useFillHeight';
 import { withRunning } from '../../domain/stockRunning';
 import { useArrived } from '../../utils/useArrived';
@@ -574,10 +574,11 @@ export default function PaidStockPage({ company = '', kind = 'paid' }) {
                       </td>
                       {/* 비고 — 적는 동안 React 가 값을 안 흔들게 key 에 저장값을 넣는다 (호기 체크 비고와 같은 방식) */}
                       <td className="pmat-note-cell">
-                        <MemoInput
+                        <MemoCell
                           value={r.memo || ''}
                           ariaLabel={`${r.name || r.code} 비고`}
-                          onCommit={(v) =>
+                          title={`${r.name || r.code} 비고`}
+                          onSave={(v) =>
                             setStockMemo(kind, company, r, v, { by: me }).catch(() =>
                               toast('비고를 저장하지 못했습니다', 'error'),
                             )
