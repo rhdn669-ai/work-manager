@@ -23152,6 +23152,178 @@ a.lib-row-name:hover {
 .page-header--sub {
   margin-bottom: var(--space-2, 8px);
 }
+/* ── 호기 칩 줄 — 터치 기기에서 옆 목록 대신 (2026-09-18 대표님) ──
+   한 칩 = [번호] 호기 [타입] 그리고 밑에 도급·사급(·판금) 점. 지금 호기는 네이비로 채우고
+   왼쪽에 오렌지 띠(활성 표시 규칙, DESIGN-SYSTEM §26). 끝난 호기는 흐리게만 — 지우지 않는다 */
+.mhub-body.is-strip {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pstrip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.pstrip-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  padding: 3px 28px 6px 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* 오른쪽이 흐려지며 끝나 «더 있다»가 보인다 */
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+}
+.pstrip-scroll::-webkit-scrollbar {
+  display: none;
+}
+.pstrip-chip {
+  flex: none;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  grid-template-areas:
+    'no name tag'
+    'no dots dots';
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+  min-height: 46px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 12px);
+  background: var(--bg-card, #fff);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.15;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.08s;
+}
+.pstrip-chip:active {
+  transform: scale(0.97);
+}
+.pstrip-no {
+  grid-area: no;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-right: 7px;
+  border-right: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-light);
+}
+.pstrip-name {
+  grid-area: name;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.pstrip-name .proj-tail {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.01em;
+  margin-left: 1px;
+}
+.pstrip-tag {
+  grid-area: tag;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-subtle, #f2f4f6);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+.pstrip-dots {
+  grid-area: dots;
+  display: flex;
+  gap: 4px;
+  min-height: 7px;
+}
+.pstrip-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--border-strong, #c9d0da);
+}
+.pstrip-dots i.is-wait {
+  border-color: var(--border-strong, #c9d0da);
+}
+.pstrip-dots i.is-short {
+  background: var(--warning);
+  border-color: var(--warning);
+}
+.pstrip-dots i.is-ok {
+  background: var(--success);
+  border-color: var(--success);
+}
+.pstrip-dots i.is-none {
+  visibility: hidden;
+}
+.pstrip-chip.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    0 4px 12px rgba(0, 32, 80, 0.18);
+}
+.pstrip-chip.on .pstrip-no {
+  color: rgba(255, 255, 255, 0.75);
+  border-right-color: rgba(255, 255, 255, 0.25);
+}
+.pstrip-chip.on .pstrip-name,
+.pstrip-chip.on .pstrip-name .proj-tail {
+  color: #fff;
+}
+.pstrip-chip.on .pstrip-tag {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.pstrip-chip.on .pstrip-dots i {
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.pstrip-chip.is-done:not(.on) {
+  opacity: 0.5;
+}
+.pstrip-chip.no-bom:not(.on) {
+  border-style: dashed;
+  color: var(--text-light);
+}
+.pstrip-chip.no-bom:not(.on) .pstrip-name .proj-tail {
+  color: var(--text-light);
+}
+.pstrip-side {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pstrip-count {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  white-space: nowrap;
+}
+.pstrip-count em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-left: 2px;
+}
+
 @media (max-width: 1023px) {
   .mhub-body {
     grid-template-columns: 1fr;

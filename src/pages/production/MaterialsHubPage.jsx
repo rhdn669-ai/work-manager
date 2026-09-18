@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Icon from '../../components/common/Icon';
 import ProjectName from '../../components/common/ProjectName';
+import { isFinePointer } from '../../utils/finePointer';
 import ViewSwitch from '../../components/common/ViewSwitch';
 import { useArrived } from '../../utils/useArrived';
 import Select from '../../components/common/Select';
@@ -120,6 +121,18 @@ export default function MaterialsHubPage() {
     return out;
   };
   const nameOf = (p) => `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim() || '(이름 없음)';
+
+  // 터치 기기(태블릿)에서는 호기 목록을 옆이 아니라 «위쪽 칩 줄»로 — 옆 목록 232px 가 표로
+  // 돌아와 열 잘림이 풀리고, 호기 바꾸는 손도 위에서 끝난다. 마우스 PC 는 정보가 더 많은
+  // 옆 목록 그대로 (2026-09-18 대표님 「사이드에 있는 호기 표시를 상단으로 옮긴다면」).
+  const strip = !isFinePointer();
+  const stripRef = useRef(null);
+  useEffect(() => {
+    if (!strip || !panelId) return;
+    // 지금 호기가 늘 보이게 — 44대 중 어디에 있든 가운데로 끌어온다
+    const el = stripRef.current?.querySelector('.pstrip-chip.on');
+    el?.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [strip, panelId, list]);
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/production', { replace: true }));
 
   return (
@@ -150,74 +163,128 @@ export default function MaterialsHubPage() {
       ) : tab === 'matlog' ? (
         <MatLogPage company={company} />
       ) : (
-        <div className="mhub-body">
-          {/* 호기 목록 — PC 는 왼쪽 세로, 모바일은 위쪽 선택 상자 */}
-          <aside className="mhub-list no-print">
-            <div className="mhub-list-title">
-              호기
-              {doneCount > 0 && (
-                <button
-                  type="button"
-                  className={`filter-chip mhub-done-toggle${hideDone ? '' : ' on'}`}
-                  onClick={() => setHideDone((v) => !v)}
-                  title={hideDone ? `끝난 호기 ${doneCount}대를 감추는 중` : '끝난 호기까지 보이는 중'}
-                >
-                  {hideDone ? `끝난 호기 ${doneCount} 숨김` : `끝난 호기 ${doneCount} 표시`}
-                </button>
-              )}
-            </div>
-            <ul>
-              {list.map((p, i) => (
-                <li key={p.id}>
+        <div className={`mhub-body${strip ? ' is-strip' : ''}`}>
+          {/* 호기 칩 줄 — 터치 기기. 번호·호기·타입 + 도급/사급(판금) 점. 끝난 호기는 흐리게 */}
+          {strip && (
+            <div className="pstrip no-print">
+              <div className="pstrip-scroll" ref={stripRef} role="tablist" aria-label="호기">
+                {list.map((p, i) => {
+                  const st = stateOf(p);
+                  const dots = st && st !== 'loading' ? [st.paid, st.free, ...(st.made ? [st.made] : [])] : [];
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={p.id === panelId}
+                      className={`pstrip-chip${p.id === panelId ? ' on' : ''}${isDone(p) ? ' is-done' : ''}${
+                        p.bomLink?.projectId ? '' : ' no-bom'
+                      }`}
+                      onClick={() => patch({ panel: p.id })}
+                      title={`${nameOf(p)}${p.bomLink?.projectId ? '' : ' · BOM 을 아직 연결하지 않은 호기'}`}
+                    >
+                      <span className="pstrip-no">{i + 1}</span>
+                      <ProjectName name={nameOf(p)} className="pstrip-name" />
+                      {p.bomLink?.variantLabel && <span className="pstrip-tag">{p.bomLink.variantLabel}</span>}
+                      <span className="pstrip-dots" aria-hidden="true">
+                        {dots.map((d, k) => (
+                          <i key={k} className={d.cls} title={d.title} />
+                        ))}
+                      </span>
+                    </button>
+                  );
+                })}
+                {list.length === 0 && <span className="mhub-empty">호기가 없습니다</span>}
+              </div>
+              <div className="pstrip-side">
+                {doneCount > 0 && (
                   <button
                     type="button"
-                    className={`mhub-item${p.id === panelId ? ' on' : ''}${p.bomLink?.projectId ? '' : ' no-bom'}`}
-                    onClick={() => patch({ panel: p.id })}
-                    title={p.bomLink?.projectId ? '' : 'BOM 을 아직 연결하지 않은 호기'}
+                    className={`filter-chip mhub-done-toggle${hideDone ? '' : ' on'}`}
+                    onClick={() => setHideDone((v) => !v)}
+                    title={hideDone ? `끝난 호기 ${doneCount}대를 감추는 중` : '끝난 호기까지 보이는 중'}
                   >
-                    {/* 몇 번째인지 — 긴 목록에서 위치를 잡는다 (2026-09-12 대표님 「앞에 no 표시」) */}
-                    <span className="mhub-item-no">{i + 1}</span>
-                    <ProjectName name={nameOf(p)} className="mhub-item-name" />
-                    {p.bomLink?.variantLabel && <span className="mhub-item-tag">{p.bomLink.variantLabel}</span>}
-                    {(() => {
-                      const st = stateOf(p);
-                      if (!st) return <span className="mhub-item-state is-none">BOM 없음</span>;
-                      if (st === 'loading') return <span className="mhub-item-state is-none">…</span>;
-                      return (
-                        <span className="mhub-item-states">
-                          <span className={`mhub-item-state ${st.paid.cls}`} title={st.paid.title}>
-                            <b>도급</b>
-                            {st.paid.label}
-                          </span>
-                          <span className={`mhub-item-state ${st.free.cls}`} title={st.free.title}>
-                            <b>사급</b>
-                            {st.free.label}
-                          </span>
-                          {st.made && (
-                            <span className={`mhub-item-state ${st.made.cls}`} title={st.made.title}>
-                              <b>{MADE}</b>
-                              {st.made.label}
-                            </span>
-                          )}
-                        </span>
-                      );
-                    })()}
+                    {hideDone ? `끝난 ${doneCount} 숨김` : `끝난 ${doneCount} 표시`}
                   </button>
-                </li>
-              ))}
-              {list.length === 0 && <li className="mhub-empty">호기가 없습니다</li>}
-            </ul>
-          </aside>
-          <div className="mhub-pick no-print">
-            <Select
-              value={panelId}
-              onChange={(v) => patch({ panel: v })}
-              options={list.map((p) => ({ value: p.id, label: nameOf(p) }))}
-              placeholder="호기 선택"
-              ariaLabel="호기 선택"
-              native
-            />
-          </div>
+                )}
+                <span className="pstrip-count">
+                  {Math.max(0, list.findIndex((p) => p.id === panelId) + 1) || '–'}
+                  <em>/ {list.length}</em>
+                </span>
+              </div>
+            </div>
+          )}
+          {/* 호기 목록 — 마우스 PC 는 왼쪽 세로, 모바일은 위쪽 선택 상자 */}
+          {!strip && (
+            <aside className="mhub-list no-print">
+              <div className="mhub-list-title">
+                호기
+                {doneCount > 0 && (
+                  <button
+                    type="button"
+                    className={`filter-chip mhub-done-toggle${hideDone ? '' : ' on'}`}
+                    onClick={() => setHideDone((v) => !v)}
+                    title={hideDone ? `끝난 호기 ${doneCount}대를 감추는 중` : '끝난 호기까지 보이는 중'}
+                  >
+                    {hideDone ? `끝난 호기 ${doneCount} 숨김` : `끝난 호기 ${doneCount} 표시`}
+                  </button>
+                )}
+              </div>
+              <ul>
+                {list.map((p, i) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      className={`mhub-item${p.id === panelId ? ' on' : ''}${p.bomLink?.projectId ? '' : ' no-bom'}`}
+                      onClick={() => patch({ panel: p.id })}
+                      title={p.bomLink?.projectId ? '' : 'BOM 을 아직 연결하지 않은 호기'}
+                    >
+                      {/* 몇 번째인지 — 긴 목록에서 위치를 잡는다 (2026-09-12 대표님 「앞에 no 표시」) */}
+                      <span className="mhub-item-no">{i + 1}</span>
+                      <ProjectName name={nameOf(p)} className="mhub-item-name" />
+                      {p.bomLink?.variantLabel && <span className="mhub-item-tag">{p.bomLink.variantLabel}</span>}
+                      {(() => {
+                        const st = stateOf(p);
+                        if (!st) return <span className="mhub-item-state is-none">BOM 없음</span>;
+                        if (st === 'loading') return <span className="mhub-item-state is-none">…</span>;
+                        return (
+                          <span className="mhub-item-states">
+                            <span className={`mhub-item-state ${st.paid.cls}`} title={st.paid.title}>
+                              <b>도급</b>
+                              {st.paid.label}
+                            </span>
+                            <span className={`mhub-item-state ${st.free.cls}`} title={st.free.title}>
+                              <b>사급</b>
+                              {st.free.label}
+                            </span>
+                            {st.made && (
+                              <span className={`mhub-item-state ${st.made.cls}`} title={st.made.title}>
+                                <b>{MADE}</b>
+                                {st.made.label}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
+                    </button>
+                  </li>
+                ))}
+                {list.length === 0 && <li className="mhub-empty">호기가 없습니다</li>}
+              </ul>
+            </aside>
+          )}
+          {!strip && (
+            <div className="mhub-pick no-print">
+              <Select
+                value={panelId}
+                onChange={(v) => patch({ panel: v })}
+                options={list.map((p) => ({ value: p.id, label: nameOf(p) }))}
+                placeholder="호기 선택"
+                ariaLabel="호기 선택"
+                native
+              />
+            </div>
+          )}
           <div className="mhub-main">
             {panelId ? (
               <PanelMaterialsPage key={panelId} embedded panelId={panelId} />
