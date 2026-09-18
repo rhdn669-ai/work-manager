@@ -1,3 +1,4 @@
+import { storageKeyName } from '../domain/storageKey';
 import {
   collection,
   doc,
@@ -257,10 +258,11 @@ export async function deleteFolder(folderId) {
 // ---------- 파일 ----------
 
 // 안전한 Storage 경로용 파일명 생성 (한글/공백 보존, 경로 구분자만 치환)
+// 열쇠(경로)에는 사람이 보는 이름을 넣지 않는다 — 사내 서버 보관함은 한글 열쇠를 400 으로 거부한다.
+// 이름은 문서의 name 에 그대로 남으니 화면·내려받기는 전과 같다 (2026-09-18, storageKey.js 참고)
 function buildStoragePath(folderId, fileName) {
   const stamp = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-  const safeName = (fileName || 'file').replace(/[/\\]/g, '_');
-  return `library/${folderId || 'root'}/${stamp}_${safeName}`;
+  return `library/${folderId || 'root'}/${storageKeyName(fileName, stamp)}`;
 }
 
 // 파일 업로드 — 진행률 콜백(onProgress: 0~100), 표시 파일명(displayName) 지원
