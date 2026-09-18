@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from '../config/data';
 import { db } from '../config/data';
+import { PAIR_DEFAULT, pairPatch, pairCopy, twinOf } from '../domain/bomPair';
 
 const bomRef = collection(db, 'bom');
 const projectsRef = collection(db, 'bomProjects');
@@ -67,6 +68,73 @@ export async function updateBomProject(projectId, patch) {
   if (p.name !== undefined) data.name = String(p.name || '').trim();
   if (p.회사 !== undefined) data.회사 = String(p.회사 || '').trim();
   await updateDoc(doc(db, 'bomProjects', projectId), data);
+}
+
+// ---- 짝 BOM ----
+// 같은 판넬, 고객사만 다른 BOM 둘을 묶는다. 한쪽을 고치면 다른 쪽도 같이 바뀐다 (domain/bomPair.js).
+// 짝은 «양쪽 프로젝트 문서에 같은 내용»으로 적어, 어느 쪽에서 열어도 같은 짝이 보인다.
+export async function getBomPair(projectId) {
+  const p = await getBomProjectById(projectId);
+  const pair = p?.pair;
+  if (!pair?.projectId) return null;
+  return { projectId: pair.projectId, sync: { ...PAIR_DEFAULT, ...(pair.sync || {}) }, mine: p };
+}
+
+export async function setBomPair(projectId, pairId, sync) {
+  if (!projectId || !pairId || projectId === pairId) throw new Error('짝은 다른 BOM 이어야 합니다');
+  // 어느 한쪽이 이미 딴 BOM 과 짝이면 그 짝부터 푼다 — 세 개가 엉키지 않게
+  for (const id of [projectId, pairId]) {
+    const cur = await getBomPair(id);
+    if (cur && cur.projectId !== projectId && cur.projectId !== pairId)
+      await updateDoc(doc(db, 'bomProjects', cur.projectId), { pair: null, updatedAt: new Date() });
+  }
+  const s = { ...PAIR_DEFAULT, ...(sync || {}) };
+  await updateDoc(doc(db, 'bomProjects', projectId), { pair: { projectId: pairId, sync: s }, updatedAt: new Date() });
+  await updateDoc(doc(db, 'bomProjects', pairId), { pair: { projectId, sync: s }, updatedAt: new Date() });
+}
+
+export async function clearBomPair(projectId) {
+  const cur = await getBomPair(projectId);
+  await updateDoc(doc(db, 'bomProjects', projectId), { pair: null, updatedAt: new Date() });
+  if (cur?.projectId) await updateDoc(doc(db, 'bomProjects', cur.projectId), { pair: null, updatedAt: new Date() });
+}
+
+/** 연동에 필요한 것 한 묶음 — 짝이 없으면 null */
+async function pairCtx(siteId) {
+  const pr = await getBomPair(siteId);
+  if (!pr) return null;
+  const theirs = await getBomProjectById(pr.projectId);
+  if (!theirs) return null;
+  const theirRows = await getBomBySite(pr.projectId);
+  return {
+    pairId: pr.projectId,
+    sync: pr.sync,
+    myVariants: Array.isArray(pr.mine?.variants) ? pr.mine.variants : [],
+    theirVariants: Array.isArray(theirs.variants) ? theirs.variants : [],
+    theirRows,
+  };
+}
+
+/** 줄 하나를 휴지통으로 — 짝 BOM 의 같은 줄도 함께. @returns 짝에서도 지웠으면 1 */
+export async function trashBomItem(id, meta, by, { sync = true } = {}) {
+  clearBomCache();
+  const snap = await getDoc(doc(db, 'bom', id));
+  const prev = snap.exists() ? { id, ...snap.data() } : null;
+  const { trashGeneric } = await import('./trashService');
+  await trashGeneric('bom', id, meta, by);
+  if (!sync || !prev?.siteId) return 0;
+  try {
+    const ctx = await pairCtx(prev.siteId);
+    if (!ctx) return 0;
+    const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants);
+    if (!twin) return 0;
+    await trashGeneric('bom', twin.id, { ...(meta || {}), summary: '짝 BOM 연동 삭제' }, by);
+    clearBomCache(ctx.pairId);
+    return 1;
+  } catch (err) {
+    console.error('[짝 BOM] 삭제 연동 실패', err);
+    return 0;
+  }
 }
 
 // ---- 타입(형번) ----
@@ -181,9 +249,9 @@ async function fetchBomBySite(siteId) {
   }
 }
 
-export async function addBomItem(siteId, data) {
+export async function addBomItem(siteId, data, { sync = true } = {}) {
   clearBomCache(siteId);
-  return addDoc(bomRef, {
+  const ref = await addDoc(bomRef, {
     siteId,
     itemId: data.itemId || '',
     name: data.name || '',
@@ -204,34 +272,105 @@ export async function addBomItem(siteId, data) {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  // 짝 BOM 에도 같은 줄을 — 실패해도 내 줄은 이미 들어갔으니 알리기만 한다
+  if (sync) {
+    try {
+      const ctx = await pairCtx(siteId);
+      if (ctx) {
+        await addDoc(bomRef, {
+          siteId: ctx.pairId,
+          ...pairCopy(data, ctx.sync, ctx.myVariants, ctx.theirVariants, ctx.theirRows),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        clearBomCache(ctx.pairId);
+      }
+    } catch (err) {
+      console.error('[짝 BOM] 줄 추가 연동 실패', err);
+    }
+  }
+  return ref;
 }
 
 // 드래그 순서변경 — 전달된 id 순서대로 order 저장 (프로젝트 목록 saveBomProjectsOrder와 동일 패턴)
 // ※ 발주서 품목은 가져올 때 복사본이므로 기존 발주서에는 영향 없음 — 이후 「품목 불러오기」부터 새 순서 적용
-export async function saveBomItemsOrder(orderedIds) {
+export async function saveBomItemsOrder(orderedIds, { sync = true } = {}) {
   clearBomCache();
   const batch = writeBatch(db);
   orderedIds.forEach((id, idx) => {
     batch.update(doc(db, 'bom', id), { order: idx, updatedAt: new Date() });
   });
   await batch.commit();
+  // 짝 BOM 의 같은 줄들도 같은 순서로 — 짝에 없는 줄은 건너뛴다
+  if (!sync || orderedIds.length === 0) return;
+  try {
+    const first = await getDoc(doc(db, 'bom', orderedIds[0]));
+    const siteId = first.exists() ? first.data()?.siteId : '';
+    if (!siteId) return;
+    const ctx = await pairCtx(siteId);
+    if (!ctx) return;
+    const mine = await getBomBySite(siteId);
+    const byId = new Map(mine.map((r) => [r.id, r]));
+    const b2 = writeBatch(db);
+    let n = 0;
+    orderedIds.forEach((id, idx) => {
+      const row = byId.get(id);
+      const twin = row && twinOf(row, ctx.myVariants, ctx.theirRows, ctx.theirVariants);
+      if (!twin) return;
+      b2.update(doc(db, 'bom', twin.id), { order: idx, updatedAt: new Date() });
+      n += 1;
+    });
+    if (n > 0) await b2.commit();
+    clearBomCache(ctx.pairId);
+  } catch (err) {
+    console.error('[짝 BOM] 순서 연동 실패', err);
+  }
 }
 
-/** @returns BOX 가 바뀌어 체크 기록을 옮긴 호기 수 (안 바뀌었으면 0) */
-export async function updateBomItem(id, data) {
+/**
+ * 줄 하나 고치기. 어느 길(칸 수정·이력 되돌리기·품목 바꾸기)로 고치든 다 여기를 지나므로,
+ * «BOX 바뀌면 호기 기록 옮기기»와 «짝 BOM 에 같이 적용»을 여기서 한 번만 잡는다 (2026-09-18 대표님).
+ * @param opts.sync  짝 BOM 에도 적용할지 — 「다름 찾기」·「되돌리기」처럼 이 BOM 만 만질 때 false
+ * @returns { moved, pair }  moved: 기록을 옮긴 호기 수 · pair: 'off' | 'ok' | 'missing'(짝에 같은 줄 없음) | 'error'
+ */
+export async function updateBomItem(id, data, { sync = true } = {}) {
   clearBomCache();
-  // BOX 가 바뀌면 호기의 체크 기록도 함께 옮긴다 — 어느 길(칸 수정·이력 되돌리기·품목 바꾸기)로
-  // 고치든 다 여기를 지나므로 여기서 한 번만 잡는다 (2026-09-18 대표님)
+  const snap = await getDoc(doc(db, 'bom', id));
+  const prev = snap.exists() ? { id, ...snap.data() } : null;
   let move = null;
   if (typeof data?.box === 'string') {
-    const snap = await getDoc(doc(db, 'bom', id));
-    const prevBox = snap.exists() ? snap.data()?.box || '' : '';
+    const prevBox = prev?.box || '';
     if (prevBox && prevBox !== data.box) move = { from: prevBox, to: data.box };
   }
   await updateDoc(doc(db, 'bom', id), { ...data, updatedAt: new Date() });
-  if (!move) return 0;
   const { moveMaterialsBox } = await import('./panelMaterialsService');
-  return moveMaterialsBox(id, move.from, move.to);
+  const moved = move ? await moveMaterialsBox(id, move.from, move.to) : 0;
+
+  let pair = 'off';
+  if (sync && prev?.siteId) {
+    try {
+      const ctx = await pairCtx(prev.siteId);
+      if (ctx) {
+        // 짝은 «고치기 전» 모습으로 찾는다 — BOX·타입이 바뀌는 고침이면 바뀐 뒤 모습으론 못 찾는다
+        const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants);
+        const patch = pairPatch(data, ctx.sync, ctx.myVariants, ctx.theirVariants);
+        if (!twin) pair = 'missing';
+        else {
+          if (patch) {
+            await updateDoc(doc(db, 'bom', twin.id), { ...patch, updatedAt: new Date() });
+            clearBomCache(ctx.pairId);
+            if (typeof patch.box === 'string' && patch.box !== (twin.box || ''))
+              await moveMaterialsBox(twin.id, twin.box || '', patch.box);
+          }
+          pair = 'ok';
+        }
+      }
+    } catch (err) {
+      console.error('[짝 BOM] 적용 실패', err);
+      pair = 'error';
+    }
+  }
+  return { moved, pair };
 }
 
 export async function deleteBomItem(id) {

@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { moveMany } from '../../domain/moveMany';
+import { PAIR_OPTIONS, PAIR_DEFAULT } from '../../domain/bomPair';
 import {
   getBomBySite,
   addBomItem,
@@ -28,6 +29,9 @@ import {
   getBomProjects,
   updateBomProject,
   saveBomItemsOrder,
+  setBomPair,
+  clearBomPair,
+  trashBomItem,
   setBomVariants,
   removeBomVariant,
   isFreeIssue,
@@ -53,7 +57,6 @@ import { subscribePanels } from '../../services/productionService';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { useEditLock } from '../../contexts/useEditLock';
-import { trashGeneric } from '../../services/trashService';
 import { getAllMaterials } from '../../services/panelMaterialsService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
@@ -150,6 +153,10 @@ export default function BomDetailPage() {
     window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/purchase/bom', { replace: true });
 
   const [project, setProject] = useState(null);
+  // 짝 BOM — 같은 판넬, 고객사만 다른 BOM 과 묶어 한쪽을 고치면 다른 쪽도 같이 (domain/bomPair.js)
+  const [pairOpen, setPairOpen] = useState(false);
+  const [pairDraft, setPairDraft] = useState({ projectId: '', sync: PAIR_DEFAULT });
+  const [pairBusy, setPairBusy] = useState(false);
   const [bomItems, setBomItems] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -293,7 +300,7 @@ export default function BomDetailPage() {
   const openCompare = async () => {
     setCmpOpen(true);
     setCmpDone(new Set());
-    const pick = cmpId || guessTwin(projects, project)?.id || projects[0]?.id || '';
+    const pick = cmpId || project?.pair?.projectId || guessTwin(projects, project)?.id || projects[0]?.id || '';
     if (pick !== cmpId) setCmpId(pick);
     await loadCompare(pick);
   };
@@ -332,6 +339,7 @@ export default function BomDetailPage() {
           await addBomItem(
             projectId,
             rowToCopy(src, { toRows: bomItems, fromVariants: theirV, toVariants: mineV, order: n++ }),
+            { sync: false },
           );
         setBomItems(await getBomBySite(projectId));
       } else if (d.kind === 'onlyMine' && dir === 'push') {
@@ -340,13 +348,14 @@ export default function BomDetailPage() {
           await addBomItem(
             cmpId,
             rowToCopy(src, { toRows: cmpRows, fromVariants: mineV, toVariants: theirV, order: n++ }),
+            { sync: false },
           );
         await loadCompare(cmpId);
       } else if (d.kind === 'qty' && dir === 'pull') {
         pushBomUndo('맞대기 수량 맞춤');
         const to = d.theirQty;
         const first = d.mineRows[0];
-        await updateBomItem(first.id, { qty: to - (d.mineQty - (Number(first.qty) || 0)) });
+        await updateBomItem(first.id, { qty: to - (d.mineQty - (Number(first.qty) || 0)) }, { sync: false });
         setBomItems(await getBomBySite(projectId));
       } else if (d.kind === 'variant') {
         // 타입만 다른 줄 — 받는 쪽 줄의 타입을 주는 쪽 라벨에 맞춘다
@@ -359,13 +368,13 @@ export default function BomDetailPage() {
           pull ? theirV : mineV,
           pull ? mineV : theirV,
         );
-        for (const r of dstRows) await updateBomItem(r.id, { variantKeys: keys });
+        for (const r of dstRows) await updateBomItem(r.id, { variantKeys: keys }, { sync: false });
         if (pull) setBomItems(await getBomBySite(projectId));
         else await loadCompare(cmpId);
       } else if (d.kind === 'qty' && dir === 'push') {
         const to = d.mineQty;
         const first = d.theirRows[0];
-        await updateBomItem(first.id, { qty: to - (d.theirQty - (Number(first.qty) || 0)) });
+        await updateBomItem(first.id, { qty: to - (d.theirQty - (Number(first.qty) || 0)) }, { sync: false });
         await loadCompare(cmpId);
       }
       setCmpDone((prev) => new Set(prev).add(d.key));
@@ -447,12 +456,16 @@ export default function BomDetailPage() {
         ...toRestore.map((b) => restoreBomItem(b.id, projectId, b)),
         ...toDelete.map((b) => deleteBomItem(b.id)),
         ...toUpdate.map((b) =>
-          updateBomItem(b.id, {
-            ...Object.fromEntries(
-              HIST_KEYS.map((k) => [k, b[k] ?? (k === 'qty' || k === 'unitPrice' || k === 'order' ? 0 : '')]),
-            ),
-            variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
-          }),
+          updateBomItem(
+            b.id,
+            {
+              ...Object.fromEntries(
+                HIST_KEYS.map((k) => [k, b[k] ?? (k === 'qty' || k === 'unitPrice' || k === 'order' ? 0 : '')]),
+              ),
+              variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
+            },
+            { sync: false },
+          ),
         ),
       ]);
       setBomItems(prev);
@@ -755,8 +768,11 @@ export default function BomDetailPage() {
     recordHistory('칸 수정');
     try {
       const { id: _, createdAt: __, updatedAt: ___, ...data } = item;
-      const moved = await updateBomItem(id, data);
-      if (moved > 0) toast(`${moved}개 호기의 체크 기록을 「${data.box}」 로 옮겼습니다`, 'success');
+      const res = await updateBomItem(id, data);
+      if (res.moved > 0) toast(`${res.moved}개 호기의 체크 기록을 「${data.box}」 로 옮겼습니다`, 'success');
+      if (res.pair === 'missing')
+        toast('짝 BOM 에 같은 줄이 없어 거기엔 적용하지 못했습니다 — 「다름 찾기」로 맞춰 주세요', 'error');
+      if (res.pair === 'error') toast('짝 BOM 에 적용하지 못했습니다 — 「다름 찾기」로 확인해 주세요', 'error', 0);
     } catch {
       toast('저장 중 오류가 발생했습니다', 'error', 0);
     }
@@ -855,7 +871,7 @@ export default function BomDetailPage() {
       for (const b of targets) {
         const d = displayItems.find((x) => x.id === b.id);
         const title = [d?.name, d?.spec].filter(Boolean).join(' ') || '(이름 없음)';
-        await trashGeneric('bom', b.id, { title }, userProfile?.name || '');
+        await trashBomItem(b.id, { title }, userProfile?.name || '');
       }
       toast(`${targets.length}건을 삭제했습니다`, 'success');
     } catch {
@@ -1225,6 +1241,24 @@ export default function BomDetailPage() {
             title="형번마다 자재가 다를 때, BOM 한 벌로 관리하기"
           >
             타입 {variants.length > 0 && <strong>{variants.length}</strong>}
+          </button>
+          {/* 짝 BOM — 같은 판넬, 고객사만 다른 BOM 과 묶어 한쪽을 고치면 다른 쪽도 같이 바뀌게
+              (2026-09-18 대표님 「두개 어느 범위까지 연동할지 선택목록을 두고 연동되게」) */}
+          <button
+            type="button"
+            className={`btn btn-sm ${project?.pair?.projectId ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => {
+              setPairDraft({
+                projectId: project?.pair?.projectId || guessTwin(projects, project)?.id || '',
+                sync: { ...PAIR_DEFAULT, ...(project?.pair?.sync || {}) },
+              });
+              setPairOpen(true);
+            }}
+            title="같은 판넬의 다른 고객사 BOM 과 묶어, 한쪽을 고치면 다른 쪽도 같이 바뀌게 합니다"
+          >
+            {project?.pair?.projectId
+              ? `짝 · ${projects.find((p) => p.id === project.pair.projectId)?.name || 'BOM'}`
+              : '짝 BOM'}
           </button>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => guard() && openPicker()}>
             <Icon name="plus" className="btn-ic" />
@@ -2407,6 +2441,88 @@ export default function BomDetailPage() {
         </div>
       </Modal>
 
+      <Modal isOpen={pairOpen} onClose={() => setPairOpen(false)} title="짝 BOM">
+        <p className="field-hint">
+          같은 판넬인데 고객사만 다른 BOM 과 묶습니다. 한쪽에서 줄을 넣고 빼고 고치면 다른 쪽도 같이 바뀝니다.
+          품목·도번·비고·단가·줄 순서·줄 추가/삭제는 늘 같이 갑니다.
+        </p>
+        <div className="form-group">
+          <label>짝이 될 BOM</label>
+          <Select
+            value={pairDraft.projectId}
+            onChange={(v) => setPairDraft((d) => ({ ...d, projectId: v }))}
+            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+            placeholder="BOM 고르기"
+            ariaLabel="짝이 될 BOM"
+          />
+        </div>
+        {PAIR_OPTIONS.map((o) => (
+          <div className="toggle-row" key={o.key} style={{ marginBottom: 10 }}>
+            <div className="toggle-row-text">
+              <span className="toggle-row-title">{o.label}</span>
+              {o.key === 'supplyType' && <small className="text-muted">고객사마다 달라서 보통은 끕니다</small>}
+              {o.key === 'variant' && (
+                <small className="text-muted">타입은 이름으로 짝짓습니다 — 상대에 없는 타입은 건너뜁니다</small>
+              )}
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={!!pairDraft.sync[o.key]}
+                onChange={(e) => setPairDraft((d) => ({ ...d, sync: { ...d.sync, [o.key]: e.target.checked } }))}
+              />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+        ))}
+        <div className="modal-actions">
+          {project?.pair?.projectId && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={pairBusy}
+              onClick={async () => {
+                if (!guard()) return;
+                setPairBusy(true);
+                try {
+                  await clearBomPair(projectId);
+                  setProject((p) => ({ ...p, pair: null }));
+                  setPairOpen(false);
+                  toast('짝을 풀었습니다', 'success');
+                } catch {
+                  toast('짝을 풀지 못했습니다', 'error', 0);
+                } finally {
+                  setPairBusy(false);
+                }
+              }}
+            >
+              짝 풀기
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={pairBusy || !pairDraft.projectId}
+            onClick={async () => {
+              if (!guard()) return;
+              setPairBusy(true);
+              try {
+                await setBomPair(projectId, pairDraft.projectId, pairDraft.sync);
+                setProject((p) => ({ ...p, pair: { projectId: pairDraft.projectId, sync: pairDraft.sync } }));
+                setCmpId(pairDraft.projectId);
+                setPairOpen(false);
+                toast('짝을 맺었습니다 — 지금 다른 곳은 「다름 찾기」로 한 번 맞춰 주세요', 'success', 0);
+              } catch (err) {
+                toast(err?.message || '짝을 맺지 못했습니다', 'error', 0);
+              } finally {
+                setPairBusy(false);
+              }
+            }}
+          >
+            저장
+          </button>
+        </div>
+      </Modal>
       <Modal isOpen={variantModalOpen} onClose={() => setVariantModalOpen(false)} title="타입 관리">
         <p className="field-hint" style={{ marginTop: 0 }}>
           같은 제품인데 형번마다 자재가 다를 때 씁니다. 타입을 만들어 두면 발주서로 가져올 때 하나만 고르면 됩니다.
