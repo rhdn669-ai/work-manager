@@ -1,4 +1,5 @@
 import { byBoxThenOrder } from '../../domain/boxes';
+import { dirsOf } from '../../domain/panelBom';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel, isPrepaidTerm, prepaidBasisOf } from '../../utils/paymentTerms';
@@ -331,7 +332,11 @@ export default function PurchaseDetailPage() {
   // 달랐다 (2026-09-16 대표님 「한가지 버튼으로 합칠수는 없어?」).
   // 줄이 비어 있으면 채우는 상황, 이미 있으면 연결만 거는 상황이 기본이다.
   const [bomAlsoImport, setBomAlsoImport] = useState(true);
-  const [bomSetCount, setBomSetCount] = useState(1); // BOM 가져올 때 세트 수량(배수)
+  // BOM 가져올 때 대수 — 정방향 몇 대, 역방향 몇 대. 줄마다 제 방향 대수만 곱한다.
+  // 전에는 세트 수 하나뿐이라 「정방향에만 쓰는 자재」까지 역방향 대수만큼 사게 됐다
+  // (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」)
+  const [bomFwd, setBomFwd] = useState(1);
+  const [bomRev, setBomRev] = useState(0);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [itemPickerSearch, setItemPickerSearch] = useState('');
   const [itemPicked, setItemPicked] = useState(new Map()); // itemId -> 수량
@@ -917,7 +922,8 @@ export default function PurchaseDetailPage() {
 
   // BOM 가져오기 모달 열기 (프로젝트 목록 지연 로드)
   async function openBomModal({ alsoImport } = {}) {
-    setBomSetCount(1);
+    setBomFwd(1);
+    setBomRev(0);
     setBomAlsoImport(alsoImport ?? (form.items || []).length === 0);
     setBomModalOpen(true);
     if (bomProjects.length === 0) {
@@ -950,7 +956,15 @@ export default function PurchaseDetailPage() {
       );
       if (!ok) return;
     }
-    const setCount = Math.max(1, Number(bomSetCount) || 1);
+    const fwd = Math.max(0, Number(bomFwd) || 0);
+    const rev = Math.max(0, Number(bomRev) || 0);
+    const setCount = Math.max(1, fwd + rev);
+    // 줄이 공통이면 전부, 한쪽만 쓰는 줄이면 그쪽 대수만
+    const timesOf = (b) => {
+      const d = dirsOf(b);
+      if (d.length === 0) return fwd + rev || 1;
+      return (d.includes('정') ? fwd : 0) + (d.includes('역') ? rev : 0);
+    };
     setBomImporting(true);
     try {
       const all = await getBomBySite(bp.id);
@@ -962,7 +976,8 @@ export default function PurchaseDetailPage() {
       // 사급은 고객사 제공 자재다. 발주서로 넘어가면 우리가 사게 되고 그대로
       // 입고·마감·결제까지 흘러간다 — 여기서 막는다 (2026-09-02 대표님 「아예 뺀다」).
       const freeItems = allItems.filter(isFreeIssue);
-      const items = allItems.filter((b) => !isFreeIssue(b));
+      // 이 발주 대수에 해당이 없는 줄(예: 역방향 0 대인데 「역만」 줄)은 아예 담지 않는다
+      const items = allItems.filter((b) => !isFreeIssue(b) && timesOf(b) > 0);
       if (items.length === 0) {
         alert('해당 BOM은 전부 사급이라 발주할 품목이 없습니다.');
         return;
@@ -977,7 +992,7 @@ export default function PurchaseDetailPage() {
             name: m?.name || b.name || '',
             spec: m?.spec || b.spec || '',
             unit: m?.unit || b.unit || '',
-            ...deductStock((Number(b.qty) || 1) * setCount, tongTracked(b.itemId)), // 세트 수량(배수) 반영
+            ...deductStock((Number(b.qty) || 1) * timesOf(b), tongTracked(b.itemId)), // 줄의 정·역에 맞는 대수만
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             box: b.box || '', // 품목별 소속 BOX (BOM에서 그대로 복사, PDF 품목표에 출력)
             drawingNo: b.drawingNo || '', // 도번도 그대로 따라간다 (2026-09-02 대표님)
@@ -991,7 +1006,17 @@ export default function PurchaseDetailPage() {
         const r = mergeLines(f.items, newLines);
         report = r;
         // 타입마다 몇 세트인지 따로 남긴다 — 숫자 하나로 두면 나중에 담은 타입이 앞의 것을 덮어쓴다
-        const setLots = mergeSetLots(f.setLots, vLabel || bp.name, setCount);
+        // 정·역을 나눠 담았으면 내역도 나눠 남긴다 — 한 숫자로 뭉치면 무엇을 몇 대 샀는지 못 읽는다
+        const base = vLabel || bp.name;
+        let setLots = f.setLots;
+        if (rev > 0 && fwd > 0) {
+          setLots = mergeSetLots(setLots, `${base} 정`, fwd);
+          setLots = mergeSetLots(setLots, `${base} 역`, rev);
+        } else if (rev > 0) {
+          setLots = mergeSetLots(setLots, `${base} 역`, rev);
+        } else {
+          setLots = mergeSetLots(setLots, base, fwd || setCount);
+        }
         // 발주서가 어느 BOM(프로젝트·타입)에서 왔는지 기억한다 — 도급 배정이 이걸로 발주서를 찾는다 (안 B 3단계)
         const bomLinks = mergeBomLinks(f.bomLinks, {
           projectId: bp.id,
@@ -3657,19 +3682,39 @@ export default function PurchaseDetailPage() {
             </span>
           </label>
         </div>
-        <div className="form-group" hidden={!bomAlsoImport}>
-          <label>세트 수량 (배수)</label>
-          <input
-            aria-label="세트 수량 (배수)"
-            type="number"
-            min="1"
-            value={bomSetCount}
-            onChange={(e) => setBomSetCount(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            placeholder="1"
-            style={{ maxWidth: 160, fontSize: 18, fontWeight: 700, textAlign: 'center' }}
-          />
-          <p className="field-hint">BOM 1세트 기준 수량에 곱해집니다. 예) 5세트 입력 → 각 품목 수량 ×5로 불러옵니다.</p>
+        <div hidden={!bomAlsoImport}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>정방향 대수</label>
+              <input
+                aria-label="정방향 대수"
+                type="number"
+                min="0"
+                value={bomFwd}
+                onChange={(e) => setBomFwd(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0"
+                style={{ fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+              />
+            </div>
+            <div className="form-group">
+              <label>역방향 대수</label>
+              <input
+                aria-label="역방향 대수"
+                type="number"
+                min="0"
+                value={bomRev}
+                onChange={(e) => setBomRev(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0"
+                style={{ fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+              />
+            </div>
+          </div>
+          <p className="field-hint">
+            BOM 1대 기준 수량에 곱합니다. 공통 자재는 <strong>정＋역</strong> 대수만큼, 한쪽 방향에만 쓰는 자재는{' '}
+            <strong>그쪽 대수</strong>만큼 담깁니다. 예) 정 3 · 역 2 → 공통 ×5, 「정만」 ×3, 「역만」 ×2.
+          </p>
         </div>
         {bomLoading ? (
           <p className="purchase-empty">불러오는 중...</p>

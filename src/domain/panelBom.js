@@ -57,16 +57,35 @@ export function siblingsForCopy(panels, me) {
 }
 
 /** BOM 줄 가운데 이 판넬의 이 BOX 에 해당하는 것 — 타입은 bomItemsForVariant 가 거른 뒤 */
-// ── 정방향 제외 (2026-09-15 대표님) ──
-// 정방향 호기에는 고객사가 어떤 사급·판금 자재를 우리 손을 거치지 않고 다른 협력사로 직접
-// 보낸다. BOM 줄에 「정방향 제외」(skipForward)를 붙여 두면 정방향 호기(정역 = '정')의 자재
-// 목록에 «회색으로 보이되 셈에는 없는» 줄이 된다 — 완료 판정·부족 집계·나감 SET·재고 통 모두.
-// (「넘기기보다 우리쪽으로 아예 입고가 안될거라」 → 숨기지 않고 회색, 「제외」 버튼은 안 먹음)
-export function isForwardExcluded(row, panel) {
-  return !!row?.skipForward && String(panel?.정역 || '').trim() === '정';
+// ── 정·역 구분 (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」) ──
+// BOM 줄마다 「정」「역」을 켜고 끈다. 둘 다 켜짐 = 공통(어느 호기나 쓴다). 하나만 켜면 그 방향
+// 호기에서만 셈에 들고, 반대쪽 호기 화면에는 «회색으로 보이되 셈에는 없는» 줄이 된다 —
+// 완료 판정·부족 집계·나감 SET·재고 통 모두. 숨기지 않고 회색으로 두는 것은 예전과 같다
+// (「넘기기보다 우리쪽으로 아예 입고가 안될거라」 → 「제외」 단추는 안 먹음).
+//
+// 전에는 「정방향 제외」(skipForward) 한 가지뿐이라 «정방향에만 쓰는 자재»를 적을 길이 없었다.
+// 옛 값은 「역만」으로 읽는다 — 저장된 자료는 손대지 않는다 (2026-09-15 → 2026-09-21).
+export const DIRS = ['정', '역'];
+
+/** 이 줄이 허용하는 방향 — 빈 배열이면 공통(둘 다). 한 가지만 켜졌을 때만 값이 찬다 */
+export function dirsOf(row) {
+  if (Array.isArray(row?.dirs)) {
+    const uniq = [...new Set(row.dirs.map((d) => String(d).trim()).filter((d) => DIRS.includes(d)))];
+    return uniq.length === 1 ? uniq : []; // 둘 다거나 하나도 없으면 공통
+  }
+  return row?.skipForward ? ['역'] : []; // 옛 「정방향 제외」 = 역방향에서만 쓰는 줄
 }
 
-/** 이 호기가 실제로 쓰는 줄 — 타입(형번)에 맞고, 정방향 제외가 아닌 것 */
+/** 이 호기에서 셈에 안 넣는 줄 — 호기에 정역을 안 적었으면 «모름»이라 빼지 않는다(빼는 쪽이 위험) */
+export function isOutOfScope(row, panel) {
+  const dirs = dirsOf(row);
+  if (dirs.length === 0) return false;
+  const d = String(panel?.정역 || '').trim();
+  if (!d) return false;
+  return !dirs.includes(d);
+}
+
+/** 이 호기가 실제로 쓰는 줄 — 타입(형번)에 맞고, 이 호기 방향에 해당하는 것 */
 export function rowsForPanel(rows, panel) {
   const key = panel?.bomLink?.variantKey || '';
   return (rows || []).filter((r) => {
@@ -74,7 +93,7 @@ export function rowsForPanel(rows, panel) {
       const ks = Array.isArray(r.variantKeys) ? r.variantKeys : [];
       if (ks.length > 0 && !ks.includes(key)) return false;
     }
-    return !isForwardExcluded(r, panel);
+    return !isOutOfScope(r, panel);
   });
 }
 

@@ -61,6 +61,7 @@ import { getAllMaterials } from '../../services/panelMaterialsService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
 import { BOX_OPTIONS, byBoxThenOrder } from '../../domain/boxes';
+import { DIRS, dirsOf } from '../../domain/panelBom';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
 // 되돌리기가 맞추는 칸 — 수량·단가·비고·순서·품목·BOX·도급/사급·도번
@@ -157,6 +158,8 @@ export default function BomDetailPage() {
   const [pairOpen, setPairOpen] = useState(false);
   const [pairDraft, setPairDraft] = useState({ projectId: '', sync: PAIR_DEFAULT });
   const [pairBusy, setPairBusy] = useState(false);
+  const [splitOf, setSplitOf] = useState(null); // 줄 나누기 — { row, n, box }
+  const [splitBusy, setSplitBusy] = useState(false);
   const [bomItems, setBomItems] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -449,7 +452,11 @@ export default function BomDetailPage() {
       const c = curMap.get(b.id);
       if (!c) return false;
       const same = (k) => (b[k] ?? '') === (c[k] ?? '');
-      return !HIST_KEYS.every(same) || JSON.stringify(b.variantKeys || []) !== JSON.stringify(c.variantKeys || []);
+      return (
+        !HIST_KEYS.every(same) ||
+        JSON.stringify(b.variantKeys || []) !== JSON.stringify(c.variantKeys || []) ||
+        JSON.stringify(b.dirs || []) !== JSON.stringify(c.dirs || [])
+      );
     });
     try {
       await Promise.all([
@@ -463,6 +470,7 @@ export default function BomDetailPage() {
                 HIST_KEYS.map((k) => [k, b[k] ?? (k === 'qty' || k === 'unitPrice' || k === 'order' ? 0 : '')]),
               ),
               variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
+              dirs: Array.isArray(b.dirs) ? b.dirs : [],
             },
             { sync: false },
           ),
@@ -701,12 +709,84 @@ export default function BomDetailPage() {
   // 사급 → 도급으로 바꿀 때는 재고도 함께 옮길지 묻는다. BOM 만 바꾸면 사급 통에 남은 양이
   // 갈 곳을 잃고, 도급 쪽은 들어옴이 0 이라 남음이 음수가 된다
   // (2026-09-12 대표님 「bom에서 버튼눌러서 그냥 옮기면안됨?」).
-  // 정방향 호기에는 우리 손을 안 거치는 자재 — 줄에 표시만 해 두면 정방향 호기 화면에 회색으로
-  // 보이고 셈에서 빠진다 (2026-09-15 대표님). 켜고 끄는 것뿐이라 묻지 않는다.
-  function toggleForwardSkip(it) {
-    const next = { skipForward: !it.skipForward };
+  // 정·역 — 줄마다 어느 방향 호기에 쓰는지. 둘 다 켜짐이 공통(기본)이고, 하나만 켜면 반대쪽
+  // 호기 화면에 회색으로 보이며 셈에서 빠진다 (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」).
+  // 둘 다 끄면 아무 호기에도 안 쓰이는 줄이 되어 뜻이 없으므로 공통으로 되돌린다.
+  function toggleDir(it, d) {
+    const cur = dirsOf(it);
+    const on = { 정: cur.length === 0 || cur.includes('정'), 역: cur.length === 0 || cur.includes('역') };
+    on[d] = !on[d];
+    const list = DIRS.filter((x) => on[x]);
+    const next = { dirs: list.length === 1 ? list : [], skipForward: false };
     updateField(it.id, next);
     flushItem(it.id, next);
+  }
+
+  // 줄 나누기 — 「LOCAL 3개 중 1개를 MP 로」. 수량을 덜어 다른 BOX 로 옮긴다. 그 BOX 에 같은
+  // 품목·타입·방향 줄이 이미 있으면 새로 만들지 않고 수량만 더한다
+  // (2026-09-21 대표님 「local -> mp로 nx-ecc201 1개만 이동 같은 경우」).
+  async function doSplit() {
+    const row = splitOf?.row;
+    if (!row) return;
+    const have = Number(row.qty) || 0;
+    const n = Math.max(1, Math.min(Number(splitOf.n) || 0, have));
+    const to = String(splitOf.box || '').trim();
+    if (!to || to === String(row.box || '').trim()) {
+      toast('옮길 BOX 를 고르세요', 'error');
+      return;
+    }
+    if (!guard()) return;
+    setSplitBusy(true);
+    pushBomUndo('줄 나누기');
+    try {
+      const rest = have - n;
+      if (rest <= 0) {
+        // 전부 옮기면 BOX 만 바꾸는 것과 같다 — 호기 체크 기록도 함께 따라간다 (v158.2)
+        await flushItem(row.id, { box: to });
+        setBomItems((prev) => prev.map((b) => (b.id === row.id ? { ...b, box: to } : b)));
+      } else {
+        const sameKey = (b) =>
+          b.id !== row.id &&
+          String(b.box || '').trim() === to &&
+          (b.itemId || '') === (row.itemId || '') &&
+          JSON.stringify(b.variantKeys || []) === JSON.stringify(row.variantKeys || []) &&
+          JSON.stringify(dirsOf(b)) === JSON.stringify(dirsOf(row));
+        const twin = bomItems.find(sameKey);
+        await flushItem(row.id, { qty: rest });
+        setBomItems((prev) => prev.map((b) => (b.id === row.id ? { ...b, qty: rest } : b)));
+        if (twin) {
+          const sum = (Number(twin.qty) || 0) + n;
+          await flushItem(twin.id, { qty: sum });
+          setBomItems((prev) => prev.map((b) => (b.id === twin.id ? { ...b, qty: sum } : b)));
+        } else {
+          const order = Math.max(0, ...bomItems.map((b) => Number(b.order) || 0)) + 1;
+          const data = {
+            itemId: row.itemId || '',
+            name: row.name || '',
+            spec: row.spec || '',
+            unit: row.unit || '',
+            qty: n,
+            unitPrice: Number(row.unitPrice) || 0,
+            box: to,
+            note: row.note || '',
+            supplyType: row.supplyType || '',
+            drawingNo: row.drawingNo || '',
+            variantKeys: Array.isArray(row.variantKeys) ? row.variantKeys : [],
+            dirs: dirsOf(row),
+            order,
+          };
+          const ref = await addBomItem(projectId, data);
+          setBomItems((prev) => [...prev, { ...data, id: ref.id, siteId: projectId }]);
+        }
+      }
+      setSplitOf(null);
+      toast(`${n}개를 「${to}」 로 옮겼습니다`, 'success');
+    } catch (err) {
+      console.error(err);
+      toast('나누는 중 오류가 발생했습니다 — 화면을 새로 불러와 확인해 주세요', 'error', 0);
+    } finally {
+      setSplitBusy(false);
+    }
   }
 
   async function toggleSupply(it) {
@@ -1938,21 +2018,35 @@ export default function BomDetailPage() {
                                 >
                                   {kindLabel(it)}
                                 </button>
-                                <button
-                                  type="button"
-                                  className={`bom-scope-btn${it.skipForward ? ' on' : ''}`}
-                                  onClick={() => toggleForwardSkip(it)}
-                                  title={
-                                    it.skipForward
-                                      ? '정방향 호기에는 우리 손을 안 거치는 자재 — 눌러서 되돌리기'
-                                      : '정방향 호기에서 이 자재를 회색(셈 제외)으로 — 눌러서 켜기'
-                                  }
-                                  aria-pressed={!!it.skipForward}
-                                  aria-label="정방향 제외"
-                                >
-                                  {/* 켠 줄만 문구가 보인다 — 안 켠 줄은 작은 ＋ 점만 (대표님 「Bom에서 누른거만 제외문구 떠야지」) */}
-                                  {it.skipForward ? '정방향 제외' : '＋'}
-                                </button>
+                                {/* 정·역 — 둘 다 켜짐이 공통(기본)이라 흐리게, 한쪽만 쓰는 줄만 진하게 보인다
+                                  (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」) */}
+                                <span className="bom-dirs">
+                                  {DIRS.map((d) => {
+                                    const only = dirsOf(it);
+                                    const on = only.length === 0 || only.includes(d);
+                                    return (
+                                      <button
+                                        key={d}
+                                        type="button"
+                                        className={`bom-dir-btn${only.length === 1 && on ? ' on' : ''}${
+                                          on ? '' : ' off'
+                                        }`}
+                                        onClick={() => toggleDir(it, d)}
+                                        aria-pressed={on}
+                                        aria-label={`${d}방향 호기에 쓰는 자재`}
+                                        title={
+                                          only.length === 0
+                                            ? `공통 — 정·역 호기 모두에 씁니다. 눌러서 「${d}」 를 빼기`
+                                            : on
+                                              ? `${d}방향 호기에만 쓰는 자재 — 눌러서 공통으로`
+                                              : `${d}방향 호기에는 안 쓰는 자재 — 눌러서 공통으로`
+                                        }
+                                      >
+                                        {d}
+                                      </button>
+                                    );
+                                  })}
+                                </span>
                               </td>
                               <td data-label="수량">
                                 <input
@@ -2014,6 +2108,15 @@ export default function BomDetailPage() {
                                     title="이 품목 등록(구매품목 관리) 페이지로 이동"
                                   >
                                     <Icon name="chevronRight" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline"
+                                    onClick={() => setSplitOf({ row: it, n: 1, box: '' })}
+                                    aria-label="줄 나누기"
+                                    title="이 줄의 수량 일부를 다른 BOX 로 옮깁니다"
+                                  >
+                                    나누기
                                   </button>
                                   <button
                                     type="button"
@@ -2467,6 +2570,54 @@ export default function BomDetailPage() {
         </div>
       </Modal>
 
+      {splitOf && (
+        <Modal isOpen onClose={() => setSplitOf(null)} title="줄 나누기" size="md">
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            <strong>{splitOf.row.name || splitOf.row.itemId}</strong> · 지금{' '}
+            <strong>
+              {String(splitOf.row.box || '(BOX 없음)')} {Number(splitOf.row.qty) || 0}개
+            </strong>
+          </p>
+          <div className="form-row">
+            <div className="form-group">
+              <label>옮길 개수</label>
+              <input
+                type="number"
+                min="1"
+                max={Number(splitOf.row.qty) || 1}
+                value={splitOf.n}
+                onChange={(e) => setSplitOf((s) => ({ ...s, n: e.target.value }))}
+                aria-label="옮길 개수"
+              />
+            </div>
+            <div className="form-group">
+              <label>어느 BOX 로</label>
+              <Select
+                value={splitOf.box}
+                onChange={(v) => setSplitOf((s) => ({ ...s, box: v }))}
+                options={BOX_OPTIONS.filter((b) => b !== String(splitOf.row.box || '').trim()).map((b) => ({
+                  value: b,
+                  label: b,
+                }))}
+                placeholder="BOX 고르기"
+                ariaLabel="어느 BOX 로"
+              />
+            </div>
+          </div>
+          <p className="field-hint">
+            그 BOX 에 같은 품목·타입·방향 줄이 있으면 새로 만들지 않고 수량만 더합니다. 호기에 이미 체크해 둔 수량은
+            지금 줄에 그대로 남아, 나눈 뒤 초과·부족으로 보일 수 있습니다.
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setSplitOf(null)} disabled={splitBusy}>
+              취소
+            </button>
+            <button type="button" className="btn btn-primary" onClick={doSplit} disabled={splitBusy || !splitOf.box}>
+              옮기기
+            </button>
+          </div>
+        </Modal>
+      )}
       <Modal isOpen={pairOpen} onClose={() => setPairOpen(false)} title="짝 BOM">
         <p className="field-hint">
           같은 판넬인데 고객사만 다른 BOM 과 묶습니다. 한쪽에서 줄을 넣고 빼고 고치면 다른 쪽도 같이 바뀝니다.

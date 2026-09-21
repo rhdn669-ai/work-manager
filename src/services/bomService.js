@@ -268,6 +268,7 @@ export async function addBomItem(siteId, data, { sync = true } = {}) {
     // (2026-09-02 대표님). 발주서로도 그대로 따라간다.
     drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [], // 비어 있으면 공통
+    dirs: Array.isArray(data.dirs) ? data.dirs : [], // 정·역 — 비어 있으면 공통 (2026-09-21 대표님)
     order: Number(data.order) || 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -400,6 +401,7 @@ export async function restoreBomItem(id, siteId, data) {
     supplyType: data.supplyType || '',
     drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [],
+    dirs: Array.isArray(data.dirs) ? data.dirs : [],
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),
     updatedAt: new Date(),
@@ -428,6 +430,7 @@ export function snapshotBomRows(items) {
     drawingNo: b.drawingNo || '',
     order: Number(b.order) || 0,
     variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
+    dirs: Array.isArray(b.dirs) ? b.dirs : [],
   }));
 }
 

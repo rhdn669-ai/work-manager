@@ -30,7 +30,7 @@ import {
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
-import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isForwardExcluded, isMatStarted } from '../../domain/panelBom';
+import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isOutOfScope, isMatStarted } from '../../domain/panelBom';
 import {
   OUT_WHYS,
   OUT_WHYS_STRAY,
@@ -304,9 +304,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       delete n[optKey(r)];
       return n;
     });
-  // 정방향 제외 줄 — 이 호기(정)에는 안 오는 자재. 표에는 회색으로 두고 셈에서는 뺀다
+  // 이 호기 방향(정·역)에 안 해당하는 줄 — 표에는 회색으로 두고 셈에서는 뺀다
   // (2026-09-15 대표님 「Bom에 정을 표시한것만 생산현황 호기 자재리스트에 회색처리」)
-  const inScope = useCallback((r) => !isForwardExcluded(r, panel), [panel]);
+  const inScope = useCallback((r) => !isOutOfScope(r, panel), [panel]);
   // 세트를 배정한 호기의 도급 수량은 세트가 정한다 — 손으로 못 고친다 (2026-09-03 대표님
   // 「도급 세트 배정하면 이 페이지는 수동으로 입력하는 게 안 되어야」). 사급은 그대로 손 체크.
   // 도급은 «항상» 읽기 전용 — 우리가 사서 넣는 자재라 「도급 세트」 배정으로만 채운다
@@ -536,7 +536,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     // 기록이 하나도 없는 BOX 는 건드리지 않는다 — BOM 만 연결하고 페이지를 연 것만으로
     // 손으로 켜 둔 자재 칸이 「0개 입고」로 꺼지던 문제 (2026-09-03 대표님 「자재 칸 보호」)
     if (!boxList.some((b) => Object.keys(received[b] || {}).length)) return;
-    // 이 호기에 수량을 하나라도 적기 전에는 판정하지 않는다 — 정방향 제외로 줄이 다 빠진 BOX 가
+    // 이 호기에 수량을 하나라도 적기 전에는 판정하지 않는다 — 방향이 안 맞아 줄이 다 빠진 BOX 가
     // 「다 들어옴」으로 켜지면 안 된다 (2026-09-15 대표님 「하나라도 체크가 시작 되었을때 시작」)
     if (!isMatStarted(received)) return;
     const today = new Date().toISOString().slice(0, 10);
@@ -545,7 +545,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     let changed = false;
     // BOX 마다 따로 판정한다 — 「전체」에서도 줄은 제 BOX 로 셈한다
     for (const b of boxList) {
-      const scoped = rows.filter((r) => boxOf(r) === b).filter(inScope); // 정방향 제외 줄은 셈에 없다
+      const scoped = rows.filter((r) => boxOf(r) === b).filter(inScope); // 방향이 안 맞는 줄은 셈에 없다
       if (scoped.length === 0) continue;
       const recB = received[b] || {};
       if (Object.keys(recB).length === 0) continue;
@@ -1139,7 +1139,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             <tbody>
               {shown.map((r, i) => {
                 const got = shownQty(r);
-                const outScope = !inScope(r); // 정방향 제외 — 회색, 셈 없음
+                const outScope = !inScope(r); // 이 호기 방향이 아님 — 회색, 셈 없음
                 const skipped = isSkipped(recOf(r), r.id);
                 const short = skipped || outScope ? 0 : shortageOf(r.qty, got);
                 const done = outScope || rowDone(r, recOf(r));
@@ -1192,7 +1192,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       <td className="pmat-num">{Number(r.qty) || 0}</td>
                       <td className="pmat-num">
                         {outScope ? (
-                          <span className="pmat-locked-qty" title="정방향 호기에는 우리 손을 거치지 않는 자재">
+                          <span
+                            className="pmat-locked-qty"
+                            title={`${panel?.정역 || ''}방향 호기에는 쓰지 않는 자재 — BOM 에서 정·역을 가렸습니다`}
+                          >
                             —
                           </span>
                         ) : locked ? (
@@ -1405,7 +1408,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                           )}
                           {/* 「제외」는 없앴다 — 까닭 없이 줄을 셈에서 빼는 것이라 「왜 없나 / 어떻게 채웠나」를
                             남기는 방향과 어긋난다 (2026-09-15 대표님 「그냥 제외 시키는건 컨셉에 안맞으니」).
-                            BOM 에 안 들어가는 자재는 BOM 의 「정방향 제외」나 타입으로 가른다.
+                            BOM 에 안 들어가는 자재는 BOM 의 「정·역」이나 타입으로 가른다.
                             이미 제외해 둔 줄에만 「포함」을 남겨 되돌릴 수 있게 한다. */}
                           {skipped && !outScope && (
                             <button

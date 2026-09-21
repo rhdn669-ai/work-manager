@@ -115,21 +115,22 @@ describe('자재 칸의 타입 선택', () => {
   });
 });
 
-import { isForwardExcluded, rowsForPanel } from '../../src/domain/panelBom';
+import { isOutOfScope, rowsForPanel } from '../../src/domain/panelBom';
 
-describe('정방향 제외 — BOM 줄의 skipForward 와 호기의 정역', () => {
+// 2026-09-21 「정방향 제외」가 「정·역 개별 체크」로 넓어졌다 — 옛 skipForward 는 «역만»으로 읽힌다
+describe('정·역 — 옛 skipForward 줄과 호기의 정역', () => {
   const rowA = { id: 'a', skipForward: true };
   const rowB = { id: 'b' };
   const fwd = { 정역: '정', bomLink: { variantKey: '' } };
   const rev = { 정역: '역', bomLink: { variantKey: '' } };
 
   it('정방향 호기에서만 빠진다', () => {
-    expect(isForwardExcluded(rowA, fwd)).toBe(true);
-    expect(isForwardExcluded(rowA, rev)).toBe(false);
-    expect(isForwardExcluded(rowB, fwd)).toBe(false);
+    expect(isOutOfScope(rowA, fwd)).toBe(true);
+    expect(isOutOfScope(rowA, rev)).toBe(false);
+    expect(isOutOfScope(rowB, fwd)).toBe(false);
   });
 
-  it('호기가 쓰는 줄 — 타입에 맞고 정방향 제외가 아닌 것', () => {
+  it('호기가 쓰는 줄 — 타입에 맞고 방향이 맞는 것', () => {
     const rows = [rowA, rowB, { id: 'c', variantKeys: ['vX'] }, { id: 'd', variantKeys: ['vY'] }];
     expect(rowsForPanel(rows, fwd).map((r) => r.id)).toEqual(['b', 'c', 'd']);
     expect(rowsForPanel(rows, rev).map((r) => r.id)).toEqual(['a', 'b', 'c', 'd']);
