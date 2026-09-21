@@ -69,6 +69,31 @@ export const PO_COLS = [
   4, // 작업
 ];
 
+/** BOM 화면표 — 타입별 수량으로 옮긴 뒤. 「타입」 열이 없어지고 그 몫을 수량과 규격이 받는다.
+ *  수량 칸 안에서 「공통 · 타입1 · 타입2 …」로 나뉘므로 타입이 셋 이상이면 조금 더 넓힌다
+ *  (2026-09-21 대표님 「수량 아래에 박스 타입 달고 리스트에 타입별 수량 바로 보이게」). */
+export function bomColsTypeQty(variantCount = 2) {
+  const extra = Math.max(0, (Number(variantCount) || 0) - 2) * 2;
+  return [
+    1, // 여백
+    2, // No
+    6, // 코드
+    6, // 도번
+    6, // BOX
+    11, // 품명
+    7, // 메이커
+    13 - extra, // 규격 — 타입이 늘면 수량에 내준다
+    4, // 분류
+    4, // 구분
+    13 + extra, // 수량 — 「공통 · 타입…」이 나란히 들어간다
+    5, // 단가
+    5, // 합계
+    7, // 구매처
+    6, // 비고
+    4, // 작업
+  ];
+}
+
 export function sumOf(cols) {
   return cols.reduce((s, n) => s + n, 0);
 }

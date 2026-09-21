@@ -22267,33 +22267,49 @@ a.lib-row-name:hover {
 }
 
 /* 「정방향 제외」 칩 — 꺼져 있으면 옅게, 켜지면 회색 채움 (2026-09-15 대표님) */
-/* 타입별 수량 — 적은 줄만 값이 보이고, 안 적은 줄은 흐린 「타입별」 (2026-09-21 대표님) */
-.bom-vqty-btn {
-  display: block;
-  width: 100%;
+/* 타입별 수량 — 「수량」 열 머리 아래에 「공통 · 타입…」을 적고, 줄마다 그 자리에서 바로 고친다
+   (2026-09-21 대표님 「수량 아래에 박스 타입 달고 리스트에 타입별 수량 바로 보이게」).
+   창을 띄우지 않으므로 표를 보면서 손이 끊기지 않는다. */
+.bom-qty-th {
+  text-align: center;
+}
+.bom-qty-th-sub {
+  display: flex;
+  gap: 2px;
   margin-top: 2px;
-  padding: 0 4px;
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 15px;
+}
+.bom-qty-th-sub span {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 800;
   color: var(--text-light);
+  letter-spacing: -0.02em;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
-  opacity: 0.45;
 }
-.bom-vqty-btn.on {
-  color: var(--primary);
-  opacity: 1;
+.bom-qty-split {
+  display: flex;
+  gap: 2px;
 }
-.bom-vqty-btn:hover {
-  opacity: 1;
-  text-decoration: underline;
+.bom-qv {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* 표 입력칸의 기본 여백(6px 8px)보다 좁아야 칸 셋이 들어간다 — 특이도를 맞춰 이긴다 */
+.inline-edit-table .bom-qty-split input.bom-qv-input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 1px;
+  font-size: 12.5px;
+  text-align: center;
+}
+/* 비운 타입 칸 — 공통 수량을 흐린 숫자로 보여 준다(그 값을 쓴다는 뜻) */
+.inline-edit-table .bom-qv-input.is-base::placeholder {
+  color: var(--text-light);
+  opacity: 0.5;
 }
 
 /* 정·역 — 줄이 어느 방향 호기에 쓰이나. 공통(둘 다)일 때는 둘 다 흐리게 두어, 「한쪽만 쓰는 줄」만

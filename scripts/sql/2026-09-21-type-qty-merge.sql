@@ -65,6 +65,20 @@ SELECT g.id AS dead_id, kp.keep_id
 FROM gr g JOIN keep kp ON kp.pid=g.pid AND kp.k=g.k AND kp.box=g.box
 WHERE g.id <> kp.keep_id;
 
+-- ⓪ 짝이 없어 혼자 있는 «타입 전용 줄»도 새 모양으로 — 합치는 것이 아니라 모양만 바꾼다.
+--    (Relay MP 4개 M7H, SWITCH MP 1개 … 규격이 달라 서로 짝이 아닌 별개 품목들)
+--    줄이 사라지지 않으므로 호기 체크 기록은 그 자리에 그대로 있다.
+UPDATE wm.bom b
+SET data = b.data
+  || jsonb_build_object('qty', 0)
+  || jsonb_build_object('qtyByVariant',
+       (SELECT jsonb_object_agg(kk, to_jsonb(COALESCE((b.data->>'qty')::numeric,0)))
+          FROM jsonb_array_elements_text(b.data->'variantKeys') kk))
+  || jsonb_build_object('variantKeys', '[]'::jsonb)
+  || jsonb_build_object('updatedAt', to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+WHERE COALESCE(jsonb_array_length(b.data->'variantKeys'),0) > 0
+  AND b.id NOT IN (SELECT id FROM gr);
+
 -- ① 남는 줄에 기본 수량 + 타입별 예외를 적는다 (타입 전용 표시는 지운다)
 UPDATE wm.bom b
 SET data = b.data
@@ -147,6 +161,8 @@ END $$;
 
 SELECT '합친 묶음' AS what, count(*)::text AS v FROM grp
 UNION ALL SELECT '지운 줄', count(*)::text FROM moves
-UNION ALL SELECT '남은 BOM 줄', count(*)::text FROM wm.bom;
+UNION ALL SELECT '남은 BOM 줄', count(*)::text FROM wm.bom
+UNION ALL SELECT '아직 옛 모양(타입 전용) 줄', count(*)::text FROM wm.bom
+  WHERE COALESCE(jsonb_array_length(data->'variantKeys'),0) > 0;
 
 COMMIT;
