@@ -22276,14 +22276,17 @@ a.lib-row-name:hover {
 .bom-qty-th-sub {
   display: flex;
   gap: 2px;
-  margin-top: 2px;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
 }
 .bom-qty-th-sub span {
   flex: 1 1 0;
   min-width: 0;
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--text-light);
+  /* 머리줄은 네이비 바탕이다 — 회색으로 두면 묻힌다 (2026-09-21 대표님 「글이 너무 작고연함」) */
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
   letter-spacing: -0.02em;
   text-align: center;
   white-space: nowrap;
