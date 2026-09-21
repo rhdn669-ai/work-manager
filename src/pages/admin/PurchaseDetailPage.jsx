@@ -2370,19 +2370,23 @@ export default function PurchaseDetailPage() {
                 <Icon name="plus" className="btn-ic" />
                 품목 불러오기
               </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => openBomModal()}
-                disabled={cellsLocked}
-                title={
-                  cellsLocked
-                    ? '오른쪽 아래 「잠금」을 풀어야 불러올 수 있습니다'
-                    : '이 발주서를 BOM 에 걸고, 원하면 그 품목까지 불러옵니다'
-                }
-              >
-                BOM
-              </button>
+              {/* BOM 이 안 걸렸을 때는 아래 노란 띠에 「BOM 에 걸기」가 뜬다 — 같은 일을 하는 단추가
+                둘이면 헷갈린다 (2026-09-21 대표님 「BOM 버튼 두개고」). 걸고 나면 이 단추만 남는다 */}
+              {!((form.items || []).length > 0 && !form.bomProjectId) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => openBomModal()}
+                  disabled={cellsLocked}
+                  title={
+                    cellsLocked
+                      ? '오른쪽 아래 「잠금」을 풀어야 불러올 수 있습니다'
+                      : '이 발주서를 BOM 에 걸고, 원하면 그 품목까지 불러옵니다'
+                  }
+                >
+                  BOM
+                </button>
+              )}
             </>
           )}
           {!isReadOnly && saveState === 'error' && (
