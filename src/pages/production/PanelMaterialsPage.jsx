@@ -231,6 +231,26 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     else n.delete('q');
     setSp(n, { replace: true });
   };
+  // 입력칸은 주소에 «직결»하지 않는다. 글자마다 주소를 바꾸면 화면이 다시 그려지는 사이에
+  // 한글 조합(IME)이 끊겨 「키스위치」가 「ㅋ키킷스승우위읯치」로 찍혔다 (2026-09-21 대표님).
+  // 칸은 제 값을 갖고, 손이 멈추면(150ms) 주소로 옮긴다. 주소가 밖에서 바뀌면(뒤로 가기 등) 칸이 따라간다.
+  const [qDraft, setQDraft] = useState(q);
+  const qPushed = useRef(q);
+  useEffect(() => {
+    if (q !== qPushed.current) {
+      qPushed.current = q;
+      setQDraft(q);
+    }
+  }, [q]);
+  useEffect(() => {
+    if (qDraft === qPushed.current) return undefined;
+    const t = setTimeout(() => {
+      qPushed.current = qDraft;
+      setQ(qDraft);
+    }, 150);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDraft]);
   const searching = !!q.trim();
   const ALL_BOXES = '전체';
   // 처음 열면 「전체」 — BOX 를 고르기 전에 호기 전체가 한눈에 (2026-09-16 대표님 「첫 호기체크 화면은 박스 전체 보이게」)
@@ -1045,8 +1065,8 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         <div className="pmat-search-wrap">
           <input
             className="fstock-search pmat-search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={qDraft}
+            onChange={(e) => setQDraft(e.target.value)}
             placeholder="찾기 (도번·품명·규격)"
             aria-label="자재 찾기"
           />
