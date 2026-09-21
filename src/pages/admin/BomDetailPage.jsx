@@ -61,7 +61,7 @@ import { getAllMaterials } from '../../services/panelMaterialsService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT } from '../../domain/tableWidths';
 import { BOX_OPTIONS, byBoxThenOrder } from '../../domain/boxes';
-import { DIRS, dirsOf } from '../../domain/panelBom';
+import { DIRS, dirsOf, variantQtyList } from '../../domain/panelBom';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
 // 되돌리기가 맞추는 칸 — 수량·단가·비고·순서·품목·BOX·도급/사급·도번
@@ -159,6 +159,7 @@ export default function BomDetailPage() {
   const [pairDraft, setPairDraft] = useState({ projectId: '', sync: PAIR_DEFAULT });
   const [pairBusy, setPairBusy] = useState(false);
   const [splitOf, setSplitOf] = useState(null); // 줄 나누기 — { row, n, box }
+  const [vqOf, setVqOf] = useState(null); // 타입별 수량 — { row, draft: { [타입열쇠]: '값' } }
   const [splitBusy, setSplitBusy] = useState(false);
   const [bomItems, setBomItems] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
@@ -455,7 +456,8 @@ export default function BomDetailPage() {
       return (
         !HIST_KEYS.every(same) ||
         JSON.stringify(b.variantKeys || []) !== JSON.stringify(c.variantKeys || []) ||
-        JSON.stringify(b.dirs || []) !== JSON.stringify(c.dirs || [])
+        JSON.stringify(b.dirs || []) !== JSON.stringify(c.dirs || []) ||
+        JSON.stringify(b.qtyByVariant || {}) !== JSON.stringify(c.qtyByVariant || {})
       );
     });
     try {
@@ -471,6 +473,7 @@ export default function BomDetailPage() {
               ),
               variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
               dirs: Array.isArray(b.dirs) ? b.dirs : [],
+              qtyByVariant: b.qtyByVariant && typeof b.qtyByVariant === 'object' ? b.qtyByVariant : {},
             },
             { sync: false },
           ),
@@ -720,6 +723,33 @@ export default function BomDetailPage() {
     const next = { dirs: list.length === 1 ? list : [], skipForward: false };
     updateField(it.id, next);
     flushItem(it.id, next);
+  }
+
+  // 타입별 수량 — 한 줄에 «기본 + 다른 타입만 예외»를 적는다. 비우면 기본을 쓰고, 0 을 적으면
+  // 그 타입에는 없는 자재다. 줄을 쪼개지 않으므로 호기 체크 기록이 흔들리지 않는다
+  // (2026-09-21 대표님 「항목마다 타입 선택 하는 방식 보다 수량 칸을 분리해서」).
+  function openVQty(it) {
+    const by = it?.qtyByVariant && typeof it.qtyByVariant === 'object' ? it.qtyByVariant : {};
+    const draft = {};
+    for (const v of variants) draft[v.key] = by[v.key] === undefined ? '' : String(by[v.key]);
+    setVqOf({ row: it, draft });
+  }
+  async function saveVQty() {
+    const row = vqOf?.row;
+    if (!row || !guard()) return;
+    const next = {};
+    for (const v of variants) {
+      const raw = String(vqOf.draft[v.key] ?? '').trim();
+      if (raw === '') continue; // 비움 = 기본 수량을 쓴다
+      next[v.key] = Math.max(0, Number(raw) || 0);
+    }
+    setVqOf(null);
+    try {
+      setBomItems((prev) => prev.map((b) => (b.id === row.id ? { ...b, qtyByVariant: next } : b)));
+      await flushItem(row.id, { qtyByVariant: next });
+    } catch {
+      toast('타입별 수량 저장 중 오류가 발생했습니다', 'error', 0);
+    }
   }
 
   // 줄 나누기 — 「LOCAL 3개 중 1개를 MP 로」. 수량을 덜어 다른 BOX 로 옮긴다. 그 BOX 에 같은
@@ -2057,6 +2087,30 @@ export default function BomDetailPage() {
                                   onChange={(e) => updateField(it.id, { qty: e.target.value })}
                                   onBlur={() => flushItem(it.id)}
                                 />
+                                {/* 타입마다 개수가 다를 때 — 줄을 쪼개지 않고 이 줄에 예외로 적는다.
+                                  적은 줄만 값이 보이고, 안 적은 줄은 작은 「타입별」 점만 (2026-09-21 대표님) */}
+                                {variants.length > 0 &&
+                                  (() => {
+                                    const vq = variantQtyList(it);
+                                    return (
+                                      <button
+                                        type="button"
+                                        className={`bom-vqty-btn${vq.length > 0 ? ' on' : ''}`}
+                                        onClick={() => openVQty(it)}
+                                        title="타입마다 수량이 다를 때 — 눌러서 적습니다"
+                                        aria-label="타입별 수량"
+                                      >
+                                        {vq.length > 0
+                                          ? vq
+                                              .map(
+                                                (v) =>
+                                                  `${variants.find((x) => x.key === v.key)?.label || v.key} ${v.qty}`,
+                                              )
+                                              .join(' · ')
+                                          : '타입별'}
+                                      </button>
+                                    );
+                                  })()}
                               </td>
                               <td data-label="단가">
                                 <input
@@ -2570,6 +2624,39 @@ export default function BomDetailPage() {
         </div>
       </Modal>
 
+      {vqOf && (
+        <Modal isOpen onClose={() => setVqOf(null)} title="타입별 수량" size="md">
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            <strong>{vqOf.row.name || vqOf.row.itemId}</strong> · 기본 수량{' '}
+            <strong>{Number(vqOf.row.qty) || 0}개</strong>
+          </p>
+          {variants.map((v) => (
+            <div className="form-group" key={v.key}>
+              <label>{v.label}</label>
+              <input
+                type="number"
+                min="0"
+                value={vqOf.draft[v.key] ?? ''}
+                placeholder={`기본 ${Number(vqOf.row.qty) || 0}`}
+                onChange={(e) => setVqOf((s) => ({ ...s, draft: { ...s.draft, [v.key]: e.target.value } }))}
+                aria-label={`${v.label} 수량`}
+              />
+            </div>
+          ))}
+          <p className="field-hint">
+            비우면 기본 수량을 씁니다. <strong>0</strong> 을 적으면 그 타입 호기에는 없는 자재가 됩니다. 기본 수량을 0
+            으로 두면 타입을 안 정한 호기에는 이 줄이 안 뜹니다.
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setVqOf(null)}>
+              취소
+            </button>
+            <button type="button" className="btn btn-primary" onClick={saveVQty}>
+              저장
+            </button>
+          </div>
+        </Modal>
+      )}
       {splitOf && (
         <Modal isOpen onClose={() => setSplitOf(null)} title="줄 나누기" size="md">
           <p className="field-hint" style={{ marginTop: 0 }}>

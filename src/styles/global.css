@@ -22267,6 +22267,35 @@ a.lib-row-name:hover {
 }
 
 /* 「정방향 제외」 칩 — 꺼져 있으면 옅게, 켜지면 회색 채움 (2026-09-15 대표님) */
+/* 타입별 수량 — 적은 줄만 값이 보이고, 안 적은 줄은 흐린 「타입별」 (2026-09-21 대표님) */
+.bom-vqty-btn {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--text-light);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  opacity: 0.45;
+}
+.bom-vqty-btn.on {
+  color: var(--primary);
+  opacity: 1;
+}
+.bom-vqty-btn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 /* 정·역 — 줄이 어느 방향 호기에 쓰이나. 공통(둘 다)일 때는 둘 다 흐리게 두어, 「한쪽만 쓰는 줄」만
    눈에 들어온다 (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」) */
 .bom-dirs {

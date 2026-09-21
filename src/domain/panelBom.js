@@ -85,16 +85,65 @@ export function isOutOfScope(row, panel) {
   return !dirs.includes(d);
 }
 
+// ── 타입별 수량 (2026-09-21 대표님 「타입별로 수량을 다르게 적을수있게」) ──
+// 같은 품목인데 타입마다 개수가 다를 때, 전에는 줄을 둘로 쪼개고 줄마다 타입을 체크해야 했다.
+// 이제 한 줄에 «기본 수량 + 다른 타입만 예외»로 적는다 — 예: 기본 8, M7H 7.
+// 예외에 0 을 적으면 그 타입에는 없는 자재다. 기본을 비우면(0) 타입을 안 정한 호기에는 안 뜬다
+// (대표님 「공통이 없는건 우선 기본값을 비우고」).
+//
+// 옛 모양(타입 전용 줄 = variantKeys)도 같은 함수로 읽는다 — 자료를 안 옮겨도 동작이 그대로다.
+const byVariantOf = (row) => {
+  const by = row?.qtyByVariant;
+  return by && typeof by === 'object' && !Array.isArray(by) ? by : null;
+};
+
+/** 이 타입에서 이 줄이 몇 개 필요한가 — 0 이면 그 타입 호기에는 없는 줄 */
+export function qtyForVariant(row, variantKey) {
+  const key = String(variantKey || '').trim();
+  const base = Math.max(0, Number(row?.qty) || 0);
+  const by = byVariantOf(row);
+  if (by) {
+    if (key && Object.prototype.hasOwnProperty.call(by, key)) return Math.max(0, Number(by[key]) || 0);
+    return base;
+  }
+  const ks = Array.isArray(row?.variantKeys) ? row.variantKeys : [];
+  if (key && ks.length > 0 && !ks.includes(key)) return 0;
+  return base;
+}
+
+/** 이 타입 호기의 자재 목록에 뜨는 줄인가 */
+export function rowInVariant(row, variantKey) {
+  if (byVariantOf(row)) return qtyForVariant(row, variantKey) > 0;
+  const key = String(variantKey || '').trim();
+  const ks = Array.isArray(row?.variantKeys) ? row.variantKeys : [];
+  return !(key && ks.length > 0 && !ks.includes(key));
+}
+
+/** 타입에 맞는 줄만 — 수량도 그 타입 값으로 바꿔서 준다.
+ *  받는 쪽(호기 체크·부족 집계·재고 나감·발주서)은 전처럼 row.qty 만 보면 된다. */
+export function rowsForVariant(rows, variantKey) {
+  return (rows || [])
+    .filter((r) => rowInVariant(r, variantKey))
+    .map((r) => {
+      const q = qtyForVariant(r, variantKey);
+      return q === (Number(r.qty) || 0) ? r : { ...r, qty: q };
+    });
+}
+
+/** 이 줄에 적힌 «기본과 다른» 타입별 수량 — [{ key, qty }] (BOM 표에 작게 보여 준다) */
+export function variantQtyList(row) {
+  const by = byVariantOf(row);
+  if (!by) return [];
+  const base = Math.max(0, Number(row?.qty) || 0);
+  return Object.keys(by)
+    .map((key) => ({ key, qty: Math.max(0, Number(by[key]) || 0) }))
+    .filter((v) => v.qty !== base);
+}
+
 /** 이 호기가 실제로 쓰는 줄 — 타입(형번)에 맞고, 이 호기 방향에 해당하는 것 */
 export function rowsForPanel(rows, panel) {
   const key = panel?.bomLink?.variantKey || '';
-  return (rows || []).filter((r) => {
-    if (key) {
-      const ks = Array.isArray(r.variantKeys) ? r.variantKeys : [];
-      if (ks.length > 0 && !ks.includes(key)) return false;
-    }
-    return !isOutOfScope(r, panel);
-  });
+  return rowsForVariant(rows, key).filter((r) => !isOutOfScope(r, panel));
 }
 
 export function bomRowsForBox(rows, box) {

@@ -978,6 +978,11 @@ export default function PurchaseDetailPage() {
       const freeItems = allItems.filter(isFreeIssue);
       // 이 발주 대수에 해당이 없는 줄(예: 역방향 0 대인데 「역만」 줄)은 아예 담지 않는다
       const items = allItems.filter((b) => !isFreeIssue(b) && timesOf(b) > 0);
+      // 타입을 안 고르고 가져오면, 타입별로만 수량이 적힌 줄(기본 0)은 수량이 0 이라 빠진다.
+      // 말없이 빠지면 「왜 없지?」 하게 되므로 몇 건인지 알린다 (2026-09-21 타입별 수량)
+      const needVariant = !variantKey
+        ? allItems.filter((b) => !isFreeIssue(b) && (Number(b.qty) || 0) <= 0 && timesOf(b) > 0).length
+        : 0;
       if (items.length === 0) {
         alert('해당 BOM은 전부 사급이라 발주할 품목이 없습니다.');
         return;
@@ -1042,6 +1047,12 @@ export default function PurchaseDetailPage() {
       // 말없이 빠지면 「왜 몇 개가 없지?」 하게 된다 — 몇 건이 왜 빠졌는지 함께 알린다
       const skipped = freeItems.length > 0 ? ` (사급 ${freeItems.length}개는 제외)` : '';
       toast(`"${bp.name}"${vLabel ? ` · ${vLabel}` : ''} BOM에서 ${tail}${skipped}`);
+      if (needVariant > 0)
+        toast(
+          `타입마다 수량이 다른 자재 ${needVariant}개는 담기지 않았습니다 — 타입을 골라서 다시 가져오세요`,
+          'error',
+          0,
+        );
     } catch {
       toast('BOM 가져오기 중 오류가 발생했습니다', 'error');
     } finally {

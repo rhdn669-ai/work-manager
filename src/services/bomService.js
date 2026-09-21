@@ -14,6 +14,7 @@ import {
 } from '../config/data';
 import { db } from '../config/data';
 import { PAIR_DEFAULT, pairPatch, pairCopy, twinOf } from '../domain/bomPair';
+import { rowsForVariant } from '../domain/panelBom';
 
 const bomRef = collection(db, 'bom');
 const projectsRef = collection(db, 'bomProjects');
@@ -168,12 +169,10 @@ export async function removeBomVariant(projectId, key) {
 }
 
 // 한 타입으로 발주할 때 실제로 들어가는 품목 — 공통 + 그 타입 전용
+// 타입에 맞는 줄만 — 수량도 그 타입 값으로 바꿔 준다(domain/panelBom.rowsForVariant).
+// 호기 자재 체크와 발주서 「BOM 가져오기」가 모두 이 한 곳을 지나므로, 타입별 수량은 여기서 한 번만 푼다.
 export function bomItemsForVariant(items, variantKey) {
-  if (!variantKey) return items;
-  return (items || []).filter((b) => {
-    const ks = Array.isArray(b.variantKeys) ? b.variantKeys : [];
-    return ks.length === 0 || ks.includes(variantKey);
-  });
+  return rowsForVariant(items, variantKey);
 }
 
 // BOM 프로젝트 복사 — 프로젝트 문서 + 품목 전체(BOX·순서 포함)를 새 프로젝트로 복제
@@ -268,6 +267,7 @@ export async function addBomItem(siteId, data, { sync = true } = {}) {
     // (2026-09-02 대표님). 발주서로도 그대로 따라간다.
     drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [], // 비어 있으면 공통
+    qtyByVariant: data.qtyByVariant && typeof data.qtyByVariant === 'object' ? data.qtyByVariant : {},
     dirs: Array.isArray(data.dirs) ? data.dirs : [], // 정·역 — 비어 있으면 공통 (2026-09-21 대표님)
     order: Number(data.order) || 0,
     createdAt: new Date(),
@@ -401,6 +401,7 @@ export async function restoreBomItem(id, siteId, data) {
     supplyType: data.supplyType || '',
     drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [],
+    qtyByVariant: data.qtyByVariant && typeof data.qtyByVariant === 'object' ? data.qtyByVariant : {},
     dirs: Array.isArray(data.dirs) ? data.dirs : [],
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),
@@ -430,6 +431,7 @@ export function snapshotBomRows(items) {
     drawingNo: b.drawingNo || '',
     order: Number(b.order) || 0,
     variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
+    qtyByVariant: b.qtyByVariant && typeof b.qtyByVariant === 'object' ? b.qtyByVariant : {},
     dirs: Array.isArray(b.dirs) ? b.dirs : [],
   }));
 }

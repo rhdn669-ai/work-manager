@@ -47,11 +47,25 @@ export function twinOf(row, myVariants, theirRows, theirVariants) {
  * 늘 같이 가는 칸은 그대로, 고를 수 있는 칸은 sync 에 켜진 것만. 타입은 이름으로 다시 짝짓는다.
  * 옮길 것이 없으면 null.
  */
+/** { [내 타입 열쇠]: 수량 } → { [상대 타입 열쇠]: 수량 } — 이름이 같은 타입끼리 짝짓는다 */
+export function mapVariantQty(byVariant, fromVariants, toVariants) {
+  const src = byVariant && typeof byVariant === 'object' && !Array.isArray(byVariant) ? byVariant : {};
+  const out = {};
+  for (const k of Object.keys(src)) {
+    const [mapped] = mapVariantKeys([k], fromVariants, toVariants);
+    if (mapped) out[mapped] = Math.max(0, Number(src[k]) || 0);
+  }
+  return out;
+}
+
 export function pairPatch(data, sync, myVariants, theirVariants) {
   const s = { ...PAIR_DEFAULT, ...(sync || {}) };
   const out = {};
   for (const f of ALWAYS_FIELDS) if (f in (data || {})) out[f] = data[f];
   if (s.qty && 'qty' in data) out.qty = Number(data.qty) || 0;
+  // 타입별 수량 — 열쇠가 프로젝트마다 달라 이름으로 옮긴다. 상대에 없는 타입 값은 버린다
+  if (s.qty && s.variant && 'qtyByVariant' in data)
+    out.qtyByVariant = mapVariantQty(data.qtyByVariant, myVariants, theirVariants);
   if (s.box && 'box' in data) out.box = data.box || '';
   if (s.supplyType && 'supplyType' in data) out.supplyType = data.supplyType || '';
   if (s.variant && 'variantKeys' in data)
@@ -85,5 +99,6 @@ export function pairCopy(data, sync, myVariants, theirVariants, theirRows) {
     box: s.box ? data.box || '' : '',
     supplyType: s.supplyType ? data.supplyType || '' : like?.supplyType || '',
     variantKeys: s.variant ? mapVariantKeys(data.variantKeys || [], myVariants, theirVariants) : [],
+    qtyByVariant: s.qty && s.variant ? mapVariantQty(data.qtyByVariant, myVariants, theirVariants) : {},
   };
 }
