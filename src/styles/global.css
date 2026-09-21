@@ -1576,14 +1576,11 @@ body {
   background: var(--accent);
 }
 
+/* 대기 건수가 있는 메뉴 — 빨간 띠는 빼고 숫자 배지만 남긴다. 늘 켜져 있는 띠는 경고가 아니라
+   배경이 되어 버리고, 사이드바에서 빨강이 한 줄을 통째로 차지해 눈이 피곤하다
+   (2026-09-22 대표님 「결제에 빨간 띄 없애줘」) */
 .nav-link.has-unread {
-  background: var(--danger-tint);
-  color: var(--danger);
   font-weight: 700;
-}
-.nav-link.has-unread.active {
-  background: var(--primary-soft);
-  color: var(--primary);
 }
 
 .sidebar-badge {
