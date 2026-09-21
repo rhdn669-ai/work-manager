@@ -1,5 +1,15 @@
 import { orderOf } from '../domain/panelOrder';
-import { collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp, getDoc, writeBatch } from '../config/data';
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  onSnapshot,
+  serverTimestamp,
+  getDoc,
+  writeBatch,
+  getDocs,
+} from '../config/data';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { isServer } from '../config/data';
 import * as ServerFiles from './serverFiles';
@@ -15,6 +25,20 @@ import { syncPanelNcr, removePanelNcr } from './qualityRecordService';
 const panelsRef = collection(db, 'productionPanels');
 
 // 실시간 구독 — recompute(진행률·종합상태) 적용해 콜백
+/** 이 BOM 을 쓰는 호기들의 회사 — 재고 통은 회사별이라, 발주서·입고가 어느 통에 닿을지 여기서 안다.
+ *  생산현황 호기마다 회사가 적혀 있으니 BOM 프로젝트에 회사를 따로 안 적어도 된다
+ *  (2026-09-21 대표님 「메티스는 메티스 디에이치는 디에이치 통에서」). @returns 회사 이름 배열(중복 없음) */
+export async function getPanelCompaniesByBom(projectId) {
+  if (!projectId) return [];
+  const snap = await getDocs(panelsRef);
+  const set = new Set();
+  snap.docs.forEach((d) => {
+    const v = d.data() || {};
+    if (v?.bomLink?.projectId === projectId && String(v.회사 || '').trim()) set.add(String(v.회사).trim());
+  });
+  return [...set];
+}
+
 export function subscribePanels(cb) {
   // 바뀐 문서만 다시 계산한다. 매번 전부 새 객체로 만들면 표의 줄 memo 가 전혀 안 먹어
   // 저장 한 번에 줄 전체가 다시 그려진다 (2026-09-03 태블릿 렉 실측).

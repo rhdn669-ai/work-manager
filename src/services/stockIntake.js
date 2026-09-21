@@ -5,6 +5,7 @@
 // 굳히기 전에는 통 qty 를 건드리지 않고 기록만 남긴다(그동안 도급 남음은 발주서를 다시 세서
 // 얻으므로 더하면 두 번 센다). 굳힌 회사·갈래만 qty 가 움직인다 — ledgerOn 이 가른다.
 import { getBomProjectById, getBomBySite } from './bomService';
+import { getPanelCompaniesByBom } from './productionService';
 import { getPaidSetSettings } from './paidSetService';
 import { noteOrderIntake } from './stockService';
 import { ledgerOn, stockKindOf } from '../domain/stockLedger';
@@ -27,8 +28,19 @@ export async function resolvePurchaseTong(purchase) {
   const pid = projectIdOfPurchase(purchase);
   if (!pid) return { company: '', kindOfItem: () => 'paid', settings: null, noProject: true };
   const project = await getBomProjectById(pid);
-  const company = String(project?.회사 || '').trim();
   const [rows, settings] = await Promise.all([getBomBySite(pid), getPaidSetSettings()]);
+  // 회사는 세 길로 찾는다 — ① BOM 프로젝트에 적힌 회사 ② 발주서의 현장이 어느 회사 통에 묶였나(통 설정)
+  // ③ 이 BOM 을 쓰는 생산현황 호기들의 회사(하나뿐일 때). 메티스 BOM 은 메티스 호기 34대가 쓰니
+  // ③만으로도 잡힌다 — 사람이 회사 칸을 따로 안 채워도 통이 이어진다 (2026-09-21 대표님)
+  let company = String(project?.회사 || '').trim();
+  if (!company && purchase?.siteId) {
+    company =
+      Object.keys(settings || {}).find((k) => k !== 'updatedAt' && settings[k]?.siteId === purchase.siteId) || '';
+  }
+  if (!company) {
+    const list = await getPanelCompaniesByBom(pid).catch(() => []);
+    if (list.length === 1) company = list[0];
+  }
   // 그 프로젝트 BOM 에서 이 품목이 어느 갈래인지 — 판금 줄이 하나라도 있으면 판금, 아니면 도급.
   // 사급 줄뿐인 품목은 발주서로 살 일이 없으니 통에 적지 않는다.
   const kindOfItem = (itemId) => {

@@ -423,10 +423,10 @@ export default function PurchaseDetailPage() {
   }, [id]);
 
   // 발주서가 걸린 BOM 이 바뀌면 통도 다시 찾는다
-  const tongKey = `${form.bomProjectId || ''}|${(form.bomLinks || []).map((l) => l.projectId).join(',')}`;
+  const tongKey = `${form.bomProjectId || ''}|${form.siteId || ''}|${(form.bomLinks || []).map((l) => l.projectId).join(',')}`;
   useEffect(() => {
     let alive = true;
-    resolvePurchaseTong({ bomProjectId: form.bomProjectId, bomLinks: form.bomLinks })
+    resolvePurchaseTong({ bomProjectId: form.bomProjectId, bomLinks: form.bomLinks, siteId: form.siteId })
       .then((t) => {
         if (alive) setTong(t);
       })
