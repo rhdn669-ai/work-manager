@@ -39,14 +39,15 @@ import {
   unmarkPaymentRequested,
   setPurchaseReplied,
   getPurchaseConfig,
-  consumeItemStock,
   releasePurchaseStock,
   deletePurchase,
 } from '../../services/purchaseService';
 import { getAllSites } from '../../services/siteService';
 import { trashPurchase, restoreTrashItem } from '../../services/trashService';
 import { getBomProjects, getBomBySite, bomItemsForVariant, isFreeIssue } from '../../services/bomService';
-import { recordPurchaseIntake } from '../../services/stockIntake';
+import { recordPurchaseIntake, resolvePurchaseTong } from '../../services/stockIntake';
+import { subscribeStock, takeStock, returnStock } from '../../services/stockService';
+import { ledgerOn } from '../../domain/stockLedger';
 import {} from '../../services/productionService';
 import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
@@ -66,7 +67,6 @@ import { sendTrackedMail, getRepliesByPurchase } from '../../services/mailThread
 import { addMailLog } from '../../services/mailService';
 import MailReplyList from '../../components/common/MailReplyList';
 import PurchaseOrderPrintForm from '../../components/admin/PurchaseOrderPrintForm';
-import { isStockTracked } from '../../domain/stock';
 import { contactsOf, hasChoice, mailToLine, resolveEmail, supplierKey } from '../../domain/supplierContacts';
 import { paidList, payButtonLabel, unpaidAmount } from '../../domain/payment';
 import { poFingerprint } from '../../utils/poFingerprint';
@@ -132,9 +132,9 @@ function mergeLines(existing, incoming) {
   return { merged, addedCount, mergedCount };
 }
 
-function deductStock(need, master) {
+function deductStock(need, tracked) {
   const want = Number(need) || 0;
-  if (!isStockTracked(master) || want <= 0) return { qty: want };
+  if (!tracked || want <= 0) return { qty: want };
   // 담는 순간 자동으로 빼지 않는다 (2026-08-11 대표님).
   // 재고 칸에 「0 / 11」 버튼만 띄워 두고, 쓸지 말지는 사람이 눌러서 정한다.
   return { qty: want, stockUsed: 0, stockNeed: want };
@@ -267,6 +267,16 @@ export default function PurchaseDetailPage() {
   const [sites, setSites] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [itemMaster, setItemMaster] = useState([]);
+  // 이 발주서가 닿는 도급·판금 통 — 「재고」 칸은 품목 마스터의 옛 stockQty 가 아니라 이 통을 본다.
+  // 9월 초 흐름 단순화 뒤 도급 재고의 장부는 통(paidStock)인데 발주서만 옛 자리를 보고 있어
+  // 통에 693개가 있어도 빈칸으로 나왔다 (2026-09-21 대표님 「도급 재고 수량을 못불러 오는것같은데」)
+  const [tong, setTong] = useState({ company: '', kindOfItem: () => 'paid', settings: null });
+  const [tongQty, setTongQty] = useState({}); // { [itemId]: { qty, ... } }
+  const tongKind = (itemId) => tong.kindOfItem(itemId) || 'paid';
+  /** 이 품목이 통을 세는 품목인가 — 회사가 걸려 있고 그 갈래의 통이 켜져 있을 때 */
+  const tongTracked = (itemId) =>
+    !!itemId && !!tong.company && !!tong.kindOfItem(itemId) && ledgerOn(tong.settings, tong.company, tongKind(itemId));
+  const haveOf = (itemId) => Math.max(0, Number(tongQty[itemId]?.qty) || 0);
   const [factories, setFactories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -412,6 +422,28 @@ export default function PurchaseDetailPage() {
     };
   }, [id]);
 
+  // 발주서가 걸린 BOM 이 바뀌면 통도 다시 찾는다
+  const tongKey = `${form.bomProjectId || ''}|${(form.bomLinks || []).map((l) => l.projectId).join(',')}`;
+  useEffect(() => {
+    let alive = true;
+    resolvePurchaseTong({ bomProjectId: form.bomProjectId, bomLinks: form.bomLinks })
+      .then((t) => {
+        if (alive) setTong(t);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tongKey]);
+  useEffect(() => {
+    if (!tong.company) {
+      setTongQty({});
+      return undefined;
+    }
+    // 도급·판금은 한 통(paidStock)을 쓴다 — 구독 하나면 된다
+    return subscribeStock('paid', tong.company, setTongQty);
+  }, [tong.company]);
   useEffect(() => {
     loadData();
     const unsub = subscribePurchaseItems(setItemMaster);
@@ -596,9 +628,12 @@ export default function PurchaseDetailPage() {
     }
     if (byItem.size === 0) return;
     try {
+      const by = userProfile?.name || '';
       await Promise.all(
         [...byItem].map(([itemId, delta]) =>
-          consumeItemStock(itemId, delta, { byName: userProfile?.name || '', note }),
+          delta > 0
+            ? takeStock(tongKind(itemId), tong.company, itemId, delta, { by, note })
+            : returnStock(tongKind(itemId), tong.company, itemId, -delta, { by, note }),
         ),
       );
     } catch {
@@ -622,8 +657,7 @@ export default function PurchaseDetailPage() {
       return;
     }
     // 다시 쓰기 — 처음 담을 때가 아니라 '지금' 남은 재고를 기준으로 한다
-    const master = ln.itemId ? itemMaster.find((m) => m.id === ln.itemId) : null;
-    const have = Number(master?.stockQty) || 0;
+    const have = haveOf(ln.itemId);
     if (have <= 0) {
       toast('창고에 남은 재고가 없습니다', 'error');
       return;
@@ -640,13 +674,8 @@ export default function PurchaseDetailPage() {
     if (!ln || short <= 0) return;
     // stockShort 에 얼마를 메웠는지 남긴다 — 이게 없으면 창고가 0이 되는 순간
     // 빨간 배지가 사라져 되돌릴 방법이 없어진다.
+    // 통은 음수가 없다 — 발주 수량만 얹고 통은 건드리지 않는다 (옛 마스터 재고 시절엔 음수를 0 으로 올렸다)
     updateLine(idx, { qty: (Number(ln.qty) || 0) + short, stockShort: (Number(ln.stockShort) || 0) + short });
-    if (ln.itemId) {
-      consumeItemStock(ln.itemId, -short, {
-        byName: userProfile?.name || '',
-        note: `부족분 발주로 채움 · ${formRef.current.title || ''}`,
-      }).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
-    }
     toast(`모자란 ${short}개를 발주 수량에 더했습니다`);
   }
 
@@ -656,12 +685,6 @@ export default function PurchaseDetailPage() {
     const filled = Number(ln?.stockShort) || 0;
     if (filled <= 0) return;
     updateLine(idx, { qty: Math.max(0, (Number(ln.qty) || 0) - filled), stockShort: 0 });
-    if (ln.itemId) {
-      consumeItemStock(ln.itemId, filled, {
-        byName: userProfile?.name || '',
-        note: `부족분 메움 취소 · ${formRef.current.title || ''}`,
-      }).catch(() => toast('재고 반영 중 오류가 발생했습니다', 'error'));
-    }
     toast(`더했던 ${filled}개를 도로 뺐습니다`);
   }
 
@@ -782,7 +805,7 @@ export default function PurchaseDetailPage() {
         spec: m.spec || '',
         unit: m.unit || '',
         unitPrice: Number(m.standardPrice) || 0,
-        ...deductStock(qtyInput, m),
+        ...deductStock(qtyInput, tongTracked(m?.id)),
       });
     }
     if (newLines.length === 0) {
@@ -954,7 +977,7 @@ export default function PurchaseDetailPage() {
             name: m?.name || b.name || '',
             spec: m?.spec || b.spec || '',
             unit: m?.unit || b.unit || '',
-            ...deductStock((Number(b.qty) || 1) * setCount, m), // 세트 수량(배수) 반영
+            ...deductStock((Number(b.qty) || 1) * setCount, tongTracked(b.itemId)), // 세트 수량(배수) 반영
             unitPrice: m && m.standardPrice != null ? Number(m.standardPrice) : Number(b.unitPrice) || 0,
             box: b.box || '', // 품목별 소속 BOX (BOM에서 그대로 복사, PDF 품목표에 출력)
             drawingNo: b.drawingNo || '', // 도번도 그대로 따라간다 (2026-09-02 대표님)
@@ -2638,7 +2661,8 @@ export default function PurchaseDetailPage() {
                         // 재고를 세지 않는 품목까지 버튼이 뜨면 어느 줄이 관리 대상인지 알 수 없다.
                         // 이미 가져다 쓴 줄은 재고 항목을 나중에 지웠더라도 되돌릴 수 있게 남긴다.
                         const showStock =
-                          isStockTracked(master) || Number(ln.stockUsed) > 0 || Number(ln.stockShort) > 0;
+                          tongTracked(ln.itemId) || Number(ln.stockUsed) > 0 || Number(ln.stockShort) > 0;
+                        const have = haveOf(ln.itemId); // 지금 통에 남은 것 — 음수는 없다
                         // 재고 기능을 넣기 전에 담은 줄엔 stockNeed 가 없다 — 그 줄은 발주 수량을 필요 수량으로 본다
                         const stockNeed = Number(ln.stockNeed) || Number(ln.qty) || 0;
                         const amount = (Number(ln.qty) || 0) * (Number(ln.unitPrice) || 0);
@@ -2767,10 +2791,8 @@ export default function PurchaseDetailPage() {
                             {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
                             <td data-label="재고" className="no-print">
                               {!showStock ? null /* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다.
-                                  이미 메운 줄은 되돌릴 수 있도록 배지를 남긴다. */ : Math.max(
-                                  0,
-                                  -(Number(master?.stockQty) || 0),
-                                ) > 0 || Number(ln.stockShort) > 0 ? (
+                                  이미 메운 줄은 되돌릴 수 있도록 배지를 남긴다. */ : Math.max(0, -have) > 0 ||
+                                Number(ln.stockShort) > 0 ? (
                                 <button
                                   type="button"
                                   className={`stock-used-badge is-short${Number(ln.stockShort) > 0 ? ' is-filled' : ''}`}
@@ -2780,7 +2802,7 @@ export default function PurchaseDetailPage() {
                                       ? undefined
                                       : Number(ln.stockShort) > 0
                                         ? () => undoShortage(idx)
-                                        : () => fillShortage(idx, Math.max(0, -(Number(master?.stockQty) || 0)))
+                                        : () => fillShortage(idx, Math.max(0, -have))
                                   }
                                   title={
                                     cellsLocked
@@ -2789,12 +2811,12 @@ export default function PurchaseDetailPage() {
                                         ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
                                         : Number(ln.stockShort) > 0
                                           ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
-                                          : `창고에 ${Math.max(0, -(Number(master?.stockQty) || 0))}개 모자랍니다 — 눌러서 발주 수량에 더하기`
+                                          : `창고에 ${Math.max(0, -have)}개 모자랍니다 — 눌러서 발주 수량에 더하기`
                                   }
                                 >
                                   {Number(ln.stockShort) > 0
                                     ? `+${Number(ln.stockShort).toLocaleString()}`
-                                    : `−${Math.max(0, -(Number(master?.stockQty) || 0)).toLocaleString()}`}
+                                    : `−${Math.max(0, -have).toLocaleString()}`}
                                 </button>
                               ) : (
                                 stockNeed > 0 && (
@@ -2810,7 +2832,7 @@ export default function PurchaseDetailPage() {
                                           ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
                                           : Number(ln.stockUsed) > 0
                                             ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
-                                            : '창고 재고를 쓰지 않고 전부 발주하는 중 — 눌러서 남은 재고만큼 빼기'
+                                            : `통에 ${have.toLocaleString()}개 있음 — 눌러서 그만큼 빼고 나머지만 발주`
                                     }
                                   >
                                     <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>

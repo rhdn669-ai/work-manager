@@ -18,22 +18,33 @@ function projectIdOfPurchase(purchase) {
  * 입고 전후 줄을 견주어 달라진 만큼을 통에 적는다.
  * @returns { noted 적은 줄 수, missingCompany BOM 프로젝트에 회사가 없어 못 적음, noProject 발주서가 BOM 에 안 걸림 }
  */
-export async function recordPurchaseIntake(purchase, prevItems, nextItems, { by = '' } = {}) {
+/**
+ * 이 발주서가 닿는 통 — 회사·품목별 갈래·통 설정. 입고 기록과 발주서 화면의 「재고」 칸이 같은
+ * 규칙을 써야 한 통을 본다 (2026-09-21 대표님 「발주서에서 도급 재고 수량을 못불러 오는것같은데」).
+ * @returns { company, kindOfItem(itemId), settings, projectName, noProject, missingCompany }
+ */
+export async function resolvePurchaseTong(purchase) {
   const pid = projectIdOfPurchase(purchase);
-  if (!pid) return { noted: 0, noProject: true };
+  if (!pid) return { company: '', kindOfItem: () => 'paid', settings: null, noProject: true };
   const project = await getBomProjectById(pid);
   const company = String(project?.회사 || '').trim();
-  if (!company) return { noted: 0, missingCompany: true, projectName: project?.name || '' };
-
+  const [rows, settings] = await Promise.all([getBomBySite(pid), getPaidSetSettings()]);
   // 그 프로젝트 BOM 에서 이 품목이 어느 갈래인지 — 판금 줄이 하나라도 있으면 판금, 아니면 도급.
   // 사급 줄뿐인 품목은 발주서로 살 일이 없으니 통에 적지 않는다.
-  const [rows, settings] = await Promise.all([getBomBySite(pid), getPaidSetSettings()]);
   const kindOfItem = (itemId) => {
     const ks = new Set(rows.filter((r) => r.itemId === itemId).map(stockKindOf));
     if (ks.has('made')) return 'made';
     if (ks.has('paid')) return 'paid';
     return ks.size === 0 ? 'paid' : null; // BOM 에 없는 품목도 우리가 산 것 — 도급 통
   };
+  return { company, kindOfItem, settings, projectName: project?.name || '', missingCompany: !company };
+}
+
+export async function recordPurchaseIntake(purchase, prevItems, nextItems, { by = '' } = {}) {
+  const t = await resolvePurchaseTong(purchase);
+  if (t.noProject) return { noted: 0, noProject: true };
+  const { company, kindOfItem, settings } = t;
+  if (!company) return { noted: 0, missingCompany: true, projectName: t.projectName };
 
   const prev = prevItems || [];
   const next = nextItems || [];
