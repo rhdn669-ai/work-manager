@@ -568,6 +568,14 @@ export default function BomDetailPage() {
 
   // 타입 목록과, 품목 한 줄이 어느 타입에 들어가는지 읽는 도우미
   const variants = useMemo(() => (Array.isArray(project?.variants) ? project.variants : []), [project]);
+  // 타입별 수량으로 줄을 합친 시각 — 그 «전»의 수정 이력은 되돌리면 합친 줄이 다시 쪼개져
+  // 호기 체크 기록이 주인을 잃는다. 그래서 그 전 것은 보기만 한다 (2026-09-21 이전)
+  const beforeMigration = (h) => {
+    const at = project?.qtyMigratedAt;
+    if (!at) return false;
+    const ms = (v) => (v?.toDate ? v.toDate().getTime() : new Date(v).getTime() || 0);
+    return ms(h?.at) < ms(at);
+  };
   const variantKeysOf = (it) => (Array.isArray(it.variantKeys) ? it.variantKeys : []);
   // 아무 타입도 안 정했으면 공통 — 어느 형번으로 발주해도 함께 들어간다
   function variantLabelOf(it) {
@@ -2456,16 +2464,24 @@ export default function BomDetailPage() {
                     </td>
                     <td className="u-num">{h.rows ?? (h.snapshot || []).length}</td>
                     <td className="col-action">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        disabled={historyBusy === h.id}
-                        onClick={() => revertTo(h)}
-                        title="이 수정 직전 상태로"
-                      >
-                        <Icon name="restore" className="btn-ic" />
-                        되돌리기
-                      </button>
+                      {/* 타입별 수량으로 줄을 합친 «전»의 스냅샷은 되돌릴 수 없다 — 되돌리면 합쳐진 줄이
+                        다시 쪼개지고 호기 체크 기록이 주인을 잃는다 (2026-09-21 이전) */}
+                      {beforeMigration(h) ? (
+                        <span className="text-muted" style={{ fontSize: 12 }}>
+                          타입별 수량 이전 전 — 되돌릴 수 없음
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          disabled={historyBusy === h.id}
+                          onClick={() => revertTo(h)}
+                          title="이 수정 직전 상태로"
+                        >
+                          <Icon name="restore" className="btn-ic" />
+                          되돌리기
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
