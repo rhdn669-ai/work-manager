@@ -137,6 +137,72 @@ export async function moveMaterialsBox(bomItemId, fromBox, toBox) {
   return moved;
 }
 
+/**
+ * 줄을 나눌 때 — 호기에 «체크해 둔 수량»도 함께 옮긴다.
+ *
+ * 필요 수량만 나누고 체크를 두면, 옮긴 쪽은 「미입고」로 뜨고 남은 쪽은 「초과」가 된다.
+ * 실물은 이미 들어와 있는데 장부만 갈라지는 것이다 (2026-09-21 대표님 「기존에 수량이 입고로
+ * 처리된게 나눠지면 그대로 수량을 가지고 넘어가야지」).
+ *
+ * 규칙: 남는 줄의 «새 필요 수량»을 먼저 채우고, 넘치는 몫만 옮긴다 — 옮긴 필요 수량까지만.
+ *   예) 체크 3 · 남는 필요 2 · 옮긴 필요 1 → 2 는 남고 1 이 간다
+ *       체크 2 · 남는 필요 2 · 옮긴 필요 1 → 그대로 2 (실물이 그쪽에 다 있으니 옮길 것이 없다)
+ * 통에서 가져온 몫(fromStock)·당사 몫(fromOurs)도 옮기는 개수만큼 따라간다 — 재고 셈이 어긋나지 않게.
+ *
+ * @returns 체크를 옮긴 호기 수
+ */
+export async function splitMaterialsRow(fromRowId, fromBox, toRowId, toBox, keepNeed, moveNeed) {
+  if (!fromRowId || !toRowId || !fromBox || !toBox) return 0;
+  const keep = Math.max(0, Number(keepNeed) || 0);
+  const move = Math.max(0, Number(moveNeed) || 0);
+  if (move <= 0) return 0;
+  const all = await getAllMaterials();
+  let moved = 0;
+  for (const [panelId, boxes] of Object.entries(all)) {
+    const cur = boxes?.[fromBox]?.[fromRowId];
+    if (!cur) continue;
+    const qty = Math.max(0, Number(cur.qty) || 0);
+    const n = Math.min(Math.max(0, qty - keep), move);
+    if (n <= 0) continue;
+    const curStock = Math.max(0, Number(cur.fromStock) || 0);
+    const curOurs = Math.max(0, Number(cur.fromOurs) || 0);
+    const fs = Math.min(curStock, n);
+    const fo = Math.min(curOurs, fs);
+    const dst = boxes?.[toBox]?.[toRowId] || {};
+    // 받는 쪽에 먼저 적고 그다음 주는 쪽을 줄인다 — 중간에 끊겨도 «없어지는» 일은 없다
+    await setDoc(
+      doc(db, 'panelMaterials', materialsDocId(panelId, toBox)),
+      {
+        panelId,
+        box: toBox,
+        items: {
+          [toRowId]: {
+            qty: (Number(dst.qty) || 0) + n,
+            fromStock: (Number(dst.fromStock) || 0) + fs,
+            fromOurs: (Number(dst.fromOurs) || 0) + fo,
+            at: dst.at || cur.at || '',
+            by: dst.by || cur.by || '',
+          },
+        },
+        updatedAt: new Date(),
+      },
+      { merge: true },
+    );
+    await setDoc(
+      doc(db, 'panelMaterials', materialsDocId(panelId, fromBox)),
+      {
+        panelId,
+        box: fromBox,
+        items: { [fromRowId]: { qty: qty - n, fromStock: curStock - fs, fromOurs: curOurs - fo } },
+        updatedAt: new Date(),
+      },
+      { merge: true },
+    );
+    moved += 1;
+  }
+  return moved;
+}
+
 export function subscribeAllMaterials(cb) {
   return onSnapshot(ref, (snap) => {
     const out = {};

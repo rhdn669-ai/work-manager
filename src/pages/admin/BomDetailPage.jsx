@@ -57,7 +57,7 @@ import { subscribePanels } from '../../services/productionService';
 import { useUndo } from '../../contexts/useUndo';
 import { useAuth } from '../../contexts/useAuth';
 import { useEditLock } from '../../contexts/useEditLock';
-import { getAllMaterials } from '../../services/panelMaterialsService';
+import { getAllMaterials, splitMaterialsRow } from '../../services/panelMaterialsService';
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT, bomColsTypeQty } from '../../domain/tableWidths';
 import { BOX_OPTIONS, byBoxThenOrder } from '../../domain/boxes';
@@ -784,6 +784,7 @@ export default function BomDetailPage() {
         const twin = bomItems.find(sameKey);
         await flushItem(row.id, { qty: rest });
         setBomItems((prev) => prev.map((b) => (b.id === row.id ? { ...b, qty: rest } : b)));
+        let toId = twin?.id || '';
         if (twin) {
           const sum = (Number(twin.qty) || 0) + n;
           await flushItem(twin.id, { qty: sum });
@@ -806,7 +807,13 @@ export default function BomDetailPage() {
             order,
           };
           const ref = await addBomItem(projectId, data);
+          toId = ref.id;
           setBomItems((prev) => [...prev, { ...data, id: ref.id, siteId: projectId }]);
+        }
+        // 호기에 체크해 둔 수량도 함께 옮긴다 — 안 옮기면 옮긴 쪽이 「미입고」, 남은 쪽이 「초과」가 된다
+        if (toId) {
+          const movedPanels = await splitMaterialsRow(row.id, String(row.box || '').trim(), toId, to, rest, n);
+          if (movedPanels > 0) toast(`${movedPanels}개 호기의 체크도 함께 옮겼습니다`, 'success');
         }
       }
       setSplitOf(null);
