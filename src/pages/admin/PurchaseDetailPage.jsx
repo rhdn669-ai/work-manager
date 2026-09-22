@@ -2787,33 +2787,42 @@ export default function PurchaseDetailPage() {
                               />
                             </td>
                             <td data-label="수량">
-                              {/* 재고를 쓰는 중이면 원래 필요했던 수량에 줄을 그어 보여준다.
-                                  실제로 사는 수량은 옆 「재고」 칸의 「쓴 재고 / 필요」로 읽는다. */}
-                              <input
-                                className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}${
-                                  Number(ln.stockUsed) > 0 ? ' qty-struck' : ''
-                                }`}
-                                type="text"
-                                value={
-                                  Number(ln.stockUsed) > 0
-                                    ? Number(ln.stockNeed || ln.qty).toLocaleString()
-                                    : Number(ln.qty)
-                                      ? Number(ln.qty).toLocaleString()
-                                      : ''
-                                }
-                                readOnly
-                                tabIndex={-1}
-                                onClick={cellsLocked ? undefined : () => openQtyModal(idx)}
-                                title={
-                                  Number(ln.stockUsed) > 0
-                                    ? `원래 ${Number(ln.stockNeed).toLocaleString()}개 필요 · 재고 ${ln.stockUsed}개를 써서 ${Number(ln.qty).toLocaleString()}개만 발주합니다`
-                                    : cellsLocked
+                              {/* 재고를 쓰는 줄은 두 줄로 — 위에 줄 그은 «원래 필요했던 수량»,
+                                바로 아래에 «실제로 사는 수량». 전에는 줄만 그어 두고 사는 수량은
+                                옆 「재고」 칸에서 어림잡아야 했다
+                                (2026-09-22 대표님 「수량 취소선 아래에 실제 발주수량도 표시」) */}
+                              {Number(ln.stockUsed) > 0 ? (
+                                <button
+                                  type="button"
+                                  className="qty-stack"
+                                  disabled={isReadOnly || cellsLocked}
+                                  onClick={cellsLocked ? undefined : () => openQtyModal(idx)}
+                                  title={`원래 ${Number(ln.stockNeed || ln.qty).toLocaleString()}개 필요 · 재고 ${Number(
+                                    ln.stockUsed,
+                                  ).toLocaleString()}개를 써서 ${Number(ln.qty).toLocaleString()}개만 발주합니다`}
+                                >
+                                  <span className="qty-stack-was">
+                                    {Number(ln.stockNeed || ln.qty).toLocaleString()}
+                                  </span>
+                                  <span className="qty-stack-now">{Number(ln.qty).toLocaleString()}</span>
+                                </button>
+                              ) : (
+                                <input
+                                  className={`num-input bom-readonly-input${isReadOnly ? '' : ' purchase-qty-clickable'}`}
+                                  type="text"
+                                  value={Number(ln.qty) ? Number(ln.qty).toLocaleString() : ''}
+                                  readOnly
+                                  tabIndex={-1}
+                                  onClick={cellsLocked ? undefined : () => openQtyModal(idx)}
+                                  title={
+                                    cellsLocked
                                       ? isReadOnly
                                         ? ''
                                         : '수량을 바꾸려면 오른쪽 아래 「잠금」을 푸세요'
                                       : '클릭해 발주 수량 변경 (보유자재 있으면 감량)'
-                                }
-                              />
+                                  }
+                                />
+                              )}
                             </td>
                             {/* 재고 칸 — 통에 몇 개 있고 그중 몇 개를 쓰는지. 전에는 「쓴 수량/필요 수량」이라
                               통에 물건이 있는지 없는지가 안 읽혔고, 값이 없는 줄은 「NaN」이 찍혔다
