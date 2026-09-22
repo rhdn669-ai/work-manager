@@ -1,6 +1,14 @@
 // 짝 BOM — 한쪽을 고치면 다른 쪽도 (2026-09-18 대표님 「어느 범위까지 연동할지 선택목록을 두고」)
 import { describe, it, expect } from 'vitest';
-import { rowKey, rowKeysOf, twinOf, pairPatch, pairCopy, PAIR_DEFAULT } from '../../src/domain/bomPair';
+import {
+  rowKey,
+  rowKeysOf,
+  twinOf,
+  pairPatch,
+  pairCopy,
+  dirStateForPair,
+  PAIR_DEFAULT,
+} from '../../src/domain/bomPair';
 
 const mine = [
   { key: 'vT5391', label: 'T5391 / MT8311' },
@@ -92,5 +100,37 @@ describe('같은 열쇠가 여럿일 때 — 몇 번째로 가른다', () => {
   });
   it('상대에 줄이 하나뿐이면 둘째 줄은 짝이 없다 — 엉뚱한 줄에 덮어쓰지 않는다', () => {
     expect(twinOf(mine[1], [], [theirs[0]], [], mine)).toBeNull();
+  });
+});
+
+// 방향 한 칸에 «설계 사실(없음)»과 «업무 범위(안셈)»가 섞여 있었다. 통째로 연동하니
+// 디에이치는 정방향도 전부 우리 자재인데 메티스의 「안셈」이 끌려가 60자리가 틀어졌다
+// (2026-09-22 대표님 「정역 구성은 같지만 … 구분은 서로 연동이 안되게 끊었는데」)
+describe('방향 — 「없음」만 짝에 옮긴다', () => {
+  it('「없음」은 상대에도 간다 — 구성은 같다', () => {
+    expect(dirStateForPair({ 정: 'none', 역: 'use' }, { 정: 'use', 역: 'use' })).toEqual({ 정: 'none', 역: 'use' });
+  });
+  it('「안셈」은 안 간다 — 상대가 「셈」이면 「셈」 그대로', () => {
+    expect(dirStateForPair({ 정: 'gray', 역: 'use' }, { 정: 'use', 역: 'use' })).toEqual({ 정: 'use', 역: 'use' });
+  });
+  it('상대가 「안셈」이면 그대로 둔다 — 내가 「셈」이어도 안 건드린다', () => {
+    expect(dirStateForPair({ 정: 'use', 역: 'use' }, { 정: 'gray', 역: 'use' })).toEqual({ 정: 'gray', 역: 'use' });
+  });
+  it('내가 「없음」을 풀면 상대도 푼다 — 「셈」으로', () => {
+    expect(dirStateForPair({ 정: 'gray', 역: 'use' }, { 정: 'none', 역: 'use' })).toEqual({ 정: 'use', 역: 'use' });
+  });
+  it('pairPatch — 「안셈」만 바꾸면 방향은 안 넘어간다', () => {
+    const twin = { dirState: { 정: 'use', 역: 'use' } };
+    const p = pairPatch({ dirState: { 정: 'gray', 역: 'use' } }, PAIR_DEFAULT, mine, theirs, twin);
+    expect(p?.dirState).toBeUndefined();
+  });
+  it('pairPatch — 「없음」으로 바꾸면 방향이 넘어간다', () => {
+    const twin = { dirState: { 정: 'use', 역: 'use' } };
+    const p = pairPatch({ dirState: { 정: 'none', 역: 'use' } }, PAIR_DEFAULT, mine, theirs, twin);
+    expect(p.dirState).toEqual({ 정: 'none', 역: 'use' });
+  });
+  it('새 줄 복사 — 「없음」만 따라가고 「안셈」은 「셈」으로 시작한다', () => {
+    const c = pairCopy({ itemId: 'x', dirState: { 정: 'gray', 역: 'none' } }, PAIR_DEFAULT, mine, theirs, []);
+    expect(c.dirState).toEqual({ 정: 'use', 역: 'none' });
   });
 });

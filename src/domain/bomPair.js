@@ -9,6 +9,7 @@
 // 고를 수 있는 것: 수량·BOX·타입·구분 — 구분(도급/사급)은 고객사마다 달라 기본은 끔
 // (2026-09-18 대표님 「도번, 줄 추가삭제, 비고, 줄순서, 단가는 같은걸로 하고 목록에 아예 안넣어줘도 됨」).
 import { mapVariantKeys } from './bomDiff';
+import { dirStateOf } from './panelBom';
 
 export const PAIR_OPTIONS = [
   { key: 'qty', label: '수량' },
@@ -18,19 +19,33 @@ export const PAIR_OPTIONS = [
 ];
 export const PAIR_DEFAULT = { qty: true, box: true, variant: true, supplyType: false };
 
-/** 늘 같이 가는 칸 — 고를 수 없다 */
-export const ALWAYS_FIELDS = [
-  'itemId',
-  'name',
-  'spec',
-  'unit',
-  'drawingNo',
-  'note',
-  'unitPrice',
-  'dirs',
-  'dirHide',
-  'dirState',
-];
+/** 늘 같이 가는 칸 — 고를 수 없다.
+ *  방향(dirs·dirHide·dirState)은 여기 없다 — 아래 dirStateForPair 가 «없음»만 골라 옮긴다. */
+export const ALWAYS_FIELDS = ['itemId', 'name', 'spec', 'unit', 'drawingNo', 'note', 'unitPrice'];
+
+/**
+ * 짝에 넘길 방향 — 「없음」만 옮기고 「안셈」은 상대가 정한 대로 둔다.
+ *
+ * 방향 한 칸에 성격이 다른 둘이 들어 있다:
+ *   없음  그 방향엔 «안 들어간다» — 설계 사실이라 고객사가 달라도 같다
+ *   안셈  쓰긴 쓰는데 «우리가 수량을 안 센다» — 업무 범위라 고객사마다 다르다
+ * 처음에는 둘을 묶어 통째로 연동했는데, 디에이치는 정방향도 전부 우리 자재인데도
+ * 메티스의 「안셈」이 끌려가 60자리가 틀어졌다
+ * (2026-09-22 대표님 「정역 구성은 같지만 디에이치는 정방향도 전부 우리 자재라서
+ *  구분은 서로 연동이 안되게 끊었는데 분명」).
+ */
+export function dirStateForPair(mine, theirPrev) {
+  const m = mine && typeof mine === 'object' ? mine : {};
+  const t = theirPrev && typeof theirPrev === 'object' ? theirPrev : {};
+  const pick = (d) => {
+    const mv = m[d] || 'use';
+    const tv = t[d] || 'use';
+    if (mv === 'none') return 'none'; // 그 방향엔 안 들어간다 — 구성은 같이 간다
+    if (tv === 'none') return 'use'; // 내가 「없음」을 풀었으니 상대도 푼다
+    return tv; // 안셈이냐 셈이냐는 상대가 정한 대로
+  };
+  return { 정: pick('정'), 역: pick('역') };
+}
 
 const labelsOf = (keys, variants) => {
   const byKey = new Map((variants || []).map((v) => [v.key, String(v.label || '').trim()]));
@@ -101,10 +116,16 @@ export function mapVariantQty(byVariant, fromVariants, toVariants) {
   return out;
 }
 
-export function pairPatch(data, sync, myVariants, theirVariants) {
+export function pairPatch(data, sync, myVariants, theirVariants, twin) {
   const s = { ...PAIR_DEFAULT, ...(sync || {}) };
   const out = {};
   for (const f of ALWAYS_FIELDS) if (f in (data || {})) out[f] = data[f];
+  // 방향 — 「없음」만 옮긴다 (dirStateForPair). 짝 줄의 「안셈/셈」은 그대로 둔다
+  if (['dirState', 'dirs', 'dirHide', 'skipForward'].some((k) => k in (data || {}))) {
+    const next = dirStateForPair(dirStateOf(data), dirStateOf(twin));
+    const cur = dirStateOf(twin);
+    if (next.정 !== cur.정 || next.역 !== cur.역) out.dirState = next;
+  }
   if (s.qty && 'qty' in data) out.qty = Number(data.qty) || 0;
   // 타입별 수량 — 열쇠가 프로젝트마다 달라 이름으로 옮긴다. 상대에 없는 타입 값은 버린다
   if (s.qty && s.variant && 'qtyByVariant' in data)
@@ -136,9 +157,10 @@ export function pairCopy(data, sync, myVariants, theirVariants, theirRows) {
     drawingNo: data.drawingNo || '',
     note: data.note || '',
     unitPrice: Number(data.unitPrice) || 0,
-    dirs: Array.isArray(data.dirs) ? data.dirs : [], // 정·역은 같은 판넬의 성질이라 늘 같이 간다
-    dirHide: !!data.dirHide,
-    dirState: data.dirState && typeof data.dirState === 'object' ? data.dirState : {},
+    // 방향 — 새 줄이라 상대에 짝이 없다. 「없음」만 옮기고 나머지는 「셈」으로 시작한다
+    dirs: [],
+    dirHide: false,
+    dirState: dirStateForPair(dirStateOf(data), null),
     order: Number(data.order) || 0,
     qty: s.qty ? Number(data.qty) || 0 : 0,
     box: s.box ? data.box || '' : '',

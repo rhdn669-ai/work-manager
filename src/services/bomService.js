@@ -361,7 +361,7 @@ export async function updateBomItem(id, data, { sync = true } = {}) {
       if (ctx) {
         // 짝은 «고치기 전» 모습으로 찾는다 — BOX·타입이 바뀌는 고침이면 바뀐 뒤 모습으론 못 찾는다
         const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants, ctx.myRows);
-        const patch = pairPatch(data, ctx.sync, ctx.myVariants, ctx.theirVariants);
+        const patch = pairPatch(data, ctx.sync, ctx.myVariants, ctx.theirVariants, twin);
         if (!twin) pair = 'missing';
         else {
           if (patch) {
