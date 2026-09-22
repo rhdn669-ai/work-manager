@@ -3396,7 +3396,7 @@ body {
 .outsource-spend-ym {
   font-size: 13px;
   font-weight: 700;
-  min-width: 88px;
+  min-width: 96px;
   text-align: center;
 }
 
@@ -6565,6 +6565,14 @@ table.cards-sm td {
   background: var(--accent-soft);
 }
 
+/* BOM 「분류」 칸 — 「TEMP BOX」·「S/D BOX」가 들어가는데 태블릿(1340px)에서 39px 로 눌려
+   두 글자도 안 보였다. 폭 배분(%)만 올려서는 소용이 없다 — 이 표는 auto 레이아웃이라
+   「구분」·「작업」의 버튼 폭이 먼저 자리를 잡고 남은 자리를 내용 압력으로 나눈다.
+   최소 폭을 직접 잡는다 (2026-09-22 대표님 「태블릿에서 BOM 분류 칸 더늘려줘」) */
+.bom-flat-table th.bom-cat-col,
+.bom-flat-table td.bom-cat-col {
+  min-width: 96px;
+}
 .inline-edit-table input.bom-code-input {
   font-weight: 600;
   color: var(--text-muted);

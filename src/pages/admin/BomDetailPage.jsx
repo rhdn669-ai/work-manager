@@ -1861,7 +1861,9 @@ export default function BomDetailPage() {
                         <th scope="col">품명</th>
                         <th scope="col">메이커</th>
                         <th scope="col">규격</th>
-                        <th scope="col">분류</th>
+                        <th scope="col" className="bom-cat-col">
+                          분류
+                        </th>
                         <th scope="col" style={{ minWidth: 66 }}>
                           구분
                         </th>
@@ -2055,7 +2057,7 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              <td data-label="분류" title={it.category || ''}>
+                              <td data-label="분류" className="bom-cat-col" title={it.category || ''}>
                                 <input
                                   type="text"
                                   className="bom-readonly-input"
