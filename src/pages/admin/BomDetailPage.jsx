@@ -209,6 +209,11 @@ export default function BomDetailPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [picked, setPicked] = useState(new Map()); // itemId -> 수량
+  // 담을 BOX — 구분(도급/사급/판금)이 탭을 따라가듯 BOX 도 지금 보고 있는 BOX 를 따라간다.
+  // 이게 없어서 담은 줄이 전부 「BOX 미지정」으로 들어갔고, BOX 를 골라 둔 화면에서는
+  // 방금 담은 줄이 걸러져 «아무 일도 안 일어난 것»처럼 보였다
+  // (2026-09-22 대표님 「BOM 에 여러개 한번에 추가하기 기능이 이상하게 동작함」)
+  const [pickBox, setPickBox] = useState('');
   const [pickerTargetId, setPickerTargetId] = useState(null); // null=추가, BOM항목 id=그 행 품목 교체
   // 코드 붙여넣기 일괄 선택
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -1007,6 +1012,7 @@ export default function BomDetailPage() {
   function openPicker() {
     setPickerTargetId(null); // 추가 모드
     setPicked(new Map());
+    setPickBox(boxFilter && boxFilter !== NO_BOX ? boxFilter : '');
     setPickerSearch('');
     setPasteOpen(false);
     setPasteText('');
@@ -1085,6 +1091,7 @@ export default function BomDetailPage() {
         unit: m.unit || '',
         drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
         supplyType: supplyTab === MADE ? MADE_TYPE : addAsFree ? 'free' : '', // 담는 자리가 곧 구분 (2026-09-02·09-12 대표님)
+        box: pickBox, // 담는 자리가 곧 BOX (2026-09-22)
         qty,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -1157,6 +1164,7 @@ export default function BomDetailPage() {
         unit: m.unit || '',
         drawingNo: m.drawingNo || '', // 품목에 적힌 도번을 물려받는다 (2026-09-02 대표님)
         supplyType: supplyTab === MADE ? MADE_TYPE : addAsFree ? 'free' : '', // 담는 자리가 곧 구분 (2026-09-02·09-12 대표님)
+        box: pickBox, // 담는 자리가 곧 BOX (2026-09-22)
         qty: Number(qtyInput) || 0,
         unitPrice: Number(m.standardPrice) || 0,
         note: '',
@@ -2270,6 +2278,24 @@ export default function BomDetailPage() {
               ? '교체할 품목을 클릭하면 해당 행이 그 품목으로 바뀝니다. (수량·비고 유지, 단가는 표준단가 적용)'
               : '구매 품목 관리에 등록된 품목 중에서 선택해 BOM에 추가합니다. 이미 담긴 품목도 다시 담을 수 있습니다(BOX가 다르면 따로 관리).'}
           </p>
+          {/* 어디에 담는지 — 아래 목록에서 고른 것도, 코드로 붙여넣은 것도 모두 여기로 들어간다.
+            전에는 이 칸이 없어 전부 「BOX 미지정」으로 들어갔고, BOX 를 골라 둔 화면에서는
+            방금 담은 줄이 걸러져 안 보였다 (2026-09-22 대표님) */}
+          {!pickerTargetId && (
+            <div className="form-group">
+              <label>담을 자리</label>
+              <Select
+                value={pickBox}
+                onChange={setPickBox}
+                options={[{ value: '', label: 'BOX 미지정' }, ...BOX_OPTIONS.map((bx) => ({ value: bx, label: bx }))]}
+                ariaLabel="담을 BOX"
+              />
+              <small className="text-muted">
+                고른 품목은 <strong>{pickBox || 'BOX 미지정'}</strong> ·{' '}
+                <strong>{supplyTab === MADE ? MADE : supplyTab === 'free' ? '사급' : '도급'}</strong> 으로 담깁니다.
+              </small>
+            </div>
+          )}
 
           {/* 코드 여러 개 붙여넣기 → 자동 선택 */}
           <div className="bom-paste-box">
