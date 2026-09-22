@@ -88,7 +88,7 @@ export function dirsOf(row) {
 // 폴백으로 본다. 그래서 저장된 자료를 옮기지 않아도 동작이 그대로다.
 export const DIR_STATES = [
   { value: 'use', label: '셈', hint: '우리가 챙기고 수량을 셉니다' },
-  { value: 'gray', label: '안 셈', hint: '쓰긴 쓰는데 우리가 수량을 안 셉니다 — 목록에 회색으로 남습니다' },
+  { value: 'gray', label: '안셈', hint: '쓰긴 쓰는데 우리가 수량을 안 셉니다 — 목록에 회색으로 남습니다' },
   { value: 'none', label: '없음', hint: '그 방향 호기에는 아예 안 들어갑니다 — 목록에 안 뜹니다' },
 ];
 const STATE_VALUES = DIR_STATES.map((x) => x.value);
