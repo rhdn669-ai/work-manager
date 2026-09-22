@@ -268,7 +268,8 @@ export async function addBomItem(siteId, data, { sync = true } = {}) {
     drawingNo: data.drawingNo || '',
     variantKeys: data.variantKeys || [], // 비어 있으면 공통
     qtyByVariant: data.qtyByVariant && typeof data.qtyByVariant === 'object' ? data.qtyByVariant : {},
-    dirs: Array.isArray(data.dirs) ? data.dirs : [], // 정·역 — 비어 있으면 공통 (2026-09-21 대표님)
+    dirs: Array.isArray(data.dirs) ? data.dirs : [],
+    dirHide: !!data.dirHide, // 「안 뜸」 (2026-09-22 대표님) // 정·역 — 비어 있으면 공통 (2026-09-21 대표님)
     order: Number(data.order) || 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -403,6 +404,7 @@ export async function restoreBomItem(id, siteId, data) {
     variantKeys: data.variantKeys || [],
     qtyByVariant: data.qtyByVariant && typeof data.qtyByVariant === 'object' ? data.qtyByVariant : {},
     dirs: Array.isArray(data.dirs) ? data.dirs : [],
+    dirHide: !!data.dirHide, // 「안 뜸」 (2026-09-22 대표님)
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),
     updatedAt: new Date(),
@@ -433,6 +435,7 @@ export function snapshotBomRows(items) {
     variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
     qtyByVariant: b.qtyByVariant && typeof b.qtyByVariant === 'object' ? b.qtyByVariant : {},
     dirs: Array.isArray(b.dirs) ? b.dirs : [],
+    dirHide: !!b.dirHide,
   }));
 }
 

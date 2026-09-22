@@ -22543,35 +22543,33 @@ a.lib-row-name:hover {
 
 /* 정·역 — 줄이 어느 방향 호기에 쓰이나. 공통(둘 다)일 때는 둘 다 흐리게 두어, 「한쪽만 쓰는 줄」만
    눈에 들어온다 (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」) */
-.bom-dirs {
-  display: inline-flex;
-  gap: 3px;
+/* 방향 — 다섯 가지를 한 칸 드롭다운으로. 단추 두 개로는 «회색»과 «안 뜸»을 가를 수 없었고
+   켜진 방향만 보여 뜻이 거꾸로 읽혔다 (2026-09-22 대표님) */
+.bom-dir-select {
+  display: inline-block;
   margin-left: 6px;
   vertical-align: middle;
+  min-width: 74px;
+  max-width: 88px;
 }
-.bom-dir-btn {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border: 1px dashed var(--border);
-  border-radius: 999px;
-  background: transparent;
+.bom-dir-select select {
+  width: 100%;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card, #fff);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
-  line-height: 20px;
   color: var(--text-light);
   cursor: pointer;
 }
-.bom-dir-btn.on {
-  border-style: solid;
+/* 공통이 아닌 줄만 눈에 띄게 — 공통이 기본이라 조용히 둔다 */
+.bom-dir-select.on select {
   border-color: var(--grey-500, #6b7684);
   background: var(--grey-500, #6b7684);
   color: #fff;
-}
-.bom-dir-btn.off {
-  opacity: 0.35;
-  text-decoration: line-through;
 }
 .bom-scope-btn {
   margin-left: 6px;

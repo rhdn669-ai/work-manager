@@ -85,6 +85,59 @@ export function isOutOfScope(row, panel) {
   return !dirs.includes(d);
 }
 
+// ── 「회색」과 「안 뜸」 (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」) ──
+// 방향 하나만 켜 두면 반대쪽 호기에서 «회색으로 보이되 셈에는 없는» 줄이 된다 — 쓰긴 쓰는데
+// 우리가 수량을 안 세는 자재다. 그런데 «그 방향에는 아예 안 들어가는» 자재도 있어, 그건
+// 목록에 뜰 까닭이 없다. dirHide 한 칸으로 둘을 가른다.
+//   dirs=['역']                 → 정방향 호기에서 «회색»
+//   dirs=['역'] + dirHide=true  → 정방향 호기에서 «안 뜸»
+// 옛 줄은 dirHide 가 없으므로 그대로 「회색」이다 — 자료를 옮기지 않아도 동작이 같다.
+
+/** 화면에서 고르는 다섯 가지 — 뜻이 글로 보이게 한 칸 드롭다운으로 (대표님 고름) */
+export const DIR_MODES = [
+  { value: '', label: '공통', hint: '정·역 호기 모두에 쓰는 자재' },
+  { value: 'fwdGray', label: '정 회색', hint: '정방향 호기에서는 회색 — 쓰긴 쓰는데 우리가 수량을 안 셉니다' },
+  { value: 'revGray', label: '역 회색', hint: '역방향 호기에서는 회색 — 쓰긴 쓰는데 우리가 수량을 안 셉니다' },
+  { value: 'fwdNone', label: '정 없음', hint: '정방향 호기에는 아예 안 들어감 — 자재 목록에 안 뜹니다' },
+  { value: 'revNone', label: '역 없음', hint: '역방향 호기에는 아예 안 들어감 — 자재 목록에 안 뜹니다' },
+];
+
+/** 고른 값의 설명 한 줄 — 칸에 마우스를 올리면 나온다 */
+export function dirModeHint(mode) {
+  return DIR_MODES.find((m) => m.value === mode)?.hint || '';
+}
+
+/** 이 줄이 다섯 중 무엇인가 */
+export function dirModeOf(row) {
+  const dirs = dirsOf(row);
+  if (dirs.length === 0) return '';
+  const hide = !!row?.dirHide;
+  // dirs 에 남은 쪽이 «쓰는 방향»이므로, 빠지는 쪽은 그 반대다
+  const missing = dirs.includes('정') ? 'rev' : 'fwd';
+  return `${missing}${hide ? 'None' : 'Gray'}`;
+}
+
+/** 고른 값을 줄에 적을 모양으로 — 옛 「정방향 제외」 칸도 함께 끈다 */
+export function dirModePatch(mode) {
+  switch (mode) {
+    case 'fwdGray':
+      return { dirs: ['역'], dirHide: false, skipForward: false };
+    case 'revGray':
+      return { dirs: ['정'], dirHide: false, skipForward: false };
+    case 'fwdNone':
+      return { dirs: ['역'], dirHide: true, skipForward: false };
+    case 'revNone':
+      return { dirs: ['정'], dirHide: true, skipForward: false };
+    default:
+      return { dirs: [], dirHide: false, skipForward: false };
+  }
+}
+
+/** 이 호기의 목록에서 아예 빼는 줄인가 — 「안 뜸」으로 정한 줄만 */
+export function isHiddenForPanel(row, panel) {
+  return !!row?.dirHide && isOutOfScope(row, panel);
+}
+
 // ── 타입별 수량 (2026-09-21 대표님 「타입별로 수량을 다르게 적을수있게」) ──
 // 같은 품목인데 타입마다 개수가 다를 때, 전에는 줄을 둘로 쪼개고 줄마다 타입을 체크해야 했다.
 // 이제 한 줄에 «기본 수량 + 다른 타입만 예외»로 적는다 — 예: 기본 8, M7H 7.

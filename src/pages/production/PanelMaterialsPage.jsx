@@ -30,7 +30,14 @@ import {
 import { subscribeReceivedFor, subscribePaidSetSettings } from '../../services/paidSetService';
 import { subscribeAllMaterials } from '../../services/panelMaterialsService';
 import { consumedByItem } from '../../domain/paidSets';
-import { CHECKABLE_BOXES, hasBomLink, bomRowsForBox, isOutOfScope, isMatStarted } from '../../domain/panelBom';
+import {
+  CHECKABLE_BOXES,
+  hasBomLink,
+  bomRowsForBox,
+  isOutOfScope,
+  isHiddenForPanel,
+  isMatStarted,
+} from '../../domain/panelBom';
 import {
   OUT_WHYS,
   OUT_WHYS_STRAY,
@@ -265,7 +272,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    const mine = boxList.flatMap((b) => bomRowsForBox(forVariant, b).map((r) => ({ ...r, _box: b })));
+    // 「그 방향엔 아예 안 들어감」으로 정해 둔 줄은 목록에서 뺀다. 다만 이미 체크해 둔 수량이
+    // 남아 있으면 남긴다 — 숨기면 통에서 가져온 몫이 어느 집계에도 안 잡혀 조용히 증발한다
+    // (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」)
+    const mine = boxList.flatMap((b) =>
+      bomRowsForBox(forVariant, b)
+        .filter((r) => !isHiddenForPanel(r, panel) || (Number(received[b]?.[r.id]?.qty) || 0) > 0)
+        .map((r) => ({ ...r, _box: b })),
+    );
     // 타입이 바뀌어 «지금 타입 밖»이 됐는데 체크는 남아 있는 줄 — 숨기면 통에서 가져온 몫이
     // 어느 집계에도 안 잡혀 조용히 증발한다. 보라 띠로 계속 보여 정리할 수 있게 한다
     // (2026-09-17 대표님 「초과·부족 수량은 보라색 띠로 표시」).
@@ -277,7 +291,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     );
     return [...mine, ...stray];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bomRowsFull, link?.variantKey, box, boxesWithRows, received]);
+  }, [bomRowsFull, link?.variantKey, box, boxesWithRows, received, panel]);
   const boxOf = (r) => r?._box || box;
   // 줄 기록은 «그 줄이 속한 BOX» 에서 읽는다. 「전체」에서 BOX 들을 한 사전으로 합쳤더니,
   // 같은 품목이 두 BOX 에 쓰이면 뒤 BOX 가 이겨 앞 BOX 의 수량·통 누계가 화면에서 사라졌다
