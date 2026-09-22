@@ -1859,7 +1859,9 @@ export default function BomDetailPage() {
                         <th scope="col">BOX</th>
                         {variants.length > 0 && !typeQtyMode && <th scope="col">타입</th>}
                         <th scope="col">품명</th>
-                        <th scope="col">메이커</th>
+                        <th scope="col" className="bom-maker-col">
+                          메이커
+                        </th>
                         <th scope="col">규격</th>
                         <th scope="col" className="bom-cat-col">
                           분류
@@ -1885,7 +1887,9 @@ export default function BomDetailPage() {
                         <th scope="col">단가</th>
                         <th scope="col">합계</th>
                         <th scope="col">구매처</th>
-                        <th scope="col">비고</th>
+                        <th scope="col" className="bom-note-col">
+                          비고
+                        </th>
                         <th scope="col" className="bom-action-col no-print" aria-hidden="true"></th>
                       </tr>
                     </thead>
@@ -2037,7 +2041,7 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              <td data-label="메이커" title={it.maker || ''}>
+                              <td data-label="메이커" className="bom-maker-col" title={it.maker || ''}>
                                 <input
                                   type="text"
                                   className="bom-readonly-input"
@@ -2190,7 +2194,7 @@ export default function BomDetailPage() {
                                   tabIndex={-1}
                                 />
                               </td>
-                              <td data-label="비고" title={it.note || ''}>
+                              <td data-label="비고" className="bom-note-col" title={it.note || ''}>
                                 <input
                                   type="text"
                                   value={it.note || ''}
