@@ -35,6 +35,7 @@ import {
   hasBomLink,
   bomRowsForBox,
   isOutOfScope,
+  isGrayForPanel,
   isHiddenForPanel,
   isMatStarted,
 } from '../../domain/panelBom';
@@ -80,7 +81,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   const supplyTab = sp.get('sup') || 'paid'; // 'paid' | 'free' | MADE
   const setSupplyTab = (v) => putParam('sup', v);
   const rowView = sp.get('view') || 'all'; // 'all' | 'short' | 'done'
+  // 「안셈」 줄은 기본으로 감춘다 — 우리가 수량을 안 세는 줄이라 체크 목록에서는 군더더기다.
+  // 필요하면 「숨김 보기」로 꺼내 본다 (2026-09-22 대표님 「기본적으로 안셈은 숨김 처리하고
+  // 필터에 숨김 보기 버튼을 넣는게 나을거같은데 없음은 아예 안보이는게 맞고」)
+  const showGray = sp.get('gray') === '1';
   const setRowView = (v) => putParam('view', v);
+  const toggleGray = () => putParam('gray', showGray ? '' : '1');
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { toast, confirm } = useDialog();
@@ -282,6 +288,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     const mine = boxList.flatMap((b) =>
       bomRowsForBox(forVariant, b)
         .filter((r) => !isHiddenForPanel(r, panel))
+        .filter((r) => showGray || !isGrayForPanel(r, panel))
         .map((r) => ({ ...r, _box: b })),
     );
     // 타입이 바뀌어 «지금 타입 밖»이 됐는데 체크는 남아 있는 줄 — 숨기면 통에서 가져온 몫이
@@ -295,7 +302,14 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     );
     return [...mine, ...stray];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bomRowsFull, link?.variantKey, box, boxesWithRows, received, panel]);
+  }, [bomRowsFull, link?.variantKey, box, boxesWithRows, received, panel, showGray]);
+  // 지금 감춰 둔 「안셈」 줄이 몇 개인가 — 단추에 적어 «뭔가 빠져 있다»를 알린다
+  const grayCount = useMemo(() => {
+    if (!panel) return 0;
+    const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
+    return boxList.reduce((n, b) => n + bomRowsForBox(forVariant, b).filter((r) => isGrayForPanel(r, panel)).length, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bomRowsFull, link?.variantKey, box, boxesWithRows, panel]);
   const boxOf = (r) => r?._box || box;
   // 줄 기록은 «그 줄이 속한 BOX» 에서 읽는다. 「전체」에서 BOX 들을 한 사전으로 합쳤더니,
   // 같은 품목이 두 BOX 에 쓰이면 뒤 BOX 가 이겨 앞 BOX 의 수량·통 누계가 화면에서 사라졌다
@@ -1261,6 +1275,19 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           onChange={setRowView}
           ariaLabel="줄 보기"
         />
+        {/* 「안셈」 줄 꺼내 보기 — 기본은 감춰 둔다. 몇 줄이 감춰져 있는지 함께 보여 준다
+            (2026-09-22 대표님 「필터에 숨김 보기 버튼을」) */}
+        {(grayCount > 0 || showGray) && (
+          <button
+            type="button"
+            className={`filter-chip pmat-gray-toggle${showGray ? ' on' : ''}`}
+            onClick={toggleGray}
+            aria-pressed={showGray}
+            title="「안셈」으로 정한 줄 — 쓰긴 쓰는데 우리가 수량을 안 세는 자재입니다"
+          >
+            {showGray ? `안셈 ${grayCount} 보는 중` : `안셈 ${grayCount} 숨김`}
+          </button>
+        )}
         {/* 「전부 비움·전부 들어옴」은 없앴다 — 줄마다 «왜 없나 / 어떻게 채웠나»를 남기는 방향과
             어긋나고, 한 번에 밀면 사유가 통째로 비게 된다 (2026-09-15 대표님) */}
       </div>

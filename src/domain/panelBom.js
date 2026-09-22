@@ -133,6 +133,13 @@ export function isOutOfScope(row, panel) {
   return dirStateOf(row)[d] !== 'use';
 }
 
+/** 이 호기에서 「안셈」인 줄인가 — 쓰긴 쓰는데 우리가 수량을 안 센다 */
+export function isGrayForPanel(row, panel) {
+  const d = String(panel?.정역 || '').trim();
+  if (!DIRS.includes(d)) return false;
+  return dirStateOf(row)[d] === 'gray';
+}
+
 /** 이 호기의 목록에서 아예 빼는 줄인가 — 「없음」으로 정한 방향만 */
 export function isHiddenForPanel(row, panel) {
   const d = String(panel?.정역 || '').trim();

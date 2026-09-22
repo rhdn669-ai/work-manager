@@ -107,12 +107,16 @@ async function pairCtx(siteId) {
   const theirs = await getBomProjectById(pr.projectId);
   if (!theirs) return null;
   const theirRows = await getBomBySite(pr.projectId);
+  // 내 줄도 함께 — 같은 열쇠가 여럿일 때 «몇 번째»를 맞추려면 내 목록이 있어야 한다
+  // (2026-09-22 대표님 「A ㄱㄱ」)
+  const myRows = await getBomBySite(siteId);
   return {
     pairId: pr.projectId,
     sync: pr.sync,
     myVariants: Array.isArray(pr.mine?.variants) ? pr.mine.variants : [],
     theirVariants: Array.isArray(theirs.variants) ? theirs.variants : [],
     theirRows,
+    myRows,
   };
 }
 
@@ -127,7 +131,7 @@ export async function trashBomItem(id, meta, by, { sync = true } = {}) {
   try {
     const ctx = await pairCtx(prev.siteId);
     if (!ctx) return 0;
-    const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants);
+    const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants, ctx.myRows);
     if (!twin) return 0;
     await trashGeneric('bom', twin.id, { ...(meta || {}), summary: '짝 BOM 연동 삭제' }, by);
     clearBomCache(ctx.pairId);
@@ -319,7 +323,7 @@ export async function saveBomItemsOrder(orderedIds, { sync = true } = {}) {
     let n = 0;
     orderedIds.forEach((id, idx) => {
       const row = byId.get(id);
-      const twin = row && twinOf(row, ctx.myVariants, ctx.theirRows, ctx.theirVariants);
+      const twin = row && twinOf(row, ctx.myVariants, ctx.theirRows, ctx.theirVariants, mine);
       if (!twin) return;
       b2.update(doc(db, 'bom', twin.id), { order: idx, updatedAt: new Date() });
       n += 1;
@@ -356,7 +360,7 @@ export async function updateBomItem(id, data, { sync = true } = {}) {
       const ctx = await pairCtx(prev.siteId);
       if (ctx) {
         // 짝은 «고치기 전» 모습으로 찾는다 — BOX·타입이 바뀌는 고침이면 바뀐 뒤 모습으론 못 찾는다
-        const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants);
+        const twin = twinOf(prev, ctx.myVariants, ctx.theirRows, ctx.theirVariants, ctx.myRows);
         const patch = pairPatch(data, ctx.sync, ctx.myVariants, ctx.theirVariants);
         if (!twin) pair = 'missing';
         else {

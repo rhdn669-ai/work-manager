@@ -47,10 +47,42 @@ export function rowKey(row, variants) {
   return `${item}::${row?.box || ''}::${labelsOf(row?.variantKeys, variants)}`;
 }
 
-/** 상대 BOM 에서 이 줄의 짝을 찾는다 — 없으면 null */
-export function twinOf(row, myVariants, theirRows, theirVariants) {
-  const k = rowKey(row, myVariants);
-  return (theirRows || []).find((r) => rowKey(r, theirVariants) === k) || null;
+/**
+ * 줄 목록 전체의 열쇠 — 같은 열쇠가 여러 개면 «위에서 몇 번째»를 붙여 가른다.
+ *
+ * 9/21 타입별 수량으로 옮기며 variantKeys 가 비어, 열쇠가 사실상 «품목 × BOX» 가 됐다.
+ * LAN 은 같은 규격이 한 BOX 에 두 줄씩(정용·역용)이라 열쇠가 겹쳐, 짝을 찾는 find 가 늘
+ * 앞의 하나만 집었다 — 뒤의 줄은 고쳐도 짝에 안 갔다 (2026-09-22 대표님 「메티스 디에이치
+ * BOM 수량이왜또 다르냐」에서 드러남, LAN 6곳·케이블 베어 5줄 등 17자리).
+ *
+ * 첫 줄은 순번을 안 붙인다 — 상대에 줄이 하나뿐이면 예전처럼 그대로 짝이 된다.
+ * 순서는 줄 순서(order)를 따른다. 줄 순서는 짝끼리 늘 같이 가는 값이다.
+ * @returns Map<줄 id(없으면 줄 객체), 열쇠>
+ */
+export function rowKeysOf(rows, variants) {
+  const seen = new Map();
+  const out = new Map();
+  const sorted = [...(rows || [])].sort((a, b) => (Number(a?.order) || 0) - (Number(b?.order) || 0));
+  for (const r of sorted) {
+    if (!r) continue;
+    const base = rowKey(r, variants);
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    out.set(r.id || r, n === 1 ? base : `${base}#${n}`);
+  }
+  return out;
+}
+
+/**
+ * 상대 BOM 에서 이 줄의 짝을 찾는다 — 없으면 null.
+ * myRows 를 주면 «같은 열쇠가 여럿일 때 몇 번째인지»까지 맞춘다. 안 주면 첫 줄만 찾는다(옛 동작).
+ */
+export function twinOf(row, myVariants, theirRows, theirVariants, myRows) {
+  const k = myRows
+    ? rowKeysOf(myRows, myVariants).get(row?.id || row) || rowKey(row, myVariants)
+    : rowKey(row, myVariants);
+  const theirKeys = rowKeysOf(theirRows, theirVariants);
+  return (theirRows || []).find((r) => theirKeys.get(r?.id || r) === k) || null;
 }
 
 /**

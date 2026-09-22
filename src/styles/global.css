@@ -24082,6 +24082,17 @@ a.lib-row-name:hover {
 .pmat-rowview {
   margin-left: 0;
 }
+/* 「안셈」 줄 꺼내 보기 — 기본은 감춰 두고, 몇 줄이 숨었는지 단추에 적는다
+   (2026-09-22 대표님 「필터에 숨김 보기 버튼을」) */
+.pmat-gray-toggle {
+  flex: none;
+  white-space: nowrap;
+}
+.pmat-gray-toggle.on {
+  border-color: var(--grey-500, #8b95a1);
+  background: var(--grey-500, #8b95a1);
+  color: #fff;
+}
 /* BOX 마다 부족 수량 — 자리(폭)를 늘 비워 두어 탭 간격이 흔들리지 않게 */
 .pmat-box-switch .view-switch-item .view-switch-count:not(:empty) {
   background: var(--danger-soft, #fbe9e7);

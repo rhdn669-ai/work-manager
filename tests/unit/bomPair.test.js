@@ -1,6 +1,6 @@
 // 짝 BOM — 한쪽을 고치면 다른 쪽도 (2026-09-18 대표님 「어느 범위까지 연동할지 선택목록을 두고」)
 import { describe, it, expect } from 'vitest';
-import { rowKey, twinOf, pairPatch, pairCopy, PAIR_DEFAULT } from '../../src/domain/bomPair';
+import { rowKey, rowKeysOf, twinOf, pairPatch, pairCopy, PAIR_DEFAULT } from '../../src/domain/bomPair';
 
 const mine = [
   { key: 'vT5391', label: 'T5391 / MT8311' },
@@ -57,5 +57,40 @@ describe('짝 BOM', () => {
     expect(c.box).toBe('MP');
     expect(c.variantKeys).toEqual(['vmtwa6plx']);
     expect(c.order).toBe(7);
+  });
+});
+
+// 같은 품목이 한 BOX 에 여러 줄이면 열쇠가 겹쳐 앞의 하나만 짝이 잡혔다
+// (2026-09-22 대표님 「메티스 디에이치 BOM 수량이왜또 다르냐」 → 「A ㄱㄱ」)
+describe('같은 열쇠가 여럿일 때 — 몇 번째로 가른다', () => {
+  const mine = [
+    { id: 'm1', itemId: 'lan', box: '준비작업', order: 1 },
+    { id: 'm2', itemId: 'lan', box: '준비작업', order: 2 },
+  ];
+  const theirs = [
+    { id: 'd1', itemId: 'lan', box: '준비작업', order: 1 },
+    { id: 'd2', itemId: 'lan', box: '준비작업', order: 2 },
+  ];
+  it('첫 줄은 순번을 안 붙인다 — 상대에 하나뿐이면 예전처럼 짝이 된다', () => {
+    const k = rowKeysOf([mine[0]], []);
+    expect(k.get('m1')).toBe(rowKey(mine[0], []));
+  });
+  it('둘째 줄부터 #2 가 붙는다', () => {
+    const k = rowKeysOf(mine, []);
+    expect(k.get('m2')).toBe(`${rowKey(mine[1], [])}#2`);
+  });
+  it('첫째는 첫째끼리, 둘째는 둘째끼리 짝이 된다', () => {
+    expect(twinOf(mine[0], [], theirs, [], mine)?.id).toBe('d1');
+    expect(twinOf(mine[1], [], theirs, [], mine)?.id).toBe('d2');
+  });
+  it('줄 순서(order)를 따른다 — 배열에 담긴 차례가 아니라', () => {
+    const shuffled = [mine[1], mine[0]];
+    expect(twinOf(mine[1], [], theirs, [], shuffled)?.id).toBe('d2');
+  });
+  it('myRows 를 안 주면 옛 동작 — 첫 줄만 찾는다', () => {
+    expect(twinOf(mine[1], [], theirs, [])?.id).toBe('d1');
+  });
+  it('상대에 줄이 하나뿐이면 둘째 줄은 짝이 없다 — 엉뚱한 줄에 덮어쓰지 않는다', () => {
+    expect(twinOf(mine[1], [], [theirs[0]], [], mine)).toBeNull();
   });
 });
