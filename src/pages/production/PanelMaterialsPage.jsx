@@ -223,6 +223,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           name: m?.name || r.name || '',
           spec: m?.spec || r.spec || '',
           drawingNo: m?.drawingNo || r.drawingNo || '',
+          category: m?.category || r.category || '', // 분류 — 현장 표에도 보이게 (2026-09-23 대표님)
         };
       }),
     [bomRows, masterMap],
@@ -1314,7 +1315,10 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               {/* 작업 칸 — 단추가 최대 4개(취소·빼기·입고·수정). 실측 4개 = 190px 라 196px 로 잡는다.
                   「가」(큰 글자)는 안 쓰는 기준이므로 고정 px 로 둔다
                   (2026-09-17 대표님 「입고버튼 조건 은보이게 칸을좀더 늘려」) */}
-              {['44px', '12.5%', '9.5%', null, '6.5%', '8%', '15%', '6%', '5.5%', '196px'].map((w, i) => (
+              {/* 분류 열 추가 — 규격 옆 9%. 긴 값(「히터하 밑판(SMPS,부스바)고정」)은 잘리지 않고 두 줄로.
+                  자리는 상태 15→12 · 도번 12.5→11.5 · 기록 6→5 · 비고 5.5→5 에서 받았다
+                  (2026-09-23 대표님 「생산현황 품목리스트에도 분류 표시 · 태블릿에서 잘 보이게 · 짤리지 않고」) */}
+              {['44px', '11.5%', '9.5%', null, '9%', '6.5%', '8%', '12%', '5%', '5%', '196px'].map((w, i) => (
                 <col key={i} style={w ? { width: w } : undefined} />
               ))}
             </colgroup>
@@ -1326,6 +1330,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 <th scope="col">도번</th>
                 <th scope="col">품명</th>
                 <th scope="col">규격</th>
+                <th scope="col">분류</th>
                 <th scope="col" className="pmat-num">
                   필요
                 </th>
@@ -1352,7 +1357,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                 const meta = recOf(r)[r.id];
                 // 「전체」— BOX 가 바뀌는 자리에 구분줄 (재고 표와 같은 모양)
                 const newBox = allBoxes && (i === 0 || boxOf(shown[i - 1]) !== boxOf(r));
-                const colCount = 10;
+                const colCount = 11; // 분류 열 추가 (2026-09-23)
                 return (
                   <Fragment key={r.id}>
                     {newBox && (
@@ -1394,6 +1399,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
                       <td className="u-wrap">{r.name}</td>
                       <td className="pmat-spec u-wrap" title={r.spec}>
                         {r.spec}
+                      </td>
+                      <td className="pmat-cat u-wrap" title={r.category || ''}>
+                        {r.category || ''}
                       </td>
                       <td className="pmat-num">{Number(r.qty) || 0}</td>
                       <td className="pmat-num">
