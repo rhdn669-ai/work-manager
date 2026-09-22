@@ -20861,10 +20861,16 @@ a.lib-row-name:hover {
 .stock-used-badge {
   display: block;
   width: 100%;
-  padding: 3px 6px;
+  /* 좁은 칸에서 글자가 알약 밖으로 삐져나왔다 — 칸을 넘으면 알약도 같이 줄인다
+     (2026-09-22 대표님 「재고 버튼 글이 밖으로 벗어남」) */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 5px;
   border: 1px solid #bfdbfe;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
@@ -21107,7 +21113,7 @@ a.lib-row-name:hover {
 .inline-edit-table .qty-stack {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   width: 100%;
   height: 32px;
@@ -21137,6 +21143,11 @@ a.lib-row-name:hover {
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+/* 수량 칸은 가운데 — 두 줄짜리든 한 줄짜리든 열 안에서 같은 자리에 선다
+   (2026-09-22 대표님 「가운데 정렬은 해줘야지」) */
+.inline-edit-table td.qty-cell input {
+  text-align: center;
 }
 /* 재고를 안 쓰는 중 — 눌러서 다시 쓸 수 있다는 뜻으로 흐리게 */
 .stock-used-badge.is-off {

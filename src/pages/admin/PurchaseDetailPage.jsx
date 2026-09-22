@@ -2786,7 +2786,7 @@ export default function PurchaseDetailPage() {
                                 tabIndex={-1}
                               />
                             </td>
-                            <td data-label="수량">
+                            <td data-label="수량" className="qty-cell">
                               {/* 재고를 쓰는 줄은 두 줄로 — 위에 줄 그은 «원래 필요했던 수량»,
                                 바로 아래에 «실제로 사는 수량». 전에는 줄만 그어 두고 사는 수량은
                                 옆 「재고」 칸에서 어림잡아야 했다
@@ -2852,7 +2852,7 @@ export default function PurchaseDetailPage() {
                                         : `통에서 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
                                   }
                                 >
-                                  {Number(ln.stockUsed).toLocaleString()}개 사용
+                                  {Number(ln.stockUsed).toLocaleString()} 사용
                                 </button>
                               ) : have > 0 ? (
                                 <button
