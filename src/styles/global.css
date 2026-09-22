@@ -22562,7 +22562,8 @@ a.lib-row-name:hover {
   padding: 0 24px 0 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--bg-subtle, #f7f8fa);
+  /* 공통은 기본값이라 조용해야 한다 — 흰 바탕에 연한 테두리만 */
+  background: var(--bg-card, #fff);
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -22584,11 +22585,11 @@ a.lib-row-name:hover {
 .bom-dir-select select.ds-select__native:disabled {
   cursor: default;
 }
-/* 회색 — 쓰긴 쓰는데 우리가 수량을 안 세는 줄 */
+/* 회색 — 쓰긴 쓰는데 우리가 수량을 안 세는 줄. 공통과 한눈에 갈리게 채운다 */
 .bom-dir-select.is-gray select.ds-select__native {
-  border-color: #c9ced6;
-  background: #eef0f3;
-  color: var(--text-light);
+  border-color: #b9c0ca;
+  background: #dde2e8;
+  color: #2b3440;
 }
 /* 안 뜸 — 그 방향엔 아예 안 들어간다. 드문 설정이라 확실히 보이게 */
 .bom-dir-select.is-none select.ds-select__native {
