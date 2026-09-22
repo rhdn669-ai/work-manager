@@ -2092,7 +2092,9 @@ export default function BomDetailPage() {
                                   «안 뜸»을 가를 수 없었고, 켜진 방향만 보여 뜻이 거꾸로 읽혔다
                                   (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」) */}
                                 <span
-                                  className={`bom-dir-select${dirModeOf(it) ? ' on' : ''}`}
+                                  className={`bom-dir-select${
+                                    dirModeOf(it) ? (dirModeOf(it).endsWith('None') ? ' is-none' : ' is-gray') : ''
+                                  }`}
                                   title={dirModeHint(dirModeOf(it))}
                                 >
                                   <Select
