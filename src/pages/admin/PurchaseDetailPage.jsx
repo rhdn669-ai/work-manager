@@ -675,18 +675,6 @@ export default function PurchaseDetailPage() {
     updateLine(idx, { qty: need - use, stockUsed: use, stockNeed: need });
   }
 
-  // 창고가 모자란 만큼(재고 음수) 발주 수량에 얹는다.
-  // 메우고 나면 부족분이 사라지므로 재고는 0으로 올라간다.
-  function fillShortage(idx, short) {
-    const ln = formRef.current.items[idx];
-    if (!ln || short <= 0) return;
-    // stockShort 에 얼마를 메웠는지 남긴다 — 이게 없으면 창고가 0이 되는 순간
-    // 빨간 배지가 사라져 되돌릴 방법이 없어진다.
-    // 통은 음수가 없다 — 발주 수량만 얹고 통은 건드리지 않는다 (옛 마스터 재고 시절엔 음수를 0 으로 올렸다)
-    updateLine(idx, { qty: (Number(ln.qty) || 0) + short, stockShort: (Number(ln.stockShort) || 0) + short });
-    toast(`모자란 ${short}개를 발주 수량에 더했습니다`);
-  }
-
   // 메웠던 부족분을 도로 뺀다 — 다시 모자란 상태로 돌아간다
   function undoShortage(idx) {
     const ln = formRef.current.items[idx];
@@ -954,13 +942,6 @@ export default function PurchaseDetailPage() {
       setBomModalOpen(false);
       toast(`${bp.name} 에 걸었습니다 — 입고하면 그 BOM 의 「들어온 양」으로 잡힙니다`, 'success', 0);
       return;
-    }
-    // 이미 줄이 있는데 또 부으면 수량이 겹친다 — 한 번 묻는다
-    if ((form.items || []).length > 0) {
-      const ok = await confirm(
-        `이 발주서에 이미 ${(form.items || []).length}줄이 있습니다. ${bp.name} 의 품목을 더 넣을까요?`,
-      );
-      if (!ok) return;
     }
     const fwd = Math.max(0, Number(bomFwd) || 0);
     const rev = Math.max(0, Number(bomRev) || 0);
@@ -2834,58 +2815,56 @@ export default function PurchaseDetailPage() {
                                 }
                               />
                             </td>
-                            {/* 재고로 뺀 수량 — 수량 칸 아래에 두면 그 줄만 높아지므로 열을 따로 둔다 */}
+                            {/* 재고 칸 — 통에 몇 개 있고 그중 몇 개를 쓰는지. 전에는 「쓴 수량/필요 수량」이라
+                              통에 물건이 있는지 없는지가 안 읽혔고, 값이 없는 줄은 「NaN」이 찍혔다
+                              (2026-09-22 대표님 「재고가 있는건지 없는건지 티가 안나고 표시방식이 이상한데」) */}
                             <td data-label="재고" className="no-print">
-                              {!showStock ? null /* 창고가 모자란 품목(재고 음수) — 눌러 그만큼 발주 수량에 얹는다.
-                                  이미 메운 줄은 되돌릴 수 있도록 배지를 남긴다. */ : Math.max(0, -have) > 0 ||
-                                Number(ln.stockShort) > 0 ? (
+                              {!showStock ? null : Number(ln.stockShort) > 0 ? (
                                 <button
                                   type="button"
-                                  className={`stock-used-badge is-short${Number(ln.stockShort) > 0 ? ' is-filled' : ''}`}
+                                  className="stock-used-badge is-short is-filled"
                                   disabled={!canUseStock || cellsLocked}
-                                  onClick={
-                                    !canUseStock || cellsLocked
-                                      ? undefined
-                                      : Number(ln.stockShort) > 0
-                                        ? () => undoShortage(idx)
-                                        : () => fillShortage(idx, Math.max(0, -have))
-                                  }
+                                  onClick={!canUseStock || cellsLocked ? undefined : () => undoShortage(idx)}
+                                  title={`모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`}
+                                >
+                                  +{Number(ln.stockShort).toLocaleString()}
+                                </button>
+                              ) : (Number(ln.stockUsed) || 0) > 0 ? (
+                                <button
+                                  type="button"
+                                  className="stock-used-badge is-using"
+                                  disabled={!canUseStock || cellsLocked}
+                                  onClick={!canUseStock || cellsLocked ? undefined : () => toggleStockLine(idx)}
                                   title={
                                     cellsLocked
                                       ? '오른쪽 아래 「잠금」을 풀어야 바꿀 수 있습니다'
                                       : !canUseStock
-                                        ? '발주가 나간 뒤에는 재고를 건드릴 수 없습니다'
-                                        : Number(ln.stockShort) > 0
-                                          ? `모자란 ${ln.stockShort}개를 발주 수량에 더해 둔 상태 — 눌러서 도로 빼기`
-                                          : `창고에 ${Math.max(0, -have)}개 모자랍니다 — 눌러서 발주 수량에 더하기`
+                                        ? `통에서 ${ln.stockUsed}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
+                                        : `통에서 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
                                   }
                                 >
-                                  {Number(ln.stockShort) > 0
-                                    ? `+${Number(ln.stockShort).toLocaleString()}`
-                                    : `−${Math.max(0, -have).toLocaleString()}`}
+                                  {Number(ln.stockUsed).toLocaleString()}개 사용
+                                </button>
+                              ) : have > 0 ? (
+                                <button
+                                  type="button"
+                                  className="stock-used-badge is-have"
+                                  disabled={!canUseStock || cellsLocked}
+                                  onClick={!canUseStock || cellsLocked ? undefined : () => toggleStockLine(idx)}
+                                  title={
+                                    cellsLocked
+                                      ? '오른쪽 아래 「잠금」을 풀어야 바꿀 수 있습니다'
+                                      : !canUseStock
+                                        ? `통에 ${have}개 있습니다 (발주 뒤에는 쓸 수 없습니다)`
+                                        : `통에 ${have.toLocaleString()}개 있습니다 — 눌러서 그만큼 빼고 나머지만 발주`
+                                  }
+                                >
+                                  재고 {have.toLocaleString()}
                                 </button>
                               ) : (
-                                stockNeed > 0 && (
-                                  <button
-                                    type="button"
-                                    className={`stock-used-badge${Number(ln.stockUsed) > 0 ? '' : ' is-off'}`}
-                                    disabled={!canUseStock || cellsLocked}
-                                    onClick={!canUseStock || cellsLocked ? undefined : () => toggleStockLine(idx)}
-                                    title={
-                                      cellsLocked
-                                        ? '오른쪽 아래 「잠금」을 풀어야 바꿀 수 있습니다'
-                                        : !canUseStock
-                                          ? `창고 재고 ${ln.stockUsed || 0}개를 빼고 발주한 수량입니다 (발주 뒤에는 잠김)`
-                                          : Number(ln.stockUsed) > 0
-                                            ? `창고 재고 ${ln.stockUsed}개를 쓰는 중 — 눌러서 ${stockNeed.toLocaleString()}개 전부 발주로 되돌리기`
-                                            : `통에 ${have.toLocaleString()}개 있음 — 눌러서 그만큼 빼고 나머지만 발주`
-                                    }
-                                  >
-                                    <span className="stock-used-n">{Number(ln.stockUsed).toLocaleString()}</span>
-                                    <span className="stock-need-sep">/</span>
-                                    <span className="stock-need-n">{stockNeed.toLocaleString()}</span>
-                                  </button>
-                                )
+                                <span className="stock-used-badge is-empty" title="이 품목은 통에 남은 것이 없습니다">
+                                  없음
+                                </span>
                               )}
                             </td>
                             <td data-label="단가">
@@ -3686,6 +3665,13 @@ export default function PurchaseDetailPage() {
             지금 걸린 곳 — <strong>{bomLinksLabel(form.bomLinks)}</strong>
           </p>
         )}
+        {(form.items || []).filter((l) => (l.name || '').trim() || l.itemId).length > 0 && (
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            이 발주서에 이미{' '}
+            <strong>{(form.items || []).filter((l) => (l.name || '').trim() || l.itemId).length}줄</strong>이 있습니다 —
+            걸면 그 뒤에 더해집니다(같은 품목은 수량만 늘어납니다).
+          </p>
+        )}
         <div className="form-group">
           <label>어느 BOM 자재인가요?</label>
           {bomLoading ? (
@@ -3797,7 +3783,9 @@ export default function PurchaseDetailPage() {
             disabled={!bomPickId || bomImporting}
             onClick={() => {
               const bp = bomPickList.find((x) => x.id === bomPickId);
-              if (bp) importBom(bp, bomPickVariant);
+              if (!bp) return;
+              setBomModalOpen(false); // 창부터 닫는다 — 뒤에 알림이 뜨면 가려진다
+              importBom(bp, bomPickVariant);
             }}
           >
             {bomImporting ? '거는 중...' : '걸기'}

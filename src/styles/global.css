@@ -20838,6 +20838,26 @@ a.lib-row-name:hover {
 
 /* 발주서 수량 칸의 「재고 N 사용」 — 무엇이 빠졌는지 보이게 하고, 눌러 되돌린다.
    주황은 주행동 전용이므로 정보 표시에는 파랑 연한 톤을 쓴다. */
+/* 재고 칸 — 통에 몇 개 있는지가 먼저 읽혀야 한다 (2026-09-22 대표님 「재고가 있는건지 없는건지
+   티가 안나고」). 쓰는 중은 초록, 쓸 수 있으면 파랑, 없으면 흐린 회색. */
+.stock-used-badge.is-have {
+  border-color: #b7d3ff;
+  background: #eaf3ff;
+  color: #0b5bd3;
+}
+.stock-used-badge.is-using {
+  border-color: #b9e2c6;
+  background: #e6f4ea;
+  color: var(--success);
+}
+.stock-used-badge.is-empty {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-light);
+  opacity: 0.6;
+  cursor: default;
+}
+
 .stock-used-badge {
   display: block;
   width: 100%;
