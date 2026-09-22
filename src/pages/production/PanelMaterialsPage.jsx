@@ -272,12 +272,16 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   // ── 이 BOX 의 구성품 (타입 → BOX 순으로 거른다) ──
   const rows = useMemo(() => {
     const forVariant = bomItemsForVariant(bomRowsFull, link?.variantKey || '');
-    // 「그 방향엔 아예 안 들어감」으로 정해 둔 줄은 목록에서 뺀다. 다만 이미 체크해 둔 수량이
-    // 남아 있으면 남긴다 — 숨기면 통에서 가져온 몫이 어느 집계에도 안 잡혀 조용히 증발한다
-    // (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」)
+    // 「그 방향엔 아예 안 들어감」으로 정해 둔 줄은 목록에서 뺀다 — 체크가 남아 있어도 뺀다
+    // (2026-09-22 대표님 「없음 은 숨겨도 됨」). 처음에는 «체크가 남았으면 남긴다»로 두었는데,
+    // 그러면 「없음」으로 정해도 화면에서 회색으로 계속 보여 뜻이 안 통했다
+    // (대표님 「없음인데 회색으로 처리되고있는거같은데?」).
+    // ※ 주의 — 아래 stray(보라 띠)는 «타입» 밖인 줄만 잡고 방향은 안 본다. 그래서 「없음」으로
+    //   정한 줄에 체크가 남아 있으면 그 수량은 화면 어디에도 안 보인다. 「없음」으로 바꿀 때
+    //   남은 체크를 먼저 정리해야 한다 (사급 통에서 가져온 몫이면 통도 함께 되돌린다).
     const mine = boxList.flatMap((b) =>
       bomRowsForBox(forVariant, b)
-        .filter((r) => !isHiddenForPanel(r, panel) || (Number(received[b]?.[r.id]?.qty) || 0) > 0)
+        .filter((r) => !isHiddenForPanel(r, panel))
         .map((r) => ({ ...r, _box: b })),
     );
     // 타입이 바뀌어 «지금 타입 밖»이 됐는데 체크는 남아 있는 줄 — 숨기면 통에서 가져온 몫이

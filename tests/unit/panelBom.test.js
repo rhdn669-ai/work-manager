@@ -10,12 +10,16 @@ import {
   variantOptionsFor,
   variantLabelOf,
 } from '../../src/domain/panelBom';
+import { BOX_OPTIONS } from '../../src/domain/boxes';
 
 describe('연결 값', () => {
-  it('체크 대상은 준비작업·LOCAL 이 앞, MP 까지 전부 (2026-09-05 대표님 「리스트에 MP 가 없네」)', () => {
-    expect(CHECKABLE_BOXES.slice(0, 2)).toEqual(['준비작업', 'LOCAL']);
-    expect(CHECKABLE_BOXES).toContain('P/W BOX');
-    expect(CHECKABLE_BOXES[CHECKABLE_BOXES.length - 1]).toBe('MP');
+  // 차례가 BOM 표와 어긋나 있어서 같은 자재를 두 화면에서 다른 순서로 찾아야 했다
+  // (2026-09-22 대표님 「재고 호기 체크쪽도 bom이랑 순서 맞춰줄수있음?」)
+  it('체크 대상 차례는 BOM 표와 같다', () => {
+    expect(CHECKABLE_BOXES).toEqual(BOX_OPTIONS);
+  });
+  it('준비작업·LOCAL·MP 가 모두 체크 대상이다 (2026-09-05 대표님 「리스트에 MP 가 없네」)', () => {
+    for (const b of ['준비작업', 'LOCAL', 'MP', 'P/W BOX']) expect(CHECKABLE_BOXES).toContain(b);
   });
   it('프로젝트가 없으면 연결이 아니다', () => {
     expect(makeBomLink({})).toBeNull();

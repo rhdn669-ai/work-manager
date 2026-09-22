@@ -6,16 +6,18 @@
 // projectName·variantLabel 은 표시용 스냅샷이다. BOM 쪽에서 이름을 고치면 다음에
 // 연결 화면을 열 때 갱신된다 — 연결 자체는 id 로 붙들어 이름이 바뀌어도 끊기지 않는다.
 
-import { PANEL_BOXES } from './boxes';
+import { PANEL_BOXES, EXTRA_BOXES } from './boxes';
 
 /**
- * 호기 자재 체크 대상 BOX — 생산현황 표와 같은 차례.
- *  · 「준비작업」·「LOCAL」은 실물 BOX 는 아니지만 BOM 에 줄이 있어 체크해야 한다 — 맨 앞에 둔다
- *    (2026-09-05 대표님 「로컬 준비작업 둘 다 들어와야」)
+ * 호기 자재 체크 대상 BOX — 차례는 BOM 표와 같다(domain/boxes 의 BOX_OPTIONS).
+ *  · 「준비작업」·「LOCAL」은 실물 BOX 는 아니지만 BOM 에 줄이 있어 체크해야 한다
+ *    (2026-09-05 대표님 「로컬 준비작업 둘 다 들어와야」). 전에는 이 둘을 맨 «앞»에 두어
+ *    BOM 표(맨 뒤)와 차례가 어긋났다 — 같은 자재를 두 화면에서 다른 순서로 찾아야 했다
+ *    (2026-09-22 대표님 「재고 호기 체크쪽도 bom이랑 순서 맞춰줄수있음?」).
  *  · MP 도 넣는다 — BOM 에 MP 사급 줄이 있다. 생산현황의 MP 하위 9종(조립 진행)과는 별개로
  *    「무엇이 들어왔나」만 본다 (2026-09-05 대표님 「리스트에 아직 MP 가 없네」)
  */
-export const CHECKABLE_BOXES = ['준비작업', 'LOCAL', ...PANEL_BOXES];
+export const CHECKABLE_BOXES = [...PANEL_BOXES, ...EXTRA_BOXES];
 
 /** 연결이 되어 있나 */
 export function hasBomLink(p) {
