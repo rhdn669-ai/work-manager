@@ -22546,59 +22546,57 @@ a.lib-row-name:hover {
 /* 방향 — 다섯 가지를 한 칸 드롭다운으로. 단추 두 개로는 «회색»과 «안 뜸»을 가를 수 없었고
    켜진 방향만 보여 뜻이 거꾸로 읽혔다 (2026-09-22 대표님).
    옆의 「구분」 단추와 같은 말투 — 알약 모양·같은 높이. 세기로 뜻을 나눈다:
-   공통은 조용히(테두리만) · 회색은 연회색 채움 · 안 뜸은 진회색 채움. */
+   공통은 조용히(테두리만) · 회색은 연회색 채움 · 안 뜸은 진회색 채움.
+   ※ 선택자에 select 를 붙여 두는 까닭 — 공용 `.ds-select--native .ds-select__native`(0,2,0)가
+     design-system.css 에서 뒤에 오므로, 여기(0,2,1)로 올려야 폼 기본값(44px)을 이긴다. */
 .bom-dir-select {
   display: inline-block;
   margin-left: 6px;
   vertical-align: middle;
   min-width: 78px;
-  max-width: 92px;
+  max-width: 94px;
 }
-.bom-dir-select select {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
+.bom-dir-select select.ds-select__native {
+  min-height: 26px;
   height: 26px;
-  padding: 0 21px 0 10px;
+  padding: 0 24px 0 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background-color: var(--bg-subtle, #f7f8fa);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23525c6b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 9px 6px;
+  background: var(--bg-subtle, #f7f8fa);
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
+    background 0.15s ease,
     border-color 0.15s ease,
     color 0.15s ease;
 }
-.bom-dir-select select:hover {
+.bom-dir-select .ds-select--native .ds-select__caret {
+  right: 7px;
+  width: 13px;
+  height: 13px;
+}
+.bom-dir-select select.ds-select__native:hover {
   border-color: var(--grey-500, #8b95a1);
 }
-.bom-dir-select select:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 1px;
-}
-.bom-dir-select select:disabled {
+.bom-dir-select select.ds-select__native:disabled {
   cursor: default;
-  opacity: 0.55;
 }
 /* 회색 — 쓰긴 쓰는데 우리가 수량을 안 세는 줄 */
-.bom-dir-select.is-gray select {
+.bom-dir-select.is-gray select.ds-select__native {
   border-color: #c9ced6;
-  background-color: #eef0f3;
+  background: #eef0f3;
   color: var(--text-light);
 }
 /* 안 뜸 — 그 방향엔 아예 안 들어간다. 드문 설정이라 확실히 보이게 */
-.bom-dir-select.is-none select {
+.bom-dir-select.is-none select.ds-select__native {
   border-color: var(--grey-500, #8b95a1);
-  background-color: var(--grey-500, #8b95a1);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background: var(--grey-500, #8b95a1);
+  color: #fff;
+}
+.bom-dir-select.is-none .ds-select__caret {
   color: #fff;
 }
 .bom-scope-btn {
