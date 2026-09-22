@@ -8,6 +8,7 @@ import { useEditLock } from '../../contexts/useEditLock';
 import { VERDICT, kindOf } from '../../domain/qualityForms';
 import { COMPANIES } from '../../domain/production';
 import { FORM_FIELDS, computeCalcFields, colWidthOf } from '../../domain/qualityFormFields';
+import { nextSerialNo } from '../../domain/qualityDocNo';
 import { subscribeRecords, addRecord, updateRecord, trashRecord } from '../../services/qualityRecordService';
 import { QUALITY_GOAL_SEED } from '../../domain/qualityGoalSeed';
 import { subscribeTrashByType } from '../../services/trashService';
@@ -37,6 +38,9 @@ export default function QualityRecordLedger({ formKey, docNo }) {
   // 「잠금」 — 풀었을 때만 체크박스 + 선택 삭제 (2026-09-04 대표님 「잠금」 통일)
   const [pick, setPick] = useState(() => new Set());
   const editMode = useEditLock({ enabled: isAdmin, onLock: () => setPick(new Set()) });
+  // 행마다 「수정」 — 잠금을 안 풀고도 그 행만 고친다 (2026-09-22 품질팀 요청, 대표님 결정)
+  const [rowEdit, setRowEdit] = useState(() => new Set());
+  const canEditRow = (r) => (editMode || rowEdit.has(r.id)) && r.sourceType !== 'production';
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [verdictFilter, setVerdictFilter] = useState('all');
@@ -132,10 +136,21 @@ export default function QualityRecordLedger({ formKey, docNo }) {
     }
   };
 
-  // 대장은 빈 행을 먼저 만들고 칸을 채워 넣는다(엑셀 대장에 줄을 추가하는 방식)
+  // 대장은 빈 행을 먼저 만들고 칸을 채워 넣는다(엑셀 대장에 줄을 추가하는 방식).
+  // 미리 채워 두는 것(2026-09-22 품질팀 요청): 검사일=오늘 · 검사자=로그인한 사람 ·
+  // S/NO=설비명-오늘-순번(PROBER-20260922-000). 손으로 고칠 수 있다.
   const addBlankRow = async () => {
     try {
-      await addRecord(formKey, { recordNo: '' });
+      const seed = { recordNo: '' };
+      const today = new Date().toISOString().slice(0, 10);
+      if (def.fields.some((f) => f.key === 'inspectionDate')) seed.inspectionDate = today;
+      if (def.fields.some((f) => f.key === 'inspector') && userProfile?.name) seed.inspector = userProfile.name;
+      if (def.serialPrefix && def.fields.some((f) => f.key === 'serialNo'))
+        seed.serialNo = nextSerialNo(
+          def.serialPrefix,
+          rows.map((r) => r.serialNo),
+        );
+      await addRecord(formKey, seed);
     } catch {
       toast('행 추가 중 오류가 발생했습니다', 'error', 0);
     }
@@ -154,7 +169,18 @@ export default function QualityRecordLedger({ formKey, docNo }) {
     setPick((prev) => (prev.size === view.length ? new Set() : new Set(view.map((r) => r.id))));
   }
 
-  // 고른 행을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일 — 행별 삭제 버튼 폐지)
+  // 행 하나를 휴지통으로 — 행별 삭제 버튼 (2026-09-22 품질팀 요청, 대표님 결정으로 부활)
+  const deleteOne = async (r) => {
+    if (!(await confirm(`${r.recordNo || `${r.itemName || ''} 행`}을(를) 휴지통으로 보내시겠습니까?`))) return;
+    try {
+      await trashRecord(r, `${def.title} ${r.recordNo}`, userProfile?.name || '');
+      toast('휴지통으로 이동했습니다.', 'success', 0);
+    } catch {
+      toast('삭제 중 오류가 발생했습니다', 'error', 0);
+    }
+  };
+
+  // 고른 행을 한꺼번에 휴지통으로 (2026-09-04 대표님 「잠금」 통일)
   const deletePicked = async () => {
     const targets = view.filter((r) => pick.has(r.id));
     if (targets.length === 0) return;
@@ -388,12 +414,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                     {cols.map((c) => (
                       <td key={c.key} className={!isLedger && (c.type === 'num' || c.type === 'date') ? 'q-num' : ''}>
                         {isLedger ? (
-                          <LedgerCell
-                            f={c}
-                            row={r}
-                            onCommit={editCell}
-                            readOnly={!editMode || c.calc || r.sourceType === 'production'}
-                          />
+                          <LedgerCell f={c} row={r} onCommit={editCell} readOnly={!canEditRow(r) || c.calc} />
                         ) : (
                           r[c.key] || '—'
                         )}
@@ -406,7 +427,7 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                             f={def.fields.find((f) => VERDICT_KEYS.includes(f.key))}
                             row={r}
                             onCommit={editCell}
-                            readOnly={!editMode || r.sourceType === 'production'}
+                            readOnly={!canEditRow(r)}
                           />
                         </td>
                       ) : (
@@ -421,8 +442,39 @@ export default function QualityRecordLedger({ formKey, docNo }) {
                           생산현황에서 삭제
                         </span>
                       )}
-                      {/* 개별 삭제 버튼 폐지 — 지우는 것은 관리자만, 잠금 풀고 체크 → 선택 삭제
-                          (2026-08-12 대표님 권한 구분 · 2026-09-04 대표님 「잠금」 통일) */}
+                      {/* 행별 수정·삭제 — 2026-09-22 품질팀 요청, 대표님 결정으로 부활.
+                          삭제는 관리자만(2026-08-12 권한 구분 유지). 생산현황에서 온 행은 둘 다 없다 */}
+                      {isLedger && r.sourceType !== 'production' && (
+                        <span className="q-row-actions">
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${rowEdit.has(r.id) ? 'btn-primary' : 'btn-outline'}`}
+                            onClick={() =>
+                              setRowEdit((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(r.id)) next.delete(r.id);
+                                else next.add(r.id);
+                                return next;
+                              })
+                            }
+                            title={rowEdit.has(r.id) ? '고치기 끝' : '이 행 고치기'}
+                          >
+                            <Icon name="edit" className="btn-ic" />
+                            {rowEdit.has(r.id) ? '완료' : '수정'}
+                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline btn-danger-outline"
+                              onClick={() => deleteOne(r)}
+                              title="이 행을 휴지통으로"
+                            >
+                              <Icon name="trash" className="btn-ic" />
+                              삭제
+                            </button>
+                          )}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );

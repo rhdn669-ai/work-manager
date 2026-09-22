@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { useDialog } from '../../components/common/useDialog';
 import { canProduction } from '../../utils/workspace';
 import { QUALITY_TABS, kindOf } from '../../domain/qualityForms';
-import { nextDocNo } from '../../domain/qualityDocNo';
+import { nextDocNo, nextDatedDocNo } from '../../domain/qualityDocNo';
 import { FORM_FIELDS, computeCalcFields } from '../../domain/qualityFormFields';
 import { subscribeAllRecords, addRecord, updateRecord } from '../../services/qualityRecordService';
 import { subscribeAssets, addAsset, updateAsset } from '../../services/qualityAssetService';
@@ -59,11 +59,13 @@ export default function QualitySheetPage() {
   // 통합 대장은 문서번호가 대장 1장에 하나뿐이라 행마다 번호를 매기면 원본 서식과 어긋난다.
   const prefix = kindOf(formKey) === 'ledger' ? '' : docNoOf(formKey);
   // 새 장을 열면 다음 번호를 미리 적어 둔다. 사내 규칙이 따로 있으면 그 위에 고쳐 쓰면 된다.
-  const autoNo = nextDocNo(
-    prefix,
-    (all || []).map((r) => r[noKey]),
-  );
-  const record = isNew ? { [noKey]: autoNo } : rows.find((r) => r.id === id);
+  // 날짜형 서식(수입검사 성적서)은 QP-104A-260922-0001 처럼 그날 것끼리 센다 (2026-09-22 품질팀 요청)
+  const numberOf = (used) => (def.datedNo ? nextDatedDocNo(prefix, used) : nextDocNo(prefix, used));
+  const autoNo = numberOf((all || []).map((r) => r[noKey]));
+  // 새 성적서에는 늘 적는 검사항목을 미리 넣어 둔다 — 지우거나 더 붙일 수 있다
+  const record = isNew
+    ? { [noKey]: autoNo, ...(def.lines?.defaultLines ? { lines: def.lines.defaultLines.map((l) => ({ ...l })) } : {}) }
+    : rows.find((r) => r.id === id);
   if (!isNew && !record) return <Navigate to="/quality" replace />;
 
   const save = async (draft) => {
@@ -84,10 +86,7 @@ export default function QualitySheetPage() {
         toast(`${no} 은(는) 이미 있는 번호입니다`, 'error');
         return;
       }
-      no = nextDocNo(
-        prefix,
-        (all || []).map((r) => r[noKey]),
-      );
+      no = numberOf((all || []).map((r) => r[noKey]));
     }
     draft = { ...draft, [noKey]: no };
     // 모달 편집기를 없애면서 필수 항목 검사도 이 한 곳으로 모았다

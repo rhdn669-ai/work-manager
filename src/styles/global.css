@@ -24680,6 +24680,14 @@ body.has-editlock .main-content,
 body.has-editlock .main-content.expanded {
   padding-bottom: calc(18px + var(--fab-clear));
 }
+/* 품질 대장 행별 수정·삭제 — 작업 칸 오른쪽 끝에 나란히 (작업컬럼 표준: 우측 정렬·gap 8px)
+   (2026-09-22 품질팀 요청, 대표님 결정으로 부활) */
+.q-row-actions {
+  display: inline-flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* 자재 체크 화면은 예외 — 표 상자 «안»에 이미 잠금 자리를 비워 둔다(useFillHeight).
    본문 아래에 한 번 더 주면 화면이 78px 만큼 덤으로 굴러, 위에 붙여 둔 호기 줄이 들렸다
    앤혀다 하며 잔상처럼 보였다 (2026-09-22 대표님 「상단 호기수 고정 … 잔상없이」) */

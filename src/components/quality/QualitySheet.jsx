@@ -204,7 +204,7 @@ export default function QualitySheet({ formKey, docNo, record, onSave, onClose, 
                         <td>{i + 1}</td>
                         {def.lines.columns.map((c) => (
                           <td key={c.key}>
-                            {c.key === 'result' && (ro || !editing) ? (
+                            {(c.key === 'result' || c.verdict) && (ro || !editing) ? (
                               r[c.key] ? (
                                 <span className={`q-p-badge ${VERDICT_CLS[r[c.key]] || ''}`}>{r[c.key]}</span>
                               ) : (

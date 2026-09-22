@@ -105,18 +105,32 @@ export const FORM_FIELDS = {
   })(),
 
   // ── 수입검사 ───────────────────────────────────────────────
+  // 품질팀 요청 반영 (2026-09-22 PPT 「ERP 수정 요청」, 대표님 결정)
+  //  · 검사양식 4종(핵심부품·일반부품·사급품·기타) — 전에는 Harness·판금
+  //  · 공급업체 칸 — 관리대장(QP-104B)과 같은 키(supplierName)라 1:1 로 대조된다
+  //  · 검사항목: 검사방법은 육안/도면 둘 중 하나, 측정치 칸은 뺀다,
+  //    판정을 X1~X5 로 나눈다(샘플 5개 각각). 원본 명세의 X1~X10 을 5개로 줄인 것
+  //  · 새 성적서를 열면 기본 검사항목 6줄이 미리 들어간다(defaultLines)
+  //  · 문서번호는 날짜형 QP-104A-260922-0001 (qualityDocNo.js nextDatedDocNo)
   'iqc.report': {
     paper: true, // 원본이 병합 많은 한 장짜리 서식 → 양식 낱장으로 입력·출력
     title: '수입검사 성적서',
     numberPrefix: 'IQC',
+    datedNo: true,
     fields: [
       { key: 'projectNo', label: '프로젝트 번호', type: 'text', required: true, col: true },
+      { key: 'supplierName', label: '공급업체', type: 'text', required: true, col: true },
       { key: 'itemName', label: '품명', type: 'text', required: true, col: true },
       { key: 'itemNo', label: '품번', type: 'text' },
       { key: 'inspector', label: '검사자', type: 'text', required: true, col: true },
       { key: 'receivedDate', label: '입고일', type: 'date', required: true, col: true },
       { key: 'receivedQty', label: '입고 수량', type: 'num' },
-      { key: 'inspectionFormType', label: '검사양식', type: 'select', options: ['Harness', '판금'] },
+      {
+        key: 'inspectionFormType',
+        label: '검사양식',
+        type: 'select',
+        options: ['핵심부품', '일반부품', '사급품', '기타'],
+      },
       { key: 'passFailResult', label: '합불 판정', type: 'select', options: 판정, required: true, col: true },
       { key: 'remarks', label: '비고', type: 'textarea' },
     ],
@@ -125,11 +139,22 @@ export const FORM_FIELDS = {
       addLabel: '항목 추가',
       columns: [
         { key: 'inspectionItem', label: '검사항목', type: 'text', w: '20%' },
-        { key: 'specification', label: '규격', type: 'text', w: '24%' },
-        { key: 'inspectionMethod', label: '검사방법', type: 'text', w: '16%' },
-        { key: 'measured', label: '측정치', type: 'text', w: '14%' },
-        { key: 'result', label: '판정', type: 'select', options: 판정, w: '14%' },
+        { key: 'specification', label: '규격', type: 'text', w: '20%' },
+        { key: 'inspectionMethod', label: '검사방법', type: 'select', options: ['육안', '도면'], w: '12%' },
+        ...[1, 2, 3, 4, 5].map((n) => ({
+          key: `result${n}`,
+          label: `X${n}`,
+          type: 'select',
+          options: 판정,
+          w: '8%',
+          verdict: true,
+        })),
       ],
+      // 새 성적서에 미리 들어가는 검사항목 — 품질팀이 늘 적는 여섯 가지
+      defaultLines: ['구조/외관', '압착상태', '체결상태', '조립상태', '납땜상태', '넘버링'].map((it) => ({
+        inspectionItem: it,
+        inspectionMethod: '육안',
+      })),
     },
   },
   'iqc.ledger': {
@@ -155,16 +180,29 @@ export const FORM_FIELDS = {
   },
 
   // ── 출하·부적합 ────────────────────────────────────────────
+  // 품질팀 요청 반영 (2026-09-22 PPT, 대표님 결정)
+  //  · 품명은 출하 기준 5종에서 고른다 · 고객사는 메티스/디에이치에서 고른다
+  //  · 고객사와 프로젝트번호 사이에 S/NO — 행을 추가할 때 PROBER-20260922-000 꼴로 자동 채번
+  //  · 검사자·설비명은 그대로 — 생산현황에서 온 값(현장 확인자·판넬 타입)을 지킨다 (대표님 결정)
   'oqc.shipment': {
     title: '출하검사 실적',
     numberPrefix: 'OQC',
+    serialPrefix: 'PROBER',
     fields: [
       { key: 'inspectionDate', label: '검사일', type: 'date', required: true, col: true },
       { key: 'inspector', label: '검사자', type: 'text', required: true },
       { key: 'equipmentName', label: '설비명', type: 'text' },
-      { key: 'itemName', label: '품명', type: 'text', required: true, col: true },
+      {
+        key: 'itemName',
+        label: '품명',
+        type: 'select',
+        options: ['POWER BOX', 'TEMP BOX 상', 'TEMP BOX 하', 'LOADER DRIVER BOX', 'STAGE DRIVER BOX'],
+        required: true,
+        col: true,
+      },
+      { key: 'customerName', label: '고객사', type: 'select', options: ['메티스', '디에이치'], col: true },
+      { key: 'serialNo', label: 'S/NO', type: 'text', col: true },
       { key: 'projectNo', label: '프로젝트번호', type: 'text', col: true },
-      { key: 'customerName', label: '고객사', type: 'text', col: true },
       // 입고수는 생산현황에 없는 값이라 늘 비어 있었다 — 칸을 없앤다 (2026-08-10 대표님).
       // 검사수도 화면에서는 뺐지만 값은 뒤에서 계속 채운다 — 월별 불량률 추이가 이 값을 쓴다.
       { key: 'inspectedQty', label: '검사수', type: 'num', hidden: true },

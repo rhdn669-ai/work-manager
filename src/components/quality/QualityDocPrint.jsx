@@ -90,7 +90,7 @@ function OneDoc({ def, docNo, record }) {
                 <td>{i + 1}</td>
                 {def.lines.columns.map((c) => (
                   <td key={c.key}>
-                    {c.key === 'result' && r[c.key] ? (
+                    {(c.key === 'result' || c.verdict) && r[c.key] ? (
                       <span className={`q-p-badge ${VERDICT_CLS[r[c.key]] || ''}`}>{r[c.key]}</span>
                     ) : (
                       r[c.key] || '—'

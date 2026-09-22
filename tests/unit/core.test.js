@@ -26,7 +26,8 @@ import {
   newMessageId,
   threadKeyOf,
 } from '../../src/utils/mailTemplate';
-import { nextDocNo } from '../../src/domain/qualityDocNo';
+import { nextDocNo, nextDatedDocNo, nextSerialNo } from '../../src/domain/qualityDocNo';
+import { FORM_FIELDS } from '../../src/domain/qualityFormFields';
 import { countByType, countUnclassified, DEFECT_TYPES } from '../../src/domain/defectTypes';
 import { panelToNcrFacts } from '../../src/domain/productionQuality';
 import {
@@ -1143,5 +1144,70 @@ describe('메일 기본 틀', () => {
   it('제목 접두는 한 번만 붙는다', () => {
     expect(mailSubject('8월 마감내역 요청')).toBe('[주식회사 아이오피엔] 8월 마감내역 요청');
     expect(mailSubject('[주식회사 아이오피엔] 이미 붙음')).toBe('[주식회사 아이오피엔] 이미 붙음');
+  });
+});
+
+// 2026-09-22 품질팀 요청(ERP 수정 요청 PPT) — 대표님 결정으로 반영
+describe('품질 문서번호 — 날짜형·S/NO', () => {
+  const d = new Date(2026, 8, 22);
+  it('수입검사 성적서는 QP-104A-260922-0001 — 그날 것끼리 센다', () => {
+    expect(nextDatedDocNo('QP-104A', [], d)).toBe('QP-104A-260922-0001');
+    expect(nextDatedDocNo('QP-104A', ['QP-104A-260922-0003'], d)).toBe('QP-104A-260922-0004');
+  });
+  it('날이 바뀌면 0001 부터 다시', () => {
+    expect(nextDatedDocNo('QP-104A', ['QP-104A-260922-0009'], new Date(2026, 8, 23))).toBe('QP-104A-260923-0001');
+  });
+  it('옛 연번(QP-104A-0003)은 안 세고, 옛 채번도 새 모양을 안 센다 — 두 체계가 서로 안 건드린다', () => {
+    expect(nextDatedDocNo('QP-104A', ['QP-104A-0003'], d)).toBe('QP-104A-260922-0001');
+    expect(nextDocNo('QP-104A', ['QP-104A-0003', 'QP-104A-260922-0001'])).toBe('QP-104A-0004');
+  });
+  it('S/NO 는 PROBER-20260922-000 부터 — 품질팀 「000 부터 시작」', () => {
+    expect(nextSerialNo('PROBER', [], d)).toBe('PROBER-20260922-000');
+    expect(nextSerialNo('PROBER', ['PROBER-20260922-000', 'PROBER-20260922-001'], d)).toBe('PROBER-20260922-002');
+    expect(nextSerialNo('PROBER', ['PROBER-20260921-007'], d)).toBe('PROBER-20260922-000');
+  });
+});
+
+describe('수입검사 성적서 서식 — 품질팀 요청 반영', () => {
+  const def = FORM_FIELDS['iqc.report'];
+  const keys = def.lines.columns.map((c) => c.key);
+  it('측정치 칸이 없고 판정이 X1~X5 다섯 칸', () => {
+    expect(keys).not.toContain('measured');
+    expect(keys.filter((k) => /^result\d$/.test(k))).toEqual(['result1', 'result2', 'result3', 'result4', 'result5']);
+    expect(def.lines.columns.filter((c) => c.verdict)).toHaveLength(5);
+  });
+  it('검사방법은 육안·도면 중 고른다', () => {
+    const m = def.lines.columns.find((c) => c.key === 'inspectionMethod');
+    expect(m.type).toBe('select');
+    expect(m.options).toEqual(['육안', '도면']);
+  });
+  it('검사양식 4종 · 공급업체 칸 · 날짜형 번호', () => {
+    expect(def.fields.find((f) => f.key === 'inspectionFormType').options).toEqual([
+      '핵심부품',
+      '일반부품',
+      '사급품',
+      '기타',
+    ]);
+    expect(def.fields.some((f) => f.key === 'supplierName')).toBe(true);
+    expect(def.datedNo).toBe(true);
+  });
+  it('새 성적서 기본 검사항목 6줄', () => {
+    expect(def.lines.defaultLines.map((l) => l.inspectionItem)).toEqual([
+      '구조/외관',
+      '압착상태',
+      '체결상태',
+      '조립상태',
+      '납땜상태',
+      '넘버링',
+    ]);
+  });
+  it('출하검사 실적 — 품명 5종 · 고객사 2종 · S/NO 가 고객사와 프로젝트번호 사이', () => {
+    const sh = FORM_FIELDS['oqc.shipment'];
+    const ks = sh.fields.map((f) => f.key);
+    expect(sh.fields.find((f) => f.key === 'itemName').options).toHaveLength(5);
+    expect(sh.fields.find((f) => f.key === 'customerName').options).toEqual(['메티스', '디에이치']);
+    expect(ks.indexOf('customerName')).toBeLessThan(ks.indexOf('serialNo'));
+    expect(ks.indexOf('serialNo')).toBeLessThan(ks.indexOf('projectNo'));
+    expect(sh.serialPrefix).toBe('PROBER');
   });
 });
