@@ -16822,10 +16822,7 @@ td.mx-dc {
   color: #999;
 }
 /* 장마다 새 종이로 */
-.pmat-print-page + .pmat-print-page {
-  break-before: page;
-  page-break-before: always;
-}
+/* 페이지 나누기는 .bom-print-page 가 이미 한다 — 여기서 또 걸면 빈 장이 생긴다 */
 /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
 .iopn-items-table.bom-no-price .c-name {
   width: 13%;
@@ -18464,9 +18461,10 @@ td.mx-dc {
   .pmat-wide-table .c-unit.is-none {
     color: #999;
   }
-  .pmat-print-page + .pmat-print-page {
-    break-before: page;
-    page-break-before: always;
+  /* 가로 장 — A4 가로는 인쇄 높이가 190mm 안팎이다. 세로 기준 270mm 를 그대로 두면
+     한 장이 두 장으로 쪼개져 뒷장에 푸터만 남는다 (2026-09-22 대표님 「가로버전 페이지 다짤린다」) */
+  .bom-print-page.is-wide {
+    min-height: 178mm;
   }
   /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
   .iopn-items-table.bom-no-price .c-name {

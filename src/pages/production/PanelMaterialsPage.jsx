@@ -851,6 +851,9 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
     [allPanels, panel?.회사],
   );
   const KIND_LABEL = { paid: '도급', free: '사급', made: MADE };
+  // 한 장에 들어가는 줄 수 — 가로는 높이가 좁아 적게, 세로는 넉넉히 (실측 기준)
+  const WIDE_ROWS = 24;
+  const TALL_ROWS = 34;
   function openPrint() {
     const k = supplyTab === 'all' ? 'paid' : supplyTab === MADE ? 'made' : supplyTab;
     setPrintCfg({ panels: new Set([panelId]), kinds: new Set([k]), view: rowView, box, layout: 'wide' });
@@ -878,16 +881,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
         const proj = p?.bomLink?.projectId;
         if (proj && !bomCache.has(proj)) bomCache.set(proj, await getBomBySite(proj).catch(() => []));
       }
+      // BOX 로 장을 나누지 않는다 — 자재별 «총량»이 한눈에 들어와야 한다
+      // (2026-09-22 대표님 「박스별 구분 필요없고」). 여러 BOX 에 흩어진 같은 품목은 더한다.
       const boxes = cfg.box === ALL_BOXES ? CHECKABLE_BOXES : [cfg.box];
-      for (const b of boxes) {
-        for (const kind of ['paid', 'free', 'made']) {
-          if (!cfg.kinds.has(kind)) continue;
-          const map = new Map();
-          for (const p of picked) {
-            const forVariant = bomItemsForVariant(
-              bomCache.get(p.bomLink?.projectId) || [],
-              p.bomLink?.variantKey || '',
-            );
+      for (const kind of ['paid', 'free', 'made']) {
+        if (!cfg.kinds.has(kind)) continue;
+        const map = new Map();
+        for (const p of picked) {
+          const forVariant = bomItemsForVariant(bomCache.get(p.bomLink?.projectId) || [], p.bomLink?.variantKey || '');
+          for (const b of boxes) {
             const rc = (allMaterials[p.id] || {})[b] || {};
             for (const r of bomRowsForBox(forVariant, b)) {
               if (isOutOfScope(r, p) || !inKindTab(r, kind)) continue;
@@ -896,13 +898,24 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               if (cfg.view === 'short' && done) continue;
               const key = r.itemId || `${r.name}|${r.spec}`;
               if (!map.has(key)) map.set(key, { key, name: r.name, drawingNo: r.drawingNo, spec: r.spec, per: {} });
-              map.get(key).per[p.id] = { need: Number(r.qty) || 0, got: receivedQty(rc, r.id) };
+              const cell = map.get(key).per[p.id] || { need: 0, got: 0 };
+              cell.need += Number(r.qty) || 0;
+              cell.got += receivedQty(rc, r.id);
+              map.get(key).per[p.id] = cell;
             }
           }
-          const rows = [...map.values()];
-          if (rows.length === 0) continue;
-          jobs.push({ key: `w|${b}|${kind}`, wide: true, box: b, kind, panels: picked, rows });
         }
+        const rows = [...map.values()].sort((x, y) => String(x.name).localeCompare(String(y.name)));
+        if (rows.length === 0) continue;
+        // 한 장에 들어갈 만큼씩 끊는다 — 안 끊으면 넘치는 줄이 종이 밖으로 잘린다
+        for (let i = 0; i < rows.length; i += WIDE_ROWS)
+          jobs.push({
+            key: `w|${kind}|${i}`,
+            wide: true,
+            kind,
+            panels: picked,
+            rows: rows.slice(i, i + WIDE_ROWS),
+          });
       }
       if (jobs.length === 0) {
         toast('고른 조건에 나올 줄이 없습니다', 'error');
@@ -933,7 +946,15 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
               return cfg.view === 'done' ? done : !done;
             });
           if (list.length === 0) continue;
-          jobs.push({ key: `${p.id}|${b}|${kind}`, panel: p, box: b, kind, rows: list, rec: rc });
+          for (let i = 0; i < list.length; i += TALL_ROWS)
+            jobs.push({
+              key: `${p.id}|${b}|${kind}|${i}`,
+              panel: p,
+              box: b,
+              kind,
+              rows: list.slice(i, i + TALL_ROWS),
+              rec: rc,
+            });
         }
       }
     }
@@ -1582,20 +1603,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
             };
             return (
               <div className="bom-print-page pmat-print-page is-wide" key={job.key}>
+                {/* 제목에 무엇을·몇 대인지 박는다. 호기 이름은 표 머리에 이미 있으니 다시 늘어놓지 않는다
+                  (2026-09-22 대표님 「자재 입고 현황으로 상단에 박아주고 댓수랑」) */}
                 <IopnDocBrand
-                  title={`${job.box} 자재 체크 · ${KIND_LABEL[job.kind] || ''} · ${job.panels.length}대`}
+                  title={`자재 입고 현황 · ${KIND_LABEL[job.kind] || ''} · ${job.panels.length}대`}
                   titleClass="bom-list-title is-long"
                 />
-                <div className="bom-print-supplier-band">
-                  {job.panels
-                    .map(
-                      (p) =>
-                        `${short(p)}${
-                          p.bomLink?.variantLabel ? `(${String(p.bomLink.variantLabel).split('/')[0].trim()})` : ''
-                        }`,
-                    )
-                    .join(' · ')}
-                </div>
                 <table className="iopn-items-table pmat-wide-table">
                   <thead>
                     <tr>
