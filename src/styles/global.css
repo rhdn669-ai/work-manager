@@ -20967,6 +20967,36 @@ a.lib-row-name:hover {
 .bom-import-group .bom-import-name {
   font-weight: 700;
 }
+/* BOM 걸기 — 어느 BOM 인지 고르는 목록 (2026-09-22 대표님 「단순하게」) */
+.bom-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bom-pick-row {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 12px);
+  background: var(--bg-card);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.bom-pick-row:hover {
+  background: var(--bg-subtle);
+}
+.bom-pick-row.on {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+}
+
 .bom-import-variants {
   display: flex;
   flex-wrap: wrap;

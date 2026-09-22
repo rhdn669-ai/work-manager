@@ -335,6 +335,9 @@ export default function PurchaseDetailPage() {
   // BOM 가져올 때 대수 — 정방향 몇 대, 역방향 몇 대. 줄마다 제 방향 대수만 곱한다.
   // 전에는 세트 수 하나뿐이라 「정방향에만 쓰는 자재」까지 역방향 대수만큼 사게 됐다
   // (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」)
+  // 창에서 «고르기»와 «실행»을 나눈다 — 고르는 동안은 아무 일도 일어나지 않는다
+  const [bomPickId, setBomPickId] = useState('');
+  const [bomPickVariant, setBomPickVariant] = useState('');
   const [bomFwd, setBomFwd] = useState(1);
   const [bomRev, setBomRev] = useState(0);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
@@ -924,7 +927,10 @@ export default function PurchaseDetailPage() {
   async function openBomModal({ alsoImport } = {}) {
     setBomFwd(1);
     setBomRev(0);
-    setBomAlsoImport(alsoImport ?? (form.items || []).length === 0);
+    setBomPickId(form.bomProjectId || '');
+    setBomPickVariant('');
+    // 기본은 «켜짐» — 대부분 품목까지 함께 담는다 (2026-09-22 대표님 「기본켜짐」)
+    setBomAlsoImport(alsoImport ?? true);
     setBomModalOpen(true);
     if (bomProjects.length === 0) {
       setBomLoading(true);
@@ -3671,24 +3677,76 @@ export default function PurchaseDetailPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM">
-        <p className="field-hint">
-          이 발주가 어느 BOM 자재인지 겁니다. 걸어 두면 입고한 수량이 그 BOM 의 「들어온 양」으로 잡히고, 호기 자재
-          체크에서 <strong>「도급 세트 배정」</strong>을 누를 때 그만큼 채워집니다. 호기를 미리 고를 필요는 없습니다.
-        </p>
+      {/* BOM 걸기 — 한 칸에 한 가지씩 고르고, 마지막 「걸기」에서만 실제로 담긴다.
+        전에는 타입 단추가 곧 실행이라 되돌릴 틈이 없었고, BOM 마다 모양이 달라 헷갈렸다
+        (2026-09-22 대표님 「BOM 시스템 헷갈리는데 단순하게 안됨?」) */}
+      <Modal isOpen={bomModalOpen} onClose={() => setBomModalOpen(false)} title="BOM 걸기">
         {bomLinksLabel(form.bomLinks) && (
-          <p className="field-hint">
+          <p className="field-hint" style={{ marginTop: 0 }}>
             지금 걸린 곳 — <strong>{bomLinksLabel(form.bomLinks)}</strong>
           </p>
         )}
         <div className="form-group">
+          <label>어느 BOM 자재인가요?</label>
+          {bomLoading ? (
+            <p className="purchase-empty">불러오는 중...</p>
+          ) : bomPickList.length === 0 ? (
+            <p className="purchase-empty">등록된 BOM 프로젝트가 없습니다. (프로젝트별 BOM에서 먼저 만드세요)</p>
+          ) : (
+            <div className="bom-pick-list">
+              {bomPickList.map((bp) => (
+                <button
+                  type="button"
+                  key={bp.id}
+                  className={`bom-pick-row${bomPickId === bp.id ? ' on' : ''}`}
+                  onClick={() => {
+                    setBomPickId(bp.id);
+                    setBomPickVariant('');
+                  }}
+                  aria-pressed={bomPickId === bp.id}
+                >
+                  {bp.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {(() => {
+          const bp = bomPickList.find((x) => x.id === bomPickId);
+          const vs = bp && Array.isArray(bp.variants) ? bp.variants : [];
+          if (!bp || vs.length === 0) return null;
+          return (
+            <div className="form-group">
+              <label>타입</label>
+              <div className="bom-import-variants">
+                {vs.map((v) => (
+                  <button
+                    type="button"
+                    key={v.key}
+                    className={`btn btn-sm ${bomPickVariant === v.key ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setBomPickVariant(v.key)}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`btn btn-sm ${bomPickVariant === '' ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setBomPickVariant('')}
+                  title="타입을 가리지 않고 등록된 자재를 전부"
+                >
+                  가리지 않음
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+        <div className="form-group">
           <label className="toggle-row">
             <span className="toggle-row-main">
-              <span className="toggle-row-title">품목도 불러오기</span>
+              <span className="toggle-row-title">품목도 함께 불러오기</span>
               <small className="text-muted">
-                {bomAlsoImport
-                  ? '그 BOM 의 품목·수량·단가를 이 발주서에 담습니다 (사급은 뺍니다)'
-                  : '줄은 그대로 두고 소속만 겁니다'}
+                {bomAlsoImport ? '품목·수량·단가를 담습니다 (사급은 뺍니다)' : '끄면 연결만 겁니다'}
               </small>
             </span>
             <span className="toggle-switch">
@@ -3697,105 +3755,52 @@ export default function PurchaseDetailPage() {
             </span>
           </label>
         </div>
-        <div hidden={!bomAlsoImport}>
-          <div className="form-row">
-            <div className="form-group">
-              <label>정방향 대수</label>
-              <input
-                aria-label="정방향 대수"
-                type="number"
-                min="0"
-                value={bomFwd}
-                onChange={(e) => setBomFwd(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                placeholder="0"
-                style={{ fontSize: 18, fontWeight: 700, textAlign: 'center' }}
-              />
-            </div>
-            <div className="form-group">
-              <label>역방향 대수</label>
-              <input
-                aria-label="역방향 대수"
-                type="number"
-                min="0"
-                value={bomRev}
-                onChange={(e) => setBomRev(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                placeholder="0"
-                style={{ fontSize: 18, fontWeight: 700, textAlign: 'center' }}
-              />
-            </div>
+        <div className="form-row" hidden={!bomAlsoImport}>
+          <div className="form-group">
+            <label>정방향 대수</label>
+            <input
+              aria-label="정방향 대수"
+              type="number"
+              min="0"
+              value={bomFwd}
+              onChange={(e) => setBomFwd(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="0"
+              style={{ fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+            />
           </div>
-          <p className="field-hint">
-            BOM 1대 기준 수량에 곱합니다. 공통 자재는 <strong>정＋역</strong> 대수만큼, 한쪽 방향에만 쓰는 자재는{' '}
-            <strong>그쪽 대수</strong>만큼 담깁니다. 예) 정 3 · 역 2 → 공통 ×5, 「정만」 ×3, 「역만」 ×2.
-          </p>
+          <div className="form-group">
+            <label>역방향 대수</label>
+            <input
+              aria-label="역방향 대수"
+              type="number"
+              min="0"
+              value={bomRev}
+              onChange={(e) => setBomRev(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="0"
+              style={{ fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+            />
+          </div>
         </div>
-        {bomLoading ? (
-          <p className="purchase-empty">불러오는 중...</p>
-        ) : bomPickList.length === 0 ? (
-          <p className="purchase-empty">등록된 BOM 프로젝트가 없습니다. (프로젝트별 BOM에서 먼저 만드세요)</p>
-        ) : (
-          <div className="bom-import-list">
-            {bomPickList.map((bp) => {
-              const vs = Array.isArray(bp.variants) ? bp.variants : [];
-              // 타입이 있는 BOM은 어느 형번으로 발주할지 먼저 고른다
-              if (vs.length > 0) {
-                return (
-                  <div key={bp.id} className="bom-import-group">
-                    <div className="bom-import-name">{bp.name}</div>
-                    <p className="field-hint">타입을 고르면 그 형번에 들어가는 자재만 담깁니다.</p>
-                    <div className="bom-import-variants">
-                      {vs.map((v) => (
-                        <button
-                          type="button"
-                          key={v.key}
-                          className="btn btn-sm btn-primary"
-                          onClick={() => importBom(bp, v.key)}
-                          disabled={bomImporting}
-                        >
-                          {v.label}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => importBom(bp, '')}
-                        disabled={bomImporting}
-                        title="타입을 가리지 않고 등록된 자재를 전부 가져옵니다"
-                      >
-                        전체
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <button
-                  type="button"
-                  key={bp.id}
-                  className="bom-import-row"
-                  onClick={() => importBom(bp)}
-                  disabled={bomImporting}
-                >
-                  <span className="bom-import-name">{bp.name}</span>
-                  <span className="bom-import-go">
-                    {bomImporting ? (
-                      '가져오는 중...'
-                    ) : (
-                      <>
-                        가져오기 <Icon name="chevronRight" className="btn-ic" />
-                      </>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <p className="field-hint" hidden={!bomAlsoImport}>
+          BOM 1대 기준 수량에 곱합니다. 공통 자재는 <strong>정＋역</strong>, 한쪽 방향에만 쓰는 자재는{' '}
+          <strong>그쪽 대수</strong>만큼. 예) 정 3 · 역 2 → 공통 ×5, 「정만」 ×3, 「역만」 ×2.
+        </p>
         <div className="modal-actions">
           <button type="button" className="btn btn-outline" onClick={() => setBomModalOpen(false)}>
-            닫기
+            취소
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!bomPickId || bomImporting}
+            onClick={() => {
+              const bp = bomPickList.find((x) => x.id === bomPickId);
+              if (bp) importBom(bp, bomPickVariant);
+            }}
+          >
+            {bomImporting ? '거는 중...' : '걸기'}
           </button>
         </div>
       </Modal>
