@@ -7180,7 +7180,7 @@ table.cards-sm td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-    transition:
+  transition:
     background 0.18s ease,
     color 0.18s ease,
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -16766,6 +16766,66 @@ td.mx-dc {
   padding-left: 4px;
   padding-right: 4px;
 }
+/* ── 체크리스트 출력 (2026-09-22 대표님) ──
+   규격이 길면 글자가 겹쳐 읽히지 않았다. 잘라 내지 말고 줄을 바꾼다. */
+.pmat-print-table .c-name,
+.pmat-print-table .c-drawing,
+.pmat-print-table .c-spec,
+.pmat-wide-table .c-drawing,
+.pmat-wide-table .c-spec {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  line-height: 1.25;
+}
+.pmat-print-table .c-no {
+  width: 5%;
+}
+.pmat-print-table .c-name {
+  width: 20%;
+}
+.pmat-print-table .c-drawing {
+  width: 14%;
+}
+.pmat-print-table .c-spec {
+  width: 28%;
+}
+.pmat-print-table .c-qty {
+  width: 7%;
+}
+/* 가로 한 장에 호기를 칸으로 — NO · 도번 · 규격 + 호기마다 한 칸 */
+.pmat-wide-table .c-no {
+  width: 4%;
+}
+.pmat-wide-table .c-drawing {
+  width: 14%;
+}
+.pmat-wide-table .c-spec {
+  width: 26%;
+  text-align: left;
+  padding-left: 6px;
+}
+.pmat-wide-name {
+  font-weight: 700;
+}
+.pmat-wide-table .c-unit {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.pmat-wide-table .c-unit.is-short {
+  font-weight: 800;
+}
+.pmat-wide-table .c-unit.is-none {
+  color: #999;
+}
+/* 장마다 새 종이로 */
+.pmat-print-page + .pmat-print-page {
+  break-before: page;
+  page-break-before: always;
+}
 /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
 .iopn-items-table.bom-no-price .c-name {
   width: 13%;
@@ -18353,6 +18413,60 @@ td.mx-dc {
     text-align: center;
     padding-left: 1.2mm;
     padding-right: 1.2mm;
+  }
+  /* ── 체크리스트 출력 (2026-09-22 대표님 「출력물 글자 겹침」) ── */
+  .pmat-print-table .c-name,
+  .pmat-print-table .c-drawing,
+  .pmat-print-table .c-spec,
+  .pmat-wide-table .c-drawing,
+  .pmat-wide-table .c-spec {
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+    line-height: 1.25;
+  }
+  .pmat-print-table .c-no {
+    width: 5%;
+  }
+  .pmat-print-table .c-name {
+    width: 20%;
+  }
+  .pmat-print-table .c-drawing {
+    width: 14%;
+  }
+  .pmat-print-table .c-spec {
+    width: 28%;
+  }
+  .pmat-print-table .c-qty {
+    width: 7%;
+  }
+  .pmat-wide-table .c-no {
+    width: 4%;
+  }
+  .pmat-wide-table .c-drawing {
+    width: 14%;
+  }
+  .pmat-wide-table .c-spec {
+    width: 26%;
+    text-align: left;
+    padding-left: 1.5mm;
+  }
+  .pmat-wide-table .c-unit {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    padding-left: 0.6mm;
+    padding-right: 0.6mm;
+  }
+  .pmat-wide-table .c-unit.is-short {
+    font-weight: 800;
+  }
+  .pmat-wide-table .c-unit.is-none {
+    color: #999;
+  }
+  .pmat-print-page + .pmat-print-page {
+    break-before: page;
+    page-break-before: always;
   }
   /* BOM 리스트 — 단가·금액 미출력 시 6열 폭 재배분 + 전체 중앙정렬 */
   .iopn-items-table.bom-no-price .c-name {
@@ -22550,7 +22664,9 @@ a.lib-row-name:hover {
   font-weight: 700;
   color: var(--text-lighter);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
   -webkit-user-select: none;
   user-select: none;
   touch-action: manipulation;
@@ -24865,7 +24981,6 @@ body.has-editlock .main-content.expanded {
   flex: none;
   margin-left: auto;
 }
-
 
 /* 재고가 모자란 만큼 — 세고 있는 호기 기준 (2026-09-14 대표님 「-수량표시」) */
 /* 남음이 0 밑으로 내려간 줄 — 들어온 것보다 많이 나갔다 (2026-09-14 대표님 「도급 음수는?」) */

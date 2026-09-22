@@ -47,7 +47,7 @@ import { undoPlan } from '../../domain/matUndo';
 import { receivedQty, shortageOf, rowDone, boxKindComplete, boxSummary, isSkipped } from '../../domain/panelMaterials';
 import { stockMoves } from '../../domain/stockSync';
 import { MADE, MADE_TYPE, isMade, inKindTab } from '../../domain/itemKind';
-import { specFontClass, localStamp } from '../../utils/printText';
+import { localStamp } from '../../utils/printText';
 
 // 호기 자재 체크 — 이 호기, 이 BOX 의 BOM 구성품이 몇 개 들어왔는지
 // (2026-09-03 대표님 「호기별로 자재 사급 도급 리스트 … 구성품 체크 수량」).
@@ -840,6 +840,131 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
   }, [link?.projectId, siteId, take]);
   const [allMaterials, setAllMaterials] = useState({});
   useEffect(() => subscribeAllMaterials(take('allMaterials', setAllMaterials)), [take]);
+
+  // ── 체크리스트 출력 ──
+  // 전에는 «지금 보는 화면» 그대로 한 장만 나왔다. 호기를 여러 대 고르고 갈래(도급·사급·판금)와
+  // 보기(전체·부족·완료)를 정해 한 번에 뽑는다 (2026-09-22 대표님 「호기수 묶어서 출력」).
+  const [printCfg, setPrintCfg] = useState(null); // { panels:Set, kinds:Set, view, box }
+  const [printJobs, setPrintJobs] = useState(null); // [{ key, panel, box, kind, rows, rec }]
+  const printable = useMemo(
+    () => allPanels.filter((p) => hasBomLink(p) && (!panel?.회사 || p.회사 === panel.회사)),
+    [allPanels, panel?.회사],
+  );
+  const KIND_LABEL = { paid: '도급', free: '사급', made: MADE };
+  function openPrint() {
+    const k = supplyTab === 'all' ? 'paid' : supplyTab === MADE ? 'made' : supplyTab;
+    setPrintCfg({ panels: new Set([panelId]), kinds: new Set([k]), view: rowView, box, layout: 'wide' });
+  }
+  const togglePrintSet = (field, v) =>
+    setPrintCfg((c) => {
+      const next = new Set(c[field]);
+      if (next.has(v)) next.delete(v);
+      else next.add(v);
+      return { ...c, [field]: next };
+    });
+  async function runPrint() {
+    const cfg = printCfg;
+    if (!cfg || cfg.panels.size === 0 || cfg.kinds.size === 0) {
+      toast('호기와 갈래를 하나 이상 고르세요', 'error');
+      return;
+    }
+    const jobs = [];
+    const bomCache = new Map();
+    // 한 장에 호기를 칸으로 — 품목이 줄, 호기가 칸. 종이 한 장으로 여러 대를 훑는다
+    // (2026-09-22 대표님 「가로 출력으로 포함하는 각 호기 수량 체크하게」)
+    if (cfg.layout === 'wide') {
+      const picked = printable.filter((p) => cfg.panels.has(p.id));
+      for (const p of picked) {
+        const proj = p?.bomLink?.projectId;
+        if (proj && !bomCache.has(proj)) bomCache.set(proj, await getBomBySite(proj).catch(() => []));
+      }
+      const boxes = cfg.box === ALL_BOXES ? CHECKABLE_BOXES : [cfg.box];
+      for (const b of boxes) {
+        for (const kind of ['paid', 'free', 'made']) {
+          if (!cfg.kinds.has(kind)) continue;
+          const map = new Map();
+          for (const p of picked) {
+            const forVariant = bomItemsForVariant(
+              bomCache.get(p.bomLink?.projectId) || [],
+              p.bomLink?.variantKey || '',
+            );
+            const rc = (allMaterials[p.id] || {})[b] || {};
+            for (const r of bomRowsForBox(forVariant, b)) {
+              if (isOutOfScope(r, p) || !inKindTab(r, kind)) continue;
+              const done = rowDone(r, rc);
+              if (cfg.view === 'done' && !done) continue;
+              if (cfg.view === 'short' && done) continue;
+              const key = r.itemId || `${r.name}|${r.spec}`;
+              if (!map.has(key)) map.set(key, { key, name: r.name, drawingNo: r.drawingNo, spec: r.spec, per: {} });
+              map.get(key).per[p.id] = { need: Number(r.qty) || 0, got: receivedQty(rc, r.id) };
+            }
+          }
+          const rows = [...map.values()];
+          if (rows.length === 0) continue;
+          jobs.push({ key: `w|${b}|${kind}`, wide: true, box: b, kind, panels: picked, rows });
+        }
+      }
+      if (jobs.length === 0) {
+        toast('고른 조건에 나올 줄이 없습니다', 'error');
+        return;
+      }
+      setPrintCfg(null);
+      setPrintJobs(jobs);
+      return;
+    }
+    for (const pid of cfg.panels) {
+      const p = printable.find((x) => x.id === pid);
+      const proj = p?.bomLink?.projectId;
+      if (!proj) continue;
+      if (!bomCache.has(proj)) bomCache.set(proj, await getBomBySite(proj).catch(() => []));
+      const forVariant = bomItemsForVariant(bomCache.get(proj) || [], p.bomLink.variantKey || '');
+      const mats = allMaterials[p.id] || {};
+      const boxes = cfg.box === ALL_BOXES ? CHECKABLE_BOXES : [cfg.box];
+      for (const b of boxes) {
+        const inBox = bomRowsForBox(forVariant, b).filter((r) => !isOutOfScope(r, p));
+        for (const kind of ['paid', 'free', 'made']) {
+          if (!cfg.kinds.has(kind)) continue;
+          const rc = mats[b] || {};
+          const list = inBox
+            .filter((r) => inKindTab(r, kind))
+            .filter((r) => {
+              if (cfg.view === 'all') return true;
+              const done = rowDone(r, rc);
+              return cfg.view === 'done' ? done : !done;
+            });
+          if (list.length === 0) continue;
+          jobs.push({ key: `${p.id}|${b}|${kind}`, panel: p, box: b, kind, rows: list, rec: rc });
+        }
+      }
+    }
+    if (jobs.length === 0) {
+      toast('고른 조건에 나올 줄이 없습니다', 'error');
+      return;
+    }
+    setPrintCfg(null);
+    setPrintJobs(jobs);
+  }
+  // 종이에 그려진 «뒤»에 인쇄를 부른다 — 바로 부르면 빈 장이 나간다
+  useEffect(() => {
+    if (!printJobs) return undefined;
+    // 가로 장은 용지도 가로로 — @page 는 클래스로 못 바꿔서 인쇄 직전에 넣었다 뺀다
+    const wide = printJobs.some((j) => j.wide);
+    let st = null;
+    if (wide) {
+      st = document.createElement('style');
+      st.textContent = '@page { size: A4 landscape; margin: 8mm; }';
+      document.head.appendChild(st);
+    }
+    const t = setTimeout(() => {
+      window.print();
+      setPrintJobs(null);
+      if (st) st.remove();
+    }, 120);
+    return () => {
+      clearTimeout(t);
+      if (st) st.remove();
+    };
+  }, [printJobs]);
   // 상대 호기 목록.
   // 「가져온 호기」는 두 가지로 좁힌다 —
   //   ① 그 자재를 «실제로 가진» 호기만. 없는 호기에서 가져올 수는 없다
@@ -970,7 +1095,7 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           </h2>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => window.print()}>
+          <button type="button" className="btn btn-sm btn-outline" onClick={openPrint}>
             <Icon name="doc" className="btn-ic" />
             체크리스트 출력
           </button>
@@ -1434,67 +1559,275 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
 
       {/* ── 출력 — 종이로 대조하고 나중에 옮겨 적는 체크리스트 (대표님 「출력도 가능해야함」) ── */}
       <div className="print-form-iopn print-form-paged print-only">
-        <div className="bom-print-page">
-          <IopnDocBrand title={`${title} · ${box} 자재 체크`} titleClass="bom-list-title is-long" />
-          <div className="bom-print-supplier-band">
-            {link.projectName || ''}
-            {link.variantLabel ? ` · ${link.variantLabel}` : ''} —{' '}
-            {supplyTab === 'free' ? '사급 (고객사 제공)' : '도급'}
-          </div>
-          <table className="iopn-items-table pmat-print-table">
-            <thead>
-              <tr>
-                <th scope="col" className="c-no">
-                  NO
-                </th>
-                <th scope="col" className="c-name">
-                  품목명
-                </th>
-                <th scope="col" className="c-drawing">
-                  도번
-                </th>
-                <th scope="col" className="c-spec">
-                  규격
-                </th>
-                <th scope="col" className="c-qty">
-                  필요 수량
-                </th>
-                <th scope="col" className="c-qty">
-                  입고 수량
-                </th>
-                <th scope="col" className="c-qty">
-                  부족
-                </th>
-                <th scope="col" className="c-check">
-                  확인
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r, i) => {
-                const got = receivedQty(recOf(r), r.id);
-                return (
-                  <tr key={r.id}>
-                    <td className="c-no">{i + 1}</td>
-                    <td className={`c-name ${specFontClass(r.name, 13)}`}>{r.name}</td>
-                    <td className={`c-drawing ${specFontClass(r.drawingNo, 12)}`}>{r.drawingNo}</td>
-                    <td className={`c-spec ${specFontClass(r.spec, 36)}`}>{r.spec}</td>
-                    <td className="c-qty">{Number(r.qty) || 0}</td>
-                    <td className="c-qty">{got || ''}</td>
-                    <td className="c-qty">{shortageOf(r.qty, got) || ''}</td>
-                    <td className="c-check"></td>
+        {(printJobs && printJobs.length > 0
+          ? printJobs
+          : [
+              {
+                key: 'now',
+                panel,
+                box,
+                kind: supplyTab === 'free' ? 'free' : supplyTab === MADE ? 'made' : 'paid',
+                rows: shown,
+                rec: rec,
+              },
+            ]
+        ).map((job, jn, arr) => {
+          const jl = job.panel?.bomLink || {};
+          const name = `${job.panel?.프로젝트 || ''}${job.panel?.호기 ? ` ${job.panel.호기}` : ''}`.trim();
+          if (job.wide) {
+            const short = (p) => {
+              const nm2 = `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim();
+              const m = /(\d{3})$/.exec(nm2);
+              return m ? m[1] : nm2.slice(-6);
+            };
+            return (
+              <div className="bom-print-page pmat-print-page is-wide" key={job.key}>
+                <IopnDocBrand
+                  title={`${job.box} 자재 체크 · ${KIND_LABEL[job.kind] || ''} · ${job.panels.length}대`}
+                  titleClass="bom-list-title is-long"
+                />
+                <div className="bom-print-supplier-band">
+                  {job.panels
+                    .map(
+                      (p) =>
+                        `${short(p)}${
+                          p.bomLink?.variantLabel ? `(${String(p.bomLink.variantLabel).split('/')[0].trim()})` : ''
+                        }`,
+                    )
+                    .join(' · ')}
+                </div>
+                <table className="iopn-items-table pmat-wide-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="c-no">
+                        NO
+                      </th>
+                      <th scope="col" className="c-drawing">
+                        도번
+                      </th>
+                      <th scope="col" className="c-spec">
+                        규격
+                      </th>
+                      {job.panels.map((p) => (
+                        <th scope="col" className="c-unit" key={p.id}>
+                          {short(p)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {job.rows.map((r, i) => (
+                      <tr key={r.key}>
+                        <td className="c-no">{i + 1}</td>
+                        <td className="c-drawing">{r.drawingNo}</td>
+                        <td className="c-spec">
+                          <b className="pmat-wide-name">{r.name}</b>
+                          {r.spec ? ` ${r.spec}` : ''}
+                        </td>
+                        {job.panels.map((p) => {
+                          const c = r.per[p.id];
+                          if (!c)
+                            return (
+                              <td className="c-unit is-none" key={p.id}>
+                                —
+                              </td>
+                            );
+                          const lack = Math.max(0, c.need - c.got);
+                          return (
+                            <td className={`c-unit${lack > 0 ? ' is-short' : ''}`} key={p.id}>
+                              {c.got}/{c.need}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="bom-print-footer">
+                  <span>(주)아이오피엔 · 호기 자재 체크 · {docNo}</span>
+                  <span>출력 {stamp}</span>
+                  <span>
+                    페이지 {jn + 1} / {arr.length}
+                  </span>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="bom-print-page pmat-print-page" key={job.key}>
+              <IopnDocBrand title={`${name} · ${job.box} 자재 체크`} titleClass="bom-list-title is-long" />
+              <div className="bom-print-supplier-band">
+                {jl.projectName || ''}
+                {jl.variantLabel ? ` · ${jl.variantLabel}` : ' · 공통'} — {KIND_LABEL[job.kind] || '도급'}
+                {job.kind === 'free' ? ' (고객사 제공)' : ''} · {job.rows.length}품목
+              </div>
+              <table className="iopn-items-table pmat-print-table">
+                <thead>
+                  <tr>
+                    <th scope="col" className="c-no">
+                      NO
+                    </th>
+                    <th scope="col" className="c-name">
+                      품목명
+                    </th>
+                    <th scope="col" className="c-drawing">
+                      도번
+                    </th>
+                    <th scope="col" className="c-spec">
+                      규격
+                    </th>
+                    <th scope="col" className="c-qty">
+                      필요
+                    </th>
+                    <th scope="col" className="c-qty">
+                      입고
+                    </th>
+                    <th scope="col" className="c-qty">
+                      부족
+                    </th>
+                    <th scope="col" className="c-check">
+                      확인
+                    </th>
                   </tr>
+                </thead>
+                <tbody>
+                  {job.rows.map((r, i) => {
+                    const got = receivedQty(job.rec, r.id);
+                    return (
+                      <tr key={r.id}>
+                        <td className="c-no">{i + 1}</td>
+                        <td className="c-name">{r.name}</td>
+                        <td className="c-drawing">{r.drawingNo}</td>
+                        <td className="c-spec">{r.spec}</td>
+                        <td className="c-qty">{Number(r.qty) || 0}</td>
+                        <td className="c-qty">{got || ''}</td>
+                        <td className="c-qty">{shortageOf(r.qty, got) || ''}</td>
+                        <td className="c-check"></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="bom-print-footer">
+                <span>(주)아이오피엔 · 호기 자재 체크 · {docNo}</span>
+                <span>출력 {stamp}</span>
+                <span>
+                  페이지 {jn + 1} / {arr.length}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 출력 설정 — 호기를 여러 대 묶고 갈래·보기·BOX 를 고른다 (2026-09-22 대표님) */}
+      {printCfg && (
+        <Modal isOpen onClose={() => setPrintCfg(null)} title="체크리스트 출력" size="lg">
+          <div className="form-group">
+            <label>호기 ({printCfg.panels.size}대 고름)</label>
+            <div className="pmat-print-panels">
+              {printable.map((p) => {
+                const nm = `${p.프로젝트 || ''}${p.호기 ? ` ${p.호기}` : ''}`.trim();
+                const on = printCfg.panels.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`filter-chip${on ? ' on' : ''}`}
+                    onClick={() => togglePrintSet('panels', p.id)}
+                    aria-pressed={on}
+                  >
+                    {nm}
+                    {p.bomLink?.variantLabel ? ` · ${String(p.bomLink.variantLabel).split('/')[0].trim()}` : ''}
+                  </button>
                 );
               })}
-            </tbody>
-          </table>
-          <div className="bom-print-footer">
-            <span>(주)아이오피엔 · 호기 자재 체크 · {docNo}</span>
-            <span>출력 {stamp}</span>
-            <span>페이지 1 / 1</span>
+            </div>
+            <div className="pmat-print-all">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setPrintCfg((c) => ({ ...c, panels: new Set(printable.map((p) => p.id)) }))}
+              >
+                전체 고르기
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setPrintCfg((c) => ({ ...c, panels: new Set([panelId]) }))}
+              >
+                이 호기만
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
+          <div className="form-group">
+            <label>묶음 방식</label>
+            <ViewSwitch
+              options={[
+                { value: 'wide', label: '한 장에 호기 칸으로 (가로)' },
+                { value: 'each', label: '호기마다 한 장 (세로)' },
+              ]}
+              value={printCfg.layout}
+              onChange={(v) => setPrintCfg((c) => ({ ...c, layout: v }))}
+              ariaLabel="묶음 방식"
+            />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>갈래</label>
+              <div className="pmat-print-panels">
+                {['paid', 'free', 'made'].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`filter-chip${printCfg.kinds.has(k) ? ' on' : ''}`}
+                    onClick={() => togglePrintSet('kinds', k)}
+                    aria-pressed={printCfg.kinds.has(k)}
+                  >
+                    {KIND_LABEL[k]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label>보기</label>
+              <ViewSwitch
+                options={[
+                  { value: 'all', label: '전체' },
+                  { value: 'short', label: '부족' },
+                  { value: 'done', label: '완료' },
+                ]}
+                value={printCfg.view}
+                onChange={(v) => setPrintCfg((c) => ({ ...c, view: v }))}
+                ariaLabel="출력할 보기"
+              />
+            </div>
+            <div className="form-group">
+              <label>BOX</label>
+              <Select
+                value={printCfg.box}
+                onChange={(v) => setPrintCfg((c) => ({ ...c, box: v }))}
+                options={[{ value: ALL_BOXES, label: '전체' }, ...CHECKABLE_BOXES.map((b) => ({ value: b, label: b }))]}
+                ariaLabel="출력할 BOX"
+                native
+              />
+            </div>
+          </div>
+          <p className="field-hint">
+            {printCfg.layout === 'wide'
+              ? '가로 용지에 품목이 줄, 호기가 칸으로 나옵니다 — 칸마다 「입고/필요」. BOX·갈래마다 한 장.'
+              : '호기 · BOX · 갈래마다 종이가 한 장씩 나옵니다. 줄이 없는 조합은 건너뜁니다.'}
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-outline" onClick={() => setPrintCfg(null)}>
+              취소
+            </button>
+            <button type="button" className="btn btn-primary" onClick={runPrint}>
+              출력
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* 줄에서 한 일을 적는 창 — 왜 줄었나 / 어떻게 채웠나 / 왜 비어 있나 (2026-09-15 대표님) */}
       {logForm && (
