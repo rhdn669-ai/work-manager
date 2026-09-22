@@ -23403,20 +23403,39 @@ a.lib-row-name:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 .pstrip {
-  /* 화면을 내려도 호기 줄은 위에 붙어 있다 (2026-09-18 대표님 「호기를 화면을 내려도 볼수있게 고정」) */
+  /* 화면을 내려도 호기 줄은 위에 붙어 있다 (2026-09-18 대표님 「호기를 화면을 내려도 볼수있게 고정」)
+     표 머리줄(붙임 z-index 3)보다 확실히 위에 두어야 스치며 겹쳐 보이지 않는다 */
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   padding-top: 4px;
+  /* 속이 비치면 밑에 있던 칩이 남은 것처럼 보인다 — 늘 불투명하게 깔고 그 위에 그린다
+     (2026-09-22 대표님 「잔상없이」) */
   background: var(--bg);
+  isolation: isolate;
 }
-.pstrip-scroll {
+/* 오른쪽 «더 있다» 흐림 — 굴리는 칸이 아니라 «감싼 칸»에 얹는다.
+   mask 를 굴리는 칸에 걸면 안드로이드 크롬이 칩을 번지게 다시 그린다 (2026-09-22 잔상) */
+.pstrip-fade {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
+}
+.pstrip-fade::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(242, 244, 246, 0), var(--bg));
+}
+.pstrip-scroll {
   display: flex;
   gap: 5px;
   padding: 2px 28px 4px 2px;
@@ -23424,9 +23443,6 @@ a.lib-row-name:hover {
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* 오른쪽이 흐려지며 끝나 «더 있다»가 보인다 */
-  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
 }
 .pstrip-scroll::-webkit-scrollbar {
   display: none;
@@ -24329,10 +24345,10 @@ a.lib-row-name:hover {
   margin: 0;
 }
 .pmat-page .pmat-boxes {
-  margin: 6px 0;
+  margin: 4px 0;
 }
 .pmat-page .pmat-kinds {
-  margin: 6px 0 8px;
+  margin: 4px 0 6px;
 }
 .pmat-page .pmat-hint {
   font-size: 12px;
@@ -24562,6 +24578,15 @@ body.has-editlock {
 body.has-editlock .main-content,
 body.has-editlock .main-content.expanded {
   padding-bottom: calc(18px + var(--fab-clear));
+}
+/* 자재 체크 화면은 예외 — 표 상자 «안»에 이미 잠금 자리를 비워 둔다(useFillHeight).
+   본문 아래에 한 번 더 주면 화면이 78px 만큼 덤으로 굴러, 위에 붙여 둔 호기 줄이 들렸다
+   앤혀다 하며 잔상처럼 보였다 (2026-09-22 대표님 「상단 호기수 고정 … 잔상없이」) */
+@media (min-width: 769px) {
+  body.has-editlock .main-content:has(.pmat-page),
+  body.has-editlock .main-content.expanded:has(.pmat-page) {
+    padding-bottom: 18px;
+  }
 }
 @media (max-width: 768px) {
   body.has-editlock {
@@ -25011,6 +25036,32 @@ body.has-editlock .main-content.expanded {
 .pmat-boxes {
   flex-wrap: wrap;
   row-gap: 6px;
+}
+/* BOX 탭 줄 오른쪽 — 허브 안에서 제목 줄을 없애고 거기 있던 것만 옮겨 담았다
+   (2026-09-22 대표님 「아래 리스트 더 많이 보이게」) */
+.pmat-boxes-side {
+  /* BOM 이름이 길면 그 글만 줄여 — 단추는 줄이지 않는다 */
+  flex: 0 1 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.pmat-boxes-side .btn {
+  flex: none;
+}
+.pmat-boxes-side .pmat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 구분 탭 줄은 한 줄로 — 잠금을 풀어 단추가 늘어도 표가 짧아지지 않게

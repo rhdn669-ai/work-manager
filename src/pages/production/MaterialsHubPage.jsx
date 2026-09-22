@@ -167,48 +167,52 @@ export default function MaterialsHubPage() {
           {/* 호기 칩 줄 — 터치 기기. 번호·호기·타입 + 도급/사급(판금) 점. 끝난 호기는 흐리게 */}
           {strip && (
             <div className="pstrip no-print">
-              <div className="pstrip-scroll" ref={stripRef} role="tablist" aria-label="호기">
-                {list.map((p, i) => {
-                  const st = stateOf(p);
-                  // 도급·사급(·판금) 상태를 이름 붙은 알약으로 — 점만 있으면 어느 쪽인지 안 읽힌다
-                  // (2026-09-18 대표님 「동그라미를 사급 도급 토글로 잘보이게」)
-                  const states =
-                    st && st !== 'loading'
-                      ? [['도급', st.paid], ['사급', st.free], ...(st.made ? [[MADE, st.made]] : [])]
-                      : [];
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={p.id === panelId}
-                      className={`pstrip-chip${p.id === panelId ? ' on' : ''}${isDone(p) ? ' is-done' : ''}${
-                        p.bomLink?.projectId ? '' : ' no-bom'
-                      }`}
-                      onClick={() => patch({ panel: p.id })}
-                      title={`${nameOf(p)}${p.bomLink?.projectId ? '' : ' · BOM 을 아직 연결하지 않은 호기'}`}
-                    >
-                      <span className="pstrip-no">{i + 1}</span>
-                      <ProjectName name={nameOf(p)} className="pstrip-name" />
-                      {/* 아랫줄: 타입 + 도급/사급 상태 — 타입을 옆에 두면 칩이 길어져 한 화면에 몇 개 못 본다 */}
-                      <span className="pstrip-sub">
-                        {/* 타입은 앞 토막만 — 「T5391 / MT8311」을 다 적으면 그 칩만 50px 더 길어진다 */}
-                        {p.bomLink?.variantLabel && (
-                          <span className="pstrip-tag" title={p.bomLink.variantLabel}>
-                            {String(p.bomLink.variantLabel).split('/')[0].trim()}
-                          </span>
-                        )}
-                        {states.map(([kind, d]) => (
-                          <span key={kind} className={`pstrip-st ${d.cls}`} title={d.title}>
-                            {kind}
-                            {d.cls === 'is-short' ? ` ${d.label}` : ''}
-                          </span>
-                        ))}
-                      </span>
-                    </button>
-                  );
-                })}
-                {list.length === 0 && <span className="mhub-empty">호기가 없습니다</span>}
+              {/* 굴림칸을 한 겹 감싼다 — 오른쪽 «더 있다» 흐림을 굴리는 칸에 mask 로 걸면
+                태블릿에서 칩이 번지는 잔상이 남는다 (2026-09-22 대표님 「잔상없이」) */}
+              <div className="pstrip-fade">
+                <div className="pstrip-scroll" ref={stripRef} role="tablist" aria-label="호기">
+                  {list.map((p, i) => {
+                    const st = stateOf(p);
+                    // 도급·사급(·판금) 상태를 이름 붙은 알약으로 — 점만 있으면 어느 쪽인지 안 읽힌다
+                    // (2026-09-18 대표님 「동그라미를 사급 도급 토글로 잘보이게」)
+                    const states =
+                      st && st !== 'loading'
+                        ? [['도급', st.paid], ['사급', st.free], ...(st.made ? [[MADE, st.made]] : [])]
+                        : [];
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={p.id === panelId}
+                        className={`pstrip-chip${p.id === panelId ? ' on' : ''}${isDone(p) ? ' is-done' : ''}${
+                          p.bomLink?.projectId ? '' : ' no-bom'
+                        }`}
+                        onClick={() => patch({ panel: p.id })}
+                        title={`${nameOf(p)}${p.bomLink?.projectId ? '' : ' · BOM 을 아직 연결하지 않은 호기'}`}
+                      >
+                        <span className="pstrip-no">{i + 1}</span>
+                        <ProjectName name={nameOf(p)} className="pstrip-name" />
+                        {/* 아랫줄: 타입 + 도급/사급 상태 — 타입을 옆에 두면 칩이 길어져 한 화면에 몇 개 못 본다 */}
+                        <span className="pstrip-sub">
+                          {/* 타입은 앞 토막만 — 「T5391 / MT8311」을 다 적으면 그 칩만 50px 더 길어진다 */}
+                          {p.bomLink?.variantLabel && (
+                            <span className="pstrip-tag" title={p.bomLink.variantLabel}>
+                              {String(p.bomLink.variantLabel).split('/')[0].trim()}
+                            </span>
+                          )}
+                          {states.map(([kind, d]) => (
+                            <span key={kind} className={`pstrip-st ${d.cls}`} title={d.title}>
+                              {kind}
+                              {d.cls === 'is-short' ? ` ${d.label}` : ''}
+                            </span>
+                          ))}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {list.length === 0 && <span className="mhub-empty">호기가 없습니다</span>}
+                </div>
               </div>
               <div className="pstrip-side">
                 {doneCount > 0 && (

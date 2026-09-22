@@ -1088,40 +1088,49 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
       </div>
     );
 
+  // 제목 줄과 BOX 탭 줄이 번갈아 쓰는 조각 — 한 번만 적어 둔다
+  const bomLabel = (
+    <span className="pmat-link">
+      BOM <strong>{link.projectName || project?.name || ''}</strong>
+      {link.variantLabel ? (
+        <span className="pmat-variant">{link.variantLabel}</span>
+      ) : (
+        <span className="pmat-variant is-common">공통</span>
+      )}
+    </span>
+  );
+  const printBtn = (
+    <button type="button" className="btn btn-sm btn-outline" onClick={openPrint}>
+      <Icon name="doc" className="btn-ic" />
+      체크리스트 출력
+    </button>
+  );
+
   const docNo = `MAT${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
   const stamp = localStamp();
 
   return (
     <div className="page pmat-page">
       {/* ── 화면 ── */}
-      <div className={`page-header no-print${embedded ? ' page-header--sub' : ''}`}>
-        <div>
-          {!embedded && (
+      {/* 허브 안에서는 제목 줄을 따로 두지 않는다 — 어느 호기인지는 위 칩 줄이, 어느 BOX 인지는
+        바로 아래 탭이 이미 말해 준다. BOM 이름·타입과 「체크리스트 출력」만 BOX 탭 줄 오른쪽으로
+        옮겨 줄 하나를 통째로 아낍다 (2026-09-22 대표님 「아래 리스트 더 많이 보이게」) */}
+      {!embedded && (
+        <div className="page-header no-print">
+          <div>
             <button type="button" className="btn btn-sm btn-outline" onClick={back}>
               <Icon name="chevronLeft" className="btn-ic" />
               생산현황
             </button>
-          )}
-          {/* 제목과 BOM 정보를 한 줄로 — 표 볼 자리를 넓힌다 (2026-09-08 대표님 「상단이 너무 많이 차지」) */}
-          <h2 className="page-title pmat-title">
-            {title} <span className="pmat-title-sub">· {box} 자재 체크</span>
-            <span className="pmat-link">
-              BOM <strong>{link.projectName || project?.name || ''}</strong>
-              {link.variantLabel ? (
-                <span className="pmat-variant">{link.variantLabel}</span>
-              ) : (
-                <span className="pmat-variant is-common">공통</span>
-              )}
-            </span>
-          </h2>
+            {/* 제목과 BOM 정보를 한 줄로 — 표 볼 자리를 넓힌다 (2026-09-08 대표님 「상단이 너무 많이 차지」) */}
+            <h2 className="page-title pmat-title">
+              {title} <span className="pmat-title-sub">· {box} 자재 체크</span>
+              {bomLabel}
+            </h2>
+          </div>
+          <div className="page-actions">{printBtn}</div>
         </div>
-        <div className="page-actions">
-          <button type="button" className="btn btn-sm btn-outline" onClick={openPrint}>
-            <Icon name="doc" className="btn-ic" />
-            체크리스트 출력
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* BOX 탭 — 이 BOM 에 줄이 있는 BOX 만. 오른쪽 끝에 보기(전체·부족·완료) */}
       <div className="pmat-boxes no-print">
@@ -1146,6 +1155,12 @@ export default function PanelMaterialsPage({ embedded = false, panelId: panelIdP
           ariaLabel="BOX"
           className="pmat-box-switch"
         />
+        {embedded && (
+          <div className="pmat-boxes-side">
+            {bomLabel}
+            {printBtn}
+          </div>
+        )}
       </div>
 
       {/* 타입을 안 정한 호기는 M7H·T5391 전용 자재를 «둘 다» 보게 된다 — 같은 품목이 두 줄로
