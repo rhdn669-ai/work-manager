@@ -19,7 +19,18 @@ export const PAIR_OPTIONS = [
 export const PAIR_DEFAULT = { qty: true, box: true, variant: true, supplyType: false };
 
 /** 늘 같이 가는 칸 — 고를 수 없다 */
-export const ALWAYS_FIELDS = ['itemId', 'name', 'spec', 'unit', 'drawingNo', 'note', 'unitPrice', 'dirs', 'dirHide'];
+export const ALWAYS_FIELDS = [
+  'itemId',
+  'name',
+  'spec',
+  'unit',
+  'drawingNo',
+  'note',
+  'unitPrice',
+  'dirs',
+  'dirHide',
+  'dirState',
+];
 
 const labelsOf = (keys, variants) => {
   const byKey = new Map((variants || []).map((v) => [v.key, String(v.label || '').trim()]));
@@ -95,6 +106,7 @@ export function pairCopy(data, sync, myVariants, theirVariants, theirRows) {
     unitPrice: Number(data.unitPrice) || 0,
     dirs: Array.isArray(data.dirs) ? data.dirs : [], // 정·역은 같은 판넬의 성질이라 늘 같이 간다
     dirHide: !!data.dirHide,
+    dirState: data.dirState && typeof data.dirState === 'object' ? data.dirState : {},
     order: Number(data.order) || 0,
     qty: s.qty ? Number(data.qty) || 0 : 0,
     box: s.box ? data.box || '' : '',

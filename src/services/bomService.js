@@ -269,7 +269,9 @@ export async function addBomItem(siteId, data, { sync = true } = {}) {
     variantKeys: data.variantKeys || [], // 비어 있으면 공통
     qtyByVariant: data.qtyByVariant && typeof data.qtyByVariant === 'object' ? data.qtyByVariant : {},
     dirs: Array.isArray(data.dirs) ? data.dirs : [],
-    dirHide: !!data.dirHide, // 「안 뜸」 (2026-09-22 대표님) // 정·역 — 비어 있으면 공통 (2026-09-21 대표님)
+    dirHide: !!data.dirHide, // 옛 칸 — 읽을 때 폴백으로만 쓴다
+    // 방향마다 셈/안 셈/없음 (2026-09-22 대표님 「정방향만 쓰는데 수량 체크를 안하는 선택지는?」)
+    dirState: data.dirState && typeof data.dirState === 'object' ? data.dirState : {}, // 정·역 — 비어 있으면 공통 (2026-09-21 대표님)
     order: Number(data.order) || 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -404,7 +406,9 @@ export async function restoreBomItem(id, siteId, data) {
     variantKeys: data.variantKeys || [],
     qtyByVariant: data.qtyByVariant && typeof data.qtyByVariant === 'object' ? data.qtyByVariant : {},
     dirs: Array.isArray(data.dirs) ? data.dirs : [],
-    dirHide: !!data.dirHide, // 「안 뜸」 (2026-09-22 대표님)
+    dirHide: !!data.dirHide, // 옛 칸 — 읽을 때 폴백으로만 쓴다
+    // 방향마다 셈/안 셈/없음 (2026-09-22 대표님 「정방향만 쓰는데 수량 체크를 안하는 선택지는?」)
+    dirState: data.dirState && typeof data.dirState === 'object' ? data.dirState : {},
     order: Number(data.order) || 0,
     createdAt: data.createdAt || new Date(),
     updatedAt: new Date(),
@@ -436,6 +440,7 @@ export function snapshotBomRows(items) {
     qtyByVariant: b.qtyByVariant && typeof b.qtyByVariant === 'object' ? b.qtyByVariant : {},
     dirs: Array.isArray(b.dirs) ? b.dirs : [],
     dirHide: !!b.dirHide,
+    dirState: b.dirState && typeof b.dirState === 'object' ? b.dirState : {},
   }));
 }
 

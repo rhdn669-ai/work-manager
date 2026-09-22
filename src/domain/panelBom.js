@@ -76,66 +76,66 @@ export function dirsOf(row) {
   return row?.skipForward ? ['역'] : []; // 옛 「정방향 제외」 = 역방향에서만 쓰는 줄
 }
 
+// ── 방향마다 셋: 셈 / 안 셈 / 없음 (2026-09-22 대표님 「정방향만 쓰는데 수량 체크를 안하는 선택지는?」) ──
+// 처음에는 «한 방향만 특별하고 반대쪽은 정상»만 적을 수 있게 다섯 가지를 두었는데, 「정방향만
+// 쓰는데 그것도 우리가 안 세는」 자재처럼 «두 방향이 서로 다른 상태»가 실제로 있었다.
+// 그래서 방향마다 따로 적는다 — 조합 여덟 가지가 모두 표현된다.
+//   use   셈      — 우리가 챙기고 수량을 센다
+//   gray  안 셈   — 쓰긴 쓰는데 우리가 수량을 안 센다. 목록에 회색으로 남는다
+//   none  없음    — 그 방향엔 아예 안 들어간다. 목록에 안 뜬다
+//
+// 저장은 dirState 한 칸에 하고, 옛 칸(dirs·dirHide·skipForward)은 손대지 않는다 — 읽을 때만
+// 폴백으로 본다. 그래서 저장된 자료를 옮기지 않아도 동작이 그대로다.
+export const DIR_STATES = [
+  { value: 'use', label: '셈', hint: '우리가 챙기고 수량을 셉니다' },
+  { value: 'gray', label: '안 셈', hint: '쓰긴 쓰는데 우리가 수량을 안 셉니다 — 목록에 회색으로 남습니다' },
+  { value: 'none', label: '없음', hint: '그 방향 호기에는 아예 안 들어갑니다 — 목록에 안 뜹니다' },
+];
+const STATE_VALUES = DIR_STATES.map((x) => x.value);
+
+/** 이 줄의 방향별 상태 — 옛 모양(dirs·dirHide·skipForward)도 같은 함수로 읽는다 */
+export function dirStateOf(row) {
+  const st = row?.dirState;
+  if (st && typeof st === 'object' && !Array.isArray(st)) {
+    const pick = (d) => (STATE_VALUES.includes(st[d]) ? st[d] : 'use');
+    return { 정: pick('정'), 역: pick('역') };
+  }
+  const dirs = dirsOf(row);
+  if (dirs.length === 0) return { 정: 'use', 역: 'use' };
+  const off = row?.dirHide ? 'none' : 'gray';
+  // dirs 에 남은 쪽이 «쓰는 방향»이고, 빠지는 쪽이 회색이거나 없음이다
+  return dirs.includes('정') ? { 정: 'use', 역: off } : { 정: off, 역: 'use' };
+}
+
+/** 고른 값을 줄에 적을 모양으로 */
+export function dirStatePatch(state) {
+  const pick = (d) => (STATE_VALUES.includes(state?.[d]) ? state[d] : 'use');
+  return { dirState: { 정: pick('정'), 역: pick('역') } };
+}
+
+/** 한 방향의 설명 한 줄 */
+export function dirStateHint(value) {
+  return DIR_STATES.find((x) => x.value === value)?.hint || '';
+}
+
+/** 공통인가 — 둘 다 셈하면 기본값이라 화면에서 조용히 둔다 */
+export function isDirCommon(row) {
+  const st = dirStateOf(row);
+  return st.정 === 'use' && st.역 === 'use';
+}
+
 /** 이 호기에서 셈에 안 넣는 줄 — 호기에 정역을 안 적었으면 «모름»이라 빼지 않는다(빼는 쪽이 위험) */
 export function isOutOfScope(row, panel) {
-  const dirs = dirsOf(row);
-  if (dirs.length === 0) return false;
   const d = String(panel?.정역 || '').trim();
-  if (!d) return false;
-  return !dirs.includes(d);
+  if (!DIRS.includes(d)) return false;
+  return dirStateOf(row)[d] !== 'use';
 }
 
-// ── 「회색」과 「안 뜸」 (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」) ──
-// 방향 하나만 켜 두면 반대쪽 호기에서 «회색으로 보이되 셈에는 없는» 줄이 된다 — 쓰긴 쓰는데
-// 우리가 수량을 안 세는 자재다. 그런데 «그 방향에는 아예 안 들어가는» 자재도 있어, 그건
-// 목록에 뜰 까닭이 없다. dirHide 한 칸으로 둘을 가른다.
-//   dirs=['역']                 → 정방향 호기에서 «회색»
-//   dirs=['역'] + dirHide=true  → 정방향 호기에서 «안 뜸»
-// 옛 줄은 dirHide 가 없으므로 그대로 「회색」이다 — 자료를 옮기지 않아도 동작이 같다.
-
-/** 화면에서 고르는 다섯 가지 — 뜻이 글로 보이게 한 칸 드롭다운으로 (대표님 고름) */
-export const DIR_MODES = [
-  { value: '', label: '공통', hint: '정·역 호기 모두에 쓰는 자재' },
-  { value: 'fwdGray', label: '정 회색', hint: '정방향 호기에서는 회색 — 쓰긴 쓰는데 우리가 수량을 안 셉니다' },
-  { value: 'revGray', label: '역 회색', hint: '역방향 호기에서는 회색 — 쓰긴 쓰는데 우리가 수량을 안 셉니다' },
-  { value: 'fwdNone', label: '정 없음', hint: '정방향 호기에는 아예 안 들어감 — 자재 목록에 안 뜹니다' },
-  { value: 'revNone', label: '역 없음', hint: '역방향 호기에는 아예 안 들어감 — 자재 목록에 안 뜹니다' },
-];
-
-/** 고른 값의 설명 한 줄 — 칸에 마우스를 올리면 나온다 */
-export function dirModeHint(mode) {
-  return DIR_MODES.find((m) => m.value === mode)?.hint || '';
-}
-
-/** 이 줄이 다섯 중 무엇인가 */
-export function dirModeOf(row) {
-  const dirs = dirsOf(row);
-  if (dirs.length === 0) return '';
-  const hide = !!row?.dirHide;
-  // dirs 에 남은 쪽이 «쓰는 방향»이므로, 빠지는 쪽은 그 반대다
-  const missing = dirs.includes('정') ? 'rev' : 'fwd';
-  return `${missing}${hide ? 'None' : 'Gray'}`;
-}
-
-/** 고른 값을 줄에 적을 모양으로 — 옛 「정방향 제외」 칸도 함께 끈다 */
-export function dirModePatch(mode) {
-  switch (mode) {
-    case 'fwdGray':
-      return { dirs: ['역'], dirHide: false, skipForward: false };
-    case 'revGray':
-      return { dirs: ['정'], dirHide: false, skipForward: false };
-    case 'fwdNone':
-      return { dirs: ['역'], dirHide: true, skipForward: false };
-    case 'revNone':
-      return { dirs: ['정'], dirHide: true, skipForward: false };
-    default:
-      return { dirs: [], dirHide: false, skipForward: false };
-  }
-}
-
-/** 이 호기의 목록에서 아예 빼는 줄인가 — 「안 뜸」으로 정한 줄만 */
+/** 이 호기의 목록에서 아예 빼는 줄인가 — 「없음」으로 정한 방향만 */
 export function isHiddenForPanel(row, panel) {
-  return !!row?.dirHide && isOutOfScope(row, panel);
+  const d = String(panel?.정역 || '').trim();
+  if (!DIRS.includes(d)) return false;
+  return dirStateOf(row)[d] === 'none';
 }
 
 // ── 타입별 수량 (2026-09-21 대표님 「타입별로 수량을 다르게 적을수있게」) ──

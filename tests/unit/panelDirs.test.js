@@ -5,9 +5,10 @@ import {
   dirsOf,
   isOutOfScope,
   rowsForPanel,
-  dirModeOf,
-  dirModePatch,
-  dirModeHint,
+  dirStateOf,
+  dirStatePatch,
+  dirStateHint,
+  isDirCommon,
   isHiddenForPanel,
 } from '../../src/domain/panelBom';
 
@@ -77,44 +78,48 @@ describe('호기가 쓰는 줄 — 타입과 방향을 함께', () => {
   });
 });
 
-// ── 「회색」과 「안 뜸」 (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」) ──
-describe('회색과 안 뜸', () => {
-  it('다섯 모드가 왕복한다', () => {
-    for (const m of ['', 'fwdGray', 'revGray', 'fwdNone', 'revNone']) {
-      expect(dirModeOf(dirModePatch(m))).toBe(m);
-    }
+// ── 방향마다 셈 / 안 셈 / 없음 (2026-09-22 대표님 「정방향만 쓰는데 수량 체크를 안하는 선택지는?」) ──
+describe('방향마다 셈 / 안 셈 / 없음', () => {
+  it('공통 줄은 양쪽 다 「셈」', () => {
+    expect(dirStateOf({})).toEqual({ 정: 'use', 역: 'use' });
+    expect(isDirCommon({})).toBe(true);
   });
-  it('옛 줄(dirs:[역])은 「정 회색」으로 읽힌다 — 이전 없이 동작이 같다', () => {
+  it('옛 줄(dirs:[역])은 「정=안 셈, 역=셈」으로 읽힌다 — 이전 없이 동작이 같다', () => {
     const row = { dirs: ['역'] };
-    expect(dirModeOf(row)).toBe('fwdGray');
+    expect(dirStateOf(row)).toEqual({ 정: 'gray', 역: 'use' });
     expect(isOutOfScope(row, 정)).toBe(true);
     expect(isHiddenForPanel(row, 정)).toBe(false);
-  });
-  it('옛 「정방향 제외」(skipForward)도 「정 회색」', () => {
-    expect(dirModeOf({ skipForward: true })).toBe('fwdGray');
-  });
-  it('「정 없음」은 정방향에서 안 뜬다', () => {
-    const row = dirModePatch('fwdNone');
-    expect(isHiddenForPanel(row, 정)).toBe(true);
-    expect(isHiddenForPanel(row, 역)).toBe(false);
     expect(isOutOfScope(row, 역)).toBe(false);
   });
-  it('「역 없음」은 역방향에서 안 뜬다', () => {
-    const row = dirModePatch('revNone');
-    expect(isHiddenForPanel(row, 역)).toBe(true);
-    expect(isHiddenForPanel(row, 정)).toBe(false);
+  it('옛 「정방향 제외」(skipForward)도 같다', () => {
+    expect(dirStateOf({ skipForward: true })).toEqual({ 정: 'gray', 역: 'use' });
   });
-  it('호기에 정역을 안 적었으면 숨기지 않는다 — 빼는 쪽이 위험', () => {
-    expect(isHiddenForPanel(dirModePatch('fwdNone'), 모름)).toBe(false);
+  it('옛 「안 뜸」(dirs:[역]+dirHide)은 「정=없음」', () => {
+    const row = { dirs: ['역'], dirHide: true };
+    expect(dirStateOf(row)).toEqual({ 정: 'none', 역: 'use' });
+    expect(isHiddenForPanel(row, 정)).toBe(true);
   });
-  it('공통은 어느 쪽에서도 회색·숨김이 아니다', () => {
-    const row = dirModePatch('');
-    for (const p of [정, 역, 모름]) {
-      expect(isOutOfScope(row, p)).toBe(false);
-      expect(isHiddenForPanel(row, p)).toBe(false);
-    }
+  it('대표님이 물은 조합 — 정은 안 셈, 역은 없음', () => {
+    const row = dirStatePatch({ 정: 'gray', 역: 'none' });
+    expect(isOutOfScope(row, 정)).toBe(true); // 셈에서 빠지되
+    expect(isHiddenForPanel(row, 정)).toBe(false); // 목록에는 회색으로 남고
+    expect(isHiddenForPanel(row, 역)).toBe(true); // 역방향에서는 아예 안 뜬다
   });
-  it('모드마다 설명이 있다 — 칸에 마우스를 올리면 나온다', () => {
-    for (const m of ['fwdGray', 'revGray', 'fwdNone', 'revNone']) expect(dirModeHint(m)).toBeTruthy();
+  it('여덟 조합이 모두 왕복한다', () => {
+    for (const a of ['use', 'gray', 'none'])
+      for (const b of ['use', 'gray', 'none']) {
+        expect(dirStateOf(dirStatePatch({ 정: a, 역: b }))).toEqual({ 정: a, 역: b });
+      }
+  });
+  it('모르는 값은 「셈」으로 읽는다 — 빼는 쪽이 위험', () => {
+    expect(dirStateOf({ dirState: { 정: '가짜', 역: 'none' } })).toEqual({ 정: 'use', 역: 'none' });
+  });
+  it('호기에 정역을 안 적었으면 빼지도 숨기지도 않는다', () => {
+    const row = dirStatePatch({ 정: 'none', 역: 'none' });
+    expect(isOutOfScope(row, 모름)).toBe(false);
+    expect(isHiddenForPanel(row, 모름)).toBe(false);
+  });
+  it('상태마다 설명이 있다', () => {
+    for (const v of ['use', 'gray', 'none']) expect(dirStateHint(v)).toBeTruthy();
   });
 });

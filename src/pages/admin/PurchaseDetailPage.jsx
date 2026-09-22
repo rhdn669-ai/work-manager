@@ -1,5 +1,5 @@
 import { byBoxThenOrder } from '../../domain/boxes';
-import { dirsOf } from '../../domain/panelBom';
+import { dirStateOf } from '../../domain/panelBom';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { calcPaymentDue, paymentTermLabel, isPrepaidTerm, prepaidBasisOf } from '../../utils/paymentTerms';
@@ -947,10 +947,12 @@ export default function PurchaseDetailPage() {
     const rev = Math.max(0, Number(bomRev) || 0);
     const setCount = Math.max(1, fwd + rev);
     // 줄이 공통이면 전부, 한쪽만 쓰는 줄이면 그쪽 대수만
+    // 「셈」인 방향만 곱한다 — 「안 셈」·「없음」은 우리가 사지 않는다
+    // (2026-09-22 방향마다 셈/안 셈/없음)
     const timesOf = (b) => {
-      const d = dirsOf(b);
-      if (d.length === 0) return fwd + rev || 1;
-      return (d.includes('정') ? fwd : 0) + (d.includes('역') ? rev : 0);
+      const st = dirStateOf(b);
+      const n = (st.정 === 'use' ? fwd : 0) + (st.역 === 'use' ? rev : 0);
+      return n || (st.정 === 'use' && st.역 === 'use' ? 1 : 0);
     };
     setBomImporting(true);
     try {

@@ -61,7 +61,7 @@ import { getAllMaterials, splitMaterialsRow } from '../../services/panelMaterial
 import { specFontClass, effLen } from '../../utils/printText';
 import { BOM_COLS_WITH_VARIANT, BOM_COLS_NO_VARIANT, bomColsTypeQty } from '../../domain/tableWidths';
 import { BOX_OPTIONS, byBoxThenOrder } from '../../domain/boxes';
-import { DIR_MODES, dirModeOf, dirModeHint, dirModePatch, dirsOf } from '../../domain/panelBom';
+import { DIRS, DIR_STATES, dirStateOf, dirStateHint, dirStatePatch, isDirCommon } from '../../domain/panelBom';
 import { findMasterByToken, splitQty } from '../../domain/pasteMatch';
 
 // 되돌리기가 맞추는 칸 — 수량·단가·비고·순서·품목·BOX·도급/사급·도번
@@ -461,7 +461,7 @@ export default function BomDetailPage() {
         !HIST_KEYS.every(same) ||
         JSON.stringify(b.variantKeys || []) !== JSON.stringify(c.variantKeys || []) ||
         JSON.stringify(b.dirs || []) !== JSON.stringify(c.dirs || []) ||
-        !!b.dirHide !== !!c.dirHide ||
+        JSON.stringify(dirStateOf(b)) !== JSON.stringify(dirStateOf(c)) ||
         JSON.stringify(b.qtyByVariant || {}) !== JSON.stringify(c.qtyByVariant || {})
       );
     });
@@ -478,7 +478,7 @@ export default function BomDetailPage() {
               ),
               variantKeys: Array.isArray(b.variantKeys) ? b.variantKeys : [],
               dirs: Array.isArray(b.dirs) ? b.dirs : [],
-              dirHide: !!b.dirHide,
+              ...dirStatePatch(dirStateOf(b)),
               qtyByVariant: b.qtyByVariant && typeof b.qtyByVariant === 'object' ? b.qtyByVariant : {},
             },
             { sync: false },
@@ -749,8 +749,8 @@ export default function BomDetailPage() {
   // 정·역 — 줄마다 어느 방향 호기에 쓰는지. 둘 다 켜짐이 공통(기본)이고, 하나만 켜면 반대쪽
   // 호기 화면에 회색으로 보이며 셈에서 빠진다 (2026-09-21 대표님 「정역 공통 정,역 개별로 체크」).
   // 둘 다 끄면 아무 호기에도 안 쓰이는 줄이 되어 뜻이 없으므로 공통으로 되돌린다.
-  function setDirMode(it, mode) {
-    const next = dirModePatch(mode);
+  function setDirState(it, dir, value) {
+    const next = dirStatePatch({ ...dirStateOf(it), [dir]: value });
     updateField(it.id, next);
     flushItem(it.id, next);
   }
@@ -783,8 +783,7 @@ export default function BomDetailPage() {
           String(b.box || '').trim() === to &&
           (b.itemId || '') === (row.itemId || '') &&
           JSON.stringify(b.variantKeys || []) === JSON.stringify(row.variantKeys || []) &&
-          JSON.stringify(dirsOf(b)) === JSON.stringify(dirsOf(row)) &&
-          !!b.dirHide === !!row.dirHide;
+          JSON.stringify(dirStateOf(b)) === JSON.stringify(dirStateOf(row));
         const twin = bomItems.find(sameKey);
         await flushItem(row.id, { qty: rest });
         setBomItems((prev) => prev.map((b) => (b.id === row.id ? { ...b, qty: rest } : b)));
@@ -807,8 +806,7 @@ export default function BomDetailPage() {
             supplyType: row.supplyType || '',
             drawingNo: row.drawingNo || '',
             variantKeys: Array.isArray(row.variantKeys) ? row.variantKeys : [],
-            dirs: dirsOf(row),
-            dirHide: !!row.dirHide,
+            ...dirStatePatch(dirStateOf(row)),
             order,
           };
           const ref = await addBomItem(projectId, data);
@@ -2088,23 +2086,31 @@ export default function BomDetailPage() {
                                 >
                                   {kindLabel(it)}
                                 </button>
-                                {/* 방향 — 다섯 가지를 한 칸 드롭다운으로. 단추 두 개로는 «회색»과
-                                  «안 뜸»을 가를 수 없었고, 켜진 방향만 보여 뜻이 거꾸로 읽혔다
-                                  (2026-09-22 대표님 「아예 사용을 안해서 리스트에 안뜨게 하려면」) */}
-                                <span
-                                  className={`bom-dir-select${
-                                    dirModeOf(it) ? (dirModeOf(it).endsWith('None') ? ' is-none' : ' is-gray') : ''
-                                  }`}
-                                  title={dirModeHint(dirModeOf(it))}
-                                >
-                                  <Select
-                                    native
-                                    value={dirModeOf(it)}
-                                    onChange={(v) => setDirMode(it, v)}
-                                    options={DIR_MODES}
-                                    ariaLabel="정·역 방향"
-                                    disabled={locked}
-                                  />
+                                {/* 방향 — 정·역 «각각» 셈/안 셈/없음. 한 칸 다섯 가지로는
+                                  「정방향만 쓰는데 그것도 안 세는」 처럼 두 방향이 서로 다른
+                                  경우를 못 적었다 (2026-09-22 대표님 「정방향만 쓰는데 수량
+                                  체크를 안하는 선택지는?」) */}
+                                <span className={`bom-dirs${isDirCommon(it) ? '' : ' on'}`}>
+                                  {DIRS.map((d) => {
+                                    const v = dirStateOf(it)[d];
+                                    return (
+                                      <span
+                                        key={d}
+                                        className={`bom-dir-one is-${v}`}
+                                        title={`${d}방향 호기 — ${dirStateHint(v)}`}
+                                      >
+                                        <b className="bom-dir-tag">{d}</b>
+                                        <Select
+                                          native
+                                          value={v}
+                                          onChange={(nv) => setDirState(it, d, nv)}
+                                          options={DIR_STATES}
+                                          ariaLabel={`${d}방향 처리`}
+                                          disabled={locked}
+                                        />
+                                      </span>
+                                    );
+                                  })}
                                 </span>
                               </td>
                               <td data-label="수량">
