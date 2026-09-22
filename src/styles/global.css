@@ -6577,6 +6577,9 @@ table.cards-sm td {
    (auto 레이아웃이라 내용 압력이 이긴다) (2026-09-22 대표님 「메이커 칸 줄이고 비고 칸 늘려」) */
 .bom-flat-table th.bom-maker-col,
 .bom-flat-table td.bom-maker-col {
+  /* 위는 막고 아래는 받친다 — 상한만 두었더니 좁은 화면에서 50px 까지 눌려
+     「Honeywell」 이 한 글자도 안 보였다. 긴 이름은 칸에 마우스를 올리면 다 나온다 */
+  min-width: 72px;
   max-width: 112px;
 }
 .bom-flat-table th.bom-note-col,
