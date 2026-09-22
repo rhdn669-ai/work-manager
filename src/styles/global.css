@@ -24550,26 +24550,6 @@ a.lib-row-name:hover {
   flex: none;
 }
 
-/* 풀어 둔 것을 화면 위에서도 알 수 있게 — 버튼이 구석에 있어 헷갈리는 것을 막는다 */
-.editlock-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 30px;
-  margin: 0 0 10px;
-  border-radius: 999px;
-  background: #fdeee7;
-  color: #9a3412;
-  font-size: 13px;
-  font-weight: 600;
-  pointer-events: none;
-}
-.editlock-bar-ic {
-  width: 1em;
-  height: 1em;
-}
-
 /* 잠금이 뜨는 화면은 본문 아래를 버튼 높이만큼 비운다 — 맨 아래 버튼·스크롤바를 덮지 않게
    (2026-09-11 대표님 「젤 하단 다른 버튼과 겹치는데 아래에 잠금 버튼만큼 공백을」) */
 body.has-editlock {
@@ -24600,8 +24580,7 @@ body.has-editlock .main-content.expanded {
 
 /* 인쇄물에는 나오지 않는다 */
 @media print {
-  .editlock-fab,
-  .editlock-bar {
+  .editlock-fab {
     display: none !important;
   }
 }

@@ -37,13 +37,9 @@ export function EditLockProvider({ children }) {
 
   return (
     <EditLockContext.Provider value={value}>
-      {/* 「수정 중」 띠는 글 흐름 안에 둔다 — 띄워 두면 화면 제목을 덮는다 */}
-      {users > 0 && on && !pc && (
-        <div className="editlock-bar" role="status">
-          <Icon name="unlock" className="editlock-bar-ic" />
-          수정 중 — 끌어서 옮기고, 골라서 지울 수 있습니다
-        </div>
-      )}
+      {/* 「수정 중」 띄는 없앤다 — 풀릴 때마다 위에 줄이 하나 생겨 표가 그만큼
+        짧아졌고, 오른쪽 아래 단추가 이미 「잠금 해제」로 상태를 말해 준다
+        (2026-09-22 대표님 「잠금 누르면 상단에 뜨는 문구때문에 칸이좁아짐 삭제」) */}
       {children}
       {users > 0 && !pc && (
         <>
